@@ -1,0 +1,21 @@
+{
+  "schema": "moduflow.config.v1",
+  "project_name": "{{project_name}}",
+  "git": {
+    "required": true,
+    "github_sync": "optional",
+    "issue_source": "git-files",
+    "remote": "{{git_remote}}"
+  },
+  "paths": {
+    "issues": "issues",
+    "specs": "specs",
+    "workspace": "workspace"
+  },
+  "commands": {
+    "start": "product:start",
+    "status": "product:status",
+    "doctor": "product:doctor"
+  }
+}
+

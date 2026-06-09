@@ -1,0 +1,21 @@
+id: product-management
+source: anthropic-knowledge-work-plugins
+source_url: https://github.com/anthropics/knowledge-work-plugins
+public_page: https://claude.com/plugins/product-management
+role: pm_artifact_patterns
+moduflow_use:
+  - problem framing
+  - PRD/spec structure
+  - stakeholder updates
+  - prioritization language
+source_of_truth: git
+reads:
+  - workspace/inbox.md
+  - workspace/opportunities.md
+  - issues/*.md
+writes:
+  - issues/*.md
+  - specs/*/spec.md
+  - specs/*/stakeholder-update.md
+swap_policy: Replaceable if it preserves problem, outcome, acceptance, and decision fields.
+

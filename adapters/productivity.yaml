@@ -1,0 +1,19 @@
+id: productivity
+source: anthropic-knowledge-work-plugins
+source_url: https://github.com/anthropics/knowledge-work-plugins
+public_page: https://claude.com/plugins/productivity
+role: dashboard_view_layer
+moduflow_use:
+  - progress dashboard inspiration
+  - work queue visualization
+  - weekly/status view patterns
+source_of_truth: git
+reads:
+  - workspace/dashboard.md
+  - workspace/roadmap.md
+  - issues/*.md
+  - specs/*/status.md
+writes:
+  - generated dashboard views only
+swap_policy: Replaceable as long as it can read Git artifacts and preserve issue IDs.
+

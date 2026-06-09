@@ -1,0 +1,19 @@
+id: spec-kit
+source: github-spec-kit
+source_url: https://github.com/github/spec-kit
+docs_url: https://github.github.com/spec-kit/
+role: spec_plan_task_structure
+moduflow_use:
+  - spec structure
+  - implementation plan structure
+  - task breakdown
+source_of_truth: git
+reads:
+  - issues/*.md
+  - specs/*/spec.md
+writes:
+  - specs/*/spec.md
+  - specs/*/plan.md
+  - specs/*/tasks.md
+swap_policy: Replaceable if spec, plan, and tasks remain deterministic files.
+
