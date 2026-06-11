@@ -16,9 +16,10 @@ python3 scripts/release_check.py .
 
 1. Confirm working tree is clean.
 2. Update version metadata when releasing a new plugin version.
-3. Update Codex personal marketplace metadata when needed.
-4. Run the cachebuster update script when Codex should pick up a changed package.
-5. Reinstall or update the plugin in the target client.
+3. Run the cachebuster update script when Codex should pick up a changed package.
+4. Run `python3 scripts/register_codex_personal_marketplace.py .`.
+5. Confirm the output includes a Codex cache path for the new version.
+6. Start a new Codex thread and test `@ModuFlow product:status`.
 
 ## Rollback
 

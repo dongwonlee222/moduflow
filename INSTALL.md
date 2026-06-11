@@ -42,10 +42,13 @@ Run:
 ```bash
 python3 scripts/register_codex_personal_marketplace.py .
 python3 /Users/dongwon.lee/.codex/skills/.system/plugin-creator/scripts/update_plugin_cachebuster.py .
-codex plugin add moduflow@personal
 ```
 
-Then start a new Codex thread and use `@ModuFlow`.
+The registration script installs the local package into the personal marketplace, creates the
+Codex local link, populates the Codex plugin cache, and enables `moduflow@personal` in
+`~/.codex/config.toml`.
+
+Then restart Codex or start a new Codex thread and use `@ModuFlow`.
 
 ### Slash Commands
 

@@ -97,6 +97,7 @@ REQUIRED_FILES = [
     "scripts/validate_project_artifacts.py",
     "scripts/portfolio_doctor.py",
     "scripts/release_check.py",
+    "scripts/register_codex_personal_marketplace.py",
     "workers/pm-strategist.md",
     "workers/roadmap-planner.md",
     "workers/spec-architect.md",

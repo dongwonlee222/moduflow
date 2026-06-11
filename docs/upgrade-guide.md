@@ -30,7 +30,22 @@ New layers are opt-in:
 
 ## Codex
 
-After changing the plugin package, refresh the personal marketplace entry and cachebuster, then reinstall or update `moduflow@personal`.
+After changing the plugin package, refresh the cachebuster and run the local bootstrap installer:
+
+```bash
+python3 /Users/dongwon.lee/.codex/skills/.system/plugin-creator/scripts/update_plugin_cachebuster.py .
+python3 scripts/register_codex_personal_marketplace.py .
+```
+
+The bootstrap installer:
+
+- links the source package to `~/plugins/moduflow`
+- updates `~/.agents/plugins/marketplace.json`
+- links the package to `~/.codex/plugins/local/moduflow`
+- populates `~/.codex/plugins/cache/personal/moduflow/<version>`
+- enables `[plugins."moduflow@personal"]` in `~/.codex/config.toml`
+
+Start a new Codex thread after running it.
 
 ## Claude
 
