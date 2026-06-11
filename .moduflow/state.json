@@ -1,9 +1,9 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "worker-orchestration-implemented",
+  "phase": "released-0.2.0",
   "active_issue": "007-worker-orchestration",
-  "last_command": "product:execute 007-worker-orchestration",
-  "next_command": "product:review 007-worker-orchestration",
+  "last_command": "product:release 007-worker-orchestration",
+  "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-06-11"
 }

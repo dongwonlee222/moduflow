@@ -5,6 +5,6 @@ Updated: 2026-06-11
 ## ModuFlow
 
 - Owner: Dongwon Lee
-- Phase: worker-orchestration-implemented
+- Phase: released-0.2.0
 - Blockers: none
-- Next: `product:review 007-worker-orchestration`
+- Next: `product:status`
