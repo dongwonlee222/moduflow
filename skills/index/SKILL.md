@@ -30,6 +30,8 @@ Codex reserves leading `/` for native slash commands. Treat these as equivalent:
 - `product:portfolio`: initialize or render a multi-project portfolio workspace
 - `product:projects`: inspect registered projects in a portfolio workspace
 - `product:weekly`: generate a weekly portfolio status
+- `product:handoff`: initialize team workflow artifacts or create handoff records
+- `product:risks`: inspect blockers, risks, and release concerns
 - `product:inbox`: capture raw requests
 - `product:opportunity`: shape opportunity/problem
 - `product:issue`: create or update Git issue artifact

@@ -15,6 +15,8 @@ Route requests through the smallest useful ModuFlow step.
 - Benchmarks, reports, decisions, research, data notes, or references: `/product:knowledge`
 - Evidence review for an issue/spec/roadmap item: `/product:evidence`
 - Multi-project overview, central dashboard, or weekly cross-project status: `/product:portfolio`
+- Team ownership, review state, approval, or handoff: `/product:handoff`
+- Blockers, risks, or release concerns: `/product:risks`
 - Problem shaping: `/product:opportunity`
 - Durable work item: `/product:issue`
 - PRD/spec: `/product:spec`

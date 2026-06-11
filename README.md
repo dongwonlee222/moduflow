@@ -40,6 +40,8 @@ In Codex, call these through `@ModuFlow` without the leading slash, for example 
 - `/product:portfolio`: initialize or render a multi-project portfolio workspace
 - `/product:projects`: inspect registered projects in a portfolio workspace
 - `/product:weekly`: generate a weekly portfolio status
+- `/product:handoff`: initialize team workflow artifacts or create handoff records
+- `/product:risks`: inspect blockers, risks, and release concerns
 - `/product:inbox`: capture raw requests
 - `/product:opportunity`: shape the problem/opportunity
 - `/product:issue`: create or update a Git issue artifact
@@ -92,6 +94,13 @@ For a multi-project portfolio workspace:
 ```bash
 python3 scripts/project_portfolio.py /path/to/portfolio --write
 python3 scripts/project_portfolio.py /path/to/portfolio --render
+```
+
+For team workflow artifacts:
+
+```bash
+python3 scripts/project_workflow.py /path/to/project --write
+python3 scripts/project_workflow.py /path/to/project --record --issue-id 005-team-workflow --state ready-for-review --owner "Owner"
 ```
 
 See `INSTALL.md` for Claude/Codex install notes.

@@ -34,6 +34,14 @@ REQUIRED_KNOWLEDGE_PATHS = [
     "knowledge/references",
 ]
 
+REQUIRED_WORKFLOW_PATHS = [
+    "workflow/review-gates.md",
+    "workflow/approval-policy.md",
+    "workflow/release-policy.md",
+    "workflow/handoff.md",
+    "workflow/risks.md",
+]
+
 CANDIDATE_PATHS = {
     "issues": ["issues", "docs/issues", "planning/issues", ".github/ISSUE_TEMPLATE"],
     "specs": ["specs", "docs/specs", "docs/prd", "prd", "requirements"],
@@ -113,6 +121,14 @@ def missing_knowledge_paths(root):
     return missing
 
 
+def missing_workflow_paths(root):
+    missing = []
+    for relative in REQUIRED_WORKFLOW_PATHS:
+        if not (root / relative).exists():
+            missing.append(relative)
+    return missing
+
+
 def discover_candidate_paths(root):
     candidates = {}
     for artifact_type, relative_paths in CANDIDATE_PATHS.items():
@@ -142,6 +158,7 @@ def inspect_project(path):
     missing = missing_project_paths(project_root)
     missing_profile = missing_profile_paths(project_root)
     missing_knowledge = missing_knowledge_paths(project_root)
+    missing_workflow = missing_workflow_paths(project_root)
     candidates = discover_candidate_paths(project_root)
     migration_mode = recommended_migration_mode(missing, candidates)
 
@@ -170,6 +187,10 @@ def inspect_project(path):
             "initialized": not missing_knowledge,
             "missing": missing_knowledge,
         },
+        "workflow": {
+            "initialized": not missing_workflow,
+            "missing": missing_workflow,
+        },
         "recommendation": [],
     }
 
@@ -197,6 +218,9 @@ def inspect_project(path):
 
     if missing_knowledge:
         result["recommendation"].append("Run product:knowledge --write to create knowledge evidence structure.")
+
+    if missing_workflow:
+        result["recommendation"].append("Run product:handoff --write to create team workflow artifacts.")
 
     return result
 

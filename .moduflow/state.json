@@ -1,9 +1,9 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "portfolio-implemented",
-  "active_issue": "004-portfolio-workspace",
-  "last_command": "product:execute 004-portfolio-workspace",
-  "next_command": "product:review 004-portfolio-workspace",
+  "phase": "team-workflow-implemented",
+  "active_issue": "005-team-workflow",
+  "last_command": "product:execute 005-team-workflow",
+  "next_command": "product:review 005-team-workflow",
   "blockers": [],
   "updated_at": "2026-06-11"
 }
