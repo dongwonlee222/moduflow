@@ -31,6 +31,12 @@ In Codex, call these through `@ModuFlow` without the leading slash, for example 
 - `/product:start`: initialize ModuFlow in a project
 - `/product:migrate`: safely adopt an existing project without moving files
 - `/product:profile`: create project ownership, environment, and integration metadata
+- `/product:knowledge`: initialize knowledge evidence artifacts
+- `/product:decision`: create a decision record
+- `/product:research`: create a research artifact
+- `/product:benchmark`: create a benchmark artifact
+- `/product:report`: create a report artifact
+- `/product:evidence`: review evidence for an issue or spec
 - `/product:inbox`: capture raw requests
 - `/product:opportunity`: shape the problem/opportunity
 - `/product:issue`: create or update a Git issue artifact
@@ -69,6 +75,13 @@ For project profile metadata, create missing files only:
 
 ```bash
 python3 scripts/project_profile.py /path/to/project --write
+```
+
+For knowledge evidence artifacts, initialize the structure and create linked evidence:
+
+```bash
+python3 scripts/project_knowledge.py /path/to/project --write
+python3 scripts/project_knowledge.py /path/to/project --kind decision --title "Payment priority" --issue-id 003-payment
 ```
 
 See `INSTALL.md` for Claude/Codex install notes.

@@ -23,6 +23,17 @@ REQUIRED_PROFILE_PATHS = [
     ".moduflow/integrations.json",
 ]
 
+REQUIRED_KNOWLEDGE_PATHS = [
+    "knowledge",
+    "knowledge/index.md",
+    "knowledge/decisions",
+    "knowledge/benchmarks",
+    "knowledge/reports",
+    "knowledge/research",
+    "knowledge/data-notes",
+    "knowledge/references",
+]
+
 CANDIDATE_PATHS = {
     "issues": ["issues", "docs/issues", "planning/issues", ".github/ISSUE_TEMPLATE"],
     "specs": ["specs", "docs/specs", "docs/prd", "prd", "requirements"],
@@ -94,6 +105,14 @@ def missing_profile_paths(root):
     return missing
 
 
+def missing_knowledge_paths(root):
+    missing = []
+    for relative in REQUIRED_KNOWLEDGE_PATHS:
+        if not (root / relative).exists():
+            missing.append(relative)
+    return missing
+
+
 def discover_candidate_paths(root):
     candidates = {}
     for artifact_type, relative_paths in CANDIDATE_PATHS.items():
@@ -122,6 +141,7 @@ def inspect_project(path):
     gh_status = gh_auth_status(project_root)
     missing = missing_project_paths(project_root)
     missing_profile = missing_profile_paths(project_root)
+    missing_knowledge = missing_knowledge_paths(project_root)
     candidates = discover_candidate_paths(project_root)
     migration_mode = recommended_migration_mode(missing, candidates)
 
@@ -145,6 +165,10 @@ def inspect_project(path):
         "profile": {
             "initialized": not missing_profile,
             "missing": missing_profile,
+        },
+        "knowledge": {
+            "initialized": not missing_knowledge,
+            "missing": missing_knowledge,
         },
         "recommendation": [],
     }
@@ -170,6 +194,9 @@ def inspect_project(path):
 
     if missing_profile:
         result["recommendation"].append("Run product:profile --write to create project profile metadata.")
+
+    if missing_knowledge:
+        result["recommendation"].append("Run product:knowledge --write to create knowledge evidence structure.")
 
     return result
 

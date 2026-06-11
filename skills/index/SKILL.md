@@ -21,6 +21,12 @@ Codex reserves leading `/` for native slash commands. Treat these as equivalent:
 - `product:start`: initialize project artifacts
 - `product:migrate`: plan or apply a safe migration for an existing project
 - `product:profile`: create or inspect project profile metadata
+- `product:knowledge`: initialize or inspect project knowledge artifacts
+- `product:decision`: create a decision record
+- `product:research`: create a research artifact
+- `product:benchmark`: create a benchmark artifact
+- `product:report`: create a report artifact
+- `product:evidence`: review evidence for an issue or spec
 - `product:inbox`: capture raw requests
 - `product:opportunity`: shape opportunity/problem
 - `product:issue`: create or update Git issue artifact
