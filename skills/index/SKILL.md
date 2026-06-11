@@ -19,6 +19,7 @@ Codex reserves leading `/` for native slash commands. Treat these as equivalent:
 ## Command Map
 
 - `product:start`: initialize project artifacts
+- `product:migrate`: plan or apply a safe migration for an existing project
 - `product:inbox`: capture raw requests
 - `product:opportunity`: shape opportunity/problem
 - `product:issue`: create or update Git issue artifact
@@ -40,7 +41,7 @@ Codex reserves leading `/` for native slash commands. Treat these as equivalent:
 ## Behavior
 
 1. Identify the project root before writing files.
-2. Run Git preflight before `product:start`, `product:issue`, `product:spec`, `product:plan`, `product:execute`, `product:pr`, or `product:release`.
+2. Run Git preflight before `product:start`, `product:migrate`, `product:issue`, `product:spec`, `product:plan`, `product:execute`, `product:pr`, or `product:release`.
 3. If no project root is clear, ask for the target project.
 4. Keep Git as the source of truth.
 5. Always end with the next recommended ModuFlow command.

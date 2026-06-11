@@ -29,6 +29,7 @@ Git is the source of truth. Dashboards, web views, generated docs, and updates a
 In Codex, call these through `@ModuFlow` without the leading slash, for example `@ModuFlow product:start`.
 
 - `/product:start`: initialize ModuFlow in a project
+- `/product:migrate`: safely adopt an existing project without moving files
 - `/product:inbox`: capture raw requests
 - `/product:opportunity`: shape the problem/opportunity
 - `/product:issue`: create or update a Git issue artifact
@@ -55,6 +56,12 @@ Upstream sources are tracked in `vendor.lock.json`. Local changes belong in `ove
 
 ```bash
 python3 scripts/validate_moduflow.py .
+```
+
+For existing projects with their own folder structure, start with a dry-run migration plan:
+
+```bash
+python3 scripts/project_migrate.py /path/to/project --mode mapped
 ```
 
 See `INSTALL.md` for Claude/Codex install notes.

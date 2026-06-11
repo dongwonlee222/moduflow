@@ -17,6 +17,17 @@ REQUIRED_PROJECT_PATHS = [
     "workspace/dashboard.md",
 ]
 
+CANDIDATE_PATHS = {
+    "issues": ["issues", "docs/issues", "planning/issues", ".github/ISSUE_TEMPLATE"],
+    "specs": ["specs", "docs/specs", "docs/prd", "prd", "requirements"],
+    "workspace": ["workspace", "planning", "docs/planning", "product"],
+    "reports": ["reports", "docs/reports"],
+    "benchmarks": ["benchmarks", "benchmark", "docs/benchmarks"],
+    "research": ["research", "docs/research"],
+    "decisions": ["decisions", "docs/decisions", "adr", "docs/adr"],
+    "data_notes": ["data-notes", "data_notes", "docs/data-notes", "analytics"],
+}
+
 
 def run(args, cwd):
     try:
@@ -69,13 +80,35 @@ def missing_project_paths(root):
     return missing
 
 
-def main():
-    requested = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
+def discover_candidate_paths(root):
+    candidates = {}
+    for artifact_type, relative_paths in CANDIDATE_PATHS.items():
+        matches = []
+        for relative in relative_paths:
+            if (root / relative).exists():
+                matches.append(relative)
+        if matches:
+            candidates[artifact_type] = matches
+    return candidates
+
+
+def recommended_migration_mode(missing, candidates):
+    if not missing:
+        return None
+    if candidates:
+        return "mapped"
+    return "overlay"
+
+
+def inspect_project(path):
+    requested = Path(path).resolve()
     detected_git_root = git_root(requested)
     project_root = detected_git_root or requested
     remote = git_remote(project_root) if detected_git_root else None
     gh_status = gh_auth_status(project_root)
     missing = missing_project_paths(project_root)
+    candidates = discover_candidate_paths(project_root)
+    migration_mode = recommended_migration_mode(missing, candidates)
 
     result = {
         "requested_path": str(requested),
@@ -89,6 +122,10 @@ def main():
         "moduflow": {
             "initialized": not missing,
             "missing": missing,
+        },
+        "migration": {
+            "recommended_mode": migration_mode,
+            "candidates": candidates,
         },
         "recommendation": [],
     }
@@ -104,14 +141,22 @@ def main():
         result["recommendation"].append("Run gh auth login if GitHub issue/PR sync is needed.")
 
     if missing:
-        result["recommendation"].append("Run product:start to initialize ModuFlow project artifacts.")
+        if migration_mode == "mapped":
+            result["recommendation"].append("Run product:migrate --mode mapped to plan a non-destructive migration.")
+        else:
+            result["recommendation"].append("Run product:migrate --mode overlay to add ModuFlow metadata without moving existing files.")
+        result["recommendation"].append("Run product:start after migration planning if this is a new project.")
     else:
         result["recommendation"].append("Run product:status to inspect current work.")
 
+    return result
+
+
+def main():
+    result = inspect_project(sys.argv[1] if len(sys.argv) > 1 else ".")
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
