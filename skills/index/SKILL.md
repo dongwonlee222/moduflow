@@ -27,6 +27,9 @@ Codex reserves leading `/` for native slash commands. Treat these as equivalent:
 - `product:benchmark`: create a benchmark artifact
 - `product:report`: create a report artifact
 - `product:evidence`: review evidence for an issue or spec
+- `product:portfolio`: initialize or render a multi-project portfolio workspace
+- `product:projects`: inspect registered projects in a portfolio workspace
+- `product:weekly`: generate a weekly portfolio status
 - `product:inbox`: capture raw requests
 - `product:opportunity`: shape opportunity/problem
 - `product:issue`: create or update Git issue artifact

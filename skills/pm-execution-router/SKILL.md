@@ -14,6 +14,7 @@ Route requests through the smallest useful ModuFlow step.
 - Project owner, environment, link, or integration metadata: `/product:profile`
 - Benchmarks, reports, decisions, research, data notes, or references: `/product:knowledge`
 - Evidence review for an issue/spec/roadmap item: `/product:evidence`
+- Multi-project overview, central dashboard, or weekly cross-project status: `/product:portfolio`
 - Problem shaping: `/product:opportunity`
 - Durable work item: `/product:issue`
 - PRD/spec: `/product:spec`

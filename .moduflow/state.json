@@ -1,9 +1,9 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "roadmap-planning",
-  "active_issue": "001-project-migration",
-  "last_command": "product:issue",
-  "next_command": "product:spec 001-project-migration",
+  "phase": "portfolio-implemented",
+  "active_issue": "004-portfolio-workspace",
+  "last_command": "product:execute 004-portfolio-workspace",
+  "next_command": "product:review 004-portfolio-workspace",
   "blockers": [],
   "updated_at": "2026-06-11"
 }

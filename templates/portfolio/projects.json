@@ -1,0 +1,12 @@
+{
+  "schema": "moduflow.projects.v1",
+  "projects": [
+    {
+      "id": "example-project",
+      "name": "Example Project",
+      "path": "/absolute/path/to/project",
+      "status": "active",
+      "owner": ""
+    }
+  ]
+}
