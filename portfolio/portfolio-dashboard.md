@@ -4,7 +4,7 @@ Updated: 2026-06-11
 
 | Project | Owner | Phase | Blockers | Next Command |
 | --- | --- | --- | --- | --- |
-| ModuFlow | Dongwon Lee | team-workflow-implemented | none | product:review 005-team-workflow |
+| ModuFlow | Dongwon Lee | validation-distribution-implemented | none | product:review 006-validation-and-distribution |
 
 ## Project Paths
 

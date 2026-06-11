@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+import json
+import sys
+from pathlib import Path
+
+
+REQUIRED_PATHS = [
+    ".moduflow/config.json",
+    ".moduflow/state.json",
+    ".moduflow/project-profile.md",
+    ".moduflow/environments.json",
+    ".moduflow/integrations.json",
+    "issues",
+    "specs",
+    "workspace/inbox.md",
+    "workspace/opportunities.md",
+    "workspace/roadmap.md",
+    "workspace/dashboard.md",
+    "knowledge/index.md",
+    "knowledge/decisions",
+    "knowledge/benchmarks",
+    "knowledge/reports",
+    "knowledge/research",
+    "knowledge/data-notes",
+    "knowledge/references",
+    "workflow/review-gates.md",
+    "workflow/approval-policy.md",
+    "workflow/release-policy.md",
+    "workflow/handoff.md",
+    "workflow/risks.md",
+]
+
+JSON_FILES = [
+    ".moduflow/config.json",
+    ".moduflow/state.json",
+    ".moduflow/environments.json",
+    ".moduflow/integrations.json",
+]
+
+
+def read_json(path, errors):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        errors.append(f"{path}: invalid JSON ({exc})")
+        return None
+
+
+def validate_project(path):
+    root = Path(path).resolve()
+    errors = []
+    warnings = []
+
+    for relative in REQUIRED_PATHS:
+        if not (root / relative).exists():
+            errors.append(f"Missing required project artifact: {relative}")
+
+    parsed = {}
+    for relative in JSON_FILES:
+        target = root / relative
+        if target.exists():
+            parsed[relative] = read_json(target, errors)
+
+    config = parsed.get(".moduflow/config.json")
+    if config and config.get("schema") != "moduflow.config.v1":
+        errors.append(".moduflow/config.json: schema must be moduflow.config.v1")
+
+    state = parsed.get(".moduflow/state.json")
+    if state:
+        if state.get("schema") != "moduflow.state.v1":
+            errors.append(".moduflow/state.json: schema must be moduflow.state.v1")
+        if "phase" not in state:
+            errors.append(".moduflow/state.json: missing phase")
+        if "next_command" not in state:
+            errors.append(".moduflow/state.json: missing next_command")
+
+    return {
+        "schema": "moduflow.project-validation.v1",
+        "project_root": str(root),
+        "valid": not errors,
+        "errors": errors,
+        "warnings": warnings,
+    }
+
+
+def main():
+    result = validate_project(sys.argv[1] if len(sys.argv) > 1 else ".")
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0 if result["valid"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

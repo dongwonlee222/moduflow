@@ -1,9 +1,9 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "team-workflow-implemented",
-  "active_issue": "005-team-workflow",
-  "last_command": "product:execute 005-team-workflow",
-  "next_command": "product:review 005-team-workflow",
+  "phase": "validation-distribution-implemented",
+  "active_issue": "006-validation-and-distribution",
+  "last_command": "product:execute 006-validation-and-distribution",
+  "next_command": "product:review 006-validation-and-distribution",
   "blockers": [],
   "updated_at": "2026-06-11"
 }

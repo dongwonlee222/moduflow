@@ -11,9 +11,10 @@ Validate setup.
 
 1. Run `scripts/validate_moduflow.py` for the plugin package.
 2. Run `scripts/project_doctor.py <project-path>` for the target project.
-3. Check Git repo, GitHub remote, GitHub CLI auth, and required `.moduflow`, `issues`, `specs`, and `workspace` files.
-4. Detect likely existing project artifact folders for migration.
-5. Report missing files and suggested fix commands.
+3. Run `scripts/validate_project_artifacts.py <project-path>` when the project is initialized.
+4. Check Git repo, GitHub remote, GitHub CLI auth, and required `.moduflow`, `issues`, `specs`, and `workspace` files.
+5. Detect likely existing project artifact folders for migration.
+6. Report missing files and suggested fix commands.
 
 ## Git Checks
 

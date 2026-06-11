@@ -68,6 +68,8 @@ Upstream sources are tracked in `vendor.lock.json`. Local changes belong in `ove
 
 ```bash
 python3 scripts/validate_moduflow.py .
+python3 scripts/validate_project_artifacts.py .
+python3 scripts/release_check.py .
 ```
 
 For existing projects with their own folder structure, start with a dry-run migration plan:
