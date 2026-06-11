@@ -1,0 +1,27 @@
+{
+  "schema": "moduflow.environments.v1",
+  "environments": [
+    {
+      "name": "development",
+      "url": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
+      "deploy_target": "local plugin source",
+      "data_source": "Git repo",
+      "notes": "Canonical source package for local development."
+    },
+    {
+      "name": "staging",
+      "url": "/Users/dongwon.lee/.codex/plugins/cache/personal/moduflow",
+      "deploy_target": "Codex plugin cache",
+      "data_source": "Generated from source package",
+      "notes": "Installed/cache copies are derived artifacts."
+    },
+    {
+      "name": "production",
+      "url": "https://github.com/dongwonlee222/moduflow",
+      "deploy_target": "GitHub main branch and local plugin install",
+      "data_source": "Git-tracked plugin package",
+      "notes": "Release readiness is validated by scripts and tests."
+    }
+  ],
+  "sensitive_data_policy": "Store references only. Do not store secret values."
+}

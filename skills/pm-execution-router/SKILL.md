@@ -11,6 +11,7 @@ Route requests through the smallest useful ModuFlow step.
 
 - Raw idea, feedback, bug, or loose note: `/product:inbox`
 - Existing project adoption or different folder structure: `/product:migrate`
+- Project owner, environment, link, or integration metadata: `/product:profile`
 - Problem shaping: `/product:opportunity`
 - Durable work item: `/product:issue`
 - PRD/spec: `/product:spec`

@@ -10,12 +10,17 @@
   "paths": {
     "issues": "issues",
     "specs": "specs",
-    "workspace": "workspace"
+    "workspace": "workspace",
+    "knowledge": "knowledge",
+    "profile": ".moduflow/project-profile.md",
+    "environments": ".moduflow/environments.json",
+    "integrations": ".moduflow/integrations.json"
   },
   "commands": {
     "start": "product:start",
+    "migrate": "product:migrate",
+    "profile": "product:profile",
     "status": "product:status",
     "doctor": "product:doctor"
   }
 }
-

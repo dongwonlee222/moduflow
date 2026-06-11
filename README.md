@@ -30,6 +30,7 @@ In Codex, call these through `@ModuFlow` without the leading slash, for example 
 
 - `/product:start`: initialize ModuFlow in a project
 - `/product:migrate`: safely adopt an existing project without moving files
+- `/product:profile`: create project ownership, environment, and integration metadata
 - `/product:inbox`: capture raw requests
 - `/product:opportunity`: shape the problem/opportunity
 - `/product:issue`: create or update a Git issue artifact
@@ -62,6 +63,12 @@ For existing projects with their own folder structure, start with a dry-run migr
 
 ```bash
 python3 scripts/project_migrate.py /path/to/project --mode mapped
+```
+
+For project profile metadata, create missing files only:
+
+```bash
+python3 scripts/project_profile.py /path/to/project --write
 ```
 
 See `INSTALL.md` for Claude/Codex install notes.

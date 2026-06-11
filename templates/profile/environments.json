@@ -1,0 +1,27 @@
+{
+  "schema": "moduflow.environments.v1",
+  "environments": [
+    {
+      "name": "development",
+      "url": "",
+      "deploy_target": "",
+      "data_source": "",
+      "notes": ""
+    },
+    {
+      "name": "staging",
+      "url": "",
+      "deploy_target": "",
+      "data_source": "",
+      "notes": ""
+    },
+    {
+      "name": "production",
+      "url": "",
+      "deploy_target": "",
+      "data_source": "",
+      "notes": ""
+    }
+  ],
+  "sensitive_data_policy": "Store references only. Do not store secret values."
+}

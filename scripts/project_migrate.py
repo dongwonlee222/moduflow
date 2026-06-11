@@ -17,6 +17,9 @@ DEFAULT_PATHS = {
     "specs": "specs",
     "workspace": "workspace",
     "knowledge": "knowledge",
+    "profile": ".moduflow/project-profile.md",
+    "environments": ".moduflow/environments.json",
+    "integrations": ".moduflow/integrations.json",
 }
 
 WORKSPACE_FILES = {
@@ -65,6 +68,7 @@ def build_config(project_root, mode, candidates):
             "status": "product:status",
             "doctor": "product:doctor",
             "migrate": "product:migrate",
+            "profile": "product:profile",
         },
     }
 

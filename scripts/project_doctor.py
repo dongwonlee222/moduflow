@@ -17,6 +17,12 @@ REQUIRED_PROJECT_PATHS = [
     "workspace/dashboard.md",
 ]
 
+REQUIRED_PROFILE_PATHS = [
+    ".moduflow/project-profile.md",
+    ".moduflow/environments.json",
+    ".moduflow/integrations.json",
+]
+
 CANDIDATE_PATHS = {
     "issues": ["issues", "docs/issues", "planning/issues", ".github/ISSUE_TEMPLATE"],
     "specs": ["specs", "docs/specs", "docs/prd", "prd", "requirements"],
@@ -80,6 +86,14 @@ def missing_project_paths(root):
     return missing
 
 
+def missing_profile_paths(root):
+    missing = []
+    for relative in REQUIRED_PROFILE_PATHS:
+        if not (root / relative).exists():
+            missing.append(relative)
+    return missing
+
+
 def discover_candidate_paths(root):
     candidates = {}
     for artifact_type, relative_paths in CANDIDATE_PATHS.items():
@@ -107,6 +121,7 @@ def inspect_project(path):
     remote = git_remote(project_root) if detected_git_root else None
     gh_status = gh_auth_status(project_root)
     missing = missing_project_paths(project_root)
+    missing_profile = missing_profile_paths(project_root)
     candidates = discover_candidate_paths(project_root)
     migration_mode = recommended_migration_mode(missing, candidates)
 
@@ -126,6 +141,10 @@ def inspect_project(path):
         "migration": {
             "recommended_mode": migration_mode,
             "candidates": candidates,
+        },
+        "profile": {
+            "initialized": not missing_profile,
+            "missing": missing_profile,
         },
         "recommendation": [],
     }
@@ -148,6 +167,9 @@ def inspect_project(path):
         result["recommendation"].append("Run product:start after migration planning if this is a new project.")
     else:
         result["recommendation"].append("Run product:status to inspect current work.")
+
+    if missing_profile:
+        result["recommendation"].append("Run product:profile --write to create project profile metadata.")
 
     return result
 
