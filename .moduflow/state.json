@@ -1,8 +1,8 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "released-0.2.0",
-  "active_issue": "007-worker-orchestration",
-  "last_command": "product:release 007-worker-orchestration",
+  "phase": "daily-work-captured",
+  "active_issue": "008-daily-work-log-and-gbrain-pilot",
+  "last_command": "product:issue 008-daily-work-log-and-gbrain-pilot",
   "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-06-11"

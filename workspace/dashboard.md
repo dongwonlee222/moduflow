@@ -2,11 +2,11 @@
 
 ## Current Phase
 
-Roadmap planning for multi-project, team-ready ModuFlow.
+Daily work captured after ModuFlow 0.2.2 and GBrain pilot setup.
 
 ## Active Issue
 
-- `001-project-migration`: define safe migration for existing projects.
+- `008-daily-work-log-and-gbrain-pilot`: record 0.2.1/0.2.2 follow-ups and GBrain pilot setup.
 
 ## Queue
 
@@ -15,6 +15,7 @@ Roadmap planning for multi-project, team-ready ModuFlow.
 - `004-portfolio-workspace`: add central multi-project status and roadmap views.
 - `005-team-workflow`: add review gates, roles, approvals, and handoff.
 - `006-validation-and-distribution`: strengthen validation, migration, install, and release tooling.
+- `007-worker-orchestration`: add worker assignment and parallel execution planning.
 
 ## Blockers
 
@@ -22,4 +23,4 @@ Roadmap planning for multi-project, team-ready ModuFlow.
 
 ## Next Command
 
-`product:spec 001-project-migration`
+`product:status`

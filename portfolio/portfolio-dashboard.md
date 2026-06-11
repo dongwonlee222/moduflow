@@ -4,7 +4,7 @@ Updated: 2026-06-11
 
 | Project | Owner | Phase | Blockers | Next Command |
 | --- | --- | --- | --- | --- |
-| ModuFlow | Dongwon Lee | released-0.2.0 | none | product:status |
+| ModuFlow | Dongwon Lee | daily-work-captured | none | product:status |
 
 ## Project Paths
 
