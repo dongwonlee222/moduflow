@@ -27,6 +27,7 @@ Git is the source of truth. Dashboards, web views, generated docs, and updates a
 ## Commands
 
 In Codex, call these through `@ModuFlow` without the leading slash, for example `@ModuFlow product:start`.
+Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow issue`, or `@ModuFlow 상태`.
 
 - `/product:start`: initialize ModuFlow in a project
 - `/product:migrate`: safely adopt an existing project without moving files

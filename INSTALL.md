@@ -59,6 +59,15 @@ ModuFlow keeps `/product:*` command definitions in `commands/`, but Codex interc
 @ModuFlow product:status
 ```
 
+Short aliases are supported:
+
+```text
+@ModuFlow start
+@ModuFlow status
+@ModuFlow issue
+@ModuFlow 상태
+```
+
 ## Updates
 
 Update upstreams through `vendor.lock.json` and `vendor/`.

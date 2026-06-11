@@ -1,6 +1,6 @@
 ---
 name: index
-description: Use when the ModuFlow plugin is at-mentioned directly, or when the user says product:start, product:status, product:inbox, product:issue, product:spec, product:roadmap, product:plan, product:execute, product:review, product:pr, product:release, product:update, ModuFlow, 모두플로우, 모두의 플로우, PM workflow, roadmap workflow, Git issue workflow, or asks to start/manage product execution with Git-native issues and specs.
+description: Use when the ModuFlow plugin is at-mentioned directly, or when the user says product:start, product:status, start, status, inbox, issue, spec, roadmap, plan, workers, execute, review, release, doctor, ModuFlow, 모두플로우, 모두의 플로우, 상태, 시작, 이슈, 스펙, 로드맵, 실행, 리뷰, PM workflow, roadmap workflow, Git issue workflow, or asks to start/manage product execution with Git-native issues and specs.
 ---
 
 # ModuFlow Index
@@ -13,8 +13,24 @@ Codex reserves leading `/` for native slash commands. Treat these as equivalent:
 
 - `product:start`
 - `/product:start`
+- `start`
+- `시작`
 - `ModuFlow 시작`
 - `모두플로우 시작`
+
+Prefer short aliases after `@ModuFlow`:
+
+- `@ModuFlow status`
+- `@ModuFlow start`
+- `@ModuFlow issue`
+- `@ModuFlow spec`
+- `@ModuFlow plan`
+- `@ModuFlow workers`
+- `@ModuFlow execute`
+- `@ModuFlow doctor`
+- `@ModuFlow 상태`
+- `@ModuFlow 시작`
+- `@ModuFlow 이슈`
 
 ## Command Map
 
@@ -49,6 +65,33 @@ Codex reserves leading `/` for native slash commands. Treat these as equivalent:
 - `product:update`: create stakeholder update
 - `product:sync`: inspect or update upstream sources
 - `product:doctor`: validate setup
+
+## Short Alias Map
+
+- `start`, `시작`: `product:start`
+- `status`, `상태`: `product:status`
+- `doctor`, `검사`: `product:doctor`
+- `migrate`, `마이그레이션`: `product:migrate`
+- `profile`, `프로필`: `product:profile`
+- `knowledge`, `지식`: `product:knowledge`
+- `decision`, `결정`: `product:decision`
+- `research`, `리서치`: `product:research`
+- `benchmark`, `벤치마크`: `product:benchmark`
+- `report`, `리포트`: `product:report`
+- `portfolio`, `포트폴리오`: `product:portfolio`
+- `weekly`, `주간`: `product:weekly`
+- `handoff`, `인수인계`: `product:handoff`
+- `risks`, `리스크`: `product:risks`
+- `inbox`, `인박스`: `product:inbox`
+- `issue`, `이슈`: `product:issue`
+- `spec`, `스펙`: `product:spec`
+- `roadmap`, `로드맵`: `product:roadmap`
+- `plan`, `계획`: `product:plan`
+- `workers`, `워커`: `product:workers`
+- `execute`, `실행`: `product:execute`
+- `review`, `리뷰`: `product:review`
+- `release`, `릴리즈`: `product:release`
+- `update`, `공유`: `product:update`
 
 ## Behavior
 
