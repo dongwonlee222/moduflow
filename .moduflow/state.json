@@ -1,9 +1,9 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "validation-distribution-implemented",
-  "active_issue": "006-validation-and-distribution",
-  "last_command": "product:execute 006-validation-and-distribution",
-  "next_command": "product:review 006-validation-and-distribution",
+  "phase": "worker-orchestration-implemented",
+  "active_issue": "007-worker-orchestration",
+  "last_command": "product:execute 007-worker-orchestration",
+  "next_command": "product:review 007-worker-orchestration",
   "blockers": [],
   "updated_at": "2026-06-11"
 }

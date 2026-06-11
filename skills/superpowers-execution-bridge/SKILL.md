@@ -12,9 +12,10 @@ Use Superpowers as the execution discipline.
 1. Brainstorm and clarify when intent is still blurry.
 2. Write a plan before non-trivial implementation.
 3. Use TDD where behavior changes.
-4. Dispatch parallel workers only for independent tasks.
-5. Request review after implementation.
-6. Verify before completion.
+4. Generate a ModuFlow worker plan for non-trivial issue execution.
+5. Dispatch parallel workers only for independent tasks.
+6. Request review after implementation.
+7. Verify before completion.
 
 ## Parallel Criteria
 
@@ -24,6 +25,7 @@ Parallel work is allowed when tasks have:
 - independent acceptance checks
 - low shared state risk
 - clear merge order
+- `specs/<issue>/worker-plan.md` marks the issue `parallel-eligible`
 
 Parallel work is avoided for:
 
@@ -31,4 +33,3 @@ Parallel work is avoided for:
 - ordered migrations
 - unresolved product decisions
 - shared design system changes
-

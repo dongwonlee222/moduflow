@@ -31,6 +31,7 @@ def run_release_check(path):
             "tests.test_project_knowledge",
             "tests.test_project_portfolio",
             "tests.test_project_workflow",
+            "tests.test_worker_orchestration",
             "-v",
         ],
         "project_doctor": ["python3", "scripts/project_doctor.py", "."],

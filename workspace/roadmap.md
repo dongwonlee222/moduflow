@@ -53,3 +53,11 @@
 - Confidence: medium
 - Dependency: finalized artifact schemas
 - Next command: `product:spec 006-validation-and-distribution`
+
+### `007-worker-orchestration`
+
+- Outcome: Worker assignment and parallel execution decisions become explicit artifacts.
+- Reason: Multi-agent execution needs a repeatable safety check before dispatch.
+- Confidence: medium
+- Dependency: team workflow and validation/distribution gates
+- Next command: `product:spec 007-worker-orchestration`

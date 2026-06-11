@@ -51,6 +51,7 @@ In Codex, call these through `@ModuFlow` without the leading slash, for example 
 - `/product:prototype`: create or review prototype
 - `/product:roadmap`: update Now/Next/Later roadmap view
 - `/product:plan`: create execution plan and tasks
+- `/product:workers`: generate worker assignment and parallel execution plan
 - `/product:execute`: run implementation with Superpowers-style workers
 - `/product:status`: show current state and next command
 - `/product:review`: run PM/UX/data/QA/release review
@@ -103,6 +104,12 @@ For team workflow artifacts:
 ```bash
 python3 scripts/project_workflow.py /path/to/project --write
 python3 scripts/project_workflow.py /path/to/project --record --issue-id 005-team-workflow --state ready-for-review --owner "Owner"
+```
+
+For worker orchestration:
+
+```bash
+python3 scripts/worker_orchestrator.py 007-worker-orchestration --write
 ```
 
 See `INSTALL.md` for Claude/Codex install notes.
