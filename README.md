@@ -40,6 +40,7 @@ Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow iss
 - `/product:evidence`: review evidence for an issue or spec
 - `/product:portfolio`: initialize or render a multi-project portfolio workspace
 - `/product:projects`: inspect registered projects in a portfolio workspace
+- `/product:issues`: inspect all issues in the current project
 - `/product:weekly`: generate a weekly portfolio status
 - `/product:handoff`: initialize team workflow artifacts or create handoff records
 - `/product:risks`: inspect blockers, risks, and release concerns

@@ -7,32 +7,44 @@ from pathlib import Path
 REQUIRED_PATHS = [
     ".moduflow/config.json",
     ".moduflow/state.json",
-    ".moduflow/project-profile.md",
-    ".moduflow/environments.json",
-    ".moduflow/integrations.json",
     "issues",
     "specs",
     "workspace/inbox.md",
     "workspace/opportunities.md",
     "workspace/roadmap.md",
     "workspace/dashboard.md",
-    "knowledge/index.md",
-    "knowledge/decisions",
-    "knowledge/benchmarks",
-    "knowledge/reports",
-    "knowledge/research",
-    "knowledge/data-notes",
-    "knowledge/references",
-    "workflow/review-gates.md",
-    "workflow/approval-policy.md",
-    "workflow/release-policy.md",
-    "workflow/handoff.md",
-    "workflow/risks.md",
 ]
+
+OPTIONAL_CAPABILITY_PATHS = {
+    "profile": [
+        ".moduflow/project-profile.md",
+        ".moduflow/environments.json",
+        ".moduflow/integrations.json",
+    ],
+    "knowledge": [
+        "knowledge/index.md",
+        "knowledge/decisions",
+        "knowledge/benchmarks",
+        "knowledge/reports",
+        "knowledge/research",
+        "knowledge/data-notes",
+        "knowledge/references",
+    ],
+    "workflow": [
+        "workflow/review-gates.md",
+        "workflow/approval-policy.md",
+        "workflow/release-policy.md",
+        "workflow/handoff.md",
+        "workflow/risks.md",
+    ],
+}
 
 JSON_FILES = [
     ".moduflow/config.json",
     ".moduflow/state.json",
+]
+
+OPTIONAL_JSON_FILES = [
     ".moduflow/environments.json",
     ".moduflow/integrations.json",
 ]
@@ -55,8 +67,15 @@ def validate_project(path):
         if not (root / relative).exists():
             errors.append(f"Missing required project artifact: {relative}")
 
+    for capability, paths in OPTIONAL_CAPABILITY_PATHS.items():
+        missing = [relative for relative in paths if not (root / relative).exists()]
+        if missing:
+            warnings.append(
+                f"Optional project capability not initialized: {capability} ({', '.join(missing)})"
+            )
+
     parsed = {}
-    for relative in JSON_FILES:
+    for relative in JSON_FILES + OPTIONAL_JSON_FILES:
         target = root / relative
         if target.exists():
             parsed[relative] = read_json(target, errors)

@@ -32,6 +32,30 @@ Prefer short aliases after `@ModuFlow`:
 - `@ModuFlow 시작`
 - `@ModuFlow 이슈`
 
+## Natural Language Invocation
+
+Accept Korean natural language after `@ModuFlow` and route to the smallest useful command or lifecycle action.
+
+Read-only examples:
+
+- `@ModuFlow 상태 보여줘`, `현재 상황 알려줘`, `다음에 뭐 하지?`: `product:status`
+- `@ModuFlow 전체 이슈 보여줘`, `이슈 목록`, `진행 중인 이슈 뭐야?`: `product:issues` behavior
+- `@ModuFlow 검사해줘`, `doctor 돌려줘`, `설정 괜찮아?`: `product:doctor`
+- `@ModuFlow 로드맵 보여줘`, `우선순위 뭐야?`: `product:roadmap`
+
+Mutating examples:
+
+- `@ModuFlow 003 시작해줘`, `003 이슈 시작`: issue `003` start
+- `@ModuFlow 003에 진행 내용 추가해줘: ...`: issue `003` update
+- `@ModuFlow 003 잠시 멈춰줘`: issue `003` pause
+- `@ModuFlow 003 다시 시작해줘`: issue `003` resume
+- `@ModuFlow 003 완료 처리해줘`: issue `003` complete
+- `@ModuFlow 새 이슈 만들어줘: ...`: `product:issue`, after checking existing issues
+
+For mutating lifecycle actions, update the issue file, `.moduflow/state.json`, `workspace/dashboard.md`, `workspace/issues.md` when present, and `workspace/roadmap.md` when priority/state changed.
+
+If the target issue is ambiguous, ask one concise clarification before mutating files.
+
 ## Command Map
 
 - `product:start`: initialize project artifacts
@@ -45,6 +69,7 @@ Prefer short aliases after `@ModuFlow`:
 - `product:evidence`: review evidence for an issue or spec
 - `product:portfolio`: initialize or render a multi-project portfolio workspace
 - `product:projects`: inspect registered projects in a portfolio workspace
+- `product:issues`: inspect all issues in the current project
 - `product:weekly`: generate a weekly portfolio status
 - `product:handoff`: initialize team workflow artifacts or create handoff records
 - `product:risks`: inspect blockers, risks, and release concerns
@@ -79,6 +104,7 @@ Prefer short aliases after `@ModuFlow`:
 - `benchmark`, `벤치마크`: `product:benchmark`
 - `report`, `리포트`: `product:report`
 - `portfolio`, `포트폴리오`: `product:portfolio`
+- `issues`, `이슈목록`, `전체이슈`: `product:issues`
 - `weekly`, `주간`: `product:weekly`
 - `handoff`, `인수인계`: `product:handoff`
 - `risks`, `리스크`: `product:risks`
@@ -98,5 +124,8 @@ Prefer short aliases after `@ModuFlow`:
 1. Identify the project root before writing files.
 2. Run Git preflight before `product:start`, `product:migrate`, `product:profile`, `product:issue`, `product:spec`, `product:plan`, `product:execute`, `product:pr`, or `product:release`.
 3. If no project root is clear, ask for the target project.
-4. Keep Git as the source of truth.
-5. Always end with the next recommended ModuFlow command.
+4. Check existing issues before creating a new issue.
+5. Keep Git as the source of truth.
+6. Treat status, issues, doctor, roadmap, and portfolio as read-only unless the user asks to update/fix.
+7. Treat start, update, pause, resume, complete, create, plan, execute, review, release, and sync as mutating workflows.
+8. Always end with the next recommended ModuFlow command.
