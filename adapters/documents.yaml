@@ -1,0 +1,18 @@
+id: documents
+source: codex-documents-presentations-spreadsheets
+source_url: local:codex-plugin/documents-presentations-spreadsheets
+role: artifact_output_bridge
+moduflow_use:
+  - docs
+  - spreadsheets
+  - presentations
+  - executive artifacts
+source_of_truth: git
+reads:
+  - issues/*.md
+  - specs/*/*.md
+  - workspace/*.md
+writes:
+  - generated docx/xlsx/pptx artifacts when requested
+swap_policy: Replaceable if generated artifacts link back to issue IDs.
+

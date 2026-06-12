@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "anthropic-skills",
+      "name": "Anthropic Skills",
+      "url": "https://github.com/anthropics/skills",
+      "type": "github",
+      "pin": "main",
+      "role": "official reusable skill patterns"
+    },
+    {
+      "id": "anthropic-knowledge-work-plugins",
+      "name": "Anthropic Knowledge Work Plugins",
+      "url": "https://github.com/anthropics/knowledge-work-plugins",
+      "type": "github",
+      "pin": "main",
+      "role": "productivity and product-management plugin patterns"
+    },
+    {
+      "id": "github-spec-kit",
+      "name": "GitHub Spec Kit",
+      "url": "https://github.com/github/spec-kit",
+      "type": "github",
+      "pin": "main",
+      "role": "spec, plan, and task workflow"
+    },
+    {
+      "id": "superpowers",
+      "name": "Superpowers",
+      "url": "https://github.com/obra/superpowers",
+      "type": "github",
+      "pin": "main",
+      "role": "execution, subagent, review, and verification practices"
+    },
+    {
+      "id": "codex-product-design",
+      "name": "Codex Product Design",
+      "url": "local:codex-plugin/product-design",
+      "type": "local-plugin",
+      "pin": "0.1.44",
+      "role": "design brief, ideation, prototype, image-to-code bridge"
+    },
+    {
+      "id": "codex-data-analytics",
+      "name": "Codex Data Analytics",
+      "url": "local:codex-plugin/data-analytics",
+      "type": "local-plugin",
+      "pin": "0.1.41-cf2b8b6c00d3",
+      "role": "metrics, diagnostics, dashboards, reports"
+    }
+  ]
+}
+

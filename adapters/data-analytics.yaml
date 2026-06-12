@@ -1,0 +1,19 @@
+id: data-analytics
+source: codex-data-analytics
+source_url: local:codex-plugin/data-analytics
+role: data_decision_bridge
+moduflow_use:
+  - KPI design
+  - metric diagnostics
+  - product/business analysis
+  - dashboards and reports
+source_of_truth: git
+reads:
+  - specs/*/spec.md
+  - external data sources
+writes:
+  - specs/*/analysis.md
+  - specs/*/metrics.md
+  - workspace/dashboard.md
+swap_policy: Replaceable if metric definitions, source caveats, and decisions are preserved.
+

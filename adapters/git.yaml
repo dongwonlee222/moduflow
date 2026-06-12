@@ -1,0 +1,20 @@
+id: git
+source: local-project-git
+role: source_of_truth_and_release_bridge
+moduflow_use:
+  - issues
+  - branches
+  - commits
+  - PRs
+  - releases
+source_of_truth: git
+reads:
+  - git status
+  - git log
+  - gh issue/pr when available
+writes:
+  - issues/*.md
+  - specs/*
+  - commits and PRs when user approves
+swap_policy: Not replaceable. This is the durable ModuFlow contract.
+

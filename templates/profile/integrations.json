@@ -1,0 +1,24 @@
+{
+  "schema": "moduflow.integrations.v1",
+  "integrations": {
+    "github": {
+      "repository": "",
+      "issues": "",
+      "pull_requests": ""
+    },
+    "docs": {
+      "primary": "",
+      "design": "",
+      "analytics": ""
+    },
+    "communication": {
+      "slack_channel": "",
+      "email_group": ""
+    },
+    "analytics": {
+      "dashboard": "",
+      "warehouse": ""
+    }
+  },
+  "sensitive_data_policy": "Store links and labels only. Do not store credentials."
+}

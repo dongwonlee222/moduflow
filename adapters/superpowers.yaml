@@ -1,0 +1,22 @@
+id: superpowers
+source: superpowers
+source_url: https://github.com/obra/superpowers
+local_path: /Users/dongwon.lee/.codex/superpowers/skills
+role: execution_method
+moduflow_use:
+  - brainstorming
+  - writing plans
+  - test-driven development
+  - dispatching parallel agents
+  - subagent-driven development
+  - requesting code review
+  - verification before completion
+source_of_truth: git
+reads:
+  - specs/*/plan.md
+  - specs/*/tasks.md
+writes:
+  - specs/*/status.md
+  - code changes through normal project workflow
+swap_policy: Replaceable if execution gates and verification evidence remain explicit.
+

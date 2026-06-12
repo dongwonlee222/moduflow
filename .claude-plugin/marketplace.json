@@ -1,0 +1,11 @@
+{
+  "name": "moduflow",
+  "owner": { "name": "Dongwon Lee", "url": "https://github.com/dongwonlee222" },
+  "plugins": [
+    {
+      "name": "moduflow",
+      "source": "./",
+      "description": "Git-native PM execution orchestrator for issues, specs, roadmaps, subagents, analysis, design, PRs, and releases."
+    }
+  ]
+}

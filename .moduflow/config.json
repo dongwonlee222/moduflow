@@ -1,0 +1,21 @@
+{
+  "schema": "moduflow.config.v1",
+  "project_name": "ModuFlow",
+  "git": {
+    "required": true,
+    "github_sync": "optional",
+    "issue_source": "git-files",
+    "remote": "https://github.com/dongwonlee222/moduflow"
+  },
+  "paths": {
+    "issues": "issues",
+    "specs": "specs",
+    "workspace": "workspace",
+    "knowledge": "knowledge"
+  },
+  "commands": {
+    "start": "product:start",
+    "status": "product:status",
+    "doctor": "product:doctor"
+  }
+}

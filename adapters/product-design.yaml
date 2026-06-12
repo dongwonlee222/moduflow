@@ -1,0 +1,18 @@
+id: product-design
+source: codex-product-design
+source_url: local:codex-plugin/product-design
+role: ux_design_prototype_bridge
+moduflow_use:
+  - design brief gate
+  - visual ideation
+  - prototype review
+  - screenshot or image to code
+source_of_truth: git
+reads:
+  - specs/*/spec.md
+  - specs/*/design-brief.md
+writes:
+  - specs/*/design-brief.md
+  - specs/*/prototype.md
+swap_policy: Replaceable if issue/spec linkage and UX states remain preserved.
+

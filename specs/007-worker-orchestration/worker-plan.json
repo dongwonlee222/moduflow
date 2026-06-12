@@ -1,0 +1,91 @@
+{
+  "schema": "moduflow.worker-plan.v1",
+  "issue_id": "007-worker-orchestration",
+  "project_root": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
+  "parallel": {
+    "eligible": true,
+    "mode": "parallel-eligible",
+    "risks": [],
+    "criteria": [
+      "separate worker domains",
+      "independent acceptance checks",
+      "low shared-state risk",
+      "clear merge order"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "text": "Add failing worker orchestration tests.",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false
+    },
+    {
+      "id": "T02",
+      "text": "Add worker plan generator.",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false
+    },
+    {
+      "id": "T03",
+      "text": "Add worker plan Markdown/JSON output.",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false
+    },
+    {
+      "id": "T04",
+      "text": "Add product:workers command.",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false
+    },
+    {
+      "id": "T05",
+      "text": "Connect product:execute to worker plans.",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false
+    },
+    {
+      "id": "T06",
+      "text": "Update README and package validator.",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false
+    },
+    {
+      "id": "T07",
+      "text": "Run verification.",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false
+    },
+    {
+      "id": "T08",
+      "text": "Commit and push.",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false
+    }
+  ],
+  "next_command": "product:execute 007-worker-orchestration"
+}

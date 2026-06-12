@@ -1,0 +1,12 @@
+{
+  "schema": "moduflow.projects.v1",
+  "projects": [
+    {
+      "id": "moduflow",
+      "name": "ModuFlow",
+      "path": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
+      "status": "active",
+      "owner": "Dongwon Lee"
+    }
+  ]
+}
