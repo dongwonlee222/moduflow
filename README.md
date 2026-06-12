@@ -46,6 +46,7 @@ Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow iss
 - `/product:risks`: inspect blockers, risks, and release concerns
 - `/product:inbox`: capture raw requests
 - `/product:opportunity`: shape the problem/opportunity
+- `/product:goal`: create or update an active goal above issues
 - `/product:issue`: create or update a Git issue artifact
 - `/product:spec`: create the spec/PRD
 - `/product:analyze`: run metrics/data analysis
@@ -53,6 +54,7 @@ Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow iss
 - `/product:prototype`: create or review prototype
 - `/product:roadmap`: update Now/Next/Later roadmap view
 - `/product:plan`: create execution plan and tasks
+- `/product:loop`: recommend or run the next safe workflow step for the active goal
 - `/product:workers`: generate worker assignment and parallel execution plan
 - `/product:execute`: run implementation with Superpowers-style workers
 - `/product:status`: show current state and next command
@@ -66,6 +68,10 @@ Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow iss
 ## Source Updates
 
 Upstream sources are tracked in `vendor.lock.json`. Local changes belong in `overlays/` and `adapters/`, so upstream updates can be pulled without rewriting Dongwon-specific process rules.
+
+## Goal Loop
+
+The goal loop is a thin layer above issues. `product:goal` records the objective and completion criteria, while `product:loop` reads Git artifacts and recommends the next existing ModuFlow command. `product:loop --step` may run one safe step, then stops for review.
 
 ## Validate
 

@@ -1,0 +1,14 @@
+{
+  "schema": "moduflow.loop-state.v1",
+  "goal_id": "{{goal_id}}",
+  "issue_id": "{{issue_id}}",
+  "phase": "goal",
+  "mode": "recommend",
+  "next_command": "product:loop",
+  "attempts": 0,
+  "status": "active",
+  "blocker": "",
+  "last_action": "",
+  "last_verification": "",
+  "updated": "{{updated_date}}"
+}

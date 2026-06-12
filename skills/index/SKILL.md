@@ -1,6 +1,6 @@
 ---
 name: index
-description: Use when the ModuFlow plugin is at-mentioned directly, or when the user says product:start, product:status, start, status, inbox, issue, spec, roadmap, plan, workers, execute, review, release, doctor, ModuFlow, 모두플로우, 모두의 플로우, 상태, 시작, 이슈, 스펙, 로드맵, 실행, 리뷰, PM workflow, roadmap workflow, Git issue workflow, or asks to start/manage product execution with Git-native issues and specs.
+description: Use when the ModuFlow plugin is at-mentioned directly, or when the user says product:start, product:goal, product:loop, product:status, start, goal, loop, status, inbox, issue, spec, roadmap, plan, workers, execute, review, release, doctor, ModuFlow, 모두플로우, 모두의 플로우, 목표, 루프, 상태, 시작, 이슈, 스펙, 로드맵, 실행, 리뷰, PM workflow, roadmap workflow, goal loop workflow, Git issue workflow, or asks to start/manage product execution with Git-native issues and specs.
 ---
 
 # ModuFlow Index
@@ -22,6 +22,8 @@ Prefer short aliases after `@ModuFlow`:
 
 - `@ModuFlow status`
 - `@ModuFlow start`
+- `@ModuFlow goal`
+- `@ModuFlow loop`
 - `@ModuFlow issue`
 - `@ModuFlow spec`
 - `@ModuFlow plan`
@@ -30,6 +32,8 @@ Prefer short aliases after `@ModuFlow`:
 - `@ModuFlow doctor`
 - `@ModuFlow 상태`
 - `@ModuFlow 시작`
+- `@ModuFlow 목표`
+- `@ModuFlow 루프`
 - `@ModuFlow 이슈`
 
 ## Natural Language Invocation
@@ -42,6 +46,8 @@ Read-only examples:
 - `@ModuFlow 전체 이슈 보여줘`, `이슈 목록`, `진행 중인 이슈 뭐야?`: `product:issues` behavior
 - `@ModuFlow 검사해줘`, `doctor 돌려줘`, `설정 괜찮아?`: `product:doctor`
 - `@ModuFlow 로드맵 보여줘`, `우선순위 뭐야?`: `product:roadmap`
+- `@ModuFlow 목표 뭐야`, `현재 목표`: `product:goal` read/update behavior
+- `@ModuFlow 다음 단계 알아서 골라줘`, `루프 돌려줘`: `product:loop`
 
 Mutating examples:
 
@@ -75,6 +81,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `product:risks`: inspect blockers, risks, and release concerns
 - `product:inbox`: capture raw requests
 - `product:opportunity`: shape opportunity/problem
+- `product:goal`: create or update an active goal above issues
 - `product:issue`: create or update Git issue artifact
 - `product:spec`: create spec/PRD
 - `product:analyze`: run metrics/data analysis
@@ -82,6 +89,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `product:prototype`: create or review prototype
 - `product:roadmap`: update roadmap view
 - `product:plan`: create execution plan/tasks
+- `product:loop`: recommend or run the next safe workflow step
 - `product:execute`: run implementation workflow
 - `product:status`: show state and next action
 - `product:review`: review PM/UX/data/QA/release gates
@@ -109,10 +117,12 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `handoff`, `인수인계`: `product:handoff`
 - `risks`, `리스크`: `product:risks`
 - `inbox`, `인박스`: `product:inbox`
+- `goal`, `목표`: `product:goal`
 - `issue`, `이슈`: `product:issue`
 - `spec`, `스펙`: `product:spec`
 - `roadmap`, `로드맵`: `product:roadmap`
 - `plan`, `계획`: `product:plan`
+- `loop`, `루프`: `product:loop`
 - `workers`, `워커`: `product:workers`
 - `execute`, `실행`: `product:execute`
 - `review`, `리뷰`: `product:review`
