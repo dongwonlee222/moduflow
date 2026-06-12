@@ -46,6 +46,36 @@ class ProjectMigrationTests(unittest.TestCase):
             self.assertEqual(result["migration"]["recommended_mode"], "mapped")
             self.assertIn("product:migrate --mode mapped", " ".join(result["recommendation"]))
 
+    def test_doctor_respects_configured_project_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.config.v1",
+                        "paths": {
+                            "issues": "projects/modu-charge/issues",
+                            "specs": "specs",
+                            "workspace": "workspace",
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (root / ".moduflow" / "state.json").write_text("{}\n", encoding="utf-8")
+            (root / "projects" / "modu-charge" / "issues").mkdir(parents=True)
+            (root / "specs").mkdir()
+            (root / "workspace").mkdir()
+            for filename in ["inbox.md", "opportunities.md", "roadmap.md", "dashboard.md"]:
+                (root / "workspace" / filename).write_text("# Workspace\n", encoding="utf-8")
+
+            result = project_doctor.inspect_project(root)
+
+            self.assertTrue(result["moduflow"]["initialized"])
+            self.assertEqual(result["moduflow"]["missing"], [])
+
     def test_migration_dry_run_builds_plan_without_writing_files(self):
         project_migrate = load_module("project_migrate", "scripts/project_migrate.py")
         with tempfile.TemporaryDirectory() as tmp:

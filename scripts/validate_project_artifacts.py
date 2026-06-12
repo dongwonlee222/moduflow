@@ -7,12 +7,6 @@ from pathlib import Path
 REQUIRED_PATHS = [
     ".moduflow/config.json",
     ".moduflow/state.json",
-    "issues",
-    "specs",
-    "workspace/inbox.md",
-    "workspace/opportunities.md",
-    "workspace/roadmap.md",
-    "workspace/dashboard.md",
 ]
 
 OPTIONAL_CAPABILITY_PATHS = {
@@ -58,12 +52,39 @@ def read_json(path, errors):
         return None
 
 
+def read_config_paths(root, errors):
+    config_path = root / ".moduflow" / "config.json"
+    if not config_path.exists():
+        return {}
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    paths = config.get("paths", {})
+    return paths if isinstance(paths, dict) else {}
+
+
+def required_paths(root, errors):
+    paths = read_config_paths(root, errors)
+    issues = paths.get("issues", "issues")
+    specs = paths.get("specs", "specs")
+    workspace = paths.get("workspace", "workspace")
+    return REQUIRED_PATHS + [
+        issues,
+        specs,
+        f"{workspace}/inbox.md",
+        f"{workspace}/opportunities.md",
+        f"{workspace}/roadmap.md",
+        f"{workspace}/dashboard.md",
+    ]
+
+
 def validate_project(path):
     root = Path(path).resolve()
     errors = []
     warnings = []
 
-    for relative in REQUIRED_PATHS:
+    for relative in required_paths(root, errors):
         if not (root / relative).exists():
             errors.append(f"Missing required project artifact: {relative}")
 

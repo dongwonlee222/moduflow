@@ -9,12 +9,6 @@ from pathlib import Path
 REQUIRED_PROJECT_PATHS = [
     ".moduflow/config.json",
     ".moduflow/state.json",
-    "issues",
-    "specs",
-    "workspace/inbox.md",
-    "workspace/opportunities.md",
-    "workspace/roadmap.md",
-    "workspace/dashboard.md",
 ]
 
 REQUIRED_PROFILE_PATHS = [
@@ -69,6 +63,32 @@ def run(args, cwd):
     return result
 
 
+def read_config_paths(root):
+    config_path = root / ".moduflow" / "config.json"
+    if not config_path.exists():
+        return {}
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return config.get("paths", {}) if isinstance(config.get("paths", {}), dict) else {}
+
+
+def project_paths(root):
+    paths = read_config_paths(root)
+    issues = paths.get("issues", "issues")
+    specs = paths.get("specs", "specs")
+    workspace = paths.get("workspace", "workspace")
+    return REQUIRED_PROJECT_PATHS + [
+        issues,
+        specs,
+        f"{workspace}/inbox.md",
+        f"{workspace}/opportunities.md",
+        f"{workspace}/roadmap.md",
+        f"{workspace}/dashboard.md",
+    ]
+
+
 def git_root(path):
     result = run(["git", "rev-parse", "--show-toplevel"], path)
     if result and result.returncode == 0:
@@ -99,7 +119,7 @@ def gh_auth_status(path):
 
 def missing_project_paths(root):
     missing = []
-    for relative in REQUIRED_PROJECT_PATHS:
+    for relative in project_paths(root):
         if not (root / relative).exists():
             missing.append(relative)
     return missing

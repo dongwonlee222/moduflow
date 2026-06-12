@@ -87,6 +87,40 @@ class ValidationDistributionTests(unittest.TestCase):
             self.assertEqual(result["errors"], [])
             self.assertTrue(any("Optional project capability not initialized" in warning for warning in result["warnings"]))
 
+    def test_validate_project_artifacts_respects_configured_paths(self):
+        validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.config.v1",
+                        "paths": {
+                            "issues": "projects/modu-charge/issues",
+                            "specs": "specs",
+                            "workspace": "workspace",
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (root / ".moduflow" / "state.json").write_text(
+                json.dumps({"schema": "moduflow.state.v1", "phase": "ready", "next_command": "product:status"}) + "\n",
+                encoding="utf-8",
+            )
+            (root / "projects" / "modu-charge" / "issues").mkdir(parents=True)
+            (root / "specs").mkdir()
+            (root / "workspace").mkdir()
+            for filename in ["inbox.md", "opportunities.md", "roadmap.md", "dashboard.md"]:
+                (root / "workspace" / filename).write_text("# Workspace\n", encoding="utf-8")
+
+            result = validator.validate_project(root)
+
+            self.assertTrue(result["valid"])
+            self.assertEqual(result["errors"], [])
+
     def test_portfolio_doctor_warns_for_missing_project_path(self):
         portfolio_doctor = load_module("portfolio_doctor", "scripts/portfolio_doctor.py")
         with tempfile.TemporaryDirectory() as tmp:
