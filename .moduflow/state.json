@@ -1,9 +1,9 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "daily-work-captured",
-  "active_issue": "008-daily-work-log-and-gbrain-pilot",
-  "last_command": "product:issue 008-daily-work-log-and-gbrain-pilot",
+  "phase": "hub-command-released",
+  "active_issue": "009-moduflow-hub-command",
+  "last_command": "product:issue 009-moduflow-hub-command",
   "next_command": "product:status",
   "blockers": [],
-  "updated_at": "2026-06-11"
+  "updated_at": "2026-06-12"
 }
