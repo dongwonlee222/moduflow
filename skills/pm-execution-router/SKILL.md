@@ -19,12 +19,14 @@ Route requests through the smallest useful ModuFlow step.
 - Team ownership, review state, approval, or handoff: `/product:handoff` (`handoff`, `인수인계`)
 - Blockers, risks, or release concerns: `/product:risks` (`risks`, `리스크`)
 - Problem shaping: `/product:opportunity` (`opportunity`, `기회`)
+- Durable goal above one or more issues: `/product:goal` (`goal`, `목표`)
 - Durable work item: `/product:issue` (`issue`, `이슈`)
 - PRD/spec: `/product:spec` (`spec`, `스펙`)
 - Metrics or evidence: `/product:analyze` (`analyze`, `분석`)
 - UX or prototype: `/product:design` then `/product:prototype` (`design`, `prototype`, `디자인`, `프로토타입`)
 - Priority/timing: `/product:roadmap` (`roadmap`, `로드맵`)
 - Implementation preparation: `/product:plan` (`plan`, `계획`)
+- Goal-aware next-step routing: `/product:loop` (`loop`, `루프`)
 - Worker assignment: `/product:workers` (`workers`, `워커`)
 - Build work: `/product:execute` (`execute`, `실행`)
 - Progress question: `/product:status` (`status`, `상태`)
@@ -44,6 +46,8 @@ Route common Korean phrases directly:
 - "전체 이슈 보여줘", "이슈 목록", "진행 중인 이슈": `/product:issues`
 - "검사해줘", "doctor 돌려줘", "설정 괜찮아?": `/product:doctor`
 - "로드맵 보여줘", "우선순위": `/product:roadmap`
+- "목표 만들어줘", "현재 목표", "이 목표로 진행": `/product:goal`
+- "다음 단계 알아서 골라줘", "루프 돌려줘", "한 단계 진행": `/product:loop`
 - "새 이슈 만들어줘", "이거 이슈로 등록": `/product:issue` after existing-issue check
 - "<issue id> 시작해줘": issue lifecycle start
 - "<issue id> 진행 내용 추가", "<issue id> 업데이트": issue lifecycle update
@@ -64,6 +68,8 @@ Read-only by default:
 Mutate files when the user asks to:
 
 - create an issue
+- create or update a goal
+- run one safe loop step
 - start/update/pause/resume/complete an issue
 - create or update spec/plan/tasks
 - execute/review/release
@@ -74,6 +80,7 @@ For issue lifecycle mutations, update:
 
 - `issues/<issue>.md`
 - `.moduflow/state.json`
+- `workspace/goal.md` and `workspace/loop-state.json` for goal loop workflows
 - `workspace/dashboard.md`
 - `workspace/issues.md` when present
 - `workspace/roadmap.md` when priority/state changed

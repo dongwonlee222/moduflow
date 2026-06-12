@@ -1,0 +1,60 @@
+id: goal-loop
+name: Goal Loop Adapter
+description: Maps external agent-loop patterns to ModuFlow Git-native artifacts without vendoring runtime dependencies.
+mode: adapter
+sources:
+  - id: langgraph
+    concept: durable state, resume, human-in-the-loop
+    moduflow_mapping:
+      - workspace/loop-state.json
+      - status: needs_decision
+      - next_command checkpoints
+  - id: swe-agent
+    concept: issue-driven coding loop
+    moduflow_mapping:
+      - issues/<id>.md
+      - specs/<id>/status.md
+      - verification and release artifacts
+  - id: react
+    concept: reason, act, observe cadence
+    moduflow_mapping:
+      - recommendation reason
+      - selected product command
+      - observed artifact state
+  - id: reflexion
+    concept: failure reflection memory
+    moduflow_mapping:
+      - specs/<issue>/reflection.md
+      - retry notes
+      - blocker records
+  - id: babyagi
+    concept: task queue and priority update
+    moduflow_mapping:
+      - workspace/issues.md
+      - workspace/roadmap.md
+      - specs/<issue>/tasks.md
+  - id: openhands
+    concept: development-agent session and workspace execution
+    moduflow_mapping:
+      - sessions/<issue>/
+      - product:execute
+      - product:workers
+  - id: autogen
+    concept: multi-agent orchestration
+    moduflow_mapping:
+      - product:workers
+      - worker assignments
+      - review gates
+safety:
+  default_mode: recommend
+  one_step_mode: product:loop --step
+  stop_states:
+    - done
+    - blocked
+    - needs_decision
+  explicit_approval_required:
+    - package publishing
+    - GitHub writes
+    - cross-repo mutation
+    - destructive file operations
+    - destructive Git operations
