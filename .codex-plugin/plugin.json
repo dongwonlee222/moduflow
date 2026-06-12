@@ -6,8 +6,8 @@
     "name": "Dongwon Lee",
     "url": "https://github.com/dongwonlee222"
   },
-  "homepage": "https://github.com/dongwonlee222",
-  "repository": "https://github.com/dongwonlee222",
+  "homepage": "https://github.com/dongwonlee222/moduflow",
+  "repository": "https://github.com/dongwonlee222/moduflow",
   "license": "UNLICENSED",
   "keywords": [
     "product-management",
@@ -31,7 +31,7 @@
       "Write",
       "Interactive"
     ],
-    "websiteURL": "https://github.com/dongwonlee222",
+    "websiteURL": "https://github.com/dongwonlee222/moduflow",
     "defaultPrompt": [
       "status",
       "start",
