@@ -71,11 +71,34 @@ def ensure_marketplace_entry(marketplace_path: Path, installation_policy: str = 
     write_json(marketplace_path, marketplace)
 
 
+def canonical_base(source: Path) -> str:
+    """Resolve the plugin base version from the single source of truth.
+
+    `.claude-plugin/plugin.json` is canonical. When it is absent (e.g. in
+    tests), fall back to the base of the Codex manifest version.
+    """
+    claude_manifest = read_json(source / ".claude-plugin" / "plugin.json")
+    version = claude_manifest.get("version")
+    if isinstance(version, str) and version:
+        return version
+    codex_version = read_json(source / ".codex-plugin" / "plugin.json").get("version", "")
+    return codex_version.split("+", 1)[0]
+
+
 def plugin_version(source: Path) -> str:
-    manifest = read_json(source / ".codex-plugin" / "plugin.json")
-    version = manifest.get("version")
-    if not isinstance(version, str) or not version:
-        raise RuntimeError(".codex-plugin/plugin.json must contain a non-empty version")
+    base = canonical_base(source)
+    if not base:
+        raise RuntimeError("Unable to determine plugin base version")
+    codex_manifest_path = source / ".codex-plugin" / "plugin.json"
+    manifest = read_json(codex_manifest_path)
+    existing = manifest.get("version", "")
+    # Preserve any existing Codex build suffix (e.g. "+codex.<timestamp>")
+    # so the resulting version stays deterministic, but sync the base.
+    suffix = existing.split("+", 1)[1] if "+" in existing else ""
+    version = f"{base}+{suffix}" if suffix else base
+    if manifest.get("version") != version:
+        manifest["version"] = version
+        write_json(codex_manifest_path, manifest)
     return version
 
 
