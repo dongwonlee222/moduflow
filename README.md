@@ -26,9 +26,15 @@ Git is the source of truth. Dashboards, web views, generated docs, and updates a
 
 ## Commands
 
+**Start here:** `/moduflow` is the single entry point — you only need to remember this one.
+Run it with no arguments to see status, the next recommended action, and a quick command list.
+Pass natural language to route, for example `/moduflow 시작`, `/moduflow 루프`, `/moduflow 상태`, or `/moduflow 003 완료`.
+The `product:*` commands below remain available for direct access.
+
 In Codex, call these through `@ModuFlow` without the leading slash, for example `@ModuFlow product:start`.
 Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow issue`, or `@ModuFlow 상태`.
 
+- `/moduflow`: entry point — status, next action, and routing for everything below
 - `/product:start`: initialize ModuFlow in a project
 - `/product:migrate`: safely adopt an existing project without moving files
 - `/product:profile`: create project ownership, environment, and integration metadata
