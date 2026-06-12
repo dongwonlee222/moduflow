@@ -1,8 +1,8 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "hub-command-released",
-  "active_issue": "009-moduflow-hub-command",
-  "last_command": "product:issue 009-moduflow-hub-command",
+  "phase": "codex-version-sync-fixed",
+  "active_issue": "010-codex-version-sync-fix",
+  "last_command": "product:issue 010-codex-version-sync-fix",
   "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-06-12"
