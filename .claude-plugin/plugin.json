@@ -1,13 +1,13 @@
 {
   "name": "moduflow",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Git-native PM execution orchestrator for issues, specs, roadmaps, subagents, analysis, design, PRs, and releases.",
   "author": {
     "name": "Dongwon Lee",
     "url": "https://github.com/dongwonlee222"
   },
-  "homepage": "https://github.com/dongwonlee222",
-  "repository": "https://github.com/dongwonlee222",
+  "homepage": "https://github.com/dongwonlee222/moduflow",
+  "repository": "https://github.com/dongwonlee222/moduflow",
   "license": "UNLICENSED",
   "keywords": [
     "product-management",
@@ -31,7 +31,7 @@
       "Write",
       "Interactive"
     ],
-    "websiteURL": "https://github.com/dongwonlee222",
+    "websiteURL": "https://github.com/dongwonlee222/moduflow",
     "defaultPrompt": [
       "product:start",
       "product:status",
