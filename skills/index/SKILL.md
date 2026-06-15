@@ -1,6 +1,6 @@
 ---
 name: index
-description: Use when the ModuFlow plugin is at-mentioned directly, or when the user says product:start, product:goal, product:loop, product:status, start, goal, loop, status, inbox, issue, spec, roadmap, plan, workers, execute, review, release, doctor, ModuFlow, 모두플로우, 모두의 플로우, 목표, 루프, 상태, 시작, 이슈, 스펙, 로드맵, 실행, 리뷰, PM workflow, roadmap workflow, goal loop workflow, Git issue workflow, or asks to start/manage product execution with Git-native issues and specs.
+description: Use when the ModuFlow plugin is at-mentioned directly, or when the user says product:start, product:goal, product:loop, product:status, start, goal, loop, status, inbox, issue, spec, roadmap, plan, workers, execute, review, release, doctor, business plan, Lean Canvas, persona, user scenario, pitch deck, ModuFlow, 모두플로우, 모두의 플로우, 목표, 루프, 상태, 시작, 이슈, 스펙, 로드맵, 실행, 리뷰, 사업계획서, 사업구상, 비즈니스 모델, 린 캔버스, 페르소나, 사용자 시나리오, PM workflow, roadmap workflow, goal loop workflow, Git issue workflow, or asks to start/manage product execution with Git-native issues and specs.
 ---
 
 # ModuFlow Index
@@ -48,6 +48,7 @@ Read-only examples:
 - `@ModuFlow 로드맵 보여줘`, `우선순위 뭐야?`: `product:roadmap`
 - `@ModuFlow 목표 뭐야`, `현재 목표`: `product:goal` read/update behavior
 - `@ModuFlow 다음 단계 알아서 골라줘`, `루프 돌려줘`: `product:loop`
+- `@ModuFlow 사업계획서로 정리해줘`, `Lean Canvas 만들어줘`, `페르소나 사용자 시나리오 정리해줘`: use `moduflow:business-plan` after opportunity shaping when structured artifacts are requested
 
 Mutating examples:
 
@@ -57,6 +58,7 @@ Mutating examples:
 - `@ModuFlow 003 다시 시작해줘`: issue `003` resume
 - `@ModuFlow 003 완료 처리해줘`: issue `003` complete
 - `@ModuFlow 새 이슈 만들어줘: ...`: `product:issue`, after checking existing issues
+- `@ModuFlow 이 사업계획서를 검증 이슈로 쪼개줘`: `moduflow:business-plan` then `product:issue` candidates
 
 For mutating lifecycle actions, update the issue file, `.moduflow/state.json`, `workspace/dashboard.md`, `workspace/issues.md` when present, and `workspace/roadmap.md` when priority/state changed.
 
@@ -98,6 +100,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `product:update`: create stakeholder update
 - `product:sync`: inspect or update upstream sources
 - `product:doctor`: validate setup
+- `moduflow:business-plan`: create business-plan artifacts, persona scenarios, diagrams, review outputs, export outlines, and issue/spec candidates
 
 ## Short Alias Map
 
@@ -127,6 +130,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `execute`, `실행`: `product:execute`
 - `review`, `리뷰`: `product:review`
 - `release`, `릴리즈`: `product:release`
+- `business-plan`, `사업계획서`, `사업구상`, `린캔버스`, `페르소나`: `moduflow:business-plan`
 - `update`, `공유`: `product:update`
 
 ## Behavior

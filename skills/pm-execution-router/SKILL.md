@@ -20,6 +20,7 @@ Route requests through the smallest useful ModuFlow step.
 - Blockers, risks, or release concerns: `/product:risks` (`risks`, `리스크`)
 - Problem shaping: `/product:opportunity` (`opportunity`, `기회`)
 - Durable goal above one or more issues: `/product:goal` (`goal`, `목표`)
+- Business planning, Lean Canvas, business model, persona scenarios, pitch deck outlines, PDF/PPT export preparation, or business validation issue candidates: `moduflow:business-plan` after `/product:opportunity` when idea shaping is needed
 - Durable work item: `/product:issue` (`issue`, `이슈`)
 - PRD/spec: `/product:spec` (`spec`, `스펙`)
 - Metrics or evidence: `/product:analyze` (`analyze`, `분석`)
@@ -49,6 +50,10 @@ Route common Korean phrases directly:
 - "목표 만들어줘", "현재 목표", "이 목표로 진행": `/product:goal`
 - "다음 단계 알아서 골라줘", "루프 돌려줘", "한 단계 진행": `/product:loop`
 - "새 이슈 만들어줘", "이거 이슈로 등록": `/product:issue` after existing-issue check
+- "사업계획서", "사업구상", "사업 아이디어", "비즈니스 모델", "린 캔버스", "Lean Canvas": `moduflow:business-plan`; use `/product:opportunity` first if the idea is still raw
+- "페르소나", "사용자 시나리오", "고객여정지도": `moduflow:business-plan` persona and journey artifacts
+- "사업계획서 PDF", "피치덱", "PPT", "덱 목차": `moduflow:business-plan` export-ready source, then delegate rendering to Documents, Presentations, or PDF plugins
+- "검증 이슈로 쪼개줘", "가설을 이슈로 만들어줘": `moduflow:business-plan` then `/product:issue` candidates
 - "<issue id> 시작해줘": issue lifecycle start
 - "<issue id> 진행 내용 추가", "<issue id> 업데이트": issue lifecycle update
 - "<issue id> 멈춰줘", "<issue id> pause": issue lifecycle pause
