@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -135,6 +137,23 @@ class ValidationDistributionTests(unittest.TestCase):
 
             self.assertFalse(result["valid"])
             self.assertTrue(any("missing" in warning for warning in result["warnings"]))
+
+    def test_project_doctor_exit_zero_for_initialized_repo(self):
+        # The ModuFlow repo itself is initialized (missing == []), so the gate passes.
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "project_doctor.py"), str(ROOT)],
+            capture_output=True,
+        )
+        self.assertEqual(proc.returncode, 0)
+
+    def test_project_doctor_exit_nonzero_for_uninitialized(self):
+        # An empty (non-ModuFlow, non-git) directory must fail the gate, not silently pass.
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "project_doctor.py"), tmp],
+                capture_output=True,
+            )
+            self.assertEqual(proc.returncode, 1)
 
     def test_release_check_succeeds_for_current_repo(self):
         release_check = load_module("release_check", "scripts/release_check.py")

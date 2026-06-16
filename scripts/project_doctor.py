@@ -248,7 +248,11 @@ def inspect_project(path):
 def main():
     result = inspect_project(sys.argv[1] if len(sys.argv) > 1 else ".")
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0
+    moduflow = result.get("moduflow", {})
+    # Gate: a project is healthy only when ModuFlow is initialized with no missing
+    # required artifacts. Returning a real exit code makes project_doctor an
+    # actual gate inside release_check instead of an always-pass no-op.
+    return 0 if moduflow.get("initialized") and not moduflow.get("missing") else 1
 
 
 if __name__ == "__main__":

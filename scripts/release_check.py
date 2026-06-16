@@ -33,6 +33,10 @@ def run_release_check(path):
             "tests.test_project_workflow",
             "tests.test_worker_orchestration",
             "tests.test_codex_personal_install",
+            # NOTE: test_validation_distribution is intentionally excluded here.
+            # It calls release_check.run_release_check itself, so listing it would
+            # make release_check recurse into itself. CI runs `unittest discover`
+            # (which includes it) as a separate, non-recursive step instead.
             "-v",
         ],
         "project_doctor": ["python3", "scripts/project_doctor.py", "."],
