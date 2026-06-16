@@ -1,9 +1,9 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "codex-version-sync-fixed",
-  "active_issue": "010-codex-version-sync-fix",
-  "last_command": "product:issue 010-codex-version-sync-fix",
+  "phase": "workflow-task-tracking",
+  "active_issue": "011-workflow-task-tracking",
+  "last_command": "product:issue 011-workflow-task-tracking",
   "next_command": "product:status",
   "blockers": [],
-  "updated_at": "2026-06-12"
+  "updated_at": "2026-06-16"
 }
