@@ -40,6 +40,8 @@ Projects need more than tasks. They need durable evidence explaining why decisio
 - Status: `specs/003-knowledge-evidence-layer/status.md`
 - Roadmap: `workspace/roadmap.md`
 
-## Next Command
+## Status
 
-`product:spec 003-knowledge-evidence-layer`
+Done. Implemented and merged. (2026-06-16)
+
+## Next Command

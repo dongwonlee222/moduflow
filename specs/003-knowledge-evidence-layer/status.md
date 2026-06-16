@@ -2,7 +2,7 @@
 
 ## Phase
 
-Implemented and verified.
+Done.
 
 ## Completed
 
@@ -17,9 +17,6 @@ Implemented and verified.
 - Plugin validator passes.
 - Project doctor reports knowledge initialized.
 - E2E temp-project knowledge dry-run/write/artifact checks pass.
-
-## In Progress
-
 - Commit and push.
 
 ## Blockers
@@ -27,5 +24,3 @@ Implemented and verified.
 - None.
 
 ## Next Command
-
-`product:review 003-knowledge-evidence-layer`

@@ -9,11 +9,15 @@ Make progress visible.
 
 ## Do
 
-1. Read `.moduflow/state.json`, issues, specs, tasks, PR notes, releases, and roadmap.
-2. Render a Korean-first terminal-style dashboard before detailed prose.
-3. Report current phase, active issue, active/recent sessions, blockers, queue, risks, changed files, and next command.
-4. Do not mutate files during normal status display.
-5. If source artifacts look stale or inconsistent, report the mismatch and recommend `product:doctor`.
+1. Run a non-destructive `git fetch` first, then compare local against upstream (`git rev-list --left-right --count HEAD...@{u}`). Status reads local files only, so without this it can show a stale snapshot as if current.
+   - If local is behind, report "원격이 N커밋 앞섬 — pull 필요" in the dashboard.
+   - If the working tree is clean, recommend (or run after confirming) `git pull` before rendering, so status reflects the latest.
+   - If the working tree is dirty or `@{u}` is unset, do NOT auto-pull — surface the state and let the user decide.
+2. Read `.moduflow/state.json`, issues, specs, tasks, PR notes, releases, and roadmap.
+3. Render a Korean-first terminal-style dashboard before detailed prose.
+4. Report current phase, active issue, active/recent sessions, blockers, queue, risks, changed files, and next command.
+5. Do not mutate local artifact files during normal status display (the `git fetch` in step 1 is read-only; an approved `git pull` is the only allowed sync).
+6. If source artifacts look stale or inconsistent, report the mismatch and recommend `product:doctor`.
 
 ## Output
 
@@ -34,7 +38,7 @@ Use this structure as the default. Keep it compact and adapt missing fields grac
 ╭─ 🧭 ModuFlow 상태 ─────────────────────────╮
 │ 프로젝트  <project name>                    │
 │ 모드      <git-files|github-sync>           │
-│ 브랜치    <branch>                          │
+│ 브랜치    <branch> <동기화: 최신|N커밋 뒤> │
 │ 단계      <emoji> <phase>                   │
 ╰────────────────────────────────────────────╯
 
