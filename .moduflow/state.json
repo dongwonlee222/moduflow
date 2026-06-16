@@ -1,9 +1,9 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "telegram-bot-routing-stage1",
-  "active_issue": "011-telegram-bot-moduflow-routing",
-  "last_command": "product:issue 011-telegram-bot-moduflow-routing",
+  "phase": "codex-version-sync-fixed",
+  "active_issue": "010-codex-version-sync-fix",
+  "last_command": "product:issue 010-codex-version-sync-fix",
   "next_command": "product:status",
   "blockers": [],
-  "updated_at": "2026-06-13"
+  "updated_at": "2026-06-12"
 }
