@@ -143,3 +143,4 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 6. Treat status, issues, doctor, roadmap, and portfolio as read-only unless the user asks to update/fix.
 7. Treat start, update, pause, resume, complete, create, plan, execute, review, release, and sync as mutating workflows.
 8. Always end with the next recommended ModuFlow command.
+9. Keep the loop wired. `product:start` MUST create `workspace/loop-state.json`. On any command, if `loop-state.json` is missing, treat it as a setup defect and recreate it from `templates/workspace/loop-state.json` before proceeding. Every mutating workflow updates `loop-state.json` (`next_command`, `status`, `last_action`, `updated`) so the next loop step is never lost.
