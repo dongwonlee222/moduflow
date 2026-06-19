@@ -32,7 +32,7 @@ Request: $ARGUMENTS
    - `003 시작`, `003 완료` → issue lifecycle action on issue `003`
    - anything else → pick the closest `product:*` command; if ambiguous, ask one concise clarification before mutating files.
 
-3. Always end by showing the **next recommended command** so the user can chain without memorizing names. Exact `product:*` input is a power-user escape hatch and should be honored directly.
+3. Always end by showing the **next recommended action and command** so the user can chain without asking "what next?" or memorizing names. This is required after every completed action, including spec, plan, execute, review, release, or issue lifecycle updates. Exact `product:*` input is a power-user escape hatch and should be honored directly.
 
 ## Quick command list
 

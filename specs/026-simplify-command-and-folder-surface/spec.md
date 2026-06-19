@@ -27,6 +27,7 @@ ModuFlow's internal architecture is useful for maintaining commands, scripts, te
 - Make target-project guidance clear: normal adopted projects should keep only durable PM artifacts and state, while central tooling stays in the plugin/source repo.
 - Translate raw project-mode labels into user-facing guidance while preserving raw labels in JSON and debug output.
 - Update docs and status surfaces so users can quickly tell whether a project is clean, tool-heavy, or intentionally the ModuFlow source repo.
+- Make every completed ModuFlow action end with the next recommended action and command, so the user does not have to ask "what next?"
 
 ## Benchmark Findings
 
@@ -61,6 +62,17 @@ User-facing docs and status output should lead with a compact command set:
 - `/moduflow`: hub entrypoint for users who do not want to pick internal commands.
 
 Advanced `product:*` commands remain documented, but behind an "advanced commands" section.
+
+### Completion Handoff
+
+Every successful ModuFlow action should finish with a concise handoff:
+
+- what was completed
+- verification result, when relevant
+- next recommended action in plain language
+- exact next command for users who want to continue immediately
+
+This handoff is part of the product contract. The user should not need to ask "다음은?" after each completed step.
 
 ### Folder Grouping
 
@@ -106,6 +118,7 @@ User-facing output should translate them:
 - README or equivalent user docs show the compact command set before the advanced command list.
 - A folder reference groups the 18 top-level folders and marks which ones are source-repo internals versus target-project artifacts.
 - Status/doctor-facing copy no longer requires normal users to learn `lightweight`, `dogfooding`, and `heavy`.
+- Completed actions always include a plain-language next action and exact next command.
 - Raw mode labels remain available in JSON/debug output for automation and tests.
 - Validation passes after documentation and status surface updates.
 

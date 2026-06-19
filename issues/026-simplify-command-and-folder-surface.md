@@ -50,6 +50,7 @@ The same applies to project layout modes. `lightweight`, `dogfooding`, and `heav
 - The 18-folder top-level surface has a documented grouping or reduction plan.
 - `product:status` or `/moduflow` can explain the current mode without dumping implementation detail.
 - Normal users do not have to understand the three project modes; the UI says what matters, such as "project setup is clean", "this is the ModuFlow tool repo", or "tool folders are present and cleanup is recommended".
+- Completed ModuFlow actions always tell the user what the next recommended action and command are.
 - Folder/command docs make the dogfooding repo feel intentional rather than accidental clutter.
 
 ## Workflow Tasks
@@ -67,6 +68,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - [x] create only minimal PM folder structure in target projects, not tool/runtime folders
 - [x] update status/moduflow command copy
 - [x] replace raw mode labels in user-facing output with plain guidance while keeping raw labels in JSON/debug output
+- [x] require completed actions to include next recommended action and command
 - [x] add tests or fixtures for lightweight project footprint output
 
 ## Related Issues
@@ -82,6 +84,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 - 2026-06-19: User asked why there are 18 folders inside the ModuFlow folder and described the current experience as uncomfortable.
 - 2026-06-19: User noted that requiring people to understand `lightweight`, `dogfooding`, and `heavy` every time would itself be uncomfortable.
+- 2026-06-19: User clarified that ModuFlow should proactively tell the next action after completing work, before the user asks.
 
 ## Links
 
