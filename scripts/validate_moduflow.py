@@ -129,8 +129,8 @@ def load_json(path: Path) -> object:
         return json.load(handle)
 
 
-def main() -> int:
-    root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
+def validate_moduflow(path) -> dict:
+    root = Path(path).resolve()
     missing = [name for name in REQUIRED_FILES if not (root / name).is_file()]
 
     errors = []
@@ -161,14 +161,28 @@ def main() -> int:
     except Exception as exc:
         errors.append(f"Could not read vendor.lock.json: {exc}")
 
-    if errors:
+    return {
+        "schema": "moduflow.package-validation.v1",
+        "project_root": str(root),
+        "valid": not errors,
+        "errors": errors,
+        "checked_files": len(REQUIRED_FILES),
+        "missing": missing,
+    }
+
+
+def main() -> int:
+    root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
+    result = validate_moduflow(root)
+
+    if result["errors"]:
         print("ModuFlow validation failed")
-        for error in errors:
+        for error in result["errors"]:
             print(error)
         return 1
 
     print(f"ModuFlow validation passed: {root}")
-    print(f"Checked {len(REQUIRED_FILES)} required files")
+    print(f"Checked {result['checked_files']} required files")
     return 0
 
 

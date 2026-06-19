@@ -64,6 +64,26 @@ class ValidationDistributionTests(unittest.TestCase):
             self.assertFalse(result["valid"])
             self.assertTrue(any(".moduflow/state.json" in error for error in result["errors"]))
 
+    def test_validate_moduflow_exposes_importable_api(self):
+        validator = load_module("validate_moduflow", "scripts/validate_moduflow.py")
+
+        result = validator.validate_moduflow(ROOT)
+
+        self.assertEqual(result["schema"], "moduflow.package-validation.v1")
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["errors"], [])
+        self.assertGreater(result["checked_files"], 0)
+
+    def test_validate_moduflow_importable_api_reports_missing_files(self):
+        validator = load_module("validate_moduflow", "scripts/validate_moduflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            result = validator.validate_moduflow(root)
+
+            self.assertFalse(result["valid"])
+            self.assertTrue(any("Missing required files" in error for error in result["errors"]))
+
     def test_validate_project_artifacts_allows_lightweight_project(self):
         validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
         with tempfile.TemporaryDirectory() as tmp:
