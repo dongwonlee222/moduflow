@@ -23,6 +23,8 @@ Make ModuFlow easier to understand by reducing the visible command/folder surfac
 
 The repo currently exposes 18 non-hidden top-level folders: `adapters`, `assets`, `commands`, `dashboard`, `docs`, `issues`, `knowledge`, `overlays`, `portfolio`, `scripts`, `skills`, `specs`, `templates`, `tests`, `vendor`, `workers`, `workflow`, and `workspace`. This separation helps maintainability, but it overwhelms users who only want to know "what is active, what changed, and what should I do next?"
 
+The same applies to project layout modes. `lightweight`, `dogfooding`, and `heavy` are useful internal diagnostic labels, but users should not need to learn or choose among three modes during normal use.
+
 ## Scope
 
 ### In
@@ -33,6 +35,7 @@ The repo currently exposes 18 non-hidden top-level folders: `adapters`, `assets`
 - Add a "why these folders exist" reference for the tool repo and a shorter target-project reference for light mode.
 - Group commands by job-to-be-done instead of exposing the full list first.
 - Update status output to separate "user workspace" from "internal ModuFlow tooling".
+- Treat `lightweight/dogfooding/heavy` as internal diagnostic states and translate them into simple user-facing guidance.
 
 ### Out
 
@@ -46,6 +49,7 @@ The repo currently exposes 18 non-hidden top-level folders: `adapters`, `assets`
 - Users can see which folders are safe project artifacts and which folders are internal tooling.
 - The 18-folder top-level surface has a documented grouping or reduction plan.
 - `product:status` or `/moduflow` can explain the current mode without dumping implementation detail.
+- Normal users do not have to understand the three project modes; the UI says what matters, such as "project setup is clean", "this is the ModuFlow tool repo", or "tool folders are present and cleanup is recommended".
 - Folder/command docs make the dogfooding repo feel intentional rather than accidental clutter.
 
 ## Workflow Tasks
@@ -59,6 +63,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - [ ] revise README command/folder sections
 - [ ] propose folder grouping/reduction from the current 18 top-level folders
 - [ ] update status/moduflow command copy
+- [ ] replace raw mode labels in user-facing output with plain guidance while keeping raw labels in JSON/debug output
 - [ ] add tests or fixtures for concise status output
 
 ## Related Issues
@@ -73,6 +78,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 ## Sessions
 
 - 2026-06-19: User asked why there are 18 folders inside the ModuFlow folder and described the current experience as uncomfortable.
+- 2026-06-19: User noted that requiring people to understand `lightweight`, `dogfooding`, and `heavy` every time would itself be uncomfortable.
 
 ## Links
 

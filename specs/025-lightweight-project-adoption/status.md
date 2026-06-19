@@ -6,20 +6,31 @@
 
 ## Phase
 
-spec
+review
 
 ## Summary
 
-Initiated the spec and plan to reduce ModuFlow's footprint in target projects. The plan defines a lightweight mode for target projects and a dogfooding mode for the core ModuFlow repository.
+Implemented the first lightweight adoption slice for Issue 025. The completed work focuses on project mode detection and doctor visibility: ModuFlow can now distinguish dogfooding, heavy, and lightweight project layouts, and `/product:doctor` documents the project mode row.
 
 ## Completed
 
 - Created `specs/025-lightweight-project-adoption/spec.md`.
 - Created `specs/025-lightweight-project-adoption/plan.md`.
+- Added `project_doctor.py` mode detection for `dogfooding`, `heavy`, and `lightweight`.
+- Added doctor-mode tests for dogfooding, lightweight, and heavy layouts.
+- Updated `commands/product-doctor.md` to show project mode in the health card.
+- Advanced Issue 025 to review phase after implementation commits.
+
+## Review Gaps
+
+- `project_migrate.py` and project start/intake write behavior have not yet been changed to enforce lightweight-only writes.
+- No `walkthrough.md` existed in the repo after the implementation commits, so this status now links the new walkthrough artifact.
 
 ## Verification
 
-- Validation and tests will run after plan is approved and tasks are executed.
+- `python3 -m pytest` passed with 68 tests.
+- `python3 scripts/release_check.py .` passed.
+- `python3 scripts/project_doctor.py .` reports this repo as `dogfooding`.
 
 ## Blockers
 
@@ -27,4 +38,4 @@ Initiated the spec and plan to reduce ModuFlow's footprint in target projects. T
 
 ## Next Command
 
-`/product:plan 025-lightweight-project-adoption`
+`/product:review 025-lightweight-project-adoption`

@@ -55,7 +55,8 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - [x] execute -> PR / commits
 - [ ] review -> review notes
 - [x] define light-mode project layout
-- [x] update start/migrate/doctor behavior
+- [x] update doctor behavior
+- [ ] update start/migrate lightweight write behavior
 - [x] add tests for light-mode adoption
 
 ## Related Issues
