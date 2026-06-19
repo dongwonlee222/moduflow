@@ -12,7 +12,7 @@ Make ModuFlow easier to understand by reducing the visible command/folder surfac
 
 ## Lifecycle
 
-- Phase: plan
+- Phase: review
 - Created: 2026-06-19
 - Started:
 - Target End:
@@ -59,7 +59,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - [x] spec -> `specs/026-simplify-command-and-folder-surface/spec.md`
 - [x] plan -> `specs/026-simplify-command-and-folder-surface/plan.md`
 - [x] benchmark -> `specs/026-simplify-command-and-folder-surface/benchmark.md`
-- [ ] execute -> PR / commits
+- [x] execute -> PR / commits
 - [ ] review -> review notes
 - [x] revise README command/folder sections
 - [x] propose folder grouping/reduction from the current 18 top-level folders
@@ -92,4 +92,4 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 ## Next Command
 
-`/product:execute 026-simplify-command-and-folder-surface`
+`/product:review 026-simplify-command-and-folder-surface`

@@ -21,15 +21,32 @@ Active goal: `lightweight-moduflow-ux`
 - Reason: Many folders and commands are maintainable internally but uncomfortable as the first user experience.
 - Confidence: high
 - Dependency: simple loop UX and `/moduflow` hub command
-- Next command: `product:execute 026-simplify-command-and-folder-surface`
+- Next command: `product:review 026-simplify-command-and-folder-surface`
+- Status: implementation complete; review next.
 
 ### `027-reduce-approval-popup-friction`
 
-- Outcome: Approval prompts become predictable, batched where possible, and tied to clear risk.
-- Reason: Repeated prompts during Git/GitHub cleanup make otherwise normal workflows feel noisy.
+- Outcome: Approval prompts become predictable, batched where possible, and routine validation can run through importable/tool-call paths instead of repeated shell prompts.
+- Reason: Repeated prompts during Git/GitHub cleanup and validation checks make otherwise normal workflows feel noisy.
 - Confidence: medium
 - Dependency: Git binding and doctor/preflight checks
 - Next command: `product:spec 027-reduce-approval-popup-friction`
+
+### `028-real-subagent-execution-backend`
+
+- Outcome: Worker plans can dispatch safe independent tasks to real host-provided subagents when available.
+- Reason: Static worker plans are useful, but host environments such as Antigravity may support actual parallel coding agents.
+- Confidence: medium
+- Dependency: worker routing/isolation and host API verification
+- Next command: `product:spec 028-real-subagent-execution-backend`
+
+### `029-antigravity-artifact-sync-connector`
+
+- Outcome: Antigravity-native artifacts and ModuFlow Git artifacts stay synchronized without duplicate writing.
+- Reason: Duplicate `task.md`/`implementation_plan.md` and ModuFlow issue/spec/status files fragment the record.
+- Confidence: medium
+- Dependency: artifact schema gates and host artifact model verification
+- Next command: `product:spec 029-antigravity-artifact-sync-connector`
 
 ## Backlog / Existing Capabilities
 

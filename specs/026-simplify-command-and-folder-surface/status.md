@@ -6,7 +6,7 @@
 
 ## Phase
 
-execute
+review
 
 ## Summary
 
@@ -40,4 +40,4 @@ Created the spec and execution plan for simplifying ModuFlow's first user experi
 
 ## Next Command
 
-`/product:execute 026-simplify-command-and-folder-surface`
+`/product:review 026-simplify-command-and-folder-surface`

@@ -6,22 +6,24 @@
   "issue_ids": [
     "025-lightweight-project-adoption",
     "026-simplify-command-and-folder-surface",
-    "027-reduce-approval-popup-friction"
+    "027-reduce-approval-popup-friction",
+    "028-real-subagent-execution-backend",
+    "029-antigravity-artifact-sync-connector"
   ],
   "active_issue_id": "026-simplify-command-and-folder-surface",
-  "phase": "plan",
+  "phase": "review",
   "mode": "recommend",
   "status": "active",
-  "next_command": "product:execute 026-simplify-command-and-folder-surface",
+  "next_command": "product:review 026-simplify-command-and-folder-surface",
   "attempts": {
-    "command": "product:execute 026-simplify-command-and-folder-surface",
+    "command": "product:review 026-simplify-command-and-folder-surface",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-06-19"
   },
   "blocker": null,
-  "last_action": "created spec and plan for simplifying command and folder surface",
-  "last_verification": "pending implementation verification for issue 026",
+  "last_action": "captured Antigravity feedback as approval, subagent backend, and artifact sync backlog items",
+  "last_verification": "issue routing updated; implementation verification for 026 already passed",
   "updated_at": "2026-06-19",
   "git_binding": {
     "mode": "git-files",

@@ -2,7 +2,7 @@
 
 ## Summary
 
-Reduce repeated approval prompts by batching safe Git/GitHub operations, documenting expected prompts, and preferring lower-churn workflows that avoid unnecessary `.git`, network, or account writes.
+Reduce repeated approval prompts by batching safe Git/GitHub operations, documenting expected prompts, and preferring in-process validation paths that avoid unnecessary shell, `.git`, network, or account writes.
 
 ## Source
 
@@ -21,7 +21,9 @@ Reduce repeated approval prompts by batching safe Git/GitHub operations, documen
 
 ## Opportunity
 
-The approval model is important for safety, but repeated popups during merge, fetch, branch cleanup, GitHub API access, and account switching make the workflow feel noisy and fragile. ModuFlow should make approval moments predictable, rare, and clearly tied to real risk.
+The approval model is important for safety, but repeated popups during merge, fetch, branch cleanup, GitHub API access, account switching, and routine validation script execution make the workflow feel noisy and fragile. ModuFlow should make approval moments predictable, rare, and clearly tied to real risk.
+
+Antigravity feedback added a sharper version of this problem: ModuFlow currently relies on many standalone Python validation scripts (`project_doctor.py`, `validate_project_artifacts.py`, `validate_moduflow.py`, `release_check.py`). When an agent environment treats shell execution as an approval boundary, even safe validation can repeatedly interrupt the user.
 
 ## Scope
 
@@ -33,12 +35,16 @@ The approval model is important for safety, but repeated popups during merge, fe
 - Add guidance for saved command prefixes and account/credential preflight.
 - Improve messaging so users know why a prompt appears and whether it is optional.
 - Add a "local-only mode" path that avoids GitHub/network prompts unless sync is requested.
+- Refactor validation logic so safe checks can be called in-process as a Python library (`import moduflow`) or tool adapter instead of requiring shell execution.
+- Define an MCP/tool-adapter path for doctor/validation checks where the host supports direct tool calls.
+- Keep shell scripts as compatibility entrypoints, but make them thin wrappers around importable functions.
 
 ### Out
 
 - Bypassing Codex approval or sandbox safety rules.
 - Storing credentials or secrets in the repo.
 - Silently deleting branches, rewriting history, or changing accounts without explicit user intent.
+- Treating in-process validation as permission to perform writes, network calls, or destructive actions.
 
 ## Acceptance Criteria
 
@@ -47,6 +53,8 @@ The approval model is important for safety, but repeated popups during merge, fe
 - `product:doctor` or preflight detects active GitHub account mismatch before a write operation.
 - Local-only workflows can complete without GitHub API prompts.
 - Documentation explains why `.git` writes, network calls, destructive cleanup, and account switching require approval.
+- Routine validation can run through importable functions or tool adapters without shelling out for every check.
+- Shell validation entrypoints remain available for CLI users and CI.
 
 ## Workflow Tasks
 
@@ -59,6 +67,8 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - [ ] map approval-triggering commands
 - [ ] add GitHub account preflight guidance
 - [ ] add local-only/no-network path documentation
+- [ ] refactor validation scripts into importable validation engine APIs
+- [ ] add host/tool adapter guidance for environments such as Antigravity that can call tools directly
 
 ## Related Issues
 
@@ -72,6 +82,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 ## Sessions
 
 - 2026-06-19: User asked why approval popups appear so often during branch merge, push, cleanup, and GitHub checks.
+- 2026-06-19: Antigravity feedback noted that routine shell-based validation scripts also create approval fatigue; suggested importable validation or MCP/tool calls.
 
 ## Links
 

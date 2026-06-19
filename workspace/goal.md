@@ -13,6 +13,8 @@ Dongwon Lee
 - `025-lightweight-project-adoption`
 - `026-simplify-command-and-folder-surface`
 - `027-reduce-approval-popup-friction`
+- `028-real-subagent-execution-backend`
+- `029-antigravity-artifact-sync-connector`
 
 ## Completion Criteria
 
@@ -21,6 +23,8 @@ Dongwon Lee
 - User-facing status and docs clearly separate project artifacts from internal ModuFlow tooling.
 - Approval prompts are predictable, explained before risky flows, and reduced through batching/local-only paths where possible.
 - Doctor/preflight can detect project mode and GitHub account mismatch before write operations.
+- Routine validation can run through importable/tool-call paths without repeated shell approval prompts.
+- Real subagent execution and host artifact sync are designed without breaking the Git-native artifact model.
 
 ## Constraints
 
@@ -31,7 +35,7 @@ Dongwon Lee
 
 ## Budget
 
-- Steps: 3 linked issues, starting with 025
+- Steps: 5 linked issues, starting with 025
 - Time:
 - Tokens:
 
@@ -47,7 +51,8 @@ None.
 
 - Created from user feedback on 2026-06-19 that ModuFlow feels too heavy, has too many visible folders, and triggers too many approval prompts.
 - Treat this as a UX cleanup goal after the 0.2.11 goal-loop merge.
+- Antigravity feedback added three improvement tracks: in-process validation to reduce approvals, real subagent execution backend, and host artifact sync.
 
 ## Next Command
 
-`product:execute 026-simplify-command-and-folder-surface`
+`product:review 026-simplify-command-and-folder-surface`

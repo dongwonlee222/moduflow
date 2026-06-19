@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Post-merge UX cleanup: Issue 025 is in review, and Issue 026 is now planned to simplify the visible command/folder surface.
+Post-merge UX cleanup: Issue 026 implementation is ready for review; new Antigravity feedback expanded the approval, real-subagent, and artifact-sync backlog.
 
 ## Active Goal
 
@@ -10,7 +10,7 @@ Post-merge UX cleanup: Issue 025 is in review, and Issue 026 is now planned to s
 
 ## Active Issue
 
-- `026-simplify-command-and-folder-surface`: make the first user experience smaller by grouping folders, reducing default commands, and translating internal mode labels into plain guidance.
+- `026-simplify-command-and-folder-surface`: ready for review after simplifying default project footprint, plugin cache packaging, and user-facing mode guidance.
 
 ## Recently Completed
 
@@ -22,6 +22,8 @@ Post-merge UX cleanup: Issue 025 is in review, and Issue 026 is now planned to s
 ## Queue
 
 - `027-reduce-approval-popup-friction`
+- `028-real-subagent-execution-backend`
+- `029-antigravity-artifact-sync-connector`
 
 ## Blockers
 
@@ -38,4 +40,4 @@ Post-merge UX cleanup: Issue 025 is in review, and Issue 026 is now planned to s
 
 ## Next Command
 
-`product:execute 026-simplify-command-and-folder-surface`
+`product:review 026-simplify-command-and-folder-surface`
