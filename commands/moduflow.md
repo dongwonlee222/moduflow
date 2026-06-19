@@ -56,10 +56,10 @@ After completing work, use this Korean-first handoff shape:
 - <issue/id>: <why it follows>
 - <issue/id>: <why it follows>
 
-바로 가려면 제가 <first action>부터 진행하면 됩니다.
+👉 바로 진행: 제가 <first action>부터 진행하면 됩니다.
 ```
 
-Keep it concise. Include only sections that are useful, but do not replace this with a bare `Next Command` line after completed work.
+Keep it concise. Include only sections that are useful, but do not replace this with a bare `Next Command` line after completed work. The final CTA line must be visually easy to scan; use `👉 바로 진행:` unless the host cannot render emoji.
 
 ## Quick command list
 

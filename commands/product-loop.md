@@ -80,7 +80,7 @@ Every command that completes work should call back into this loop contract menta
 - active issue workflow tasks: what is complete and what remains
 - verification result: what passed, failed, or was not run
 
-Default handoff is not a raw `Next Command` line. It must explain why the next action is next, list concrete next actions, and show follow-on priority when the goal has a queue.
+Default handoff is not a raw `Next Command` line. It must explain why the next action is next, list concrete next actions, and show follow-on priority when the goal has a queue. End with a visually obvious CTA such as `👉 바로 진행: 제가 <first action>부터 진행하면 됩니다.`
 
 ## State Updates
 

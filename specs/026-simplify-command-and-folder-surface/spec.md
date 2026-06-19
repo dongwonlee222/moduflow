@@ -80,7 +80,7 @@ The handoff should use a consistent Korean-first structure:
 - `이유:` with short bullets explaining why
 - `다음 액션:` with concrete ordered steps
 - `그 뒤 우선순위:` when there is a queue
-- `바로 가려면 제가 <first action>부터 진행하면 됩니다.`
+- `👉 바로 진행: 제가 <first action>부터 진행하면 됩니다.`
 
 This is different from a raw workflow pointer. A bare `Next Command: product:*` is only enough for machine/debug surfaces, not for the default user-facing completion response.
 

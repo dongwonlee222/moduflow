@@ -24,7 +24,7 @@ Created the spec and execution plan for simplifying ModuFlow's first user experi
 - Updated project migration so normal target projects get only the minimal PM structure and do not receive tool/runtime folders.
 - Updated README and `/product:start` guidance with the default target-project footprint and opt-in integration surfaces.
 - Added doctor mode guidance so raw `lightweight`, `dogfooding`, and `heavy` values stay in JSON while user-facing output shows plain Korean guidance.
-- Clarified that every completed ModuFlow action must include a structured Korean-first handoff based on the active goal/loop state: next work, reason, concrete next actions, follow-on priority, and exact command when useful.
+- Clarified that every completed ModuFlow action must include a structured Korean-first handoff based on the active goal/loop state: next work, reason, concrete next actions, follow-on priority, and a visually obvious "👉 바로 진행" CTA.
 - Created `specs/026-simplify-command-and-folder-surface/review.md` and approved the issue for completion.
 
 ## Verification
