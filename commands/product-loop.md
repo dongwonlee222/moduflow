@@ -17,7 +17,9 @@ Advance a goal by routing through existing ModuFlow commands.
 
 ## Recommendation Mode
 
-Default `product:loop` is read-first and recommendation-oriented.
+Aliases: `다음`, `next`, `루프`.
+
+Default `product:loop` is read-first and recommendation-oriented. It recommends one safe next action and includes the exact command. It does not mutate files unless the user explicitly asks for execution.
 
 Expected output:
 
@@ -31,7 +33,9 @@ Reason: <short reason>
 
 ## One-Step Mode
 
-`product:loop --step` may run at most one safe next action and then stop.
+Aliases: `다음 실행`, `한 단계 진행`, `product:loop --step`.
+
+`product:loop --step` may run at most one safe next action and then stop. One-step mode can mutate one safe artifact or state update, then must report what changed and the next command.
 
 Safe one-step actions include:
 
@@ -49,10 +53,10 @@ Unsafe actions require explicit user approval:
 
 ## Stop States
 
-- `done`: completion criteria are satisfied and verification is recorded
-- `blocked`: the next action cannot proceed without external change
-- `needs_decision`: a human decision is required before mutation
-- `active`: safe to continue with the recommended next command
+- `done`: completion criteria are satisfied and verification is recorded; say what finished and recommend status or the next issue.
+- `blocked`: the next action cannot proceed without external change; say the blocker and the smallest unblock request.
+- `needs_decision`: a human decision is required before mutation; explain the repeated action or ambiguity and ask one concise question.
+- `active`: safe to continue with the recommended next command.
 
 ## State Updates
 
@@ -68,7 +72,24 @@ When mutating, update `workspace/loop-state.json` with:
 - blocker
 - last action
 - last verification
+- git binding
 - updated timestamp
+
+Minimum loop-state v2 fields:
+
+- `goal_id`: durable goal identifier
+- `issue_ids`: ordered issue graph for the active goal
+- `active_issue_id`: one issue cursor
+- `phase`: current workflow phase inferred from artifacts
+- `next_command`: next safe ModuFlow command
+- `attempts.command/count/max`: repeated-step guard
+- `status`: `active`, `needs_decision`, `blocked`, or `done`
+- `git_binding.branch`: issue-bound branch name when execution has a branch
+- `git_binding.execution_backend`: selected or recommended execution backend
+
+`이거 해줘: <request>` should use `scripts/project_intake.py` semantics before creating work: classify the request, check related issues, attach to the active issue when it matches, generate issue candidates for new work, or append an inbox record when `--write` is requested.
+
+Simple user aliases should route here: `상태`, `다음`, `이거 해줘`, `완료`.
 
 Record repeated failures or uncertainty in `specs/<issue>/reflection.md`.
 

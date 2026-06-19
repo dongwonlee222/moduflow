@@ -1,14 +1,38 @@
 {
-  "schema": "moduflow.loop-state.v1",
+  "schema": "moduflow.loop-state.v2",
+  "loop_id": "{{loop_id}}",
   "goal_id": "{{goal_id}}",
-  "issue_id": "{{issue_id}}",
+  "objective": "{{objective}}",
+  "issue_ids": [
+    "{{issue_id}}"
+  ],
+  "active_issue_id": "{{issue_id}}",
   "phase": "goal",
   "mode": "recommend",
-  "next_command": "product:loop",
-  "attempts": 0,
   "status": "active",
-  "blocker": "",
+  "next_command": "product:loop",
+  "attempts": {
+    "command": "product:loop",
+    "count": 0,
+    "max": 3,
+    "last_changed_at": "{{updated_date}}"
+  },
+  "blocker": null,
   "last_action": "",
-  "last_verification": "",
-  "updated": "{{updated_date}}"
+  "last_verification": null,
+  "updated_at": "{{updated_date}}",
+  "git_binding": {
+    "mode": "git-files",
+    "branch": null,
+    "base_branch": null,
+    "commits": [],
+    "pull_request": null,
+    "release": null,
+    "execution_backend": {
+      "type": "manual",
+      "status": "not_selected",
+      "reason": "",
+      "session": null
+    }
+  }
 }

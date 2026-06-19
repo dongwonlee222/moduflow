@@ -36,6 +36,18 @@ Prefer short aliases after `@ModuFlow`:
 - `@ModuFlow 루프`
 - `@ModuFlow 이슈`
 
+## Default Simple Aliases
+
+Resolve these broad user intents before exposing workflow internals:
+
+- `상태`, `status`, `현재 상황` → concise `product:status`.
+- `다음`, `next`, `루프` → read-only `product:loop` recommendation.
+- `다음 실행`, `한 단계 진행` → one safe `product:loop --step` mutation.
+- `이거 해줘: <request>` → use intake routing semantics: classify, check existing issues, attach to active work when related, recommend/create issue candidates for new work, or write an inbox routing record when confidence is low.
+- `완료`, `done` → guarded completion; verify required artifacts and validation before closing a step or issue. If gates are missing, recommend the next verification command instead.
+
+Exact `product:*` input (direct product command) is the power-user escape hatch. Honor it directly instead of re-routing through a broad alias.
+
 ## Natural Language Invocation
 
 Accept Korean natural language after `@ModuFlow` and route to the smallest useful command or lifecycle action.
@@ -47,7 +59,7 @@ Read-only examples:
 - `@ModuFlow 검사해줘`, `doctor 돌려줘`, `설정 괜찮아?`: `product:doctor`
 - `@ModuFlow 로드맵 보여줘`, `우선순위 뭐야?`: `product:roadmap`
 - `@ModuFlow 목표 뭐야`, `현재 목표`: `product:goal` read/update behavior
-- `@ModuFlow 다음 단계 알아서 골라줘`, `루프 돌려줘`: `product:loop`
+- `@ModuFlow 다음`, `다음 단계 알아서 골라줘`, `루프 돌려줘`: read-only `product:loop`
 - `@ModuFlow 사업계획서로 정리해줘`, `Lean Canvas 만들어줘`, `페르소나 사용자 시나리오 정리해줘`: use `moduflow:business-plan` after opportunity shaping when structured artifacts are requested
 
 Mutating examples:
@@ -56,7 +68,7 @@ Mutating examples:
 - `@ModuFlow 003에 진행 내용 추가해줘: ...`: issue `003` update
 - `@ModuFlow 003 잠시 멈춰줘`: issue `003` pause
 - `@ModuFlow 003 다시 시작해줘`: issue `003` resume
-- `@ModuFlow 003 완료 처리해줘`: issue `003` complete
+- `@ModuFlow 003 완료 처리해줘`: guarded issue `003` completion after required artifacts and verification are present
 - `@ModuFlow 새 이슈 만들어줘: ...`: `product:issue`, after checking existing issues
 - `@ModuFlow 이 사업계획서를 검증 이슈로 쪼개줘`: `moduflow:business-plan` then `product:issue` candidates
 
@@ -138,7 +150,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 1. Identify the project root before writing files.
 2. Run Git preflight before `product:start`, `product:migrate`, `product:profile`, `product:issue`, `product:spec`, `product:plan`, `product:execute`, `product:pr`, or `product:release`.
 3. If no project root is clear, ask for the target project.
-4. Check existing issues before creating a new issue.
+4. Check existing issues before creating a new issue. For loose requests, use the `moduflow.intake-routing.v1` shape from `scripts/project_intake.py` when available.
 5. Keep Git as the source of truth.
 6. Treat status, issues, doctor, roadmap, and portfolio as read-only unless the user asks to update/fix.
 7. Treat start, update, pause, resume, complete, create, plan, execute, review, release, and sync as mutating workflows.

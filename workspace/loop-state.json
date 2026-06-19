@@ -1,0 +1,43 @@
+{
+  "schema": "moduflow.loop-state.v2",
+  "loop_id": "goal-loop-orchestrator-20260617",
+  "goal_id": "goal-loop-orchestrator",
+  "objective": "Make ModuFlow a plugin-installed PM loop orchestrator that connects goal, issues, specs, tasks, workers, and Git progress while keeping the user surface simple.",
+  "issue_ids": [
+    "019-loop-kernel-and-state-model",
+    "020-user-facing-simple-loop-ux",
+    "021-git-binding-and-execution-backend",
+    "022-intake-to-goal-graph",
+    "023-worker-routing-and-isolation",
+    "024-artifact-schema-and-doctor-gates"
+  ],
+  "active_issue_id": "024-artifact-schema-and-doctor-gates",
+  "phase": "status",
+  "mode": "recommend",
+  "status": "done",
+  "next_command": "product:status",
+  "attempts": {
+    "command": "product:status",
+    "count": 0,
+    "max": 3,
+    "last_changed_at": "2026-06-19"
+  },
+  "blocker": null,
+  "last_action": "released 024-artifact-schema-and-doctor-gates",
+  "last_verification": "issue 024 full verification passed",
+  "updated_at": "2026-06-19",
+  "git_binding": {
+    "mode": "git-files",
+    "branch": null,
+    "base_branch": null,
+    "commits": [],
+    "pull_request": null,
+    "release": null,
+    "execution_backend": {
+      "type": "manual",
+      "status": "not_selected",
+      "reason": "",
+      "session": null
+    }
+  }
+}

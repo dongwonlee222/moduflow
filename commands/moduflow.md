@@ -11,15 +11,20 @@ Request: $ARGUMENTS
 
 ## Do
 
-1. **No arguments** → act as `product:status`:
-   - Read `.moduflow/state.json`, `workspace/goal.md`, `workspace/dashboard.md` when present.
+1. **No arguments** → act as concise `product:status`:
+   - Read `.moduflow/state.json`, `workspace/loop-state.json`, `workspace/goal.md`, and `workspace/dashboard.md` when present.
    - If ModuFlow is **not initialized** in this project (no `.moduflow/`), say so and offer `/moduflow 시작` (`product:start`).
-   - If initialized, report current goal / active issue / phase, then print the **next recommended command** and the **Quick command list** below.
+   - If initialized, report only current goal, active issue, phase, blocker, and next action.
+   - Show the exact next command for power users.
+   - Do not print the full command catalog unless the user asks for `help`, `도움말`, or `명령어`.
 
-2. **With arguments** → route using the ModuFlow `index` skill rules (`skills/index/SKILL.md`). Map natural language to the smallest useful `product:*` command, then execute it. Examples:
+2. **With arguments** → route using the ModuFlow `index` skill rules (`skills/index/SKILL.md`). Resolve simple aliases before exposing workflow internals. Examples:
    - `시작`, `start` → `product:start`
-   - `루프`, `loop`, `다음 단계` → `product:loop`
-   - `상태`, `status` → `product:status`
+   - `상태`, `status`, `현재 상황` → concise `product:status`
+   - `다음`, `next`, `루프` → read-only `product:loop`
+   - `다음 실행`, `한 단계 진행` → one safe `product:loop --step`
+   - `이거 해줘: ...` → run intake routing semantics: active issue attach, new issue candidate, goal graph candidate, or inbox record
+   - `완료`, `done` → guarded completion; verify before closing
    - `목표`, `goal` → `product:goal`
    - `이슈`, `issues` → `product:issues`
    - `검사`, `doctor` → `product:doctor`
@@ -27,11 +32,11 @@ Request: $ARGUMENTS
    - `003 시작`, `003 완료` → issue lifecycle action on issue `003`
    - anything else → pick the closest `product:*` command; if ambiguous, ask one concise clarification before mutating files.
 
-3. Always end by showing the **next recommended command** so the user can chain without memorizing names.
+3. Always end by showing the **next recommended command** so the user can chain without memorizing names. Exact `product:*` input is a power-user escape hatch and should be honored directly.
 
 ## Quick command list
 
-Show this when the user runs `/moduflow` with no args or asks "what can I do":
+Show this only when the user asks `help`, `도움말`, `명령어`, or "what can I do":
 
 ```
 설정/시작    /moduflow 시작        (product:start)   프로젝트 초기화
