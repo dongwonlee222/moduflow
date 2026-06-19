@@ -17,6 +17,7 @@ Validate setup.
 6. Detect likely existing project artifact folders for migration.
 7. Preserve raw `mode` in JSON diagnostics, but render `mode_guidance.message` and `mode_guidance.details` before any raw mode labels in user-facing output.
 8. Report missing files and suggested fix commands.
+9. For approval-sensitive hosts, call `inspect_project(path, include_preflight=False)` or `scripts/project_doctor.py <project-path> --no-preflight` first, then run full preflight only when Git/GitHub sync state is needed.
 
 ## Korean Output
 
@@ -56,6 +57,8 @@ Missing optional capabilities are warnings, not failures, in `git-files` mode.
 - Git root matches intended project root
 - `origin` remote exists when GitHub sync is expected
 - `gh auth status` passes when issue/PR/release sync is expected
+
+Git and GitHub CLI checks are preflight checks. They are skipped in local-only mode so routine doctor/status rendering can avoid approval popups.
 
 ## Next
 

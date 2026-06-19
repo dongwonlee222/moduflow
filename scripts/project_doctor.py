@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+import argparse
 import importlib.util
 import json
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 
@@ -127,6 +127,16 @@ def current_branch(path):
     return None
 
 
+def local_project_root(path):
+    current = Path(path).resolve()
+    if current.is_file():
+        current = current.parent
+    for candidate in [current, *current.parents]:
+        if (candidate / ".moduflow" / "config.json").exists():
+            return candidate
+    return current
+
+
 def gh_auth_status(path):
     if shutil.which("gh") is None:
         return {"available": False, "authenticated": False, "detail": "gh not found"}
@@ -244,12 +254,27 @@ def mode_guidance(mode):
     )
 
 
-def inspect_project(path):
+def skipped_preflight_status():
+    return {
+        "available": None,
+        "authenticated": None,
+        "detail": "preflight skipped",
+    }
+
+
+def inspect_project(path, include_preflight=True):
     requested = Path(path).resolve()
-    detected_git_root = git_root(requested)
-    project_root = detected_git_root or requested
-    remote = git_remote(project_root) if detected_git_root else None
-    gh_status = gh_auth_status(project_root)
+    if include_preflight:
+        detected_git_root = git_root(requested)
+        project_root = detected_git_root or requested
+        remote = git_remote(project_root) if detected_git_root else None
+        gh_status = gh_auth_status(project_root)
+    else:
+        detected_git_root = None
+        project_root = local_project_root(requested)
+        remote = None
+        gh_status = skipped_preflight_status()
+
     missing = missing_project_paths(project_root)
     missing_profile = missing_profile_paths(project_root)
     missing_knowledge = missing_knowledge_paths(project_root)
@@ -263,7 +288,7 @@ def inspect_project(path):
     loop_state_exists = (project_root / "workspace" / "loop-state.json").exists()
     loop_state = project_loop.load_loop_state(project_root) if loop_state_exists else None
     git_binding = loop_state.get("git_binding") if loop_state else None
-    branch = current_branch(project_root) if detected_git_root else None
+    branch = current_branch(project_root) if include_preflight and detected_git_root else None
 
     mode = detect_mode(project_root)
     result = {
@@ -271,6 +296,10 @@ def inspect_project(path):
         "project_root": str(project_root),
         "mode": mode,
         "mode_guidance": mode_guidance(mode),
+        "preflight": {
+            "enabled": include_preflight,
+            "skipped": [] if include_preflight else ["git", "github_cli"],
+        },
         "git": {
             "is_repo": detected_git_root is not None,
             "root": str(detected_git_root) if detected_git_root else None,
@@ -314,14 +343,16 @@ def inspect_project(path):
         "recommendation": [],
     }
 
-    if not result["git"]["is_repo"]:
+    if not include_preflight:
+        result["recommendation"].append("Run product:doctor with preflight when GitHub sync or Git state checks are needed.")
+    elif not result["git"]["is_repo"]:
         result["recommendation"].append("Run git init or choose an existing Git project before GitHub Spec Kit-style execution.")
     elif not remote:
         result["recommendation"].append("Add a GitHub origin if issues, PRs, and releases should sync with GitHub.")
 
-    if not gh_status["available"]:
+    if include_preflight and not gh_status["available"]:
         result["recommendation"].append("Install GitHub CLI if GitHub issue/PR sync is needed.")
-    elif not gh_status["authenticated"]:
+    elif include_preflight and not gh_status["authenticated"]:
         result["recommendation"].append("Run gh auth login if GitHub issue/PR sync is needed.")
 
     if missing:
@@ -357,7 +388,15 @@ def inspect_project(path):
 
 
 def main():
-    result = inspect_project(sys.argv[1] if len(sys.argv) > 1 else ".")
+    parser = argparse.ArgumentParser(description="Inspect ModuFlow project setup.")
+    parser.add_argument("project_path", nargs="?", default=".")
+    parser.add_argument(
+        "--no-preflight",
+        action="store_true",
+        help="Skip Git and GitHub CLI preflight checks for local-only validation.",
+    )
+    args = parser.parse_args()
+    result = inspect_project(args.project_path, include_preflight=not args.no_preflight)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     moduflow = result.get("moduflow", {})
     # Gate: a project is healthy only when ModuFlow is initialized with no missing

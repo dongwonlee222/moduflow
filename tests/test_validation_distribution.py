@@ -279,6 +279,47 @@ class ValidationDistributionTests(unittest.TestCase):
             )
             self.assertTrue(result["schema_gates"]["errors"])
 
+    def test_project_doctor_can_skip_git_and_github_preflight(self):
+        project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
+        shell_calls = []
+        original_run = project_doctor.run
+
+        def tracking_run(args, cwd):
+            shell_calls.append(args)
+            return original_run(args, cwd)
+
+        project_doctor.run = tracking_run
+        try:
+            result = project_doctor.inspect_project(ROOT, include_preflight=False)
+        finally:
+            project_doctor.run = original_run
+
+        self.assertFalse(result["preflight"]["enabled"])
+        self.assertIn("git", result["preflight"]["skipped"])
+        self.assertIn("github_cli", result["preflight"]["skipped"])
+        self.assertFalse(any(args and args[0] in {"git", "gh"} for args in shell_calls))
+        self.assertIn("moduflow", result)
+        self.assertIn("schema_gates", result)
+
+    def test_project_doctor_preflight_enabled_by_default(self):
+        project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
+
+        result = project_doctor.inspect_project(ROOT)
+
+        self.assertTrue(result["preflight"]["enabled"])
+
+    def test_project_doctor_local_only_detects_project_root_from_subdirectory(self):
+        project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+            subdir = root / "workspace"
+
+            result = project_doctor.inspect_project(subdir, include_preflight=False)
+
+            self.assertEqual(result["project_root"], str(root.resolve()))
+            self.assertTrue(result["moduflow"]["initialized"])
+
 
     def test_portfolio_doctor_warns_for_missing_project_path(self):
         portfolio_doctor = load_module("portfolio_doctor", "scripts/portfolio_doctor.py")

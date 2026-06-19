@@ -25,7 +25,7 @@ This map separates routine ModuFlow checks from operations that genuinely need u
 | Entry Point | Current Behavior | Class | Approval Friction | 027 Direction |
 | --- | --- | --- | --- | --- |
 | `scripts/validate_project_artifacts.py` | Exposes `validate_project(path)` and a CLI wrapper | Local read-only | Avoidable when imported directly | Keep function API; use it from tools/adapters |
-| `scripts/project_doctor.py` | Exposes `inspect_project(path)` but also shells out to `git` and `gh` for preflight | Local read-only plus Git read plus GitHub account check | Partly avoidable; `git`/`gh` checks may still prompt | Split pure artifact doctor from Git/GitHub preflight |
+| `scripts/project_doctor.py` | Exposes `inspect_project(path)` with default preflight and `inspect_project(path, include_preflight=False)` for local-only checks | Local read-only plus optional Git read plus GitHub account check | Avoidable for routine local validation; full preflight still may prompt | Use local-only mode first; run full preflight only for Git/GitHub sync state |
 | `scripts/validate_moduflow.py` | CLI-oriented `main()` checks required package files and manifests | Local read-only | Avoidable after extracting `validate_moduflow(root)` | Add importable validation function |
 | `scripts/release_check.py` | Uses subprocess to run validation scripts and tests | Shell execution bundle | High; repeatedly shells out | Convert validation parts to imports; keep tests as shell/runner boundary |
 | `python3 -m unittest ...` | Runs tests | Shell execution | Host-dependent and often approval-triggering | Keep for CI; use focused importable checks for routine status/review where possible |
