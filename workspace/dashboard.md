@@ -30,12 +30,12 @@ Post-merge UX cleanup: new issues opened for lightweight project adoption, simpl
 ## Verification
 
 - ModuFlow plugin version: `0.2.11+codex.20260619033058`.
-- `python3 -m unittest tests.test_validation_distribution -v` passed (13 tests).
-- `python3 -m unittest discover -s tests -v` passed (65 tests).
+- `python3 -m unittest tests.test_validation_distribution -v` passed (16 tests).
+- `python3 -m unittest discover -s tests -v` passed (68 tests).
 - `python3 scripts/validate_project_artifacts.py .` passed.
 - `python3 scripts/validate_moduflow.py .` passed.
 - `python3 scripts/release_check.py .` passed.
 
 ## Next Command
 
-`product:execute 025-lightweight-project-adoption`
+`product:review 025-lightweight-project-adoption`

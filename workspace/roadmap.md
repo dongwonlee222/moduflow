@@ -12,7 +12,7 @@ Active goal: `lightweight-moduflow-ux`
 - Reason: The current dogfooding repo shape makes ModuFlow feel too invasive when users imagine applying it to every project.
 - Confidence: high
 - Dependency: project migration/profile flows and artifact schema gates
-- Next command: `product:execute 025-lightweight-project-adoption`
+- Next command: `product:review 025-lightweight-project-adoption`
 
 ### `026-simplify-command-and-folder-surface`
 

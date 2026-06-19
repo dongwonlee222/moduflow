@@ -12,10 +12,10 @@ Reduce ModuFlow's footprint in target projects so project adoption keeps only du
 
 ## Lifecycle
 
-- Phase: backlog
+- Phase: review
 - Created: 2026-06-19
-- Started:
-- Target End:
+- Started: 2026-06-19
+- Target End: 2026-06-19
 - Completed:
 - Last Updated: 2026-06-19
 
@@ -52,11 +52,11 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 - [x] spec -> `specs/025-lightweight-project-adoption/spec.md`
 - [x] plan -> `specs/025-lightweight-project-adoption/plan.md`
-- [ ] execute -> PR / commits
+- [x] execute -> PR / commits
 - [ ] review -> review notes
-- [ ] define light-mode project layout
-- [ ] update start/migrate/doctor behavior
-- [ ] add tests for light-mode adoption
+- [x] define light-mode project layout
+- [x] update start/migrate/doctor behavior
+- [x] add tests for light-mode adoption
 
 ## Related Issues
 
@@ -80,4 +80,4 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 ## Next Command
 
-`/product:execute 025-lightweight-project-adoption`
+`product:review 025-lightweight-project-adoption`

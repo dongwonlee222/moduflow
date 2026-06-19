@@ -9,19 +9,19 @@
     "027-reduce-approval-popup-friction"
   ],
   "active_issue_id": "025-lightweight-project-adoption",
-  "phase": "execute",
+  "phase": "review",
   "mode": "recommend",
   "status": "active",
-  "next_command": "product:execute 025-lightweight-project-adoption",
+  "next_command": "product:review 025-lightweight-project-adoption",
   "attempts": {
-    "command": "product:execute 025-lightweight-project-adoption",
+    "command": "product:review 025-lightweight-project-adoption",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-06-19"
   },
   "blocker": null,
-  "last_action": "created goal Lightweight ModuFlow UX with issues 025-027 from user feedback about heavy project footprint, folder complexity, and approval friction",
-  "last_verification": "pending validation after issue creation",
+  "last_action": "completed implementation of lightweight mode detection and tests for project doctor",
+  "last_verification": "unit tests and validation suite passed successfully",
   "updated_at": "2026-06-19",
   "git_binding": {
     "mode": "git-files",
