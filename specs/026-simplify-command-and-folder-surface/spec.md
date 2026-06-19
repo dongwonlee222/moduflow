@@ -74,6 +74,16 @@ Every successful ModuFlow action should finish with a concise handoff:
 
 This handoff is part of the product contract. The user should not need to ask "다음은?" after each completed step.
 
+The handoff should use a consistent Korean-first structure:
+
+- `다음은 <next work>가 맞습니다.`
+- `이유:` with short bullets explaining why
+- `다음 액션:` with concrete ordered steps
+- `그 뒤 우선순위:` when there is a queue
+- `바로 가려면 제가 <first action>부터 진행하면 됩니다.`
+
+This is different from a raw workflow pointer. A bare `Next Command: product:*` is only enough for machine/debug surfaces, not for the default user-facing completion response.
+
 ### Folder Grouping
 
 The 18 source-repo folders should be explained by job:
@@ -118,7 +128,7 @@ User-facing output should translate them:
 - README or equivalent user docs show the compact command set before the advanced command list.
 - A folder reference groups the 18 top-level folders and marks which ones are source-repo internals versus target-project artifacts.
 - Status/doctor-facing copy no longer requires normal users to learn `lightweight`, `dogfooding`, and `heavy`.
-- Completed actions always include a plain-language next action and exact next command.
+- Completed actions always include a plain-language next action, reasons, concrete next steps, follow-on priority when useful, and the exact next command.
 - Raw mode labels remain available in JSON/debug output for automation and tests.
 - Validation passes after documentation and status surface updates.
 

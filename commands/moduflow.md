@@ -34,6 +34,33 @@ Request: $ARGUMENTS
 
 3. Always end by showing the **next recommended action and command** so the user can chain without asking "what next?" or memorizing names. This is required after every completed action, including spec, plan, execute, review, release, or issue lifecycle updates. Exact `product:*` input is a power-user escape hatch and should be honored directly.
 
+## Required Next Handoff Format
+
+After completing work, use this Korean-first handoff shape:
+
+```text
+다음은 <next work>가 맞습니다.
+
+이유:
+- <reason 1>
+- <reason 2>
+- <reason 3>
+
+다음 액션:
+1. <concrete action 1>
+2. <concrete action 2>
+3. <concrete action 3>
+
+그 뒤 우선순위:
+- <issue/id>: <why it is next>
+- <issue/id>: <why it follows>
+- <issue/id>: <why it follows>
+
+바로 가려면 제가 <first action>부터 진행하면 됩니다.
+```
+
+Keep it concise. Include only sections that are useful, but do not replace this with a bare `Next Command` line after completed work.
+
 ## Quick command list
 
 Show this only when the user asks `help`, `도움말`, `명령어`, or "what can I do":

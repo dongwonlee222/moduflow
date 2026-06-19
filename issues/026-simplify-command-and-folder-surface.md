@@ -50,7 +50,7 @@ The same applies to project layout modes. `lightweight`, `dogfooding`, and `heav
 - The 18-folder top-level surface has a documented grouping or reduction plan.
 - `product:status` or `/moduflow` can explain the current mode without dumping implementation detail.
 - Normal users do not have to understand the three project modes; the UI says what matters, such as "project setup is clean", "this is the ModuFlow tool repo", or "tool folders are present and cleanup is recommended".
-- Completed ModuFlow actions always tell the user what the next recommended action and command are.
+- Completed ModuFlow actions always tell the user what the next recommended action is, why it is next, the concrete next steps, and the follow-on priority when useful.
 - Folder/command docs make the dogfooding repo feel intentional rather than accidental clutter.
 
 ## Workflow Tasks
