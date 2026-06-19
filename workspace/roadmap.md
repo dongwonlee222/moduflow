@@ -2,62 +2,54 @@
 
 ## Now
 
-### `001-project-migration`
+No active core goal issues remain. Issues 019 through 024 are released locally.
 
-- Outcome: Existing projects can adopt ModuFlow safely.
-- Reason: This prevents data loss and lowers adoption friction.
+## Backlog / Existing Capabilities
+
+### `024-artifact-schema-and-doctor-gates`
+
+- Outcome: Doctor validates artifact relationships, state drift, Git binding, intake records, worker plans, and next-command consistency, not only file existence.
+- Reason: A richer loop model needs stronger consistency checks.
 - Confidence: high
-- Dependency: current project doctor and config path support
-- Next command: `product:spec 001-project-migration`
+- Dependency: loop state from 019, Git binding from 021, intake routing from 022, and worker routing from 023
+- Next command: `product:status`
 
-### `002-project-profile`
+### `023-worker-routing-and-isolation`
 
-- Outcome: Each project has consistent metadata, environment, and integration context.
-- Reason: Multi-project work needs stable project identity before portfolio views.
+- Outcome: Worker assignment and parallel execution are now deterministic, file/dependency aware, and sequential by default when unsafe.
+- Reason: Workers should help only when work can be safely split and merged.
 - Confidence: high
-- Dependency: config schema extension
-- Next command: `product:spec 002-project-profile`
+- Dependency: Git binding from 021 and intake routing from 022
+- Next command: `product:status`
 
-## Next
+### `022-intake-to-goal-graph`
 
-### `003-knowledge-evidence-layer`
-
-- Outcome: Decisions, benchmarks, reports, research, and data notes become first-class artifacts.
-- Reason: Roadmap and spec decisions need traceable evidence.
+- Outcome: Loose requests classify into active issue attachment, new issue candidates, goal graph candidates, or inbox routing records.
+- Reason: This is the main product value beyond Spec Kit and coding agents.
 - Confidence: high
-- Dependency: project profile and issue/spec links
-- Next command: `product:spec 003-knowledge-evidence-layer`
+- Dependency: simple UX from 020 and goal graph from 019
+- Next command: `product:status`
 
-### `004-portfolio-workspace`
+### `021-git-binding-and-execution-backend`
 
-- Outcome: Multiple projects can be viewed from one central workspace.
-- Reason: Project-local dashboards are useful but not enough for portfolio management.
-- Confidence: medium
-- Dependency: project profile and state files
-- Next command: `product:spec 004-portfolio-workspace`
+- Outcome: Issues and loop steps are tied to branches, commits, PRs, releases, and optional execution backends such as Copilot Cloud Agent, Codex, Claude Code, OpenHands, or manual work.
+- Reason: ModuFlow should orchestrate execution rather than compete with coding agents.
+- Confidence: high
+- Dependency: loop state model from 019
+- Next command: `product:status`
 
-## Later
+### `020-user-facing-simple-loop-ux`
 
-### `005-team-workflow`
+- Outcome: Simple aliases shipped for `상태`, `다음`, `이거 해줘`, and guarded `완료` while preserving direct `product:*` commands.
+- Reason: Internal loop complexity must not increase user complexity.
+- Confidence: high
+- Dependency: loop state model from 019
+- Next command: `product:status`
 
-- Outcome: Teams can track ownership, review, approval, blockers, and handoff.
-- Reason: Multi-person use needs explicit governance without leaving Git.
-- Confidence: medium
-- Dependency: issue/spec metadata conventions
-- Next command: `product:spec 005-team-workflow`
+### `019-loop-kernel-and-state-model`
 
-### `006-validation-and-distribution`
-
-- Outcome: Installation, validation, migration, and release flows become repeatable.
-- Reason: A plugin used by multiple people needs safe upgrade and doctor tools.
-- Confidence: medium
-- Dependency: finalized artifact schemas
-- Next command: `product:spec 006-validation-and-distribution`
-
-### `007-worker-orchestration`
-
-- Outcome: Worker assignment and parallel execution decisions become explicit artifacts.
-- Reason: Multi-agent execution needs a repeatable safety check before dispatch.
-- Confidence: medium
-- Dependency: team workflow and validation/distribution gates
-- Next command: `product:spec 007-worker-orchestration`
+- Outcome: Durable goal-loop state model shipped for Goal 1:N Issue, active cursor, attempts guard, and drift-aware validation.
+- Reason: This is the core foundation for making ModuFlow a PM loop orchestrator instead of a collection of workflow commands.
+- Confidence: high
+- Dependency: current artifact tracking and doctor gates
+- Next command: `product:status`

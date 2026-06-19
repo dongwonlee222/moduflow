@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -42,6 +44,103 @@ OPTIONAL_JSON_FILES = [
     ".moduflow/environments.json",
     ".moduflow/integrations.json",
 ]
+
+
+def load_project_loop():
+    path = Path(__file__).resolve().parent / "project_loop.py"
+    spec = importlib.util.spec_from_file_location("project_loop", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+LINK_RE = re.compile(r"`(?P<path>[^`]+)`")
+
+
+def read_text_if_exists(path):
+    if not path.exists():
+        return ""
+    return path.read_text(encoding="utf-8")
+
+
+def artifact_paths(root, errors):
+    paths = read_config_paths(root, errors)
+    return {
+        "issues": paths.get("issues", "issues"),
+        "specs": paths.get("specs", "specs"),
+        "workspace": paths.get("workspace", "workspace"),
+    }
+
+
+def active_loop_state(root, project_loop):
+    path = root / "workspace" / "loop-state.json"
+    if not path.exists():
+        return None
+    return project_loop.load_loop_state(root)
+
+
+def linked_artifacts(issue_text):
+    linked = []
+    for match in LINK_RE.finditer(issue_text):
+        value = match.group("path").strip()
+        if value.startswith("specs/") or value.startswith("workspace/"):
+            linked.append(value)
+    return linked
+
+
+def validate_active_issue_links(root, issue_id, errors):
+    issue_file = root / "issues" / f"{issue_id}.md"
+    if not issue_file.exists():
+        return
+    issue_text = issue_file.read_text(encoding="utf-8")
+    for relative in linked_artifacts(issue_text):
+        if not (root / relative).exists():
+            errors.append(f"issues/{issue_id}.md: linked artifact missing: {relative}")
+
+
+def validate_active_state_views(root, loop_state, errors):
+    if not loop_state:
+        return
+    active_issue_id = loop_state.get("active_issue_id")
+    next_command = loop_state.get("next_command")
+    if not active_issue_id:
+        return
+
+    dashboard = root / "workspace" / "dashboard.md"
+    dashboard_text = read_text_if_exists(dashboard)
+    if dashboard.exists() and active_issue_id not in dashboard_text:
+        errors.append(f"workspace/dashboard.md: missing active_issue_id {active_issue_id}")
+    if dashboard.exists() and next_command and next_command not in dashboard_text:
+        errors.append(f"workspace/dashboard.md: missing next_command {next_command}")
+
+    roadmap = root / "workspace" / "roadmap.md"
+    roadmap_text = read_text_if_exists(roadmap)
+    if roadmap.exists() and active_issue_id not in roadmap_text:
+        errors.append(f"workspace/roadmap.md: missing active_issue_id {active_issue_id}")
+
+
+def validate_next_command_matches_phase(root, loop_state, project_loop, errors):
+    if not loop_state:
+        return
+    active_issue_id = loop_state.get("active_issue_id")
+    if not active_issue_id:
+        return
+    phase = project_loop.infer_issue_phase(root, active_issue_id)
+    expected = project_loop.recommend_next_command(active_issue_id, phase)
+    actual = loop_state.get("next_command")
+    if actual != expected:
+        errors.append(f"workspace/loop-state.json: next_command {actual} should be {expected}")
+
+
+def validate_schema_gates(root, project_loop, errors):
+    loop_state = active_loop_state(root, project_loop)
+    if not loop_state:
+        return
+    active_issue_id = loop_state.get("active_issue_id")
+    if active_issue_id:
+        validate_active_issue_links(root, active_issue_id, errors)
+    validate_active_state_views(root, loop_state, errors)
+    validate_next_command_matches_phase(root, loop_state, project_loop, errors)
 
 
 def read_json(path, errors):
@@ -113,6 +212,10 @@ def validate_project(path):
             errors.append(".moduflow/state.json: missing phase")
         if "next_command" not in state:
             errors.append(".moduflow/state.json: missing next_command")
+
+    project_loop = load_project_loop()
+    errors.extend(project_loop.validate_loop_state(root))
+    validate_schema_gates(root, project_loop, errors)
 
     return {
         "schema": "moduflow.project-validation.v1",

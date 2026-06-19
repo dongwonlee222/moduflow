@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
   "phase": "initialized",
+  "active_goal": null,
   "active_issue": null,
   "last_command": "product:start",
   "next_command": "product:status",
   "blockers": [],
   "updated_at": "{{updated_at}}"
 }
-

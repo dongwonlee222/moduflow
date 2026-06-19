@@ -31,7 +31,16 @@ Run it with no arguments to see status, the next recommended action, and a quick
 Pass natural language to route, for example `/moduflow 시작`, `/moduflow 루프`, `/moduflow 상태`, or `/moduflow 003 완료`.
 The `product:*` commands below remain available for direct access.
 
-In Codex, call these through `@ModuFlow` without the leading slash, for example `@ModuFlow product:start`.
+In Codex, call these through `@ModuFlow` without the leading slash. The default simple surface is:
+
+```text
+@ModuFlow 상태
+@ModuFlow 다음
+@ModuFlow 이거 해줘: 결제 우선순위 정리
+@ModuFlow 완료
+```
+
+Direct commands remain available for precision, for example `@ModuFlow product:start` or `@ModuFlow product:spec 020-user-facing-simple-loop-ux`.
 Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow issue`, or `@ModuFlow 상태`.
 
 - `/moduflow`: entry point — status, next action, and routing for everything below
@@ -124,6 +133,13 @@ For worker orchestration:
 
 ```bash
 python3 scripts/worker_orchestrator.py 007-worker-orchestration --write
+```
+
+Worker tasks can declare file/dependency metadata directly in `tasks.md`:
+
+```text
+- [ ] Implementation: update planner [files: scripts/worker_orchestrator.py]
+- [ ] QA: verify routing [files: tests/test_worker_orchestration.py] [depends: T01]
 ```
 
 See `INSTALL.md` for Claude/Codex install notes.

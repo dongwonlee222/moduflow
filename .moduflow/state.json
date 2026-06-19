@@ -1,9 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "codex-version-sync-fixed",
-  "active_issue": "010-codex-version-sync-fix",
-  "last_command": "product:issue 010-codex-version-sync-fix",
+  "phase": "complete",
+  "active_goal": "goal-loop-orchestrator",
+  "active_issue": "024-artifact-schema-and-doctor-gates",
+  "last_command": "product:release 024-artifact-schema-and-doctor-gates",
   "next_command": "product:status",
   "blockers": [],
-  "updated_at": "2026-06-12"
+  "updated_at": "2026-06-19"
 }

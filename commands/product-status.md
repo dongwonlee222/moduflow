@@ -13,7 +13,7 @@ Make progress visible.
    - If local is behind, report "원격이 N커밋 앞섬 — pull 필요" in the dashboard.
    - If the working tree is clean, recommend (or run after confirming) `git pull` before rendering, so status reflects the latest.
    - If the working tree is dirty or `@{u}` is unset, do NOT auto-pull — surface the state and let the user decide.
-2. Read `.moduflow/state.json`, issues, specs, tasks, PR notes, releases, and roadmap.
+2. Read `.moduflow/state.json`, `workspace/loop-state.json` when present, issues, specs, tasks, PR notes, releases, and roadmap.
 3. Render a Korean-first terminal-style dashboard before detailed prose.
 4. Report current phase, active issue, active/recent sessions, blockers, queue, risks, changed files, and next command.
 5. Do not mutate local artifact files during normal status display (the `git fetch` in step 1 is read-only; an approved `git pull` is the only allowed sync).
@@ -21,13 +21,24 @@ Make progress visible.
 
 ## Output
 
-- Korean status dashboard
+Default `상태` output is concise and Korean-first. When `workspace/loop-state.json` exists, use it for the active goal, active issue cursor, phase, blocker, and next command. Do not expose raw JSON, full artifact lists, attempts counters, or long queues unless the user asks for diagnostics or details.
+
+```text
+현재 목표: <goal>
+현재 이슈: <issue> (<phase>)
+다음: <plain-language next action>
+명령: <product:* command>
+막힘: 없음 | <blocker>
+```
+
+Detailed status mode may include:
+
 - Current phase
-- Active issue
 - Active/recent sessions when available
 - Queue
 - Blockers and risks
 - Source artifact links when useful
+- Loop status and attempts
 - Next recommended command
 
 ## Dashboard Format

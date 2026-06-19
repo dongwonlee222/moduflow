@@ -2,24 +2,37 @@
 
 ## Current Phase
 
-Daily work captured after ModuFlow 0.2.2 and GBrain pilot setup.
+Core goal loop complete: issues 019 through 024 are released locally.
+
+## Active Goal
+
+- `goal-loop-orchestrator`: make ModuFlow a plugin-installed PM loop orchestrator that connects goal, issues, specs, tasks, workers, and Git progress while keeping the user surface simple.
 
 ## Active Issue
 
-- `008-daily-work-log-and-gbrain-pilot`: record 0.2.1/0.2.2 follow-ups and GBrain pilot setup.
+- `024-artifact-schema-and-doctor-gates`: completed artifact schema gates and doctor drift checks.
+
+## Recently Completed
+
+- `024-artifact-schema-and-doctor-gates`: active-loop linked artifact, dashboard, roadmap, and `next_command` validation.
+- `023-worker-routing-and-isolation`: deterministic worker routing, file-aware parallel safety, merge order, and dead-worker detection.
 
 ## Queue
 
-- `002-project-profile`: standardize project metadata and environment information.
-- `003-knowledge-evidence-layer`: manage benchmarks, reports, decisions, research, and data notes.
-- `004-portfolio-workspace`: add central multi-project status and roadmap views.
-- `005-team-workflow`: add review gates, roles, approvals, and handoff.
-- `006-validation-and-distribution`: strengthen validation, migration, install, and release tooling.
-- `007-worker-orchestration`: add worker assignment and parallel execution planning.
+- None in the current core goal.
 
 ## Blockers
 
 - None.
+
+## Verification
+
+- ModuFlow plugin version: `0.2.11+codex.20260619033058`.
+- `python3 -m unittest tests.test_validation_distribution -v` passed (13 tests).
+- `python3 -m unittest discover -s tests -v` passed (65 tests).
+- `python3 scripts/validate_project_artifacts.py .` passed.
+- `python3 scripts/validate_moduflow.py .` passed.
+- `python3 scripts/release_check.py .` passed.
 
 ## Next Command
 

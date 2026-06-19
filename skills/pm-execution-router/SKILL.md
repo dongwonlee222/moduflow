@@ -7,6 +7,18 @@ description: Use when a user gives product, roadmap, issue, spec, execution, PR,
 
 Route requests through the smallest useful ModuFlow step.
 
+## Default Simple Aliases
+
+Prefer these aliases for broad user intent before asking the user to choose among internal workflow commands:
+
+- `상태`, `status`, `현재 상황` → concise `/product:status`.
+- `다음`, `next`, `루프` → read-only `/product:loop` recommendation.
+- `다음 실행`, `한 단계 진행` → one safe `/product:loop --step` mutation.
+- `이거 해줘: <request>` → run intake routing semantics: classify, check overlap, attach to active loop, create/recommend issue candidates, or use inbox with at most one clarification.
+- `완료`, `done` → guarded completion; do not close a step or issue unless artifacts and verification gates are present.
+
+Exact `product:*` input (direct product command) is a direct command and should bypass broad alias routing.
+
 ## Routing
 
 - Raw idea, feedback, bug, or loose note: `/product:inbox` (`inbox`, `인박스`)
@@ -48,7 +60,8 @@ Route common Korean phrases directly:
 - "검사해줘", "doctor 돌려줘", "설정 괜찮아?": `/product:doctor`
 - "로드맵 보여줘", "우선순위": `/product:roadmap`
 - "목표 만들어줘", "현재 목표", "이 목표로 진행": `/product:goal`
-- "다음 단계 알아서 골라줘", "루프 돌려줘", "한 단계 진행": `/product:loop`
+- "다음", "다음 단계 알아서 골라줘", "루프 돌려줘": read-only `/product:loop`
+- "다음 실행", "한 단계 진행": one safe `/product:loop --step`
 - "새 이슈 만들어줘", "이거 이슈로 등록": `/product:issue` after existing-issue check
 - "사업계획서", "사업구상", "사업 아이디어", "비즈니스 모델", "린 캔버스", "Lean Canvas": `moduflow:business-plan`; use `/product:opportunity` first if the idea is still raw
 - "페르소나", "사용자 시나리오", "고객여정지도": `moduflow:business-plan` persona and journey artifacts
@@ -58,7 +71,7 @@ Route common Korean phrases directly:
 - "<issue id> 진행 내용 추가", "<issue id> 업데이트": issue lifecycle update
 - "<issue id> 멈춰줘", "<issue id> pause": issue lifecycle pause
 - "<issue id> 다시 시작", "<issue id> resume": issue lifecycle resume
-- "<issue id> 완료 처리": issue lifecycle complete
+- "<issue id> 완료 처리": guarded issue lifecycle complete after required artifacts and verification are present
 
 ## Mutation Rules
 
@@ -90,4 +103,4 @@ For issue lifecycle mutations, update:
 - `workspace/issues.md` when present
 - `workspace/roadmap.md` when priority/state changed
 
-Before creating a new issue, scan existing issues for overlap. If a likely match exists, recommend updating or linking the existing issue instead of creating a duplicate.
+Before creating a new issue, scan existing issues for overlap. If a likely match exists, recommend updating or linking the existing issue instead of creating a duplicate. Large multi-domain requests should become a goal plus issue candidates before full issue files are written.

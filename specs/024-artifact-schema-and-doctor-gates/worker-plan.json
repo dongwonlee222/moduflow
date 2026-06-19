@@ -1,0 +1,162 @@
+{
+  "schema": "moduflow.worker-plan.v1",
+  "issue_id": "024-artifact-schema-and-doctor-gates",
+  "project_root": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
+  "workers": {
+    "configured": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "files": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "dead_workers": []
+  },
+  "parallel": {
+    "eligible": false,
+    "mode": "sequential",
+    "risks": [
+      "Task 1 touches shared state: Add schema gate RED tests",
+      "Task 4 touches shared state: Surface schema gates in project doctor",
+      "Task 5 touches shared state: Run full verification and release 024",
+      "scripts/validate_project_artifacts.py is expected by T02 and T03"
+    ],
+    "merge_order": [
+      "T01",
+      "T02",
+      "T03",
+      "T04",
+      "T05"
+    ],
+    "fallback": "sequential",
+    "criteria": [
+      "separate worker domains",
+      "non-overlapping expected files",
+      "no shared-state risk",
+      "dependency-aware merge order"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "text": "Add schema gate RED tests",
+      "status": "done",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [
+        "tests/test_validation_distribution.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/024-artifact-schema-and-doctor-gates-t01",
+        "merge_after": []
+      }
+    },
+    {
+      "id": "T02",
+      "text": "Implement active issue linked artifact validation",
+      "status": "done",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [
+        "scripts/validate_project_artifacts.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T01"
+      ],
+      "isolation": {
+        "worktree": "codex/024-artifact-schema-and-doctor-gates-t02",
+        "merge_after": [
+          "T01"
+        ]
+      }
+    },
+    {
+      "id": "T03",
+      "text": "Implement dashboard/roadmap/next_command drift checks",
+      "status": "done",
+      "worker": "roadmap-planner",
+      "worker_file": "workers/roadmap-planner.md",
+      "parallel_group": "group-3",
+      "shared_state_risk": false,
+      "expected_files": [
+        "scripts/validate_project_artifacts.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T02"
+      ],
+      "isolation": {
+        "worktree": "codex/024-artifact-schema-and-doctor-gates-t03",
+        "merge_after": [
+          "T02"
+        ]
+      }
+    },
+    {
+      "id": "T04",
+      "text": "Surface schema gates in project doctor",
+      "status": "done",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [
+        "scripts/project_doctor.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T03"
+      ],
+      "isolation": {
+        "worktree": "codex/024-artifact-schema-and-doctor-gates-t04",
+        "merge_after": [
+          "T03"
+        ]
+      }
+    },
+    {
+      "id": "T05",
+      "text": "Run full verification and release 024",
+      "status": "done",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [
+        "specs/024-artifact-schema-and-doctor-gates/status.md",
+        "specs/024-artifact-schema-and-doctor-gates/release.md"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T04"
+      ],
+      "isolation": {
+        "worktree": "codex/024-artifact-schema-and-doctor-gates-t05",
+        "merge_after": [
+          "T04"
+        ]
+      }
+    }
+  ],
+  "next_command": "product:execute 024-artifact-schema-and-doctor-gates"
+}

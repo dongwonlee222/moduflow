@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -46,6 +47,22 @@ CANDIDATE_PATHS = {
     "decisions": ["decisions", "docs/decisions", "adr", "docs/adr"],
     "data_notes": ["data-notes", "data_notes", "docs/data-notes", "analytics"],
 }
+
+
+def load_project_validator():
+    path = Path(__file__).resolve().parent / "validate_project_artifacts.py"
+    spec = importlib.util.spec_from_file_location("validate_project_artifacts", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_project_loop():
+    path = Path(__file__).resolve().parent / "project_loop.py"
+    spec = importlib.util.spec_from_file_location("project_loop", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def run(args, cwd):
@@ -98,6 +115,13 @@ def git_root(path):
 
 def git_remote(path):
     result = run(["git", "remote", "get-url", "origin"], path)
+    if result and result.returncode == 0:
+        return result.stdout.strip()
+    return None
+
+
+def current_branch(path):
+    result = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], path)
     if result and result.returncode == 0:
         return result.stdout.strip()
     return None
@@ -181,6 +205,14 @@ def inspect_project(path):
     missing_workflow = missing_workflow_paths(project_root)
     candidates = discover_candidate_paths(project_root)
     migration_mode = recommended_migration_mode(missing, candidates)
+    project_loop = load_project_loop()
+    project_validator = load_project_validator()
+    schema_gates = project_validator.validate_project(project_root)
+    loop_errors = project_loop.validate_loop_state(project_root)
+    loop_state_exists = (project_root / "workspace" / "loop-state.json").exists()
+    loop_state = project_loop.load_loop_state(project_root) if loop_state_exists else None
+    git_binding = loop_state.get("git_binding") if loop_state else None
+    branch = current_branch(project_root) if detected_git_root else None
 
     result = {
         "requested_path": str(requested),
@@ -189,6 +221,11 @@ def inspect_project(path):
             "is_repo": detected_git_root is not None,
             "root": str(detected_git_root) if detected_git_root else None,
             "origin": remote,
+            "branch": branch,
+        },
+        "git_binding": {
+            "declared": git_binding,
+            "errors": loop_errors,
         },
         "github_cli": gh_status,
         "moduflow": {
@@ -210,6 +247,15 @@ def inspect_project(path):
         "workflow": {
             "initialized": not missing_workflow,
             "missing": missing_workflow,
+        },
+        "loop": {
+            "initialized": loop_state_exists,
+            "errors": loop_errors,
+        },
+        "schema_gates": {
+            "valid": schema_gates.get("valid", False),
+            "errors": schema_gates.get("errors", []),
+            "warnings": schema_gates.get("warnings", []),
         },
         "recommendation": [],
     }
@@ -241,6 +287,17 @@ def inspect_project(path):
 
     if missing_workflow:
         result["recommendation"].append("Run product:handoff --write to create team workflow artifacts.")
+
+    if loop_state and branch and branch not in {"main", "master"}:
+        active_issue_id = loop_state.get("active_issue_id")
+        if active_issue_id and not project_loop.branch_matches_issue(branch, active_issue_id):
+            result["recommendation"].append("Current branch does not match active issue; switch branches or update workspace/loop-state.json git_binding.")
+
+    if loop_errors:
+        result["recommendation"].append("Run product:loop or product:doctor after fixing loop-state references.")
+
+    if schema_gates.get("errors"):
+        result["recommendation"].append("schema gate failed; fix linked artifacts, state drift, or next_command before release.")
 
     return result
 
