@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Post-merge UX cleanup: Issue 027 is complete; Issue 028 is ready for spec.
+Post-merge UX cleanup: Issue 028 is in execute phase.
 
 ## Active Goal
 
@@ -10,7 +10,7 @@ Post-merge UX cleanup: Issue 027 is complete; Issue 028 is ready for spec.
 
 ## Active Issue
 
-- `027-reduce-approval-popup-friction`: complete. Next goal queue item is `028-real-subagent-execution-backend`.
+- `028-real-subagent-execution-backend`: define host-subagent execution backend adapter for Antigravity integration.
 
 ## Recently Completed
 
@@ -23,7 +23,6 @@ Post-merge UX cleanup: Issue 027 is complete; Issue 028 is ready for spec.
 
 ## Queue
 
-- `028-real-subagent-execution-backend`
 - `029-antigravity-artifact-sync-connector`
 
 ## Blockers
@@ -41,4 +40,4 @@ Post-merge UX cleanup: Issue 027 is complete; Issue 028 is ready for spec.
 
 ## Next Command
 
-`product:status`
+`product:execute 028-real-subagent-execution-backend`

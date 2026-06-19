@@ -12,9 +12,9 @@ Upgrade ModuFlow worker orchestration from static worker-plan simulation into an
 
 ## Lifecycle
 
-- Phase: backlog
+- Phase: execute
 - Created: 2026-06-19
-- Started:
+- Started: 2026-06-19
 - Target End:
 - Completed:
 - Last Updated: 2026-06-19
@@ -53,8 +53,8 @@ ModuFlow's current `worker_orchestrator.py` creates worker plans and simulates c
 
 Every artifact-producing step is a tracked task here - never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
 
-- [ ] spec -> `specs/028-real-subagent-execution-backend/spec.md`
-- [ ] plan -> `specs/028-real-subagent-execution-backend/plan.md`
+- [x] spec -> `specs/028-real-subagent-execution-backend/spec.md`
+- [x] plan -> `specs/028-real-subagent-execution-backend/plan.md`
 - [ ] execute -> PR / commits
 - [ ] review -> review notes
 - [ ] verify Antigravity subagent API surface before implementation
@@ -84,4 +84,4 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 ## Next Command
 
-`/product:spec 028-real-subagent-execution-backend`
+`/product:execute 028-real-subagent-execution-backend`

@@ -39,8 +39,8 @@ Active goal: `lightweight-moduflow-ux`
 - Reason: Static worker plans are useful, but host environments such as Antigravity may support actual parallel coding agents.
 - Confidence: medium
 - Dependency: worker routing/isolation and host API verification
-- Next command: `product:spec 028-real-subagent-execution-backend`
-- Status: active; spec next.
+- Next command: `product:execute 028-real-subagent-execution-backend`
+- Status: execute.
 
 ### `029-antigravity-artifact-sync-connector`
 

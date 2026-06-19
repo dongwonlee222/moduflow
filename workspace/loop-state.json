@@ -10,20 +10,20 @@
     "028-real-subagent-execution-backend",
     "029-antigravity-artifact-sync-connector"
   ],
-  "active_issue_id": "027-reduce-approval-popup-friction",
-  "phase": "status",
+  "active_issue_id": "028-real-subagent-execution-backend",
+  "phase": "execute",
   "mode": "recommend",
   "status": "active",
-  "next_command": "product:status",
+  "next_command": "product:execute 028-real-subagent-execution-backend",
   "attempts": {
-    "command": "product:status",
+    "command": "product:execute 028-real-subagent-execution-backend",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-06-19"
   },
   "blocker": null,
-  "last_action": "completed review for 027; next goal queue item is 028",
-  "last_verification": "027 review passed; project validation and release check passed",
+  "last_action": "completed spec and plan for real subagent execution backend (Issue 028)",
+  "last_verification": "spec and plan markdown files created in specs/028/",
   "updated_at": "2026-06-19",
   "git_binding": {
     "mode": "git-files",
