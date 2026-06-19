@@ -12,7 +12,7 @@ Reduce repeated approval prompts by batching safe Git/GitHub operations, documen
 
 ## Lifecycle
 
-- Phase: backlog
+- Phase: plan
 - Created: 2026-06-19
 - Started:
 - Target End:
@@ -60,8 +60,8 @@ Antigravity feedback added a sharper version of this problem: ModuFlow currently
 
 Every artifact-producing step is a tracked task here - never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
 
-- [ ] spec -> `specs/027-reduce-approval-popup-friction/spec.md`
-- [ ] plan -> `specs/027-reduce-approval-popup-friction/plan.md`
+- [x] spec -> `specs/027-reduce-approval-popup-friction/spec.md`
+- [x] plan -> `specs/027-reduce-approval-popup-friction/plan.md`
 - [ ] execute -> PR / commits
 - [ ] review -> review notes
 - [ ] map approval-triggering commands
@@ -88,9 +88,10 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 - Spec: `specs/027-reduce-approval-popup-friction/spec.md`
 - Status: `specs/027-reduce-approval-popup-friction/status.md`
+- Tasks: `specs/027-reduce-approval-popup-friction/tasks.md`
 - Sessions: `sessions/027-reduce-approval-popup-friction/`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:spec 027-reduce-approval-popup-friction`
+`/product:execute 027-reduce-approval-popup-friction`

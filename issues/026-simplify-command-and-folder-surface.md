@@ -12,11 +12,11 @@ Make ModuFlow easier to understand by reducing the visible command/folder surfac
 
 ## Lifecycle
 
-- Phase: review
+- Phase: complete
 - Created: 2026-06-19
 - Started:
 - Target End:
-- Completed:
+- Completed: 2026-06-19
 - Last Updated: 2026-06-19
 
 ## Opportunity
@@ -61,7 +61,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - [x] plan -> `specs/026-simplify-command-and-folder-surface/plan.md`
 - [x] benchmark -> `specs/026-simplify-command-and-folder-surface/benchmark.md`
 - [x] execute -> PR / commits
-- [ ] review -> review notes
+- [x] review -> `specs/026-simplify-command-and-folder-surface/review.md`
 - [x] revise README command/folder sections
 - [x] propose folder grouping/reduction from the current 18 top-level folders
 - [x] exclude source planning and verification artifacts from Codex plugin cache bundles
@@ -90,9 +90,10 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 - Spec: `specs/026-simplify-command-and-folder-surface/spec.md`
 - Status: `specs/026-simplify-command-and-folder-surface/status.md`
+- Review: `specs/026-simplify-command-and-folder-surface/review.md`
 - Sessions: `sessions/026-simplify-command-and-folder-surface/`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:review 026-simplify-command-and-folder-surface`
+`/product:spec 027-reduce-approval-popup-friction`

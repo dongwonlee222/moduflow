@@ -10,20 +10,20 @@
     "028-real-subagent-execution-backend",
     "029-antigravity-artifact-sync-connector"
   ],
-  "active_issue_id": "026-simplify-command-and-folder-surface",
-  "phase": "review",
+  "active_issue_id": "027-reduce-approval-popup-friction",
+  "phase": "plan",
   "mode": "recommend",
   "status": "active",
-  "next_command": "product:review 026-simplify-command-and-folder-surface",
+  "next_command": "product:execute 027-reduce-approval-popup-friction",
   "attempts": {
-    "command": "product:review 026-simplify-command-and-folder-surface",
+    "command": "product:execute 027-reduce-approval-popup-friction",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-06-19"
   },
   "blocker": null,
-  "last_action": "captured Antigravity feedback as approval, subagent backend, and artifact sync backlog items",
-  "last_verification": "issue routing updated; implementation verification for 026 already passed",
+  "last_action": "completed review for 026 and created spec/plan artifacts for 027",
+  "last_verification": "027 artifacts created to keep active loop validation consistent",
   "updated_at": "2026-06-19",
   "git_binding": {
     "mode": "git-files",

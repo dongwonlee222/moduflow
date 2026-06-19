@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "review",
+  "phase": "plan",
   "active_goal": "lightweight-moduflow-ux",
-  "active_issue": "026-simplify-command-and-folder-surface",
-  "last_command": "product:execute 026-simplify-command-and-folder-surface",
-  "next_command": "product:review 026-simplify-command-and-folder-surface",
+  "active_issue": "027-reduce-approval-popup-friction",
+  "last_command": "product:review 026-simplify-command-and-folder-surface",
+  "next_command": "product:execute 027-reduce-approval-popup-friction",
   "blockers": [],
   "updated_at": "2026-06-19"
 }

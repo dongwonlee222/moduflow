@@ -6,7 +6,7 @@
 
 ## Phase
 
-review
+complete
 
 ## Summary
 
@@ -25,6 +25,7 @@ Created the spec and execution plan for simplifying ModuFlow's first user experi
 - Updated README and `/product:start` guidance with the default target-project footprint and opt-in integration surfaces.
 - Added doctor mode guidance so raw `lightweight`, `dogfooding`, and `heavy` values stay in JSON while user-facing output shows plain Korean guidance.
 - Clarified that every completed ModuFlow action must include a structured Korean-first handoff based on the active goal/loop state: next work, reason, concrete next actions, follow-on priority, and exact command when useful.
+- Created `specs/026-simplify-command-and-folder-surface/review.md` and approved the issue for completion.
 
 ## Verification
 
@@ -41,4 +42,4 @@ Created the spec and execution plan for simplifying ModuFlow's first user experi
 
 ## Next Command
 
-`/product:review 026-simplify-command-and-folder-surface`
+`/product:spec 027-reduce-approval-popup-friction`

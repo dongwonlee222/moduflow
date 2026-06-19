@@ -21,8 +21,8 @@ Active goal: `lightweight-moduflow-ux`
 - Reason: Many folders and commands are maintainable internally but uncomfortable as the first user experience.
 - Confidence: high
 - Dependency: simple loop UX and `/moduflow` hub command
-- Next command: `product:review 026-simplify-command-and-folder-surface`
-- Status: implementation complete; review next.
+- Next command: `product:status`
+- Status: complete.
 
 ### `027-reduce-approval-popup-friction`
 
@@ -30,7 +30,8 @@ Active goal: `lightweight-moduflow-ux`
 - Reason: Repeated prompts during Git/GitHub cleanup and validation checks make otherwise normal workflows feel noisy.
 - Confidence: medium
 - Dependency: Git binding and doctor/preflight checks
-- Next command: `product:spec 027-reduce-approval-popup-friction`
+- Next command: `product:execute 027-reduce-approval-popup-friction`
+- Status: planned; execute next.
 
 ### `028-real-subagent-execution-backend`
 

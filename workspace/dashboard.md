@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Post-merge UX cleanup: Issue 026 implementation is ready for review; new Antigravity feedback expanded the approval, real-subagent, and artifact-sync backlog.
+Post-merge UX cleanup: Issue 026 is complete; Issue 027 is planned and ready for execution.
 
 ## Active Goal
 
@@ -10,10 +10,11 @@ Post-merge UX cleanup: Issue 026 implementation is ready for review; new Antigra
 
 ## Active Issue
 
-- `026-simplify-command-and-folder-surface`: ready for review after simplifying default project footprint, plugin cache packaging, and user-facing mode guidance.
+- `027-reduce-approval-popup-friction`: reduce approval fatigue by making prompts predictable and moving routine validation toward importable/tool-call paths.
 
 ## Recently Completed
 
+- `026-simplify-command-and-folder-surface`: completed lightweight project footprint, plugin cache packaging, user-facing mode guidance, and goal-loop completion handoff.
 - `025-lightweight-project-adoption`: project doctor can now detect dogfooding, heavy, and lightweight layouts; remaining start/migrate write behavior is tracked separately.
 - `0.2.11-goal-loop`: merged to `main` and pushed to GitHub.
 - `024-artifact-schema-and-doctor-gates`: active-loop linked artifact, dashboard, roadmap, and `next_command` validation.
@@ -21,7 +22,6 @@ Post-merge UX cleanup: Issue 026 implementation is ready for review; new Antigra
 
 ## Queue
 
-- `027-reduce-approval-popup-friction`
 - `028-real-subagent-execution-backend`
 - `029-antigravity-artifact-sync-connector`
 
@@ -40,4 +40,4 @@ Post-merge UX cleanup: Issue 026 implementation is ready for review; new Antigra
 
 ## Next Command
 
-`product:review 026-simplify-command-and-folder-surface`
+`product:execute 027-reduce-approval-popup-friction`
