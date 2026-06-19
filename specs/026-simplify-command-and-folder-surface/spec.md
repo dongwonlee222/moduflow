@@ -44,6 +44,10 @@ See `specs/026-simplify-command-and-folder-surface/benchmark.md` for the full be
 - Changing the Git-native artifact model.
 - Completing Issue 025 start/migrate write-behavior changes.
 
+## Packaging Boundary
+
+Benchmark and workflow evidence belongs in the ModuFlow source repository, not the runtime plugin cache. The Codex cache bundle should exclude development and PM-tracking artifacts such as `issues/`, `specs/`, `tests/`, and `sessions/`, while keeping runtime/plugin assets such as manifests, commands, skills, scripts, templates, adapters, workers, docs, and assets.
+
 ## Design
 
 ### Default Command Surface
@@ -84,6 +88,7 @@ User-facing output should translate them:
 ## Acceptance Criteria
 
 - Benchmark findings are captured in the 026 spec folder and used to guide implementation.
+- Codex plugin cache generation excludes source-repo planning and verification artifacts such as `issues/`, `specs/`, `tests/`, and `sessions/`.
 - README or equivalent user docs show the compact command set before the advanced command list.
 - A folder reference groups the 18 top-level folders and marks which ones are source-repo internals versus target-project artifacts.
 - Status/doctor-facing copy no longer requires normal users to learn `lightweight`, `dogfooding`, and `heavy`.

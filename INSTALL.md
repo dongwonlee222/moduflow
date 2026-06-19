@@ -48,6 +48,10 @@ The registration script installs the local package into the personal marketplace
 Codex local link, populates the Codex plugin cache, and enables `moduflow@personal` in
 `~/.codex/config.toml`.
 
+The Codex plugin cache is a runtime bundle, not the full planning repository. It intentionally
+excludes development and PM-tracking artifacts such as `issues/`, `specs/`, `tests/`, and
+`sessions/`. Keep benchmark notes, issue specs, and review evidence in the source repository.
+
 Then restart Codex or start a new Codex thread and use `@ModuFlow`.
 
 ### Slash Commands

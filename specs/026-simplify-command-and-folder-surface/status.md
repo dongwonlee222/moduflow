@@ -20,10 +20,11 @@ Created the spec and execution plan for simplifying ModuFlow's first user experi
 - Defined the compact command set and 18-folder grouping.
 - Defined user-facing copy for `lightweight`, `dogfooding`, and `heavy`.
 - Confirmed benchmark evidence from GitHub Actions, GitHub Apps, ESLint, Prettier, Husky, create-next-app, Terraform, VS Code extensions, and agent/plugin ecosystems.
+- Updated Codex cache installation so source-repo planning and verification artifacts (`issues/`, `specs/`, `tests/`, `sessions/`) are excluded from runtime plugin cache bundles.
 
 ## Verification
 
-- Pending after implementation.
+- `python3 -m unittest tests.test_codex_personal_install -v` passed.
 
 ## Blockers
 

@@ -45,6 +45,10 @@ The bootstrap installer:
 - populates `~/.codex/plugins/cache/personal/moduflow/<version>`
 - enables `[plugins."moduflow@personal"]` in `~/.codex/config.toml`
 
+The cache copy excludes source-repo planning and verification artifacts: `issues/`, `specs/`,
+`tests/`, and `sessions/`. Keep those files in Git as development context, not in the runtime
+plugin bundle.
+
 Start a new Codex thread after running it.
 
 ## Claude

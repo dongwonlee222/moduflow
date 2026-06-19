@@ -63,6 +63,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - [ ] review -> review notes
 - [ ] revise README command/folder sections
 - [ ] propose folder grouping/reduction from the current 18 top-level folders
+- [x] exclude source planning and verification artifacts from Codex plugin cache bundles
 - [ ] update status/moduflow command copy
 - [ ] replace raw mode labels in user-facing output with plain guidance while keeping raw labels in JSON/debug output
 - [ ] add tests or fixtures for concise status output

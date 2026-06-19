@@ -24,6 +24,9 @@ class CodexPersonalInstallTests(unittest.TestCase):
             encoding="utf-8",
         )
         (source / "skills").mkdir()
+        for development_dir in ("issues", "specs", "tests", "sessions"):
+            (source / development_dir).mkdir()
+            (source / development_dir / "development-artifact.md").write_text("dev only\n", encoding="utf-8")
         (source / "README.md").write_text("# ModuFlow\n", encoding="utf-8")
         return source
 
@@ -41,7 +44,11 @@ class CodexPersonalInstallTests(unittest.TestCase):
             self.assertEqual(marketplace["plugins"][0]["policy"]["installation"], "INSTALLED_BY_DEFAULT")
             self.assertTrue((home / "plugins" / "moduflow").is_symlink())
             self.assertTrue((home / ".codex" / "plugins" / "local" / "moduflow").is_symlink())
-            self.assertTrue((home / ".codex" / "plugins" / "cache" / "personal" / "moduflow" / "0.2.0+codex.test").is_dir())
+            cache = home / ".codex" / "plugins" / "cache" / "personal" / "moduflow" / "0.2.0+codex.test"
+            self.assertTrue(cache.is_dir())
+            self.assertTrue((cache / "skills").is_dir())
+            for development_dir in ("issues", "specs", "tests", "sessions"):
+                self.assertFalse((cache / development_dir).exists())
             config = (home / ".codex" / "config.toml").read_text(encoding="utf-8")
             self.assertIn('[plugins."moduflow@personal"]', config)
             self.assertIn("enabled = true", config)

@@ -9,6 +9,16 @@ from pathlib import Path
 
 PLUGIN_NAME = "moduflow"
 MARKETPLACE_NAME = "personal"
+PLUGIN_CACHE_EXCLUDES = (
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    "*.pyc",
+    "issues",
+    "specs",
+    "tests",
+    "sessions",
+)
 
 
 def read_json(path: Path) -> dict:
@@ -106,7 +116,7 @@ def copy_plugin_cache(source: Path, home: Path, version: str) -> Path:
     destination = home / ".codex" / "plugins" / "cache" / MARKETPLACE_NAME / PLUGIN_NAME / version
     if destination.exists():
         shutil.rmtree(destination)
-    ignore = shutil.ignore_patterns(".git", "__pycache__", ".pytest_cache", "*.pyc")
+    ignore = shutil.ignore_patterns(*PLUGIN_CACHE_EXCLUDES)
     shutil.copytree(source, destination, ignore=ignore)
     return destination
 
