@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Post-merge UX cleanup: Issue 026 is complete; Issue 027 is planned and ready for execution.
+Post-merge UX cleanup: Issue 027 is complete; Issue 028 is ready for spec.
 
 ## Active Goal
 
@@ -10,10 +10,11 @@ Post-merge UX cleanup: Issue 026 is complete; Issue 027 is planned and ready for
 
 ## Active Issue
 
-- `027-reduce-approval-popup-friction`: reduce approval fatigue by making prompts predictable and moving routine validation toward importable/tool-call paths.
+- `027-reduce-approval-popup-friction`: complete. Next goal queue item is `028-real-subagent-execution-backend`.
 
 ## Recently Completed
 
+- `027-reduce-approval-popup-friction`: completed approval surface mapping, importable validation paths, local-only doctor mode, host adapter guidance, and resume banner contract.
 - `026-simplify-command-and-folder-surface`: completed lightweight project footprint, plugin cache packaging, user-facing mode guidance, and goal-loop completion handoff.
 - `025-lightweight-project-adoption`: project doctor can now detect dogfooding, heavy, and lightweight layouts; remaining start/migrate write behavior is tracked separately.
 - `0.2.11-goal-loop`: merged to `main` and pushed to GitHub.
@@ -32,7 +33,7 @@ Post-merge UX cleanup: Issue 026 is complete; Issue 027 is planned and ready for
 ## Verification
 
 - ModuFlow plugin version: `0.2.11+codex.20260619033058`.
-- `python3 -m unittest tests.test_validation_distribution -v` passed (16 tests).
+- `python3 -m unittest tests.test_validation_distribution -v` passed (23 tests).
 - `python3 -m unittest discover -s tests -v` passed (68 tests).
 - `python3 scripts/validate_project_artifacts.py .` passed.
 - `python3 scripts/validate_moduflow.py .` passed.
@@ -40,4 +41,4 @@ Post-merge UX cleanup: Issue 026 is complete; Issue 027 is planned and ready for
 
 ## Next Command
 
-`product:execute 027-reduce-approval-popup-friction`
+`product:status`

@@ -9,9 +9,10 @@
   - [x] Add `scripts/project_doctor.py --no-preflight` while preserving default full preflight [files: scripts/project_doctor.py]
 - [x] Add host/tool adapter guidance for shell-free validation [files: docs/host-adapter-guidance.md, specs/027-reduce-approval-popup-friction/status.md]
 - [x] Add resume banner contract for interrupted/resumed work [files: commands/moduflow.md, commands/product-loop.md, commands/product-status.md, docs/host-adapter-guidance.md]
+- [x] Complete review notes [files: specs/027-reduce-approval-popup-friction/review.md]
 - [x] Add focused tests for importable validation paths [files: tests/*]
 - [x] Run validation and release checks [files: specs/027-reduce-approval-popup-friction/status.md]
 
 ## Next Command
 
-`/product:execute 027-reduce-approval-popup-friction`
+`/product:spec 028-real-subagent-execution-backend`

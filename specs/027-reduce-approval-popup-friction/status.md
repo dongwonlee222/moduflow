@@ -6,7 +6,7 @@
 
 ## Phase
 
-plan
+complete
 
 ## Summary
 
@@ -25,6 +25,7 @@ Created the spec and plan for reducing approval popup fatigue. The work focuses 
 - Added `scripts/project_doctor.py --no-preflight` for approval-sensitive local validation.
 - Added `docs/host-adapter-guidance.md` to define shell-free validation, local-only checks, full preflight boundaries, and Antigravity adapter expectations.
 - Added a resume banner contract to `moduflow`, `product:loop`, and `product:status` so resumed work shows what was already completed, what is happening now, and what comes next.
+- Added `specs/027-reduce-approval-popup-friction/review.md` and closed the issue as complete.
 
 ## Verification
 
@@ -43,11 +44,15 @@ Created the spec and plan for reducing approval popup fatigue. The work focuses 
 - `python3 scripts/validate_moduflow.py .` passed after resume banner update.
 - `python3 -m unittest tests.test_validation_distribution -v` passed after resume banner update.
 - `python3 scripts/release_check.py .` passed after resume banner update.
+- `python3 scripts/validate_project_artifacts.py .` passed after 027 review closure.
+- `python3 scripts/validate_moduflow.py .` passed after 027 review closure.
+- `python3 -m unittest tests.test_validation_distribution -v` passed after 027 review closure.
+- `python3 scripts/release_check.py .` passed after 027 review closure.
 
 ## Blockers
 
-- Antigravity host API details need verification before host-specific adapter implementation.
+- None. Antigravity host API verification is deferred to Issues 028 and 029.
 
 ## Next Command
 
-`/product:review 027-reduce-approval-popup-friction`
+`/product:spec 028-real-subagent-execution-backend`

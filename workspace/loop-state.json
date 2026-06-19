@@ -11,19 +11,19 @@
     "029-antigravity-artifact-sync-connector"
   ],
   "active_issue_id": "027-reduce-approval-popup-friction",
-  "phase": "plan",
+  "phase": "status",
   "mode": "recommend",
   "status": "active",
-  "next_command": "product:execute 027-reduce-approval-popup-friction",
+  "next_command": "product:status",
   "attempts": {
-    "command": "product:execute 027-reduce-approval-popup-friction",
+    "command": "product:status",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-06-19"
   },
   "blocker": null,
-  "last_action": "completed review for 026 and created spec/plan artifacts for 027",
-  "last_verification": "027 artifacts created to keep active loop validation consistent",
+  "last_action": "completed review for 027; next goal queue item is 028",
+  "last_verification": "027 review passed; project validation and release check passed",
   "updated_at": "2026-06-19",
   "git_binding": {
     "mode": "git-files",

@@ -12,11 +12,11 @@ Reduce repeated approval prompts by batching safe Git/GitHub operations, documen
 
 ## Lifecycle
 
-- Phase: plan
+- Phase: complete
 - Created: 2026-06-19
 - Started:
 - Target End:
-- Completed:
+- Completed: 2026-06-19
 - Last Updated: 2026-06-19
 
 ## Opportunity
@@ -62,13 +62,13 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 - [x] spec -> `specs/027-reduce-approval-popup-friction/spec.md`
 - [x] plan -> `specs/027-reduce-approval-popup-friction/plan.md`
-- [ ] execute -> PR / commits
-- [ ] review -> review notes
+- [x] execute -> commits `b1bf566`, `1db6762`, `eade021`
+- [x] review -> `specs/027-reduce-approval-popup-friction/review.md`
 - [x] map approval-triggering commands -> `specs/027-reduce-approval-popup-friction/approval-surface.md`
-- [ ] add GitHub account preflight guidance
-- [ ] add local-only/no-network path documentation
-- [ ] refactor validation scripts into importable validation engine APIs
-- [ ] add host/tool adapter guidance for environments such as Antigravity that can call tools directly
+- [x] add GitHub account preflight guidance -> `specs/027-reduce-approval-popup-friction/approval-surface.md`
+- [x] add local-only/no-network path documentation -> `docs/host-adapter-guidance.md`
+- [x] refactor validation scripts into importable validation engine APIs
+- [x] add host/tool adapter guidance for environments such as Antigravity that can call tools directly -> `docs/host-adapter-guidance.md`
 
 ## Related Issues
 
@@ -94,4 +94,4 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 ## Next Command
 
-`/product:execute 027-reduce-approval-popup-friction`
+`/product:spec 028-real-subagent-execution-backend`

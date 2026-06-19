@@ -30,8 +30,8 @@ Active goal: `lightweight-moduflow-ux`
 - Reason: Repeated prompts during Git/GitHub cleanup and validation checks make otherwise normal workflows feel noisy.
 - Confidence: medium
 - Dependency: Git binding and doctor/preflight checks
-- Next command: `product:execute 027-reduce-approval-popup-friction`
-- Status: planned; execute next.
+- Next command: `product:status`
+- Status: complete.
 
 ### `028-real-subagent-execution-backend`
 
@@ -40,6 +40,7 @@ Active goal: `lightweight-moduflow-ux`
 - Confidence: medium
 - Dependency: worker routing/isolation and host API verification
 - Next command: `product:spec 028-real-subagent-execution-backend`
+- Status: active; spec next.
 
 ### `029-antigravity-artifact-sync-connector`
 
