@@ -7,7 +7,8 @@
 - [x] Keep CLI wrappers backward-compatible while release_check uses importable validation for safe checks [files: scripts/release_check.py, tests/test_validation_distribution.py]
 - [ ] Keep remaining CLI wrappers backward-compatible [files: scripts/*]
   - [x] Add `scripts/project_doctor.py --no-preflight` while preserving default full preflight [files: scripts/project_doctor.py]
-- [ ] Add host/tool adapter guidance for shell-free validation [files: docs/*, specs/027-reduce-approval-popup-friction/status.md]
+- [x] Add host/tool adapter guidance for shell-free validation [files: docs/host-adapter-guidance.md, specs/027-reduce-approval-popup-friction/status.md]
+- [x] Add resume banner contract for interrupted/resumed work [files: commands/moduflow.md, commands/product-loop.md, commands/product-status.md, docs/host-adapter-guidance.md]
 - [x] Add focused tests for importable validation paths [files: tests/*]
 - [x] Run validation and release checks [files: specs/027-reduce-approval-popup-friction/status.md]
 

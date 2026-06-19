@@ -33,6 +33,20 @@ Request: $ARGUMENTS
    - anything else → pick the closest `product:*` command; if ambiguous, ask one concise clarification before mutating files.
 
 3. Always end by showing the **next recommended action and command** so the user can chain without asking "what next?" or memorizing names. This is required after every completed action, including spec, plan, execute, review, release, or issue lifecycle updates. Exact `product:*` input is a power-user escape hatch and should be honored directly.
+4. If a workflow resumes after a long task, context compaction, approval pause, or validation loop, show a short resume banner before continuing so the user can see that ModuFlow is continuing from durable state rather than restarting.
+
+## Resume Banner
+
+Use this before continuing resumed work:
+
+```text
+이어받음: <goal or issue id>
+완료됨: <already completed items>
+지금: <current action>
+다음: <next handoff target>
+```
+
+Keep it compact and grounded in artifacts such as `workspace/loop-state.json`, `workspace/goal.md`, active issue tasks, and verification records. Do not expose internal context-compaction mechanics unless the user asks.
 
 ## Required Next Handoff Format
 

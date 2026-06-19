@@ -14,25 +14,26 @@ Tech Stack: Python standard library, existing validation scripts, Markdown comma
 
 ## Task 2: Importable Validation API
 
-- [ ] Add or normalize importable functions for project artifact validation.
-- [ ] Add or normalize importable functions for ModuFlow package validation.
-- [ ] Ensure project doctor and release check use importable functions internally where feasible.
-- [ ] Keep CLI wrappers backward-compatible.
+- [x] Add or normalize importable functions for project artifact validation.
+- [x] Add or normalize importable functions for ModuFlow package validation.
+- [x] Ensure project doctor and release check use importable functions internally where feasible.
+- [x] Keep CLI wrappers backward-compatible.
 
 ## Task 3: Host Tool Adapter Guidance
 
-- [ ] Define how a host can call validation without shelling out.
-- [ ] Document Antigravity as a candidate host integration pending API verification.
-- [ ] Keep host-specific adapters separate from core validation logic.
+- [x] Define how a host can call validation without shelling out.
+- [x] Document Antigravity as a candidate host integration pending API verification.
+- [x] Keep host-specific adapters separate from core validation logic.
+- [x] Define resume banner behavior for interrupted or resumed ModuFlow work.
 
 ## Task 4: Verification
 
-- [ ] Add focused tests for importable validation APIs.
-- [ ] Run focused validation tests.
-- [ ] Run `python3 scripts/validate_project_artifacts.py .`.
-- [ ] Run `python3 scripts/validate_moduflow.py .`.
-- [ ] Run `python3 scripts/release_check.py .`.
+- [x] Add focused tests for importable validation APIs.
+- [x] Run focused validation tests.
+- [x] Run `python3 scripts/validate_project_artifacts.py .`.
+- [x] Run `python3 scripts/validate_moduflow.py .`.
+- [x] Run `python3 scripts/release_check.py .`.
 
 ## Next Command
 
-`/product:execute 027-reduce-approval-popup-friction`
+`/product:review 027-reduce-approval-popup-friction`

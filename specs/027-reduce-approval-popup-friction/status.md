@@ -23,6 +23,8 @@ Created the spec and plan for reducing approval popup fatigue. The work focuses 
 - Updated `release_check.py` so package validation and project artifact validation use importable functions instead of shelling out.
 - Split `project_doctor.inspect_project()` into default full preflight and local-only `include_preflight=False` mode.
 - Added `scripts/project_doctor.py --no-preflight` for approval-sensitive local validation.
+- Added `docs/host-adapter-guidance.md` to define shell-free validation, local-only checks, full preflight boundaries, and Antigravity adapter expectations.
+- Added a resume banner contract to `moduflow`, `product:loop`, and `product:status` so resumed work shows what was already completed, what is happening now, and what comes next.
 
 ## Verification
 
@@ -36,6 +38,11 @@ Created the spec and plan for reducing approval popup fatigue. The work focuses 
 - `python3 scripts/validate_project_artifacts.py .` passed.
 - `python3 scripts/validate_moduflow.py .` passed.
 - `python3 scripts/release_check.py .` passed.
+- Resume banner and host adapter guidance update validated.
+- `python3 scripts/validate_project_artifacts.py .` passed after resume banner update.
+- `python3 scripts/validate_moduflow.py .` passed after resume banner update.
+- `python3 -m unittest tests.test_validation_distribution -v` passed after resume banner update.
+- `python3 scripts/release_check.py .` passed after resume banner update.
 
 ## Blockers
 
@@ -43,4 +50,4 @@ Created the spec and plan for reducing approval popup fatigue. The work focuses 
 
 ## Next Command
 
-`/product:execute 027-reduce-approval-popup-friction`
+`/product:review 027-reduce-approval-popup-friction`

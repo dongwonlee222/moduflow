@@ -30,6 +30,7 @@ The safety model is still correct. The problem is that ModuFlow does not clearly
 - Define a host/tool-adapter path for environments that can call validation tools without shelling out.
 - Document which operations still require explicit approval and why.
 - Preserve local-only workflows that do not require GitHub/network prompts.
+- Make resumed work visibly continuous so the user can tell what was already completed, what is happening now, and what comes next.
 
 ## Non-Goals
 
@@ -67,6 +68,19 @@ Shell entrypoints become compatibility wrappers around these APIs.
 
 Where a host supports direct tool calls, ModuFlow should prefer a tool/MCP-style validation adapter for routine checks. Antigravity-specific APIs must be verified before implementation and kept outside the core validation engine.
 
+### Resume Banner
+
+When a workflow resumes after a long task, approval pause, context compaction, or validation loop, ModuFlow should display a compact continuity banner:
+
+```text
+이어받음: <goal or issue id>
+완료됨: <already completed items>
+지금: <current action>
+다음: <next handoff target>
+```
+
+The banner should be based on durable artifacts such as `workspace/loop-state.json`, `workspace/goal.md`, issue tasks, and `specs/<issue>/status.md`, not hidden session memory.
+
 ## Acceptance Criteria
 
 - The 027 plan maps which common operations trigger approvals today.
@@ -74,6 +88,7 @@ Where a host supports direct tool calls, ModuFlow should prefer a tool/MCP-style
 - Shell entrypoints still work for CLI and CI.
 - Documentation explains which prompts are expected and which are avoidable.
 - Local-only mode can complete status/doctor/review checks without GitHub API prompts.
+- Resumed work shows a concise continuity banner before continuing.
 - Risky operations remain explicit and auditable.
 
 ## Next Command

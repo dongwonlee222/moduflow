@@ -15,6 +15,28 @@ Advance a goal by routing through existing ModuFlow commands.
 4. Write state only when the user asks for mutation or when running `--step`.
 5. Stop as soon as the goal is `done`, `blocked`, or `needs_decision`.
 6. After any completed ModuFlow action, use the latest goal/loop state to produce the structured next handoff. Do this proactively; the user should not need to ask "다음은 뭐야?"
+7. If the loop resumes after a pause, context compaction, approval prompt, or repeated validation pass, show the resume banner before recommending or running the next step.
+
+## Resume Mode
+
+Use this at the top of a resumed loop response:
+
+```text
+이어받음: <goal or issue id>
+완료됨: <completed phases or artifacts>
+지금: <current loop action>
+다음: <next handoff target>
+```
+
+The banner should come from durable project state, not memory alone:
+
+- `workspace/goal.md`
+- `workspace/loop-state.json`
+- active issue workflow tasks
+- `specs/<issue>/status.md`
+- latest verification records
+
+Keep the banner short. It is a continuity marker, not a full status report.
 
 ## Recommendation Mode
 
