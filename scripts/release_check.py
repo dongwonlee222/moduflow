@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import importlib.util
 import json
 import subprocess
 import sys
@@ -15,13 +16,45 @@ def run_command(args, cwd):
     }
 
 
+def load_script_module(name, relative_path):
+    path = Path(__file__).resolve().parents[1] / relative_path
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def run_importable_validation(name, func, root):
+    result = func(root)
+    return {
+        "returncode": 0 if result.get("valid") else 1,
+        "ok": bool(result.get("valid")),
+        "errors": result.get("errors", []),
+    }
+
+
 def run_release_check(path):
     root = Path(path).resolve()
     checks = {}
     errors = []
 
+    validate_moduflow = load_script_module("validate_moduflow", "scripts/validate_moduflow.py")
+    validate_project_artifacts = load_script_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
+
+    importable_checks = {
+        "validate_moduflow": (validate_moduflow.validate_moduflow, root),
+        "validate_project_artifacts": (validate_project_artifacts.validate_project, root),
+    }
+    for name, (func, target) in importable_checks.items():
+        result = run_importable_validation(name, func, target)
+        checks[name] = {
+            "returncode": result["returncode"],
+            "ok": result["ok"],
+        }
+        if not result["ok"]:
+            errors.append(f"{name} failed: {'; '.join(result['errors'])}")
+
     commands = {
-        "validate_moduflow": ["python3", "scripts/validate_moduflow.py", "."],
         "tests": [
             "python3",
             "-m",
@@ -40,7 +73,6 @@ def run_release_check(path):
             "-v",
         ],
         "project_doctor": ["python3", "scripts/project_doctor.py", "."],
-        "validate_project_artifacts": ["python3", "scripts/validate_project_artifacts.py", "."],
     }
 
     for name, args in commands.items():

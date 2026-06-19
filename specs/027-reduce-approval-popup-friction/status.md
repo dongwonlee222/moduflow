@@ -20,11 +20,14 @@ Created the spec and plan for reducing approval popup fatigue. The work focuses 
 - Defined initial approval classes and importable validation engine direction.
 - Created `specs/027-reduce-approval-popup-friction/approval-surface.md` mapping validation scripts, project mutation scripts, and Git/GitHub approval classes.
 - Added `validate_moduflow(root)` as an importable package validation API while preserving CLI output compatibility.
+- Updated `release_check.py` so package validation and project artifact validation use importable functions instead of shelling out.
 
 ## Verification
 
 - `python3 -m unittest tests.test_validation_distribution.ValidationDistributionTests.test_validate_moduflow_exposes_importable_api tests.test_validation_distribution.ValidationDistributionTests.test_validate_moduflow_importable_api_reports_missing_files -v` passed.
+- `python3 -m unittest tests.test_validation_distribution.ValidationDistributionTests.test_release_check_uses_importable_validation_for_safe_checks -v` passed.
 - `python3 scripts/validate_moduflow.py .` passed.
+- `python3 scripts/release_check.py .` passed.
 
 ## Blockers
 

@@ -321,6 +321,30 @@ class ValidationDistributionTests(unittest.TestCase):
         self.assertEqual(result["errors"], [])
         self.assertIn("validate_moduflow", result["checks"])
 
+    def test_release_check_uses_importable_validation_for_safe_checks(self):
+        release_check = load_module("release_check", "scripts/release_check.py")
+        original_run_command = release_check.run_command
+        shell_calls = []
+
+        def tracking_run_command(args, cwd):
+            shell_calls.append(args)
+            return original_run_command(args, cwd)
+
+        release_check.run_command = tracking_run_command
+        try:
+            result = release_check.run_release_check(ROOT)
+        finally:
+            release_check.run_command = original_run_command
+
+        self.assertTrue(result["valid"])
+        self.assertFalse(
+            any(args[:2] == ["python3", "scripts/validate_moduflow.py"] for args in shell_calls)
+        )
+        self.assertFalse(
+            any(args[:2] == ["python3", "scripts/validate_project_artifacts.py"] for args in shell_calls)
+        )
+        self.assertTrue(any(args[:3] == ["python3", "-m", "unittest"] for args in shell_calls))
+
     def test_project_doctor_detects_dogfooding_mode(self):
         project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
         result = project_doctor.inspect_project(ROOT)
