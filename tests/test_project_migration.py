@@ -109,6 +109,34 @@ class ProjectMigrationTests(unittest.TestCase):
             self.assertEqual(existing_dashboard.read_text(encoding="utf-8"), "# Existing Dashboard\n")
             self.assertTrue((root / ".moduflow" / "state.json").exists())
 
+    def test_migration_write_creates_minimal_pm_structure_without_tooling_dirs(self):
+        project_migrate = load_module("project_migrate", "scripts/project_migrate.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            plan = project_migrate.build_migration_plan(root, mode="overlay", dry_run=False)
+            result = project_migrate.apply_migration_plan(plan)
+
+            for relative in [
+                ".moduflow/config.json",
+                ".moduflow/state.json",
+                "issues",
+                "specs",
+                "knowledge",
+                "workflow",
+                "workspace/inbox.md",
+                "workspace/opportunities.md",
+                "workspace/roadmap.md",
+                "workspace/dashboard.md",
+                "workspace/loop-state.json",
+                "workspace/goal.md",
+            ]:
+                self.assertTrue((root / relative).exists(), relative)
+                self.assertIn(relative, result["written"])
+
+            for tooling_dir in ["commands", "scripts", "skills", "templates", "workers", "adapters", "vendor"]:
+                self.assertFalse((root / tooling_dir).exists(), tooling_dir)
+
     def test_migration_plan_lists_only_missing_files_as_writes(self):
         project_migrate = load_module("project_migrate", "scripts/project_migrate.py")
         with tempfile.TemporaryDirectory() as tmp:

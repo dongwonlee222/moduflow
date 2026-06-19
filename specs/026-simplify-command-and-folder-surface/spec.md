@@ -73,6 +73,19 @@ The 18 source-repo folders should be explained by job:
 
 This grouping should make the dogfooding repo feel intentional, while clearly stating that adopted target projects should not need all of these folders.
 
+### Target Project Footprint
+
+For normal target projects, ModuFlow should create a minimal PM structure:
+
+- `.moduflow/`
+- `workspace/`
+- `issues/`
+- `specs/`
+- `knowledge/`
+- `workflow/`
+
+The plugin should not create `commands/`, `scripts/`, `skills/`, `templates/`, `workers/`, `adapters/`, `vendor/`, `assets/`, `overlays/`, or `tests/` in normal target projects. Optional files such as `AGENTS.md`, `.github/workflows/`, and project docs are opt-in integration surfaces, not default ModuFlow residue.
+
 ### Project Mode Copy
 
 Raw labels stay available for machines:
@@ -89,6 +102,7 @@ User-facing output should translate them:
 
 - Benchmark findings are captured in the 026 spec folder and used to guide implementation.
 - Codex plugin cache generation excludes source-repo planning and verification artifacts such as `issues/`, `specs/`, `tests/`, and `sessions/`.
+- Project initialization/migration creates the minimal PM structure but does not create tool/runtime folders in target projects.
 - README or equivalent user docs show the compact command set before the advanced command list.
 - A folder reference groups the 18 top-level folders and marks which ones are source-repo internals versus target-project artifacts.
 - Status/doctor-facing copy no longer requires normal users to learn `lightweight`, `dogfooding`, and `heavy`.

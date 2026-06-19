@@ -24,6 +24,38 @@ Git is the source of truth. Dashboards, web views, generated docs, and updates a
 - GitHub remote and `gh` auth are optional unless issue/PR/release sync is requested.
 - Without GitHub sync, ModuFlow runs in `git-files` mode.
 
+## Project Footprint
+
+ModuFlow keeps the project footprint light. A normal target project gets PM artifacts and state only:
+
+```text
+.moduflow/
+workspace/
+issues/
+specs/
+knowledge/
+workflow/
+```
+
+Optional project files may be added only when the user asks for that integration, such as `AGENTS.md`, `.github/workflows/`, or project-specific docs.
+
+Tooling stays in the ModuFlow plugin/source package and should not be copied into normal target projects:
+
+```text
+commands/
+scripts/
+skills/
+templates/
+workers/
+adapters/
+vendor/
+assets/
+overlays/
+tests/
+```
+
+In short: the plugin owns commands, scripts, templates, skills, adapters, and runtime assets; the project owns product-management artifacts, project state, and intentionally selected integration files.
+
 ## Commands
 
 **Start here:** `/moduflow` is the single entry point — you only need to remember this one.

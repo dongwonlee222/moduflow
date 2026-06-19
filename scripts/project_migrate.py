@@ -17,16 +17,20 @@ DEFAULT_PATHS = {
     "specs": "specs",
     "workspace": "workspace",
     "knowledge": "knowledge",
+    "workflow": "workflow",
     "profile": ".moduflow/project-profile.md",
     "environments": ".moduflow/environments.json",
     "integrations": ".moduflow/integrations.json",
 }
+
+MINIMAL_PM_DIRECTORIES = ["issues", "specs", "knowledge", "workflow"]
 
 WORKSPACE_FILES = {
     "inbox.md": "# Inbox\n\n",
     "opportunities.md": "# Opportunities\n\n",
     "roadmap.md": "# Roadmap\n\n",
     "dashboard.md": "# Dashboard\n\n",
+    "goal.md": "# Goal\n\n## Objective\n\nTBD\n\n## Status\n\nactive\n\n## Next Command\n\n`product:loop`\n",
 }
 
 
@@ -85,16 +89,63 @@ def build_state():
     }
 
 
+def build_loop_state(project_root):
+    today = date.today().isoformat()
+    return {
+        "schema": "moduflow.loop-state.v2",
+        "loop_id": f"{project_root.name}-{today}",
+        "goal_id": None,
+        "objective": "",
+        "issue_ids": [],
+        "active_issue_id": None,
+        "phase": "goal",
+        "mode": "recommend",
+        "status": "active",
+        "next_command": "product:goal",
+        "attempts": {
+            "command": "product:goal",
+            "count": 0,
+            "max": 3,
+            "last_changed_at": today,
+        },
+        "blocker": None,
+        "last_action": "initialized lightweight ModuFlow project structure",
+        "last_verification": None,
+        "updated_at": today,
+        "git_binding": {
+            "mode": "git-files",
+            "branch": None,
+            "base_branch": None,
+            "commits": [],
+            "pull_request": None,
+            "release": None,
+            "execution_backend": {
+                "type": "manual",
+                "status": "not_selected",
+                "reason": "",
+                "session": None,
+            },
+        },
+    }
+
+
 def planned_writes(project_root, config):
     workspace_path = project_root / config["paths"]["workspace"]
     writes = []
     for relative in [".moduflow/config.json", ".moduflow/state.json"]:
         if not (project_root / relative).exists():
             writes.append(relative)
+    for key in MINIMAL_PM_DIRECTORIES:
+        relative = config["paths"].get(key, key)
+        if not (project_root / relative).exists():
+            writes.append(relative)
     for filename in WORKSPACE_FILES:
         target = workspace_path / filename
         if not target.exists():
             writes.append(str(target.relative_to(project_root)))
+    loop_state = workspace_path / "loop-state.json"
+    if not loop_state.exists():
+        writes.append(str(loop_state.relative_to(project_root)))
     return writes
 
 
@@ -112,6 +163,7 @@ def build_migration_plan(path, mode="mapped", dry_run=True):
         "candidates": candidates,
         "config": config,
         "state": build_state(),
+        "loop_state": build_loop_state(project_root),
         "writes": planned_writes(project_root, config),
         "preserves_existing_files": True,
     }
@@ -133,6 +185,13 @@ def write_text_if_missing(path, content):
     return True
 
 
+def write_dir_if_missing(path):
+    if path.exists():
+        return False
+    path.mkdir(parents=True, exist_ok=True)
+    return True
+
+
 def apply_migration_plan(plan):
     project_root = Path(plan["project_root"])
     written = []
@@ -141,11 +200,19 @@ def apply_migration_plan(plan):
     if write_json_if_missing(project_root / ".moduflow" / "state.json", plan["state"]):
         written.append(".moduflow/state.json")
 
+    for key in MINIMAL_PM_DIRECTORIES:
+        relative = plan["config"]["paths"].get(key, key)
+        if write_dir_if_missing(project_root / relative):
+            written.append(relative)
+
     workspace_path = project_root / plan["config"]["paths"]["workspace"]
     for filename, content in WORKSPACE_FILES.items():
         target = workspace_path / filename
         if write_text_if_missing(target, content):
             written.append(str(target.relative_to(project_root)))
+    loop_state_path = workspace_path / "loop-state.json"
+    if write_json_if_missing(loop_state_path, plan["loop_state"]):
+        written.append(str(loop_state_path.relative_to(project_root)))
 
     plan["written"] = written
     return plan

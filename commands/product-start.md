@@ -17,9 +17,21 @@ Initialize ModuFlow project state.
 3. If the target is not a Git repo, ask whether to run `git init` or switch to an existing repo.
 4. If Git exists but no `origin` exists, ask whether local Git-only mode is enough or a GitHub remote should be added.
 5. If GitHub CLI is missing or unauthenticated, continue in file-backed mode unless the user wants GitHub issue/PR sync.
-6. Create `.moduflow/config.json` and `.moduflow/state.json` if missing.
-7. Create `issues/`, `specs/`, `workspace/inbox.md`, `workspace/opportunities.md`, `workspace/roadmap.md`, and `workspace/dashboard.md` if missing.
-8. Seed the loop. Create `workspace/loop-state.json` from `templates/workspace/loop-state.json` and `workspace/goal.md` if missing. Loop state MUST exist after `product:start` — a project without `loop-state.json` is an incomplete init. Set `next_command` to `product:goal` (or `product:inbox` when no goal is known yet).
+6. Create the lightweight project footprint only:
+   - `.moduflow/config.json`
+   - `.moduflow/state.json`
+   - `issues/`
+   - `specs/`
+   - `knowledge/`
+   - `workflow/`
+   - `workspace/inbox.md`
+   - `workspace/opportunities.md`
+   - `workspace/roadmap.md`
+   - `workspace/dashboard.md`
+   - `workspace/loop-state.json`
+   - `workspace/goal.md`
+7. Do not create or copy tool/runtime folders into a normal target project: `commands/`, `scripts/`, `skills/`, `templates/`, `workers/`, `adapters/`, `vendor/`, `assets/`, `overlays/`, or `tests/`.
+8. Seed the loop. Loop state MUST exist after `product:start` — a project without `loop-state.json` is an incomplete init. Set `next_command` to `product:goal` (or `product:inbox` when no goal is known yet).
 9. Report the current state and next recommended command, always routing through the loop.
 
 ## Modes
@@ -32,5 +44,6 @@ Initialize ModuFlow project state.
 - Project root
 - Git repo status
 - GitHub remote/auth status
-- Created or reused files (must include `workspace/loop-state.json`)
+- Created or reused lightweight project files (must include `workspace/loop-state.json`)
+- Confirmation that ModuFlow tooling remains in the plugin/source package
 - Next command: `product:goal` to set the active goal, then `product:loop` to keep advancing. Never end `product:start` without the loop seeded.

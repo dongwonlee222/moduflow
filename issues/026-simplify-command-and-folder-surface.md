@@ -61,12 +61,13 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - [x] benchmark -> `specs/026-simplify-command-and-folder-surface/benchmark.md`
 - [ ] execute -> PR / commits
 - [ ] review -> review notes
-- [ ] revise README command/folder sections
-- [ ] propose folder grouping/reduction from the current 18 top-level folders
+- [x] revise README command/folder sections
+- [x] propose folder grouping/reduction from the current 18 top-level folders
 - [x] exclude source planning and verification artifacts from Codex plugin cache bundles
+- [x] create only minimal PM folder structure in target projects, not tool/runtime folders
 - [ ] update status/moduflow command copy
 - [ ] replace raw mode labels in user-facing output with plain guidance while keeping raw labels in JSON/debug output
-- [ ] add tests or fixtures for concise status output
+- [x] add tests or fixtures for lightweight project footprint output
 
 ## Related Issues
 
