@@ -8,9 +8,9 @@ Tech Stack: Python standard library, existing validation scripts, Markdown comma
 
 ## Task 1: Approval Surface Map
 
-- [ ] List common ModuFlow commands and scripts that trigger shell, Git, network, credential, or destructive approvals.
-- [ ] Classify each operation as local read-only, local write, Git write, network/GitHub, account/credential, or destructive.
-- [ ] Document which prompts are expected and which can be avoided.
+- [x] List common ModuFlow commands and scripts that trigger shell, Git, network, credential, or destructive approvals.
+- [x] Classify each operation as local read-only, local write, Git write, network/GitHub, account/credential, or destructive.
+- [x] Document which prompts are expected and which can be avoided.
 
 ## Task 2: Importable Validation API
 

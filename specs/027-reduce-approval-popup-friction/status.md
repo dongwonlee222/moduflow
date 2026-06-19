@@ -18,6 +18,7 @@ Created the spec and plan for reducing approval popup fatigue. The work focuses 
 - Created `specs/027-reduce-approval-popup-friction/plan.md`.
 - Captured Antigravity feedback around shell-based validation prompts.
 - Defined initial approval classes and importable validation engine direction.
+- Created `specs/027-reduce-approval-popup-friction/approval-surface.md` mapping validation scripts, project mutation scripts, and Git/GitHub approval classes.
 
 ## Verification
 

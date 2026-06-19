@@ -64,7 +64,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - [x] plan -> `specs/027-reduce-approval-popup-friction/plan.md`
 - [ ] execute -> PR / commits
 - [ ] review -> review notes
-- [ ] map approval-triggering commands
+- [x] map approval-triggering commands -> `specs/027-reduce-approval-popup-friction/approval-surface.md`
 - [ ] add GitHub account preflight guidance
 - [ ] add local-only/no-network path documentation
 - [ ] refactor validation scripts into importable validation engine APIs
