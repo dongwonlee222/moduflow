@@ -17,8 +17,9 @@ Make progress visible.
 3. Render a Korean-first terminal-style dashboard before detailed prose.
 4. Report current phase, active issue, active/recent sessions, blockers, queue, risks, changed files, and next command.
 5. If project mode is available from doctor/status context, show plain guidance such as "프로젝트 설정이 가볍고 정상입니다" instead of raw labels like `lightweight`, `dogfooding`, or `heavy`.
-6. Do not mutate local artifact files during normal status display (the `git fetch` in step 1 is read-only; an approved `git pull` is the only allowed sync).
-7. If source artifacts look stale or inconsistent, report the mismatch and recommend `product:doctor`.
+6. When status is shown after a completed action, render the same structured next handoff used by `product:loop`: next work, reasons, concrete actions, follow-on priority, and exact command when useful.
+7. Do not mutate local artifact files during normal status display (the `git fetch` in step 1 is read-only; an approved `git pull` is the only allowed sync).
+8. If source artifacts look stale or inconsistent, report the mismatch and recommend `product:doctor`.
 
 ## Output
 
@@ -31,6 +32,8 @@ Default `상태` output is concise and Korean-first. When `workspace/loop-state.
 명령: <product:* command>
 막힘: 없음 | <blocker>
 ```
+
+After completed work, prefer the richer handoff format from `product:loop` over this compact status block.
 
 Detailed status mode may include:
 

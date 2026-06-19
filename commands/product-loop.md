@@ -14,6 +14,7 @@ Advance a goal by routing through existing ModuFlow commands.
 3. Recommend the next existing ModuFlow command.
 4. Write state only when the user asks for mutation or when running `--step`.
 5. Stop as soon as the goal is `done`, `blocked`, or `needs_decision`.
+6. After any completed ModuFlow action, use the latest goal/loop state to produce the structured next handoff. Do this proactively; the user should not need to ask "다음은 뭐야?"
 
 ## Recommendation Mode
 
@@ -24,11 +25,23 @@ Default `product:loop` is read-first and recommendation-oriented. It recommends 
 Expected output:
 
 ```text
-Current goal: <goal>
-Linked issue: <issue>
-Observed state: <artifact summary>
-Recommended next command: <product command>
-Reason: <short reason>
+다음은 <next work>가 맞습니다.
+
+이유:
+- <goal/loop state reason>
+- <active issue phase reason>
+- <verification/blocker reason>
+
+다음 액션:
+1. <concrete next step>
+2. <state/artifact update if needed>
+3. <verification or review step if needed>
+
+그 뒤 우선순위:
+- <next issue or track>: <why it follows>
+- <next issue or track>: <why it follows>
+
+바로 가려면 제가 <first action>부터 진행하면 됩니다.
 ```
 
 ## One-Step Mode
@@ -57,6 +70,17 @@ Unsafe actions require explicit user approval:
 - `blocked`: the next action cannot proceed without external change; say the blocker and the smallest unblock request.
 - `needs_decision`: a human decision is required before mutation; explain the repeated action or ambiguity and ask one concise question.
 - `active`: safe to continue with the recommended next command.
+
+## Completion Handoff
+
+Every command that completes work should call back into this loop contract mentally or mechanically before answering the user. The final response should be based on:
+
+- `workspace/goal.md`: objective and completion criteria
+- `workspace/loop-state.json`: active issue, phase, status, blocker, and next command
+- active issue workflow tasks: what is complete and what remains
+- verification result: what passed, failed, or was not run
+
+Default handoff is not a raw `Next Command` line. It must explain why the next action is next, list concrete next actions, and show follow-on priority when the goal has a queue.
 
 ## State Updates
 

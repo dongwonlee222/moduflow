@@ -84,6 +84,13 @@ The handoff should use a consistent Korean-first structure:
 
 This is different from a raw workflow pointer. A bare `Next Command: product:*` is only enough for machine/debug surfaces, not for the default user-facing completion response.
 
+The source of this handoff should be the active goal loop, not the last command in isolation:
+
+- `workspace/goal.md` explains what the user is trying to achieve.
+- `workspace/loop-state.json` gives the active issue, phase, status, blocker, and next command.
+- The active issue workflow checklist explains what remains.
+- Verification results explain whether the next step is review, fix, release, or a new issue.
+
 ### Folder Grouping
 
 The 18 source-repo folders should be explained by job:
