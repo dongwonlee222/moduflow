@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "complete",
-  "active_goal": "goal-loop-orchestrator",
-  "active_issue": "024-artifact-schema-and-doctor-gates",
-  "last_command": "product:release 024-artifact-schema-and-doctor-gates",
-  "next_command": "product:status",
+  "phase": "execute",
+  "active_goal": "lightweight-moduflow-ux",
+  "active_issue": "025-lightweight-project-adoption",
+  "last_command": "product:plan 025-lightweight-project-adoption",
+  "next_command": "product:execute 025-lightweight-project-adoption",
   "blockers": [],
   "updated_at": "2026-06-19"
 }

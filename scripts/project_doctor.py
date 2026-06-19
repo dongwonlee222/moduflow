@@ -193,6 +193,25 @@ def recommended_migration_mode(missing, candidates):
     return "overlay"
 
 
+def detect_mode(root):
+    manifest_path = root / ".claude-plugin" / "plugin.json"
+    if manifest_path.exists() and (root / "vendor.lock.json").exists():
+        try:
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if data.get("name") == "moduflow":
+                return "dogfooding"
+        except Exception:
+            pass
+
+    legacy_dirs = ["commands", "skills", "scripts", "templates"]
+    for d in legacy_dirs:
+        dir_path = root / d
+        if dir_path.is_dir() and any(dir_path.iterdir()):
+            return "heavy"
+
+    return "lightweight"
+
+
 def inspect_project(path):
     requested = Path(path).resolve()
     detected_git_root = git_root(requested)
@@ -217,6 +236,7 @@ def inspect_project(path):
     result = {
         "requested_path": str(requested),
         "project_root": str(project_root),
+        "mode": detect_mode(project_root),
         "git": {
             "is_repo": detected_git_root is not None,
             "root": str(detected_git_root) if detected_git_root else None,

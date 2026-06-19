@@ -2,24 +2,26 @@
 
 ## Current Phase
 
-Core goal loop complete: issues 019 through 024 are released locally.
+Post-merge UX cleanup: new issues opened for lightweight project adoption, simpler folder/command surface, and lower approval-popup friction.
 
 ## Active Goal
 
-- `goal-loop-orchestrator`: make ModuFlow a plugin-installed PM loop orchestrator that connects goal, issues, specs, tasks, workers, and Git progress while keeping the user surface simple.
+- `lightweight-moduflow-ux`: make ModuFlow feel lightweight and predictable in real projects while preserving Git-native PM artifacts and the central plugin/tooling model.
 
 ## Active Issue
 
-- `024-artifact-schema-and-doctor-gates`: completed artifact schema gates and doctor drift checks.
+- `025-lightweight-project-adoption`: define light mode so target projects keep only state and PM artifacts, not ModuFlow tooling folders.
 
 ## Recently Completed
 
+- `0.2.11-goal-loop`: merged to `main` and pushed to GitHub.
 - `024-artifact-schema-and-doctor-gates`: active-loop linked artifact, dashboard, roadmap, and `next_command` validation.
 - `023-worker-routing-and-isolation`: deterministic worker routing, file-aware parallel safety, merge order, and dead-worker detection.
 
 ## Queue
 
-- None in the current core goal.
+- `026-simplify-command-and-folder-surface`
+- `027-reduce-approval-popup-friction`
 
 ## Blockers
 
@@ -36,4 +38,4 @@ Core goal loop complete: issues 019 through 024 are released locally.
 
 ## Next Command
 
-`product:status`
+`product:execute 025-lightweight-project-adoption`

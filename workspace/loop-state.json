@@ -1,30 +1,27 @@
 {
   "schema": "moduflow.loop-state.v2",
-  "loop_id": "goal-loop-orchestrator-20260617",
-  "goal_id": "goal-loop-orchestrator",
-  "objective": "Make ModuFlow a plugin-installed PM loop orchestrator that connects goal, issues, specs, tasks, workers, and Git progress while keeping the user surface simple.",
+  "loop_id": "lightweight-moduflow-ux-20260619",
+  "goal_id": "lightweight-moduflow-ux",
+  "objective": "Make ModuFlow feel lightweight and predictable in real projects while preserving Git-native PM artifacts and the central plugin/tooling model.",
   "issue_ids": [
-    "019-loop-kernel-and-state-model",
-    "020-user-facing-simple-loop-ux",
-    "021-git-binding-and-execution-backend",
-    "022-intake-to-goal-graph",
-    "023-worker-routing-and-isolation",
-    "024-artifact-schema-and-doctor-gates"
+    "025-lightweight-project-adoption",
+    "026-simplify-command-and-folder-surface",
+    "027-reduce-approval-popup-friction"
   ],
-  "active_issue_id": "024-artifact-schema-and-doctor-gates",
-  "phase": "status",
+  "active_issue_id": "025-lightweight-project-adoption",
+  "phase": "execute",
   "mode": "recommend",
-  "status": "done",
-  "next_command": "product:status",
+  "status": "active",
+  "next_command": "product:execute 025-lightweight-project-adoption",
   "attempts": {
-    "command": "product:status",
+    "command": "product:execute 025-lightweight-project-adoption",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-06-19"
   },
   "blocker": null,
-  "last_action": "released 024-artifact-schema-and-doctor-gates",
-  "last_verification": "issue 024 full verification passed",
+  "last_action": "created goal Lightweight ModuFlow UX with issues 025-027 from user feedback about heavy project footprint, folder complexity, and approval friction",
+  "last_verification": "pending validation after issue creation",
   "updated_at": "2026-06-19",
   "git_binding": {
     "mode": "git-files",

@@ -301,6 +301,52 @@ class ValidationDistributionTests(unittest.TestCase):
         self.assertEqual(result["errors"], [])
         self.assertIn("validate_moduflow", result["checks"])
 
+    def test_project_doctor_detects_dogfooding_mode(self):
+        project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
+        result = project_doctor.inspect_project(ROOT)
+        self.assertEqual(result["mode"], "dogfooding")
+
+    def test_project_doctor_detects_lightweight_mode(self):
+        project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            # Initialize minimal project (lightweight)
+            (root / ".moduflow").mkdir(parents=True, exist_ok=True)
+            (root / ".moduflow" / "config.json").write_text("{}", encoding="utf-8")
+            (root / ".moduflow" / "state.json").write_text("{}", encoding="utf-8")
+            (root / "workspace").mkdir(parents=True, exist_ok=True)
+            (root / "workspace" / "inbox.md").write_text("", encoding="utf-8")
+            (root / "workspace" / "opportunities.md").write_text("", encoding="utf-8")
+            (root / "workspace" / "roadmap.md").write_text("", encoding="utf-8")
+            (root / "workspace" / "dashboard.md").write_text("", encoding="utf-8")
+            (root / "issues").mkdir(parents=True, exist_ok=True)
+            (root / "specs").mkdir(parents=True, exist_ok=True)
+            
+            result = project_doctor.inspect_project(root)
+            self.assertEqual(result["mode"], "lightweight")
+
+    def test_project_doctor_detects_heavy_mode(self):
+        project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            # Initialize minimal project
+            (root / ".moduflow").mkdir(parents=True, exist_ok=True)
+            (root / ".moduflow" / "config.json").write_text("{}", encoding="utf-8")
+            (root / ".moduflow" / "state.json").write_text("{}", encoding="utf-8")
+            (root / "workspace").mkdir(parents=True, exist_ok=True)
+            (root / "workspace" / "inbox.md").write_text("", encoding="utf-8")
+            (root / "workspace" / "opportunities.md").write_text("", encoding="utf-8")
+            (root / "workspace" / "roadmap.md").write_text("", encoding="utf-8")
+            (root / "workspace" / "dashboard.md").write_text("", encoding="utf-8")
+            (root / "issues").mkdir(parents=True, exist_ok=True)
+            (root / "specs").mkdir(parents=True, exist_ok=True)
+            # Add legacy tooling dir
+            (root / "commands").mkdir(parents=True, exist_ok=True)
+            (root / "commands" / "dummy.md").write_text("dummy", encoding="utf-8")
+            
+            result = project_doctor.inspect_project(root)
+            self.assertEqual(result["mode"], "heavy")
+
 
 if __name__ == "__main__":
     unittest.main()

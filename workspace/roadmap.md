@@ -2,7 +2,33 @@
 
 ## Now
 
-No active core goal issues remain. Issues 019 through 024 are released locally.
+User experience cleanup after the 0.2.11 merge: make project adoption lighter, explain the folder/command surface, and reduce approval-popup friction.
+
+Active goal: `lightweight-moduflow-ux`
+
+### `025-lightweight-project-adoption`
+
+- Outcome: Normal projects adopt ModuFlow in light mode with only state and PM artifacts in the project; tool commands, scripts, skills, and templates stay central.
+- Reason: The current dogfooding repo shape makes ModuFlow feel too invasive when users imagine applying it to every project.
+- Confidence: high
+- Dependency: project migration/profile flows and artifact schema gates
+- Next command: `product:execute 025-lightweight-project-adoption`
+
+### `026-simplify-command-and-folder-surface`
+
+- Outcome: Users see a small default command/folder model first, with advanced internals available only when needed.
+- Reason: Many folders and commands are maintainable internally but uncomfortable as the first user experience.
+- Confidence: high
+- Dependency: simple loop UX and `/moduflow` hub command
+- Next command: `product:spec 026-simplify-command-and-folder-surface`
+
+### `027-reduce-approval-popup-friction`
+
+- Outcome: Approval prompts become predictable, batched where possible, and tied to clear risk.
+- Reason: Repeated prompts during Git/GitHub cleanup make otherwise normal workflows feel noisy.
+- Confidence: medium
+- Dependency: Git binding and doctor/preflight checks
+- Next command: `product:spec 027-reduce-approval-popup-friction`
 
 ## Backlog / Existing Capabilities
 

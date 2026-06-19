@@ -26,6 +26,7 @@ Render a Korean-first health check:
 │ 프로젝트  <project name>                    │
 │ 상태      <emoji> <healthy|warning|error>   │
 │ 모드      <git-files|github-sync>           │
+│ 프로젝트 모드 <lightweight|dogfooding|heavy> │
 ╰────────────────────────────────────────────╯
 
 ✅ 필수 체크
