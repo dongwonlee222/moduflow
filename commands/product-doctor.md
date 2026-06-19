@@ -15,7 +15,8 @@ Validate setup.
 4. Separate required setup errors from optional capability warnings.
 5. Check Git repo, GitHub remote, GitHub CLI auth, and required `.moduflow`, `issues`, `specs`, and `workspace` files.
 6. Detect likely existing project artifact folders for migration.
-7. Report missing files and suggested fix commands.
+7. Preserve raw `mode` in JSON diagnostics, but render `mode_guidance.message` and `mode_guidance.details` before any raw mode labels in user-facing output.
+8. Report missing files and suggested fix commands.
 
 ## Korean Output
 
@@ -26,8 +27,10 @@ Render a Korean-first health check:
 │ 프로젝트  <project name>                    │
 │ 상태      <emoji> <healthy|warning|error>   │
 │ 모드      <git-files|github-sync>           │
-│ 프로젝트 모드 <lightweight|dogfooding|heavy> │
+│ 설정      <mode_guidance.message>           │
 ╰────────────────────────────────────────────╯
+
+<mode_guidance.details>
 
 ✅ 필수 체크
   Git repo: OK

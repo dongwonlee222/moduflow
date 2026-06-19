@@ -65,8 +65,8 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - [x] propose folder grouping/reduction from the current 18 top-level folders
 - [x] exclude source planning and verification artifacts from Codex plugin cache bundles
 - [x] create only minimal PM folder structure in target projects, not tool/runtime folders
-- [ ] update status/moduflow command copy
-- [ ] replace raw mode labels in user-facing output with plain guidance while keeping raw labels in JSON/debug output
+- [x] update status/moduflow command copy
+- [x] replace raw mode labels in user-facing output with plain guidance while keeping raw labels in JSON/debug output
 - [x] add tests or fixtures for lightweight project footprint output
 
 ## Related Issues

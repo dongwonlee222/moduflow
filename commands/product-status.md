@@ -16,8 +16,9 @@ Make progress visible.
 2. Read `.moduflow/state.json`, `workspace/loop-state.json` when present, issues, specs, tasks, PR notes, releases, and roadmap.
 3. Render a Korean-first terminal-style dashboard before detailed prose.
 4. Report current phase, active issue, active/recent sessions, blockers, queue, risks, changed files, and next command.
-5. Do not mutate local artifact files during normal status display (the `git fetch` in step 1 is read-only; an approved `git pull` is the only allowed sync).
-6. If source artifacts look stale or inconsistent, report the mismatch and recommend `product:doctor`.
+5. If project mode is available from doctor/status context, show plain guidance such as "프로젝트 설정이 가볍고 정상입니다" instead of raw labels like `lightweight`, `dogfooding`, or `heavy`.
+6. Do not mutate local artifact files during normal status display (the `git fetch` in step 1 is read-only; an approved `git pull` is the only allowed sync).
+7. If source artifacts look stale or inconsistent, report the mismatch and recommend `product:doctor`.
 
 ## Output
 

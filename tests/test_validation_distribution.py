@@ -347,6 +347,29 @@ class ValidationDistributionTests(unittest.TestCase):
             result = project_doctor.inspect_project(root)
             self.assertEqual(result["mode"], "heavy")
 
+    def test_project_doctor_keeps_raw_mode_and_adds_user_guidance(self):
+        project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir(parents=True, exist_ok=True)
+            (root / ".moduflow" / "config.json").write_text("{}", encoding="utf-8")
+            (root / ".moduflow" / "state.json").write_text("{}", encoding="utf-8")
+            (root / "workspace").mkdir(parents=True, exist_ok=True)
+            for filename in ["inbox.md", "opportunities.md", "roadmap.md", "dashboard.md"]:
+                (root / "workspace" / filename).write_text("", encoding="utf-8")
+            (root / "issues").mkdir(parents=True, exist_ok=True)
+            (root / "specs").mkdir(parents=True, exist_ok=True)
+
+            result = project_doctor.inspect_project(root)
+
+            self.assertEqual(result["mode"], "lightweight")
+            self.assertEqual(
+                result["mode_guidance"]["message"],
+                "프로젝트 설정이 가볍고 정상입니다.",
+            )
+            self.assertIn("commands", result["mode_guidance"]["details"])
+            self.assertNotEqual(result["mode_guidance"]["label"], "lightweight")
+
 
 if __name__ == "__main__":
     unittest.main()

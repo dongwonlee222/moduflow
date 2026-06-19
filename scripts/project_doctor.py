@@ -212,6 +212,38 @@ def detect_mode(root):
     return "lightweight"
 
 
+def mode_guidance(mode):
+    guidance = {
+        "lightweight": {
+            "label": "가벼운 프로젝트 설정",
+            "message": "프로젝트 설정이 가볍고 정상입니다.",
+            "details": "commands, scripts, skills, templates 같은 도구 폴더는 플러그인에 남고 프로젝트에는 PM 산출물과 상태만 있습니다.",
+            "action": "product:status",
+        },
+        "dogfooding": {
+            "label": "모두플로 도구 저장소",
+            "message": "모두플로 도구 저장소라 폴더가 많은 것이 정상입니다.",
+            "details": "commands, scripts, skills, templates, adapters, vendor 같은 내부 개발/런타임 폴더가 이 저장소에 함께 있습니다.",
+            "action": "product:status",
+        },
+        "heavy": {
+            "label": "정리 권장 프로젝트 설정",
+            "message": "프로젝트 안에 도구 폴더가 있어 정리를 권장합니다.",
+            "details": "normal target projects should keep PM artifacts and state only; move commands, scripts, skills, and templates back to the ModuFlow plugin/source package.",
+            "action": "product:migrate --mode overlay",
+        },
+    }
+    return guidance.get(
+        mode,
+        {
+            "label": "프로젝트 설정 확인 필요",
+            "message": "프로젝트 설정 상태를 확인해야 합니다.",
+            "details": "Run product:doctor for diagnostics.",
+            "action": "product:doctor",
+        },
+    )
+
+
 def inspect_project(path):
     requested = Path(path).resolve()
     detected_git_root = git_root(requested)
@@ -233,10 +265,12 @@ def inspect_project(path):
     git_binding = loop_state.get("git_binding") if loop_state else None
     branch = current_branch(project_root) if detected_git_root else None
 
+    mode = detect_mode(project_root)
     result = {
         "requested_path": str(requested),
         "project_root": str(project_root),
-        "mode": detect_mode(project_root),
+        "mode": mode,
+        "mode_guidance": mode_guidance(mode),
         "git": {
             "is_repo": detected_git_root is not None,
             "root": str(detected_git_root) if detected_git_root else None,
