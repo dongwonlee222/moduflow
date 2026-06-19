@@ -28,6 +28,15 @@ ModuFlow's internal architecture is useful for maintaining commands, scripts, te
 - Translate raw project-mode labels into user-facing guidance while preserving raw labels in JSON and debug output.
 - Update docs and status surfaces so users can quickly tell whether a project is clean, tool-heavy, or intentionally the ModuFlow source repo.
 
+## Benchmark Findings
+
+See `specs/026-simplify-command-and-folder-surface/benchmark.md` for the full benchmark notes. The consistent pattern across GitHub Actions, GitHub Apps, ESLint, Prettier, Husky, create-next-app, Terraform, VS Code extensions, and agent/plugin ecosystems is:
+
+- The tool or plugin repository may contain many implementation folders.
+- The adopted project receives only a small configuration, policy, state, or generated-artifact contract.
+- Runtime code, templates, adapters, validators, examples, and package internals stay central.
+- User-facing docs lead with simple tasks and stable public surfaces, while advanced internals are documented separately.
+
 ## Non-Goals
 
 - Removing advanced direct `product:*` commands.
@@ -74,6 +83,7 @@ User-facing output should translate them:
 
 ## Acceptance Criteria
 
+- Benchmark findings are captured in the 026 spec folder and used to guide implementation.
 - README or equivalent user docs show the compact command set before the advanced command list.
 - A folder reference groups the 18 top-level folders and marks which ones are source-repo internals versus target-project artifacts.
 - Status/doctor-facing copy no longer requires normal users to learn `lightweight`, `dogfooding`, and `heavy`.

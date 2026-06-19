@@ -58,6 +58,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 - [x] spec -> `specs/026-simplify-command-and-folder-surface/spec.md`
 - [x] plan -> `specs/026-simplify-command-and-folder-surface/plan.md`
+- [x] benchmark -> `specs/026-simplify-command-and-folder-surface/benchmark.md`
 - [ ] execute -> PR / commits
 - [ ] review -> review notes
 - [ ] revise README command/folder sections

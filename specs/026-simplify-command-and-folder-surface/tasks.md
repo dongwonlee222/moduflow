@@ -1,5 +1,6 @@
 # Tasks: Simplify Command And Folder Surface
 
+- [x] Benchmark GitHub, CLI, and plugin/agent adoption patterns before implementation [files: specs/026-simplify-command-and-folder-surface/benchmark.md]
 - [ ] Add tests or fixtures for user-facing mode guidance while preserving raw JSON labels [files: tests/*, scripts/project_doctor.py]
 - [ ] Update README or primary usage docs with compact default commands [files: README.md, docs/*]
 - [ ] Add or update folder reference for the 18 source-repo folders [files: README.md, docs/*]

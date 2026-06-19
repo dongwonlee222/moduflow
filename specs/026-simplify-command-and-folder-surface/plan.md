@@ -6,6 +6,12 @@ Architecture: Documentation and command output copy first, then focused status/d
 
 Tech Stack: Markdown artifacts, Python command helpers, JSON state, existing validation scripts.
 
+## Task 0: Benchmark Grounding
+
+- [x] Benchmark GitHub tooling, CLI/developer tools, and plugin/agent ecosystems for source-repo vs target-project footprint.
+- [x] Capture benchmark findings in `specs/026-simplify-command-and-folder-surface/benchmark.md`.
+- [x] Use the benchmark rule as the implementation anchor: tooling lives centrally, target projects keep PM artifacts, state, and intentionally selected integration files.
+
 ## Task 1: RED Checks For User-Facing Copy
 
 - [ ] Add focused tests or fixtures that assert raw mode labels are preserved in JSON output.

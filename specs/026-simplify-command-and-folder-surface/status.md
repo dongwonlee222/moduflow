@@ -6,18 +6,20 @@
 
 ## Phase
 
-plan
+execute
 
 ## Summary
 
-Created the spec and execution plan for simplifying ModuFlow's first user experience. The work is scoped to documentation and user-facing status/doctor copy first, while keeping advanced commands and raw diagnostic labels available for automation.
+Created the spec and execution plan for simplifying ModuFlow's first user experience. Before implementation, benchmarked GitHub, CLI/developer-tool, and plugin/agent ecosystems to confirm the design rule: ModuFlow tooling should remain central, while target projects keep only PM artifacts, project state, and intentionally selected integration files.
 
 ## Completed
 
 - Created `specs/026-simplify-command-and-folder-surface/spec.md`.
 - Created `specs/026-simplify-command-and-folder-surface/plan.md`.
+- Created `specs/026-simplify-command-and-folder-surface/benchmark.md`.
 - Defined the compact command set and 18-folder grouping.
 - Defined user-facing copy for `lightweight`, `dogfooding`, and `heavy`.
+- Confirmed benchmark evidence from GitHub Actions, GitHub Apps, ESLint, Prettier, Husky, create-next-app, Terraform, VS Code extensions, and agent/plugin ecosystems.
 
 ## Verification
 
