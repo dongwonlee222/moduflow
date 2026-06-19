@@ -8,20 +8,20 @@
     "026-simplify-command-and-folder-surface",
     "027-reduce-approval-popup-friction"
   ],
-  "active_issue_id": "025-lightweight-project-adoption",
-  "phase": "review",
+  "active_issue_id": "026-simplify-command-and-folder-surface",
+  "phase": "plan",
   "mode": "recommend",
   "status": "active",
-  "next_command": "product:review 025-lightweight-project-adoption",
+  "next_command": "product:execute 026-simplify-command-and-folder-surface",
   "attempts": {
-    "command": "product:review 025-lightweight-project-adoption",
+    "command": "product:execute 026-simplify-command-and-folder-surface",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-06-19"
   },
   "blocker": null,
-  "last_action": "completed implementation of lightweight mode detection and tests for project doctor",
-  "last_verification": "unit tests and validation suite passed successfully",
+  "last_action": "created spec and plan for simplifying command and folder surface",
+  "last_verification": "pending implementation verification for issue 026",
   "updated_at": "2026-06-19",
   "git_binding": {
     "mode": "git-files",

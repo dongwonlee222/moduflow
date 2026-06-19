@@ -12,7 +12,7 @@ Make ModuFlow easier to understand by reducing the visible command/folder surfac
 
 ## Lifecycle
 
-- Phase: backlog
+- Phase: plan
 - Created: 2026-06-19
 - Started:
 - Target End:
@@ -56,8 +56,8 @@ The same applies to project layout modes. `lightweight`, `dogfooding`, and `heav
 
 Every artifact-producing step is a tracked task here - never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
 
-- [ ] spec -> `specs/026-simplify-command-and-folder-surface/spec.md`
-- [ ] plan -> `specs/026-simplify-command-and-folder-surface/plan.md`
+- [x] spec -> `specs/026-simplify-command-and-folder-surface/spec.md`
+- [x] plan -> `specs/026-simplify-command-and-folder-surface/plan.md`
 - [ ] execute -> PR / commits
 - [ ] review -> review notes
 - [ ] revise README command/folder sections
@@ -89,4 +89,4 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 ## Next Command
 
-`/product:spec 026-simplify-command-and-folder-surface`
+`/product:execute 026-simplify-command-and-folder-surface`

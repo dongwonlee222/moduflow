@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Post-merge UX cleanup: new issues opened for lightweight project adoption, simpler folder/command surface, and lower approval-popup friction.
+Post-merge UX cleanup: Issue 025 is in review, and Issue 026 is now planned to simplify the visible command/folder surface.
 
 ## Active Goal
 
@@ -10,17 +10,17 @@ Post-merge UX cleanup: new issues opened for lightweight project adoption, simpl
 
 ## Active Issue
 
-- `025-lightweight-project-adoption`: define light mode so target projects keep only state and PM artifacts, not ModuFlow tooling folders.
+- `026-simplify-command-and-folder-surface`: make the first user experience smaller by grouping folders, reducing default commands, and translating internal mode labels into plain guidance.
 
 ## Recently Completed
 
+- `025-lightweight-project-adoption`: project doctor can now detect dogfooding, heavy, and lightweight layouts; remaining start/migrate write behavior is tracked separately.
 - `0.2.11-goal-loop`: merged to `main` and pushed to GitHub.
 - `024-artifact-schema-and-doctor-gates`: active-loop linked artifact, dashboard, roadmap, and `next_command` validation.
 - `023-worker-routing-and-isolation`: deterministic worker routing, file-aware parallel safety, merge order, and dead-worker detection.
 
 ## Queue
 
-- `026-simplify-command-and-folder-surface`
 - `027-reduce-approval-popup-friction`
 
 ## Blockers
@@ -38,4 +38,4 @@ Post-merge UX cleanup: new issues opened for lightweight project adoption, simpl
 
 ## Next Command
 
-`product:review 025-lightweight-project-adoption`
+`product:execute 026-simplify-command-and-folder-surface`

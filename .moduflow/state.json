@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "execute",
+  "phase": "plan",
   "active_goal": "lightweight-moduflow-ux",
-  "active_issue": "025-lightweight-project-adoption",
-  "last_command": "product:plan 025-lightweight-project-adoption",
-  "next_command": "product:execute 025-lightweight-project-adoption",
+  "active_issue": "026-simplify-command-and-folder-surface",
+  "last_command": "product:spec 026-simplify-command-and-folder-surface",
+  "next_command": "product:execute 026-simplify-command-and-folder-surface",
   "blockers": [],
   "updated_at": "2026-06-19"
 }

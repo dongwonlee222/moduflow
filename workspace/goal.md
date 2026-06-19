@@ -50,4 +50,4 @@ None.
 
 ## Next Command
 
-`product:execute 025-lightweight-project-adoption`
+`product:execute 026-simplify-command-and-folder-surface`

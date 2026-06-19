@@ -13,6 +13,7 @@ Active goal: `lightweight-moduflow-ux`
 - Confidence: high
 - Dependency: project migration/profile flows and artifact schema gates
 - Next command: `product:review 025-lightweight-project-adoption`
+- Status: review, with doctor mode detection complete and start/migrate write behavior still open.
 
 ### `026-simplify-command-and-folder-surface`
 
@@ -20,7 +21,7 @@ Active goal: `lightweight-moduflow-ux`
 - Reason: Many folders and commands are maintainable internally but uncomfortable as the first user experience.
 - Confidence: high
 - Dependency: simple loop UX and `/moduflow` hub command
-- Next command: `product:spec 026-simplify-command-and-folder-surface`
+- Next command: `product:execute 026-simplify-command-and-folder-surface`
 
 ### `027-reduce-approval-popup-friction`
 
