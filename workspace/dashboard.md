@@ -20,7 +20,7 @@ Core goal loop complete: issues 025 through 029 are released locally.
 - `028-real-subagent-execution-backend`: completed host-subagent execution backend adapter for Antigravity integration.
 - `027-reduce-approval-popup-friction`: completed approval surface mapping, importable validation paths, local-only doctor mode, host adapter guidance, and resume banner contract.
 - `026-simplify-command-and-folder-surface`: completed lightweight project footprint, plugin cache packaging, user-facing mode guidance, and goal-loop completion handoff.
-- `025-lightweight-project-adoption`: project doctor can now detect dogfooding, heavy, and lightweight layouts; remaining start/migrate write behavior is tracked separately.
+- `025-lightweight-project-adoption`: completed lightweight project footprints, mode guidance, and start/migrate lightweight write behavior.
 - `0.2.11-goal-loop`: merged to `main` and pushed to GitHub.
 
 ## Queue
@@ -42,4 +42,4 @@ Core goal loop complete: issues 025 through 029 are released locally.
 
 ## Next Command
 
-`product:review 025-lightweight-project-adoption`
+`product:status`

@@ -6,11 +6,11 @@
 
 ## Phase
 
-review
+done
 
 ## Summary
 
-Implemented the first lightweight adoption slice for Issue 025. The completed work focuses on project mode detection and doctor visibility: ModuFlow can now distinguish dogfooding, heavy, and lightweight project layouts, and `/product:doctor` documents the project mode row.
+Implemented and fully closed lightweight adoption for Issue 025. Tested clean project:start/migrate lightweight writes and validated under project_doctor.py.
 
 ## Completed
 

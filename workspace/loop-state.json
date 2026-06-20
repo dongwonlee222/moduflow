@@ -14,7 +14,7 @@
   "phase": "status",
   "mode": "recommend",
   "status": "done",
-  "next_command": "product:review 025-lightweight-project-adoption",
+  "next_command": "product:status",
   "attempts": {
     "command": "product:status",
     "count": 0,
