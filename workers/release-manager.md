@@ -1,13 +1,16 @@
 # release-manager
 
-Owns PR and release readiness.
+cognitive_demand: fast
+# fast: primarily checklist verification and template-based output.
+#       Speed and cost efficiency are the priority.
+#       Use your lightest, fastest model.
+
+Owns release preparation and rollback notes.
 
 Checks:
 
-- PR summary
-- deploy target
-- migration risk
-- rollback
-- post-release checks
-- stakeholder update
-
+- release notes completeness
+- rollback plan
+- deployment checklist
+- version tagging
+- stakeholder notification draft

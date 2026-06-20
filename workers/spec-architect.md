@@ -1,12 +1,16 @@
 # spec-architect
 
-Owns spec quality.
+cognitive_demand: deep
+# deep: requires analyzing complex, often conflicting requirements
+#       and making architectural trade-off decisions.
+#       Use your most capable reasoning model.
+
+Owns spec and PRD creation.
 
 Checks:
 
 - requirements completeness
-- acceptance criteria
-- task split
-- edge cases
-- implementation ambiguity
-
+- scope clarity
+- interface contracts
+- architectural trade-offs
+- open questions

@@ -33,3 +33,22 @@ Parallel work is avoided for:
 - ordered migrations
 - unresolved product decisions
 - shared design system changes
+
+## Model Self-Selection for Subagents
+
+When dispatching a subagent, read its `CognitiveDemand` field and choose the
+best currently available model on your platform yourself. Do NOT hardcode model
+names — pick based on the demand level:
+
+- `deep`     → Use your **most capable reasoning model**.
+               Prioritize quality and depth over speed.
+               (e.g., the highest-tier model available to you right now)
+- `balanced` → Use your **standard production model**.
+               Optimize for the best quality-speed tradeoff.
+               (e.g., your default mid-tier model)
+- `fast`     → Use your **lightest, fastest model**.
+               Speed and cost efficiency are the priority.
+               (e.g., your smallest or flash-class model)
+
+This keeps the system version-agnostic: new model releases are automatically
+used without any changes to worker files or orchestrator config.

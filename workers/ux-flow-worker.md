@@ -1,12 +1,16 @@
 # ux-flow-worker
 
-Owns UX/design flow.
+cognitive_demand: balanced
+# balanced: requires both creative exploration and structured analysis
+#           of user flows and interaction patterns.
+#           Use your standard production model.
+
+Owns UX design and prototype review.
 
 Checks:
 
-- user journey
-- screen states
-- empty/loading/error states
-- interaction details
+- user flow coverage
+- interaction clarity
+- onboarding steps
 - prototype fidelity
-
+- design system alignment

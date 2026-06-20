@@ -19,6 +19,22 @@ WORKER_RULES = [
 
 DEFAULT_WORKER = "implementation-worker"
 SHARED_STATE_KEYWORDS = ["shared", "state", "migration", "schema", "config", "lock", "registry"]
+
+# Cognitive demand levels — no model names hardcoded.
+# The host agent reads this and picks the best available model on its platform.
+# deep    → most capable reasoning model (complex trade-offs, architecture)
+# balanced→ standard production model (coding, review, UX)
+# fast    → lightest/fastest model (checklists, summaries, sorting)
+WORKER_COGNITIVE_DEMAND = {
+    "spec-architect":        "deep",
+    "pm-strategist":         "deep",
+    "implementation-worker": "balanced",
+    "qa-reviewer":           "balanced",
+    "ux-flow-worker":        "balanced",
+    "release-manager":       "fast",
+    "roadmap-planner":       "fast",
+    "data-reviewer":         "fast",
+}
 CHECKBOX_RE = re.compile(r"^\s*-\s+\[(?P<status>[ xX])\]\s+(?P<text>.+?)\s*$")
 METADATA_RE = re.compile(r"\s*\[(?P<key>files|globs|depends|shared_state):\s*(?P<value>[^\]]*)\]")
 
@@ -178,6 +194,7 @@ def build_worker_plan(root, issue_id):
         parallel_group = worker_groups[worker] if not shared_state_risk else "sequential"
         if shared_state_risk:
             risks.append(f"Task {index} touches shared state: {task['text']}")
+        expected_files_str = ", ".join(task["expected_files"]) if task["expected_files"] else "none"
         planned_tasks.append(
             {
                 "id": task_id,
@@ -193,6 +210,22 @@ def build_worker_plan(root, issue_id):
                 "isolation": {
                     "worktree": f"codex/{issue_id}-{task_id.lower()}",
                     "merge_after": task["dependencies"],
+                },
+                "subagent": {
+                    "TypeName": "self",
+                    "Role": f"ModuFlow {worker}",
+                    "CognitiveDemand": WORKER_COGNITIVE_DEMAND.get(worker, "balanced"),
+                    "Workspace": "share",
+                    "Prompt": (
+                        f"Implement task: {task['text']}\n"
+                        f"Expected files: {expected_files_str}\n"
+                        f"Cognitive demand: {WORKER_COGNITIVE_DEMAND.get(worker, 'balanced')} — "
+                        + {
+                            "deep":     "use your most capable reasoning model.",
+                            "balanced": "use your standard production model.",
+                            "fast":     "use your lightest, fastest model.",
+                        }.get(WORKER_COGNITIVE_DEMAND.get(worker, "balanced"), "")
+                    ),
                 },
             }
         )

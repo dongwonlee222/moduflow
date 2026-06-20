@@ -1,13 +1,16 @@
 # pm-strategist
 
-Owns product intent.
+cognitive_demand: deep
+# deep: requires multi-stakeholder business judgment, opportunity framing,
+#       and strategic prioritization across conflicting signals.
+#       Use your most capable reasoning model.
+
+Owns PM strategy and opportunity framing.
 
 Checks:
 
-- problem clarity
-- user and segment
-- outcome
-- non-goals
-- priority rationale
-- stakeholder update quality
-
+- acceptance criteria
+- scope definition
+- stakeholder alignment
+- opportunity framing
+- risk assessment

@@ -25,6 +25,7 @@ Default backend rules:
 - high-risk work -> `manual`
 - docs, spec, and planning work -> `codex`
 - code work with GitHub available -> `copilot-cloud-agent` may be recommended
+- code work with host subagents available -> `host-subagent`
 - code work without GitHub available -> `codex`
 
 Remote backends require explicit user approval before starting GitHub writes, cloud agent runs, or cross-repo mutation.
@@ -32,6 +33,23 @@ Remote backends require explicit user approval before starting GitHub writes, cl
 ## Parallel Workers
 
 Use parallel workers only when `specs/<issue>/worker-plan.md` marks the issue `parallel-eligible`. The worker plan must show non-overlapping expected files, no shared-state risk, and a merge order. If the plan falls back to `sequential`, execute tasks in the listed merge order.
+
+## Subagent Dispatch (host-subagent)
+
+When using `host-subagent` backend, `product:execute` will generate a subagent configuration card for each ready task:
+
+```text
+╭─ 🚀 ModuFlow Subagent Dispatch ────────────────────────╮
+│ Task: T01 (implementation-worker)                       │
+│ Type: self                                              │
+│ Cognitive Demand: balanced                              │
+│   → Use your standard production model for this task.  │
+│ Workspace: share                                        │
+│ Command: Please call invoke_subagent for T01            │
+╰────────────────────────────────────────────────────────╯
+```
+The host agent should invoke the subagent tool using the parameters listed in the task's `subagent` config block in `worker-plan.json`.
+The `CognitiveDemand` field is a hint — the host agent selects the actual model itself based on what is currently available on its platform.
 
 ## Next
 
