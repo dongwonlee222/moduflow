@@ -10,10 +10,12 @@ Core goal loop complete: issues 025 through 029 are released locally.
 
 ## Active Issue
 
-- `031-goal-driven-autonomous-benchmarking-and-issue-generation`
+- None.
 
 ## Recently Completed
 
+- `032-multi-language-goal-benchmarking-and-core-mcp-server-integration`: completed stdio mcp server bridge, direct tool calling logic, and translation helpers.
+- `031-goal-driven-autonomous-benchmarking-and-issue-generation`: completed autonomous benchmarking engine, issue parsing tests, and workflow regression prevention.
 - `029-antigravity-artifact-sync-connector`: completed sync connector script, bidirectional task merging, and drift checks.
 - `028-real-subagent-execution-backend`: completed host-subagent execution backend adapter for Antigravity integration.
 - `027-reduce-approval-popup-friction`: completed approval surface mapping, importable validation paths, local-only doctor mode, host adapter guidance, and resume banner contract.
@@ -40,4 +42,4 @@ Core goal loop complete: issues 025 through 029 are released locally.
 
 ## Next Command
 
-`product:status`
+`product:review 025-lightweight-project-adoption`

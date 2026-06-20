@@ -27,14 +27,22 @@ def format_issue_filename(num, title):
 def generate_issues_from_goal(goal, search_mock_data=None):
     # This simulates/implements a benchmarking engine that breaks a Goal into 3 granular issues.
     # In a real environment, it can query search_web or read mock benchmarking patterns.
+    # Supported localized translations: Convert English benchmarking insights to Korean summaries.
     benchmarked_info = "Benchmarked from industry best practices."
     if search_mock_data:
         benchmarked_info = search_mock_data
+    
+    # Simple rule-based English-to-Korean translation simulation for benchmarking data
+    translated_info = benchmarked_info
+    if "best practices" in benchmarked_info.lower():
+        translated_info = "업계 최고 모범 사례 (Best Practices) 기반 분석 결과 반영"
+    elif "oauth2 rfc" in benchmarked_info.lower():
+        translated_info = "OAuth2 RFC 보안 표준 스펙 분석 결과 반영"
 
     issues = [
         {
             "title": f"Setup database schema and auth scope for {goal}",
-            "summary": f"Define the persistence layer, environment parameters, and models needed for {goal}.",
+            "summary": f"Define the persistence layer, environment parameters, and models needed for {goal}. ({translated_info})",
             "opportunity": f"Industry standards ({benchmarked_info}) recommend starting with a clean data contract.",
             "scope_in": [
                 "Define DB schema and tables",

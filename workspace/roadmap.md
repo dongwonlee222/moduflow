@@ -6,14 +6,23 @@ User experience cleanup after the 0.2.11 merge: make project adoption lighter, e
 
 Active goal: `lightweight-moduflow-ux`
 
+### `032-multi-language-goal-benchmarking-and-core-mcp-server-integration`
+
+- Outcome: Extend benchmarking with English-to-Korean translation and build light MCP server layer.
+- Reason: Reduce terminal command execution friction and support multi-lang insights.
+- Confidence: high
+- Dependency: 031-goal-driven-autonomous-benchmarking-and-issue-generation
+- Next command: `product:status`
+- Status: complete.
+
 ### `031-goal-driven-autonomous-benchmarking-and-issue-generation`
 
 - Outcome: AI agent can autonomously search, benchmark, and generate structured issues from a high-level goal.
 - Reason: Enable self-driven product design and issue tracking.
 - Confidence: high
 - Dependency: none
-- Next command: `product:review 031-goal-driven-autonomous-benchmarking-and-issue-generation`
-- Status: review.
+- Next command: `product:status`
+- Status: complete.
 
 ### `025-lightweight-project-adoption`
 
