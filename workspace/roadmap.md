@@ -6,6 +6,15 @@ User experience cleanup after the 0.2.11 merge: make project adoption lighter, e
 
 Active goal: `lightweight-moduflow-ux`
 
+### `031-goal-driven-autonomous-benchmarking-and-issue-generation`
+
+- Outcome: AI agent can autonomously search, benchmark, and generate structured issues from a high-level goal.
+- Reason: Enable self-driven product design and issue tracking.
+- Confidence: high
+- Dependency: none
+- Next command: `product:review 031-goal-driven-autonomous-benchmarking-and-issue-generation`
+- Status: review.
+
 ### `025-lightweight-project-adoption`
 
 - Outcome: Normal projects adopt ModuFlow in light mode with only state and PM artifacts in the project; tool commands, scripts, skills, and templates stay central.
