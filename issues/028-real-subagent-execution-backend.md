@@ -12,12 +12,12 @@ Upgrade ModuFlow worker orchestration from static worker-plan simulation into an
 
 ## Lifecycle
 
-- Phase: execute
+- Phase: done
 - Created: 2026-06-19
 - Started: 2026-06-19
-- Target End:
-- Completed:
-- Last Updated: 2026-06-19
+- Target End: 2026-06-20
+- Completed: 2026-06-20
+- Last Updated: 2026-06-20
 
 ## Opportunity
 
@@ -55,12 +55,12 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 - [x] spec -> `specs/028-real-subagent-execution-backend/spec.md`
 - [x] plan -> `specs/028-real-subagent-execution-backend/plan.md`
-- [ ] execute -> PR / commits
-- [ ] review -> review notes
-- [ ] verify Antigravity subagent API surface before implementation
-- [ ] define provider-neutral execution backend interface
-- [ ] add host-subagent adapter prototype
-- [ ] preserve worker-plan audit trail and merge gates
+- [x] execute -> PR / commits
+- [x] review -> review notes
+- [x] verify Antigravity subagent API surface before implementation
+- [x] define provider-neutral execution backend interface
+- [x] add host-subagent adapter prototype
+- [x] preserve worker-plan audit trail and merge gates
 
 ## Related Issues
 
@@ -84,4 +84,4 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 ## Next Command
 
-`/product:execute 028-real-subagent-execution-backend`
+`/product:pr 028-real-subagent-execution-backend`
