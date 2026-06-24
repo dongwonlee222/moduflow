@@ -24,6 +24,10 @@ class CodexPersonalInstallTests(unittest.TestCase):
             encoding="utf-8",
         )
         (source / "skills").mkdir()
+        (source / "templates" / "issues").mkdir(parents=True)
+        (source / "templates" / "specs").mkdir(parents=True)
+        (source / "templates" / "issues" / "issue.md").write_text("issue template\n", encoding="utf-8")
+        (source / "templates" / "specs" / "spec.md").write_text("spec template\n", encoding="utf-8")
         for development_dir in ("issues", "specs", "tests", "sessions"):
             (source / development_dir).mkdir()
             (source / development_dir / "development-artifact.md").write_text("dev only\n", encoding="utf-8")
@@ -47,6 +51,8 @@ class CodexPersonalInstallTests(unittest.TestCase):
             cache = home / ".codex" / "plugins" / "cache" / "personal" / "moduflow" / "0.2.0+codex.test"
             self.assertTrue(cache.is_dir())
             self.assertTrue((cache / "skills").is_dir())
+            self.assertTrue((cache / "templates" / "issues" / "issue.md").is_file())
+            self.assertTrue((cache / "templates" / "specs" / "spec.md").is_file())
             for development_dir in ("issues", "specs", "tests", "sessions"):
                 self.assertFalse((cache / development_dir).exists())
             config = (home / ".codex" / "config.toml").read_text(encoding="utf-8")

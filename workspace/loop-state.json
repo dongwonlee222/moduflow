@@ -1,14 +1,18 @@
 {
   "schema": "moduflow.loop-state.v2",
-  "loop_id": "lightweight-moduflow-ux-20260619",
-  "goal_id": "lightweight-moduflow-ux",
-  "objective": "Make ModuFlow feel lightweight and predictable in real projects while preserving Git-native PM artifacts and the central plugin/tooling model.",
+  "loop_id": "business-document-workflow-20260624",
+  "goal_id": "business-document-workflow",
+  "objective": "Make ModuFlow produce decision-ready business documents with sources, assumptions, calculations, validation, exports, and project memory.",
   "issue_ids": [
     "025-lightweight-project-adoption",
     "026-simplify-command-and-folder-surface",
     "027-reduce-approval-popup-friction",
     "028-real-subagent-execution-backend",
-    "029-antigravity-artifact-sync-connector"
+    "029-antigravity-artifact-sync-connector",
+    "030-project-memory-layer",
+    "031-goal-driven-autonomous-benchmarking-and-issue-generation",
+    "032-multi-language-goal-benchmarking-and-core-mcp-server-integration",
+    "033-business-document-workflow"
   ],
   "active_issue_id": null,
   "phase": "status",
@@ -19,12 +23,12 @@
     "command": "product:status",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-06-19"
+    "last_changed_at": "2026-06-24"
   },
   "blocker": null,
-  "last_action": "completed multi-language translation and stdio mcp server integration (Issue 032)",
-  "last_verification": "all unit tests passed, all 5 core goal issues completed successfully",
-  "updated_at": "2026-06-19",
+  "last_action": "completed business document workflow and versioned ModuFlow 0.2.12 (Issue 033)",
+  "last_verification": "release_check passed and plugin cache validation passed",
+  "updated_at": "2026-06-24",
   "git_binding": {
     "mode": "git-files",
     "branch": null,

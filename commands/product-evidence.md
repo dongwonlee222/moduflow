@@ -9,8 +9,8 @@ Gather and summarize knowledge artifacts connected to an issue, spec, decision, 
 
 ## Do
 
-1. Read `knowledge/index.md`.
-2. Search `knowledge/*/*.md` for matching issue ID, spec path, or decision.
+1. Read `memory/index.md` when available, then legacy `knowledge/index.md`.
+2. Search `memory/*/*.md` and `knowledge/*/*.md` for matching issue ID, spec path, decision, or query terms.
 3. Summarize evidence, confidence, caveats, and recommended next action.
 4. Link findings back into the issue, spec, roadmap, or dashboard.
 

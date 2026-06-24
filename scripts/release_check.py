@@ -62,6 +62,7 @@ def run_release_check(path):
             "tests.test_project_migration",
             "tests.test_project_profile",
             "tests.test_project_knowledge",
+            "tests.test_project_memory",
             "tests.test_project_portfolio",
             "tests.test_project_workflow",
             "tests.test_worker_orchestration",

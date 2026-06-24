@@ -14,11 +14,8 @@ PLUGIN_CACHE_EXCLUDES = (
     "__pycache__",
     ".pytest_cache",
     "*.pyc",
-    "issues",
-    "specs",
-    "tests",
-    "sessions",
 )
+TOP_LEVEL_CACHE_EXCLUDES = {"issues", "specs", "tests", "sessions"}
 
 
 def read_json(path: Path) -> dict:
@@ -113,10 +110,18 @@ def plugin_version(source: Path) -> str:
 
 
 def copy_plugin_cache(source: Path, home: Path, version: str) -> Path:
+    source = source.resolve()
     destination = home / ".codex" / "plugins" / "cache" / MARKETPLACE_NAME / PLUGIN_NAME / version
     if destination.exists():
         shutil.rmtree(destination)
-    ignore = shutil.ignore_patterns(*PLUGIN_CACHE_EXCLUDES)
+    base_ignore = shutil.ignore_patterns(*PLUGIN_CACHE_EXCLUDES)
+
+    def ignore(directory, names):
+        ignored = set(base_ignore(directory, names))
+        if Path(directory).resolve() == source:
+            ignored.update(name for name in names if name in TOP_LEVEL_CACHE_EXCLUDES)
+        return ignored
+
     shutil.copytree(source, destination, ignore=ignore)
     return destination
 

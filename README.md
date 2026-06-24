@@ -33,6 +33,7 @@ ModuFlow keeps the project footprint light. A normal target project gets PM arti
 workspace/
 issues/
 specs/
+memory/
 knowledge/
 workflow/
 ```
@@ -79,6 +80,7 @@ Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow iss
 - `/product:start`: initialize ModuFlow in a project
 - `/product:migrate`: safely adopt an existing project without moving files
 - `/product:profile`: create project ownership, environment, and integration metadata
+- `/product:memory`: initialize, write, search, and retrieve portable project memory
 - `/product:knowledge`: initialize knowledge evidence artifacts
 - `/product:decision`: create a decision record
 - `/product:research`: create a research artifact
@@ -140,7 +142,15 @@ For project profile metadata, create missing files only:
 python3 scripts/project_profile.py /path/to/project --write
 ```
 
-For knowledge evidence artifacts, initialize the structure and create linked evidence:
+For portable project memory, initialize the structure and create searchable entries:
+
+```bash
+python3 scripts/project_memory.py /path/to/project --write
+python3 scripts/project_memory.py /path/to/project --kind decision --title "Use repo-local memory" --issue-id 030-project-memory-layer --summary "Keep memory portable inside the repo."
+python3 scripts/project_memory.py /path/to/project --search "portable memory"
+```
+
+For legacy knowledge evidence artifacts, initialize the structure and create linked evidence:
 
 ```bash
 python3 scripts/project_knowledge.py /path/to/project --write

@@ -2,9 +2,18 @@
 
 ## Now
 
-User experience cleanup after the 0.2.11 merge: make project adoption lighter, explain the folder/command surface, and reduce approval-popup friction.
+Business document workflow after project memory: make ModuFlow produce decision-ready business documents with sources, assumptions, calculations, validation, exports, and memory.
 
-Active goal: `lightweight-moduflow-ux`
+Active goal: `business-document-workflow`
+
+### `033-business-document-workflow`
+
+- Outcome: ModuFlow business documents become project-local, source-backed, decision-ready artifacts, starting with market-entry analysis.
+- Reason: Users need more than issues; project work also needs durable deliverables, decisions, calculations, validation results, and polite executive-report style.
+- Confidence: high
+- Dependency: project memory layer and business-plan skill
+- Next command: `product:status`
+- Status: review complete, with skill routing, templates, test artifact, validation, and local plugin cache deployment in place.
 
 ### `032-multi-language-goal-benchmarking-and-core-mcp-server-integration`
 
@@ -67,6 +76,15 @@ Active goal: `lightweight-moduflow-ux`
 - Confidence: medium
 - Dependency: artifact schema gates and host artifact model verification
 - Next command: `product:spec 029-antigravity-artifact-sync-connector`
+
+### `030-project-memory-layer`
+
+- Outcome: Projects manage portable long-term memory for deliverables, decisions, evidence, operating context, and reusable project context, not only issues.
+- Reason: ModuFlow's current `knowledge/` layer is initialized but passive; each project needs a durable `memory/` model that can register, search, and retrieve project artifacts and decisions over time while staying self-contained when the project is moved.
+- Confidence: high
+- Dependency: knowledge evidence layer migration, artifact schema gates, and personal-memory contract review
+- Next command: `product:spec 030-project-memory-layer`
+- Status: prototype available; full spec and knowledge migration path still open.
 
 ## Backlog / Existing Capabilities
 

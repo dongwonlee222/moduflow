@@ -81,6 +81,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `product:start`: initialize project artifacts
 - `product:migrate`: plan or apply a safe migration for an existing project
 - `product:profile`: create or inspect project profile metadata
+- `product:memory`: initialize, write, search, or retrieve portable project memory
 - `product:knowledge`: initialize or inspect project knowledge artifacts
 - `product:decision`: create a decision record
 - `product:research`: create a research artifact
@@ -121,6 +122,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `doctor`, `검사`: `product:doctor`
 - `migrate`, `마이그레이션`: `product:migrate`
 - `profile`, `프로필`: `product:profile`
+- `memory`, `메모리`, `장기기억`: `product:memory`
 - `knowledge`, `지식`: `product:knowledge`
 - `decision`, `결정`: `product:decision`
 - `research`, `리서치`: `product:research`

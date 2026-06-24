@@ -26,6 +26,16 @@ OPTIONAL_CAPABILITY_PATHS = {
         "knowledge/data-notes",
         "knowledge/references",
     ],
+    "memory": [
+        "memory/index.md",
+        "memory/deliverables",
+        "memory/decisions",
+        "memory/evidence",
+        "memory/meetings",
+        "memory/releases",
+        "memory/notes",
+        "memory/references",
+    ],
     "workflow": [
         "workflow/review-gates.md",
         "workflow/approval-policy.md",
@@ -83,7 +93,7 @@ def linked_artifacts(issue_text):
     linked = []
     for match in LINK_RE.finditer(issue_text):
         value = match.group("path").strip()
-        if value.startswith("specs/") or value.startswith("workspace/"):
+        if value.startswith("specs/") or value.startswith("workspace/") or value.startswith("memory/"):
             linked.append(value)
     return linked
 

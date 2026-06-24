@@ -17,13 +17,14 @@ DEFAULT_PATHS = {
     "specs": "specs",
     "workspace": "workspace",
     "knowledge": "knowledge",
+    "memory": "memory",
     "workflow": "workflow",
     "profile": ".moduflow/project-profile.md",
     "environments": ".moduflow/environments.json",
     "integrations": ".moduflow/integrations.json",
 }
 
-MINIMAL_PM_DIRECTORIES = ["issues", "specs", "knowledge", "workflow"]
+MINIMAL_PM_DIRECTORIES = ["issues", "specs", "knowledge", "memory", "workflow"]
 
 WORKSPACE_FILES = {
     "inbox.md": "# Inbox\n\n",

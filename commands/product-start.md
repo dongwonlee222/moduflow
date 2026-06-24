@@ -22,6 +22,7 @@ Initialize ModuFlow project state.
    - `.moduflow/state.json`
    - `issues/`
    - `specs/`
+   - `memory/`
    - `knowledge/`
    - `workflow/`
    - `workspace/inbox.md`

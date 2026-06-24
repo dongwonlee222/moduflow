@@ -29,6 +29,18 @@ REQUIRED_KNOWLEDGE_PATHS = [
     "knowledge/references",
 ]
 
+REQUIRED_MEMORY_PATHS = [
+    "memory",
+    "memory/index.md",
+    "memory/deliverables",
+    "memory/decisions",
+    "memory/evidence",
+    "memory/meetings",
+    "memory/releases",
+    "memory/notes",
+    "memory/references",
+]
+
 REQUIRED_WORKFLOW_PATHS = [
     "workflow/review-gates.md",
     "workflow/approval-policy.md",
@@ -175,6 +187,14 @@ def missing_knowledge_paths(root):
     return missing
 
 
+def missing_memory_paths(root):
+    missing = []
+    for relative in REQUIRED_MEMORY_PATHS:
+        if not (root / relative).exists():
+            missing.append(relative)
+    return missing
+
+
 def missing_workflow_paths(root):
     missing = []
     for relative in REQUIRED_WORKFLOW_PATHS:
@@ -278,6 +298,7 @@ def inspect_project(path, include_preflight=True):
     missing = missing_project_paths(project_root)
     missing_profile = missing_profile_paths(project_root)
     missing_knowledge = missing_knowledge_paths(project_root)
+    missing_memory = missing_memory_paths(project_root)
     missing_workflow = missing_workflow_paths(project_root)
     candidates = discover_candidate_paths(project_root)
     migration_mode = recommended_migration_mode(missing, candidates)
@@ -327,6 +348,10 @@ def inspect_project(path, include_preflight=True):
             "initialized": not missing_knowledge,
             "missing": missing_knowledge,
         },
+        "memory": {
+            "initialized": not missing_memory,
+            "missing": missing_memory,
+        },
         "workflow": {
             "initialized": not missing_workflow,
             "missing": missing_workflow,
@@ -369,6 +394,9 @@ def inspect_project(path, include_preflight=True):
 
     if missing_knowledge:
         result["recommendation"].append("Run product:knowledge --write to create knowledge evidence structure.")
+
+    if missing_memory:
+        result["recommendation"].append("Run product:memory --write to create portable project memory structure.")
 
     if missing_workflow:
         result["recommendation"].append("Run product:handoff --write to create team workflow artifacts.")

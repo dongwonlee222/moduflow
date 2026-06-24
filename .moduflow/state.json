@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
   "phase": "status",
-  "active_goal": "lightweight-moduflow-ux",
-  "active_issue": "027-reduce-approval-popup-friction",
-  "last_command": "product:review 027-reduce-approval-popup-friction",
+  "active_goal": "business-document-workflow",
+  "active_issue": null,
+  "last_command": "product:sync",
   "next_command": "product:status",
   "blockers": [],
-  "updated_at": "2026-06-19"
+  "updated_at": "2026-06-24"
 }

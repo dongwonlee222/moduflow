@@ -2,11 +2,11 @@
 
 ## Current Phase
 
-Core goal loop complete: issues 025 through 029 are released locally.
+Core goal loop and business document workflow are released locally.
 
 ## Active Goal
 
-- `lightweight-moduflow-ux`: make ModuFlow feel lightweight and predictable in real projects while preserving Git-native PM artifacts and the central plugin/tooling model.
+- `business-document-workflow`: make ModuFlow produce decision-ready business documents, starting with market-entry analysis, while preserving sources, assumptions, calculations, validation, exports, and project memory.
 
 ## Active Issue
 
@@ -14,6 +14,8 @@ Core goal loop complete: issues 025 through 029 are released locally.
 
 ## Recently Completed
 
+- `033-business-document-workflow`: added business-document routing, market-entry analysis references, polite Korean writing gate, and a test market-entry artifact package.
+- `030-project-memory-layer`: portable project memory prototype added with init/write/search/get, doctor validation, command docs, and a repo-local decision memory entry.
 - `032-multi-language-goal-benchmarking-and-core-mcp-server-integration`: completed stdio mcp server bridge, direct tool calling logic, and translation helpers.
 - `031-goal-driven-autonomous-benchmarking-and-issue-generation`: completed autonomous benchmarking engine, issue parsing tests, and workflow regression prevention.
 - `029-antigravity-artifact-sync-connector`: completed sync connector script, bidirectional task merging, and drift checks.
@@ -33,12 +35,12 @@ Core goal loop complete: issues 025 through 029 are released locally.
 
 ## Verification
 
-- ModuFlow plugin version: `0.2.11+codex.20260619033058`.
-- `python3 -m unittest tests.test_validation_distribution -v` passed (23 tests).
-- `python3 -m unittest discover -s tests -v` passed (80 tests).
-- `python3 scripts/validate_project_artifacts.py .` passed.
-- `python3 scripts/validate_moduflow.py .` passed.
+- ModuFlow plugin version: `0.2.12+codex.20260624124021`.
+- `python3 -m unittest tests.test_business_document_workflow -v` passed (3 tests).
+- `python3 -m unittest discover -s tests -v` passed (84 tests).
 - `python3 scripts/release_check.py .` passed.
+- `python3 scripts/validate_project_artifacts.py .` passed.
+- `python3 scripts/validate_moduflow.py .` passed for source and deployed cache.
 
 ## Next Command
 

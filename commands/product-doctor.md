@@ -42,6 +42,7 @@ Render a Korean-first health check:
 ⚠️ 선택 체크
   GitHub origin: 없음 (GitHub sync 필요 시 설정)
   profile: 없음 (필요 시 product:profile)
+  memory: 없음 (필요 시 product:memory)
   knowledge: 없음 (필요 시 product:knowledge)
   workflow: 없음 (필요 시 product:handoff)
 

@@ -1,23 +1,25 @@
 ---
 name: business-plan
-description: Use when ModuFlow needs to turn a business idea, startup concept, business plan request, Lean Canvas, business model, market/customer hypothesis, persona scenario, pitch deck outline, or validation plan into Git-native business artifacts and issue/spec candidates. Handles Korean requests such as 사업계획서, 사업구상, 사업 아이디어, 비즈니스 모델, 린 캔버스, 고객 가설, 시장 가설, 페르소나, 사용자 시나리오, 피치덱, PPT, or PDF.
+description: Use when ModuFlow needs business-document artifacts such as business plans, market-entry analysis, Lean Canvas, business models, customer hypotheses, persona scenarios, pitch outlines, validation plans, Korean 사업계획서, 시장 진입 분석, 해외 진출 검토, 사업성 보고서, 수익성 검토, 의사결정 메모, PPT, or PDF.
 ---
 
 # Business Plan Skill
 
-Turn business ideas into Markdown source artifacts, reviewable diagrams, validation hypotheses, and ModuFlow issue/spec candidates.
+Turn business ideas and business document requests into Git-native Markdown artifacts, reviewable assumptions, decision records, validation plans, and ModuFlow issue/spec candidates.
 
 ## Role
 
 This skill is a pre-execution bridge:
 
 ```text
-business idea
+business idea or business-document request
 -> opportunity shaping
--> business-plan artifacts
+-> document type routing
+-> business-plan or market-entry-analysis artifacts
 -> persona scenarios and diagrams
 -> review
 -> validation plan
+-> project memory record
 -> issue/spec/roadmap candidates
 -> optional PDF/PPTX export delegation
 ```
@@ -29,10 +31,25 @@ Keep ModuFlow's source of truth in Git-native Markdown. Treat PDF and PPTX files
 Use this skill when the user asks for:
 
 - business plan, one-page plan, Lean Canvas, business model, pitch deck outline, validation plan
+- market-entry analysis, market entry report, business feasibility report, go-to-market report, profitability review, decision memo
 - persona, customer persona, user scenario, customer journey, market/customer hypothesis
-- Korean: 사업계획서, 사업구상, 사업 아이디어, 비즈니스 모델, 린 캔버스, 고객 가설, 시장 가설, 페르소나, 사용자 시나리오, 피치덱, PPT, PDF
+- Korean: 사업계획서, 사업구상, 사업 아이디어, 비즈니스 모델, 린 캔버스, 시장 진입 분석, 해외 진출 검토, 사업성 보고서, 수익성 검토, 의사결정 메모, 고객 가설, 시장 가설, 페르소나, 사용자 시나리오, 피치덱, PPT, PDF
 
 If the request is only a raw idea, route through `product:opportunity` first. If the user wants work tracking, create issue/spec candidates after the plan artifacts.
+
+## Document Type Router
+
+Choose the smallest document recipe that matches the decision:
+
+| Request | Recipe | Primary Output |
+| --- | --- | --- |
+| 사업 아이디어, 사업계획서, BM | `business-plan` | `business-plan.md` |
+| 시장 진입, 해외 진출, 국가별 진출 검토 | `market-entry-analysis` | `market-entry/report.md` |
+| 수익성, 단가, 마진, 손익분기점 | `profitability-review` | `calculation-model.md` plus decision memo |
+| 투자자/파트너용 요약 | `pitch-outline` | `deck-outline.md` |
+| 실행 여부 판단 | `decision-memo` | `decision.md` |
+
+For `market-entry-analysis`, read `../../templates/business-plan/market-entry-analysis.md`, `calculation-model.md`, `source-checklist.md`, `writing-style.md`, and `pdf-quality-gate.md` before drafting.
 
 ## Workflow
 
@@ -57,7 +74,7 @@ business/<slug>/
   brief.md
   lean-canvas.md
   persona-scenarios.md
-  business-plan.md
+  business-plan.md or market-entry/report.md
   validation-plan.md
  |
  | review mode
@@ -77,7 +94,7 @@ ModuFlow issues / specs / roadmap
  | optional export
  v
 business/<slug>/exports/
-  business-plan.pdf
+  business-plan.pdf or market-entry-report.pdf
   pitch-deck.pptx
 ```
 
@@ -87,11 +104,30 @@ Create or update these files under `business/<slug>/`:
 
 ```text
 brief.md
+assumptions.md
 lean-canvas.md
 persona-scenarios.md
 business-plan.md
+calculation-model.md
+source-list.md
 validation-plan.md
+decision.md
 issue-candidates.md
+```
+
+For `market-entry-analysis`, create:
+
+```text
+business/<slug>/
+  brief.md
+  assumptions.md
+  source-list.md
+  calculation-model.md
+  market-entry/report.md
+  decision.md
+  validation.md
+  issue-candidates.md
+  exports/
 ```
 
 When export is requested, also create:
@@ -112,6 +148,20 @@ review-summary.md
 ```
 
 Use bundled templates from the plugin root at `templates/business-plan/`. From this skill file, resolve them as `../../templates/business-plan/`.
+
+## Writing Style Gate
+
+For Korean business reports, use polite formal endings suitable for executive or partner-facing documents.
+
+Required tone examples:
+
+- `검토했습니다`
+- `확인했습니다`
+- `예상됩니다`
+- `필요합니다`
+- `권장됩니다`
+
+Avoid plain declarative report endings such as `한다`, `이다`, `필요하다`, or `권고한다` in narrative sentences. Plain labels inside tables or headings are acceptable only when they are not complete prose sentences. Read `../../templates/business-plan/writing-style.md` before drafting Korean deliverables.
 
 ## Source Of Truth
 
@@ -207,6 +257,16 @@ Use for external submission, investor/partner review, major strategic decisions,
 
 Subagents find gaps and risks. The main agent owns synthesis, final edits, and consistency.
 
+## Memory And Decision Capture
+
+After a business document is approved or materially revised, record durable project memory. Korean routing note: 프로젝트 메모리에 최종 산출물, 의사결정, 근거를 남겨야 합니다.
+
+- `deliverable`: final report, PDF, deck, or decision memo path
+- `decision`: go / no-go / defer decision, rationale, alternatives, reversal conditions
+- `evidence`: key source pack, benchmark, calculation model, or interview notes
+
+Use project-local memory so the business context remains portable when a project is copied, cloned, or moved. Recommended command: `product:memory write --kind deliverable --title "<document title>" --summary "<decision-ready summary>"`.
+
 ## Export Delegation
 
 Prepare export-ready Markdown:
@@ -222,6 +282,8 @@ Then delegate:
 - visual QA for exported files: PDF plugin
 
 This skill defines content and structure. It does not implement rendering.
+
+For Korean PDF exports, check `../../templates/business-plan/pdf-quality-gate.md` before handoff.
 
 ## Handoff
 
