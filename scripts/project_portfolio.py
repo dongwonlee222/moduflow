@@ -74,6 +74,41 @@ def profile_owner(project_root):
     return ""
 
 
+def team_item_owner(item):
+    return item.get("assignee") or item.get("owner") or item.get("locked_by") or "unassigned"
+
+
+def format_team_items(items):
+    if not items:
+        return "none"
+    return ", ".join(
+        f"{team_item_owner(item)}: {item.get('issue_id', 'unknown')}"
+        for item in items
+    )
+
+
+def collect_team_summary(project_root):
+    team_state_path = project_root / "workflow" / "team-state.json"
+    state = load_json(team_state_path, {"items": []})
+    items = state.get("items", [])
+    if not isinstance(items, list):
+        items = []
+    active = [item for item in items if item.get("status") == "active"]
+    review = [item for item in items if item.get("status") in {"review", "approved"}]
+    done = [item for item in items if item.get("status") in {"done", "archived"}]
+    blocked = [item for item in items if item.get("status") == "blocked"]
+    return {
+        "active_count": len(active),
+        "review_count": len(review),
+        "done_count": len(done),
+        "blocked_count": len(blocked),
+        "active_text": format_team_items(active),
+        "review_text": format_team_items(review),
+        "done_text": format_team_items(done),
+        "blocked_text": format_team_items(blocked),
+    }
+
+
 def collect_project_statuses(registry_path):
     registry_path = Path(registry_path).resolve()
     registry = load_json(registry_path, {"projects": []})
@@ -86,6 +121,7 @@ def collect_project_statuses(registry_path):
         if not state_path.exists():
             warnings.append("missing .moduflow/state.json")
         owner = project.get("owner") or profile_owner(project_root) or ""
+        team = collect_team_summary(project_root)
         statuses.append(
             {
                 "id": project.get("id", project_root.name),
@@ -96,6 +132,7 @@ def collect_project_statuses(registry_path):
                 "phase": state.get("phase", "unknown"),
                 "next_command": state.get("next_command", ""),
                 "blockers": state.get("blockers", []),
+                "team": team,
                 "warnings": warnings,
             }
         )
@@ -114,12 +151,14 @@ def render_dashboard(statuses):
         "",
         f"Updated: {date.today().isoformat()}",
         "",
-        "| Project | Owner | Phase | Blockers | Next Command |",
-        "| --- | --- | --- | --- | --- |",
+        "| Project | Owner | Phase | Active Work | Review | Blockers | Next Command |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for status in statuses:
+        team = status.get("team", {})
         lines.append(
             f"| {status['name']} | {status.get('owner', '')} | {status.get('phase', '')} | "
+            f"{team.get('active_text', 'none')} | {team.get('review_text', 'none')} | "
             f"{blocker_text(status.get('blockers', []))} | {status.get('next_command', '')} |"
         )
     lines.extend(["", "## Project Paths", ""])
@@ -142,6 +181,9 @@ def render_weekly(statuses):
                 "",
                 f"- Owner: {status.get('owner', '')}",
                 f"- Phase: {status.get('phase', '')}",
+                f"- Active Work: {status.get('team', {}).get('active_text', 'none')}",
+                f"- Review: {status.get('team', {}).get('review_text', 'none')}",
+                f"- Done: {status.get('team', {}).get('done_text', 'none')}",
                 f"- Blockers: {blocker_text(status.get('blockers', []))}",
                 f"- Next: `{status.get('next_command', '')}`",
                 "",

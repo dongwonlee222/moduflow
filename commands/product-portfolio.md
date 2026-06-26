@@ -22,7 +22,17 @@ python3 scripts/project_portfolio.py <portfolio-path> --write
 python3 scripts/project_portfolio.py <portfolio-path> --render
 ```
 
-4. Preserve project-local Git artifacts as the source of truth.
+4. The dashboard reads each project's `.moduflow/state.json` and, when present, `workflow/team-state.json`.
+5. Preserve project-local Git artifacts as the source of truth.
+
+## Team Columns
+
+Portfolio dashboard rows include:
+
+- Active Work: assigned/active issue owners from `workflow/team-state.json`
+- Review: issues waiting for review or approved for release
+- Blockers: project-level blockers from `.moduflow/state.json`
+- Next Command: the project-local next action
 
 ## Next
 

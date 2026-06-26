@@ -14,9 +14,10 @@
     "032-multi-language-goal-benchmarking-and-core-mcp-server-integration",
     "033-business-document-workflow",
     "034-memory-capture-and-sync-workflow",
-    "035-team-issue-branch-pr-workflow"
+    "035-team-issue-branch-pr-workflow",
+    "036-portfolio-team-dashboard"
   ],
-  "active_issue_id": "035-team-issue-branch-pr-workflow",
+  "active_issue_id": "036-portfolio-team-dashboard",
   "phase": "status",
   "mode": "recommend",
   "status": "done",
@@ -28,8 +29,8 @@
     "last_changed_at": "2026-06-26"
   },
   "blocker": null,
-  "last_action": "completed Issue 035 team workflow and bumped version to 0.2.14",
-  "last_verification": "full unittest discovery, validate_project_artifacts, validate_moduflow, and release_check passed",
+  "last_action": "completed Issue 036 portfolio team dashboard and bumped version to 0.2.15",
+  "last_verification": "tests.test_project_portfolio, full unittest discovery, validate_project_artifacts, validate_moduflow, and release_check passed",
   "updated_at": "2026-06-26",
   "git_binding": {
     "mode": "git-files",

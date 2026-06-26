@@ -24,6 +24,15 @@ Active goal: `business-document-workflow`
 - Next command: `product:status`
 - Status: complete and versioned as 0.2.14.
 
+### `036-portfolio-team-dashboard`
+
+- Outcome: Portfolio dashboards show each project's active work, review queue, blockers, and next command from project-local state.
+- Reason: Small teams and TFs need a cross-project 현황판, not only per-project team state.
+- Confidence: high
+- Dependency: team issue branch PR workflow
+- Next command: `product:status`
+- Status: complete and versioned as 0.2.15.
+
 ### `033-business-document-workflow`
 
 - Outcome: ModuFlow business documents become project-local, source-backed, decision-ready artifacts, starting with market-entry analysis.
