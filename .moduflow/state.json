@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "status",
+  "phase": "review",
   "active_goal": "business-document-workflow",
-  "active_issue": null,
-  "last_command": "product:sync",
-  "next_command": "product:status",
+  "active_issue": "034-memory-capture-and-sync-workflow",
+  "last_command": "product:issue",
+  "next_command": "product:review 034-memory-capture-and-sync-workflow",
   "blockers": [],
-  "updated_at": "2026-06-24"
+  "updated_at": "2026-06-26"
 }

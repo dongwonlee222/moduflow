@@ -98,6 +98,50 @@ def linked_artifacts(issue_text):
     return linked
 
 
+def iter_memory_markdown(root):
+    memory_root = root / "memory"
+    if not memory_root.exists():
+        return []
+    return sorted(path for path in memory_root.glob("*/*.md") if path.is_file())
+
+
+def parse_frontmatter(text):
+    if not text.startswith("---\n"):
+        return {}
+    parts = text.split("\n---\n", 1)
+    if len(parts) != 2:
+        return {}
+    meta_text = parts[0].split("\n", 1)[1]
+    metadata = {}
+    for line in meta_text.splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        metadata[key.strip()] = value.strip()
+    return metadata
+
+
+def parse_list_value(value):
+    value = (value or "").strip()
+    if not value.startswith("[") or not value.endswith("]"):
+        return []
+    inner = value[1:-1].strip()
+    if not inner:
+        return []
+    return [item.strip() for item in inner.split(",") if item.strip()]
+
+
+def validate_memory_links(root, errors):
+    for memory_file in iter_memory_markdown(root):
+        metadata = parse_frontmatter(memory_file.read_text(encoding="utf-8"))
+        relative_memory = str(memory_file.relative_to(root))
+        for linked in parse_list_value(metadata.get("source_artifacts", "[]")):
+            if linked and not (root / linked).exists():
+                errors.append(f"{relative_memory}: broken source_artifacts link: {linked}")
+        if "memory/.candidates/" in relative_memory and metadata.get("status") != "candidate":
+            errors.append(f"{relative_memory}: candidate memory must have status: candidate")
+
+
 def validate_active_issue_links(root, issue_id, errors):
     issue_file = root / "issues" / f"{issue_id}.md"
     if not issue_file.exists():
@@ -226,6 +270,7 @@ def validate_project(path):
     project_loop = load_project_loop()
     errors.extend(project_loop.validate_loop_state(root))
     validate_schema_gates(root, project_loop, errors)
+    validate_memory_links(root, errors)
 
     return {
         "schema": "moduflow.project-validation.v1",

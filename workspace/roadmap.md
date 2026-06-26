@@ -6,6 +6,15 @@ Business document workflow after project memory: make ModuFlow produce decision-
 
 Active goal: `business-document-workflow`
 
+### `034-memory-capture-and-sync-workflow`
+
+- Outcome: ModuFlow can suggest, approve, store, retrieve, and mirror durable project memories while keeping full deliverables separate from memory summaries.
+- Reason: The memory prototype works, but users need clear save triggers, a reviewable capture flow, search/retrieval behavior, and Google Drive or similar mirror options that do not replace Git as the source of truth.
+- Confidence: high
+- Dependency: project memory layer, business document workflow, artifact schema gates, and external memory pattern review
+- Next command: `product:review 034-memory-capture-and-sync-workflow`
+- Status: implementation complete; review needed before release/versioning.
+
 ### `033-business-document-workflow`
 
 - Outcome: ModuFlow business documents become project-local, source-backed, decision-ready artifacts, starting with market-entry analysis.

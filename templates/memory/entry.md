@@ -4,6 +4,13 @@ kind: {{kind}}
 title: {{title}}
 issue_id: {{issue_id}}
 spec: {{spec_path}}
+source_event: {{source_event}}
+source_artifacts: {{source_artifacts}}
+review_after: {{review_after}}
+supersedes: {{supersedes}}
+superseded_by: {{superseded_by}}
+storage_policy: {{storage_policy}}
+mirror_targets: {{mirror_targets}}
 owner: {{owner}}
 date: {{date}}
 tags: {{tags}}

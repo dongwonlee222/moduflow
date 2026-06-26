@@ -7,31 +7,42 @@ argument-hint: "[project path] [--write|--kind|--search|--get]"
 
 Manage repo-local project memory for deliverables, decisions, evidence, meetings, releases, notes, and references.
 
-## Do
+## PM-Friendly Flow
 
-1. Run dry-run first:
-
-```bash
-python3 scripts/project_memory.py <project-path>
-```
-
-2. Use `--write` to create missing portable memory folders and `memory/index.md` only:
+1. Initialize memory:
 
 ```bash
 python3 scripts/project_memory.py <project-path> --write
 ```
 
-3. Create memory entries with project-local relative links:
+2. Create a reviewable candidate when a workflow produces a durable decision, deliverable, evidence summary, release note, or failed approach:
 
 ```bash
-python3 scripts/project_memory.py <project-path> --kind decision --title "Use repo-local memory" --issue-id 030-project-memory-layer --spec specs/030-project-memory-layer/spec.md --summary "Keep memory portable inside the repo."
+python3 scripts/project_memory.py <project-path> --candidate --kind decision --title "Use Git canonical memory" --issue-id 034-memory-capture-and-sync-workflow --spec specs/034-memory-capture-and-sync-workflow/spec.md --summary "Keep memory canonical in Git-tracked Markdown." --source-event decision-detected --source-artifacts specs/034-memory-capture-and-sync-workflow/spec.md --tags memory,team,pm
 ```
 
-4. Search or get entries:
+3. Review candidates:
 
 ```bash
-python3 scripts/project_memory.py <project-path> --search "portable memory"
-python3 scripts/project_memory.py <project-path> --get 2026-06-24-use-repo-local-memory
+python3 scripts/project_memory.py <project-path> --list-candidates
+```
+
+4. Approve a candidate:
+
+```bash
+python3 scripts/project_memory.py <project-path> --approve 2026-06-26-use-git-canonical-memory
+```
+
+5. Search with source links and match reasons:
+
+```bash
+python3 scripts/project_memory.py <project-path> --search "canonical memory"
+```
+
+6. Get mirror/export guidance:
+
+```bash
+python3 scripts/project_memory.py <project-path> --export-guidance google-drive
 ```
 
 ## Rules
@@ -40,6 +51,9 @@ python3 scripts/project_memory.py <project-path> --get 2026-06-24-use-repo-local
 - External indexes, MCP servers, vector stores, and databases are rebuildable caches/adapters.
 - Prefer relative project-local links so projects remain portable when copied, cloned, or zipped.
 - Do not import private personal memory into a project automatically.
+- In team mode, shared memory should be approved through Git branch/PR review before merge.
+- RAG, LangGraph, MCP servers, Basic Memory, projectmem, mem0, Supermemory, Google Drive, and Obsidian are adapters or mirrors, not the source of truth.
+- PMs can approve memory candidates through natural language; implementation hosts may translate that approval into the CLI calls above.
 
 ## Next
 

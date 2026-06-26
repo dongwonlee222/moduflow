@@ -27,7 +27,7 @@ Core goal loop and business document workflow are released locally.
 
 ## Queue
 
-- None.
+- `034-memory-capture-and-sync-workflow`: implementation complete for candidate capture, approval, retrieval explanations, validation, export guidance, and PM-friendly docs; versioned as 0.2.13 and ready for commit/release.
 
 ## Blockers
 
@@ -35,7 +35,7 @@ Core goal loop and business document workflow are released locally.
 
 ## Verification
 
-- ModuFlow plugin version: `0.2.12+codex.20260624124021`.
+- ModuFlow plugin version: `0.2.13+codex.20260626040213`.
 - `python3 -m unittest tests.test_business_document_workflow -v` passed (3 tests).
 - `python3 -m unittest discover -s tests -v` passed (84 tests).
 - `python3 scripts/release_check.py .` passed.
@@ -44,4 +44,4 @@ Core goal loop and business document workflow are released locally.
 
 ## Next Command
 
-`product:status`
+`product:review 034-memory-capture-and-sync-workflow`

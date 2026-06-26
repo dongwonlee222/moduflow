@@ -12,23 +12,24 @@
     "030-project-memory-layer",
     "031-goal-driven-autonomous-benchmarking-and-issue-generation",
     "032-multi-language-goal-benchmarking-and-core-mcp-server-integration",
-    "033-business-document-workflow"
+    "033-business-document-workflow",
+    "034-memory-capture-and-sync-workflow"
   ],
-  "active_issue_id": null,
-  "phase": "status",
+  "active_issue_id": "034-memory-capture-and-sync-workflow",
+  "phase": "review",
   "mode": "recommend",
-  "status": "done",
-  "next_command": "product:status",
+  "status": "active",
+  "next_command": "product:review 034-memory-capture-and-sync-workflow",
   "attempts": {
-    "command": "product:status",
+    "command": "product:review 034-memory-capture-and-sync-workflow",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-06-24"
+    "last_changed_at": "2026-06-26"
   },
   "blocker": null,
-  "last_action": "completed business document workflow and versioned ModuFlow 0.2.12 (Issue 033)",
-  "last_verification": "release_check passed and plugin cache validation passed",
-  "updated_at": "2026-06-24",
+  "last_action": "implemented Issue 034 memory candidate, approval, enriched retrieval, validation, and PM docs",
+  "last_verification": "tests.test_project_memory, validate_project_artifacts, validate_moduflow, and export guidance check passed",
+  "updated_at": "2026-06-26",
   "git_binding": {
     "mode": "git-files",
     "branch": null,
