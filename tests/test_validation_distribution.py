@@ -249,6 +249,42 @@ class ValidationDistributionTests(unittest.TestCase):
                 any("workspace/dashboard.md: missing active_issue_id 024-artifact-schema-and-doctor-gates" in error for error in result["errors"])
             )
 
+    def test_validate_project_artifacts_reports_team_workflow_drift(self):
+        validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "035-team-issue-branch-pr-workflow"
+            self.write_loop_project(root, issue_id, next_command=f"product:execute {issue_id}")
+            issue_text = (root / "issues" / f"{issue_id}.md").read_text(encoding="utf-8")
+            (root / "issues" / f"{issue_id}.md").write_text(
+                issue_text.replace("- [ ] spec", "- [x] spec").replace("- [ ] plan", "- [x] plan"),
+                encoding="utf-8",
+            )
+            (root / "specs" / issue_id).mkdir(parents=True)
+            (root / "specs" / issue_id / "spec.md").write_text("# Spec\n", encoding="utf-8")
+            (root / "specs" / issue_id / "plan.md").write_text("# Plan\n", encoding="utf-8")
+            (root / "workflow" / "team-state.json").write_text(
+                json.dumps({
+                    "schema": "moduflow.team-state.v1",
+                    "items": [
+                        {
+                            "issue_id": issue_id,
+                            "status": "review",
+                            "assignee": "Minsu",
+                            "branch": "codex/035-team-issue-branch-pr-workflow",
+                        }
+                    ],
+                }) + "\n",
+                encoding="utf-8",
+            )
+
+            result = validator.validate_project(root)
+
+            self.assertFalse(result["valid"])
+            self.assertTrue(
+                any("review state requires reviewer and pr" in error for error in result["errors"])
+            )
+
     def test_validate_project_artifacts_reports_invalid_next_command_for_phase(self):
         validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
         with tempfile.TemporaryDirectory() as tmp:

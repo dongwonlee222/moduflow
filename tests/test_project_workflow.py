@@ -77,6 +77,112 @@ class ProjectWorkflowTests(unittest.TestCase):
             self.assertIn("blocker: none", content)
             self.assertIn("next_command: product:review 005-team-workflow", content)
 
+    def test_start_issue_work_records_branch_lock_and_assignment(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            item = project_workflow.start_issue_work(
+                root,
+                issue_id="035-team-issue-branch-pr-workflow",
+                assignee="Minsu",
+                owner="PM",
+                reviewer="Dongwon",
+            )
+
+            self.assertEqual(item["status"], "active")
+            self.assertEqual(item["branch"], "codex/035-team-issue-branch-pr-workflow")
+            self.assertEqual(item["lock_state"], "active")
+            self.assertEqual(item["locked_by"], "Minsu")
+            self.assertEqual(item["next_command"], "product:execute 035-team-issue-branch-pr-workflow")
+            self.assertTrue((root / "workflow" / "team-state.json").exists())
+
+    def test_record_pr_state_moves_item_to_review(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_workflow.start_issue_work(
+                root,
+                issue_id="035-team-issue-branch-pr-workflow",
+                assignee="Minsu",
+                reviewer="Dongwon",
+            )
+
+            item = project_workflow.record_pr_state(
+                root,
+                issue_id="035-team-issue-branch-pr-workflow",
+                pr="https://github.com/example/repo/pull/35",
+                reviewer="Dongwon",
+            )
+
+            self.assertEqual(item["status"], "review")
+            self.assertEqual(item["pr"], "https://github.com/example/repo/pull/35")
+            self.assertEqual(item["reviewer"], "Dongwon")
+            self.assertEqual(item["next_command"], "product:review 035-team-issue-branch-pr-workflow")
+
+    def test_record_pr_state_preserves_existing_reviewer_when_omitted(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_workflow.start_issue_work(
+                root,
+                issue_id="035-team-issue-branch-pr-workflow",
+                assignee="Minsu",
+                reviewer="Dongwon",
+            )
+
+            item = project_workflow.record_pr_state(
+                root,
+                issue_id="035-team-issue-branch-pr-workflow",
+                pr="local:035-team-issue-branch-pr-workflow",
+            )
+
+            self.assertEqual(item["reviewer"], "Dongwon")
+
+    def test_render_team_status_groups_work_for_pm_view(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_workflow.start_issue_work(
+                root,
+                issue_id="035-team-issue-branch-pr-workflow",
+                assignee="Minsu",
+                owner="PM",
+            )
+
+            status = project_workflow.render_team_status(root)
+
+            self.assertIn("## Active", status)
+            self.assertIn("035-team-issue-branch-pr-workflow", status)
+            self.assertIn("Minsu", status)
+            self.assertIn("codex/035-team-issue-branch-pr-workflow", status)
+
+    def test_suggest_completion_memory_returns_candidate_inputs(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            candidate = project_workflow.suggest_completion_memory(
+                root,
+                issue_id="035-team-issue-branch-pr-workflow",
+                title="Team workflow decision",
+                summary="Small teams use local Git files as canonical issue and PR state.",
+                source_artifacts=["issues/035-team-issue-branch-pr-workflow.md"],
+            )
+
+            self.assertEqual(candidate["source_event"], "issue_completed")
+            self.assertEqual(candidate["source_artifacts"], ["issues/035-team-issue-branch-pr-workflow.md"])
+            self.assertEqual(candidate["storage_policy"], "canonical_git")
+            self.assertIn("team-workflow", candidate["tags"])
+
+    def test_done_team_item_recommends_status(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+
+        self.assertEqual(
+            project_workflow.next_command_for_status("035-team-issue-branch-pr-workflow", "done"),
+            "product:status",
+        )
+
     def test_doctor_reports_workflow_missing_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

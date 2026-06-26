@@ -53,6 +53,7 @@ JSON_FILES = [
 OPTIONAL_JSON_FILES = [
     ".moduflow/environments.json",
     ".moduflow/integrations.json",
+    "workflow/team-state.json",
 ]
 
 
@@ -140,6 +141,36 @@ def validate_memory_links(root, errors):
                 errors.append(f"{relative_memory}: broken source_artifacts link: {linked}")
         if "memory/.candidates/" in relative_memory and metadata.get("status") != "candidate":
             errors.append(f"{relative_memory}: candidate memory must have status: candidate")
+
+
+def validate_team_workflow_state(root, errors):
+    team_state_path = root / "workflow" / "team-state.json"
+    if not team_state_path.exists():
+        return
+    state = read_json(team_state_path, errors)
+    if not state:
+        return
+    if state.get("schema") != "moduflow.team-state.v1":
+        errors.append("workflow/team-state.json: schema must be moduflow.team-state.v1")
+        return
+    items = state.get("items")
+    if not isinstance(items, list):
+        errors.append("workflow/team-state.json: items must be a list")
+        return
+    for item in items:
+        issue_id = item.get("issue_id")
+        status = item.get("status")
+        if not issue_id:
+            errors.append("workflow/team-state.json: item missing issue_id")
+            continue
+        if not (root / "issues" / f"{issue_id}.md").exists():
+            errors.append(f"workflow/team-state.json: item references missing issue {issue_id}")
+        if status == "active" and not item.get("branch"):
+            errors.append(f"workflow/team-state.json: active state for {issue_id} requires branch")
+        if status == "active" and not (item.get("assignee") or item.get("locked_by")):
+            errors.append(f"workflow/team-state.json: active state for {issue_id} requires assignee or locked_by")
+        if status == "review" and not (item.get("reviewer") and item.get("pr")):
+            errors.append(f"workflow/team-state.json: review state requires reviewer and pr for {issue_id}")
 
 
 def validate_active_issue_links(root, issue_id, errors):
@@ -271,6 +302,7 @@ def validate_project(path):
     errors.extend(project_loop.validate_loop_state(root))
     validate_schema_gates(root, project_loop, errors)
     validate_memory_links(root, errors)
+    validate_team_workflow_state(root, errors)
 
     return {
         "schema": "moduflow.project-validation.v1",

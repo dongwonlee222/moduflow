@@ -1,0 +1,20 @@
+{
+  "schema": "moduflow.team-state.v1",
+  "items": [
+    {
+      "issue_id": "035-team-issue-branch-pr-workflow",
+      "owner": "Dongwon Lee",
+      "assignee": "Codex",
+      "reviewer": "Dongwon Lee",
+      "status": "done",
+      "branch": "codex/035-team-issue-branch-pr-workflow",
+      "pr": "local:035-team-issue-branch-pr-workflow",
+      "lock_state": "released",
+      "locked_by": "Codex",
+      "blocker": "",
+      "last_handoff": "PR ready for review: local:035-team-issue-branch-pr-workflow",
+      "next_command": "product:status",
+      "updated_at": "2026-06-26"
+    }
+  ]
+}

@@ -17,10 +17,16 @@ Make progress visible.
 3. Render a Korean-first terminal-style dashboard before detailed prose.
 4. Report current phase, active issue, active/recent sessions, blockers, queue, risks, changed files, and next command.
 5. If project mode is available from doctor/status context, show plain guidance such as "프로젝트 설정이 가볍고 정상입니다" instead of raw labels like `lightweight`, `dogfooding`, or `heavy`.
-6. When status is shown after a completed action, render the same structured next handoff used by `product:loop`: next work, reasons, concrete actions, follow-on priority, and exact command when useful.
-7. When status is shown after a resumed or interrupted task, include the resume banner before the dashboard.
-8. Do not mutate local artifact files during normal status display (the `git fetch` in step 1 is read-only; an approved `git pull` is the only allowed sync).
-9. If source artifacts look stale or inconsistent, report the mismatch and recommend `product:doctor`.
+6. If `workflow/team-state.json` exists, include the PM-friendly team view:
+
+```bash
+python3 scripts/project_workflow.py <project-path> --team-status
+```
+
+7. When status is shown after a completed action, render the same structured next handoff used by `product:loop`: next work, reasons, concrete actions, follow-on priority, and exact command when useful.
+8. When status is shown after a resumed or interrupted task, include the resume banner before the dashboard.
+9. Do not mutate local artifact files during normal status display (the `git fetch` in step 1 is read-only; an approved `git pull` is the only allowed sync).
+10. If source artifacts look stale or inconsistent, report the mismatch and recommend `product:doctor`.
 
 ## Output
 
@@ -51,6 +57,7 @@ Detailed status mode may include:
 - Active/recent sessions when available
 - Queue
 - Blockers and risks
+- Team work queues from `workflow/team-state.json` when present
 - Source artifact links when useful
 - Loop status and attempts
 - Next recommended command

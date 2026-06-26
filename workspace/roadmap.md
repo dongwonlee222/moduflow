@@ -2,7 +2,7 @@
 
 ## Now
 
-Business document workflow after project memory: make ModuFlow produce decision-ready business documents with sources, assumptions, calculations, validation, exports, and memory.
+Business document workflow after project memory: make ModuFlow produce decision-ready business documents with sources, assumptions, calculations, validation, exports, memory, and small-team execution workflows.
 
 Active goal: `business-document-workflow`
 
@@ -14,6 +14,15 @@ Active goal: `business-document-workflow`
 - Dependency: project memory layer, business document workflow, artifact schema gates, and external memory pattern review
 - Next command: `product:review 034-memory-capture-and-sync-workflow`
 - Status: implementation complete; review needed before release/versioning.
+
+### `035-team-issue-branch-pr-workflow`
+
+- Outcome: Small teams and TFs can create, assign, start, review, and complete work through ModuFlow while developers use Git branches and PRs underneath.
+- Reason: PMs should be able to run team work in natural language, while developers need deterministic issue, branch, PR, review, and memory-capture state.
+- Confidence: high
+- Dependency: Git binding, intake-to-goal graph, worker routing, artifact validation, and memory candidate workflow
+- Next command: `product:status`
+- Status: complete and versioned as 0.2.14.
 
 ### `033-business-document-workflow`
 

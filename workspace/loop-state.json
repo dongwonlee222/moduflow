@@ -13,22 +13,23 @@
     "031-goal-driven-autonomous-benchmarking-and-issue-generation",
     "032-multi-language-goal-benchmarking-and-core-mcp-server-integration",
     "033-business-document-workflow",
-    "034-memory-capture-and-sync-workflow"
+    "034-memory-capture-and-sync-workflow",
+    "035-team-issue-branch-pr-workflow"
   ],
-  "active_issue_id": "034-memory-capture-and-sync-workflow",
-  "phase": "review",
+  "active_issue_id": "035-team-issue-branch-pr-workflow",
+  "phase": "status",
   "mode": "recommend",
-  "status": "active",
-  "next_command": "product:review 034-memory-capture-and-sync-workflow",
+  "status": "done",
+  "next_command": "product:status",
   "attempts": {
-    "command": "product:review 034-memory-capture-and-sync-workflow",
+    "command": "product:status",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-06-26"
   },
   "blocker": null,
-  "last_action": "implemented Issue 034 memory candidate, approval, enriched retrieval, validation, and PM docs",
-  "last_verification": "tests.test_project_memory, validate_project_artifacts, validate_moduflow, and export guidance check passed",
+  "last_action": "completed Issue 035 team workflow and bumped version to 0.2.14",
+  "last_verification": "full unittest discovery, validate_project_artifacts, validate_moduflow, and release_check passed",
   "updated_at": "2026-06-26",
   "git_binding": {
     "mode": "git-files",

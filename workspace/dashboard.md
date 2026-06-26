@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Core goal loop and business document workflow are released locally.
+Core goal loop, business document workflow, memory capture workflow, and team issue-to-branch workflow are released locally.
 
 ## Active Goal
 
@@ -14,6 +14,7 @@ Core goal loop and business document workflow are released locally.
 
 ## Recently Completed
 
+- `035-team-issue-branch-pr-workflow`: completed PM-friendly team-state helpers, PM team status, PR state binding, completion-memory suggestions, validation drift checks, and command docs; versioned as 0.2.14.
 - `033-business-document-workflow`: added business-document routing, market-entry analysis references, polite Korean writing gate, and a test market-entry artifact package.
 - `030-project-memory-layer`: portable project memory prototype added with init/write/search/get, doctor validation, command docs, and a repo-local decision memory entry.
 - `032-multi-language-goal-benchmarking-and-core-mcp-server-integration`: completed stdio mcp server bridge, direct tool calling logic, and translation helpers.
@@ -27,7 +28,7 @@ Core goal loop and business document workflow are released locally.
 
 ## Queue
 
-- `034-memory-capture-and-sync-workflow`: implementation complete for candidate capture, approval, retrieval explanations, validation, export guidance, and PM-friendly docs; versioned as 0.2.13 and ready for commit/release.
+- `034-memory-capture-and-sync-workflow`: implementation complete for candidate capture, approval, retrieval explanations, validation, export guidance, and PM-friendly docs; versioned as 0.2.13 and committed.
 
 ## Blockers
 
@@ -35,13 +36,13 @@ Core goal loop and business document workflow are released locally.
 
 ## Verification
 
-- ModuFlow plugin version: `0.2.13+codex.20260626040213`.
+- ModuFlow plugin version: `0.2.14+codex.20260626143554`.
 - `python3 -m unittest tests.test_business_document_workflow -v` passed (3 tests).
-- `python3 -m unittest discover -s tests -v` passed (84 tests).
+- `python3 -m unittest discover -s tests -v` passed (121 tests).
 - `python3 scripts/release_check.py .` passed.
 - `python3 scripts/validate_project_artifacts.py .` passed.
-- `python3 scripts/validate_moduflow.py .` passed for source and deployed cache.
+- `python3 scripts/validate_moduflow.py .` passed.
 
 ## Next Command
 
-`product:review 034-memory-capture-and-sync-workflow`
+`product:status`
