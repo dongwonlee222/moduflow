@@ -177,6 +177,76 @@ def merge_order(planned_tasks):
     return ordered
 
 
+def find_related_memories(project_root, expected_files, issue_id):
+    project_root = Path(project_root).resolve()
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("project_memory", project_root / "scripts/project_memory.py")
+        project_memory = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(project_memory)
+    except Exception:
+        return []
+
+    related = []
+    for memory_file in project_memory.iter_memory_files(project_root):
+        try:
+            text = memory_file.read_text(encoding="utf-8")
+            metadata, _ = project_memory.parse_frontmatter(text)
+        except Exception:
+            continue
+
+        entry_id = metadata.get("id") or memory_file.stem
+        title = metadata.get("title") or entry_id
+        summary = metadata.get("summary") or ""
+
+        depends_on = project_memory.parse_list_value(metadata.get("depends_on", "[]"))
+        references = project_memory.parse_list_value(metadata.get("references", "[]"))
+        supersedes = project_memory.parse_list_value(metadata.get("supersedes", "[]"))
+        source_artifacts = project_memory.parse_list_value(metadata.get("source_artifacts", "[]"))
+        spec_link = metadata.get("spec") or ""
+        issue_link = metadata.get("issue_id") or ""
+
+        is_relevant = False
+        if issue_link and issue_id in issue_link:
+            is_relevant = True
+
+        for f in expected_files:
+            if any(f in ref or ref in f for ref in references):
+                is_relevant = True
+            if any(f in art or art in f for art in source_artifacts):
+                is_relevant = True
+            if spec_link and (f in spec_link or spec_link in f):
+                is_relevant = True
+
+        if is_relevant:
+            rel_path = str(memory_file.relative_to(project_root))
+            related.append({
+                "id": entry_id,
+                "title": title,
+                "path": rel_path,
+                "summary": summary
+            })
+
+    return sorted(related, key=lambda x: x["id"])
+
+
+def assemble_prompt_context(project_root, related_memories):
+    if not related_memories:
+        return ""
+
+    lines = [
+        "",
+        "### Related Project Decisions",
+        "",
+        "The following past architectural decisions/rules are relevant to your task.",
+        "Please use your tools to read the full file contents if you need details:",
+    ]
+    for mem in related_memories:
+        lines.append(f"- [{mem['title']}](file:///{Path(project_root).resolve()}/{mem['path']}): {mem['summary']}")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def build_worker_plan(root, issue_id):
     project_root = Path(root).resolve()
     spec_root = project_root / "specs" / issue_id
@@ -195,6 +265,21 @@ def build_worker_plan(root, issue_id):
         if shared_state_risk:
             risks.append(f"Task {index} touches shared state: {task['text']}")
         expected_files_str = ", ".join(task["expected_files"]) if task["expected_files"] else "none"
+        related_mems = find_related_memories(project_root, task["expected_files"], issue_id)
+        context_block = assemble_prompt_context(project_root, related_mems)
+        prompt = (
+            f"Implement task: {task['text']}\n"
+            f"Expected files: {expected_files_str}\n"
+            f"Cognitive demand: {WORKER_COGNITIVE_DEMAND.get(worker, 'balanced')} — "
+            + {
+                "deep":     "use your most capable reasoning model.",
+                "balanced": "use your standard production model.",
+                "fast":     "use your lightest, fastest model.",
+            }.get(WORKER_COGNITIVE_DEMAND.get(worker, "balanced"), "")
+        )
+        if context_block:
+            prompt += context_block
+
         planned_tasks.append(
             {
                 "id": task_id,
@@ -216,16 +301,7 @@ def build_worker_plan(root, issue_id):
                     "Role": f"ModuFlow {worker}",
                     "CognitiveDemand": WORKER_COGNITIVE_DEMAND.get(worker, "balanced"),
                     "Workspace": "share",
-                    "Prompt": (
-                        f"Implement task: {task['text']}\n"
-                        f"Expected files: {expected_files_str}\n"
-                        f"Cognitive demand: {WORKER_COGNITIVE_DEMAND.get(worker, 'balanced')} — "
-                        + {
-                            "deep":     "use your most capable reasoning model.",
-                            "balanced": "use your standard production model.",
-                            "fast":     "use your lightest, fastest model.",
-                        }.get(WORKER_COGNITIVE_DEMAND.get(worker, "balanced"), "")
-                    ),
+                    "Prompt": prompt,
                 },
             }
         )

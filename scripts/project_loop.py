@@ -8,9 +8,10 @@ from pathlib import Path
 LOOP_STATE_SCHEMA = "moduflow.loop-state.v2"
 DEFAULT_MAX_ATTEMPTS = 3
 VALID_LOOP_STATUSES = {"active", "needs_decision", "blocked", "done"}
+VALID_DELEGATION_LEVELS = {"full", "review_required", "manual"}
 PHASE_ORDER = ["issue", "spec", "plan", "execute", "review", "release", "status"]
 GIT_BINDING_MODES = {"git-files", "github-sync"}
-EXECUTION_BACKENDS = {"codex", "claude-code", "copilot-cloud-agent", "openhands", "manual"}
+EXECUTION_BACKENDS = {"codex", "claude-code", "copilot-cloud-agent", "openhands", "manual", "host-subagent"}
 
 
 def read_json(path):
@@ -82,12 +83,18 @@ def normalize_git_binding(raw_binding=None):
     }
 
 
-def recommend_execution_backend(task_type="code", risk="medium", github_available=False):
+def recommend_execution_backend(task_type="code", risk="medium", github_available=False, host_supports_subagents=False):
     if risk == "high":
         return {
             "type": "manual",
             "status": "recommended",
             "reason": "high-risk work needs explicit human control",
+        }
+    if host_supports_subagents and task_type == "code":
+        return {
+            "type": "host-subagent",
+            "status": "recommended",
+            "reason": "local subagent environment allows parallel host execution",
         }
     if task_type in {"docs", "planning", "spec"}:
         return {
@@ -134,6 +141,9 @@ def normalize_loop_state(raw):
     status = raw.get("status") or "active"
     if status not in VALID_LOOP_STATUSES:
         status = "active"
+    delegation_level = raw.get("delegation_level") or "review_required"
+    if delegation_level not in VALID_DELEGATION_LEVELS:
+        delegation_level = "review_required"
     return {
         "schema": LOOP_STATE_SCHEMA,
         "loop_id": raw.get("loop_id") or raw.get("goal_id") or "active-loop",
@@ -143,6 +153,7 @@ def normalize_loop_state(raw):
         "active_issue_id": active_issue_id,
         "phase": raw.get("phase") or "goal",
         "mode": raw.get("mode") or "recommend",
+        "delegation_level": delegation_level,
         "status": status,
         "next_command": next_command,
         "attempts": normalize_attempts(raw.get("attempts"), next_command),
@@ -244,6 +255,17 @@ def recommend_loop(root):
     phase = infer_issue_phase(root, active_issue_id)
     command = recommend_next_command(active_issue_id, phase)
     state["phase"] = phase
+
+    delegation_level = state.get("delegation_level", "review_required")
+    if phase == "execute" and delegation_level in {"manual", "review_required"}:
+        backend = state.get("git_binding", {}).get("execution_backend", {})
+        backend_status = backend.get("status") if isinstance(backend, dict) else None
+        if delegation_level == "manual" or (delegation_level == "review_required" and backend_status != "approved"):
+            state["status"] = "needs_decision"
+            state["blocker"] = f"Execution blocked: delegation_level is '{delegation_level}' and requires human approval."
+            state["next_command"] = f"product:execute {active_issue_id}"
+            return state
+
     return apply_attempts_guard(state, command)
 
 

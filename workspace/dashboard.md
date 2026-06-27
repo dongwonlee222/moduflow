@@ -10,10 +10,12 @@ Core goal loop, business document workflow, memory capture workflow, team issue-
 
 ## Active Issue
 
-- None.
+- `039-automated-review-checklists-and-safety-lint-gates` (Phase 3: Automated Review Checklists And Safety Lint Gates)
 
 ## Recently Completed
 
+- `038-worker-context-memory-path-injection`: completed dynamic correlation matching and context memory path/summary injection in worker orchestrator prompts.
+- `037-delegation-level-gate-and-memory-context-graph`: completed delegation_level loop-state gate and depends_on/references memory relationship parsing with `--graph` Mermaid output.
 - `035-team-issue-branch-pr-workflow`: completed PM-friendly team-state helpers, PM team status, PR state binding, completion-memory suggestions, validation drift checks, and command docs; versioned as 0.2.14.
 - `036-portfolio-team-dashboard`: portfolio dashboard now reads each project's `workflow/team-state.json` and shows active/review work per project; versioned as 0.2.15.
 - `033-business-document-workflow`: added business-document routing, market-entry analysis references, polite Korean writing gate, and a test market-entry artifact package.
@@ -39,7 +41,7 @@ Core goal loop, business document workflow, memory capture workflow, team issue-
 
 - ModuFlow plugin version: `0.2.15+codex.20260626145655`.
 - `python3 -m unittest tests.test_business_document_workflow -v` passed (3 tests).
-- `python3 -m unittest discover -s tests -v` passed (122 tests).
+- `python3 -m unittest discover -s tests -v` passed (131 tests).
 - `python3 scripts/release_check.py .` passed.
 - `python3 scripts/validate_project_artifacts.py .` passed.
 - `python3 scripts/validate_moduflow.py .` passed.

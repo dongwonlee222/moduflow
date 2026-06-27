@@ -15,23 +15,26 @@
     "033-business-document-workflow",
     "034-memory-capture-and-sync-workflow",
     "035-team-issue-branch-pr-workflow",
-    "036-portfolio-team-dashboard"
+    "036-portfolio-team-dashboard",
+    "037-delegation-level-gate-and-memory-context-graph",
+    "040-automatic-memory-candidate-capture"
   ],
-  "active_issue_id": "036-portfolio-team-dashboard",
-  "phase": "status",
+  "active_issue_id": "040-automatic-memory-candidate-capture",
+  "phase": "done",
   "mode": "recommend",
+  "delegation_level": "review_required",
   "status": "done",
   "next_command": "product:status",
   "attempts": {
     "command": "product:status",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-06-26"
+    "last_changed_at": "2026-06-27"
   },
   "blocker": null,
-  "last_action": "completed Issue 036 portfolio team dashboard and bumped version to 0.2.15",
-  "last_verification": "tests.test_project_portfolio, full unittest discovery, validate_project_artifacts, validate_moduflow, and release_check passed",
-  "updated_at": "2026-06-26",
+  "last_action": "implemented automatic memory candidate capture and CLI options",
+  "last_verification": "137 unit tests passed, artifact validation green",
+  "updated_at": "2026-06-27",
   "git_binding": {
     "mode": "git-files",
     "branch": null,

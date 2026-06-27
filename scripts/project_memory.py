@@ -116,6 +116,8 @@ def entry_body(
     review_after="",
     supersedes=None,
     superseded_by=None,
+    depends_on=None,
+    references=None,
     storage_policy="local",
     mirror_targets=None,
     summary="",
@@ -138,6 +140,8 @@ source_artifacts: {format_list(source_artifacts or [])}
 review_after: {frontmatter_value(review_after)}
 supersedes: {format_list(supersedes or [])}
 superseded_by: {format_list(superseded_by or [])}
+depends_on: {format_list(depends_on or [])}
+references: {format_list(references or [])}
 storage_policy: {frontmatter_value(storage_policy)}
 mirror_targets: {format_list(mirror_targets or [])}
 owner: {frontmatter_value(owner)}
@@ -200,6 +204,8 @@ def create_memory_entry(
     review_after="",
     supersedes=None,
     superseded_by=None,
+    depends_on=None,
+    references=None,
     storage_policy="local",
     mirror_targets=None,
     summary="",
@@ -235,6 +241,8 @@ def create_memory_entry(
             review_after=review_after,
             supersedes=supersedes or [],
             superseded_by=superseded_by or [],
+            depends_on=depends_on or [],
+            references=references or [],
             storage_policy=storage_policy,
             mirror_targets=mirror_targets or [],
             summary=summary,
@@ -265,6 +273,8 @@ def create_memory_candidate(
     source_artifacts=None,
     review_after="",
     supersedes=None,
+    depends_on=None,
+    references=None,
     storage_policy="local",
     mirror_targets=None,
     summary="",
@@ -300,6 +310,8 @@ def create_memory_candidate(
             review_after=review_after,
             supersedes=supersedes or [],
             superseded_by=[],
+            depends_on=depends_on or [],
+            references=references or [],
             storage_policy=storage_policy,
             mirror_targets=mirror_targets or [],
             summary=summary,
@@ -364,47 +376,161 @@ def iter_candidate_files(root):
 def list_memory_candidates(path):
     project_root = Path(path).resolve()
     candidates = []
+    import time
+    now = time.time()
+    day_seconds = 24 * 3600
+    stale_threshold = 14 * day_seconds
+
     for candidate_file in iter_candidate_files(project_root):
-        text = candidate_file.read_text(encoding="utf-8")
-        metadata, _ = parse_frontmatter(text)
-        candidates.append(
-            {
-                "id": metadata.get("id") or candidate_file.stem,
-                "kind": metadata.get("kind", ""),
-                "title": metadata.get("title", ""),
-                "path": str(candidate_file.relative_to(project_root)),
-                "summary": metadata.get("summary", ""),
-                "status": metadata.get("status", "candidate"),
-            }
-        )
+        # 14-day automatic stale pruning based on file mtime
+        mtime = candidate_file.stat().st_mtime
+        if now - mtime > stale_threshold:
+            try:
+                candidate_file.unlink()
+            except Exception:
+                pass
+            continue
+
+        try:
+            text = candidate_file.read_text(encoding="utf-8")
+            metadata, _ = parse_frontmatter(text)
+            candidates.append(
+                {
+                    "id": metadata.get("id") or candidate_file.stem,
+                    "kind": metadata.get("kind", ""),
+                    "title": metadata.get("title", ""),
+                    "path": str(candidate_file.relative_to(project_root)),
+                    "summary": metadata.get("summary", ""),
+                    "status": metadata.get("status", "candidate"),
+                }
+            )
+        except Exception:
+            pass
     return candidates
 
 
 def approve_memory_candidate(path, candidate_id):
     project_root = Path(path).resolve()
     for candidate_file in iter_candidate_files(project_root):
-        text = candidate_file.read_text(encoding="utf-8")
-        metadata, _ = parse_frontmatter(text)
-        found_id = metadata.get("id") or candidate_file.stem
-        if found_id != candidate_id:
-            continue
-        kind = metadata.get("kind", "")
-        if kind not in KIND_TO_DIR:
-            raise ValueError(f"Unsupported memory kind: {kind}")
-        target_dir = project_root / KIND_TO_DIR[kind]
-        target_dir.mkdir(parents=True, exist_ok=True)
-        target = target_dir / candidate_file.name
-        approved_text = text.replace("status: candidate", "status: approved", 1)
-        target.write_text(approved_text, encoding="utf-8")
-        candidate_file.unlink()
-        return {
-            "id": found_id,
-            "kind": kind,
-            "status": "approved",
-            "path": str(target.relative_to(project_root)),
-            "portable": True,
-        }
+        try:
+            text = candidate_file.read_text(encoding="utf-8")
+            metadata, _ = parse_frontmatter(text)
+            found_id = metadata.get("id") or candidate_file.stem
+            if found_id != candidate_id:
+                continue
+            kind = metadata.get("kind", "")
+            if kind not in KIND_TO_DIR:
+                raise ValueError(f"Unsupported memory kind: {kind}")
+            target_dir = project_root / KIND_TO_DIR[kind]
+            target_dir.mkdir(parents=True, exist_ok=True)
+            target = target_dir / candidate_file.name
+            approved_text = text.replace("status: candidate\n", "status: approved\n", 1)
+            # Fallback if newline is different
+            if "status: approved" not in approved_text:
+                approved_text = text.replace("status: candidate", "status: approved", 1)
+            target.write_text(approved_text, encoding="utf-8")
+            candidate_file.unlink()
+            return {
+                "id": found_id,
+                "kind": kind,
+                "status": "approved",
+                "path": str(target.relative_to(project_root)),
+                "portable": True,
+            }
+        except Exception as e:
+            raise RuntimeError(f"Failed to approve candidate: {e}")
     return None
+
+
+def reject_memory_candidate(path, candidate_id):
+    project_root = Path(path).resolve()
+    for candidate_file in iter_candidate_files(project_root):
+        try:
+            text = candidate_file.read_text(encoding="utf-8")
+            metadata, _ = parse_frontmatter(text)
+            found_id = metadata.get("id") or candidate_file.stem
+            if found_id == candidate_id:
+                candidate_file.unlink()
+                return {
+                    "id": found_id,
+                    "status": "rejected",
+                    "deleted": True
+                }
+        except Exception:
+            pass
+    return None
+
+
+def capture_to_memory_candidate(path, kind, source_file, title=None, tags=None):
+    if kind not in KIND_TO_DIR:
+        raise ValueError(f"Unsupported memory kind: {kind}")
+    project_root = Path(path).resolve()
+    src_path = Path(source_file).resolve()
+    if not src_path.exists():
+        # Try relative to project_root if absolute doesn't exist
+        src_path = project_root / source_file
+        if not src_path.exists():
+            raise FileNotFoundError(f"Source file not found: {source_file}")
+
+    text = src_path.read_text(encoding="utf-8", errors="ignore")
+    metadata, content = parse_frontmatter(text)
+
+    # Resolve title
+    final_title = title or metadata.get("title")
+    if not final_title:
+        # Try to find first markdown header
+        for line in text.splitlines():
+            if line.strip().startswith("# "):
+                final_title = line.strip()[2:].strip()
+                break
+        if not final_title:
+            final_title = src_path.stem.replace("-", " ").replace("_", " ").title()
+
+    # Extract tags
+    final_tags = tags or []
+    if "tags" in metadata:
+        meta_tags = metadata["tags"]
+        if isinstance(meta_tags, list):
+            final_tags.extend(meta_tags)
+        elif isinstance(meta_tags, str):
+            final_tags.extend(parse_list_value(meta_tags))
+
+    # Resolve other fields
+    summary = metadata.get("summary", "")
+    if not summary and content:
+        # Take first 3 lines of content as summary
+        summary = "\n".join(content.strip().splitlines()[:3])
+
+    evidence_text = metadata.get("evidence", "")
+    if not evidence_text and kind == "evidence":
+        evidence_text = content.strip()
+
+    rationale_text = metadata.get("rationale", "")
+    if not rationale_text and kind == "decision":
+        rationale_text = content.strip()
+
+    return create_memory_candidate(
+        path=project_root,
+        kind=kind,
+        title=final_title,
+        issue_id=metadata.get("issue_id", ""),
+        spec_path=metadata.get("spec", ""),
+        source_event=metadata.get("source_event", "manual_capture"),
+        source_artifacts=[str(src_path.relative_to(project_root))] if src_path.is_relative_to(project_root) else [str(src_path)],
+        review_after=metadata.get("review_after", ""),
+        supersedes=parse_list_value(metadata.get("supersedes", "")) if isinstance(metadata.get("supersedes"), str) else metadata.get("supersedes"),
+        depends_on=parse_list_value(metadata.get("depends_on", "")) if isinstance(metadata.get("depends_on"), str) else metadata.get("depends_on"),
+        references=parse_list_value(metadata.get("references", "")) if isinstance(metadata.get("references"), str) else metadata.get("references"),
+        storage_policy=metadata.get("storage_policy", "canonical_git"),
+        mirror_targets=parse_list_value(metadata.get("mirror_targets", "")) if isinstance(metadata.get("mirror_targets"), str) else metadata.get("mirror_targets"),
+        summary=summary,
+        rationale=rationale_text,
+        evidence=evidence_text,
+        alternatives=metadata.get("alternatives", ""),
+        owner=metadata.get("owner", ""),
+        reversal_conditions=metadata.get("reversal_conditions", ""),
+        tags=final_tags
+    )
 
 
 def search_memory_entries(path, query="", kind="", issue_id="", spec_path="", tag="", limit=20):
@@ -495,6 +621,70 @@ def memory_export_guidance(target):
     }
 
 
+def generate_memory_graph(root):
+    project_root = Path(root).resolve()
+    nodes = {}
+    edges = []
+
+    for memory_file in iter_memory_files(project_root):
+        try:
+            text = memory_file.read_text(encoding="utf-8")
+            metadata, _ = parse_frontmatter(text)
+        except Exception:
+            continue
+
+        entry_id = metadata.get("id") or memory_file.stem
+        kind = metadata.get("kind", "note")
+        title = metadata.get("title") or entry_id
+
+        nodes[entry_id] = {
+            "title": title,
+            "kind": kind,
+        }
+
+        # Parse relationships
+        supersedes = parse_list_value(metadata.get("supersedes", "[]"))
+        depends_on = parse_list_value(metadata.get("depends_on", "[]"))
+        references = parse_list_value(metadata.get("references", "[]"))
+
+        for target in supersedes:
+            edges.append((entry_id, target, "supersedes"))
+        for target in depends_on:
+            edges.append((entry_id, target, "depends_on"))
+        for target in references:
+            edges.append((entry_id, target, "references"))
+
+    # Render Mermaid
+    lines = ["flowchart TD"]
+
+    # Define classes for styling
+    lines.append("    classDef decision fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;")
+    lines.append("    classDef release fill:#fff3e0,stroke:#ff9800,stroke-width:2px;")
+    lines.append("    classDef spec fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;")
+    lines.append("    classDef note fill:#f5f5f5,stroke:#757575,stroke-width:1px;")
+
+    # Declare nodes
+    for entry_id, info in sorted(nodes.items()):
+        node_var = entry_id.replace("-", "_").replace(".", "_")
+        escaped_title = info["title"].replace('"', '\\"')
+        lines.append(f'    {node_var}["{escaped_title} ({entry_id})"]')
+        # Assign class
+        kind = info["kind"]
+        if kind in {"decision", "release", "spec", "note"}:
+            lines.append(f"    class {node_var} {kind};")
+
+    # Declare edges
+    for source, target, label in edges:
+        source_var = source.replace("-", "_").replace(".", "_")
+        target_var = target.replace("-", "_").replace(".", "_")
+        # Check if target exists in nodes to avoid broken graph references
+        if target not in nodes:
+            lines.append(f'    {target_var}["{target}"]')
+        lines.append(f"    {source_var} -->|{label}| {target_var}")
+
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Plan, initialize, write, search, or get ModuFlow project memory.")
     parser.add_argument("project_path", nargs="?", default=".")
@@ -502,6 +692,9 @@ def main():
     parser.add_argument("--candidate", action="store_true", help="Create a reviewable memory candidate.")
     parser.add_argument("--list-candidates", action="store_true", help="List reviewable memory candidates.")
     parser.add_argument("--approve", default="", help="Approve a memory candidate by id.")
+    parser.add_argument("--reject", default="", help="Reject a memory candidate by id.")
+    parser.add_argument("--capture", action="store_true", help="Capture a source document to candidate memory.")
+    parser.add_argument("--source", default="", help="Source file for capture.")
     parser.add_argument("--kind", choices=sorted(KIND_TO_DIR), help="Create a single memory entry.")
     parser.add_argument("--title", default="", help="Title for a single memory entry.")
     parser.add_argument("--issue-id", default="")
@@ -512,6 +705,9 @@ def main():
     parser.add_argument("--supersedes", default="", help="Comma-separated superseded memory ids.")
     parser.add_argument("--storage-policy", default="local")
     parser.add_argument("--mirror-targets", default="", help="Comma-separated mirror/export targets.")
+    parser.add_argument("--depends-on", default="", help="Comma-separated depends_on memory ids.")
+    parser.add_argument("--references", default="", help="Comma-separated references memory ids.")
+    parser.add_argument("--graph", action="store_true", help="Render a visual Mermaid chart of the memory context.")
     parser.add_argument("--summary", default="")
     parser.add_argument("--rationale", default="")
     parser.add_argument("--evidence", default="")
@@ -524,6 +720,10 @@ def main():
     parser.add_argument("--export-guidance", default="", help="Return mirror/export guidance for a target.")
     args = parser.parse_args()
 
+    if args.graph:
+        print(generate_memory_graph(args.project_path))
+        return 0
+
     if args.get:
         result = get_memory_entry(args.project_path, args.get)
     elif args.search:
@@ -534,12 +734,27 @@ def main():
         result = list_memory_candidates(args.project_path)
     elif args.approve:
         result = approve_memory_candidate(args.project_path, args.approve)
+    elif args.reject:
+        result = reject_memory_candidate(args.project_path, args.reject)
+    elif args.capture:
+        if not args.kind or not args.source:
+            parser.error("--capture requires --kind and --source")
+        tags = [tag.strip() for tag in args.tags.split(",") if tag.strip()]
+        result = capture_to_memory_candidate(
+            args.project_path,
+            args.kind,
+            args.source,
+            title=args.title or None,
+            tags=tags
+        )
     elif args.candidate:
         if not args.kind or not args.title:
             parser.error("--candidate requires --kind and --title")
         tags = [tag.strip() for tag in args.tags.split(",") if tag.strip()]
         source_artifacts = [item.strip() for item in args.source_artifacts.split(",") if item.strip()]
         supersedes = [item.strip() for item in args.supersedes.split(",") if item.strip()]
+        depends_on = [item.strip() for item in args.depends_on.split(",") if item.strip()]
+        references = [item.strip() for item in args.references.split(",") if item.strip()]
         mirror_targets = [item.strip() for item in args.mirror_targets.split(",") if item.strip()]
         result = create_memory_candidate(
             args.project_path,
@@ -551,6 +766,8 @@ def main():
             source_artifacts=source_artifacts,
             review_after=args.review_after,
             supersedes=supersedes,
+            depends_on=depends_on,
+            references=references,
             storage_policy=args.storage_policy,
             mirror_targets=mirror_targets,
             summary=args.summary,
@@ -567,6 +784,8 @@ def main():
         tags = [tag.strip() for tag in args.tags.split(",") if tag.strip()]
         source_artifacts = [item.strip() for item in args.source_artifacts.split(",") if item.strip()]
         supersedes = [item.strip() for item in args.supersedes.split(",") if item.strip()]
+        depends_on = [item.strip() for item in args.depends_on.split(",") if item.strip()]
+        references = [item.strip() for item in args.references.split(",") if item.strip()]
         mirror_targets = [item.strip() for item in args.mirror_targets.split(",") if item.strip()]
         result = create_memory_entry(
             args.project_path,
@@ -578,6 +797,8 @@ def main():
             source_artifacts=source_artifacts,
             review_after=args.review_after,
             supersedes=supersedes,
+            depends_on=depends_on,
+            references=references,
             storage_policy=args.storage_policy,
             mirror_targets=mirror_targets,
             summary=args.summary,

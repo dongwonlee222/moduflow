@@ -264,6 +264,172 @@ class ProjectMemoryTests(unittest.TestCase):
             self.assertIn("memory/decisions/", "\n".join(result["errors"]))
             self.assertIn("broken source_artifacts link: specs/missing/spec.md", "\n".join(result["errors"]))
 
+    def test_create_memory_entry_supports_depends_on_and_references(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+
+            result = project_memory.create_memory_entry(
+                root,
+                kind="decision",
+                title="Caching Strategy",
+                depends_on=["decision-git-canonical-memory"],
+                references=["specs/034-memory-capture-and-sync-workflow/spec.md"],
+            )
+
+            entry_path = root / result["path"]
+            text = entry_path.read_text(encoding="utf-8")
+            metadata, _ = project_memory.parse_frontmatter(text)
+
+            self.assertEqual(project_memory.parse_list_value(metadata.get("depends_on", "[]")), ["decision-git-canonical-memory"])
+            self.assertEqual(project_memory.parse_list_value(metadata.get("references", "[]")), ["specs/034-memory-capture-and-sync-workflow/spec.md"])
+
+    def test_generate_memory_graph_renders_mermaid(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+
+            # Create node 1
+            project_memory.create_memory_entry(
+                root,
+                kind="decision",
+                title="Git Memory Base",
+                summary="Base decision",
+            )
+            # Create node 2 with relationship to node 1
+            # The slugify name of Git Memory Base will be YYYY-MM-DD-git-memory-base
+            today = project_memory.date.today().isoformat()
+            base_node_id = f"{today}-git-memory-base"
+
+            project_memory.create_memory_entry(
+                root,
+                kind="decision",
+                title="SQLite Cache",
+                summary="Cache decision",
+                depends_on=[base_node_id],
+            )
+
+            graph = project_memory.generate_memory_graph(root)
+
+            self.assertIn("flowchart TD", graph)
+            self.assertIn("classDef decision fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;", graph)
+            self.assertIn("depends_on", graph)
+            self.assertIn("sqlite_cache", graph.lower())
+            self.assertIn("sqlite_cache", graph.lower())
+            self.assertIn("git_memory_base", graph.lower())
+
+    def test_reject_memory_candidate(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+
+            candidate = project_memory.create_memory_candidate(
+                root,
+                kind="decision",
+                title="Discardable Choice",
+                summary="Temporary decision to reject."
+            )
+            candidate_path = root / candidate["path"]
+            self.assertTrue(candidate_path.exists())
+
+            # Reject
+            reject_result = project_memory.reject_memory_candidate(root, candidate["id"])
+            self.assertIsNotNone(reject_result)
+            self.assertEqual(reject_result["status"], "rejected")
+            self.assertFalse(candidate_path.exists())
+
+    def test_capture_to_memory_candidate(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+
+            # Create dummy external file
+            external_file = root / "dummy_doc.md"
+            external_file.write_text("""---
+title: External Benchmark Findings
+tags: [external, benchmarking]
+summary: Benchmark results from external system.
+evidence: External performance metrics were verified.
+---
+# Benchmark Notes
+More detail contents here.
+""", encoding="utf-8")
+
+            # Capture
+            candidate = project_memory.capture_to_memory_candidate(
+                root,
+                kind="evidence",
+                source_file=external_file,
+            )
+            self.assertIsNotNone(candidate)
+            candidate_path = root / candidate["path"]
+            self.assertTrue(candidate_path.exists())
+
+            text = candidate_path.read_text(encoding="utf-8")
+            metadata, _ = project_memory.parse_frontmatter(text)
+            self.assertEqual(metadata.get("title"), "External Benchmark Findings")
+            self.assertEqual(metadata.get("kind"), "evidence")
+            self.assertEqual(metadata.get("status"), "candidate")
+            self.assertIn("benchmarking", project_memory.parse_list_value(metadata.get("tags", "[]")))
+
+    def test_list_memory_candidates_stale_pruning(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+
+            # Candidate 1: Fresh
+            fresh_candidate = project_memory.create_memory_candidate(
+                root, kind="decision", title="Fresh Choice", summary="Fresh"
+            )
+            fresh_path = root / fresh_candidate["path"]
+
+            # Candidate 2: Stale (Older than 14 days)
+            stale_candidate = project_memory.create_memory_candidate(
+                root, kind="decision", title="Stale Choice", summary="Stale"
+            )
+            stale_path = root / stale_candidate["path"]
+
+            # Set mtime back 15 days
+            import os
+            import time
+            back_15_days = time.time() - (15 * 24 * 3600)
+            os.utime(stale_path, (back_15_days, back_15_days))
+
+            # Listing should prune stale and only keep fresh
+            candidates = project_memory.list_memory_candidates(root)
+            self.assertEqual(len(candidates), 1)
+            self.assertEqual(candidates[0]["id"], fresh_candidate["id"])
+            self.assertFalse(stale_path.exists())
+            self.assertTrue(fresh_path.exists())
+
+    def test_workflow_release_auto_capture(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+            project_workflow.apply_workflow_plan(project_workflow.build_workflow_plan(root, dry_run=False))
+
+            # Record a release record
+            result = project_workflow.create_workflow_record(
+                root,
+                issue_id="040-test-auto",
+                state="released",
+                owner="Tester",
+                next_command="product:status"
+            )
+
+            # Verification of candidate generated automatically
+            candidates = project_memory.list_memory_candidates(root)
+            self.assertEqual(len(candidates), 1)
+            self.assertIn("040-test-auto", candidates[0]["id"])
+            self.assertEqual(candidates[0]["kind"], "decision")
+
 
 if __name__ == "__main__":
     unittest.main()

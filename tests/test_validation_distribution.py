@@ -491,6 +491,43 @@ class ValidationDistributionTests(unittest.TestCase):
             self.assertIn("commands", result["mode_guidance"]["details"])
             self.assertNotEqual(result["mode_guidance"]["label"], "lightweight")
 
+    def test_release_check_fails_on_syntax_and_security_violations(self):
+        release_check = load_module("release_check", "scripts/release_check.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for relative in ["docs", "scripts"]:
+                (root / relative).mkdir()
+            (root / "docs" / "release-checklist.md").write_text("# Checklist\n", encoding="utf-8")
+            (root / "docs" / "upgrade-guide.md").write_text("# Upgrade\n", encoding="utf-8")
+
+            # Create a file with credential leakage
+            leak_file = root / "scripts" / "secrets.py"
+            leak_file.write_text("API_KEY = \"my-secret-key-123456\"\n", encoding="utf-8")
+
+            # Mock get_modified_python_files to return the leak file
+            orig_get_modified = release_check.get_modified_python_files
+            try:
+                release_check.get_modified_python_files = lambda r: [leak_file]
+                result = release_check.run_release_check(root)
+            finally:
+                release_check.get_modified_python_files = orig_get_modified
+
+            self.assertFalse(result["valid"])
+            self.assertFalse(result["checks"]["security_check"]["ok"])
+
+            # Test a syntax error
+            leak_file.write_text("this is a syntax error !!!\n", encoding="utf-8")
+
+            orig_get_modified = release_check.get_modified_python_files
+            try:
+                release_check.get_modified_python_files = lambda r: [leak_file]
+                result = release_check.run_release_check(root)
+            finally:
+                release_check.get_modified_python_files = orig_get_modified
+
+            self.assertFalse(result["valid"])
+            self.assertFalse(result["checks"]["lint_check"]["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

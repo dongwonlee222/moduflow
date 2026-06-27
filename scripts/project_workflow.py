@@ -324,11 +324,148 @@ def create_workflow_record(path, issue_id, state, owner, reviewers=None, approve
         workflow_record_body(issue_id, state, owner, reviewers, approver, blocker, next_command),
         encoding="utf-8",
     )
+
+    # Auto-capture memory candidate on release
+    if state == "released":
+        try:
+            import sys
+            import os
+            # Ensure scripts directory is in sys.path
+            scripts_dir = os.path.dirname(os.path.abspath(__file__))
+            if scripts_dir not in sys.path:
+                sys.path.insert(0, scripts_dir)
+            import project_memory
+
+            title = f"Release Completion: {issue_id}"
+            summary = f"Issue {issue_id} has been successfully completed, verified, and released."
+
+            project_memory.create_memory_candidate(
+                path=project_root,
+                kind="decision",
+                title=title,
+                issue_id=issue_id,
+                spec_path=f"specs/{issue_id}/spec.md",
+                source_event="issue_completed",
+                source_artifacts=[f"issues/{issue_id}.md", f"workflow/records/{filename}"],
+                summary=summary,
+                rationale="Documenting the completion and release context of the issue.",
+                owner=owner or "Dongwon Lee",
+                tags=["release", "completion", issue_id]
+            )
+        except Exception as e:
+            print(f"Warning: Failed to automatically capture memory candidate: {e}", file=sys.stderr)
+
     return {
         "schema": "moduflow.workflow-record.v1",
         "path": str(target.relative_to(project_root)),
         "state": state,
         "preserves_existing_files": True,
+    }
+
+
+def run_review_check(path, issue_id):
+    project_root = Path(path).resolve()
+    spec_dir = project_root / "specs" / issue_id
+    spec_file = spec_dir / "spec.md"
+    status_file = spec_dir / "status.md"
+
+    if not spec_file.exists():
+        return {"ok": False, "error": f"Spec file not found: {spec_file}"}
+    if not status_file.exists():
+        return {"ok": False, "error": f"Status file not found: {status_file}"}
+
+    criteria = []
+    in_criteria = False
+    for line in spec_file.read_text(encoding="utf-8").splitlines():
+        if line.startswith("## Acceptance Criteria"):
+            in_criteria = True
+            continue
+        elif in_criteria and line.startswith("## "):
+            in_criteria = False
+
+        if in_criteria:
+            stripped = line.strip()
+            if stripped.startswith("- ") or stripped.startswith("* "):
+                text = stripped[2:].strip()
+                # Strip leading checkbox markers like [ ] or [x]
+                if text.startswith("[ ] ") or text.startswith("[x] ") or text.startswith("[X] "):
+                    text = text[4:].strip()
+                criteria.append(text)
+
+    import subprocess
+    try:
+        diff = subprocess.check_output(["git", "diff", "main"], cwd=str(project_root), text=True)
+    except Exception:
+        try:
+            diff = subprocess.check_output(["git", "diff", "HEAD"], cwd=str(project_root), text=True)
+        except Exception:
+            diff = ""
+
+    checklist = []
+    added_lines = []
+    for line in diff.splitlines():
+        if line.startswith("+") and not line.startswith("+++"):
+            added_lines.append(line[1:].strip().lower())
+
+    stop_words = {"and", "or", "the", "to", "is", "a", "of", "in", "for", "on", "with", "as", "by", "an", "at", "from"}
+
+    for crit in criteria:
+        crit_lower = crit.lower()
+        words = [w.strip(".,;:()[]{}'\"") for w in crit_lower.split()]
+        keywords = [w for w in words if w and w not in stop_words and len(w) > 2]
+
+        matched = False
+        match_reason = "No matching changes found in diff"
+
+        if not keywords:
+            keywords = [crit_lower]
+
+        for line in added_lines:
+            matches = [kw for kw in keywords if kw in line]
+            if len(matches) >= max(1, len(keywords) // 2):
+                matched = True
+                match_reason = f"Matches changes in code: '{line[:60]}...'"
+                break
+
+        checklist.append({
+            "criterion": crit,
+            "passed": matched,
+            "reason": match_reason
+        })
+
+    status_text = status_file.read_text(encoding="utf-8")
+
+    lines = [
+        "## Automated Review Checklist",
+        "",
+    ]
+    for item in checklist:
+        mark = "[x]" if item["passed"] else "[ ]"
+        lines.append(f"- {mark} {item['criterion']}")
+        lines.append(f"  - *Verification*: {item['reason']}")
+    lines.append("")
+
+    checklist_section = "\n".join(lines)
+
+    if "## Automated Review Checklist" in status_text:
+        parts = status_text.split("## Automated Review Checklist")
+        second_part = parts[1]
+        next_header_idx = second_part.find("\n## ")
+        if next_header_idx != -1:
+            rest = second_part[next_header_idx:]
+        else:
+            rest = ""
+        new_status_text = parts[0] + checklist_section + rest
+    else:
+        new_status_text = status_text.rstrip() + "\n\n" + checklist_section + "\n"
+
+    status_file.write_text(new_status_text, encoding="utf-8")
+
+    return {
+        "ok": True,
+        "issue_id": issue_id,
+        "checklist": checklist,
+        "status_updated": True
     }
 
 
@@ -351,11 +488,19 @@ def main():
     parser.add_argument("--pr-state", action="store_true", help="Record PR review state for an issue.")
     parser.add_argument("--pr", default="")
     parser.add_argument("--team-status", action="store_true", help="Render PM-friendly team status.")
+    parser.add_argument("--review-check", action="store_true", help="Run automated review check against spec.")
     args = parser.parse_args()
 
     if args.team_status:
         print(render_team_status(args.project_path), end="")
         return 0
+    if args.review_check:
+        if not args.issue_id:
+            parser.error("--review-check requires --issue-id")
+        result = run_review_check(args.project_path, args.issue_id)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result.get("ok") else 1
+
     if args.start:
         result = start_issue_work(
             args.project_path,

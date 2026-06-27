@@ -24,6 +24,42 @@ Active goal: `business-document-workflow`
 - Next command: `product:status`
 - Status: complete and versioned as 0.2.14.
 
+### `037-delegation-level-gate-and-memory-context-graph`
+
+- Outcome: Control AI delegation safety with delegation_level checks, and visualize memory connections using depends_on and references relations rendered via Mermaid.
+- Reason: High-trust collaboration requires humans to approve critical agent steps, and Neo4j-style context graphs help developers inspect project memory relations.
+- Confidence: high
+- Dependency: 034-memory-capture-and-sync-workflow
+- Next command: `product:plan`
+- Status: planning phase, implementation plan created.
+
+### `038-worker-context-memory-path-injection`
+
+- Outcome: Dynamically inject relevant memory references and short summaries into task worker prompts, keeping context windows lightweight.
+- Reason: Workers need previous architectural context and guidelines without causing prompt bloat or attention drift.
+- Confidence: high
+- Dependency: 037-delegation-level-gate-and-memory-context-graph
+- Next command: `product:status`
+- Status: completed.
+
+### `040-automatic-memory-candidate-capture`
+
+- Outcome: Automatic capture of decisions and deliverables on release/research events into a candidate memory directory with approval/promotion workflow.
+- Reason: Avoid manual capture friction and build structured project memory iteratively with low human toil.
+- Confidence: high
+- Dependency: 030-project-memory-layer, 039-automated-review-checklists-and-safety-lint-gates
+- Next command: `product:status`
+- Status: ✅ done, released.
+
+### `039-automated-review-checklists-and-safety-lint-gates`
+
+- Outcome: AI-driven spec-diff comparison checklist inside status.md and linting/security validation gates inside release_check.py.
+- Reason: Improve human discernment during reviews and enforce code quality/security compliance before PR creation.
+- Confidence: high
+- Dependency: 038-worker-context-memory-path-injection
+- Next command: `product:status`
+- Status: ✅ done, released.
+
 ### `036-portfolio-team-dashboard`
 
 - Outcome: Portfolio dashboards show each project's active work, review queue, blockers, and next command from project-local state.
@@ -102,16 +138,17 @@ Active goal: `business-document-workflow`
 - Reason: Duplicate `task.md`/`implementation_plan.md` and ModuFlow issue/spec/status files fragment the record.
 - Confidence: medium
 - Dependency: artifact schema gates and host artifact model verification
-- Next command: `product:spec 029-antigravity-artifact-sync-connector`
+- Next command: `product:status`
+- Status: ✅ done, released.
 
-### `030-project-memory-layer`
+### `030-worker-cognitive-demand-model-routing`
 
-- Outcome: Projects manage portable long-term memory for deliverables, decisions, evidence, operating context, and reusable project context, not only issues.
-- Reason: ModuFlow's current `knowledge/` layer is initialized but passive; each project needs a durable `memory/` model that can register, search, and retrieve project artifacts and decisions over time while staying self-contained when the project is moved.
+- Outcome: Define and integrate cognitive demand routing (deep, balanced, fast) on task workers.
+- Reason: Avoid executing heavy LLM orchestration where simple syntax parsing or lightweight changes are requested.
 - Confidence: high
-- Dependency: knowledge evidence layer migration, artifact schema gates, and personal-memory contract review
-- Next command: `product:spec 030-project-memory-layer`
-- Status: prototype available; full spec and knowledge migration path still open.
+- Dependency: superpowers-execution-bridge
+- Next command: `product:status`
+- Status: ✅ done, released.
 
 ## Backlog / Existing Capabilities
 

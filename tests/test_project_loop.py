@@ -267,6 +267,106 @@ class ProjectLoopTests(unittest.TestCase):
         self.assertEqual(backend["type"], "manual")
         self.assertEqual(backend["reason"], "high-risk work needs explicit human control")
 
+    def test_recommend_execution_backend_prefers_host_subagent(self):
+        backend = project_loop.recommend_execution_backend(
+            task_type="code", risk="medium", github_available=False, host_supports_subagents=True
+        )
+        self.assertEqual(backend["type"], "host-subagent")
+        self.assertEqual(backend["status"], "recommended")
+        self.assertIn("host execution", backend["reason"])
+
+    def test_load_loop_state_normalizes_delegation_level(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "workspace").mkdir()
+            (root / "workspace" / "loop-state.json").write_text(
+                json.dumps({
+                    "schema": "moduflow.loop-state.v2",
+                    "goal_id": "goal-a",
+                    "issue_ids": ["019-loop-kernel-and-state-model"],
+                    "active_issue_id": "019-loop-kernel-and-state-model",
+                    "delegation_level": "invalid_level",
+                    "next_command": "product:loop",
+                }) + "\n",
+                encoding="utf-8",
+            )
+            state = project_loop.load_loop_state(root)
+            self.assertEqual(state["delegation_level"], "review_required")
+
+            # Check that a valid one is preserved
+            (root / "workspace" / "loop-state.json").write_text(
+                json.dumps({
+                    "schema": "moduflow.loop-state.v2",
+                    "goal_id": "goal-a",
+                    "issue_ids": ["019-loop-kernel-and-state-model"],
+                    "active_issue_id": "019-loop-kernel-and-state-model",
+                    "delegation_level": "manual",
+                    "next_command": "product:loop",
+                }) + "\n",
+                encoding="utf-8",
+            )
+            state = project_loop.load_loop_state(root)
+            self.assertEqual(state["delegation_level"], "manual")
+
+    def test_recommend_loop_blocks_when_manual_or_unapproved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "workspace").mkdir()
+            (root / "issues").mkdir()
+            # We mock the issue file so phase is inferred as 'execute'
+            # (checked spec/plan done, execute pending)
+            (root / "issues" / "037-test.md").write_text(
+                "- [x] spec\n- [x] plan\n- [ ] execute\n",
+                encoding="utf-8",
+            )
+
+            # 1. delegation_level = manual should always block
+            (root / "workspace" / "loop-state.json").write_text(
+                json.dumps({
+                    "schema": "moduflow.loop-state.v2",
+                    "goal_id": "goal-a",
+                    "issue_ids": ["037-test"],
+                    "active_issue_id": "037-test",
+                    "delegation_level": "manual",
+                    "next_command": "product:execute 037-test",
+                    "git_binding": {
+                        "execution_backend": {
+                            "type": "codex",
+                            "status": "approved"
+                        }
+                    }
+                }) + "\n",
+                encoding="utf-8",
+            )
+
+            state = project_loop.recommend_loop(root)
+            self.assertEqual(state["status"], "needs_decision")
+            self.assertIn("Execution blocked", state["blocker"])
+
+            # 2. delegation_level = review_required and status != approved should block
+            (root / "workspace" / "loop-state.json").write_text(
+                json.dumps({
+                    "schema": "moduflow.loop-state.v2",
+                    "goal_id": "goal-a",
+                    "issue_ids": ["037-test"],
+                    "active_issue_id": "037-test",
+                    "delegation_level": "review_required",
+                    "next_command": "product:execute 037-test",
+                    "git_binding": {
+                        "execution_backend": {
+                            "type": "codex",
+                            "status": "not_selected"
+                        }
+                    }
+                }) + "\n",
+                encoding="utf-8",
+            )
+
+            state = project_loop.recommend_loop(root)
+            self.assertEqual(state["status"], "needs_decision")
+            self.assertIn("Execution blocked", state["blocker"])
+
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -33,6 +34,94 @@ def run_importable_validation(name, func, root):
     }
 
 
+SECRET_RE = re.compile(
+    r'(?i)(api_key|secret_key|secret_token|password|auth_token)\s*=\s*["\'][a-z0-9\-_]{8,}["\']',
+    re.IGNORECASE
+)
+
+
+def get_modified_python_files(root):
+    files = set()
+    try:
+        out = subprocess.check_output(["git", "diff", "--name-only", "main"], cwd=str(root), text=True)
+        for line in out.splitlines():
+            line = line.strip()
+            if line.endswith(".py"):
+                files.add(root / line)
+    except Exception:
+        pass
+
+    try:
+        out = subprocess.check_output(["git", "status", "--porcelain"], cwd=str(root), text=True)
+        for line in out.splitlines():
+            if len(line) > 3:
+                path_str = line[3:].strip()
+                if path_str.endswith(".py"):
+                    files.add(root / path_str)
+    except Exception:
+        pass
+
+    return [p for p in files if p.exists()]
+
+
+def run_lint_check(root):
+    errors = []
+    root = Path(root).resolve()
+    modified_files = get_modified_python_files(root)
+    for path in sorted(modified_files):
+        path = path.resolve()
+        if "__pycache__" in str(path) or ".venv" in str(path) or ".git" in str(path):
+            continue
+        try:
+            content = path.read_text(encoding="utf-8")
+            compile(content, str(path), 'exec')
+        except SyntaxError as e:
+            try:
+                rel = path.relative_to(root)
+            except ValueError:
+                rel = path
+            errors.append(f"{rel}: Syntax error at line {e.lineno}: {e.msg}")
+        except Exception as e:
+            try:
+                rel = path.relative_to(root)
+            except ValueError:
+                rel = path
+            errors.append(f"{rel}: Failed to read/parse: {e}")
+
+    return {
+        "ok": len(errors) == 0,
+        "errors": errors
+    }
+
+
+def run_security_check(root):
+    errors = []
+    root = Path(root).resolve()
+    for path in sorted(root.rglob("*")):
+        if path.is_dir() or "__pycache__" in str(path) or ".git" in str(path) or ".venv" in str(path):
+            continue
+        if path.suffix in {".png", ".jpg", ".jpeg", ".gif", ".pdf", ".pyc", ".db", ".zip", ".tar", ".gz"}:
+            continue
+        try:
+            content = path.read_text(encoding="utf-8", errors="ignore")
+            for i, line in enumerate(content.splitlines(), 1):
+                if SECRET_RE.search(line):
+                    if "mock" in line.lower() or "placeholder" in line.lower() or "test_" in line.lower():
+                        continue
+                    try:
+                        rel = path.resolve().relative_to(root)
+                    except ValueError:
+                        rel = path
+                    errors.append(f"{rel}: Potential credential leak at line {i}: {line.strip()}")
+        except Exception:
+            pass
+
+    return {
+        "ok": len(errors) == 0,
+        "errors": errors
+    }
+
+
 def run_release_check(path):
     root = Path(path).resolve()
     checks = {}
@@ -53,6 +142,18 @@ def run_release_check(path):
         }
         if not result["ok"]:
             errors.append(f"{name} failed: {'; '.join(result['errors'])}")
+
+    lint_res = run_lint_check(root)
+    checks["lint_check"] = {"ok": lint_res["ok"]}
+    if not lint_res["ok"]:
+        for err in lint_res["errors"]:
+            errors.append(f"Lint: {err}")
+
+    sec_res = run_security_check(root)
+    checks["security_check"] = {"ok": sec_res["ok"]}
+    if not sec_res["ok"]:
+        for err in sec_res["errors"]:
+            errors.append(f"Security: {err}")
 
     commands = {
         "tests": [

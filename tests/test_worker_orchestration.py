@@ -154,5 +154,71 @@ class WorkerOrchestrationTests(unittest.TestCase):
             self.assertEqual(json.loads(plan_json.read_text(encoding="utf-8"))["schema"], "moduflow.worker-plan.v1")
 
 
+    def test_build_worker_plan_includes_subagent_configs(self):
+        orchestrator = load_module("worker_orchestrator", "scripts/worker_orchestrator.py")
+        tasks = """# Tasks
+ 
+- [ ] PM: refine acceptance criteria [files: specs/028-real-subagent-execution-backend/spec.md]
+- [ ] Implementation: update worker planner [files: scripts/worker_orchestrator.py]
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.make_project(root, tasks)
+
+            plan = orchestrator.build_worker_plan(root, "007-worker-orchestration")
+
+            self.assertEqual(len(plan["tasks"]), 2)
+            task1 = plan["tasks"][0]
+            self.assertIn("subagent", task1)
+            self.assertEqual(task1["subagent"]["TypeName"], "self")
+            self.assertEqual(task1["subagent"]["Role"], "ModuFlow pm-strategist")
+            self.assertEqual(task1["subagent"]["Workspace"], "share")
+            self.assertIn("PM: refine acceptance criteria", task1["subagent"]["Prompt"])
+            self.assertIn("specs/028-real-subagent-execution-backend/spec.md", task1["subagent"]["Prompt"])
+
+            task2 = plan["tasks"][1]
+            self.assertEqual(task2["subagent"]["Role"], "ModuFlow implementation-worker")
+            self.assertIn("scripts/worker_orchestrator.py", task2["subagent"]["Prompt"])
+
+    def test_worker_orchestrator_injects_related_memories(self):
+        orchestrator = load_module("worker_orchestrator", "scripts/worker_orchestrator.py")
+        tasks = """# Tasks
+ 
+- [ ] PM: refine acceptance criteria [files: specs/028-real-subagent-execution-backend/spec.md]
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.make_project(root, tasks)
+
+            # Copy project_memory.py to tmp so it can be loaded dynamically
+            (root / "scripts").mkdir(exist_ok=True)
+            import shutil
+            shutil.copy(ROOT / "scripts/project_memory.py", root / "scripts/project_memory.py")
+
+            # Initialize memory structure
+            project_memory = load_module("project_memory", "scripts/project_memory.py")
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+
+            # Create an approved decision record referencing the spec file
+            project_memory.create_memory_entry(
+                root,
+                kind="decision",
+                title="Subagent Execution Cache",
+                summary="Cache results for subagents to save cost.",
+                references=["specs/028-real-subagent-execution-backend/spec.md"],
+            )
+
+            # Build worker plan
+            plan = orchestrator.build_worker_plan(root, "007-worker-orchestration")
+
+            self.assertEqual(len(plan["tasks"]), 1)
+            prompt = plan["tasks"][0]["subagent"]["Prompt"]
+            self.assertIn("Related Project Decisions", prompt)
+            self.assertIn("Subagent Execution Cache", prompt)
+            self.assertIn("memory/decisions", prompt)
+            self.assertNotIn("confidence: medium", prompt)  # Ensure no full-text/frontmatter inlining
+
+
 if __name__ == "__main__":
     unittest.main()
+

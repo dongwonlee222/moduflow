@@ -21,7 +21,7 @@ Reduce duplicate planning/documentation work by syncing Antigravity-native artif
 
 ## Opportunity
 
-Antigravity may maintain native planning artifacts such as `task.md` and `implementation_plan.md`, while ModuFlow stores durable Git artifacts such as `issues/*.md`, `specs/*/spec.md`, `plan.md`, `tasks.md`, and `status.md`. If both systems are updated separately, agents duplicate effort and the record fragments.
+Antigravity may maintain native planning artifacts such as `task.md` and `implementation_plan.md`, while ModuFlow stores durable Git artifacts such as `issues/*.md`, specs/<issue>/spec.md, `plan.md`, `tasks.md`, and `status.md`. If both systems are updated separately, agents duplicate effort and the record fragments.
 
 ## Scope
 
@@ -52,14 +52,14 @@ Antigravity may maintain native planning artifacts such as `task.md` and `implem
 
 Every artifact-producing step is a tracked task here - never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
 
-- [ ] spec -> `specs/029-antigravity-artifact-sync-connector/spec.md`
-- [ ] plan -> `specs/029-antigravity-artifact-sync-connector/plan.md`
-- [ ] execute -> PR / commits
-- [ ] review -> review notes
-- [ ] verify Antigravity artifact model and filenames before implementation
-- [ ] define artifact mapping and conflict policy
-- [ ] prototype one-way import/export
-- [ ] add drift detection
+- [x] spec -> `specs/029-antigravity-artifact-sync-connector/spec.md`
+- [x] plan -> `specs/029-antigravity-artifact-sync-connector/plan.md`
+- [x] execute -> PR / commits
+- [x] review -> review notes
+- [x] verify Antigravity artifact model and filenames before implementation
+- [x] define artifact mapping and conflict policy
+- [x] prototype one-way import/export
+- [x] add drift detection
 
 ## Related Issues
 
@@ -83,4 +83,4 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 ## Next Command
 
-`/product:spec 029-antigravity-artifact-sync-connector`
+`/product:status`

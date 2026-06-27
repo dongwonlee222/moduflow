@@ -204,6 +204,40 @@ class ProjectWorkflowTests(unittest.TestCase):
 
             self.assertEqual(missing, [])
 
+    def test_run_review_check_generates_checklist(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec_dir = root / "specs" / "039-test-review"
+            spec_dir.mkdir(parents=True)
+            
+            # Create a mock spec.md with Acceptance Criteria
+            spec_content = """# Spec: Test Review
+            
+## Acceptance Criteria
+
+- [ ] Verify that automated checklist is generated.
+- [ ] Ensure credentials scanner detects hardcoded keys.
+"""
+            (spec_dir / "spec.md").write_text(spec_content, encoding="utf-8")
+            (spec_dir / "status.md").write_text("# Status\n\n## Next Command\n\nproduct:status\n", encoding="utf-8")
+
+            # Mock git diff using a monkeypatched subprocess.check_output in the test
+            import subprocess
+            orig_check_output = subprocess.check_output
+            try:
+                # Stub git diff to return a fake diff that matches the first criterion keyword (checklist)
+                subprocess.check_output = lambda *args, **kwargs: "+ Add automated checklist implementation\n"
+                result = project_workflow.run_review_check(root, "039-test-review")
+            finally:
+                subprocess.check_output = orig_check_output
+
+            self.assertTrue(result["ok"])
+            status_text = (spec_dir / "status.md").read_text(encoding="utf-8")
+            self.assertIn("## Automated Review Checklist", status_text)
+            self.assertIn("[x] Verify that automated checklist is generated.", status_text)
+            self.assertIn("[ ] Ensure credentials scanner detects hardcoded keys.", status_text)
+
 
 if __name__ == "__main__":
     unittest.main()
