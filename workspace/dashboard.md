@@ -10,10 +10,12 @@ Core goal loop, business document workflow, memory capture workflow, team issue-
 
 ## Active Issue
 
-- `039-automated-review-checklists-and-safety-lint-gates` (Phase 3: Automated Review Checklists And Safety Lint Gates)
+- `040-automatic-memory-candidate-capture` (✅ Done — goal loop idle, awaiting next goal)
 
 ## Recently Completed
 
+- `040-automatic-memory-candidate-capture`: completed automatic memory candidate capture with `--candidates/--approve/--reject/--capture` CLI options, 14-day stale pruning, and released-status auto-capture trigger.
+- `039-automated-review-checklists-and-safety-lint-gates`: completed automated review checklists and safety lint gates.
 - `038-worker-context-memory-path-injection`: completed dynamic correlation matching and context memory path/summary injection in worker orchestrator prompts.
 - `037-delegation-level-gate-and-memory-context-graph`: completed delegation_level loop-state gate and depends_on/references memory relationship parsing with `--graph` Mermaid output.
 - `035-team-issue-branch-pr-workflow`: completed PM-friendly team-state helpers, PM team status, PR state binding, completion-memory suggestions, validation drift checks, and command docs; versioned as 0.2.14.
