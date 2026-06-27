@@ -1,0 +1,23 @@
+#!/bin/sh
+# ModuFlow pre-push gate.
+# Blocks push when release_check fails (unit tests + plugin validation +
+# project-artifact drift such as dashboard/loop-state active_issue mismatch).
+# This catches the failure mode where issue work is committed but
+# workspace/dashboard.md or .moduflow state was not synced.
+
+repo_root=$(git rev-parse --show-toplevel)
+echo "[pre-push] release_check (tests + validation + drift)..."
+
+if python3 "$repo_root/scripts/release_check.py" "$repo_root" >/tmp/moduflow-prepush.log 2>&1; then
+  echo "[pre-push] OK — release_check passed."
+  exit 0
+fi
+
+echo "[pre-push] BLOCKED — release_check failed. Fix before pushing."
+echo "------------------------------------------------------------"
+# Show only the failing summary (errors array + tail), not the full JSON.
+grep -A20 '"errors"' /tmp/moduflow-prepush.log | head -25
+echo "------------------------------------------------------------"
+echo "Full log: /tmp/moduflow-prepush.log"
+echo "Bypass (not recommended): git push --no-verify"
+exit 1
