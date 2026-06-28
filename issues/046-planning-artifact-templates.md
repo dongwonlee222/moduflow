@@ -38,6 +38,10 @@ Per the owner: **do not create every artifact on every issue — produce them on
 
 - External references to benchmark templates against: which sources (the planning-harness write-up, plus other well-known PM/UX artifact standards) and how to credit them in `memory/benchmark/`.
 
+## Reference (benchmarked)
+
+External templates benchmarked for this issue: `memory/evidence/2026-06-28-planning-artifact-templates-benchmark.md` — planning-harness skill chain, ai-dev-tasks PRD (★7.7k), ml-design-docs, Mermaid journey, utext IA. Use it as the source for template patterns; the 5 recommendations there are the spec's starting point.
+
 ## Related
 
 - Goal `visual-workbench` (Axis C)
@@ -45,3 +49,4 @@ Per the owner: **do not create every artifact on every issue — produce them on
 - `043-memory-relationship-capture-prompts` (sibling: data quality, Axis B)
 - Adapters `product-design`, `spec-kit`, `data-analytics` (where the chain's skills are vendored)
 - `docs/visual-workbench-and-planning-harness.md` (planning-harness analysis, L0–L3 IA)
+- Evidence: `memory/evidence/2026-06-28-planning-artifact-templates-benchmark.md`

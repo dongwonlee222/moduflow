@@ -37,3 +37,4 @@ This issue is the issue **graph** — a relationship view across issues (nodes +
 - `042-decision-graph-dashboard` (pattern reused)
 - `047-issue-artifact-drilldown` (the drill-down this graph hands off to — distinct feature)
 - `024-artifact-schema-and-doctor-gates`, `git-native-artifact-model` (if frontmatter path chosen)
+- Evidence: `memory/evidence/2026-06-28-visualization-library-benchmark.md` (Cytoscape confirmed for the graph)

@@ -33,9 +33,14 @@ Render only the artifacts that are actually present in `specs/<issue>/` (and rel
 
 - Standalone command vs a mode of `product:dashboard` vs the click-target of the `045` graph. Likely: 045 graph node → opens 047 panel.
 
+## Reference (benchmarked)
+
+Visualization libraries benchmarked for this view: `memory/evidence/2026-06-28-visualization-library-benchmark.md` — decision: drill-down needs **no JS library** (Python markdown→HTML), Chart.js only when a metrics artifact is present, Mermaid code-fences render natively on GitHub/Obsidian.
+
 ## Related
 
 - Goal `visual-workbench` (Axis A)
 - `042-decision-graph-dashboard`, `044-product-dashboard-command` (pattern + command surface reused)
 - `045-issue-graph-visualization` (the graph that hands off to this panel)
 - `046-planning-artifact-templates` (produces what this renders)
+- Evidence: `memory/evidence/2026-06-28-visualization-library-benchmark.md`
