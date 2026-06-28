@@ -40,9 +40,12 @@ Three axes, not a single linear ladder. Issues belong to an axis, not a step num
 **Later — Write/Execute (interactive workbench)**
 - Create/edit issues and direct work from the UI. Crosses the static-file boundary, needs a running backend. Depends on `021-git-binding-and-execution-backend`, `028-real-subagent-execution-backend`. Front-end approach (chat-backed vs standalone) deferred — see Open Questions.
 
+**Cross-cutting — Lifecycle sync (not an axis, but blocks trust in all views)**
+- `048-artifact-lifecycle-sync` — auto-propagate issue lifecycle changes to derived views (`dashboard.md` etc.) + a drift check. Motivated by `dashboard.md` sitting stale at issue 040 for five issues. Views that silently drift mislead; this keeps them honest.
+
 ## Suggested order
 
-`046` (templates + judgment, so artifacts can exist) → `047` (drill-down once there's something to drill into) → `043` (relationship data) → `045` (issue graph). Views are cheap but empty until the artifacts and relationships behind them exist.
+`046` ✅ → `047` (drill-down once there's something to drill into) → `043` (relationship data) → `045` (issue graph). Views are cheap but empty until the artifacts and relationships behind them exist. `048` (lifecycle sync) runs alongside — fix it before the views are relied on for review.
 
 ## Completion Criteria
 

@@ -2,38 +2,28 @@
 
 ## Current Phase
 
-Core goal loop, business document workflow, memory capture workflow, team issue-to-branch workflow, and portfolio team-status dashboard are released locally.
+Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per-issue artifact drill-down) while keeping Git-native Markdown canonical. Organized into 3 axes — View / Data quality / Planning-artifact depth.
 
 ## Active Goal
 
-- `business-document-workflow`: make ModuFlow produce decision-ready business documents, starting with market-entry analysis, while preserving sources, assumptions, calculations, validation, exports, and project memory.
+- `visual-workbench`: see and (eventually) act on issues, relationships, memory, and planning artifacts through a visual surface, per project. See `workspace/goal.md`.
 
 ## Active Issue
 
-- `040-automatic-memory-candidate-capture` (✅ Done — goal loop idle, awaiting next goal)
+- `047-issue-artifact-drilldown` (phase: spec — `specs/047-issue-artifact-drilldown/spec.md` written; next `product:plan 047`)
 
 ## Recently Completed
 
-- `040-automatic-memory-candidate-capture`: completed automatic memory candidate capture with `--candidates/--approve/--reject/--capture` CLI options, 14-day stale pruning, and released-status auto-capture trigger.
-- `039-automated-review-checklists-and-safety-lint-gates`: completed automated review checklists and safety lint gates.
-- `038-worker-context-memory-path-injection`: completed dynamic correlation matching and context memory path/summary injection in worker orchestrator prompts.
-- `037-delegation-level-gate-and-memory-context-graph`: completed delegation_level loop-state gate and depends_on/references memory relationship parsing with `--graph` Mermaid output.
-- `035-team-issue-branch-pr-workflow`: completed PM-friendly team-state helpers, PM team status, PR state binding, completion-memory suggestions, validation drift checks, and command docs; versioned as 0.2.14.
-- `036-portfolio-team-dashboard`: portfolio dashboard now reads each project's `workflow/team-state.json` and shows active/review work per project; versioned as 0.2.15.
-- `033-business-document-workflow`: added business-document routing, market-entry analysis references, polite Korean writing gate, and a test market-entry artifact package.
-- `030-project-memory-layer`: portable project memory prototype added with init/write/search/get, doctor validation, command docs, and a repo-local decision memory entry.
-- `032-multi-language-goal-benchmarking-and-core-mcp-server-integration`: completed stdio mcp server bridge, direct tool calling logic, and translation helpers.
-- `031-goal-driven-autonomous-benchmarking-and-issue-generation`: completed autonomous benchmarking engine, issue parsing tests, and workflow regression prevention.
-- `029-antigravity-artifact-sync-connector`: completed sync connector script, bidirectional task merging, and drift checks.
-- `028-real-subagent-execution-backend`: completed host-subagent execution backend adapter for Antigravity integration.
-- `027-reduce-approval-popup-friction`: completed approval surface mapping, importable validation paths, local-only doctor mode, host adapter guidance, and resume banner contract.
-- `026-simplify-command-and-folder-surface`: completed lightweight project footprint, plugin cache packaging, user-facing mode guidance, and goal-loop completion handoff.
-- `025-lightweight-project-adoption`: completed lightweight project footprints, mode guidance, and start/migrate lightweight write behavior.
-- `0.2.11-goal-loop`: merged to `main` and pushed to GitHub.
+- `046-planning-artifact-templates`: enhanced `product:spec` template (clarify-first, required Non-Goals + Alternatives, default Mermaid, pipeline pointers); dogfooded via `specs/046/spec.md`. Core 3 first; heavier artifacts demand-driven.
+- `044-product-dashboard-command`: exposed the decision graph as ModuFlow-native `product:dashboard` (`/moduflow 그래프`); routed in `moduflow.md` + `skills/index/SKILL.md`; `dashboard.html` is derived/`.gitignore`d.
+- `042-decision-graph-dashboard`: interactive Cytoscape memory-graph dashboard generated from `memory/` frontmatter (supersedes static-Mermaid `041`).
+- `040-automatic-memory-candidate-capture`: automatic memory candidate capture with `--candidates/--approve/--reject/--capture`, 14-day stale pruning, released-status auto-capture.
 
-## Queue
+## Queue (goal `visual-workbench`)
 
-- `034-memory-capture-and-sync-workflow`: implementation complete for candidate capture, approval, retrieval explanations, validation, export guidance, and PM-friendly docs; versioned as 0.2.13 and committed.
+- `045-issue-graph-visualization` (backlog, Axis A) — issue relationship graph; hands off to 047.
+- `043-memory-relationship-capture-prompts` (backlog, Axis B) — capture memory relationships at write time.
+- `048-artifact-lifecycle-sync` (backlog) — auto-propagate issue lifecycle changes to derived views (dashboard.md, etc.); this very staleness is the motivation.
 
 ## Blockers
 
@@ -41,12 +31,9 @@ Core goal loop, business document workflow, memory capture workflow, team issue-
 
 ## Verification
 
-- ModuFlow plugin version: `0.2.15+codex.20260626145655`.
-- `python3 -m unittest tests.test_business_document_workflow -v` passed (3 tests).
-- `python3 -m unittest discover -s tests -v` passed (131 tests).
-- `python3 scripts/release_check.py .` passed.
-- `python3 scripts/validate_project_artifacts.py .` passed.
-- `python3 scripts/validate_moduflow.py .` passed.
+- `python3 scripts/release_check.py` passed (exit 0) after each of issues 042/044/046 and 047 spec.
+- `python3 -m unittest tests.test_project_memory` passed (21 tests).
+- Note: this dashboard was stale at `040` until 2026-06-28; resynced manually. Auto-sync tracked as `048`.
 
 ## Next Command
 
