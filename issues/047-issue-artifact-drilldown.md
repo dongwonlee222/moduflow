@@ -1,6 +1,12 @@
 # Issue: `047-issue-artifact-drilldown`
 
-**Status: backlog** — created 2026-06-28. Part of goal `visual-workbench`, Axis A (view). This is the L2 layer of the documented L0–L3 IA.
+**Status: active** — created 2026-06-28, started 2026-06-28. Part of goal `visual-workbench`, Axis A (view). This is the L2 layer of the documented L0–L3 IA.
+
+## Progress
+
+- Spec written: `specs/047-issue-artifact-drilldown/spec.md` (under the 046-enhanced spec template).
+- Decisions (clarify-first): entry = **mode of `product:dashboard`** (`--issue <id>`); first scope = **single-issue panel**; display = **section embed + Markdown/Mermaid render, existing artifacts only**.
+- Next: `product:plan 047` — settle Markdown library, artifact order, then implement in `scripts/project_memory.py`.
 
 ## Goal
 
