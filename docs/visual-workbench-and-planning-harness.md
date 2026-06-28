@@ -75,3 +75,19 @@ ModuFlow는 직접 만들지 않고 어댑터로 흡수하는 게 원칙. 비주
 ## 결론
 
 비주얼 워크벤치 = (vendored 산출물 스킬) + (CDN 렌더) + (ModuFlow 코어: 그래프·추적성·포트폴리오). 새 이슈는 필요 없다 — 이 분석은 `visual-workbench` goal과 `044`/`045`를 확인하고, 대부분이 이미 vendored임을 식별한다. ModuFlow는 기획 하네스의 상위 집합이며, 비주얼 워크벤치는 그 위에 그래프·추적성 레이어를 얹는 일이다.
+
+## 부록: 산출물 영속화 점검 (2026-06-28)
+
+용도: 추후 문제 발생 시 사람이 산출물을 파일로 확인할 수 있어야 한다. 실증 점검 결과:
+
+| 산출물 | 파일 영속화 | 비고 |
+|---|---|---|
+| spec / plan / tasks / status | ✅ | `specs/NNN/`에 실제 파일 |
+| business (brief·calc·validation·decision) | ✅ | `business/`에 |
+| memory (decision·evidence·deliverable) | ✅ | `memory/`에 |
+| design-brief / prototype | ⚙️ 정의됨, 미실행 | `adapters/product-design.yaml`의 `writes`에 `specs/*/design-brief.md`·`specs/*/prototype.md` 정의 — 단 현재 `specs/`에 실제 생성물 없음 |
+| 시퀀스 다이어그램 / 유저 플로우 | ❌ 갭 | 전용 파일 0개, spec 임베드 1/40. 어댑터 `writes`에도 없음. 생성 스킬(`flow-design`/`diagram-gen`)은 사용자 글로벌 스킬이라 ModuFlow 배포에 없음 |
+
+결론: 텍스트 산출물은 사람 확인 가능. 시각 산출물(다이어그램/플로우)이 유일한 실질 갭.
+
+최소 고침(원할 때만): spec/plan 단계에서 mermaid를 `spec.md`에 임베드 표준화 → GitHub/Obsidian이 정본 아티팩트 안에서 렌더 → 사람이 canonical 파일을 열면 다이어그램을 본다. 042 인사이트 재사용, 새 파일/기계 불필요. (백로그)
