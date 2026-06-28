@@ -1,6 +1,12 @@
 # Issue: `046-planning-artifact-templates`
 
-**Status: backlog** — created 2026-06-28. Part of goal `visual-workbench`, Axis C (planning-artifact depth). Supersedes the dropped "spec mermaid embed" scope.
+**Status: active** — created 2026-06-28, started 2026-06-28. Part of goal `visual-workbench`, Axis C (planning-artifact depth). Supersedes the dropped "spec mermaid embed" scope.
+
+## Progress
+
+- Spec written: `specs/046-planning-artifact-templates/spec.md`.
+- `commands/product-spec.md` enhanced with the 4 benchmarked elements (clarify-first, required Non-Goals + Alternatives, default Mermaid, prev/next pointers). This spec is the dogfood — written under the new template.
+- Scope per owner: core 3 (requirements/solution/diagram) first; scenario/IA/journey/screens are demand-driven later.
 
 ## Goal
 
