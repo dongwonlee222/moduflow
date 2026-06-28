@@ -26,7 +26,7 @@
 </head>
 <body>
 <h1>ModuFlow Decision Graph</h1>
-<p class="sub">5 nodes · 2 edges · generated from memory/ frontmatter</p>
+<p class="sub">6 nodes · 3 edges · generated from memory/ frontmatter</p>
 <div class="legend">
   <span><span class="sw" style="background:#378ADD"></span>decision</span>
   <span><span class="sw" style="background:#888780"></span>evidence</span>
@@ -91,6 +91,16 @@ const ELEMENTS = [
   },
   {
     "data": {
+      "id": "2026-06-28-apply-visual-workbench-via-vendored-adapters",
+      "label": "Apply visual workbench via vendored adapters, CDN render, and ModuFlow core",
+      "kind": "decision",
+      "full": "Apply visual workbench via vendored adapters, CDN render, and ModuFlow core",
+      "file": "memory/decisions/2026-06-28-apply-visual-workbench-via-vendored-adapters.md",
+      "href": "decisions/2026-06-28-apply-visual-workbench-via-vendored-adapters.md"
+    }
+  },
+  {
+    "data": {
       "id": "e0",
       "source": "2026-06-26-use-git-canonical-memory-with-optional-adapters",
       "target": "2026-06-24-use-portable-project-memory",
@@ -100,6 +110,14 @@ const ELEMENTS = [
   {
     "data": {
       "id": "e1",
+      "source": "2026-06-28-apply-visual-workbench-via-vendored-adapters",
+      "target": "2026-06-26-use-git-canonical-memory-with-optional-adapters",
+      "rel": "references"
+    }
+  },
+  {
+    "data": {
+      "id": "e2",
       "source": "2026-06-27-auto-memory-capture-benchmark",
       "target": "2026-06-27-github-platform-benchmark",
       "rel": "references"
