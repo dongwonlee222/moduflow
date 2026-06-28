@@ -610,6 +610,39 @@ More detail contents here.
             self.assertIn("연결된 지식", html_present)
 
 
+    def test_ko_sidecar_attached_and_not_listed_separately(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "specs" / "049-b").mkdir(parents=True)
+            (root / "specs" / "049-b" / "spec.md").write_text("# Spec EN\n", encoding="utf-8")
+            (root / "specs" / "049-b" / "spec.ko.md").write_text("# 명세 한글\n", encoding="utf-8")
+            (root / "specs" / "049-b" / "plan.md").write_text("# Plan EN\n", encoding="utf-8")  # no sidecar
+
+            _slug, arts = project_memory._collect_issue_artifacts(root, "049-b")
+            names = [a["name"] for a in arts]
+            spec = next(a for a in arts if a["name"] == "spec.md")
+            plan = next(a for a in arts if a["name"] == "plan.md")
+
+            self.assertNotIn("spec.ko.md", names)        # sidecar is not its own artifact
+            self.assertEqual(spec["ko"], "# 명세 한글\n")  # attached to its EN artifact
+            self.assertIsNone(plan["ko"])                 # no sidecar → null (EN fallback)
+
+    def test_issue_panel_toggle_only_when_sidecar_exists(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "specs" / "049-b").mkdir(parents=True)
+            (root / "specs" / "049-b" / "spec.md").write_text("# Spec\n", encoding="utf-8")
+
+            without = project_memory.render_issue_panel(root, "049-b")
+            self.assertIn('"ko": null', without)              # ko slot present, empty
+            self.assertNotIn("한글 본문 내용", without)        # no Korean sidecar payload
+
+            (root / "specs" / "049-b" / "spec.ko.md").write_text("# 한글 본문 내용\n", encoding="utf-8")
+            with_ko = project_memory.render_issue_panel(root, "049-b")
+            self.assertIn("한글 본문 내용", with_ko)          # Korean payload present → client offers toggle
+
     def test_list_memory_ids_returns_all_and_filters_by_kind(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:

@@ -1,6 +1,21 @@
 # Issue: `049-bilingual-artifact-view`
 
-**Status: backlog** — created 2026-06-28. Part of goal `visual-workbench`, Axis A (view). Spun off from `045` to keep that issue's graph scope tight.
+**Status: done** — created 2026-06-28, started 2026-06-28, done 2026-06-28. Part of goal `visual-workbench`, Axis A (view). Spun off from `045` to keep that issue's graph scope tight.
+
+## Outcome
+
+The 047 panel now shows Korean on demand while English stays canonical:
+
+- **Sidecar convention**: `<name>.ko.md` beside the English `<name>.md`. `_ko_sidecar` attaches it as the artifact's `ko` field; `*.ko.md` is never listed as its own artifact.
+- **Panel `English / 한글` toggle** (`render_issue_panel`): shown only when ≥1 sidecar exists; 한글 renders `ko`, falling back to English per-artifact (absent sidecars show `(영문)`); default English. No `.ko.md` → panel behaves exactly as before.
+- **New-artifacts-forward policy**: `commands/product-spec.md` documents writing `spec.ko.md` alongside new specs — convention, not a gate. No retro-translation; canonical file never translated in place.
+- **Dogfood**: wrote `specs/049-bilingual-artifact-view/spec.ko.md`; the panel's toggle renders it.
+
+Tests: 34 pass (sidecar attach + not-listed-separately, toggle payload present-vs-absent). `release_check` exit 0. Stale-sidecar drift left as a future `--drift` extension (noted, out of scope).
+
+## Scope decision (user, 2026-06-28)
+
+English stays canonical ("영문으로 만드는 게 맞고"); only the **human-facing view** shows Korean ("사람이 보는 것만 한글로"); applied to **new artifacts going forward** ("신규부터 그렇게 하자") — existing English specs are not retro-translated. So: a Korean sidecar (`*.ko.md`) written alongside new artifacts, surfaced by the 047 panel via a language toggle. No runtime/machine translation (zero-backend).
 
 ## Goal
 

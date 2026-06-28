@@ -1285,6 +1285,7 @@ ISSUE_PANEL_TEMPLATE = """<!DOCTYPE html>
 <body>
 <h1>__PANEL_TITLE__</h1>
 <p class="sub">__PANEL_SUB__</p>
+<div id="langtoggle" style="margin-bottom:14px;"></div>
 <div id="artifacts"></div>
 <div id="linked"></div>
 <script type="module">
@@ -1295,23 +1296,29 @@ const ARTIFACTS = __ARTIFACTS_JSON__;
 const LINKED = __LINKED_JSON__;
 const KIND_ICON = {decision:'\\u{1F4A1}', evidence:'\\u{1F4CE}', deliverable:'\\u{1F4E6}', release:'\\u{1F680}', meeting:'\\u{1F5E3}', note:'\\u{1F4DD}', reference:'\\u{1F517}'};
 const root = document.getElementById('artifacts');
-if (!ARTIFACTS.length) {
-  root.innerHTML = '<div class="empty">No artifacts yet for <code>__ISSUE_ID__</code>. Nothing has been written under <code>specs/__ISSUE_ID__/</code> or <code>issues/</code>.</div>';
-} else {
+const hasKo = ARTIFACTS.some(a => a.ko);
+let lang = 'en';  // English is canonical; Korean is a reading aid (049)
+
+async function renderArtifacts() {
+  root.innerHTML = '';
+  if (!ARTIFACTS.length) {
+    root.innerHTML = '<div class="empty">No artifacts yet for <code>__ISSUE_ID__</code>. Nothing has been written under <code>specs/__ISSUE_ID__/</code> or <code>issues/</code>.</div>';
+    return;
+  }
   for (const a of ARTIFACTS) {
     const sec = document.createElement('section');
     sec.className = 'artifact';
     const h = document.createElement('h2');
     h.className = 'label';
-    h.textContent = a.label;
+    h.textContent = a.label + ((lang === 'ko' && !a.ko) ? '  (영문)' : '');
     sec.appendChild(h);
     const body = document.createElement('div');
     body.className = 'md';
-    body.innerHTML = marked.parse(a.md);
+    body.innerHTML = marked.parse((lang === 'ko' && a.ko) ? a.ko : a.md);  // per-artifact fallback to EN
     sec.appendChild(body);
     root.appendChild(sec);
   }
-  document.querySelectorAll('code.language-mermaid').forEach(code => {
+  root.querySelectorAll('code.language-mermaid').forEach(code => {
     const div = document.createElement('div');
     div.className = 'mermaid';
     div.textContent = code.textContent;
@@ -1320,6 +1327,21 @@ if (!ARTIFACTS.length) {
   });
   await mermaid.run({ querySelector: '.mermaid' });
 }
+
+if (hasKo) {
+  const wrap = document.getElementById('langtoggle');
+  const mk = (id, text) => { const b = document.createElement('button'); b.id = id; b.textContent = text;
+    b.style.cssText = 'padding:5px 14px;margin-right:6px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;'; return b; };
+  const en = mk('lang-en', 'English'), ko = mk('lang-ko', '한글');
+  const paint = () => {
+    en.style.background = lang === 'en' ? '#2a78d6' : 'transparent'; en.style.color = lang === 'en' ? '#fff' : 'inherit';
+    ko.style.background = lang === 'ko' ? '#2a78d6' : 'transparent'; ko.style.color = lang === 'ko' ? '#fff' : 'inherit';
+  };
+  en.onclick = async () => { lang = 'en'; paint(); await renderArtifacts(); };
+  ko.onclick = async () => { lang = 'ko'; paint(); await renderArtifacts(); };
+  wrap.appendChild(en); wrap.appendChild(ko); paint();
+}
+await renderArtifacts();
 if (LINKED.length) {
   const sec = document.createElement('section');
   sec.className = 'artifact';
@@ -1363,13 +1385,22 @@ def _resolve_issue_slug(root, issue_id):
     return issue_id
 
 
+def _ko_sidecar(path):
+    """Korean reading sidecar `<name>.ko.md` next to `<name>.md` (049). None if absent."""
+    if not path.name.endswith(".md"):
+        return None
+    ko = path.parent / (path.name[:-3] + ".ko.md")
+    return ko.read_text(encoding="utf-8") if ko.is_file() else None
+
+
 def _collect_issue_artifacts(root, issue_id):
     root = Path(root).resolve()
     slug = _resolve_issue_slug(root, issue_id)
     artifacts = []
     issue_file = root / "issues" / f"{slug}.md"
     if issue_file.is_file():
-        artifacts.append({"name": "issue", "label": "Issue", "md": issue_file.read_text(encoding="utf-8")})
+        artifacts.append({"name": "issue", "label": "Issue",
+                          "md": issue_file.read_text(encoding="utf-8"), "ko": _ko_sidecar(issue_file)})
     spec_dir = root / "specs" / slug
     if spec_dir.is_dir():
         seen = set()
@@ -1378,12 +1409,12 @@ def _collect_issue_artifacts(root, issue_id):
             if f.is_file():
                 seen.add(fname)
                 artifacts.append({"name": fname, "label": ARTIFACT_LABELS.get(fname, fname),
-                                  "md": f.read_text(encoding="utf-8")})
+                                  "md": f.read_text(encoding="utf-8"), "ko": _ko_sidecar(f)})
         for f in sorted(spec_dir.glob("*.md")):
-            if f.name in seen:
+            if f.name in seen or f.name.endswith(".ko.md"):  # .ko.md is a sidecar, not its own artifact
                 continue
             artifacts.append({"name": f.name, "label": f.stem.replace("-", " ").title(),
-                              "md": f.read_text(encoding="utf-8")})
+                              "md": f.read_text(encoding="utf-8"), "ko": _ko_sidecar(f)})
     return slug, artifacts
 
 

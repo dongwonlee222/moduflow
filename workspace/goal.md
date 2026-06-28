@@ -37,6 +37,8 @@ Three axes, not a single linear ladder. Issues belong to an axis, not a step num
 **Axis C — Planning-artifact depth (selective, not forced)**
 - `046-planning-artifact-templates` ✅ done — enhanced `product:spec` template with clarify-first + required Non-Goals/Alternatives + default Mermaid + pipeline pointers; dogfooded via `specs/046/spec.md` (core 3 first). Heavier artifacts (scenario/IA/journey/screens) deferred, demand-driven.
 
+- `049-bilingual-artifact-view` ✅ done — 047 panel `English / 한글` toggle over `*.ko.md` sidecars; English canonical, new-artifacts-forward. Spun off from 045.
+
 **Later — Write/Execute (interactive workbench)**
 - Create/edit issues and direct work from the UI. Crosses the static-file boundary, needs a running backend. Depends on `021-git-binding-and-execution-backend`, `028-real-subagent-execution-backend`. Front-end approach (chat-backed vs standalone) deferred — see Open Questions.
 
