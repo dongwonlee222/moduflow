@@ -341,11 +341,31 @@ def parse_frontmatter(text):
         return {}, text
     meta_text = parts[0].split("\n", 1)[1]
     metadata = {}
-    for line in meta_text.splitlines():
+    lines = meta_text.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         if ":" not in line:
+            i += 1
             continue
         key, value = line.split(":", 1)
-        metadata[key.strip()] = value.strip()
+        key = key.strip()
+        value = value.strip()
+        if value == "":
+            # YAML block list: collect following indented "- item" lines.
+            items = []
+            j = i + 1
+            while j < len(lines) and lines[j].lstrip().startswith("- "):
+                item = lines[j].lstrip()[2:].strip().strip('"').strip("'")
+                if item:
+                    items.append(item)
+                j += 1
+            if items:
+                metadata[key] = "[" + ", ".join(items) + "]"
+                i = j
+                continue
+        metadata[key] = value
+        i += 1
     return metadata, parts[1]
 
 
@@ -621,38 +641,45 @@ def memory_export_guidance(target):
     }
 
 
-def generate_memory_graph(root):
+def _normalize_target(target):
+    target = target.strip()
+    if not target:
+        return None
+    if target.startswith("http://") or target.startswith("https://"):
+        return None
+    if "/" in target or target.endswith(".md"):
+        target = Path(target).name
+        if target.endswith(".md"):
+            target = target[:-3]
+    return target
+
+
+def _collect_graph(root):
     project_root = Path(root).resolve()
     nodes = {}
     edges = []
-
     for memory_file in iter_memory_files(project_root):
         try:
             text = memory_file.read_text(encoding="utf-8")
             metadata, _ = parse_frontmatter(text)
         except Exception:
             continue
-
         entry_id = metadata.get("id") or memory_file.stem
-        kind = metadata.get("kind", "note")
-        title = metadata.get("title") or entry_id
-
         nodes[entry_id] = {
-            "title": title,
-            "kind": kind,
+            "title": metadata.get("title") or entry_id,
+            "kind": metadata.get("kind", "note"),
+            "file": str(memory_file.relative_to(project_root)),
         }
+        for rel in ("supersedes", "depends_on", "references"):
+            for target in parse_list_value(metadata.get(rel, "[]")):
+                norm = _normalize_target(target)
+                if norm:
+                    edges.append((entry_id, norm, rel))
+    return nodes, edges
 
-        # Parse relationships
-        supersedes = parse_list_value(metadata.get("supersedes", "[]"))
-        depends_on = parse_list_value(metadata.get("depends_on", "[]"))
-        references = parse_list_value(metadata.get("references", "[]"))
 
-        for target in supersedes:
-            edges.append((entry_id, target, "supersedes"))
-        for target in depends_on:
-            edges.append((entry_id, target, "depends_on"))
-        for target in references:
-            edges.append((entry_id, target, "references"))
+def generate_memory_graph(root):
+    nodes, edges = _collect_graph(root)
 
     # Render Mermaid
     lines = ["flowchart TD"]
@@ -685,6 +712,110 @@ def generate_memory_graph(root):
     return "\n".join(lines)
 
 
+DASHBOARD_TEMPLATE = """<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ModuFlow Decision Graph</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background: #fff; color: #1a1a1a; }
+  h1 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: #888; margin: 0 0 16px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; margin-bottom: 12px; align-items: center; color: #555; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  #cy { width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 12px; }
+  #info { margin-top: 12px; min-height: 48px; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+  #info a { color: #2a78d6; }
+  code { font-size: 13px; color: #888; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1a19; color: #e8e8e3; }
+    .legend { color: #aaa; }
+    #cy, #info { border-color: #333; }
+  }
+</style>
+</head>
+<body>
+<h1>ModuFlow Decision Graph</h1>
+<p class="sub">__NODE_COUNT__ nodes · __EDGE_COUNT__ edges · generated from memory/ frontmatter</p>
+<div class="legend">
+  <span><span class="sw" style="background:#378ADD"></span>decision</span>
+  <span><span class="sw" style="background:#888780"></span>evidence</span>
+  <span><span class="sw" style="background:#1D9E75"></span>deliverable</span>
+  <span><span class="sw" style="background:#D85A30"></span>note</span>
+  <span>&#9472;&#9472; supersedes</span>
+  <span>&#9476;&#9476; references / depends_on</span>
+</div>
+<div id="cy"></div>
+<div id="info">노드를 클릭하면 소스 파일 경로가 표시됩니다. 드래그로 이동, 휠로 줌.</div>
+<script>
+const ELEMENTS = __ELEMENTS_JSON__;
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+const C = {
+  decision:    dark ? {f:'#0C447C',s:'#85B7EB',t:'#E6F1FB'} : {f:'#E6F1FB',s:'#185FA5',t:'#0C447C'},
+  evidence:    dark ? {f:'#444441',s:'#B4B2A9',t:'#F1EFE8'} : {f:'#F1EFE8',s:'#5F5E5A',t:'#444441'},
+  deliverable: dark ? {f:'#085041',s:'#5DCAA5',t:'#E1F5EE'} : {f:'#E1F5EE',s:'#0F6E56',t:'#085041'},
+  note:        dark ? {f:'#712B13',s:'#F0997B',t:'#FAECE7'} : {f:'#FAECE7',s:'#993C1D',t:'#712B13'}
+};
+const edge = '#888780';
+const ks = k => [{selector:'node[kind="'+k+'"]', style:{'background-color':C[k].f,'border-color':C[k].s,'color':C[k].t}}];
+const cy = cytoscape({
+  container: document.getElementById('cy'),
+  elements: ELEMENTS,
+  style: [
+    {selector:'node', style:{'shape':'round-rectangle','width':'150px','height':'46px','border-width':1.5,'label':'data(label)','text-valign':'center','text-halign':'center','text-wrap':'wrap','text-max-width':'134px','font-size':'12px','font-weight':500}},
+    ...ks('decision'), ...ks('evidence'), ...ks('deliverable'), ...ks('note'),
+    {selector:'node:selected', style:{'border-width':4}},
+    {selector:'edge', style:{'width':1.8,'line-color':edge,'target-arrow-color':edge,'target-arrow-shape':'triangle','curve-style':'bezier','opacity':0.75,'label':'data(rel)','font-size':'10px','color':'#888780','text-rotation':'autorotate','text-margin-y':-8}},
+    {selector:'edge[rel="references"]', style:{'line-style':'dashed'}},
+    {selector:'edge[rel="depends_on"]', style:{'line-style':'dashed'}}
+  ],
+  layout: {name:'cose', animate:false, padding:40, nodeRepulsion:18000, idealEdgeLength:130, nodeOverlap:40, componentSpacing:170, numIter:2000, randomize:true},
+  wheelSensitivity: 0.2, minZoom: 0.3, maxZoom: 2.5
+});
+const info = document.getElementById('info');
+cy.on('tap','node', evt => {
+  const d = evt.target.data();
+  info.innerHTML = '<b>'+d.full+'</b><br><a href="'+d.href+'"><code>'+d.file+'</code></a>';
+});
+</script>
+</body>
+</html>
+"""
+
+
+def render_dashboard_html(root):
+    nodes, edges = _collect_graph(root)
+    node_ids = set(nodes)
+    elements = []
+    for entry_id, info in sorted(nodes.items()):
+        file_path = info.get("file", "")
+        href = file_path[len("memory/"):] if file_path.startswith("memory/") else file_path
+        elements.append({"data": {
+            "id": entry_id,
+            "label": info["title"],
+            "kind": info["kind"],
+            "full": info["title"],
+            "file": file_path,
+            "href": href,
+        }})
+    edge_count = 0
+    for idx, (src, tgt, rel) in enumerate(edges):
+        if tgt not in node_ids:
+            continue
+        elements.append({"data": {"id": f"e{idx}", "source": src, "target": tgt, "rel": rel}})
+        edge_count += 1
+    return (
+        DASHBOARD_TEMPLATE
+        .replace("__NODE_COUNT__", str(len(nodes)))
+        .replace("__EDGE_COUNT__", str(edge_count))
+        .replace("__ELEMENTS_JSON__", json.dumps(elements, ensure_ascii=False, indent=2))
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Plan, initialize, write, search, or get ModuFlow project memory.")
     parser.add_argument("project_path", nargs="?", default=".")
@@ -708,6 +839,7 @@ def main():
     parser.add_argument("--depends-on", default="", help="Comma-separated depends_on memory ids.")
     parser.add_argument("--references", default="", help="Comma-separated references memory ids.")
     parser.add_argument("--graph", action="store_true", help="Render a visual Mermaid chart of the memory context.")
+    parser.add_argument("--dashboard", action="store_true", help="Generate an interactive Cytoscape dashboard HTML at memory/dashboard.html.")
     parser.add_argument("--summary", default="")
     parser.add_argument("--rationale", default="")
     parser.add_argument("--evidence", default="")
@@ -722,6 +854,13 @@ def main():
 
     if args.graph:
         print(generate_memory_graph(args.project_path))
+        return 0
+
+    if args.dashboard:
+        html = render_dashboard_html(args.project_path)
+        out_path = Path(args.project_path).resolve() / "memory" / "dashboard.html"
+        out_path.write_text(html, encoding="utf-8")
+        print(str(out_path))
         return 0
 
     if args.get:

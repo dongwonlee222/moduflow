@@ -2,9 +2,9 @@
   "schema": "moduflow.state.v1",
   "phase": "done",
   "active_goal": "business-document-workflow",
-  "active_issue": "040-automatic-memory-candidate-capture",
+  "active_issue": "042-decision-graph-dashboard",
   "last_command": "product:issue",
   "next_command": "product:status",
   "blockers": [],
-  "updated_at": "2026-06-27"
+  "updated_at": "2026-06-28"
 }

@@ -320,6 +320,51 @@ class ProjectMemoryTests(unittest.TestCase):
             self.assertIn("sqlite_cache", graph.lower())
             self.assertIn("git_memory_base", graph.lower())
 
+    def test_parse_frontmatter_reads_yaml_block_list(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        text = (
+            "---\n"
+            "id: x\n"
+            "references:\n"
+            '  - "memory/evidence/a.md"\n'
+            '  - "memory/evidence/b.md"\n'
+            "---\n"
+            "body\n"
+        )
+        metadata, _ = project_memory.parse_frontmatter(text)
+        self.assertEqual(
+            project_memory.parse_list_value(metadata.get("references", "[]")),
+            ["memory/evidence/a.md", "memory/evidence/b.md"],
+        )
+
+    def test_normalize_target_drops_urls_and_strips_path(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        self.assertIsNone(project_memory._normalize_target("https://example.com/x"))
+        self.assertIsNone(project_memory._normalize_target("http://example.com"))
+        self.assertEqual(
+            project_memory._normalize_target("memory/evidence/2026-06-27-x.md"),
+            "2026-06-27-x",
+        )
+        self.assertEqual(project_memory._normalize_target("plain-id"), "plain-id")
+
+    def test_render_dashboard_html_embeds_graph(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+            project_memory.create_memory_entry(root, kind="decision", title="Base D", summary="b")
+            today = project_memory.date.today().isoformat()
+            base = f"{today}-base-d"
+            project_memory.create_memory_entry(
+                root, kind="decision", title="Next D", summary="n", depends_on=[base]
+            )
+            html = project_memory.render_dashboard_html(root)
+            self.assertIn("cytoscape.min.js", html)
+            self.assertIn("const ELEMENTS =", html)
+            self.assertIn(base, html)
+            self.assertIn('"rel": "depends_on"', html)
+            self.assertIn('edge[rel="references"]', html)
+
     def test_reject_memory_candidate(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:

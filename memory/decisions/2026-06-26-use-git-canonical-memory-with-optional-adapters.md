@@ -7,6 +7,7 @@ spec: specs/034-memory-capture-and-sync-workflow/spec.md
 owner: Dongwon Lee
 date: 2026-06-26
 tags: [memory, team, pm, git, rag, langgraph, adapter]
+supersedes: [2026-06-24-use-portable-project-memory]
 summary: ModuFlow team memory should use Git-tracked Markdown as the canonical source while RAG, LangGraph, MCP, Google Drive, and external memory tools remain optional adapters for retrieval, orchestration, sync, and indexing.
 rationale: Downloaded users, PMs, developers, and multiple computers need a portable source of truth that works without hosted infrastructure while still allowing richer retrieval and team workflows.
 evidence: Issue 034 and its spec define memory candidates, approval, team review, external mirrors, and adapter boundaries based on the current ModuFlow memory prototype and reviewed memory tool patterns.

@@ -1,6 +1,6 @@
 # Issue: `041-decision-graph-native-mermaid-rendering`
 
-**Status: parked (backlog)** — created 2026-06-27. Not active; `active_issue` remains 040 and goal remains `business-document-workflow`. Activate later with `product:issue 041 start`.
+**Status: superseded-by-042** — created 2026-06-27, superseded 2026-06-28. The static-Mermaid hardening here was absorbed into `042-decision-graph-dashboard`, which renders an interactive Cytoscape dashboard instead. The edge-extraction logic this issue scoped now lives in `_collect_graph` (`scripts/project_memory.py`). The Mermaid `--graph` output still works and carries the same supersedes/depends_on edge conventions.
 
 ## Goal
 

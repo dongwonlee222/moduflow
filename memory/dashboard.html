@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ModuFlow Decision Graph</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background: #fff; color: #1a1a1a; }
+  h1 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: #888; margin: 0 0 16px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; margin-bottom: 12px; align-items: center; color: #555; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  #cy { width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 12px; }
+  #info { margin-top: 12px; min-height: 48px; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+  #info a { color: #2a78d6; }
+  code { font-size: 13px; color: #888; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1a19; color: #e8e8e3; }
+    .legend { color: #aaa; }
+    #cy, #info { border-color: #333; }
+  }
+</style>
+</head>
+<body>
+<h1>ModuFlow Decision Graph</h1>
+<p class="sub">5 nodes · 2 edges · generated from memory/ frontmatter</p>
+<div class="legend">
+  <span><span class="sw" style="background:#378ADD"></span>decision</span>
+  <span><span class="sw" style="background:#888780"></span>evidence</span>
+  <span><span class="sw" style="background:#1D9E75"></span>deliverable</span>
+  <span><span class="sw" style="background:#D85A30"></span>note</span>
+  <span>&#9472;&#9472; supersedes</span>
+  <span>&#9476;&#9476; references / depends_on</span>
+</div>
+<div id="cy"></div>
+<div id="info">노드를 클릭하면 소스 파일 경로가 표시됩니다. 드래그로 이동, 휠로 줌.</div>
+<script>
+const ELEMENTS = [
+  {
+    "data": {
+      "id": "2026-06-24-business-document-workflow-and-market-entry-test-artifact",
+      "label": "Business Document Workflow and Market Entry Test Artifact",
+      "kind": "deliverable",
+      "full": "Business Document Workflow and Market Entry Test Artifact",
+      "file": "memory/deliverables/2026-06-24-business-document-workflow-and-market-entry-test-artifact.md",
+      "href": "deliverables/2026-06-24-business-document-workflow-and-market-entry-test-artifact.md"
+    }
+  },
+  {
+    "data": {
+      "id": "2026-06-24-use-portable-project-memory",
+      "label": "Use portable project memory",
+      "kind": "decision",
+      "full": "Use portable project memory",
+      "file": "memory/decisions/2026-06-24-use-portable-project-memory.md",
+      "href": "decisions/2026-06-24-use-portable-project-memory.md"
+    }
+  },
+  {
+    "data": {
+      "id": "2026-06-26-use-git-canonical-memory-with-optional-adapters",
+      "label": "Use Git canonical memory with optional adapters",
+      "kind": "decision",
+      "full": "Use Git canonical memory with optional adapters",
+      "file": "memory/decisions/2026-06-26-use-git-canonical-memory-with-optional-adapters.md",
+      "href": "decisions/2026-06-26-use-git-canonical-memory-with-optional-adapters.md"
+    }
+  },
+  {
+    "data": {
+      "id": "2026-06-27-auto-memory-capture-benchmark",
+      "label": "AI 도구 자동 메모리 캡처 패턴 벤치마킹",
+      "kind": "evidence",
+      "full": "AI 도구 자동 메모리 캡처 패턴 벤치마킹",
+      "file": "memory/evidence/2026-06-27-auto-memory-capture-benchmark.md",
+      "href": "evidence/2026-06-27-auto-memory-capture-benchmark.md"
+    }
+  },
+  {
+    "data": {
+      "id": "2026-06-27-github-platform-benchmark",
+      "label": "GitHub 2025-2026 PM 플랫폼 벤치마킹",
+      "kind": "evidence",
+      "full": "GitHub 2025-2026 PM 플랫폼 벤치마킹",
+      "file": "memory/evidence/2026-06-27-github-platform-benchmark.md",
+      "href": "evidence/2026-06-27-github-platform-benchmark.md"
+    }
+  },
+  {
+    "data": {
+      "id": "e0",
+      "source": "2026-06-26-use-git-canonical-memory-with-optional-adapters",
+      "target": "2026-06-24-use-portable-project-memory",
+      "rel": "supersedes"
+    }
+  },
+  {
+    "data": {
+      "id": "e1",
+      "source": "2026-06-27-auto-memory-capture-benchmark",
+      "target": "2026-06-27-github-platform-benchmark",
+      "rel": "references"
+    }
+  }
+];
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+const C = {
+  decision:    dark ? {f:'#0C447C',s:'#85B7EB',t:'#E6F1FB'} : {f:'#E6F1FB',s:'#185FA5',t:'#0C447C'},
+  evidence:    dark ? {f:'#444441',s:'#B4B2A9',t:'#F1EFE8'} : {f:'#F1EFE8',s:'#5F5E5A',t:'#444441'},
+  deliverable: dark ? {f:'#085041',s:'#5DCAA5',t:'#E1F5EE'} : {f:'#E1F5EE',s:'#0F6E56',t:'#085041'},
+  note:        dark ? {f:'#712B13',s:'#F0997B',t:'#FAECE7'} : {f:'#FAECE7',s:'#993C1D',t:'#712B13'}
+};
+const edge = '#888780';
+const ks = k => [{selector:'node[kind="'+k+'"]', style:{'background-color':C[k].f,'border-color':C[k].s,'color':C[k].t}}];
+const cy = cytoscape({
+  container: document.getElementById('cy'),
+  elements: ELEMENTS,
+  style: [
+    {selector:'node', style:{'shape':'round-rectangle','width':'150px','height':'46px','border-width':1.5,'label':'data(label)','text-valign':'center','text-halign':'center','text-wrap':'wrap','text-max-width':'134px','font-size':'12px','font-weight':500}},
+    ...ks('decision'), ...ks('evidence'), ...ks('deliverable'), ...ks('note'),
+    {selector:'node:selected', style:{'border-width':4}},
+    {selector:'edge', style:{'width':1.8,'line-color':edge,'target-arrow-color':edge,'target-arrow-shape':'triangle','curve-style':'bezier','opacity':0.75,'label':'data(rel)','font-size':'10px','color':'#888780','text-rotation':'autorotate','text-margin-y':-8}},
+    {selector:'edge[rel="references"]', style:{'line-style':'dashed'}},
+    {selector:'edge[rel="depends_on"]', style:{'line-style':'dashed'}}
+  ],
+  layout: {name:'cose', animate:false, padding:40, nodeRepulsion:18000, idealEdgeLength:130, nodeOverlap:40, componentSpacing:170, numIter:2000, randomize:true},
+  wheelSensitivity: 0.2, minZoom: 0.3, maxZoom: 2.5
+});
+const info = document.getElementById('info');
+cy.on('tap','node', evt => {
+  const d = evt.target.data();
+  info.innerHTML = '<b>'+d.full+'</b><br><a href="'+d.href+'"><code>'+d.file+'</code></a>';
+});
+</script>
+</body>
+</html>
