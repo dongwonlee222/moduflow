@@ -3,8 +3,8 @@
   "phase": "select",
   "active_goal": "visual-workbench",
   "active_issue": "",
-  "last_command": "product:execute 045",
-  "next_command": "product:spec 043",
+  "last_command": "product:execute 043",
+  "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-06-28"
 }

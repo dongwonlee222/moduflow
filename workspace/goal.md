@@ -32,7 +32,7 @@ Three axes, not a single linear ladder. Issues belong to an axis, not a step num
 - `047-issue-artifact-drilldown` ✅ done — L2 panel: `product:dashboard --issue <id>` → `memory/issue-<id>.html`. Shows only artifacts that exist; never forces empty sections. All-CDN (`marked`+`mermaid`, zero Python dep).
 
 **Axis B — Data quality (have something worth showing)**
-- `043-memory-relationship-capture-prompts` — capture memory relationships at write time so the graph isn't sparse.
+- `043-memory-relationship-capture-prompts` ✅ done — write-time relationship capture: `--list-ids` candidates, command-doc capture step, `project_doctor` isolated-node soft hint. Guided, never auto-inferred (042's anti-goal).
 
 **Axis C — Planning-artifact depth (selective, not forced)**
 - `046-planning-artifact-templates` ✅ done — enhanced `product:spec` template with clarify-first + required Non-Goals/Alternatives + default Mermaid + pipeline pointers; dogfooded via `specs/046/spec.md` (core 3 first). Heavier artifacts (scenario/IA/journey/screens) deferred, demand-driven.

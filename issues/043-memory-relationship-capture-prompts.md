@@ -1,6 +1,16 @@
 # Issue: `043-memory-relationship-capture-prompts`
 
-**Status: backlog** — created 2026-06-28. Not active; `active_issue` remains 042. Activate later with `product:issue 043 start`.
+**Status: done** — created 2026-06-28, started 2026-06-28, done 2026-06-28. Part of goal `visual-workbench`, Axis B (data quality). Makes recording the `issue_id`/relationship cross-links that `045` surfaced easy and habitual at write time.
+
+## Outcome
+
+Relationship capture is now **guided, not inferred** — no new schema (the fields already existed), just the affordances to use them:
+
+- **`--list-ids`** flag (`project_memory.py`, `list_memory_ids`) — lists existing memory `id`/`kind`/`title` (optional `--kind`) as link candidates, so authors link to *real* nodes. Reuses `search_memory_entries(query="")`.
+- **Command-doc guidance** (`product-memory.md`, `product-knowledge.md`) — a "capture relationships at write time" step: list ids → pass content-verified `--supersedes/--depends-on/--references` + `--issue-id`. States plainly: present options, never auto-link (042's anti-goal). Verified relationships survive `--approve`.
+- **`project_doctor` soft hint** (`isolated_memory_entries`) — surfaces entries with no relationships and no `issue_id` as an informational nudge; **never an error** (exit 0 preserved, release_check safe).
+
+Tests: 32 pass (list-ids all/filter, isolated flagging, doctor hint without failing). `release_check` exit 0. No auto-inference anywhere.
 
 ## Goal
 

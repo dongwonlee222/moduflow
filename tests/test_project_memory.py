@@ -610,6 +610,53 @@ More detail contents here.
             self.assertIn("연결된 지식", html_present)
 
 
+    def test_list_memory_ids_returns_all_and_filters_by_kind(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+            project_memory.create_memory_entry(root, kind="decision", title="Dee", summary="d")
+            project_memory.create_memory_entry(root, kind="evidence", title="Eee", summary="e")
+
+            all_ids = project_memory.list_memory_ids(root)
+            decisions = project_memory.list_memory_ids(root, kind="decision")
+
+            self.assertEqual({e["kind"] for e in all_ids}, {"decision", "evidence"})
+            self.assertTrue(all("id" in e and "title" in e for e in all_ids))
+            self.assertEqual([e["kind"] for e in decisions], ["decision"])
+
+    def test_isolated_memory_entries_flags_only_unlinked(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+            project_memory.create_memory_entry(root, kind="note", title="Lonely", summary="x")
+            project_memory.create_memory_entry(
+                root, kind="decision", title="Linked", summary="y", issue_id="045-foo")
+            base = f"{project_memory.date.today().isoformat()}-lonely"
+
+            isolated = project_memory.isolated_memory_entries(root)
+            ids = [e["id"] for e in isolated]
+
+            self.assertIn(base, ids)
+            self.assertNotIn(f"{project_memory.date.today().isoformat()}-linked", ids)
+
+    def test_doctor_surfaces_isolated_as_soft_hint_without_failing(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+            project_memory.create_memory_entry(root, kind="note", title="Lonely", summary="x")
+
+            result = project_doctor.inspect_project(root, include_preflight=False)
+
+            self.assertGreaterEqual(len(result["memory"]["isolated"]), 1)
+            self.assertTrue(any("isolated" in r for r in result["recommendation"]))
+            # the hint must never be an error gate — exit code keys are unaffected
+            self.assertIn("initialized", result["memory"])
+
+
 def _linked_blob(html):
     import re
     m = re.search(r"const LINKED = (\[.*?\]);", html, re.S)

@@ -77,6 +77,14 @@ def load_project_loop():
     return module
 
 
+def load_project_memory():
+    path = Path(__file__).resolve().parent / "project_memory.py"
+    spec = importlib.util.spec_from_file_location("project_memory", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def run(args, cwd):
     try:
         result = subprocess.run(
@@ -299,6 +307,10 @@ def inspect_project(path, include_preflight=True):
     missing_profile = missing_profile_paths(project_root)
     missing_knowledge = missing_knowledge_paths(project_root)
     missing_memory = missing_memory_paths(project_root)
+    try:
+        isolated_memory = load_project_memory().isolated_memory_entries(project_root) if not missing_memory else []
+    except Exception:
+        isolated_memory = []
     missing_workflow = missing_workflow_paths(project_root)
     candidates = discover_candidate_paths(project_root)
     migration_mode = recommended_migration_mode(missing, candidates)
@@ -351,6 +363,7 @@ def inspect_project(path, include_preflight=True):
         "memory": {
             "initialized": not missing_memory,
             "missing": missing_memory,
+            "isolated": isolated_memory,  # soft hint only — never affects exit code
         },
         "workflow": {
             "initialized": not missing_workflow,
@@ -400,6 +413,12 @@ def inspect_project(path, include_preflight=True):
 
     if missing_workflow:
         result["recommendation"].append("Run product:handoff --write to create team workflow artifacts.")
+
+    if isolated_memory:
+        result["recommendation"].append(
+            f"hint: {len(isolated_memory)} isolated memory entries (no relationships or issue_id) — "
+            "run product:memory --list-ids and link real nodes (043). Informational, not required."
+        )
 
     if loop_state and branch and branch not in {"main", "master"}:
         active_issue_id = loop_state.get("active_issue_id")

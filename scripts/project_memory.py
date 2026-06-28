@@ -604,6 +604,35 @@ def search_memory_entries(path, query="", kind="", issue_id="", spec_path="", ta
     return hits
 
 
+def list_memory_ids(path, kind=""):
+    """All memory entries as link candidates: [{id, kind, title}].
+    For relationship capture at write time — present real ids, never auto-link (043)."""
+    entries = search_memory_entries(path, query="", kind=kind, limit=10_000)
+    return [{"id": e["id"], "kind": e["kind"], "title": e["title"]} for e in entries]
+
+
+def isolated_memory_entries(path):
+    """Memory entries with no supersedes/depends_on/references AND no issue_id.
+    A soft signal of graph gaps — informational, never an error (043)."""
+    project_root = Path(path).resolve()
+    isolated = []
+    for memory_file in iter_memory_files(project_root):
+        try:
+            metadata, _ = parse_frontmatter(memory_file.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        has_rel = any(parse_list_value(metadata.get(rel, "[]"))
+                      for rel in ("supersedes", "depends_on", "references"))
+        has_issue = bool((metadata.get("issue_id") or "").strip())
+        if not has_rel and not has_issue:
+            isolated.append({
+                "id": metadata.get("id") or memory_file.stem,
+                "kind": metadata.get("kind", ""),
+                "title": metadata.get("title", ""),
+            })
+    return isolated
+
+
 def get_memory_entry(path, entry_id):
     project_root = Path(path).resolve()
     for memory_file in iter_memory_files(project_root):
@@ -1430,6 +1459,7 @@ def main():
     parser.add_argument("--reversal-conditions", default="")
     parser.add_argument("--tags", default="", help="Comma-separated tags.")
     parser.add_argument("--search", default="", help="Search project memory entries.")
+    parser.add_argument("--list-ids", action="store_true", help="List existing memory ids/kinds/titles as relationship link candidates.")
     parser.add_argument("--get", default="", help="Get one memory entry by id.")
     parser.add_argument("--export-guidance", default="", help="Return mirror/export guidance for a target.")
     args = parser.parse_args()
@@ -1455,6 +1485,11 @@ def main():
                 render_memory_panel(args.project_path, mid), encoding="utf-8")
         print(str(out_path))
         print(f"  + {len(issue_nodes)} issue panel(s), {len(mem_nodes)} memory panel(s)")
+        return 0
+
+    if args.list_ids:
+        print(json.dumps(list_memory_ids(args.project_path, kind=args.kind or ""),
+                         ensure_ascii=False, indent=2))
         return 0
 
     if args.issue:

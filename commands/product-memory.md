@@ -15,11 +15,22 @@ Manage repo-local project memory for deliverables, decisions, evidence, meetings
 python3 scripts/project_memory.py <project-path> --write
 ```
 
-2. Create a reviewable candidate when a workflow produces a durable decision, deliverable, evidence summary, release note, or failed approach:
+2. **Capture relationships at write time (043).** Before creating an entry, list existing ids so you link to *real* nodes — never free-type ids, never auto-link by topic:
 
 ```bash
-python3 scripts/project_memory.py <project-path> --candidate --kind decision --title "Use Git canonical memory" --issue-id 034-memory-capture-and-sync-workflow --spec specs/034-memory-capture-and-sync-workflow/spec.md --summary "Keep memory canonical in Git-tracked Markdown." --source-event decision-detected --source-artifacts specs/034-memory-capture-and-sync-workflow/spec.md --tags memory,team,pm
+python3 scripts/project_memory.py <project-path> --list-ids          # all entries (id/kind/title)
+python3 scripts/project_memory.py <project-path> --list-ids --kind decision   # filter by kind
 ```
+
+Then, when writing, pass the relationships you can **content-verify** plus the `issue_id`:
+
+```bash
+python3 scripts/project_memory.py <project-path> --candidate --kind decision --title "Use Git canonical memory" --issue-id 034-memory-capture-and-sync-workflow --spec specs/034-memory-capture-and-sync-workflow/spec.md --summary "Keep memory canonical in Git-tracked Markdown." --source-event decision-detected --source-artifacts specs/034-memory-capture-and-sync-workflow/spec.md --supersedes 2026-06-24-use-portable-project-memory --references 2026-06-25-some-evidence --tags memory,team,pm
+```
+
+- Always set `--issue-id` when the entry came from an issue — this is what fills the issue↔memory cross-links the 045 project view shows.
+- Pass `--supersedes` / `--depends-on` / `--references` only for links you can justify from the content. **Present options, never auto-link** (042's anti-goal). Relationships survive `--approve` unchanged.
+- `product:doctor` surfaces "isolated" entries (no links, no issue_id) as an informational hint — a nudge to link, never a hard failure.
 
 3. Review candidates:
 
