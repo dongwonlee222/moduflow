@@ -27,6 +27,7 @@ Request: $ARGUMENTS
    - `완료`, `done` → guarded completion; verify before closing
    - `목표`, `goal` → `product:goal`
    - `이슈`, `issues` → `product:issues`
+   - `그래프`, `graph`, `의사결정 그래프` → `product:dashboard` (decision-graph dashboard; distinct from progress `workspace/dashboard.md`)
    - `검사`, `doctor` → `product:doctor`
    - `로드맵`, `roadmap` → `product:roadmap`
    - `003 시작`, `003 완료` → issue lifecycle action on issue `003`

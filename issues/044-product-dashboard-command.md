@@ -1,6 +1,14 @@
 # Issue: `044-product-dashboard-command`
 
-**Status: backlog** — created 2026-06-28. Part of goal `visual-workbench`. Not active until started.
+**Status: done** — created 2026-06-28, completed 2026-06-28. Part of goal `visual-workbench`.
+
+## Outcome
+
+Shipped `product:dashboard` as a ModuFlow-native command:
+- `commands/product-dashboard.md` — runs `project_memory.py --dashboard`, reports `memory/dashboard.html`, renders inline when a visualization MCP is present, else points to the file (works with zero MCP).
+- Routing in both `commands/moduflow.md` (`그래프`/`graph` alias) and `skills/index/SKILL.md` (Command Map + Short Alias Map + natural-language example + trigger keyword), so bot/at-mention routing reaches it too.
+- Artifact policy decided: `memory/dashboard.html` is `.gitignore`d (derived, rebuildable); the generator is the committed artifact. Aligned with the Git-canonical-memory decision.
+- `open-dashboard.command` already shipped (042) as the macOS double-click convenience.
 
 ## Goal
 

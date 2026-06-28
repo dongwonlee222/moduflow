@@ -1,6 +1,6 @@
 ---
 name: index
-description: Use when the ModuFlow plugin is at-mentioned directly, or when the user says product:start, product:goal, product:loop, product:status, start, goal, loop, status, inbox, issue, spec, roadmap, plan, workers, execute, review, release, doctor, business plan, Lean Canvas, persona, user scenario, pitch deck, ModuFlow, 모두플로우, 모두의 플로우, 목표, 루프, 상태, 시작, 이슈, 스펙, 로드맵, 실행, 리뷰, 사업계획서, 사업구상, 비즈니스 모델, 린 캔버스, 페르소나, 사용자 시나리오, PM workflow, roadmap workflow, goal loop workflow, Git issue workflow, or asks to start/manage product execution with Git-native issues and specs.
+description: Use when the ModuFlow plugin is at-mentioned directly, or when the user says product:start, product:goal, product:loop, product:status, start, goal, loop, status, inbox, issue, spec, roadmap, plan, workers, execute, review, release, doctor, business plan, Lean Canvas, persona, user scenario, pitch deck, ModuFlow, 모두플로우, 모두의 플로우, 목표, 루프, 상태, 시작, 이슈, 그래프, 의사결정 그래프, 스펙, 로드맵, 실행, 리뷰, 사업계획서, 사업구상, 비즈니스 모델, 린 캔버스, 페르소나, 사용자 시나리오, PM workflow, roadmap workflow, goal loop workflow, Git issue workflow, or asks to start/manage product execution with Git-native issues and specs.
 ---
 
 # ModuFlow Index
@@ -58,6 +58,7 @@ Read-only examples:
 - `@ModuFlow 전체 이슈 보여줘`, `이슈 목록`, `진행 중인 이슈 뭐야?`: `product:issues` behavior
 - `@ModuFlow 검사해줘`, `doctor 돌려줘`, `설정 괜찮아?`: `product:doctor`
 - `@ModuFlow 로드맵 보여줘`, `우선순위 뭐야?`: `product:roadmap`
+- `@ModuFlow 그래프 보여줘`, `의사결정 그래프`, `메모리 그래프 그려줘`: `product:dashboard` (decision-graph dashboard)
 - `@ModuFlow 목표 뭐야`, `현재 목표`: `product:goal` read/update behavior
 - `@ModuFlow 다음`, `다음 단계 알아서 골라줘`, `루프 돌려줘`: read-only `product:loop`
 - `@ModuFlow 사업계획서로 정리해줘`, `Lean Canvas 만들어줘`, `페르소나 사용자 시나리오 정리해줘`: use `moduflow:business-plan` after opportunity shaping when structured artifacts are requested
@@ -82,6 +83,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `product:migrate`: plan or apply a safe migration for an existing project
 - `product:profile`: create or inspect project profile metadata
 - `product:memory`: initialize, write, search, or retrieve portable project memory
+- `product:dashboard`: generate the interactive decision-graph dashboard from project memory
 - `product:knowledge`: initialize or inspect project knowledge artifacts
 - `product:decision`: create a decision record
 - `product:research`: create a research artifact
@@ -123,6 +125,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `migrate`, `마이그레이션`: `product:migrate`
 - `profile`, `프로필`: `product:profile`
 - `memory`, `메모리`, `장기기억`: `product:memory`
+- `graph`, `그래프`, `의사결정 그래프`: `product:dashboard`
 - `knowledge`, `지식`: `product:knowledge`
 - `decision`, `결정`: `product:decision`
 - `research`, `리서치`: `product:research`

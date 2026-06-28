@@ -12,8 +12,8 @@ Dongwon Lee
 
 1. **Read — memory graph** ✅ done (`042-decision-graph-dashboard`)
    Cytoscape dashboard generated from `memory/` frontmatter.
-2. **Read — dashboard command** (`044-product-dashboard-command`)
-   ModuFlow-native invocation (`product:dashboard` / `/moduflow 그래프`), not a Claude-only skill. Generates `dashboard.html`; renders in chat when a visualization MCP is present.
+2. **Read — dashboard command** ✅ done (`044-product-dashboard-command`)
+   ModuFlow-native invocation (`product:dashboard` / `/moduflow 그래프`), not a Claude-only skill. Generates `dashboard.html` (`.gitignore`d, derived); renders in chat when a visualization MCP is present. Routed in both `moduflow.md` and `skills/index/SKILL.md`.
 3. **Read — issue graph** (`045-issue-graph-visualization`)
    Do for issues what 042 did for memory: nodes = issues, edges = supersedes/related/depends, color = status.
 4. **Write/Execute — interactive workbench** (later; depends on execution backend)
