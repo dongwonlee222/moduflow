@@ -174,6 +174,12 @@ class ValidationDistributionTests(unittest.TestCase):
     def write_loop_project(self, root, issue_id="024-artifact-schema-and-doctor-gates", next_command=None):
         self.create_minimal_project(root)
         next_command = next_command or f"product:spec {issue_id}"
+        # 048: the lifecycle gate keys off .moduflow/state.json, not loop-state.json.
+        state_path = root / ".moduflow" / "state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["active_issue"] = issue_id
+        state["next_command"] = next_command
+        state_path.write_text(json.dumps(state) + "\n", encoding="utf-8")
         (root / "issues" / f"{issue_id}.md").write_text(
             f"""# Issue 024: Artifact Schema And Doctor Gates
 
@@ -285,21 +291,8 @@ class ValidationDistributionTests(unittest.TestCase):
                 any("review state requires reviewer and pr" in error for error in result["errors"])
             )
 
-    def test_validate_project_artifacts_reports_invalid_next_command_for_phase(self):
-        validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            issue_id = "024-artifact-schema-and-doctor-gates"
-            self.write_loop_project(root, issue_id, next_command=f"product:plan {issue_id}")
-            (root / "specs" / issue_id).mkdir(parents=True)
-            (root / "specs" / issue_id / "spec.md").write_text("# Spec\n", encoding="utf-8")
-
-            result = validator.validate_project(root)
-
-            self.assertFalse(result["valid"])
-            self.assertTrue(
-                any(f"workspace/loop-state.json: next_command product:plan {issue_id} should be product:spec {issue_id}" in error for error in result["errors"])
-            )
+    # Retired in 048: loop-state.json next_command/phase coupling is no longer a
+    # lifecycle gate (loop-state is dormant; the gate keys off .moduflow/state.json).
 
     def test_project_doctor_surfaces_schema_gate_errors(self):
         project_doctor = load_module("project_doctor", "scripts/project_doctor.py")

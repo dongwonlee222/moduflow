@@ -85,6 +85,14 @@ def load_project_memory():
     return module
 
 
+def load_project_lifecycle():
+    path = Path(__file__).resolve().parent / "project_lifecycle.py"
+    spec = importlib.util.spec_from_file_location("project_lifecycle", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def run(args, cwd):
     try:
         result = subprocess.run(
@@ -311,6 +319,10 @@ def inspect_project(path, include_preflight=True):
         isolated_memory = load_project_memory().isolated_memory_entries(project_root) if not missing_memory else []
     except Exception:
         isolated_memory = []
+    try:
+        lifecycle_drift = load_project_lifecycle().lifecycle_drift(project_root)
+    except Exception:
+        lifecycle_drift = []
     missing_workflow = missing_workflow_paths(project_root)
     candidates = discover_candidate_paths(project_root)
     migration_mode = recommended_migration_mode(missing, candidates)
@@ -365,6 +377,9 @@ def inspect_project(path, include_preflight=True):
             "missing": missing_memory,
             "isolated": isolated_memory,  # soft hint only — never affects exit code
         },
+        "lifecycle": {
+            "drift": lifecycle_drift,  # 048: issue files vs state.json/dashboard
+        },
         "workflow": {
             "initialized": not missing_workflow,
             "missing": missing_workflow,
@@ -418,6 +433,12 @@ def inspect_project(path, include_preflight=True):
         result["recommendation"].append(
             f"hint: {len(isolated_memory)} isolated memory entries (no relationships or issue_id) — "
             "run product:memory --list-ids and link real nodes (043). Informational, not required."
+        )
+
+    if lifecycle_drift:
+        result["recommendation"].append(
+            f"lifecycle drift: {len(lifecycle_drift)} disagreement(s) between issue files and "
+            "derived views — run `python3 scripts/project_lifecycle.py . --sync` (048)."
         )
 
     if loop_state and branch and branch not in {"main", "master"}:

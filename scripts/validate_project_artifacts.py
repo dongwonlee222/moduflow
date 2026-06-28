@@ -65,6 +65,14 @@ def load_project_loop():
     return module
 
 
+def load_project_lifecycle():
+    path = Path(__file__).resolve().parent / "project_lifecycle.py"
+    spec = importlib.util.spec_from_file_location("project_lifecycle", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 LINK_RE = re.compile(r"`(?P<path>[^`]+)`")
 
 
@@ -183,25 +191,18 @@ def validate_active_issue_links(root, issue_id, errors):
             errors.append(f"issues/{issue_id}.md: linked artifact missing: {relative}")
 
 
-def validate_active_state_views(root, loop_state, errors):
-    if not loop_state:
-        return
-    active_issue_id = loop_state.get("active_issue_id")
-    next_command = loop_state.get("next_command")
+def validate_active_state_views(root, active_issue_id, next_command, errors):
+    # 048: lifecycle canonical is the issue file Status; .moduflow/state.json is the
+    # live summary. The dashboard must mention the active issue. (next_command is NOT
+    # checked here — the dashboard's "## Next Command" is fixed to product:status by a
+    # separate rule; coupling it to state.next_command was the retired loop-state gate.
+    # roadmap.md is a narrative roadmap, not an active-issue tracker — not gated.)
     if not active_issue_id:
         return
-
     dashboard = root / "workspace" / "dashboard.md"
     dashboard_text = read_text_if_exists(dashboard)
     if dashboard.exists() and active_issue_id not in dashboard_text:
         errors.append(f"workspace/dashboard.md: missing active_issue_id {active_issue_id}")
-    if dashboard.exists() and next_command and next_command not in dashboard_text:
-        errors.append(f"workspace/dashboard.md: missing next_command {next_command}")
-
-    roadmap = root / "workspace" / "roadmap.md"
-    roadmap_text = read_text_if_exists(roadmap)
-    if roadmap.exists() and active_issue_id not in roadmap_text:
-        errors.append(f"workspace/roadmap.md: missing active_issue_id {active_issue_id}")
 
 
 def validate_next_command_matches_phase(root, loop_state, project_loop, errors):
@@ -218,14 +219,23 @@ def validate_next_command_matches_phase(root, loop_state, project_loop, errors):
 
 
 def validate_schema_gates(root, project_loop, errors):
-    loop_state = active_loop_state(root, project_loop)
-    if not loop_state:
+    # 048: gate keys off .moduflow/state.json (live summary), not loop-state.json
+    # (retired/dormant — frozen at issue 040, a prior goal). loop-state's
+    # next_command/phase coupling is no longer a lifecycle gate.
+    state = read_json(root / ".moduflow" / "state.json", errors)
+    if not state:
         return
-    active_issue_id = loop_state.get("active_issue_id")
+    active_issue_id = (state.get("active_issue") or "").strip()
     if active_issue_id:
         validate_active_issue_links(root, active_issue_id, errors)
-    validate_active_state_views(root, loop_state, errors)
-    validate_next_command_matches_phase(root, loop_state, project_loop, errors)
+    validate_active_state_views(root, active_issue_id, state.get("next_command"), errors)
+    # 048: lifecycle drift gate — issue files (canonical) must agree with the
+    # derived views. Run `python3 scripts/project_lifecycle.py <root> --sync` to fix.
+    try:
+        for d in load_project_lifecycle().lifecycle_drift(root):
+            errors.append(f"lifecycle drift: {d} (run project_lifecycle.py --sync)")
+    except Exception:
+        pass
 
 
 def read_json(path, errors):

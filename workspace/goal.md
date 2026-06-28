@@ -41,7 +41,7 @@ Three axes, not a single linear ladder. Issues belong to an axis, not a step num
 - Create/edit issues and direct work from the UI. Crosses the static-file boundary, needs a running backend. Depends on `021-git-binding-and-execution-backend`, `028-real-subagent-execution-backend`. Front-end approach (chat-backed vs standalone) deferred — see Open Questions.
 
 **Cross-cutting — Lifecycle sync (not an axis, but blocks trust in all views)**
-- `048-artifact-lifecycle-sync` — auto-propagate issue lifecycle changes to derived views (`dashboard.md` etc.) + a drift check. Motivated by `dashboard.md` sitting stale at issue 040 for five issues. Views that silently drift mislead; this keeps them honest.
+- `048-artifact-lifecycle-sync` ✅ done — issue `Status:` is canonical; `project_lifecycle.py --sync` propagates to `state.json`/`dashboard.md`; consensus drift is a hard gate; legacy `loop-state.json` retired from the gate. Keeps views honest automatically.
 
 ## Suggested order
 

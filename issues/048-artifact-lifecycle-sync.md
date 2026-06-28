@@ -1,10 +1,24 @@
 # Issue: `048-artifact-lifecycle-sync`
 
-**Status: backlog** — created 2026-06-28. Cross-cutting (supports goal `visual-workbench` but applies to the whole artifact model).
+**Status: done** — created 2026-06-28, started 2026-06-28, done 2026-06-28. Cross-cutting (supports goal `visual-workbench` but applies to the whole artifact model).
+
+## Outcome
+
+Lifecycle drift is now **detected and propagated** from a single canonical source instead of hand-synced across files:
+
+- **Canonical declared**: the issue file `**Status:**` line. Derived views flow *out* of it; never back.
+- **`scripts/project_lifecycle.py`** (new): `lifecycle_state` (canonical map from `issues/*.md`), `lifecycle_drift` (consensus check across issue files ↔ `.moduflow/state.json` ↔ `dashboard.md`), `sync_lifecycle` (single writer: regenerates state.json lifecycle fields + the dashboard's Active Issue section, idempotent, preserves prose). CLI: `--state` / `--drift` / `--sync`.
+- **loop-state.json retired from the gate**: `validate_active_state_views` + `validate_schema_gates` now key off `.moduflow/state.json` (live summary), not the dormant `loop-state.json` (frozen at issue 040, a prior goal). The loop-state `next_command`/phase coupling is no longer a lifecycle gate. roadmap.md's active-issue check dropped (it's a narrative roadmap).
+- **Drift promoted to a hard gate** (after reconciling): `validate_project_artifacts` fails on genuine disagreement; `project_doctor` reports it. Sequencing followed advisor's mandate (reporter → reconcile → gate) so 048's own commit didn't break.
+- **Dogfood**: running `--sync` reconciled this repo's divergence (state.json/dashboard had drifted from the issue files) — the exact failure that recurred all session.
+
+Tests: 155 pass (5 new lifecycle tests: state parsing, drift in-sync/divergent, sync idempotence + prose preservation, phase inference; retired the loop-state next_command test). `release_check` exit 0.
+
+**Out of scope (separate issue):** unifying the `state.v1` / `loop-state.v2` schemas and migrating the 15+ consumers; full dashboard regeneration (prose stays hand-authored).
 
 ## Goal
 
-When an issue's lifecycle changes (start / done / pause / supersede), **automatically propagate** that change to the derived views — `workspace/dashboard.md`, `workspace/issues.md`, `workspace/roadmap.md`, and the `.moduflow/state.json` summary — so they never silently drift from the canonical issue files.
+When an issue's lifecycle changes (start / done / pause / supersede), **automatically propagate** that change to the derived views — `workspace/dashboard.md` and the `.moduflow/state.json` summary — so they never silently drift from the canonical issue files. (`roadmap.md` is a narrative roadmap, not a per-issue tracker; it stays hand-authored.)
 
 ## Why (concrete evidence)
 
