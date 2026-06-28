@@ -519,6 +519,102 @@ More detail contents here.
             self.assertIn("No artifacts yet", html)
             self.assertIn("099-nope", html)
 
+    def test_collect_issue_graph_parses_status_and_supersedes(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "041-old.md").write_text(
+                "# Issue: `041-old`\n\n**Status: superseded-by-042** — created.\n", encoding="utf-8")
+            (root / "issues" / "042-new.md").write_text(
+                "# Issue: `042-new`\n\n**Status: done** — created. Supersedes `041-old`.\n", encoding="utf-8")
+            (root / "issues" / "043-todo.md").write_text(
+                "# Issue: `043-todo`\n\n**Status: backlog** — created.\n", encoding="utf-8")
+
+            nodes, edges = project_memory._collect_issue_graph(root)
+
+            self.assertEqual(nodes["041-old"]["status"], "superseded")
+            self.assertEqual(nodes["042-new"]["status"], "done")
+            self.assertEqual(nodes["043-todo"]["status"], "backlog")
+            # both the prose and the superseded-by line resolve to ONE deduped edge
+            self.assertEqual(edges, [("042-new", "041-old", "supersedes")])
+
+    def test_issue_linked_memory_maps_and_tolerates_empty(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+            project_memory.create_memory_entry(
+                root, kind="evidence", title="Bench", summary="b", issue_id="046-foo")
+
+            mapping = project_memory._issue_linked_memory(root)
+
+            self.assertIn("046-foo", mapping)
+            self.assertEqual(mapping["046-foo"][0]["kind"], "evidence")
+            self.assertEqual(mapping.get("999-none", []), [])
+
+    def test_issue_elements_group_issues_into_goal_boxes(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "045-a.md").write_text(
+                "# Issue: `045-a`\n\n**Status: active** — Part of goal `visual-workbench`.\n", encoding="utf-8")
+            (root / "issues" / "010-b.md").write_text(
+                "# Issue: `010-b`\n\n**Status: done** — no goal marker here.\n", encoding="utf-8")
+
+            elements, n, _ = project_memory._issue_elements(root)
+
+            goal_boxes = {e["data"]["label"] for e in elements if e["data"].get("isgoal")}
+            self.assertIn("visual-workbench", goal_boxes)
+            self.assertIn("(기타)", goal_boxes)
+            child = next(e for e in elements if e["data"].get("id") == "045-a")
+            self.assertEqual(child["data"]["parent"], "goal:visual-workbench")
+            self.assertIn("position", child)
+            self.assertEqual(n, 2)
+
+    def test_render_project_view_has_two_tabs_and_korean(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "042-new.md").write_text(
+                "# Issue: `042-new`\n\n**Status: done** — created.\n", encoding="utf-8")
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+
+            html = project_memory.render_project_view(root)
+
+            self.assertIn('id="cy-issues"', html)
+            self.assertIn('id="cy-memory"', html)
+            self.assertIn("이슈 그래프", html)
+            self.assertIn("지식 그래프", html)
+            self.assertIn("const ISSUE_ELEMENTS =", html)
+
+    def test_issue_panel_includes_linked_memory_section_only_when_present(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "specs" / "046-foo").mkdir(parents=True)
+            (root / "issues" / "046-foo.md").write_text("# Issue 046\n", encoding="utf-8")
+            (root / "specs" / "046-foo" / "spec.md").write_text("# Spec\n", encoding="utf-8")
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+
+            html_absent = project_memory.render_issue_panel(root, "046-foo")
+            self.assertEqual("[]", _linked_blob(html_absent))
+
+            project_memory.create_memory_entry(
+                root, kind="decision", title="Why foo", summary="s", issue_id="046-foo")
+            html_present = project_memory.render_issue_panel(root, "046-foo")
+            self.assertIn("Why foo", _linked_blob(html_present))
+            self.assertIn("연결된 지식", html_present)
+
+
+def _linked_blob(html):
+    import re
+    m = re.search(r"const LINKED = (\[.*?\]);", html, re.S)
+    return m.group(1).replace("<\\/", "</") if m else ""
+
 
 if __name__ == "__main__":
     unittest.main()

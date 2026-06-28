@@ -669,6 +669,7 @@ def _collect_graph(root):
             "title": metadata.get("title") or entry_id,
             "kind": metadata.get("kind", "note"),
             "file": str(memory_file.relative_to(project_root)),
+            "issue_id": (metadata.get("issue_id") or "").strip(),
         }
         for rel in ("supersedes", "depends_on", "references"):
             for target in parse_list_value(metadata.get(rel, "[]")):
@@ -787,7 +788,9 @@ cy.on('tap','node', evt => {
 """
 
 
-def render_dashboard_html(root):
+def _memory_elements(root):
+    """Build Cytoscape elements for the memory graph. Shared by the standalone
+    dashboard (042) and the two-tab project view (045)."""
     nodes, edges = _collect_graph(root)
     node_ids = set(nodes)
     elements = []
@@ -801,6 +804,8 @@ def render_dashboard_html(root):
             "full": info["title"],
             "file": file_path,
             "href": href,
+            "panelhref": f"mem-{entry_id}.html",
+            "issue": info.get("issue_id", ""),
         }})
     edge_count = 0
     for idx, (src, tgt, rel) in enumerate(edges):
@@ -808,11 +813,397 @@ def render_dashboard_html(root):
             continue
         elements.append({"data": {"id": f"e{idx}", "source": src, "target": tgt, "rel": rel}})
         edge_count += 1
+    return elements, len(nodes), edge_count
+
+
+def render_dashboard_html(root):
+    elements, node_count, edge_count = _memory_elements(root)
     return (
         DASHBOARD_TEMPLATE
-        .replace("__NODE_COUNT__", str(len(nodes)))
+        .replace("__NODE_COUNT__", str(node_count))
         .replace("__EDGE_COUNT__", str(edge_count))
         .replace("__ELEMENTS_JSON__", json.dumps(elements, ensure_ascii=False, indent=2))
+    )
+
+
+# --- Issue graph + project view (045) --------------------------------------
+
+ISSUE_STATUS_COLORS = {
+    # bucket: (fill, stroke, text) — light theme; dark handled in CSS-neutral text
+    "done":       {"f": "#E1F5EE", "s": "#0F6E56", "t": "#085041"},
+    "active":     {"f": "#DCEBFB", "s": "#2A78D6", "t": "#16467E"},
+    "backlog":    {"f": "#ECEBE6", "s": "#888780", "t": "#4A4944"},
+    "superseded": {"f": "#FAECE7", "s": "#993C1D", "t": "#712B13"},
+}
+MEMORY_KIND_ICON = {
+    "decision": "\U0001F4A1",     # 💡
+    "evidence": "\U0001F4CE",     # 📎
+    "deliverable": "\U0001F4E6",  # 📦
+    "release": "\U0001F680",      # 🚀
+    "meeting": "\U0001F5E3",      # 🗣
+    "note": "\U0001F4DD",         # 📝
+    "reference": "\U0001F517",    # 🔗
+}
+
+
+def _issue_status_bucket(status_word):
+    w = (status_word or "").lower()
+    if w.startswith("superseded"):
+        return "superseded"
+    if w in ("done", "active", "backlog"):
+        return w
+    return "backlog"
+
+
+def _resolve_num_to_issue(num, valid_ids):
+    for vid in valid_ids:
+        if vid == num or vid.startswith(num + "-"):
+            return vid
+    return None
+
+
+def _issue_linked_memory(root):
+    """Map issue_id -> [{id,title,kind,file}] from memory frontmatter. Sparse by design."""
+    project_root = Path(root).resolve()
+    mapping = {}
+    for memory_file in iter_memory_files(project_root):
+        try:
+            metadata, _ = parse_frontmatter(memory_file.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        issue_id = (metadata.get("issue_id") or "").strip()
+        if not issue_id:
+            continue
+        mapping.setdefault(issue_id, []).append({
+            "id": metadata.get("id") or memory_file.stem,
+            "title": metadata.get("title") or memory_file.stem,
+            "kind": metadata.get("kind", "note"),
+            "file": str(memory_file.relative_to(project_root)),
+        })
+    return mapping
+
+
+def _related_refs(text, self_id, valid_ids):
+    """Issue ids referenced in the `## Related` / `## Related Issues` section only
+    (not anywhere in the body), excluding self and unknown ids."""
+    m = re.search(r"^##\s+Related.*$", text, re.M)
+    if not m:
+        return set()
+    section = text[m.end():]
+    nxt = re.search(r"^##\s+", section, re.M)
+    if nxt:
+        section = section[:nxt.start()]
+    refs = set()
+    for mm in re.finditer(r"`([0-9]{3}-[a-z0-9-]+)`", section):
+        rid = mm.group(1)
+        if rid != self_id and rid in valid_ids:
+            refs.add(rid)
+    return refs
+
+
+def _collect_issue_graph(root):
+    """Nodes = issues (status-colored). Edges: `supersedes` (solid) from status
+    lines + prose, and `related` (dashed, toggleable) from the `## Related` section.
+    Related edges are undirected-deduped and exclude pairs already joined by supersedes."""
+    project_root = Path(root).resolve()
+    issues_dir = project_root / "issues"
+    nodes = {}
+    edges = []
+    if not issues_dir.is_dir():
+        return nodes, edges
+    raw = {}
+    for issue_file in sorted(issues_dir.glob("*.md")):
+        raw[issue_file.stem] = issue_file.read_text(encoding="utf-8")
+    valid_ids = set(raw)
+    for issue_id, text in raw.items():
+        title = issue_id
+        m_title = re.search(r"^#\s+(.+)$", text, re.M)
+        if m_title:
+            title = re.sub(r"^Issue:\s*", "", m_title.group(1).strip())
+            title = title.replace("`", "").strip()
+        m_status = re.search(r"\*\*Status:\s*([A-Za-z0-9-]+)", text)
+        status_word = m_status.group(1) if m_status else "backlog"
+        m_goal = re.search(r"goal `([^`]+)`", text)
+        goal = m_goal.group(1) if m_goal else "(기타)"
+        nodes[issue_id] = {"title": title, "status": _issue_status_bucket(status_word), "goal": goal}
+        # supersedes prose: "Supersedes `NNN-...`"
+        for m in re.finditer(r"[Ss]upersedes\s+`([0-9]{3}-[a-z0-9-]+)`", text):
+            edges.append((issue_id, m.group(1), "supersedes"))
+        # status "superseded-by-NNN" → reversed: NNN supersedes this issue
+        mb = re.match(r"superseded-by-(\d+)", status_word.lower())
+        if mb:
+            tgt = _resolve_num_to_issue(mb.group(1), valid_ids)
+            if tgt:
+                edges.append((tgt, issue_id, "supersedes"))
+    edges = list(dict.fromkeys(
+        (s, t, r) for (s, t, r) in edges if s in valid_ids and t in valid_ids
+    ))
+    # related edges (dashed, toggleable): from the Related section, undirected,
+    # excluding pairs already joined by a supersedes edge.
+    sup_pairs = {frozenset((s, t)) for (s, t, _r) in edges}
+    related_pairs = set()
+    for issue_id, text in raw.items():
+        for rid in _related_refs(text, issue_id, valid_ids):
+            pair = frozenset((issue_id, rid))
+            if pair not in sup_pairs:
+                related_pairs.add(pair)
+    for pair in sorted(related_pairs, key=lambda p: sorted(p)):
+        a, b = sorted(pair)
+        edges.append((a, b, "related"))
+    return nodes, edges
+
+
+def _issue_elements(root):
+    nodes, edges = _collect_issue_graph(root)
+    linked = _issue_linked_memory(root)
+    # Group issues by goal → compound "goal box" parents, children placed in
+    # number order inside each box (preset layout). This is the "flow" the user
+    # asked for: structural grouping by goal, not a force-directed hairball.
+    groups = {}
+    for iid in sorted(nodes):
+        groups.setdefault(nodes[iid]["goal"], []).append(iid)
+    goal_order = sorted(g for g in groups if g != "(기타)") + (["(기타)"] if "(기타)" in groups else [])
+    COLW, ROWH, PERROW, BAND = 175, 96, 6, 70
+    elements = []
+    y = 0
+    for goal in goal_order:
+        ids = groups[goal]
+        pid = "goal:" + goal
+        elements.append({"data": {"id": pid, "label": goal, "isgoal": True}})
+        last_row = 0
+        for i, iid in enumerate(ids):
+            col, row = i % PERROW, i // PERROW
+            last_row = row
+            info = nodes[iid]
+            mem = linked.get(iid, [])
+            display = iid.replace("-", " ")  # spaces let the label wrap inside the box
+            elements.append({
+                "data": {
+                    "id": iid,
+                    "parent": pid,
+                    "title": iid,
+                    "label": display,
+                    "labelbase": display,
+                    "status": info["status"],
+                    "memcount": len(mem),
+                    "href": f"issue-{iid}.html",
+                    "memory": [{"id": e["id"], "title": e["title"], "kind": e["kind"], "file": e["file"]} for e in mem],
+                },
+                "position": {"x": col * COLW, "y": y + row * ROWH},
+            })
+        y += (last_row + 1) * ROWH + BAND
+    for idx, (s, t, rel) in enumerate(edges):
+        elements.append({"data": {"id": f"ie{idx}", "source": s, "target": t, "rel": rel}})
+    return elements, len(nodes), len(edges)
+
+
+PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ModuFlow 프로젝트 뷰</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background: #fff; color: #1a1a1a; }
+  h1 { font-size: 19px; font-weight: 500; margin: 0 0 12px; }
+  .tabs { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .tab { padding: 6px 14px; border: 1px solid #ccc; border-radius: 8px; background: #f5f5f3; cursor: pointer; font-size: 14px; }
+  .tab.on { background: #2a78d6; color: #fff; border-color: #2a78d6; }
+  .toggle { margin-left: auto; font-size: 13px; color: #555; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; margin-bottom: 10px; color: #555; align-items: center; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .cy { width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 12px; }
+  .hidden { display: none; }
+  #info { margin-top: 12px; min-height: 56px; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; line-height: 1.7; }
+  #info a { color: #2a78d6; cursor: pointer; }
+  #info .mem { display: block; }
+  code { font-size: 13px; color: #888; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1a19; color: #e8e8e3; }
+    .tab { background: #2a2a28; border-color: #444; color: #ddd; }
+    .legend, .toggle { color: #aaa; }
+    .cy, #info { border-color: #333; }
+  }
+</style>
+</head>
+<body>
+<h1>ModuFlow 프로젝트 뷰</h1>
+<div class="tabs">
+  <div class="tab" id="tab-issues">이슈 그래프</div>
+  <div class="tab" id="tab-memory">지식 그래프</div>
+  <label class="toggle"><input type="checkbox" id="rel-toggle" checked> 관계선 표시</label>
+  <label class="toggle" style="margin-left:0"><input type="checkbox" id="badge-toggle" checked> 🧠 지식 배지 표시</label>
+</div>
+<div class="legend" id="legend-issues">
+  <span><span class="sw" style="background:#2A78D6"></span>active</span>
+  <span><span class="sw" style="background:#0F6E56"></span>done</span>
+  <span><span class="sw" style="background:#888780"></span>backlog</span>
+  <span><span class="sw" style="background:#993C1D"></span>superseded</span>
+  <span><span class="sw" style="background:transparent;border:2px solid #E8590C"></span>현재 진행</span>
+  <span>&#9472;&#9472; supersedes</span>
+</div>
+<div class="legend hidden" id="legend-memory">
+  <span><span class="sw" style="background:#378ADD"></span>decision</span>
+  <span><span class="sw" style="background:#888780"></span>evidence</span>
+  <span><span class="sw" style="background:#1D9E75"></span>deliverable</span>
+  <span><span class="sw" style="background:#D85A30"></span>note</span>
+</div>
+<div id="cy-issues" class="cy"></div>
+<div id="cy-memory" class="cy hidden"></div>
+<div id="info">노드를 클릭하면 상세가 표시됩니다. 드래그로 이동, 휠로 줌. 탭으로 그래프를 전환합니다.</div>
+<script>
+const ISSUE_ELEMENTS = __ISSUE_ELEMENTS__;
+const MEMORY_ELEMENTS = __MEMORY_ELEMENTS__;
+const KIND_ICON = {decision:'\\u{1F4A1}', evidence:'\\u{1F4CE}', deliverable:'\\u{1F4E6}', release:'\\u{1F680}', meeting:'\\u{1F5E3}', note:'\\u{1F4DD}', reference:'\\u{1F517}'};
+const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const IC = {
+  done:       dark ? {f:'#085041',s:'#5DCAA5',t:'#E1F5EE'} : {f:'#E1F5EE',s:'#0F6E56',t:'#085041'},
+  active:     dark ? {f:'#16467E',s:'#7FB2EE',t:'#DCEBFB'} : {f:'#DCEBFB',s:'#2A78D6',t:'#16467E'},
+  backlog:    dark ? {f:'#3A3A36',s:'#9A998F',t:'#E8E8E3'} : {f:'#ECEBE6',s:'#888780',t:'#4A4944'},
+  superseded: dark ? {f:'#712B13',s:'#F0997B',t:'#FAECE7'} : {f:'#FAECE7',s:'#993C1D',t:'#712B13'}
+};
+const MC = {
+  decision:    dark ? {f:'#0B3D66',s:'#378ADD',t:'#D6E9FB'} : {f:'#D6E9FB',s:'#1F6FBF',t:'#0B3D66'},
+  evidence:    dark ? {f:'#3A3A36',s:'#9A998F',t:'#E8E8E3'} : {f:'#ECEBE6',s:'#888780',t:'#4A4944'},
+  deliverable: dark ? {f:'#085041',s:'#5DCAA5',t:'#E1F5EE'} : {f:'#E1F5EE',s:'#0F6E56',t:'#085041'},
+  note:        dark ? {f:'#712B13',s:'#F0997B',t:'#FAECE7'} : {f:'#FAECE7',s:'#993C1D',t:'#712B13'}
+};
+const edgeCol = '#888780';
+const info = document.getElementById('info');
+function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+const isc = k => [{selector:'node[status="'+k+'"]', style:{'background-color':IC[k].f,'border-color':IC[k].s,'color':IC[k].t}}];
+const cyIssues = cytoscape({
+  container: document.getElementById('cy-issues'),
+  elements: ISSUE_ELEMENTS,
+  style: [
+    {selector:'node[status]', style:{'shape':'round-rectangle','width':'140px','height':'label','padding':'10px','border-width':1.5,'label':'data(label)','text-valign':'center','text-halign':'center','text-wrap':'wrap','text-max-width':'124px','font-size':'11px','font-weight':500,'transition-property':'border-width, opacity, background-color','transition-duration':'160ms'}},
+    {selector:':parent', style:{'shape':'round-rectangle','background-opacity':0.05,'background-color':'#888780','border-width':1,'border-style':'dashed','border-color':'#aaa','label':'data(label)','text-valign':'top','text-halign':'center','font-size':'13px','font-weight':600,'color':'#999','text-margin-y':-2,'padding':'16px'}},
+    ...isc('done'), ...isc('active'), ...isc('backlog'), ...isc('superseded'),
+    {selector:'node.hover', style:{'border-width':3}},
+    {selector:'node.grabbed', style:{'border-width':4,'opacity':0.9}},
+    {selector:'node.dropped', style:{'border-width':6}},
+    {selector:'node.current', style:{'border-width':5,'border-color':'#E8590C'}},
+    {selector:'node:selected', style:{'border-width':4}},
+    {selector:'edge', style:{'width':1.8,'line-color':edgeCol,'target-arrow-color':edgeCol,'target-arrow-shape':'triangle','curve-style':'bezier','opacity':0.8,'label':'data(rel)','font-size':'10px','color':edgeCol,'text-rotation':'autorotate','text-margin-y':-8}},
+    {selector:'edge[rel="related"]', style:{'line-style':'dashed','line-color':'#bbb','width':1,'opacity':0.4,'target-arrow-shape':'none','label':'','curve-style':'haystack'}}
+  ],
+  layout: {name:'preset', padding:30, fit:true},
+  wheelSensitivity: 0.2, minZoom: 0.2, maxZoom: 2.5
+});
+const ksc = k => [{selector:'node[kind="'+k+'"]', style:{'background-color':MC[k].f,'border-color':MC[k].s,'color':MC[k].t}}];
+const cyMemory = cytoscape({
+  container: document.getElementById('cy-memory'),
+  elements: MEMORY_ELEMENTS,
+  style: [
+    {selector:'node', style:{'shape':'round-rectangle','width':'150px','height':'46px','border-width':1.5,'label':'data(label)','text-valign':'center','text-halign':'center','text-wrap':'wrap','text-max-width':'134px','font-size':'12px','font-weight':500,'transition-property':'border-width, opacity, background-color','transition-duration':'160ms'}},
+    ...ksc('decision'), ...ksc('evidence'), ...ksc('deliverable'), ...ksc('note'),
+    {selector:'node.hover', style:{'border-width':3}},
+    {selector:'node.grabbed', style:{'border-width':4,'opacity':0.9}},
+    {selector:'node.dropped', style:{'border-width':6}},
+    {selector:'node:selected', style:{'border-width':4}},
+    {selector:'edge', style:{'width':1.8,'line-color':edgeCol,'target-arrow-color':edgeCol,'target-arrow-shape':'triangle','curve-style':'bezier','opacity':0.75,'label':'data(rel)','font-size':'10px','color':edgeCol,'text-rotation':'autorotate','text-margin-y':-8}},
+    {selector:'edge[rel="references"]', style:{'line-style':'dashed'}},
+    {selector:'edge[rel="depends_on"]', style:{'line-style':'dashed'}}
+  ],
+  layout: {name:'cose', animate:false, padding:40, nodeRepulsion:18000, idealEdgeLength:130, nodeOverlap:40, componentSpacing:170, numIter:2000, randomize:true},
+  wheelSensitivity: 0.2, minZoom: 0.3, maxZoom: 2.5
+});
+
+function applyBadge(on){
+  cyIssues.nodes('[status]').forEach(n=>{
+    const c = n.data('memcount') || 0;
+    n.data('label', (on && c>0) ? n.data('labelbase')+'  \\u{1F9E0}'+c : n.data('labelbase'));
+  });
+}
+document.getElementById('badge-toggle').addEventListener('change', e=> applyBadge(e.target.checked));
+applyBadge(true);
+document.getElementById('rel-toggle').addEventListener('change', e=>{
+  cyIssues.edges('[rel="related"]').style('display', e.target.checked ? 'element' : 'none');
+});
+// Highlight the currently-active issue so it stands out at a glance.
+const activeNodes = cyIssues.nodes('[status="active"]');
+activeNodes.addClass('current');
+
+cyIssues.on('tap','node', evt=>{
+  const d = evt.target.data();
+  let html = '<b>'+esc(d.title)+'</b> &nbsp; <a href="'+d.href+'">상세 열기 \\u2192</a><br><span style="color:#888">상태: '+esc(d.status)+'</span>';
+  const mem = d.memory || [];
+  if(mem.length){
+    html += '<br><span style="color:#888">\\u2014 연결된 지식 ('+mem.length+') \\u2014</span>';
+    mem.forEach(m=>{
+      const icon = KIND_ICON[m.kind] || '\\u{1F4DD}';
+      html += '<span class="mem">'+icon+' <a onclick="gotoMemory(\\''+m.id+'\\')">'+esc(m.title)+'</a></span>';
+    });
+  } else {
+    html += '<br><span style="color:#aaa">연결된 지식 없음 (memory issue_id 미설정 \\u2014 043에서 보강)</span>';
+  }
+  info.innerHTML = html;
+});
+cyMemory.on('tap','node', evt=>{
+  const d = evt.target.data();
+  let html = '<b>'+esc(d.full)+'</b> &nbsp; <a href="'+d.panelhref+'">상세 열기 \\u2192</a>'
+           + '<br><a href="'+d.href+'"><code>'+esc(d.file)+'</code></a>';
+  if(d.issue){ html += '<br><span class="mem">\\u2196 출처 이슈: <a onclick="gotoIssue(\\''+d.issue+'\\')">'+esc(d.issue)+'</a></span>'; }
+  info.innerHTML = html;
+});
+
+// Light motion: smooth border/opacity transitions on hover + grab (no physics).
+function wireMotion(cy){
+  cy.on('mouseover','node', e=> e.target.addClass('hover'));
+  cy.on('mouseout','node', e=> e.target.removeClass('hover'));
+  cy.on('grab','node', e=> e.target.addClass('grabbed'));
+  cy.on('free','node', e=>{
+    const n = e.target;
+    n.removeClass('grabbed');
+    n.stop(true).animate({style:{'border-width':6}}, {duration:100, easing:'ease-out',
+      complete:()=> n.animate({style:{'border-width':1.5}}, {duration:280, easing:'ease-in-out',
+        complete:()=> n.removeStyle('border-width')})});  // pop on drop, then ease back
+  });
+}
+wireMotion(cyIssues); wireMotion(cyMemory);
+
+function showTab(which){
+  const issues = which==='issues';
+  document.getElementById('cy-issues').classList.toggle('hidden', !issues);
+  document.getElementById('cy-memory').classList.toggle('hidden', issues);
+  document.getElementById('legend-issues').classList.toggle('hidden', !issues);
+  document.getElementById('legend-memory').classList.toggle('hidden', issues);
+  document.getElementById('tab-issues').classList.toggle('on', issues);
+  document.getElementById('tab-memory').classList.toggle('on', !issues);
+  const cy = issues ? cyIssues : cyMemory;
+  cy.resize();
+  if(issues && activeNodes.nonempty()){
+    cyIssues.fit(undefined, 40);
+    cyIssues.animate({center:{eles: activeNodes}, zoom: 1.15}, {duration: 650});
+  } else {
+    cy.fit(undefined, 40);
+  }
+  if(location.hash !== (issues?'#issues':'#memory')) location.hash = issues?'issues':'memory';
+}
+document.getElementById('tab-issues').addEventListener('click', ()=>showTab('issues'));
+document.getElementById('tab-memory').addEventListener('click', ()=>showTab('memory'));
+function gotoMemory(id){ showTab('memory'); const n=cyMemory.getElementById(id); if(n){ cyMemory.elements().unselect(); n.select(); cyMemory.center(n);} }
+function gotoIssue(id){ showTab('issues'); const n=cyIssues.getElementById(id); if(n){ cyIssues.elements().unselect(); n.select(); cyIssues.center(n);} }
+window.gotoMemory = gotoMemory; window.gotoIssue = gotoIssue;
+
+showTab(location.hash === '#memory' ? 'memory' : 'issues');
+</script>
+</body>
+</html>
+"""
+
+
+def render_project_view(root):
+    issue_elements, _i_n, _i_e = _issue_elements(root)
+    memory_elements, _m_n, _m_e = _memory_elements(root)
+    return (
+        PROJECT_VIEW_TEMPLATE
+        .replace("__ISSUE_ELEMENTS__", json.dumps(issue_elements, ensure_ascii=False, indent=2))
+        .replace("__MEMORY_ELEMENTS__", json.dumps(memory_elements, ensure_ascii=False, indent=2))
     )
 
 
@@ -837,7 +1228,7 @@ ISSUE_PANEL_TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ModuFlow Issue · __ISSUE_ID__</title>
+<title>ModuFlow · __ISSUE_ID__</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <style>
   :root { color-scheme: light dark; }
@@ -863,14 +1254,17 @@ ISSUE_PANEL_TEMPLATE = """<!DOCTYPE html>
 </style>
 </head>
 <body>
-<h1>Issue __ISSUE_ID__</h1>
-<p class="sub">__COUNT__ artifact(s) · generated from issues/ + specs/__ISSUE_ID__/ · derived view</p>
+<h1>__PANEL_TITLE__</h1>
+<p class="sub">__PANEL_SUB__</p>
 <div id="artifacts"></div>
+<div id="linked"></div>
 <script type="module">
 import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs";
 const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'loose' });
 const ARTIFACTS = __ARTIFACTS_JSON__;
+const LINKED = __LINKED_JSON__;
+const KIND_ICON = {decision:'\\u{1F4A1}', evidence:'\\u{1F4CE}', deliverable:'\\u{1F4E6}', release:'\\u{1F680}', meeting:'\\u{1F5E3}', note:'\\u{1F4DD}', reference:'\\u{1F517}'};
 const root = document.getElementById('artifacts');
 if (!ARTIFACTS.length) {
   root.innerHTML = '<div class="empty">No artifacts yet for <code>__ISSUE_ID__</code>. Nothing has been written under <code>specs/__ISSUE_ID__/</code> or <code>issues/</code>.</div>';
@@ -896,6 +1290,22 @@ if (!ARTIFACTS.length) {
     (pre || code).replaceWith(div);
   });
   await mermaid.run({ querySelector: '.mermaid' });
+}
+if (LINKED.length) {
+  const sec = document.createElement('section');
+  sec.className = 'artifact';
+  const h = document.createElement('h2');
+  h.className = 'label';
+  h.textContent = '연결된 지식 (' + LINKED.length + ')';
+  sec.appendChild(h);
+  const ul = document.createElement('div');
+  ul.className = 'md';
+  ul.innerHTML = LINKED.map(m =>
+    '<p>' + (KIND_ICON[m.kind] || '\\u{1F4DD}') + ' <a href="' + m.file.replace(/^memory\\//,'') + '">' +
+    m.title.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])) + '</a> <code>' + m.kind + '</code></p>'
+  ).join('');
+  sec.appendChild(ul);
+  document.getElementById('linked').appendChild(sec);
 }
 </script>
 </body>
@@ -950,13 +1360,40 @@ def _collect_issue_artifacts(root, issue_id):
 
 def render_issue_panel(root, issue_id):
     slug, artifacts = _collect_issue_artifacts(root, issue_id)
+    linked = _issue_linked_memory(root).get(slug, [])
     # Escape "</" so a literal </script> inside Markdown can't end the module script.
+    artifacts_json = json.dumps(artifacts, ensure_ascii=False).replace("</", "<\\/")
+    linked_json = json.dumps(linked, ensure_ascii=False).replace("</", "<\\/")
+    return (
+        ISSUE_PANEL_TEMPLATE
+        .replace("__PANEL_TITLE__", f"Issue {slug}")
+        .replace("__PANEL_SUB__", f"{len(artifacts)} artifact(s) · issues/ + specs/{slug}/ · derived view")
+        .replace("__ISSUE_ID__", slug)
+        .replace("__ARTIFACTS_JSON__", artifacts_json)
+        .replace("__LINKED_JSON__", linked_json)
+    )
+
+
+def render_memory_panel(root, mem_id):
+    entry = get_memory_entry(root, mem_id)
+    if not entry:
+        title, sub, artifacts = mem_id, "no such memory entry", []
+    else:
+        kind = entry.get("kind", "memory")
+        meta = entry.get("metadata", {})
+        date = meta.get("date", "") or meta.get("created", "")
+        label = kind + ((" · " + date) if date else "")
+        artifacts = [{"name": "memory", "label": label, "md": entry["content"]}]
+        title = entry.get("title") or mem_id
+        sub = f"{kind} · {entry['path']} · derived view"
     artifacts_json = json.dumps(artifacts, ensure_ascii=False).replace("</", "<\\/")
     return (
         ISSUE_PANEL_TEMPLATE
-        .replace("__ISSUE_ID__", slug)
-        .replace("__COUNT__", str(len(artifacts)))
+        .replace("__PANEL_TITLE__", title)
+        .replace("__PANEL_SUB__", sub)
+        .replace("__ISSUE_ID__", mem_id)
         .replace("__ARTIFACTS_JSON__", artifacts_json)
+        .replace("__LINKED_JSON__", "[]")
     )
 
 
@@ -1002,10 +1439,22 @@ def main():
         return 0
 
     if args.dashboard:
-        html = render_dashboard_html(args.project_path)
-        out_path = Path(args.project_path).resolve() / "memory" / "dashboard.html"
-        out_path.write_text(html, encoding="utf-8")
+        out_dir = Path(args.project_path).resolve() / "memory"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / "dashboard.html"
+        out_path.write_text(render_project_view(args.project_path), encoding="utf-8")
+        # Zero-backend: pre-generate each issue's + memory entry's panel so the
+        # graph's "상세 열기" links resolve without a server.
+        issue_nodes, _ = _collect_issue_graph(args.project_path)
+        for iid in issue_nodes:
+            (out_dir / f"issue-{iid}.html").write_text(
+                render_issue_panel(args.project_path, iid), encoding="utf-8")
+        mem_nodes, _ = _collect_graph(args.project_path)
+        for mid in mem_nodes:
+            (out_dir / f"mem-{mid}.html").write_text(
+                render_memory_panel(args.project_path, mid), encoding="utf-8")
         print(str(out_path))
+        print(f"  + {len(issue_nodes)} issue panel(s), {len(mem_nodes)} memory panel(s)")
         return 0
 
     if args.issue:

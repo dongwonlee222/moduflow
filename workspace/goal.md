@@ -28,7 +28,7 @@ Three axes, not a single linear ladder. Issues belong to an axis, not a step num
 **Axis A — View (show it)**
 - `042-decision-graph-dashboard` ✅ done — memory graph (Cytoscape from `memory/` frontmatter).
 - `044-product-dashboard-command` ✅ done — `product:dashboard` / `/moduflow 그래프`, ModuFlow-native, `dashboard.html` is `.gitignore`d/derived. Routed in `moduflow.md` + `skills/index/SKILL.md`.
-- `045-issue-graph-visualization` — issue **graph**: nodes = issues, edges = supersedes/related/depends, color = status. Relationship *view*, distinct from 047.
+- `045-issue-graph-visualization` ✅ done — grew into the **L1 project view**: two-tab 이슈 그래프 + 지식 그래프, cross-linked via `issue_id`, goal-box grouping, detail panels for both. Spun off `049` (Korean artifact bodies).
 - `047-issue-artifact-drilldown` ✅ done — L2 panel: `product:dashboard --issue <id>` → `memory/issue-<id>.html`. Shows only artifacts that exist; never forces empty sections. All-CDN (`marked`+`mermaid`, zero Python dep).
 
 **Axis B — Data quality (have something worth showing)**
@@ -45,7 +45,7 @@ Three axes, not a single linear ladder. Issues belong to an axis, not a step num
 
 ## Suggested order
 
-`046` ✅ → `047` ✅ → `043` (relationship data) → `045` (issue graph). Views are cheap but empty until the artifacts and relationships behind them exist. `048` (lifecycle sync) runs alongside — fix it before the views are relied on for review.
+`046` ✅ → `047` ✅ → `045` ✅ → `043` (relationship data — fills 045's sparse cross-links). `048` (lifecycle sync) + `049` (Korean artifact bodies) run alongside. Views are now built; `043` makes them rich.
 
 ## Completion Criteria
 
