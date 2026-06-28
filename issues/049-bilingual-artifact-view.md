@@ -7,9 +7,9 @@
 The 047 panel now shows Korean on demand while English stays canonical:
 
 - **Sidecar convention**: `<name>.ko.md` beside the English `<name>.md`. `_ko_sidecar` attaches it as the artifact's `ko` field; `*.ko.md` is never listed as its own artifact.
-- **Panel `English / 한글` toggle** (`render_issue_panel`): shown only when ≥1 sidecar exists; 한글 renders `ko`, falling back to English per-artifact (absent sidecars show `(영문)`); default English. No `.ko.md` → panel behaves exactly as before.
+- **Panel `English / 한글` toggle** (`render_issue_panel`): shown only when ≥1 sidecar exists; default English shows all artifacts in English; **한글 shows only artifacts that have a sidecar** (no English mixed in — artifacts without `.ko.md` are hidden in Korean mode). No `.ko.md` anywhere → panel behaves exactly as before.
 - **New-artifacts-forward policy**: `commands/product-spec.md` documents writing `spec.ko.md` alongside new specs — convention, not a gate. No retro-translation; canonical file never translated in place.
-- **Dogfood**: wrote `specs/049-bilingual-artifact-view/spec.ko.md`; the panel's toggle renders it.
+- **Dogfood**: wrote `spec.ko.md` + `plan.ko.md` for 049; in 한글 mode the panel shows both rendered in Korean and hides the still-English issue header.
 
 Tests: 34 pass (sidecar attach + not-listed-separately, toggle payload present-vs-absent). `release_check` exit 0. Stale-sidecar drift left as a future `--drift` extension (noted, out of scope).
 

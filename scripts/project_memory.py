@@ -1306,15 +1306,16 @@ async function renderArtifacts() {
     return;
   }
   for (const a of ARTIFACTS) {
+    if (lang === 'ko' && !a.ko) continue;  // 한글 모드: 한글본 있는 산출물만 (영문 안 섞음)
     const sec = document.createElement('section');
     sec.className = 'artifact';
     const h = document.createElement('h2');
     h.className = 'label';
-    h.textContent = a.label + ((lang === 'ko' && !a.ko) ? '  (영문)' : '');
+    h.textContent = a.label;
     sec.appendChild(h);
     const body = document.createElement('div');
     body.className = 'md';
-    body.innerHTML = marked.parse((lang === 'ko' && a.ko) ? a.ko : a.md);  // per-artifact fallback to EN
+    body.innerHTML = marked.parse(lang === 'ko' ? a.ko : a.md);  // EN: all artifacts; KO: only ones with a sidecar
     sec.appendChild(body);
     root.appendChild(sec);
   }
