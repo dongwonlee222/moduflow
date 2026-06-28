@@ -1,12 +1,14 @@
 # Issue: `046-planning-artifact-templates`
 
-**Status: active** — created 2026-06-28, started 2026-06-28. Part of goal `visual-workbench`, Axis C (planning-artifact depth). Supersedes the dropped "spec mermaid embed" scope.
+**Status: done** — created 2026-06-28, completed 2026-06-28. Part of goal `visual-workbench`, Axis C (planning-artifact depth). Supersedes the dropped "spec mermaid embed" scope.
 
-## Progress
+## Outcome
 
-- Spec written: `specs/046-planning-artifact-templates/spec.md`.
-- `commands/product-spec.md` enhanced with the 4 benchmarked elements (clarify-first, required Non-Goals + Alternatives, default Mermaid, prev/next pointers). This spec is the dogfood — written under the new template.
-- Scope per owner: core 3 (requirements/solution/diagram) first; scenario/IA/journey/screens are demand-driven later.
+- `commands/product-spec.md` enhanced with the 4 benchmarked elements: clarify-first (AI asks 3-5 questions), required `## Non-Goals` + `## Alternatives Considered`, default Mermaid block (renders on GitHub/Obsidian), prev/next pipeline pointers. Selective-depth note keeps heavier artifacts demand-driven.
+- `specs/046-planning-artifact-templates/spec.md` written as the dogfood — first spec under the new template (core 3: requirements/solution/diagram).
+- Fixed a GitHub-rendering bug: 4-backtick outer fence so the inner mermaid fence nests correctly.
+- Closed at spec stage by design: the deliverable *is* the template + its first exercised use. No separate plan/execute needed.
+- Deferred (demand-driven): scenario / IA / journey / screen templates and the same clarify-first treatment for `product:design`/`analyze` — pull when an issue warrants it.
 
 ## Goal
 

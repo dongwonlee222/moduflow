@@ -35,7 +35,7 @@ Three axes, not a single linear ladder. Issues belong to an axis, not a step num
 - `043-memory-relationship-capture-prompts` — capture memory relationships at write time so the graph isn't sparse.
 
 **Axis C — Planning-artifact depth (selective, not forced)**
-- `046-planning-artifact-templates` (new, supersedes the dropped "spec mermaid embed" scope) — make the planning-artifact chain real **when an issue needs it**: requirements→benchmark→solution / scenario→IA→journey→screens→diagrams. NOT mandated per issue. Two parts: (a) **template quality** — harden the design-brief/scenario/IA/journey/screen/diagram templates using strong external references (currently 0 produced, so templates are unvalidated); (b) **judgment guide** — decide per issue which artifacts are warranted (a UX feature needs screens; a refactor does not).
+- `046-planning-artifact-templates` ✅ done — enhanced `product:spec` template with clarify-first + required Non-Goals/Alternatives + default Mermaid + pipeline pointers; dogfooded via `specs/046/spec.md` (core 3 first). Heavier artifacts (scenario/IA/journey/screens) deferred, demand-driven.
 
 **Later — Write/Execute (interactive workbench)**
 - Create/edit issues and direct work from the UI. Crosses the static-file boundary, needs a running backend. Depends on `021-git-binding-and-execution-backend`, `028-real-subagent-execution-backend`. Front-end approach (chat-backed vs standalone) deferred — see Open Questions.
