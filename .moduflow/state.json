@@ -2,9 +2,9 @@
   "schema": "moduflow.state.v1",
   "phase": "planning",
   "active_goal": "visual-workbench",
-  "active_issue": "045-issue-graph-visualization",
-  "last_command": "product:dashboard",
-  "next_command": "product:issue 045 start",
+  "active_issue": "046-planning-artifact-templates",
+  "last_command": "product:goal",
+  "next_command": "product:issue 046 start",
   "blockers": [],
   "updated_at": "2026-06-28"
 }
