@@ -29,7 +29,7 @@ Three axes, not a single linear ladder. Issues belong to an axis, not a step num
 - `042-decision-graph-dashboard` ✅ done — memory graph (Cytoscape from `memory/` frontmatter).
 - `044-product-dashboard-command` ✅ done — `product:dashboard` / `/moduflow 그래프`, ModuFlow-native, `dashboard.html` is `.gitignore`d/derived. Routed in `moduflow.md` + `skills/index/SKILL.md`.
 - `045-issue-graph-visualization` — issue **graph**: nodes = issues, edges = supersedes/related/depends, color = status. Relationship *view*, distinct from 047.
-- `047-issue-artifact-drilldown` (new) — L2 panel: click an issue → see **its** spec/benchmark/scenario/IA/journey/screens/diagrams. Shows only artifacts that exist; never forces empty sections.
+- `047-issue-artifact-drilldown` ✅ done — L2 panel: `product:dashboard --issue <id>` → `memory/issue-<id>.html`. Shows only artifacts that exist; never forces empty sections. All-CDN (`marked`+`mermaid`, zero Python dep).
 
 **Axis B — Data quality (have something worth showing)**
 - `043-memory-relationship-capture-prompts` — capture memory relationships at write time so the graph isn't sparse.
@@ -45,7 +45,7 @@ Three axes, not a single linear ladder. Issues belong to an axis, not a step num
 
 ## Suggested order
 
-`046` ✅ → `047` (drill-down once there's something to drill into) → `043` (relationship data) → `045` (issue graph). Views are cheap but empty until the artifacts and relationships behind them exist. `048` (lifecycle sync) runs alongside — fix it before the views are relied on for review.
+`046` ✅ → `047` ✅ → `043` (relationship data) → `045` (issue graph). Views are cheap but empty until the artifacts and relationships behind them exist. `048` (lifecycle sync) runs alongside — fix it before the views are relied on for review.
 
 ## Completion Criteria
 

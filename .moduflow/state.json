@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "spec",
+  "phase": "select",
   "active_goal": "visual-workbench",
-  "active_issue": "047-issue-artifact-drilldown",
-  "last_command": "product:spec 047",
-  "next_command": "product:plan 047",
+  "active_issue": "",
+  "last_command": "product:execute 047",
+  "next_command": "product:spec 043",
   "blockers": [],
   "updated_at": "2026-06-28"
 }

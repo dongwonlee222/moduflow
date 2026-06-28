@@ -1,12 +1,20 @@
 # Issue: `047-issue-artifact-drilldown`
 
-**Status: active** — created 2026-06-28, started 2026-06-28. Part of goal `visual-workbench`, Axis A (view). This is the L2 layer of the documented L0–L3 IA.
+**Status: done** — created 2026-06-28, started 2026-06-28, done 2026-06-28. Part of goal `visual-workbench`, Axis A (view). This is the L2 layer of the documented L0–L3 IA.
+
+## Outcome
+
+- Built `render_issue_panel()` + `_collect_issue_artifacts()` + `_resolve_issue_slug()` in `scripts/project_memory.py`; new `--issue <id>` flag emits `memory/issue-<id>.html` (derived, `.gitignore`d).
+- **Architecture (reversed spec Alternatives #4 at plan stage):** all-CDN — `marked` 12.0.2 + `mermaid` 11.4.1 pinned, Python collects+assembles only, **zero Python dependency**; reuses the 042/044 render path. Rationale + reversal documented in `plan.md`, spec Alternatives #4, and the visualization benchmark evidence (no silent change).
+- Surfaced as a **mode of `product:dashboard`** (`--issue <id>`), per spec Goal #2 — no new command. `commands/product-dashboard.md` documents it.
+- Renders **only existing artifacts** (Issue header + spec/plan/tasks/status + any warranted *.md), in fixed order; missing artifacts omitted, no empty stubs; no-spec-folder degrades to a "no artifacts yet" panel. Accepts bare number or full slug.
+- Tests: 3 added (present-only / number↔slug parity / graceful degrade) → 24 pass. Render integrity verified (JSON round-trip, Mermaid fence preserved, no `</script>` leak, CDN pins present). `release_check` exit 0.
 
 ## Progress
 
 - Spec written: `specs/047-issue-artifact-drilldown/spec.md` (under the 046-enhanced spec template).
 - Decisions (clarify-first): entry = **mode of `product:dashboard`** (`--issue <id>`); first scope = **single-issue panel**; display = **section embed + Markdown/Mermaid render, existing artifacts only**.
-- Next: `product:plan 047` — settle Markdown library, artifact order, then implement in `scripts/project_memory.py`.
+- Plan: `specs/047-issue-artifact-drilldown/plan.md`; tasks: `specs/047-issue-artifact-drilldown/tasks.md`.
 
 ## Goal
 

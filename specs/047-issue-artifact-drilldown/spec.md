@@ -49,7 +49,7 @@ Artifact policy mirrors 044: the generated `issue-<id>.html` is derived and `.gi
 - **Separate `product:issue-view` command** — rejected: adds a command for what is naturally a dashboard mode; 044 already owns the visualization surface.
 - **File list + links only (no embed)** — rejected for the first cut: the goal is to *see* content/diagrams in one place; a link list still forces opening files. Kept as a fallback if embedding proves heavy.
 - **Open only from the 045 graph** — rejected as the sole entry: couples 047 to 045 (still backlog). A standalone `--issue` mode works now; the 045 node-click can call into it later.
-- **Client-side Markdown render (marked.js)** — rejected: the generator is Python, so pre-rendering at build time keeps the output a true static file with no runtime fetch.
+- **Client-side Markdown render (marked.js)** — ~~rejected~~ **adopted at plan stage (reversed).** The original rejection ("keep output a static file, no runtime fetch") is void because Goal #4 (Mermaid rendered *inside* the panel) already forces a client-side Mermaid CDN fetch. The two coherent endpoints are all-CDN (marked + Mermaid, zero Python dep) or all-build-time-static (Python `markdown` + node `mermaid-cli`); the spec's mixed Python-`markdown`-plus-CDN-Mermaid pays both costs for neither benefit. Chose all-CDN to reuse the proven 042 render path. See `plan.md` "Architecture decision".
 
 ## Acceptance Criteria
 

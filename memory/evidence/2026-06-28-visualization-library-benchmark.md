@@ -45,6 +45,7 @@ reversal_conditions: ModuFlow가 zero-backend 제약을 버리고 빌드 스텝/
 - **B 차트 → Chart.js** (cdnjs MIT, 203 KB). `product:analyze`/metrics 산출물 렌더 — 상태 도넛, 번다운 선그래프, RICE 막대.
 - **C 다이어그램 → Mermaid 11**. 핵심 강점은 CDN이 아니라 GitHub/Obsidian이 라이브러리 비용 0으로 네이티브 렌더한다는 점. HTML 대시보드 클라이언트 렌더가 필요할 때만 v11 ESM(`<script type="module">`) 핀 — 042의 classic `<script src>`와 로딩 방식이 다름을 spec에 명시.
 - **D 드릴다운(047) → 라이브러리 불필요**. 제너레이터가 Python이라 markdown→HTML 사전 변환으로 충분. 메트릭 차트가 섞일 때만 Chart.js 하이브리드.
+  - **[2026-06-28 갱신 — 047 plan에서 반전]** 이 결론은 spec Goal #4(Mermaid를 **패널 안에서** 그림으로 렌더)와 충돌했다. 패널 내부 렌더는 client-side Mermaid CDN fetch가 필수 → "Python 사전 변환으로 fetch 회피" 전제가 무너진다. 047은 **all-CDN(marked 12.0.2 + mermaid 11.4.1)** 로 확정, Python 의존성 0, 042 렌더 경로 재사용. "GitHub/Obsidian 네이티브 렌더"는 canonical .md에는 여전히 유효하나, **derived HTML 패널 안 렌더**라는 047의 요구와는 별개. 상세: `specs/047-issue-artifact-drilldown/plan.md`.
 
 ## 046 리서치와의 접점
 

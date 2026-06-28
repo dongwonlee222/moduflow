@@ -816,6 +816,150 @@ def render_dashboard_html(root):
     )
 
 
+# --- Issue artifact drill-down panel (047) ---------------------------------
+# Render path note: unlike the 042 dashboard (classic <script src> Cytoscape),
+# this panel loads `marked` (classic) for Markdown and `mermaid` (ESM import)
+# for diagrams. Both are pinned CDN libs; Python only collects + assembles.
+# Decision rationale: see specs/047-issue-artifact-drilldown/plan.md (reverses
+# spec Alternatives #4 because Goal #4 needs Mermaid rendered inside the panel).
+
+SPEC_ARTIFACT_ORDER = ["spec.md", "plan.md", "tasks.md", "status.md"]
+ARTIFACT_LABELS = {
+    "issue": "Issue",
+    "spec.md": "Spec",
+    "plan.md": "Plan",
+    "tasks.md": "Tasks",
+    "status.md": "Status",
+}
+
+ISSUE_PANEL_TEMPLATE = """<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ModuFlow Issue · __ISSUE_ID__</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0 auto; max-width: 820px; padding: 24px; background: #fff; color: #1a1a1a; line-height: 1.6; }
+  h1 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
+  .sub { font-size: 13px; color: #888; margin: 0 0 20px; }
+  .artifact { border: 1px solid #ddd; border-radius: 12px; padding: 8px 20px 16px; margin-bottom: 18px; }
+  .artifact > h2.label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #888; margin: 12px 0 4px; }
+  .md h1 { font-size: 19px; } .md h2 { font-size: 16px; } .md h3 { font-size: 14px; }
+  .md code { font-size: 13px; background: rgba(135,131,120,0.15); padding: 1px 5px; border-radius: 4px; }
+  .md pre { background: rgba(135,131,120,0.12); padding: 12px 14px; border-radius: 8px; overflow-x: auto; }
+  .md pre code { background: none; padding: 0; }
+  .md a { color: #2a78d6; }
+  .md table { border-collapse: collapse; font-size: 14px; } .md th, .md td { border: 1px solid #ddd; padding: 6px 10px; }
+  .mermaid { text-align: center; margin: 12px 0; }
+  .empty { border: 1px dashed #ccc; border-radius: 12px; padding: 24px; color: #888; text-align: center; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1a19; color: #e8e8e3; }
+    .artifact, .empty { border-color: #333; }
+    .md a { color: #5aa0e8; }
+    .md th, .md td { border-color: #333; }
+  }
+</style>
+</head>
+<body>
+<h1>Issue __ISSUE_ID__</h1>
+<p class="sub">__COUNT__ artifact(s) · generated from issues/ + specs/__ISSUE_ID__/ · derived view</p>
+<div id="artifacts"></div>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs";
+const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'loose' });
+const ARTIFACTS = __ARTIFACTS_JSON__;
+const root = document.getElementById('artifacts');
+if (!ARTIFACTS.length) {
+  root.innerHTML = '<div class="empty">No artifacts yet for <code>__ISSUE_ID__</code>. Nothing has been written under <code>specs/__ISSUE_ID__/</code> or <code>issues/</code>.</div>';
+} else {
+  for (const a of ARTIFACTS) {
+    const sec = document.createElement('section');
+    sec.className = 'artifact';
+    const h = document.createElement('h2');
+    h.className = 'label';
+    h.textContent = a.label;
+    sec.appendChild(h);
+    const body = document.createElement('div');
+    body.className = 'md';
+    body.innerHTML = marked.parse(a.md);
+    sec.appendChild(body);
+    root.appendChild(sec);
+  }
+  document.querySelectorAll('code.language-mermaid').forEach(code => {
+    const div = document.createElement('div');
+    div.className = 'mermaid';
+    div.textContent = code.textContent;
+    const pre = code.closest('pre');
+    (pre || code).replaceWith(div);
+  });
+  await mermaid.run({ querySelector: '.mermaid' });
+}
+</script>
+</body>
+</html>
+"""
+
+
+def _resolve_issue_slug(root, issue_id):
+    root = Path(root).resolve()
+    issue_id = issue_id.strip()
+    if (root / "specs" / issue_id).is_dir():
+        return issue_id
+    if (root / "issues" / f"{issue_id}.md").is_file():
+        return issue_id
+    num = issue_id.split("-")[0]
+    specs_dir = root / "specs"
+    if specs_dir.is_dir():
+        for d in sorted(specs_dir.iterdir()):
+            if d.is_dir() and (d.name == num or d.name.startswith(num + "-")):
+                return d.name
+    issues_dir = root / "issues"
+    if issues_dir.is_dir():
+        for f in sorted(issues_dir.glob("*.md")):
+            if f.stem == num or f.stem.startswith(num + "-"):
+                return f.stem
+    return issue_id
+
+
+def _collect_issue_artifacts(root, issue_id):
+    root = Path(root).resolve()
+    slug = _resolve_issue_slug(root, issue_id)
+    artifacts = []
+    issue_file = root / "issues" / f"{slug}.md"
+    if issue_file.is_file():
+        artifacts.append({"name": "issue", "label": "Issue", "md": issue_file.read_text(encoding="utf-8")})
+    spec_dir = root / "specs" / slug
+    if spec_dir.is_dir():
+        seen = set()
+        for fname in SPEC_ARTIFACT_ORDER:
+            f = spec_dir / fname
+            if f.is_file():
+                seen.add(fname)
+                artifacts.append({"name": fname, "label": ARTIFACT_LABELS.get(fname, fname),
+                                  "md": f.read_text(encoding="utf-8")})
+        for f in sorted(spec_dir.glob("*.md")):
+            if f.name in seen:
+                continue
+            artifacts.append({"name": f.name, "label": f.stem.replace("-", " ").title(),
+                              "md": f.read_text(encoding="utf-8")})
+    return slug, artifacts
+
+
+def render_issue_panel(root, issue_id):
+    slug, artifacts = _collect_issue_artifacts(root, issue_id)
+    # Escape "</" so a literal </script> inside Markdown can't end the module script.
+    artifacts_json = json.dumps(artifacts, ensure_ascii=False).replace("</", "<\\/")
+    return (
+        ISSUE_PANEL_TEMPLATE
+        .replace("__ISSUE_ID__", slug)
+        .replace("__COUNT__", str(len(artifacts)))
+        .replace("__ARTIFACTS_JSON__", artifacts_json)
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Plan, initialize, write, search, or get ModuFlow project memory.")
     parser.add_argument("project_path", nargs="?", default=".")
@@ -840,6 +984,7 @@ def main():
     parser.add_argument("--references", default="", help="Comma-separated references memory ids.")
     parser.add_argument("--graph", action="store_true", help="Render a visual Mermaid chart of the memory context.")
     parser.add_argument("--dashboard", action="store_true", help="Generate an interactive Cytoscape dashboard HTML at memory/dashboard.html.")
+    parser.add_argument("--issue", default="", help="Generate a single-issue artifact drill-down panel at memory/issue-<id>.html.")
     parser.add_argument("--summary", default="")
     parser.add_argument("--rationale", default="")
     parser.add_argument("--evidence", default="")
@@ -859,6 +1004,16 @@ def main():
     if args.dashboard:
         html = render_dashboard_html(args.project_path)
         out_path = Path(args.project_path).resolve() / "memory" / "dashboard.html"
+        out_path.write_text(html, encoding="utf-8")
+        print(str(out_path))
+        return 0
+
+    if args.issue:
+        slug = _resolve_issue_slug(args.project_path, args.issue)
+        html = render_issue_panel(args.project_path, args.issue)
+        out_dir = Path(args.project_path).resolve() / "memory"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / f"issue-{slug}.html"
         out_path.write_text(html, encoding="utf-8")
         print(str(out_path))
         return 0

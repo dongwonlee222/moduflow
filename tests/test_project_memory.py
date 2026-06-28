@@ -476,5 +476,49 @@ More detail contents here.
             self.assertEqual(candidates[0]["kind"], "decision")
 
 
+    def test_issue_panel_renders_existing_artifacts_only(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "specs" / "046-foo").mkdir(parents=True)
+            (root / "issues" / "046-foo.md").write_text("# Issue 046\nStatus: done\n", encoding="utf-8")
+            (root / "specs" / "046-foo" / "spec.md").write_text(
+                "# Spec heading\n\n```mermaid\nflowchart TD\n A-->B\n```\n", encoding="utf-8")
+            # plan.md absent on purpose — must not be stubbed.
+
+            html = project_memory.render_issue_panel(root, "046-foo")
+
+            self.assertIn("Spec heading", html)
+            self.assertIn("# Issue 046", html)
+            self.assertIn("cdnjs.cloudflare.com/ajax/libs/marked/12.0.2", html)
+            self.assertIn("mermaid@11.4.1", html)
+            self.assertNotIn('"label": "Plan"', html)
+
+    def test_issue_panel_resolves_bare_number_same_as_slug(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "specs" / "047-bar").mkdir(parents=True)
+            (root / "specs" / "047-bar" / "spec.md").write_text("# Bar spec\n", encoding="utf-8")
+
+            slug_num, arts_num = project_memory._collect_issue_artifacts(root, "047")
+            slug_full, arts_full = project_memory._collect_issue_artifacts(root, "047-bar")
+
+            self.assertEqual(slug_num, "047-bar")
+            self.assertEqual(slug_num, slug_full)
+            self.assertEqual([a["name"] for a in arts_num], [a["name"] for a in arts_full])
+
+    def test_issue_panel_degrades_when_no_artifacts(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            html = project_memory.render_issue_panel(root, "099-nope")
+
+            self.assertIn("No artifacts yet", html)
+            self.assertIn("099-nope", html)
+
+
 if __name__ == "__main__":
     unittest.main()
