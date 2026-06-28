@@ -1,58 +1,41 @@
-# Goal: Lightweight ModuFlow UX
+# Goal: ModuFlow Visual Workbench
 
 ## Objective
 
-Make ModuFlow feel lightweight and predictable in real projects while preserving Git-native PM artifacts and the central plugin/tooling model.
+Move ModuFlow from a chat-driven workflow toward a visual workbench: see and (eventually) act on issues, their relationships, memory, and work direction through a node graph — while keeping Git-native Markdown as the canonical source of truth.
 
 ## Owner
 
 Dongwon Lee
 
-## Linked Issues
+## Stages (read cheap first, write/execute later)
 
-- `025-lightweight-project-adoption`
-- `026-simplify-command-and-folder-surface`
-- `027-reduce-approval-popup-friction`
-- `028-real-subagent-execution-backend`
-- `029-antigravity-artifact-sync-connector`
+1. **Read — memory graph** ✅ done (`042-decision-graph-dashboard`)
+   Cytoscape dashboard generated from `memory/` frontmatter.
+2. **Read — dashboard command** (`044-product-dashboard-command`)
+   ModuFlow-native invocation (`product:dashboard` / `/moduflow 그래프`), not a Claude-only skill. Generates `dashboard.html`; renders in chat when a visualization MCP is present.
+3. **Read — issue graph** (`045-issue-graph-visualization`)
+   Do for issues what 042 did for memory: nodes = issues, edges = supersedes/related/depends, color = status.
+4. **Write/Execute — interactive workbench** (later; depends on execution backend)
+   Create/edit issues and direct work from the UI. This crosses the static-file boundary and needs a running backend. Depends on `021-git-binding-and-execution-backend`, `028-real-subagent-execution-backend`. Front-end approach (chat-backed vs standalone app) deferred — see Open Questions.
 
 ## Completion Criteria
 
-- Normal project adoption uses light mode by default and does not copy central tooling folders into target projects.
-- The current 18 top-level folder surface has a documented grouping or reduction plan.
-- User-facing status and docs clearly separate project artifacts from internal ModuFlow tooling.
-- Approval prompts are predictable, explained before risky flows, and reduced through batching/local-only paths where possible.
-- Doctor/preflight can detect project mode and GitHub account mismatch before write operations.
-- Routine validation can run through importable/tool-call paths without repeated shell approval prompts.
-- Real subagent execution and host artifact sync are designed without breaking the Git-native artifact model.
+- Memory and issue graphs are viewable through a ModuFlow command (not a chat-client-only skill).
+- Issue relationships render with status color and edge semantics.
+- A decided, staged path exists for interactive authoring without breaking the Git-native artifact model.
 
 ## Constraints
 
-- Keep Git artifacts as the source of truth.
-- Do not bypass Codex approval or sandbox safety rules.
-- Do not delete or move existing user artifacts automatically.
-- Keep dogfooding support for the ModuFlow repo itself.
+- Git-tracked Markdown stays canonical — any future authoring UI writes back to `.md`, never a side store.
+- Read stages stay zero-backend (Python-generated static HTML + CDN render lib).
+- Interactive/execution stages reuse, not bypass, existing execution-backend work (`021`, `028`).
+
+## Open Questions
+
+- Interactive front-end: **(A)** chat-backed visual surface (sendPrompt-driven, works today, Claude-client only) vs **(B)** standalone app with its own backend (true "not chat", weeks+). Recommendation: validate with (A) before committing to (B).
+- Issue relationship source for stage 3: brittle "Related Issues" text parsing vs giving issues frontmatter (artifact-model schema change — separate decision).
 
 ## Budget
 
-- Steps: 5 linked issues, starting with 025
-- Time:
-- Tokens:
-
-## Status
-
-active
-
-## Blocker
-
-None.
-
-## Notes
-
-- Created from user feedback on 2026-06-19 that ModuFlow feels too heavy, has too many visible folders, and triggers too many approval prompts.
-- Treat this as a UX cleanup goal after the 0.2.11 goal-loop merge.
-- Antigravity feedback added three improvement tracks: in-process validation to reduce approvals, real subagent execution backend, and host artifact sync.
-
-## Next Command
-
-`product:review 026-simplify-command-and-folder-surface`
+- Stages 1-3 are cheap (Python + CDN render). Stage 4 is a separate project-scale effort, gated on proven value from (A).
