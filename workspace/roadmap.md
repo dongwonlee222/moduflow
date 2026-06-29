@@ -6,6 +6,15 @@ Business document workflow after project memory: make ModuFlow produce decision-
 
 Active goal: `business-document-workflow`
 
+### `050-repo-sync-preflight`
+
+- Outcome: `product:sync` and `product:status` warn when local Git-file artifacts are stale because the current branch is gone, behind `origin/main`, or missing issue files that exist remotely.
+- Reason: A deleted stale branch made Issue 040 appear missing locally even though GitHub `main` already contained issues through 049.
+- Confidence: high
+- Dependency: Git-file issue model, lifecycle drift checks, and repo preflight behavior
+- Next command: `product:status`
+- Status: done; repo sync preflight helper, docs, tests, and review complete.
+
 ### `034-memory-capture-and-sync-workflow`
 
 - Outcome: ModuFlow can suggest, approve, store, retrieve, and mirror durable project memories while keeping full deliverables separate from memory summaries.

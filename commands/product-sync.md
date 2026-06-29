@@ -5,16 +5,44 @@ argument-hint: "[source id]"
 
 # /product:sync
 
-Keep upstream skills/plugins easy to update.
+Keep the local repo, upstream skills/plugins, and host-native planning artifacts easy to update.
 
 ## Do
 
-1. Read `vendor.lock.json`.
-2. Show current pins and available local vendor folders.
-3. Pull or refresh upstream only with user approval.
-4. Keep local customizations in `overlays/` and `adapters/`.
-5. Run `scripts/release_check.py .` after sync-sensitive changes.
-6. Run `python3 scripts/antigravity_sync.py --host <host task.md> --git <git tasks.md>` to sync checkboxes between Antigravity and ModuFlow.
+1. Run repo sync preflight before reading local artifacts:
+
+```bash
+python3 scripts/project_sync.py <project-path>
+```
+
+2. If the current upstream is gone, or `origin/main` is ahead, report that local files may be stale before summarizing issues/specs.
+3. If the worktree is clean and the user approves, fast-forward the local checkout to the default remote branch. Do not auto-pull with local changes.
+4. Explain source mode plainly: in `git-files` mode, ModuFlow issues live in repo files such as `issues/*.md`; the GitHub Issues tab may be empty unless `github-sync` is explicitly enabled.
+5. Read `vendor.lock.json`.
+6. Show current pins and available local vendor folders.
+7. Pull or refresh upstream vendor sources only with user approval.
+8. Keep local customizations in `overlays/` and `adapters/`.
+9. Run `scripts/release_check.py .` after sync-sensitive changes.
+10. Run `python3 scripts/antigravity_sync.py --host <host task.md> --git <git tasks.md>` to sync checkboxes between Antigravity and ModuFlow.
+
+## Repo Sync Preflight
+
+`project_sync.py` catches the stale-checkout class of bug:
+
+- current branch's upstream is deleted (`[gone]`)
+- current branch has no upstream, so local status cannot be trusted as a remote mirror
+- local branch is behind `origin/main`
+- `origin/main` contains issue files that are missing locally
+- worktree is dirty, so fast-forward needs human review first
+
+Recommended recovery path when clean:
+
+```bash
+git switch main
+git merge --ff-only origin/main
+```
+
+Use a normal merge/rebase workflow instead when local commits or uncommitted changes are present.
 
 ## Antigravity Artifact Sync
 

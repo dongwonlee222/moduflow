@@ -9,24 +9,33 @@ Make progress visible.
 
 ## Do
 
-1. Run a non-destructive `git fetch` first, then compare local against upstream (`git rev-list --left-right --count HEAD...@{u}`). Status reads local files only, so without this it can show a stale snapshot as if current.
+1. Run a non-destructive `git fetch` first, then run repo sync preflight:
+
+```bash
+python3 scripts/project_sync.py <project-path>
+```
+
+Status reads local files only, so without this it can show a stale snapshot as if current.
    - If local is behind, report "원격이 N커밋 앞섬 — pull 필요" in the dashboard.
+   - If the upstream branch is gone, report "현재 브랜치의 원격이 삭제됨 — main 동기화 필요".
+   - If `origin/main` has issue files missing locally, report those issue IDs before rendering the local queue.
    - If the working tree is clean, recommend (or run after confirming) `git pull` before rendering, so status reflects the latest.
    - If the working tree is dirty or `@{u}` is unset, do NOT auto-pull — surface the state and let the user decide.
 2. Read `.moduflow/state.json`, `workspace/loop-state.json` when present, issues, specs, tasks, PR notes, releases, and roadmap.
 3. Render a Korean-first terminal-style dashboard before detailed prose.
 4. Report current phase, active issue, active/recent sessions, blockers, queue, risks, changed files, and next command.
-5. If project mode is available from doctor/status context, show plain guidance such as "프로젝트 설정이 가볍고 정상입니다" instead of raw labels like `lightweight`, `dogfooding`, or `heavy`.
-6. If `workflow/team-state.json` exists, include the PM-friendly team view:
+5. In `git-files` mode, explain that GitHub repo files under `issues/*.md` are canonical; GitHub Issues objects are optional mirrors and may be empty.
+6. If project mode is available from doctor/status context, show plain guidance such as "프로젝트 설정이 가볍고 정상입니다" instead of raw labels like `lightweight`, `dogfooding`, or `heavy`.
+7. If `workflow/team-state.json` exists, include the PM-friendly team view:
 
 ```bash
 python3 scripts/project_workflow.py <project-path> --team-status
 ```
 
-7. When status is shown after a completed action, render the same structured next handoff used by `product:loop`: next work, reasons, concrete actions, follow-on priority, and exact command when useful.
-8. When status is shown after a resumed or interrupted task, include the resume banner before the dashboard.
-9. Do not mutate local artifact files during normal status display (the `git fetch` in step 1 is read-only; an approved `git pull` is the only allowed sync).
-10. If source artifacts look stale or inconsistent, report the mismatch and recommend `product:doctor`.
+8. When status is shown after a completed action, render the same structured next handoff used by `product:loop`: next work, reasons, concrete actions, follow-on priority, and exact command when useful.
+9. When status is shown after a resumed or interrupted task, include the resume banner before the dashboard.
+10. Do not mutate local artifact files during normal status display (the `git fetch` in step 1 is read-only; an approved `git pull` is the only allowed sync).
+11. If source artifacts look stale or inconsistent, report the mismatch and recommend `product:doctor`.
 
 ## Output
 
@@ -71,6 +80,7 @@ Use this structure as the default. Keep it compact and adapt missing fields grac
 │ 프로젝트  <project name>                    │
 │ 모드      <git-files|github-sync>           │
 │ 브랜치    <branch> <동기화: 최신|N커밋 뒤> │
+│ 원격      <upstream|gone|없음>              │
 │ 단계      <emoji> <phase>                   │
 ╰────────────────────────────────────────────╯
 
