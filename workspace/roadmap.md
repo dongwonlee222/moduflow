@@ -24,6 +24,15 @@ Active goal: `business-document-workflow`
 - Next command: `product:status`
 - Status: done; handoff helper, docs, tests, subagent review, and visual handoff complete.
 
+### `052-draft-pr-review-handoff`
+
+- Outcome: Draft PR / local PR-ready state is now the early human review surface, with review, verification, dashboard, and issue drill-down evidence refreshed into `specs/<issue>/pr.md`.
+- Reason: GitHub-native workflows make PRs visible before final review, while human approval, required reviews, and status checks still control merge.
+- Confidence: high
+- Dependency: autonomous review handoff, team issue branch PR workflow, dashboard drill-down
+- Next command: `product:status`
+- Status: done; PR handoff helper, docs, tests, review notes, and visual handoff complete.
+
 ### `034-memory-capture-and-sync-workflow`
 
 - Outcome: ModuFlow can suggest, approve, store, retrieve, and mirror durable project memories while keeping full deliverables separate from memory summaries.
