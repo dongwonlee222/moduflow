@@ -1076,6 +1076,14 @@ def _issue_updated(text):
     return dates[-1] if dates else ""
 
 
+def _issue_created(text):
+    match = re.search(r"(?im)^-\s*Created:\s*(20\d{2}-\d{2}-\d{2})\b", text or "")
+    if match:
+        return match.group(1)
+    dates = re.findall(r"\b20\d{2}-\d{2}-\d{2}\b", text or "")
+    return dates[0] if dates else ""
+
+
 def _collect_issue_table(root):
     project_root = Path(root).resolve()
     issues_dir = project_root / "issues"
@@ -1108,6 +1116,7 @@ def _collect_issue_table(root):
             "linked_memory_count": len(linked.get(issue_id, [])),
             "relationship_count": relation_counts.get(issue_id, 0),
             "attention_flags": _issue_attention_flags(status, next_command, coverage),
+            "created": _issue_created(text),
             "updated": _issue_updated(text),
         })
     return rows
@@ -1362,7 +1371,7 @@ const STATUS_VIEW = {
   missing: row => row.attention_flags.length > 0,
   done: row => row.status === 'done'
 };
-let issueDbState = {view:'all', q:'', sort:'number', group:'status'};
+let issueDbState = {view:'all', q:'', sort:'created_desc', group:'status'};
 
 function artifactBadges(row){
   const c = row.artifact_coverage || {};
@@ -1378,7 +1387,9 @@ function compareRows(a,b){
   const s = issueDbState.sort;
   if(s === 'status') return (a.status||'').localeCompare(b.status||'') || ((a.number||0)-(b.number||0));
   if(s === 'memory') return (b.linked_memory_count||0) - (a.linked_memory_count||0) || ((a.number||0)-(b.number||0));
-  if(s === 'updated') return (b.updated||'').localeCompare(a.updated||'') || ((a.number||0)-(b.number||0));
+  if(s === 'updated_desc') return (b.updated||'').localeCompare(a.updated||'') || ((b.number||0)-(a.number||0));
+  if(s === 'created_asc') return (a.created||'').localeCompare(b.created||'') || ((a.number||0)-(b.number||0));
+  if(s === 'created_desc') return (b.created||'').localeCompare(a.created||'') || ((b.number||0)-(a.number||0));
   return ((a.number||999999)-(b.number||999999)) || (a.id||'').localeCompare(b.id||'');
 }
 function filteredRows(){
@@ -1403,19 +1414,21 @@ function groupedRows(rows){
 function renderIssueTable(focusSearch=false){
   const rows = filteredRows();
   const body = rows.length ? groupedRows(rows).map(group => (
-    (group.label ? `<tr><th colspan="8">${esc(group.label)} · ${group.rows.length}</th></tr>` : '') +
+    (group.label ? `<tr><th colspan="10">${esc(group.label)} · ${group.rows.length}</th></tr>` : '') +
     group.rows.map(row => `
     <tr class="issue-row" onclick="location.href='${esc(row.href)}'">
       <td class="mono">${esc(String(row.number || ''))}</td>
       <td><a href="${esc(row.href)}">${esc(row.title || row.id)}</a><br><code>${esc(row.id)}</code></td>
       <td>${esc(row.status || '')}</td>
       <td>${esc(row.phase || '')}</td>
+      <td class="mono">${esc(row.created || '-')}</td>
+      <td class="mono">${esc(row.updated || '-')}</td>
       <td><code>${esc(row.next_command || '')}</code></td>
       <td>${artifactBadges(row)}</td>
       <td>${flagBadges(row)}</td>
       <td class="mono">${esc(String(row.linked_memory_count || 0))}</td>
     </tr>`).join('')
-  )).join('') : '<tr><td class="empty" colspan="8">검색 결과 없음</td></tr>';
+  )).join('') : '<tr><td class="empty" colspan="10">검색 결과 없음</td></tr>';
   document.getElementById('issue-db').innerHTML = `
     <div class="dbbar">
       <input id="issue-search" placeholder="Search issue id, title, next command" value="${esc(issueDbState.q)}">
@@ -1428,8 +1441,10 @@ function renderIssueTable(focusSearch=false){
         <button class="chip" data-view="done">완료</button>
       </div>
       <select id="issue-sort">
+        <option value="created_desc">등록 최신순</option>
+        <option value="created_asc">등록 오래된순</option>
+        <option value="updated_desc">최근 업데이트</option>
         <option value="number">이슈 번호</option>
-        <option value="updated">최근 업데이트</option>
         <option value="status">상태</option>
         <option value="memory">메모리 수</option>
       </select>
@@ -1440,7 +1455,7 @@ function renderIssueTable(focusSearch=false){
       </select>
     </div>
     <table>
-      <thead><tr><th>ID</th><th>Issue</th><th>Status</th><th>Phase</th><th>Next</th><th>Artifacts</th><th>Flags</th><th>Memory</th></tr></thead>
+      <thead><tr><th>ID</th><th>Issue</th><th>Status</th><th>Phase</th><th>Created</th><th>Updated</th><th>Next</th><th>Artifacts</th><th>Flags</th><th>Memory</th></tr></thead>
       <tbody>${body}</tbody>
     </table>`;
   document.getElementById('issue-search').addEventListener('input', e=>{ issueDbState.q = e.target.value; renderIssueTable(true); });

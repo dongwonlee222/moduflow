@@ -582,6 +582,9 @@ More detail contents here.
             (root / "issues" / "056-dashboard.md").write_text(
                 "# Issue: `056-dashboard`\n\n"
                 "**Status: active** — Part of goal `visual-workbench`.\n\n"
+                "## Lifecycle\n\n"
+                "- Created: 2026-07-01\n"
+                "- Last Updated: 2026-07-03\n\n"
                 "## Next Command\n\n"
                 "`/product:execute 056-dashboard`\n",
                 encoding="utf-8",
@@ -607,6 +610,8 @@ More detail contents here.
             self.assertEqual(by_id["056-dashboard"]["goal"], "visual-workbench")
             self.assertEqual(by_id["056-dashboard"]["next_command"], "/product:execute 056-dashboard")
             self.assertEqual(by_id["056-dashboard"]["href"], "issue-056-dashboard.html")
+            self.assertEqual(by_id["056-dashboard"]["created"], "2026-07-01")
+            self.assertEqual(by_id["056-dashboard"]["updated"], "2026-07-03")
             self.assertTrue(by_id["056-dashboard"]["artifact_coverage"]["spec"])
             self.assertTrue(by_id["056-dashboard"]["artifact_coverage"]["spec_ko"])
             self.assertTrue(by_id["056-dashboard"]["artifact_coverage"]["plan"])
@@ -661,6 +666,11 @@ More detail contents here.
             self.assertIn('id="issue-search"', html)
             self.assertIn('data-view="missing"', html)
             self.assertIn('id="issue-sort"', html)
+            self.assertIn("등록 최신순", html)
+            self.assertIn("등록 오래된순", html)
+            self.assertIn("최근 업데이트", html)
+            self.assertIn("<th>Created</th>", html)
+            self.assertIn("<th>Updated</th>", html)
             self.assertIn("issue-042-new.html", html)
 
     def test_issue_panel_includes_linked_memory_section_only_when_present(self):
