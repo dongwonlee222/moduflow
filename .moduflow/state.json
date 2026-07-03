@@ -1,6 +1,6 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "spec",
+  "phase": "execute",
   "active_goal": "visual-workbench",
   "active_issue": "056-dashboard-database-list-view",
   "last_command": "product:execute 043",

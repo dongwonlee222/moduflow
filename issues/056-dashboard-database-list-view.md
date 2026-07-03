@@ -1,6 +1,6 @@
 # Issue: `056-dashboard-database-list-view`
 
-**Status: active** — spec complete 2026-07-03.
+**Status: active** — plan complete 2026-07-03.
 
 ## Outcome
 
@@ -68,6 +68,7 @@ Initial lessons:
 - 2026-07-03: User observed that the dashboard needs more than node structure; it also needs a list/database-style view inspired by Notion, Jira, and Linear. Registered as backlog issue after initial benchmarking.
 - 2026-07-03: Wrote the canonical spec and Korean reading sidecar. Next step is implementation planning for the static dashboard table collector and `이슈 DB` tab.
 - 2026-07-03: Added screen composition design after comparing Notion, Jira, Linear, and GitHub Projects patterns. Default view should be `이슈 DB`; graphs remain relationship/knowledge views.
+- 2026-07-03: Added execution plan and task checklist for the issue row collector, static table UI, tests, manual dashboard QA, and release gates.
 
 ## Links
 
@@ -76,8 +77,12 @@ Initial lessons:
 - Spec KO: `specs/056-dashboard-database-list-view/spec.ko.md`
 - Design: `specs/056-dashboard-database-list-view/design.md`
 - Design KO: `specs/056-dashboard-database-list-view/design.ko.md`
+- Plan: `specs/056-dashboard-database-list-view/plan.md`
+- Plan KO: `specs/056-dashboard-database-list-view/plan.ko.md`
+- Tasks: `specs/056-dashboard-database-list-view/tasks.md`
+- Tasks KO: `specs/056-dashboard-database-list-view/tasks.ko.md`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:plan 056-dashboard-database-list-view`
+`/product:execute 056-dashboard-database-list-view`

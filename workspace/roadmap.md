@@ -48,8 +48,8 @@ Active goal: `business-document-workflow`
 - Reason: The graph is useful for relationships, but PM workflow also needs dense list/table views for status, next action, missing artifacts, review readiness, and operational triage.
 - Confidence: medium
 - Dependency: 045 issue graph, 047 issue drill-down, 049 bilingual sidecars, current dashboard generator
-- Next command: `product:plan 056-dashboard-database-list-view`
-- Status: active; spec captured in `specs/056-dashboard-database-list-view/spec.md` with Korean reading sidecar in `specs/056-dashboard-database-list-view/spec.ko.md`.
+- Next command: `product:execute 056-dashboard-database-list-view`
+- Status: active; spec/design/plan/tasks captured under `specs/056-dashboard-database-list-view/`.
 
 ### `057-korean-human-review-packet`
 

@@ -10,7 +10,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Active Issue
 
-- `056-dashboard-database-list-view` (phase: spec). Canonical: `issues/056-dashboard-database-list-view.md`.
+- `056-dashboard-database-list-view` (phase: execute). Canonical: `issues/056-dashboard-database-list-view.md`.
 
 ## Recently Completed
 
