@@ -10,7 +10,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `058-git-write-fallback-via-github-api` (phase: execute). Canonical: `issues/058-git-write-fallback-via-github-api.md`.
 
 ## Recently Completed
 
@@ -32,7 +32,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Queue (goal `visual-workbench`)
 
-- None.
+- `058-git-write-fallback-via-github-api`: make ModuFlow automatically fall back to GitHub API commits when local `.git` writes are blocked, so users are not asked to run terminal Git commands.
 
 ## Blockers
 
@@ -53,4 +53,4 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Next Command
 
-`product:status`
+`product:execute 058-git-write-fallback-via-github-api`
