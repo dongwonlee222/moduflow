@@ -1,6 +1,6 @@
 # Issue: `057-korean-human-review-packet`
 
-**Status: active** — PR-ready for Korean human review on 2026-07-03.
+**Status: done** — released locally after human approval on 2026-07-03.
 
 ## Outcome
 
@@ -65,8 +65,9 @@ Issue 049 added Korean sidecars for human-facing artifact views, but the policy 
 - Plan KO: `specs/057-korean-human-review-packet/plan.ko.md`
 - Tasks: `specs/057-korean-human-review-packet/tasks.md`
 - Status: `specs/057-korean-human-review-packet/status.md`
+- Release: `specs/057-korean-human-review-packet/release.md`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:review 057-korean-human-review-packet`
+`/product:status`

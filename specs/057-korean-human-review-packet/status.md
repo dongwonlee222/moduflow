@@ -1,9 +1,9 @@
 # Status: Korean Human Review Packet
 
 Issue: `057-korean-human-review-packet`
-Phase: review
+Phase: released
 Updated: 2026-07-03
-Next: `product:review 057-korean-human-review-packet`
+Next: `product:status`
 
 ## Planned
 
@@ -19,9 +19,11 @@ Next: `product:review 057-korean-human-review-packet`
 - `project_pr.py --github-preflight` now detects the current Codex environment's invalid `gh` token state before PR creation.
 - Dashboard DB uses Korean issue descriptions from `workspace/issue-descriptions.ko.json`.
 
-## Remaining Work
+## Release
 
-- Human reviewer confirms the Korean packet and release readiness.
+- Released locally after human approval on 2026-07-03.
+- Human approval record: `workflow/records/2026-07-03-057-korean-human-review-packet-approved.md`
+- Release note: `specs/057-korean-human-review-packet/release.md`
 
 ## Execution Update
 
@@ -48,4 +50,4 @@ Next: `product:review 057-korean-human-review-packet`
 
 ## Next
 
-`product:review 057-korean-human-review-packet`
+`product:status`

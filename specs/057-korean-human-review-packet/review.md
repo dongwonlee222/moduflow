@@ -25,4 +25,4 @@ Reviewer: Codex
 
 ## Decision
 
-Ready for Korean human review.
+Approved by Dongwon and released locally.

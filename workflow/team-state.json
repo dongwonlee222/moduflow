@@ -51,14 +51,14 @@
       "owner": "",
       "assignee": "",
       "reviewer": "Dongwon",
-      "status": "review",
+      "status": "done",
       "branch": "",
       "pr": "local:057-korean-human-review-packet:pr-ready",
-      "lock_state": "active",
+      "lock_state": "released",
       "locked_by": "",
       "blocker": "",
-      "last_handoff": "PR ready for review: local:057-korean-human-review-packet:pr-ready",
-      "next_command": "product:review 057-korean-human-review-packet",
+      "last_handoff": "Released locally after human approval.",
+      "next_command": "product:status",
       "updated_at": "2026-07-03"
     }
   ]

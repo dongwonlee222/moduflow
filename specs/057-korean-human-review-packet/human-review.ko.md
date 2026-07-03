@@ -60,14 +60,21 @@
 
 ## 승인 체크리스트
 
-- [ ] 대시보드 DB에서 이슈 상태와 설명을 확인했습니다.
-- [ ] 이슈 상세 페이지의 `한글` 탭을 확인했습니다.
-- [ ] PR diff 또는 로컬 변경 범위를 확인했습니다.
-- [ ] 검증 결과가 통과했거나 실패 사유를 이해했습니다.
-- [ ] release 대상이면 rollback/post-release check와 승인 기록을 확인했습니다.
-- [ ] 보류 조건에 해당하지 않습니다.
+- [x] 대시보드 DB에서 이슈 상태와 설명을 확인했습니다.
+- [x] 이슈 상세 페이지의 `한글` 탭을 확인했습니다.
+- [x] PR diff 또는 로컬 변경 범위를 확인했습니다.
+- [x] 검증 결과가 통과했거나 실패 사유를 이해했습니다.
+- [x] release 대상이면 rollback/post-release check와 승인 기록을 확인했습니다.
+- [x] 보류 조건에 해당하지 않습니다.
+
+## 승인 기록
+
+- 승인자: Dongwon.
+- 승인일: 2026-07-03.
+- 승인 신호: "진행 하자고".
+- 승인 기록: `workflow/records/2026-07-03-057-korean-human-review-packet-approved.md`
 
 ## 다음 액션
 
-- 승인 가능하면 PR에서 approve 또는 로컬에 승인 기록을 남깁니다.
-- 보류하면 `product:review 057-korean-human-review-packet`로 되돌려 수정합니다.
+- release 기록: `specs/057-korean-human-review-packet/release.md`
+- 다음: `product:status`

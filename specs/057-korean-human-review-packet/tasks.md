@@ -50,6 +50,8 @@ Plan: `specs/057-korean-human-review-packet/plan.md`
 - [x] Record 056 approval and release.
 - [x] Complete 057 review artifact.
 - [x] Complete 057 PR handoff and Korean review packet.
+- [x] Record human approval.
+- [x] Complete 057 release artifact.
 
 ## Verification
 
@@ -68,4 +70,4 @@ Plan: `specs/057-korean-human-review-packet/plan.md`
 
 ## Next
 
-`product:review 057-korean-human-review-packet`
+`product:status`

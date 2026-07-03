@@ -10,11 +10,12 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Active Issue
 
-- `057-korean-human-review-packet` (phase: review). Canonical: `issues/057-korean-human-review-packet.md`.
+- None active. Run `product:status` to pick the next issue.
 
 ## Recently Completed
 
 - `056-dashboard-database-list-view`: released locally after human approval; dashboard now has an `이슈 DB` list view, Korean descriptions, issue detail Korean overview, Korean PR review packet generation, and GitHub PR preflight.
+- `057-korean-human-review-packet`: released locally after human approval; Korean human-review packets are now a release gate with approval evidence.
 - `034-memory-capture-and-sync-workflow`: released via PR #5; memory capture workflow now has review, PR, release, and Korean human-review packet artifacts, with follow-ups 056/057 registered.
 - `052-draft-pr-review-handoff`: PR flow now supports early Draft PR / local PR-ready state, refreshes `specs/<issue>/pr.md` after review, and carries dashboard + issue drill-down evidence into the PR handoff before human approval.
 - `051-autonomous-execute-review-visual-handoff`: execute/review flow now generates a review handoff, maps implementation/QA/PM-spec review to subagent-ready sections, requires verification, and surfaces the dashboard plus issue drill-down HTML for human visual inspection.
@@ -31,7 +32,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Queue (goal `visual-workbench`)
 
-- `057-korean-human-review-packet`: PR-ready for Korean human review; `pr.md` and `human-review.ko.md` exist, and final gates passed.
+- None.
 
 ## Blockers
 
@@ -52,4 +53,4 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Next Command
 
-`product:review 057-korean-human-review-packet`
+`product:status`

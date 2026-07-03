@@ -20,21 +20,21 @@
     "040-automatic-memory-candidate-capture",
     "057-korean-human-review-packet"
   ],
-  "active_issue_id": "057-korean-human-review-packet",
-  "phase": "review",
+  "active_issue_id": "",
+  "phase": "select",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:review 057-korean-human-review-packet",
+  "next_command": "product:status",
   "attempts": {
-    "command": "product:review 057-korean-human-review-packet",
+    "command": "product:status",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-03"
   },
   "blocker": null,
-  "last_action": "generated 057 PR handoff and Korean human-review packet",
-  "last_verification": "176 tests, artifact validation, ModuFlow validation, and release_check passed",
+  "last_action": "released 057-korean-human-review-packet after human approval",
+  "last_verification": "release_check passed after release artifact creation",
   "updated_at": "2026-07-03",
   "git_binding": {
     "mode": "git-files",
