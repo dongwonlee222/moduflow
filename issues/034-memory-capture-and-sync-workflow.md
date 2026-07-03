@@ -104,6 +104,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - Review: `specs/034-memory-capture-and-sync-workflow/review.md`
 - Review Handoff: `specs/034-memory-capture-and-sync-workflow/review-handoff.md`
 - PR Handoff: `specs/034-memory-capture-and-sync-workflow/pr.md`
+- Human Review (KO): `specs/034-memory-capture-and-sync-workflow/human-review.ko.md`
 - Draft PR: `https://github.com/dongwonlee222/moduflow/pull/5`
 - Sessions: `sessions/034-memory-capture-and-sync-workflow/`
 - Roadmap: `workspace/roadmap.md`

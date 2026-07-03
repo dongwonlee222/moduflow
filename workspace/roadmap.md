@@ -51,6 +51,15 @@ Active goal: `business-document-workflow`
 - Next command: `product:spec 056-dashboard-database-list-view`
 - Status: backlog; initial benchmark captured in `knowledge/benchmarks/2026-07-03-dashboard-db-list-view-benchmark.md`.
 
+### `057-korean-human-review-packet`
+
+- Outcome: PR/review/release gates produce a compact Korean human-review packet so Korean-speaking reviewers can approve work without reading every English canonical artifact.
+- Reason: English canonical artifacts are useful for tools, but human approval is currently uncomfortable when PR handoff and review notes are English-heavy.
+- Confidence: high
+- Dependency: 049 bilingual sidecars, 051 review handoff, 052 PR handoff
+- Next command: `product:spec 057-korean-human-review-packet`
+- Status: backlog; dogfooded with `specs/034-memory-capture-and-sync-workflow/human-review.ko.md`.
+
 ### `035-team-issue-branch-pr-workflow`
 
 - Outcome: Small teams and TFs can create, assign, start, review, and complete work through ModuFlow while developers use Git branches and PRs underneath.

@@ -33,6 +33,7 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 034-memory-capture-a
 - Verification: local tests, release checks, CI/status checks, and known gaps.
 - Dashboard: `memory/dashboard.html`.
 - Issue drill-down: `memory/issue-034-memory-capture-and-sync-workflow.html`.
+- Korean human-review packet: `specs/034-memory-capture-and-sync-workflow/human-review.ko.md`.
 - Review findings: implementation, QA, and PM/spec review results.
 - Human approval: who reviewed the dashboard, PR diff, and merge readiness.
 
@@ -75,6 +76,7 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 034-memory-capture-a
 
 - Dashboard: `memory/dashboard.html`.
 - Issue drill-down: `memory/issue-034-memory-capture-and-sync-workflow.html`.
+- Korean human-review packet: `specs/034-memory-capture-and-sync-workflow/human-review.ko.md`.
 
 ## Approval Record
 
