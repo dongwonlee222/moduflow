@@ -57,8 +57,8 @@ Active goal: `business-document-workflow`
 - Reason: English canonical artifacts are useful for tools, but human approval is currently uncomfortable when PR handoff and review notes are English-heavy.
 - Confidence: high
 - Dependency: 049 bilingual sidecars, 051 review handoff, 052 PR handoff
-- Next command: `product:spec 057-korean-human-review-packet`
-- Status: backlog; dogfooded with `specs/034-memory-capture-and-sync-workflow/human-review.ko.md`.
+- Next command: `product:execute 057-korean-human-review-packet`
+- Status: active; spec and plan drafted, with 056 dogfood evidence already in place.
 
 ### `035-team-issue-branch-pr-workflow`
 

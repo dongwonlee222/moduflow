@@ -10,7 +10,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `057-korean-human-review-packet` (phase: execute). Canonical: `issues/057-korean-human-review-packet.md`.
 
 ## Recently Completed
 
@@ -52,4 +52,4 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Next Command
 
-`product:status`
+`product:execute 057-korean-human-review-packet`

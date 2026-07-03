@@ -17,23 +17,24 @@
     "035-team-issue-branch-pr-workflow",
     "036-portfolio-team-dashboard",
     "037-delegation-level-gate-and-memory-context-graph",
-    "040-automatic-memory-candidate-capture"
+    "040-automatic-memory-candidate-capture",
+    "057-korean-human-review-packet"
   ],
-  "active_issue_id": "056-dashboard-database-list-view",
-  "phase": "status",
+  "active_issue_id": "057-korean-human-review-packet",
+  "phase": "execute",
   "mode": "recommend",
   "delegation_level": "review_required",
-  "status": "done",
-  "next_command": "product:status",
+  "status": "active",
+  "next_command": "product:execute 057-korean-human-review-packet",
   "attempts": {
-    "command": "product:status",
+    "command": "product:execute 057-korean-human-review-packet",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-03"
   },
   "blocker": null,
-  "last_action": "released 056-dashboard-database-list-view locally after human approval",
-  "last_verification": "175 tests, validate_project_artifacts, validate_moduflow, release_check, dashboard regeneration passed",
+  "last_action": "drafted plan for 057-korean-human-review-packet",
+  "last_verification": "plan artifacts created; gates pending after execute updates",
   "updated_at": "2026-07-03",
   "git_binding": {
     "mode": "git-files",
