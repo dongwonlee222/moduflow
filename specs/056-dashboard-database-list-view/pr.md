@@ -85,5 +85,5 @@ No blocking or important issues found.
 
 - Issue bytes: 5821
 - Spec bytes: 8506
-- Status bytes: 1960
+- Status bytes: 2445
 - Review bytes: 2880

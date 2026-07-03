@@ -1,9 +1,9 @@
 # Status: Dashboard Database/List View
 
 Issue: `056-dashboard-database-list-view`
-Phase: review complete; PR next
+Phase: local PR-ready; human review next
 Updated: 2026-07-03
-Next: `product:pr 056-dashboard-database-list-view`
+Next: `product:review 056-dashboard-database-list-view`
 
 ## Implemented
 
@@ -33,7 +33,15 @@ Next: `product:pr 056-dashboard-database-list-view`
 - Review artifact: `specs/056-dashboard-database-list-view/review.md`.
 - Review handoff: `specs/056-dashboard-database-list-view/review-handoff.md`.
 - PR handoff: `specs/056-dashboard-database-list-view/pr.md`.
+- Korean human-review packet: `specs/056-dashboard-database-list-view/human-review.ko.md`.
 - No blocking or important review findings.
+
+## PR State
+
+- Branch: `codex/056-dashboard-db-list-view-spec`.
+- Local PR-ready marker: `local:056-dashboard-db-list-view-spec:review-ready`.
+- GitHub PR creation attempted on 2026-07-03 with `gh pr create --draft`, but GitHub API access failed with `error connecting to api.github.com`.
+- Keep local PR-ready artifacts as the review source until GitHub API access is available.
 
 ## Notes
 

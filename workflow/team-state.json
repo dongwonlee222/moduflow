@@ -35,7 +35,7 @@
       "issue_id": "056-dashboard-database-list-view",
       "owner": "",
       "assignee": "",
-      "reviewer": "Reviewer",
+      "reviewer": "Dongwon",
       "status": "review",
       "branch": "codex/056-dashboard-db-list-view-spec",
       "pr": "local:056-dashboard-db-list-view-spec:review-ready",
@@ -43,7 +43,7 @@
       "locked_by": "",
       "blocker": "",
       "last_handoff": "PR ready for review: local:056-dashboard-db-list-view-spec:review-ready",
-      "next_command": "product:pr 056-dashboard-database-list-view",
+      "next_command": "product:review 056-dashboard-database-list-view",
       "updated_at": "2026-07-03"
     }
   ]
