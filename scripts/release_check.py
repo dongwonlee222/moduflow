@@ -166,6 +166,9 @@ def run_release_check(path):
             "tests.test_project_memory",
             "tests.test_project_portfolio",
             "tests.test_project_workflow",
+            "tests.test_project_execution",
+            "tests.test_project_pr",
+            "tests.test_project_sync",
             "tests.test_worker_orchestration",
             "tests.test_codex_personal_install",
             # NOTE: test_validation_distribution is intentionally excluded here.

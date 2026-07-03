@@ -15,6 +15,16 @@ Run implementation from an approved plan.
 4. Update `specs/<issue>/status.md` as work progresses.
 5. Keep Git branch and commits tied to issue ID.
 6. Recommend and record an execution backend before starting substantial implementation.
+7. Before entering review, ensure early PR state exists: when GitHub sync is available and the workflow/user has allowed GitHub writes, open a Draft PR after the first meaningful commit. If GitHub writes are unavailable, record a local PR-ready marker through `product:pr` instead of waiting until review is finished.
+8. At implementation completion, generate the review handoff before asking the user what to do next:
+
+```bash
+python3 scripts/project_execution.py <project-path> --issue-id <issue id> --review-handoff --write
+```
+
+This writes `specs/<issue>/review-handoff.md`, including implementation-worker, review-worker, verification, and dashboard plus issue drill-down handoff instructions.
+
+9. Continue directly into `product:review <issue id>` unless a blocker, failing test, dirty Git conflict, missing artifact, or explicit user stop prevents review. Do not ask the user whether to review after implementation; review is part of the implementation completion contract.
 
 ## Execution Backend
 
@@ -53,5 +63,5 @@ The `CognitiveDemand` field is a hint — the host agent selects the actual mode
 
 ## Next
 
-- `/product:review` after implementation
-- `/product:pr` after review passes
+- `/product:review` immediately after implementation handoff exists
+- `/product:pr` early for Draft PR / PR-ready state, then refresh after review passes
