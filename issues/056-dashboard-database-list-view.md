@@ -1,6 +1,6 @@
 # Issue: `056-dashboard-database-list-view`
 
-**Status: active** — review complete 2026-07-03; PR next.
+**Status: active** — human approved 2026-07-03; release next.
 
 ## Outcome
 
@@ -89,8 +89,10 @@ Initial lessons:
 - Review KO: `specs/056-dashboard-database-list-view/review.ko.md`
 - Review Handoff: `specs/056-dashboard-database-list-view/review-handoff.md`
 - PR Handoff: `specs/056-dashboard-database-list-view/pr.md`
+- Human Review KO: `specs/056-dashboard-database-list-view/human-review.ko.md`
+- Approval Record: `workflow/records/2026-07-03-056-dashboard-database-list-view-approved.md`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:pr 056-dashboard-database-list-view`
+`/product:release 056-dashboard-database-list-view`

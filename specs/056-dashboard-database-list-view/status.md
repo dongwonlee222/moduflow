@@ -1,9 +1,9 @@
 # Status: Dashboard Database/List View
 
 Issue: `056-dashboard-database-list-view`
-Phase: local PR-ready; human review next
+Phase: human approved; release next
 Updated: 2026-07-03
-Next: `product:review 056-dashboard-database-list-view`
+Next: `product:release 056-dashboard-database-list-view`
 
 ## Implemented
 
@@ -29,12 +29,19 @@ Next: `product:review 056-dashboard-database-list-view`
 
 ## Review
 
-- Result: passed; ready for PR.
+- Result: passed; human approved 2026-07-03.
 - Review artifact: `specs/056-dashboard-database-list-view/review.md`.
 - Review handoff: `specs/056-dashboard-database-list-view/review-handoff.md`.
 - PR handoff: `specs/056-dashboard-database-list-view/pr.md`.
 - Korean human-review packet: `specs/056-dashboard-database-list-view/human-review.ko.md`.
 - No blocking or important review findings.
+
+## Human Approval
+
+- Approver: Dongwon.
+- Approved: 2026-07-03.
+- Approval record: `workflow/records/2026-07-03-056-dashboard-database-list-view-approved.md`.
+- Next command: `product:release 056-dashboard-database-list-view`.
 
 ## PR State
 
