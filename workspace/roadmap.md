@@ -57,8 +57,8 @@ Active goal: `business-document-workflow`
 - Reason: English canonical artifacts are useful for tools, but human approval is currently uncomfortable when PR handoff and review notes are English-heavy.
 - Confidence: high
 - Dependency: 049 bilingual sidecars, 051 review handoff, 052 PR handoff
-- Next command: `product:execute 057-korean-human-review-packet`
-- Status: active; spec and plan drafted, with 056 dogfood evidence already in place.
+- Next command: `product:review 057-korean-human-review-packet`
+- Status: PR-ready for Korean human review; release command contract, review artifact, PR handoff, Korean packet, and gates are complete.
 
 ### `035-team-issue-branch-pr-workflow`
 
@@ -235,7 +235,6 @@ Active goal: `business-document-workflow`
 - Reason: Internal loop complexity must not increase user complexity.
 - Confidence: high
 - Dependency: loop state model from 019
-- Next command: `product:status`
 
 ### `019-loop-kernel-and-state-model`
 
@@ -243,4 +242,3 @@ Active goal: `business-document-workflow`
 - Reason: This is the core foundation for making ModuFlow a PM loop orchestrator instead of a collection of workflow commands.
 - Confidence: high
 - Dependency: current artifact tracking and doctor gates
-- Next command: `product:status`

@@ -143,6 +143,15 @@ class ProjectPrHandoffTests(unittest.TestCase):
             self.assertIn("codex/057-korean-human-review-packet", packet)
             self.assertIn("- tests passed.", packet)
             self.assertIn("승인 체크리스트", packet)
+            self.assertIn("release 대상이면 rollback/post-release check", packet)
+
+    def test_product_release_requires_korean_human_review_gate(self):
+        command_doc = Path("commands/product-release.md").read_text(encoding="utf-8")
+
+        self.assertIn("human-review.ko.md", command_doc)
+        self.assertIn("first human approval surface", command_doc)
+        self.assertIn("Korean Human Review Gate", command_doc)
+        self.assertIn("Do not treat the local marker as merge or release approval", command_doc)
 
 
 if __name__ == "__main__":

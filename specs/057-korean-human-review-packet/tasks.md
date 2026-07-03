@@ -9,7 +9,7 @@ Plan: `specs/057-korean-human-review-packet/plan.md`
 - [x] Make `write_pr_handoff()` write `human-review.ko.md` beside `pr.md`.
 - [x] Include dashboard, issue detail, branch, PR/local marker, reviewer, summary, artifact checklist, verification, findings, hold criteria, and approval checklist.
 - [x] Link `human-review.ko.md` from generated `pr.md`.
-- [ ] Tighten packet wording for release gates after 057 execution review.
+- [x] Tighten packet wording for release gates after 057 execution review.
 
 ## Stream B — GitHub PR Preflight
 
@@ -31,7 +31,7 @@ Plan: `specs/057-korean-human-review-packet/plan.md`
 
 - [x] Update `commands/product-pr.md` with Korean packet and GitHub preflight requirements.
 - [x] Update `commands/product-review.md` so review starts from the Korean packet.
-- [ ] Update `commands/product-release.md` to require Korean packet and approval evidence before release.
+- [x] Update `commands/product-release.md` to require Korean packet and approval evidence before release.
 
 ## Stream E — Tests
 
@@ -40,7 +40,7 @@ Plan: `specs/057-korean-human-review-packet/plan.md`
 - [x] Test GitHub PR preflight success/failure.
 - [x] Test Korean overview in issue detail pages.
 - [x] Test Korean-only artifacts in issue detail pages.
-- [ ] Add release-command contract test or validation coverage if release docs become machine-checked.
+- [x] Add release-command contract test or validation coverage if release docs become machine-checked.
 
 ## Stream F — Dogfood And Handoff
 
@@ -48,8 +48,8 @@ Plan: `specs/057-korean-human-review-packet/plan.md`
 - [x] Generate `specs/056-dashboard-database-list-view/human-review.ko.md`.
 - [x] Confirm 056 detail page exposes Korean review material.
 - [x] Record 056 approval and release.
-- [ ] Complete 057 review artifact.
-- [ ] Complete 057 PR handoff and Korean review packet.
+- [x] Complete 057 review artifact.
+- [x] Complete 057 PR handoff and Korean review packet.
 
 ## Verification
 
@@ -57,8 +57,15 @@ Plan: `specs/057-korean-human-review-packet/plan.md`
 - [x] `python3 scripts/validate_project_artifacts.py .` passed.
 - [x] `python3 scripts/validate_moduflow.py .` passed.
 - [x] `python3 scripts/release_check.py .` passed.
-- [ ] Re-run all gates after remaining 057 release-contract updates.
+- [x] Re-run all gates after 057 PR handoff generation.
+
+## Final Gate Run
+
+- [x] `python3 -m unittest discover -s tests` passed with 176 tests.
+- [x] `python3 scripts/validate_project_artifacts.py .` passed.
+- [x] `python3 scripts/validate_moduflow.py .` passed.
+- [x] `python3 scripts/release_check.py .` passed.
 
 ## Next
 
-`product:execute 057-korean-human-review-packet`
+`product:review 057-korean-human-review-packet`

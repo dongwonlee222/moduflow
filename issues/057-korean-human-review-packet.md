@@ -1,6 +1,6 @@
 # Issue: `057-korean-human-review-packet`
 
-**Status: active** — plan drafted 2026-07-03.
+**Status: active** — PR-ready for Korean human review on 2026-07-03.
 
 ## Outcome
 
@@ -69,4 +69,4 @@ Issue 049 added Korean sidecars for human-facing artifact views, but the policy 
 
 ## Next Command
 
-`/product:execute 057-korean-human-review-packet`
+`/product:review 057-korean-human-review-packet`

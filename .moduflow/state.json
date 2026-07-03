@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "execute",
+  "phase": "review",
   "active_goal": "visual-workbench",
   "active_issue": "057-korean-human-review-packet",
   "last_command": "product:execute 043",
-  "next_command": "product:execute 057-korean-human-review-packet",
+  "next_command": "product:review 057-korean-human-review-packet",
   "blockers": [],
   "updated_at": "2026-07-03"
 }

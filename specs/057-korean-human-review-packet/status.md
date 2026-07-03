@@ -1,9 +1,9 @@
 # Status: Korean Human Review Packet
 
 Issue: `057-korean-human-review-packet`
-Phase: plan
+Phase: review
 Updated: 2026-07-03
-Next: `product:execute 057-korean-human-review-packet`
+Next: `product:review 057-korean-human-review-packet`
 
 ## Planned
 
@@ -21,17 +21,31 @@ Next: `product:execute 057-korean-human-review-packet`
 
 ## Remaining Work
 
-- Update release command contract to require Korean packet and approval evidence.
-- Re-run all gates after release-contract updates.
-- Prepare 057 review and PR handoff artifacts.
+- Human reviewer confirms the Korean packet and release readiness.
 
-## Verification So Far
+## Execution Update
 
-- `python3 -m unittest discover -s tests` passed with 175 tests during Issue 056 dogfood.
+- `commands/product-release.md` now requires a Korean human-review packet and explicit human approval evidence before release.
+- `scripts/project_pr.py` Korean packet wording now calls out stale packet, release approval, rollback, and post-release check holds.
+- `tests/test_project_pr.py` now guards the release command contract.
+- `review.md` records no blocking findings.
+- `pr.md` and `human-review.ko.md` were generated with local PR-ready marker `local:057-korean-human-review-packet:pr-ready`.
+
+## Verification
+
+- `python3 -m unittest discover -s tests` passed with 176 tests.
 - `python3 scripts/validate_project_artifacts.py .` passed.
 - `python3 scripts/validate_moduflow.py .` passed.
 - `python3 scripts/release_check.py .` passed.
 
+## PR-Ready Handoff
+
+- PR handoff: `specs/057-korean-human-review-packet/pr.md`
+- Korean human review packet: `specs/057-korean-human-review-packet/human-review.ko.md`
+- Local PR-ready marker: `local:057-korean-human-review-packet:pr-ready`
+- Dashboard: `memory/dashboard.html#issue-db`
+- Issue detail: `memory/issue-057-korean-human-review-packet.html`
+
 ## Next
 
-`product:execute 057-korean-human-review-packet`
+`product:review 057-korean-human-review-packet`

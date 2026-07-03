@@ -10,7 +10,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Active Issue
 
-- `057-korean-human-review-packet` (phase: execute). Canonical: `issues/057-korean-human-review-packet.md`.
+- `057-korean-human-review-packet` (phase: review). Canonical: `issues/057-korean-human-review-packet.md`.
 
 ## Recently Completed
 
@@ -31,7 +31,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Queue (goal `visual-workbench`)
 
-- `057-korean-human-review-packet`: generate a compact Korean review packet for PR/review/release gates so human approval does not require reading every English canonical artifact.
+- `057-korean-human-review-packet`: PR-ready for Korean human review; `pr.md` and `human-review.ko.md` exist, and final gates passed.
 
 ## Blockers
 
@@ -52,4 +52,4 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Next Command
 
-`product:execute 057-korean-human-review-packet`
+`product:review 057-korean-human-review-packet`
