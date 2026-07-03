@@ -703,6 +703,8 @@ More detail contents here.
 
             self.assertIn('href="dashboard.html#issue-db"', html)
             self.assertIn("이슈 DB로 돌아가기", html)
+            self.assertIn('id="lang-ko"', html)
+            self.assertIn("한글", html)
 
     def test_ko_sidecar_attached_and_not_listed_separately(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
@@ -736,6 +738,7 @@ More detail contents here.
             (root / "specs" / "049-b" / "spec.ko.md").write_text("# 한글 본문 내용\n", encoding="utf-8")
             with_ko = project_memory.render_issue_panel(root, "049-b")
             self.assertIn("한글 본문 내용", with_ko)          # Korean payload present → client offers toggle
+            self.assertIn('id="lang-ko"', with_ko)
 
     def test_list_memory_ids_returns_all_and_filters_by_kind(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")

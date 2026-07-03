@@ -1555,8 +1555,13 @@ ISSUE_PANEL_TEMPLATE = """<!DOCTYPE html>
 <style>
   :root { color-scheme: light dark; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0 auto; max-width: 820px; padding: 24px; background: #fff; color: #1a1a1a; line-height: 1.6; }
-  .back { display: inline-block; margin-bottom: 14px; color: #2a78d6; text-decoration: none; font-size: 13px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .back { display: inline-block; color: #2a78d6; text-decoration: none; font-size: 13px; }
   .back:hover { text-decoration: underline; }
+  .lang-toggle { display: flex; gap: 6px; }
+  .lang-toggle[hidden] { display: none; }
+  .lang-toggle button { padding: 5px 14px; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; font: inherit; font-size: 13px; background: transparent; color: inherit; }
+  .lang-toggle button.on { background: #2a78d6; border-color: #2a78d6; color: #fff; }
   h1 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
   .sub { font-size: 13px; color: #888; margin: 0 0 20px; }
   .artifact { border: 1px solid #ddd; border-radius: 12px; padding: 8px 20px 16px; margin-bottom: 18px; }
@@ -1578,10 +1583,15 @@ ISSUE_PANEL_TEMPLATE = """<!DOCTYPE html>
 </style>
 </head>
 <body>
-<a class="back" href="dashboard.html#issue-db">← 이슈 DB로 돌아가기</a>
+<div class="topbar">
+  <a class="back" href="dashboard.html#issue-db">← 이슈 DB로 돌아가기</a>
+  <div id="langtoggle" class="lang-toggle" hidden>
+    <button id="lang-en" type="button">English</button>
+    <button id="lang-ko" type="button">한글</button>
+  </div>
+</div>
 <h1>__PANEL_TITLE__</h1>
 <p class="sub">__PANEL_SUB__</p>
-<div id="langtoggle" style="margin-bottom:14px;"></div>
 <div id="artifacts"></div>
 <div id="linked"></div>
 <script type="module">
@@ -1627,16 +1637,15 @@ async function renderArtifacts() {
 
 if (hasKo) {
   const wrap = document.getElementById('langtoggle');
-  const mk = (id, text) => { const b = document.createElement('button'); b.id = id; b.textContent = text;
-    b.style.cssText = 'padding:5px 14px;margin-right:6px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;'; return b; };
-  const en = mk('lang-en', 'English'), ko = mk('lang-ko', '한글');
+  wrap.hidden = false;
+  const en = document.getElementById('lang-en'), ko = document.getElementById('lang-ko');
   const paint = () => {
-    en.style.background = lang === 'en' ? '#2a78d6' : 'transparent'; en.style.color = lang === 'en' ? '#fff' : 'inherit';
-    ko.style.background = lang === 'ko' ? '#2a78d6' : 'transparent'; ko.style.color = lang === 'ko' ? '#fff' : 'inherit';
+    en.classList.toggle('on', lang === 'en');
+    ko.classList.toggle('on', lang === 'ko');
   };
   en.onclick = async () => { lang = 'en'; paint(); await renderArtifacts(); };
   ko.onclick = async () => { lang = 'ko'; paint(); await renderArtifacts(); };
-  wrap.appendChild(en); wrap.appendChild(ko); paint();
+  paint();
 }
 await renderArtifacts();
 if (LINKED.length) {
