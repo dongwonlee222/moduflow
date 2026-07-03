@@ -597,7 +597,8 @@ More detail contents here.
                 encoding="utf-8",
             )
             (root / "specs" / "056-dashboard" / "spec.md").write_text("# Spec\n", encoding="utf-8")
-            (root / "specs" / "056-dashboard" / "spec.ko.md").write_text("# 명세\n", encoding="utf-8")
+            (root / "specs" / "056-dashboard" / "spec.ko.md").write_text(
+                "# 명세\n\n## 문제\n\n그래프만으로는 운영 스캔이 어렵습니다.\n", encoding="utf-8")
             (root / "specs" / "056-dashboard" / "plan.md").write_text("# Plan\n", encoding="utf-8")
             project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
             project_memory.create_memory_entry(
@@ -611,6 +612,9 @@ More detail contents here.
             self.assertEqual(by_id["056-dashboard"]["status"], "active")
             self.assertEqual(by_id["056-dashboard"]["goal"], "visual-workbench")
             self.assertEqual(by_id["056-dashboard"]["summary"], "Show issues as a scannable database list.")
+            self.assertEqual(by_id["056-dashboard"]["summary_ko"], "그래프만으로는 운영 스캔이 어렵습니다.")
+            self.assertEqual(by_id["056-dashboard"]["description"], "그래프만으로는 운영 스캔이 어렵습니다.")
+            self.assertEqual(by_id["056-dashboard"]["description_language"], "ko")
             self.assertEqual(by_id["056-dashboard"]["next_command"], "/product:execute 056-dashboard")
             self.assertEqual(by_id["056-dashboard"]["href"], "issue-056-dashboard.html")
             self.assertEqual(by_id["056-dashboard"]["created"], "2026-07-01")
@@ -646,6 +650,50 @@ More detail contents here.
             self.assertEqual(rows["034-done"]["status"], "done")
             self.assertEqual(rows["034-done"]["phase"], "release")
             self.assertEqual(rows["035-review"]["status"], "review")
+
+    def test_collect_issue_table_uses_outcome_as_description_fallback(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "058-outcome.md").write_text(
+                "# Issue: `058-outcome`\n\n"
+                "**Status: backlog** — created.\n\n"
+                "## Outcome\n\n"
+                "Dashboard rows explain the issue even when Summary is missing.\n",
+                encoding="utf-8",
+            )
+
+            rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
+
+            self.assertEqual(
+                rows["058-outcome"]["description"],
+                "Dashboard rows explain the issue even when Summary is missing.",
+            )
+            self.assertEqual(rows["058-outcome"]["description_language"], "en")
+
+    def test_collect_issue_table_uses_korean_description_overlay(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "workspace").mkdir()
+            (root / "issues" / "058-overlay.md").write_text(
+                "# Issue: `058-overlay`\n\n"
+                "## Summary\n\n"
+                "English dashboard description.\n",
+                encoding="utf-8",
+            )
+            (root / "workspace" / "issue-descriptions.ko.json").write_text(
+                '{"058-overlay": "대시보드 한글 설명입니다."}',
+                encoding="utf-8",
+            )
+
+            rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
+
+            self.assertEqual(rows["058-overlay"]["description"], "대시보드 한글 설명입니다.")
+            self.assertEqual(rows["058-overlay"]["description_language"], "ko")
+            self.assertEqual(rows["058-overlay"]["summary"], "English dashboard description.")
 
     def test_render_project_view_has_issue_db_tab_and_controls(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")

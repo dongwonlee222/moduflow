@@ -1005,16 +1005,97 @@ def _parse_next_command(text):
     return ""
 
 
-def _issue_summary(text):
-    m = re.search(r"^##\s+Summary\s*$", text or "", re.M)
+def _markdown_section(text, headings):
+    pattern = "|".join(re.escape(h) for h in headings)
+    m = re.search(rf"^##\s+({pattern})\s*$", text or "", re.M | re.I)
     if not m:
         return ""
     section = text[m.end():]
     nxt = re.search(r"^##\s+", section, re.M)
     if nxt:
         section = section[:nxt.start()]
-    lines = [line.strip() for line in section.strip().splitlines() if line.strip()]
-    return " ".join(lines)
+    return section.strip()
+
+
+def _plain_summary(section):
+    lines = []
+    for line in (section or "").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            if lines:
+                break
+            continue
+        if stripped.startswith(("#", ">", "```")):
+            continue
+        if re.match(r"^(Issue|Prev|Next|Reviewed|Result):\s", stripped):
+            continue
+        lines.append(re.sub(r"^\d+\.\s+|^[-*]\s+", "", stripped))
+    return " ".join(lines).strip()
+
+
+def _short_description(text, limit=180):
+    cleaned = re.sub(r"\s+", " ", text or "").strip()
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[:limit - 1].rstrip() + "…"
+
+
+def _issue_summary(text):
+    for heading in ("Summary", "Outcome", "Opportunity", "Why"):
+        summary = _plain_summary(_markdown_section(text, [heading]))
+        if summary:
+            return _short_description(summary)
+    return ""
+
+
+def _issue_summary_ko(root, issue_id, text):
+    summary = _plain_summary(_markdown_section(text, ["요약", "한글 요약", "Summary (KO)", "Korean Summary", "문제"]))
+    if summary:
+        return _short_description(summary)
+    spec_dir = Path(root).resolve() / "specs" / issue_id
+    for ko_path in (
+        spec_dir / "spec.ko.md",
+        spec_dir / "plan.ko.md",
+        spec_dir / "design.ko.md",
+        spec_dir / "review.ko.md",
+        spec_dir / "human-review.ko.md",
+    ):
+        if not ko_path.is_file():
+            continue
+        spec_text = ko_path.read_text(encoding="utf-8")
+        for heading in ("요약", "문제", "먼저 정리된 질문", "목표"):
+            summary = _plain_summary(_markdown_section(spec_text, [heading]))
+            if summary:
+                return _short_description(summary)
+        summary = _plain_summary(spec_text)
+        if summary:
+            return _short_description(summary)
+    return ""
+
+
+def _issue_description(root, issue_id, title, text):
+    summary_ko = _issue_summary_ko(root, issue_id, text)
+    summary = _issue_summary(text)
+    description = summary_ko or summary or title or issue_id
+    return {
+        "summary": summary,
+        "summary_ko": summary_ko,
+        "description": description,
+        "description_language": "ko" if summary_ko else ("en" if summary else ""),
+    }
+
+
+def _issue_description_overrides(root):
+    path = Path(root).resolve() / "workspace" / "issue-descriptions.ko.json"
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(k): str(v).strip() for k, v in data.items() if str(v).strip()}
 
 
 def _issue_artifact_coverage(root, issue_id):
@@ -1103,6 +1184,7 @@ def _collect_issue_table(root):
         return []
     graph_nodes, graph_edges = _collect_issue_graph(project_root)
     linked = _issue_linked_memory(project_root)
+    description_overrides = _issue_description_overrides(project_root)
     relation_counts = {}
     for src, tgt, _rel in graph_edges:
         relation_counts[src] = relation_counts.get(src, 0) + 1
@@ -1115,11 +1197,18 @@ def _collect_issue_table(root):
         coverage = _issue_artifact_coverage(project_root, issue_id)
         status = _issue_table_status(info.get("status", "backlog"), coverage)
         next_command = _parse_next_command(text)
+        title = info.get("title", issue_id)
+        description = _issue_description(project_root, issue_id, title, text)
+        if issue_id in description_overrides:
+            description.update({
+                "summary_ko": description_overrides[issue_id],
+                "description": description_overrides[issue_id],
+                "description_language": "ko",
+            })
         rows.append({
             "id": issue_id,
             "number": _issue_number(issue_id),
-            "title": info.get("title", issue_id),
-            "summary": _issue_summary(text),
+            "title": title,
             "status": status,
             "goal": info.get("goal", "(기타)"),
             "phase": _issue_phase_from_coverage(coverage),
@@ -1131,6 +1220,7 @@ def _collect_issue_table(root):
             "attention_flags": _issue_attention_flags(status, next_command, coverage),
             "created": _issue_created(text),
             "updated": _issue_updated(text),
+            **description,
         })
     return rows
 
@@ -1396,6 +1486,10 @@ function flagBadges(row){
   if(!flags.length) return '<span style="color:#aaa">-</span>';
   return flags.map(f => '<span class="flag">'+esc(FLAG_LABELS[f] || f)+'</span>').join('');
 }
+function descriptionCell(row){
+  const lang = row.description_language ? '<span class="badge">'+esc(row.description_language.toUpperCase())+'</span> ' : '';
+  return lang + esc(row.description || row.summary || row.title || '');
+}
 function compareRows(a,b){
   const s = issueDbState.sort;
   if(s === 'status') return (a.status||'').localeCompare(b.status||'') || ((a.number||0)-(b.number||0));
@@ -1408,7 +1502,7 @@ function compareRows(a,b){
 function filteredRows(){
   const q = issueDbState.q.toLowerCase();
   return ISSUE_ROWS.filter(row => {
-    const text = [row.id, row.title, row.summary, row.next_command, row.goal].join(' ').toLowerCase();
+    const text = [row.id, row.title, row.description, row.summary, row.summary_ko, row.next_command, row.goal].join(' ').toLowerCase();
     return (!q || text.includes(q)) && (STATUS_VIEW[issueDbState.view] || STATUS_VIEW.all)(row);
   }).sort(compareRows);
 }
@@ -1436,7 +1530,7 @@ function renderIssueTable(focusSearch=false){
       <td>${esc(row.phase || '')}</td>
       <td class="mono">${esc(row.created || '-')}</td>
       <td class="mono">${esc(row.updated || '-')}</td>
-      <td>${esc(row.summary || row.title || '')}</td>
+      <td>${descriptionCell(row)}</td>
       <td>${artifactBadges(row)}</td>
       <td>${flagBadges(row)}</td>
       <td class="mono">${esc(String(row.linked_memory_count || 0))}</td>
