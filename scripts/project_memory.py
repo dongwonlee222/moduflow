@@ -1585,7 +1585,7 @@ ISSUE_PANEL_TEMPLATE = """<!DOCTYPE html>
 <body>
 <div class="topbar">
   <a class="back" href="dashboard.html#issue-db">← 이슈 DB로 돌아가기</a>
-  <div id="langtoggle" class="lang-toggle" hidden>
+  <div id="langtoggle" class="lang-toggle"__LANG_TOGGLE_ATTR__>
     <button id="lang-en" type="button">English</button>
     <button id="lang-ko" type="button">한글</button>
   </div>
@@ -1612,6 +1612,7 @@ async function renderArtifacts() {
     return;
   }
   for (const a of ARTIFACTS) {
+    if (lang === 'en' && a.ko_only) continue;  // Korean-only review packet, shown only in Korean mode
     if (lang === 'ko' && !a.ko) continue;  // 한글 모드: 한글본 있는 산출물만 (영문 안 섞음)
     const sec = document.createElement('section');
     sec.className = 'artifact';
@@ -1717,7 +1718,14 @@ def _collect_issue_artifacts(root, issue_id):
                 artifacts.append({"name": fname, "label": ARTIFACT_LABELS.get(fname, fname),
                                   "md": f.read_text(encoding="utf-8"), "ko": _ko_sidecar(f)})
         for f in sorted(spec_dir.glob("*.md")):
-            if f.name in seen or f.name.endswith(".ko.md"):  # .ko.md is a sidecar, not its own artifact
+            if f.name in seen:
+                continue
+            if f.name.endswith(".ko.md"):
+                base_name = f.name[:-6] + ".md"
+                if base_name in seen or (spec_dir / base_name).is_file():
+                    continue
+                artifacts.append({"name": f.name, "label": f.name[:-6].replace("-", " ").title(),
+                                  "md": "", "ko": f.read_text(encoding="utf-8"), "ko_only": True})
                 continue
             artifacts.append({"name": f.name, "label": f.stem.replace("-", " ").title(),
                               "md": f.read_text(encoding="utf-8"), "ko": _ko_sidecar(f)})
@@ -1727,6 +1735,7 @@ def _collect_issue_artifacts(root, issue_id):
 def render_issue_panel(root, issue_id):
     slug, artifacts = _collect_issue_artifacts(root, issue_id)
     linked = _issue_linked_memory(root).get(slug, [])
+    lang_toggle_attr = "" if any(a.get("ko") for a in artifacts) else " hidden"
     # Escape "</" so a literal </script> inside Markdown can't end the module script.
     artifacts_json = json.dumps(artifacts, ensure_ascii=False).replace("</", "<\\/")
     linked_json = json.dumps(linked, ensure_ascii=False).replace("</", "<\\/")
@@ -1735,6 +1744,7 @@ def render_issue_panel(root, issue_id):
         .replace("__PANEL_TITLE__", f"Issue {slug}")
         .replace("__PANEL_SUB__", f"{len(artifacts)} artifact(s) · issues/ + specs/{slug}/ · derived view")
         .replace("__ISSUE_ID__", slug)
+        .replace("__LANG_TOGGLE_ATTR__", lang_toggle_attr)
         .replace("__ARTIFACTS_JSON__", artifacts_json)
         .replace("__LINKED_JSON__", linked_json)
     )

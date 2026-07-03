@@ -734,11 +734,29 @@ More detail contents here.
             without = project_memory.render_issue_panel(root, "049-b")
             self.assertIn('"ko": null', without)              # ko slot present, empty
             self.assertNotIn("한글 본문 내용", without)        # no Korean sidecar payload
+            self.assertIn('id="langtoggle" class="lang-toggle" hidden', without)
 
             (root / "specs" / "049-b" / "spec.ko.md").write_text("# 한글 본문 내용\n", encoding="utf-8")
             with_ko = project_memory.render_issue_panel(root, "049-b")
             self.assertIn("한글 본문 내용", with_ko)          # Korean payload present → client offers toggle
             self.assertIn('id="lang-ko"', with_ko)
+            self.assertIn('id="langtoggle" class="lang-toggle">', with_ko)
+
+    def test_issue_panel_includes_korean_only_artifact(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "specs" / "034-memory").mkdir(parents=True)
+            (root / "specs" / "034-memory" / "human-review.ko.md").write_text(
+                "# 한글 검토 패킷\n", encoding="utf-8")
+
+            slug, artifacts = project_memory._collect_issue_artifacts(root, "034-memory")
+            html = project_memory.render_issue_panel(root, "034-memory")
+
+            self.assertEqual(slug, "034-memory")
+            self.assertTrue(any(a["name"] == "human-review.ko.md" and a["ko_only"] for a in artifacts))
+            self.assertIn("한글 검토 패킷", html)
+            self.assertIn('id="langtoggle" class="lang-toggle">', html)
 
     def test_list_memory_ids_returns_all_and_filters_by_kind(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
