@@ -41,6 +41,8 @@ Next: `product:review 056-dashboard-database-list-view`
 - Branch: `codex/056-dashboard-db-list-view-spec`.
 - Local PR-ready marker: `local:056-dashboard-db-list-view-spec:review-ready`.
 - GitHub PR creation attempted on 2026-07-03 with `gh pr create --draft`, but GitHub API access failed with `error connecting to api.github.com`.
+- Follow-up prevention added: `python3 scripts/project_pr.py . --github-preflight` now checks `gh auth status` and `gh api rate_limit` before any Draft PR creation attempt.
+- Current Codex environment preflight reports invalid `gh` tokens, so future `product:pr` runs should stay in local PR-ready mode until authentication/network access is fixed.
 - Keep local PR-ready artifacts as the review source until GitHub API access is available.
 
 ## Notes

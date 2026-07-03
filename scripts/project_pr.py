@@ -2,7 +2,16 @@
 import argparse
 import json
 import re
+import subprocess
+from dataclasses import dataclass
 from pathlib import Path
+
+
+@dataclass
+class CommandResult:
+    returncode: int
+    stdout: str = ""
+    stderr: str = ""
 
 
 def _read_if_exists(path):
@@ -38,6 +47,68 @@ def _section(text, heading):
 def _evidence_or_fallback(text, fallback):
     text = text.strip()
     return text if text else fallback
+
+
+def _run_command(args, cwd):
+    try:
+        completed = subprocess.run(
+            args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        return CommandResult(127, "", str(exc))
+    except subprocess.TimeoutExpired as exc:
+        return CommandResult(124, exc.stdout or "", exc.stderr or "command timed out")
+    return CommandResult(completed.returncode, completed.stdout, completed.stderr)
+
+
+def github_pr_preflight(root, runner=None):
+    root = Path(root).resolve()
+    run = runner or _run_command
+    result = {
+        "schema": "moduflow.github-pr-preflight.v1",
+        "project_root": str(root),
+        "ok": False,
+        "mode": "local-pr-ready",
+        "checks": {
+            "gh_auth": {"ok": False, "returncode": None, "detail": ""},
+            "github_api": {"ok": False, "returncode": None, "detail": ""},
+        },
+        "errors": [],
+        "recommendations": [],
+    }
+
+    auth = run(["gh", "auth", "status"], cwd=root)
+    result["checks"]["gh_auth"] = {
+        "ok": auth.returncode == 0,
+        "returncode": auth.returncode,
+        "detail": (auth.stderr or auth.stdout).strip(),
+    }
+    if auth.returncode != 0:
+        result["errors"].append("gh auth status failed; GitHub Draft PR creation is unavailable.")
+        result["recommendations"].append("Use local PR-ready marker and keep pr.md/human-review.ko.md current.")
+        return result
+
+    api = run(["gh", "api", "rate_limit"], cwd=root)
+    result["checks"]["github_api"] = {
+        "ok": api.returncode == 0,
+        "returncode": api.returncode,
+        "detail": (api.stderr or api.stdout).strip(),
+    }
+    if api.returncode != 0:
+        detail = (api.stderr or api.stdout).strip() or "GitHub API connectivity check failed."
+        result["errors"].append(f"GitHub API preflight failed: {detail}")
+        result["recommendations"].append("Do not run gh pr create in this environment; record local PR-ready state instead.")
+        return result
+
+    result["ok"] = True
+    result["mode"] = "github-draft-pr"
+    result["recommendations"].append("GitHub CLI and API are reachable; Draft PR creation may proceed.")
+    return result
 
 
 def _load_ko_descriptions(root):
@@ -316,12 +387,25 @@ def write_pr_handoff(root, issue_id, branch="", pr="", reviewer="Reviewer"):
 def main():
     parser = argparse.ArgumentParser(description="Generate ModuFlow draft PR handoff artifacts.")
     parser.add_argument("project_path", nargs="?", default=".")
-    parser.add_argument("--issue-id", required=True)
+    parser.add_argument("--issue-id", default="")
     parser.add_argument("--branch", default="")
     parser.add_argument("--pr", default="")
     parser.add_argument("--reviewer", default="Reviewer")
     parser.add_argument("--write", action="store_true")
+    parser.add_argument(
+        "--github-preflight",
+        action="store_true",
+        help="Check gh auth and GitHub API reachability before attempting Draft PR creation.",
+    )
     args = parser.parse_args()
+
+    if args.github_preflight:
+        result = github_pr_preflight(args.project_path)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["ok"] else 2
+
+    if not args.issue_id:
+        parser.error("--issue-id is required unless --github-preflight is used")
 
     if args.write:
         path = write_pr_handoff(

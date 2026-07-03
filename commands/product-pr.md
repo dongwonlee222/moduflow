@@ -10,23 +10,31 @@ Prepare or refresh the pull request review surface.
 ## Do
 
 1. Check branch, commits, changed files, tests, linked issue, and whether a Draft PR already exists.
-2. Generate or refresh the PR handoff:
+2. Before any `gh pr create`, run GitHub PR preflight:
+
+```bash
+python3 scripts/project_pr.py <project-path> --github-preflight
+```
+
+If `ok` is false or `mode` is `local-pr-ready`, do not run `gh pr create` in this environment. Record a local PR-ready marker and include the preflight error in `specs/<issue>/status.md` or `specs/<issue>/pr.md`.
+
+3. Generate or refresh the PR handoff:
 
 ```bash
 python3 scripts/project_pr.py <project-path> --issue-id <issue id> --write
 ```
 
-3. Draft PR summary, test evidence, risk, screenshots, dashboard path, issue drill-down path, review findings, and rollout notes.
-4. Save to `specs/<issue>/pr.md` and `specs/<issue>/human-review.ko.md`.
-5. Record PR state in team workflow:
+4. Draft PR summary, test evidence, risk, screenshots, dashboard path, issue drill-down path, review findings, and rollout notes.
+5. Save to `specs/<issue>/pr.md` and `specs/<issue>/human-review.ko.md`.
+6. Record PR state in team workflow:
 
 ```bash
 python3 scripts/project_workflow.py <project-path> --pr-state --issue-id <issue id> --pr "<pr url or local pr-ready marker>" --reviewer "Reviewer"
 ```
 
-6. Create a Draft PR early when requested, already part of the workflow, or GitHub sync mode explicitly allows GitHub writes. Otherwise use a local PR-ready marker.
-7. Store GitHub PR URLs back into Git-native artifacts; if GitHub sync fails, keep local `git-files` state valid and report the mirror failure separately.
-8. After `product:review`, refresh `specs/<issue>/pr.md` and mirror review/dashboard evidence into the GitHub PR body or a PR comment when possible.
+7. Create a Draft PR early only when preflight passes and GitHub sync mode explicitly allows GitHub writes. Otherwise use a local PR-ready marker.
+8. Store GitHub PR URLs back into Git-native artifacts; if GitHub sync fails, keep local `git-files` state valid and report the mirror failure separately.
+9. After `product:review`, refresh `specs/<issue>/pr.md` and mirror review/dashboard evidence into the GitHub PR body or a PR comment when possible.
 
 ## Human Gate
 

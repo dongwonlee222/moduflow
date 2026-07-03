@@ -6,6 +6,40 @@ from scripts import project_pr
 
 
 class ProjectPrHandoffTests(unittest.TestCase):
+    def test_github_pr_preflight_falls_back_when_api_unreachable(self):
+        calls = []
+
+        def runner(args, cwd):
+            calls.append(tuple(args))
+            if args == ["gh", "auth", "status"]:
+                return project_pr.CommandResult(0, "logged in", "")
+            if args == ["gh", "api", "rate_limit"]:
+                return project_pr.CommandResult(1, "", "error connecting to api.github.com")
+            return project_pr.CommandResult(1, "", "unexpected")
+
+        result = project_pr.github_pr_preflight(Path("."), runner=runner)
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["mode"], "local-pr-ready")
+        self.assertIn(("gh", "auth", "status"), calls)
+        self.assertIn(("gh", "api", "rate_limit"), calls)
+        self.assertIn("api.github.com", result["errors"][0])
+        self.assertIn("Do not run gh pr create", result["recommendations"][0])
+
+    def test_github_pr_preflight_allows_draft_pr_when_api_reachable(self):
+        def runner(args, cwd):
+            if args == ["gh", "auth", "status"]:
+                return project_pr.CommandResult(0, "logged in", "")
+            if args == ["gh", "api", "rate_limit"]:
+                return project_pr.CommandResult(0, '{"resources":{}}', "")
+            return project_pr.CommandResult(1, "", "unexpected")
+
+        result = project_pr.github_pr_preflight(Path("."), runner=runner)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["mode"], "github-draft-pr")
+        self.assertIn("Draft PR creation may proceed", result["recommendations"][0])
+
     def test_build_pr_handoff_includes_draft_pr_review_and_dashboard_contract(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
