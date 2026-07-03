@@ -47,6 +47,7 @@ class ProjectPrHandoffTests(unittest.TestCase):
             self.assertIn("product:pr 052-draft-pr-review-handoff", handoff)
             self.assertIn("memory/dashboard.html", handoff)
             self.assertIn("memory/issue-052-draft-pr-review-handoff.html", handoff)
+            self.assertIn("human-review.ko.md", handoff)
             self.assertIn("Required status checks", handoff)
             self.assertIn("Human approval", handoff)
             self.assertIn("GitHub Draft PR URL is not recorded yet", handoff)
@@ -69,6 +70,45 @@ class ProjectPrHandoffTests(unittest.TestCase):
             self.assertEqual(path, (root / "specs" / issue_id / "pr.md").resolve())
             self.assertTrue(path.exists())
             self.assertIn("PR Handoff", path.read_text(encoding="utf-8"))
+            human_packet = root / "specs" / issue_id / "human-review.ko.md"
+            self.assertTrue(human_packet.exists())
+            self.assertIn("한글 검토 패킷", human_packet.read_text(encoding="utf-8"))
+
+    def test_build_human_review_packet_uses_korean_description_overlay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "057-korean-human-review-packet"
+            (root / "issues").mkdir()
+            (root / "workspace").mkdir()
+            (root / "specs" / issue_id).mkdir(parents=True)
+            (root / "issues" / f"{issue_id}.md").write_text(
+                "# Issue: `057-korean-human-review-packet`\n\n"
+                "## Outcome\n\n"
+                "English review packet outcome.\n",
+                encoding="utf-8",
+            )
+            (root / "workspace" / "issue-descriptions.ko.json").write_text(
+                '{"057-korean-human-review-packet": "PR 확인을 위한 한글 검토 패킷을 자동 생성합니다."}',
+                encoding="utf-8",
+            )
+            (root / "specs" / issue_id / "status.md").write_text(
+                "# Status\n\n## Verification\n\n- tests passed.\n",
+                encoding="utf-8",
+            )
+
+            packet = project_pr.build_human_review_packet_ko(
+                root,
+                issue_id,
+                branch="codex/057-korean-human-review-packet",
+                pr="local:057-review",
+                reviewer="Dongwon",
+            )
+
+            self.assertIn("PR 확인을 위한 한글 검토 패킷을 자동 생성합니다.", packet)
+            self.assertIn("memory/issue-057-korean-human-review-packet.html", packet)
+            self.assertIn("codex/057-korean-human-review-packet", packet)
+            self.assertIn("- tests passed.", packet)
+            self.assertIn("승인 체크리스트", packet)
 
 
 if __name__ == "__main__":

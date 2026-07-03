@@ -17,7 +17,7 @@ python3 scripts/project_pr.py <project-path> --issue-id <issue id> --write
 ```
 
 3. Draft PR summary, test evidence, risk, screenshots, dashboard path, issue drill-down path, review findings, and rollout notes.
-4. Save to `specs/<issue>/pr.md`.
+4. Save to `specs/<issue>/pr.md` and `specs/<issue>/human-review.ko.md`.
 5. Record PR state in team workflow:
 
 ```bash
@@ -32,10 +32,13 @@ python3 scripts/project_workflow.py <project-path> --pr-state --issue-id <issue 
 
 PR creation is not merge approval. Humans still review:
 
+- Korean human-review packet: `specs/<issue>/human-review.ko.md`.
 - GitHub PR diff and discussion.
 - Dashboard and issue drill-down output.
 - Required status checks and CI output.
 - Merge readiness under branch protection rules.
+
+Start Korean review from `human-review.ko.md`, then open the dashboard issue detail and PR diff only as needed. English artifacts remain canonical, but a PR should not ask a Korean reviewer to approve from English-only context.
 
 ## Next
 

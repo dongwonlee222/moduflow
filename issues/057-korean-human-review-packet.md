@@ -1,6 +1,6 @@
 # Issue: `057-korean-human-review-packet`
 
-**Status: backlog** — created 2026-07-03.
+**Status: backlog** — spec drafted 2026-07-03.
 
 ## Outcome
 
@@ -59,8 +59,10 @@ Issue 049 added Korean sidecars for human-facing artifact views, but the policy 
 ## Links
 
 - Dogfood packet: `specs/034-memory-capture-and-sync-workflow/human-review.ko.md`
+- Spec: `specs/057-korean-human-review-packet/spec.md`
+- Spec KO: `specs/057-korean-human-review-packet/spec.ko.md`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:spec 057-korean-human-review-packet`
+`/product:plan 057-korean-human-review-packet`

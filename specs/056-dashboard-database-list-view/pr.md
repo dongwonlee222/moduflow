@@ -9,7 +9,7 @@ Use a Draft PR or a local PR-ready marker early, then attach review, verificatio
 
 - Branch: `codex/056-dashboard-db-list-view-spec`
 - PR: `local:056-dashboard-db-list-view-spec:review-ready`
-- Reviewer: `Reviewer`
+- Reviewer: `Dongwon`
 - Fallback reason: GitHub Draft PR URL is not recorded yet. This local PR-ready marker preserves review state until GitHub sync creates or mirrors the PR.
 - Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
@@ -17,14 +17,14 @@ Use a Draft PR or a local PR-ready marker early, then attach review, verificatio
 ## Commands
 
 ```bash
-python3 scripts/project_pr.py . --issue-id 056-dashboard-database-list-view --branch codex/056-dashboard-db-list-view-spec --pr local:056-dashboard-db-list-view-spec:review-ready --reviewer Reviewer --write
+python3 scripts/project_pr.py . --issue-id 056-dashboard-database-list-view --write
 ```
 
 ```bash
-python3 scripts/project_workflow.py . --pr-state --issue-id 056-dashboard-database-list-view --pr "local:056-dashboard-db-list-view-spec:review-ready" --reviewer "Reviewer" --branch codex/056-dashboard-db-list-view-spec
+python3 scripts/project_workflow.py . --pr-state --issue-id 056-dashboard-database-list-view --pr "local:056-dashboard-db-list-view-spec:review-ready" --reviewer "Dongwon"
 ```
 
-- Continue: `product:pr 056-dashboard-database-list-view`
+- Continue review: `product:review 056-dashboard-database-list-view`
 - Refresh PR handoff: `product:pr 056-dashboard-database-list-view`
 
 ## PR Body Contract
@@ -33,6 +33,7 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 056-dashboard-databa
 - Verification: local tests, release checks, CI/status checks, and known gaps.
 - Dashboard: `memory/dashboard.html`.
 - Issue drill-down: `memory/issue-056-dashboard-database-list-view.html`.
+- Korean human-review packet: `specs/056-dashboard-database-list-view/human-review.ko.md`.
 - Review findings: implementation, QA, and PM/spec review results.
 - Human approval: who reviewed the dashboard, PR diff, and merge readiness.
 
@@ -52,9 +53,7 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 056-dashboard-databa
 
 ### Review Findings
 
-- Review passed; no blocking or important findings.
-- Review artifact: `specs/056-dashboard-database-list-view/review.md`.
-- Known limitation: browser automation could not run because the local Playwright browser binary was missing and installed Chrome exited under sandbox constraints. Generated dashboard and issue drill-down were opened locally for human visual review.
+No blocking or important issues found.
 
 ### Visual Evidence
 
@@ -63,8 +62,8 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 056-dashboard-databa
 
 ## Approval Record
 
-- Dashboard reviewer: `Reviewer` or assigned reviewer before merge.
-- PR diff reviewer: `Reviewer` or assigned reviewer before merge.
+- Dashboard reviewer: `Dongwon` or assigned reviewer before merge.
+- PR diff reviewer: `Dongwon` or assigned reviewer before merge.
 - Merge approver: human approval required; not granted by this handoff.
 - Deployment approver: required only when a protected deployment environment is configured.
 
@@ -84,7 +83,7 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 056-dashboard-databa
 
 ## Source Snapshot
 
-- Issue bytes: 5419
+- Issue bytes: 5821
 - Spec bytes: 8506
-- Status bytes: 1670
-- Review bytes: 3274
+- Status bytes: 1960
+- Review bytes: 2880
