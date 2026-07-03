@@ -582,6 +582,8 @@ More detail contents here.
             (root / "issues" / "056-dashboard.md").write_text(
                 "# Issue: `056-dashboard`\n\n"
                 "**Status: active** — Part of goal `visual-workbench`.\n\n"
+                "## Summary\n\n"
+                "Show issues as a scannable database list.\n\n"
                 "## Lifecycle\n\n"
                 "- Created: 2026-07-01\n"
                 "- Last Updated: 2026-07-03\n\n"
@@ -608,6 +610,7 @@ More detail contents here.
             self.assertEqual(by_id["056-dashboard"]["number"], 56)
             self.assertEqual(by_id["056-dashboard"]["status"], "active")
             self.assertEqual(by_id["056-dashboard"]["goal"], "visual-workbench")
+            self.assertEqual(by_id["056-dashboard"]["summary"], "Show issues as a scannable database list.")
             self.assertEqual(by_id["056-dashboard"]["next_command"], "/product:execute 056-dashboard")
             self.assertEqual(by_id["056-dashboard"]["href"], "issue-056-dashboard.html")
             self.assertEqual(by_id["056-dashboard"]["created"], "2026-07-01")
@@ -671,6 +674,8 @@ More detail contents here.
             self.assertIn("최근 업데이트", html)
             self.assertIn("<th>Created</th>", html)
             self.assertIn("<th>Updated</th>", html)
+            self.assertIn("<th>Description</th>", html)
+            self.assertNotIn("<th>Next</th>", html)
             self.assertIn("issue-042-new.html", html)
 
     def test_issue_panel_includes_linked_memory_section_only_when_present(self):

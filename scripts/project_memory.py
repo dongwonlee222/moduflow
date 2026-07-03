@@ -1005,6 +1005,18 @@ def _parse_next_command(text):
     return ""
 
 
+def _issue_summary(text):
+    m = re.search(r"^##\s+Summary\s*$", text or "", re.M)
+    if not m:
+        return ""
+    section = text[m.end():]
+    nxt = re.search(r"^##\s+", section, re.M)
+    if nxt:
+        section = section[:nxt.start()]
+    lines = [line.strip() for line in section.strip().splitlines() if line.strip()]
+    return " ".join(lines)
+
+
 def _issue_artifact_coverage(root, issue_id):
     root = Path(root).resolve()
     spec_dir = root / "specs" / issue_id
@@ -1107,6 +1119,7 @@ def _collect_issue_table(root):
             "id": issue_id,
             "number": _issue_number(issue_id),
             "title": info.get("title", issue_id),
+            "summary": _issue_summary(text),
             "status": status,
             "goal": info.get("goal", "(기타)"),
             "phase": _issue_phase_from_coverage(coverage),
@@ -1395,7 +1408,7 @@ function compareRows(a,b){
 function filteredRows(){
   const q = issueDbState.q.toLowerCase();
   return ISSUE_ROWS.filter(row => {
-    const text = [row.id, row.title, row.next_command, row.goal].join(' ').toLowerCase();
+    const text = [row.id, row.title, row.summary, row.next_command, row.goal].join(' ').toLowerCase();
     return (!q || text.includes(q)) && (STATUS_VIEW[issueDbState.view] || STATUS_VIEW.all)(row);
   }).sort(compareRows);
 }
@@ -1423,7 +1436,7 @@ function renderIssueTable(focusSearch=false){
       <td>${esc(row.phase || '')}</td>
       <td class="mono">${esc(row.created || '-')}</td>
       <td class="mono">${esc(row.updated || '-')}</td>
-      <td><code>${esc(row.next_command || '')}</code></td>
+      <td>${esc(row.summary || row.title || '')}</td>
       <td>${artifactBadges(row)}</td>
       <td>${flagBadges(row)}</td>
       <td class="mono">${esc(String(row.linked_memory_count || 0))}</td>
@@ -1431,7 +1444,7 @@ function renderIssueTable(focusSearch=false){
   )).join('') : '<tr><td class="empty" colspan="10">검색 결과 없음</td></tr>';
   document.getElementById('issue-db').innerHTML = `
     <div class="dbbar">
-      <input id="issue-search" placeholder="Search issue id, title, next command" value="${esc(issueDbState.q)}">
+      <input id="issue-search" placeholder="Search issue id, title, description" value="${esc(issueDbState.q)}">
       <div class="chips">
         <button class="chip" data-view="all">전체</button>
         <button class="chip" data-view="active">진행중</button>
@@ -1455,7 +1468,7 @@ function renderIssueTable(focusSearch=false){
       </select>
     </div>
     <table>
-      <thead><tr><th>ID</th><th>Issue</th><th>Status</th><th>Phase</th><th>Created</th><th>Updated</th><th>Next</th><th>Artifacts</th><th>Flags</th><th>Memory</th></tr></thead>
+      <thead><tr><th>ID</th><th>Issue</th><th>Status</th><th>Phase</th><th>Created</th><th>Updated</th><th>Description</th><th>Artifacts</th><th>Flags</th><th>Memory</th></tr></thead>
       <tbody>${body}</tbody>
     </table>`;
   document.getElementById('issue-search').addEventListener('input', e=>{ issueDbState.q = e.target.value; renderIssueTable(true); });
