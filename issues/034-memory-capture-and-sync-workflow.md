@@ -12,12 +12,12 @@ Design and implement a clearer long-term memory capture workflow so ModuFlow can
 
 ## Lifecycle
 
-- Phase: plan
+- Phase: done
 - Created: 2026-06-26
-- Started:
+- Started: 2026-06-26
 - Target End:
-- Completed:
-- Last Updated: 2026-06-26
+- Completed: 2026-07-03
+- Last Updated: 2026-07-03
 
 ## Opportunity
 
@@ -67,8 +67,8 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - [x] spec -> `specs/034-memory-capture-and-sync-workflow/spec.md`
 - [x] plan -> `specs/034-memory-capture-and-sync-workflow/plan.md`
 - [x] execute -> PR / commits
-- [ ] review -> review notes
-- [ ] research -> compare projectmem, Basic Memory, mem0, Supermemory, and cloud sync patterns
+- [x] review -> `specs/034-memory-capture-and-sync-workflow/review.md`
+- [x] research -> compare projectmem, Basic Memory, mem0, Supermemory, and cloud sync patterns
 - [x] design -> memory candidate queue and approval UX
 - [x] design -> external mirror/export policy
 - [x] validation -> schema and link checks for memory entries
@@ -101,6 +101,11 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 - Spec: `specs/034-memory-capture-and-sync-workflow/spec.md`
 - Status: `specs/034-memory-capture-and-sync-workflow/status.md`
+- Review: `specs/034-memory-capture-and-sync-workflow/review.md`
+- Review Handoff: `specs/034-memory-capture-and-sync-workflow/review-handoff.md`
+- PR Handoff: `specs/034-memory-capture-and-sync-workflow/pr.md`
+- Human Review (KO): `specs/034-memory-capture-and-sync-workflow/human-review.ko.md`
+- Draft PR: `https://github.com/dongwonlee222/moduflow/pull/5`
 - Sessions: `sessions/034-memory-capture-and-sync-workflow/`
 - Roadmap: `workspace/roadmap.md`
 - projectmem: `https://github.com/riponcm/projectmem`
@@ -110,4 +115,4 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 ## Next Command
 
-`/product:review 034-memory-capture-and-sync-workflow`
+`/product:release 034-memory-capture-and-sync-workflow` after human approval.
