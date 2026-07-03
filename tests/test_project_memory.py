@@ -658,6 +658,17 @@ More detail contents here.
             self.assertIn("Why foo", _linked_blob(html_present))
             self.assertIn("연결된 지식", html_present)
 
+    def test_issue_panel_links_back_to_issue_db(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "056-dashboard.md").write_text("# Issue 056\n", encoding="utf-8")
+
+            html = project_memory.render_issue_panel(root, "056-dashboard")
+
+            self.assertIn('href="dashboard.html#issue-db"', html)
+            self.assertIn("이슈 DB로 돌아가기", html)
 
     def test_ko_sidecar_attached_and_not_listed_separately(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")

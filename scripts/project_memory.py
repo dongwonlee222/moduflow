@@ -1527,6 +1527,8 @@ ISSUE_PANEL_TEMPLATE = """<!DOCTYPE html>
 <style>
   :root { color-scheme: light dark; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0 auto; max-width: 820px; padding: 24px; background: #fff; color: #1a1a1a; line-height: 1.6; }
+  .back { display: inline-block; margin-bottom: 14px; color: #2a78d6; text-decoration: none; font-size: 13px; }
+  .back:hover { text-decoration: underline; }
   h1 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
   .sub { font-size: 13px; color: #888; margin: 0 0 20px; }
   .artifact { border: 1px solid #ddd; border-radius: 12px; padding: 8px 20px 16px; margin-bottom: 18px; }
@@ -1548,6 +1550,7 @@ ISSUE_PANEL_TEMPLATE = """<!DOCTYPE html>
 </style>
 </head>
 <body>
+<a class="back" href="dashboard.html#issue-db">← 이슈 DB로 돌아가기</a>
 <h1>__PANEL_TITLE__</h1>
 <p class="sub">__PANEL_SUB__</p>
 <div id="langtoggle" style="margin-bottom:14px;"></div>
