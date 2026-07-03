@@ -615,6 +615,30 @@ More detail contents here.
             self.assertIn("missing_spec", by_id["057-review"]["attention_flags"])
             self.assertIn("no_next", by_id["057-review"]["attention_flags"])
 
+    def test_collect_issue_table_promotes_artifact_complete_status(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "specs" / "034-done").mkdir(parents=True)
+            (root / "specs" / "035-review").mkdir(parents=True)
+            (root / "issues" / "034-done.md").write_text(
+                "# Issue: `034-done`\n\n**Status: backlog** — old issue file.\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "035-review.md").write_text(
+                "# Issue: `035-review`\n\n**Status: backlog** — old issue file.\n",
+                encoding="utf-8",
+            )
+            (root / "specs" / "034-done" / "release.md").write_text("# Release\n", encoding="utf-8")
+            (root / "specs" / "035-review" / "review.md").write_text("# Review\n", encoding="utf-8")
+
+            rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
+
+            self.assertEqual(rows["034-done"]["status"], "done")
+            self.assertEqual(rows["034-done"]["phase"], "release")
+            self.assertEqual(rows["035-review"]["status"], "review")
+
     def test_render_project_view_has_issue_db_tab_and_controls(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:

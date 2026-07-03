@@ -1039,7 +1039,20 @@ def _issue_phase_from_coverage(coverage):
     return "spec"
 
 
+def _issue_table_status(status, coverage):
+    raw_status = status or "backlog"
+    if raw_status in {"active", "blocked", "superseded"}:
+        return raw_status
+    if raw_status == "done" or coverage.get("release"):
+        return "done"
+    if raw_status == "review" or coverage.get("pr") or coverage.get("review"):
+        return "review"
+    return raw_status
+
+
 def _issue_attention_flags(status, next_command, coverage):
+    if status == "done":
+        return []
     flags = []
     if not coverage.get("spec"):
         flags.append("missing_spec")
@@ -1080,7 +1093,7 @@ def _collect_issue_table(root):
         text = issue_file.read_text(encoding="utf-8")
         info = graph_nodes.get(issue_id, {})
         coverage = _issue_artifact_coverage(project_root, issue_id)
-        status = info.get("status", "backlog")
+        status = _issue_table_status(info.get("status", "backlog"), coverage)
         next_command = _parse_next_command(text)
         rows.append({
             "id": issue_id,
