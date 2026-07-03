@@ -48,8 +48,8 @@ Active goal: `business-document-workflow`
 - Reason: The graph is useful for relationships, but PM workflow also needs dense list/table views for status, next action, missing artifacts, review readiness, and operational triage.
 - Confidence: medium
 - Dependency: 045 issue graph, 047 issue drill-down, 049 bilingual sidecars, current dashboard generator
-- Next command: `product:release 056-dashboard-database-list-view`
-- Status: approved; human review passed with `specs/056-dashboard-database-list-view/human-review.ko.md`, release next.
+- Next command: `product:status`
+- Status: done; released locally with `specs/056-dashboard-database-list-view/release.md` after human approval.
 
 ### `057-korean-human-review-packet`
 

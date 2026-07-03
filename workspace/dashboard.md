@@ -10,10 +10,11 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Active Issue
 
-- `056-dashboard-database-list-view` (phase: execute). Canonical: `issues/056-dashboard-database-list-view.md`.
+- None active. Run `product:status` to pick the next issue.
 
 ## Recently Completed
 
+- `056-dashboard-database-list-view`: released locally after human approval; dashboard now has an `이슈 DB` list view, Korean descriptions, issue detail Korean overview, Korean PR review packet generation, and GitHub PR preflight.
 - `034-memory-capture-and-sync-workflow`: released via PR #5; memory capture workflow now has review, PR, release, and Korean human-review packet artifacts, with follow-ups 056/057 registered.
 - `052-draft-pr-review-handoff`: PR flow now supports early Draft PR / local PR-ready state, refreshes `specs/<issue>/pr.md` after review, and carries dashboard + issue drill-down evidence into the PR handoff before human approval.
 - `051-autonomous-execute-review-visual-handoff`: execute/review flow now generates a review handoff, maps implementation/QA/PM-spec review to subagent-ready sections, requires verification, and surfaces the dashboard plus issue drill-down HTML for human visual inspection.
@@ -30,7 +31,6 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Queue (goal `visual-workbench`)
 
-- `056-dashboard-database-list-view`: add a Notion/Jira/Linear-inspired DB/list view alongside the issue graph so users can scan, filter, sort, and triage issue work without relying only on node topology. Benchmark captured in `knowledge/benchmarks/2026-07-03-dashboard-db-list-view-benchmark.md`.
 - `057-korean-human-review-packet`: generate a compact Korean review packet for PR/review/release gates so human approval does not require reading every English canonical artifact.
 
 ## Blockers

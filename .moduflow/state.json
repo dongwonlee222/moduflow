@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "release",
+  "phase": "select",
   "active_goal": "visual-workbench",
-  "active_issue": "056-dashboard-database-list-view",
+  "active_issue": "",
   "last_command": "product:execute 043",
-  "next_command": "product:release 056-dashboard-database-list-view",
+  "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-07-03"
 }

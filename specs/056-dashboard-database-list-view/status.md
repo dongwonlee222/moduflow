@@ -1,9 +1,9 @@
 # Status: Dashboard Database/List View
 
 Issue: `056-dashboard-database-list-view`
-Phase: human approved; release next
+Phase: released locally
 Updated: 2026-07-03
-Next: `product:release 056-dashboard-database-list-view`
+Next: `product:status`
 
 ## Implemented
 
@@ -41,7 +41,13 @@ Next: `product:release 056-dashboard-database-list-view`
 - Approver: Dongwon.
 - Approved: 2026-07-03.
 - Approval record: `workflow/records/2026-07-03-056-dashboard-database-list-view-approved.md`.
-- Next command: `product:release 056-dashboard-database-list-view`.
+- Next command: `product:status`.
+
+## Release
+
+- Release artifact: `specs/056-dashboard-database-list-view/release.md`.
+- Release status: released locally after human approval.
+- GitHub PR creation remains deferred by `gh` preflight failure in the current Codex environment.
 
 ## PR State
 
