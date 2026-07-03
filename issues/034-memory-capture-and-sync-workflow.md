@@ -1,5 +1,7 @@
 # Issue 034: Memory Capture And Sync Workflow
 
+**Status: done** — released 2026-07-03.
+
 ## Summary
 
 Design and implement a clearer long-term memory capture workflow so ModuFlow can propose, approve, store, retrieve, and optionally mirror project memories without mixing them with full deliverable artifacts.

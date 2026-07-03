@@ -1,5 +1,7 @@
 # Issue 021: Git Binding And Execution Backend
 
+**Status: done** — completed 2026-06-18.
+
 ## Summary
 
 Define how ModuFlow connects issues and loop steps to Git branch, commit, PR, release, and optional external execution backends such as Copilot Cloud Agent, Codex, Claude Code, OpenHands, or manual execution.

@@ -1,5 +1,7 @@
 # Issue 020: User-Facing Simple Loop UX
 
+**Status: done** — completed 2026-06-18.
+
 ## Summary
 
 Keep ModuFlow simple for plugin users by exposing a tiny natural-language surface while hiding goal, issue, spec, plan, worker, and Git machinery behind the loop.

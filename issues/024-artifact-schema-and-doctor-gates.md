@@ -1,5 +1,7 @@
 # Issue 024: Artifact Schema And Doctor Gates
 
+**Status: done** — complete.
+
 ## Summary
 
 Strengthen validation from file-existence checks to artifact relationship checks so ModuFlow can detect broken goal, issue, spec, task, worker, Git, dashboard, and roadmap links.

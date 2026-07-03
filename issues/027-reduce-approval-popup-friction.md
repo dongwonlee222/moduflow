@@ -1,5 +1,7 @@
 # Issue 027: Reduce Approval Popup Friction
 
+**Status: done** — complete.
+
 ## Summary
 
 Reduce repeated approval prompts by batching safe Git/GitHub operations, documenting expected prompts, and preferring in-process validation paths that avoid unnecessary shell, `.git`, network, or account writes.

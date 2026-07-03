@@ -1,5 +1,7 @@
 # Issue 023: Worker Routing And Isolation
 
+**Status: done** — complete.
+
 ## Summary
 
 Upgrade worker planning so tasks route to the right worker and parallel execution is based on actual file and dependency isolation, not just worker domain count.

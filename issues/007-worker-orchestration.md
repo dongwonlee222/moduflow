@@ -1,5 +1,7 @@
 # Issue 007: Worker Orchestration
 
+**Status: done** — released artifact exists.
+
 ## Summary
 
 Make worker assignment and parallel execution decisions explicit so ModuFlow can safely route issue work to PM, design, data, implementation, QA, and release workers.
