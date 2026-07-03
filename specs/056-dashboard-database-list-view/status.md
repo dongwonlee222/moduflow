@@ -1,9 +1,9 @@
 # Status: Dashboard Database/List View
 
 Issue: `056-dashboard-database-list-view`
-Phase: execute complete; review next
+Phase: review complete; PR next
 Updated: 2026-07-03
-Next: `product:review 056-dashboard-database-list-view`
+Next: `product:pr 056-dashboard-database-list-view`
 
 ## Implemented
 
@@ -26,6 +26,14 @@ Next: `product:review 056-dashboard-database-list-view`
 - `python3 scripts/validate_project_artifacts.py .`
 - `python3 scripts/validate_moduflow.py .`
 - `python3 scripts/release_check.py .`
+
+## Review
+
+- Result: passed; ready for PR.
+- Review artifact: `specs/056-dashboard-database-list-view/review.md`.
+- Review handoff: `specs/056-dashboard-database-list-view/review-handoff.md`.
+- PR handoff: `specs/056-dashboard-database-list-view/pr.md`.
+- No blocking or important review findings.
 
 ## Notes
 

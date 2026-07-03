@@ -52,5 +52,5 @@ Plan: `specs/056-dashboard-database-list-view/plan.md`
 
 - [x] 구현 요약을 issue session log에 기록.
 - [x] `workspace/roadmap.md`, `workspace/loop-state.json` 업데이트.
-- [ ] execute 후 review artifacts 준비.
+- [x] execute 후 review artifacts 준비.
 - [x] 구현 후 다음 명령: `product:review 056-dashboard-database-list-view`.

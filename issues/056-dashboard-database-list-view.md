@@ -1,6 +1,6 @@
 # Issue: `056-dashboard-database-list-view`
 
-**Status: active** — implementation complete 2026-07-03; review next.
+**Status: active** — review complete 2026-07-03; PR next.
 
 ## Outcome
 
@@ -70,6 +70,7 @@ Initial lessons:
 - 2026-07-03: Added screen composition design after comparing Notion, Jira, Linear, and GitHub Projects patterns. Default view should be `이슈 DB`; graphs remain relationship/knowledge views.
 - 2026-07-03: Added execution plan and task checklist for the issue row collector, static table UI, tests, manual dashboard QA, and release gates.
 - 2026-07-03: Implemented issue DB row collection and static dashboard table UI. Generated memory/dashboard.html, opened it locally, and passed automated tests plus release checks. Browser automation was unavailable because the local Playwright browser binary was missing and Chrome channel exited under sandbox constraints.
+- 2026-07-03: Completed product review. No blocking or important findings; refreshed review handoff and PR handoff with dashboard/issue-panel evidence.
 
 ## Links
 
@@ -84,8 +85,12 @@ Initial lessons:
 - Tasks KO: `specs/056-dashboard-database-list-view/tasks.ko.md`
 - Status: `specs/056-dashboard-database-list-view/status.md`
 - Status KO: `specs/056-dashboard-database-list-view/status.ko.md`
+- Review: `specs/056-dashboard-database-list-view/review.md`
+- Review KO: `specs/056-dashboard-database-list-view/review.ko.md`
+- Review Handoff: `specs/056-dashboard-database-list-view/review-handoff.md`
+- PR Handoff: `specs/056-dashboard-database-list-view/pr.md`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:review 056-dashboard-database-list-view`
+`/product:pr 056-dashboard-database-list-view`

@@ -3,9 +3,9 @@
 > 이 파일은 영문 `status.md`의 한글 읽기용 sidecar입니다. canonical은 영문입니다.
 
 Issue: `056-dashboard-database-list-view`
-Phase: execute complete; review next
+Phase: review complete; PR next
 Updated: 2026-07-03
-Next: `product:review 056-dashboard-database-list-view`
+Next: `product:pr 056-dashboard-database-list-view`
 
 ## 구현됨
 
@@ -28,6 +28,14 @@ Next: `product:review 056-dashboard-database-list-view`
 - `python3 scripts/validate_project_artifacts.py .`
 - `python3 scripts/validate_moduflow.py .`
 - `python3 scripts/release_check.py .`
+
+## 리뷰
+
+- 결과: 통과; PR 준비 가능.
+- 리뷰 산출물: `specs/056-dashboard-database-list-view/review.md`.
+- 리뷰 핸드오프: `specs/056-dashboard-database-list-view/review-handoff.md`.
+- PR 핸드오프: `specs/056-dashboard-database-list-view/pr.md`.
+- blocking 또는 important 리뷰 이슈 없음.
 
 ## 메모
 
