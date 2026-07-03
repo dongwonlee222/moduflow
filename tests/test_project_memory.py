@@ -573,7 +573,49 @@ More detail contents here.
             self.assertIn("position", child)
             self.assertEqual(n, 2)
 
-    def test_render_project_view_has_two_tabs_and_korean(self):
+    def test_collect_issue_table_includes_artifacts_flags_and_memory(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "specs" / "056-dashboard").mkdir(parents=True)
+            (root / "issues" / "056-dashboard.md").write_text(
+                "# Issue: `056-dashboard`\n\n"
+                "**Status: active** — Part of goal `visual-workbench`.\n\n"
+                "## Next Command\n\n"
+                "`/product:execute 056-dashboard`\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "057-review.md").write_text(
+                "# Issue: `057-review`\n\n"
+                "**Status: backlog** — created.\n\n",
+                encoding="utf-8",
+            )
+            (root / "specs" / "056-dashboard" / "spec.md").write_text("# Spec\n", encoding="utf-8")
+            (root / "specs" / "056-dashboard" / "spec.ko.md").write_text("# 명세\n", encoding="utf-8")
+            (root / "specs" / "056-dashboard" / "plan.md").write_text("# Plan\n", encoding="utf-8")
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+            project_memory.create_memory_entry(
+                root, kind="decision", title="Dash choice", summary="s", issue_id="056-dashboard")
+
+            rows = project_memory._collect_issue_table(root)
+            by_id = {row["id"]: row for row in rows}
+
+            self.assertEqual([row["id"] for row in rows], ["056-dashboard", "057-review"])
+            self.assertEqual(by_id["056-dashboard"]["number"], 56)
+            self.assertEqual(by_id["056-dashboard"]["status"], "active")
+            self.assertEqual(by_id["056-dashboard"]["goal"], "visual-workbench")
+            self.assertEqual(by_id["056-dashboard"]["next_command"], "/product:execute 056-dashboard")
+            self.assertEqual(by_id["056-dashboard"]["href"], "issue-056-dashboard.html")
+            self.assertTrue(by_id["056-dashboard"]["artifact_coverage"]["spec"])
+            self.assertTrue(by_id["056-dashboard"]["artifact_coverage"]["spec_ko"])
+            self.assertTrue(by_id["056-dashboard"]["artifact_coverage"]["plan"])
+            self.assertEqual(by_id["056-dashboard"]["linked_memory_count"], 1)
+            self.assertIn("no_review", by_id["056-dashboard"]["attention_flags"])
+            self.assertIn("missing_spec", by_id["057-review"]["attention_flags"])
+            self.assertIn("no_next", by_id["057-review"]["attention_flags"])
+
+    def test_render_project_view_has_issue_db_tab_and_controls(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -584,11 +626,18 @@ More detail contents here.
 
             html = project_memory.render_project_view(root)
 
+            self.assertIn('id="issue-db"', html)
             self.assertIn('id="cy-issues"', html)
             self.assertIn('id="cy-memory"', html)
+            self.assertIn("이슈 DB", html)
             self.assertIn("이슈 그래프", html)
             self.assertIn("지식 그래프", html)
+            self.assertIn("const ISSUE_ROWS =", html)
             self.assertIn("const ISSUE_ELEMENTS =", html)
+            self.assertIn('id="issue-search"', html)
+            self.assertIn('data-view="missing"', html)
+            self.assertIn('id="issue-sort"', html)
+            self.assertIn("issue-042-new.html", html)
 
     def test_issue_panel_includes_linked_memory_section_only_when_present(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")

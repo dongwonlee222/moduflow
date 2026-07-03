@@ -20,20 +20,20 @@
     "040-automatic-memory-candidate-capture"
   ],
   "active_issue_id": "056-dashboard-database-list-view",
-  "phase": "execute",
+  "phase": "review",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "done",
-  "next_command": "product:execute 056-dashboard-database-list-view",
+  "next_command": "product:review 056-dashboard-database-list-view",
   "attempts": {
-    "command": "product:execute 056-dashboard-database-list-view",
+    "command": "product:review 056-dashboard-database-list-view",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-03"
   },
   "blocker": null,
-  "last_action": "created plan, tasks, and Korean reading sidecars for 056-dashboard-database-list-view",
-  "last_verification": "validate_project_artifacts, validate_moduflow, and release_check passed for 056 plan artifacts",
+  "last_action": "implemented issue DB dashboard table for 056-dashboard-database-list-view and opened generated dashboard for human review",
+  "last_verification": "166 tests, validate_project_artifacts, validate_moduflow, release_check, generated HTML checks, and JS syntax parse passed",
   "updated_at": "2026-07-03",
   "git_binding": {
     "mode": "git-files",

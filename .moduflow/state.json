@@ -4,7 +4,7 @@
   "active_goal": "visual-workbench",
   "active_issue": "056-dashboard-database-list-view",
   "last_command": "product:execute 043",
-  "next_command": "product:status",
+  "next_command": "product:review 056-dashboard-database-list-view",
   "blockers": [],
   "updated_at": "2026-07-03"
 }

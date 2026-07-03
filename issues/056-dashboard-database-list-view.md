@@ -1,6 +1,6 @@
 # Issue: `056-dashboard-database-list-view`
 
-**Status: active** — plan complete 2026-07-03.
+**Status: active** — implementation complete 2026-07-03; review next.
 
 ## Outcome
 
@@ -26,13 +26,13 @@ Initial lessons:
 - Notion: one database can expose multiple views; table/list/board/timeline/calendar/gallery/chart each serve different reading goals, with per-view filters, sorts, groups, property visibility, and side peek.
 - Jira: PM tracking expects multiple views of the same work, including boards, lists, timeline, and calendars, plus dependency management and status/risk reporting.
 - Linear: durable custom views save filtered issue/project/initiative lists, can be shared/favorited, and can be created from filtered boards or lists.
-- ModuFlow implication: `memory/dashboard.html` should evolve from graph-first only into a workbench with persistent tabs: `이슈 그래프`, `이슈 DB`, `칸반`, `타임라인`, `지식 그래프`.
+- ModuFlow implication: memory/dashboard.html should evolve from graph-first only into a workbench with persistent tabs: `이슈 그래프`, `이슈 DB`, `칸반`, `타임라인`, `지식 그래프`.
 
 ## Scope
 
 ### In
 
-- Add a list/table issue view to `memory/dashboard.html`, derived from issue files, spec folders, `.moduflow/state.json`, `workspace/roadmap.md`, and available memory links.
+- Add a list/table issue view to memory/dashboard.html, derived from issue files, spec folders, `.moduflow/state.json`, `workspace/roadmap.md`, and available memory links.
 - Include PM-useful columns: issue id, title, status, phase, goal, next command, priority/confidence when available, linked memory count, artifact coverage, PR/review status, updated date.
 - Add filter/sort/group controls for status, goal, issue range, text search, and missing-artifact signals.
 - Add click-through from table rows to the existing issue drill-down HTML.
@@ -69,6 +69,7 @@ Initial lessons:
 - 2026-07-03: Wrote the canonical spec and Korean reading sidecar. Next step is implementation planning for the static dashboard table collector and `이슈 DB` tab.
 - 2026-07-03: Added screen composition design after comparing Notion, Jira, Linear, and GitHub Projects patterns. Default view should be `이슈 DB`; graphs remain relationship/knowledge views.
 - 2026-07-03: Added execution plan and task checklist for the issue row collector, static table UI, tests, manual dashboard QA, and release gates.
+- 2026-07-03: Implemented issue DB row collection and static dashboard table UI. Generated memory/dashboard.html, opened it locally, and passed automated tests plus release checks. Browser automation was unavailable because the local Playwright browser binary was missing and Chrome channel exited under sandbox constraints.
 
 ## Links
 
@@ -81,8 +82,10 @@ Initial lessons:
 - Plan KO: `specs/056-dashboard-database-list-view/plan.ko.md`
 - Tasks: `specs/056-dashboard-database-list-view/tasks.md`
 - Tasks KO: `specs/056-dashboard-database-list-view/tasks.ko.md`
+- Status: `specs/056-dashboard-database-list-view/status.md`
+- Status KO: `specs/056-dashboard-database-list-view/status.ko.md`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:execute 056-dashboard-database-list-view`
+`/product:review 056-dashboard-database-list-view`
