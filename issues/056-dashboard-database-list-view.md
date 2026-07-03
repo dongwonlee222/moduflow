@@ -1,6 +1,6 @@
 # Issue: `056-dashboard-database-list-view`
 
-**Status: backlog** — created 2026-07-03.
+**Status: active** — spec complete 2026-07-03.
 
 ## Outcome
 
@@ -32,7 +32,7 @@ Initial lessons:
 
 ### In
 
-- Add a list/table issue view to `memory/dashboard.html`, derived from `issues/*.md`, `specs/*`, `.moduflow/state.json`, `workspace/roadmap.md`, and available memory links.
+- Add a list/table issue view to `memory/dashboard.html`, derived from issue files, spec folders, `.moduflow/state.json`, `workspace/roadmap.md`, and available memory links.
 - Include PM-useful columns: issue id, title, status, phase, goal, next command, priority/confidence when available, linked memory count, artifact coverage, PR/review status, updated date.
 - Add filter/sort/group controls for status, goal, issue range, text search, and missing-artifact signals.
 - Add click-through from table rows to the existing issue drill-down HTML.
@@ -51,7 +51,7 @@ Initial lessons:
 - `product:dashboard` generates a dashboard with at least `이슈 그래프`, `이슈 DB`, and `지식 그래프` tabs.
 - The DB/list view shows all issue files with status, title, next command, artifact coverage, and linked memory count.
 - Users can filter by status and search by issue id/title from static HTML.
-- Table rows link to `memory/issue-<id>.html` when the drill-down exists or can be generated.
+- Table rows link to the generated per-issue drill-down HTML when it exists or can be generated.
 - Tests cover issue table data extraction and rendered HTML controls.
 - `python3 scripts/release_check.py .` passes.
 
@@ -66,12 +66,15 @@ Initial lessons:
 ## Sessions
 
 - 2026-07-03: User observed that the dashboard needs more than node structure; it also needs a list/database-style view inspired by Notion, Jira, and Linear. Registered as backlog issue after initial benchmarking.
+- 2026-07-03: Wrote the canonical spec and Korean reading sidecar. Next step is implementation planning for the static dashboard table collector and `이슈 DB` tab.
 
 ## Links
 
 - Benchmark: `knowledge/benchmarks/2026-07-03-dashboard-db-list-view-benchmark.md`
+- Spec: `specs/056-dashboard-database-list-view/spec.md`
+- Spec KO: `specs/056-dashboard-database-list-view/spec.ko.md`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:spec 056-dashboard-database-list-view`
+`/product:plan 056-dashboard-database-list-view`
