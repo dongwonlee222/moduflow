@@ -4,7 +4,7 @@ Issue: `034-memory-capture-and-sync-workflow`
 
 ## Current State
 
-Implementation complete; ready for review.
+Review complete; ready for PR/release handling.
 
 ## Done
 
@@ -16,11 +16,17 @@ Implementation complete; ready for review.
   `memory/decisions/2026-06-26-use-git-canonical-memory-with-optional-adapters.md`.
 - Replaced the placeholder plan with a detailed implementation plan covering candidate storage, approval, enriched retrieval, validation, and PM-friendly command documentation.
 - Implemented candidate storage, candidate approval, enriched retrieval metadata, export guidance, memory link validation, and PM-friendly `product:memory` documentation.
+- Generated review handoff: `specs/034-memory-capture-and-sync-workflow/review-handoff.md`.
+- Generated PR handoff: `specs/034-memory-capture-and-sync-workflow/pr.md`.
+- Completed review notes: `specs/034-memory-capture-and-sync-workflow/review.md`.
+- Generated visual review surfaces:
+  - `memory/dashboard.html`
+  - `memory/issue-034-memory-capture-and-sync-workflow.html`
 
 ## Pending
 
-- Review implementation.
-- Decide whether to release as a patch version after review.
+- Human PR/release approval.
+- Optional GitHub Draft PR mirroring after `gh auth login -h github.com`.
 
 ## Verification
 
@@ -31,7 +37,20 @@ Implementation complete; ready for review.
 - Version metadata updated to `0.2.13` / `0.2.13+codex.20260626040213`.
 - `python3 scripts/release_check.py .` passed.
 - `python3 scripts/register_codex_personal_marketplace.py .` created Codex cache for the 0.2.13 package.
+- 2026-07-03 review verification:
+  - `python3 -m unittest tests.test_project_memory -v` passed (34 tests).
+  - `python3 scripts/validate_project_artifacts.py .` passed.
+  - `python3 scripts/validate_moduflow.py .` passed.
+  - `python3 scripts/project_memory.py . --export-guidance google-drive` passed and reported `memory/` as canonical.
+  - `python3 scripts/project_memory.py . --dashboard` generated `memory/dashboard.html`.
+  - `python3 scripts/project_memory.py . --issue 034-memory-capture-and-sync-workflow` generated `memory/issue-034-memory-capture-and-sync-workflow.html`.
+  - `python3 scripts/project_execution.py . --issue-id 034-memory-capture-and-sync-workflow --review-handoff --write` generated `specs/034-memory-capture-and-sync-workflow/review-handoff.md`.
+  - `python3 scripts/project_pr.py . --issue-id 034-memory-capture-and-sync-workflow --write` generated `specs/034-memory-capture-and-sync-workflow/pr.md`.
+  - `python3 scripts/release_check.py .` passed.
+- 2026-07-03 PR preparation:
+  - `python3 scripts/project_workflow.py . --pr-state --issue-id 034-memory-capture-and-sync-workflow --pr local:034-memory-capture-and-sync-workflow:draft-pr-ready --reviewer Reviewer` recorded local PR-ready state.
+  - `gh auth status` failed because configured GitHub tokens are invalid; GitHub Draft PR mirroring is deferred.
 
 ## Next Command
 
-`product:review 034-memory-capture-and-sync-workflow`
+`product:release 034-memory-capture-and-sync-workflow` after human approval, or `gh auth login -h github.com` if a GitHub Draft PR should be created first.

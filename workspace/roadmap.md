@@ -39,8 +39,17 @@ Active goal: `business-document-workflow`
 - Reason: The memory prototype works, but users need clear save triggers, a reviewable capture flow, search/retrieval behavior, and Google Drive or similar mirror options that do not replace Git as the source of truth.
 - Confidence: high
 - Dependency: project memory layer, business document workflow, artifact schema gates, and external memory pattern review
-- Next command: `product:review 034-memory-capture-and-sync-workflow`
-- Status: implementation complete; review needed before release/versioning.
+- Next command: `product:release 034-memory-capture-and-sync-workflow` after human approval, or `gh auth login -h github.com` if a GitHub Draft PR should be created first.
+- Status: review complete; release_check passed; local PR-ready marker recorded; GitHub PR mirroring blocked by expired `gh` auth.
+
+### `056-dashboard-database-list-view`
+
+- Outcome: Dashboard gains a Notion/Jira/Linear-inspired DB/list view alongside the issue graph, so users can scan, filter, sort, and triage issues without relying only on node topology.
+- Reason: The graph is useful for relationships, but PM workflow also needs dense list/table views for status, next action, missing artifacts, review readiness, and operational triage.
+- Confidence: medium
+- Dependency: 045 issue graph, 047 issue drill-down, 049 bilingual sidecars, current dashboard generator
+- Next command: `product:spec 056-dashboard-database-list-view`
+- Status: backlog; initial benchmark captured in `knowledge/benchmarks/2026-07-03-dashboard-db-list-view-benchmark.md`.
 
 ### `035-team-issue-branch-pr-workflow`
 

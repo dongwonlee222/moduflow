@@ -19,22 +19,22 @@
     "037-delegation-level-gate-and-memory-context-graph",
     "040-automatic-memory-candidate-capture"
   ],
-  "active_issue_id": "040-automatic-memory-candidate-capture",
-  "phase": "done",
+  "active_issue_id": "034-memory-capture-and-sync-workflow",
+  "phase": "pr",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "done",
-  "next_command": "product:status",
+  "next_command": "product:release 034-memory-capture-and-sync-workflow",
   "attempts": {
-    "command": "product:status",
+    "command": "product:release 034-memory-capture-and-sync-workflow",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-06-27"
+    "last_changed_at": "2026-07-03"
   },
   "blocker": null,
-  "last_action": "implemented automatic memory candidate capture and CLI options",
-  "last_verification": "137 unit tests passed, artifact validation green",
-  "updated_at": "2026-06-27",
+  "last_action": "recorded local PR-ready state for 034-memory-capture-and-sync-workflow; GitHub PR mirroring blocked by expired gh auth",
+  "last_verification": "review and release_check passed; workflow/team-state.json has local PR marker",
+  "updated_at": "2026-07-03",
   "git_binding": {
     "mode": "git-files",
     "branch": null,

@@ -29,7 +29,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Queue (goal `visual-workbench`)
 
-- Empty — visual-workbench follow-ups `050`, `051`, and `052` are done.
+- `056-dashboard-database-list-view`: add a Notion/Jira/Linear-inspired DB/list view alongside the issue graph so users can scan, filter, sort, and triage issue work without relying only on node topology. Benchmark captured in `knowledge/benchmarks/2026-07-03-dashboard-db-list-view-benchmark.md`.
 
 ## Blockers
 

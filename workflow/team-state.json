@@ -15,6 +15,21 @@
       "last_handoff": "PR ready for review: local:035-team-issue-branch-pr-workflow",
       "next_command": "product:status",
       "updated_at": "2026-06-26"
+    },
+    {
+      "issue_id": "034-memory-capture-and-sync-workflow",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Reviewer",
+      "status": "review",
+      "branch": "",
+      "pr": "local:034-memory-capture-and-sync-workflow:draft-pr-ready",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: local:034-memory-capture-and-sync-workflow:draft-pr-ready",
+      "next_command": "product:review 034-memory-capture-and-sync-workflow",
+      "updated_at": "2026-07-03"
     }
   ]
 }
