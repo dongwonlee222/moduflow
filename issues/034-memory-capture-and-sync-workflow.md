@@ -104,7 +104,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - Review: `specs/034-memory-capture-and-sync-workflow/review.md`
 - Review Handoff: `specs/034-memory-capture-and-sync-workflow/review-handoff.md`
 - PR Handoff: `specs/034-memory-capture-and-sync-workflow/pr.md`
-- Local PR-ready marker: `local:034-memory-capture-and-sync-workflow:draft-pr-ready`
+- Draft PR: `https://github.com/dongwonlee222/moduflow/pull/5`
 - Sessions: `sessions/034-memory-capture-and-sync-workflow/`
 - Roadmap: `workspace/roadmap.md`
 - projectmem: `https://github.com/riponcm/projectmem`
@@ -114,4 +114,4 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 ## Next Command
 
-`/product:release 034-memory-capture-and-sync-workflow` after human approval, or `gh auth login -h github.com` if a GitHub Draft PR should be created first.
+`/product:release 034-memory-capture-and-sync-workflow` after human approval.

@@ -32,8 +32,8 @@
     "last_changed_at": "2026-07-03"
   },
   "blocker": null,
-  "last_action": "recorded local PR-ready state for 034-memory-capture-and-sync-workflow; GitHub PR mirroring blocked by expired gh auth",
-  "last_verification": "review and release_check passed; workflow/team-state.json has local PR marker",
+  "last_action": "created Draft PR for 034-memory-capture-and-sync-workflow at https://github.com/dongwonlee222/moduflow/pull/5",
+  "last_verification": "review and release_check passed; workflow/team-state.json has GitHub Draft PR URL",
   "updated_at": "2026-07-03",
   "git_binding": {
     "mode": "git-files",

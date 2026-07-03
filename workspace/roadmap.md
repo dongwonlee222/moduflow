@@ -39,8 +39,8 @@ Active goal: `business-document-workflow`
 - Reason: The memory prototype works, but users need clear save triggers, a reviewable capture flow, search/retrieval behavior, and Google Drive or similar mirror options that do not replace Git as the source of truth.
 - Confidence: high
 - Dependency: project memory layer, business document workflow, artifact schema gates, and external memory pattern review
-- Next command: `product:release 034-memory-capture-and-sync-workflow` after human approval, or `gh auth login -h github.com` if a GitHub Draft PR should be created first.
-- Status: review complete; release_check passed; local PR-ready marker recorded; GitHub PR mirroring blocked by expired `gh` auth.
+- Next command: `product:release 034-memory-capture-and-sync-workflow` after human approval.
+- Status: review complete; release_check passed; Draft PR created at `https://github.com/dongwonlee222/moduflow/pull/5`.
 
 ### `056-dashboard-database-list-view`
 

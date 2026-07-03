@@ -23,11 +23,11 @@
       "reviewer": "Reviewer",
       "status": "review",
       "branch": "",
-      "pr": "local:034-memory-capture-and-sync-workflow:draft-pr-ready",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/5",
       "lock_state": "active",
       "locked_by": "",
       "blocker": "",
-      "last_handoff": "PR ready for review: local:034-memory-capture-and-sync-workflow:draft-pr-ready",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/5",
       "next_command": "product:review 034-memory-capture-and-sync-workflow",
       "updated_at": "2026-07-03"
     }

@@ -26,7 +26,6 @@ Review complete; ready for PR/release handling.
 ## Pending
 
 - Human PR/release approval.
-- Optional GitHub Draft PR mirroring after `gh auth login -h github.com`.
 
 ## Verification
 
@@ -49,8 +48,9 @@ Review complete; ready for PR/release handling.
   - `python3 scripts/release_check.py .` passed.
 - 2026-07-03 PR preparation:
   - `python3 scripts/project_workflow.py . --pr-state --issue-id 034-memory-capture-and-sync-workflow --pr local:034-memory-capture-and-sync-workflow:draft-pr-ready --reviewer Reviewer` recorded local PR-ready state.
-  - `gh auth status` failed because configured GitHub tokens are invalid; GitHub Draft PR mirroring is deferred.
+  - `gh api repos/dongwonlee222/moduflow/pulls ...` created Draft PR `https://github.com/dongwonlee222/moduflow/pull/5`.
+  - `python3 scripts/project_workflow.py . --pr-state --issue-id 034-memory-capture-and-sync-workflow --pr https://github.com/dongwonlee222/moduflow/pull/5 --reviewer Reviewer` updated team workflow state.
 
 ## Next Command
 
-`product:release 034-memory-capture-and-sync-workflow` after human approval, or `gh auth login -h github.com` if a GitHub Draft PR should be created first.
+`product:release 034-memory-capture-and-sync-workflow` after human approval.
