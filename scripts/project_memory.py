@@ -1807,14 +1807,37 @@ def _ko_sidecar(path):
     return ko.read_text(encoding="utf-8") if ko.is_file() else None
 
 
+def _issue_title_from_text(text, fallback):
+    m_title = re.search(r"^#\s+(.+)$", text or "", re.M)
+    if not m_title:
+        return fallback
+    title = re.sub(r"^Issue:\s*", "", m_title.group(1).strip())
+    return title.replace("`", "").strip() or fallback
+
+
+def _korean_overview_artifact(root, issue_id, issue_text):
+    overrides = _issue_description_overrides(root)
+    summary_ko = overrides.get(issue_id) or _issue_summary_ko(root, issue_id, issue_text)
+    if not summary_ko:
+        return None
+    title = _issue_title_from_text(issue_text, issue_id)
+    ko = f"# 한글 개요\n\n## 이슈\n\n{title}\n\n## 설명\n\n{summary_ko}\n"
+    return {"name": "korean-overview.ko.md", "label": "한글 개요",
+            "md": "", "ko": ko, "ko_only": True}
+
+
 def _collect_issue_artifacts(root, issue_id):
     root = Path(root).resolve()
     slug = _resolve_issue_slug(root, issue_id)
     artifacts = []
     issue_file = root / "issues" / f"{slug}.md"
+    issue_text = issue_file.read_text(encoding="utf-8") if issue_file.is_file() else ""
+    ko_overview = _korean_overview_artifact(root, slug, issue_text)
+    if ko_overview:
+        artifacts.append(ko_overview)
     if issue_file.is_file():
         artifacts.append({"name": "issue", "label": "Issue",
-                          "md": issue_file.read_text(encoding="utf-8"), "ko": _ko_sidecar(issue_file)})
+                          "md": issue_text, "ko": _ko_sidecar(issue_file)})
     spec_dir = root / "specs" / slug
     if spec_dir.is_dir():
         seen = set()

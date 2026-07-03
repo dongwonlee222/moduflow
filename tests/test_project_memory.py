@@ -811,6 +811,31 @@ More detail contents here.
             self.assertIn("한글 검토 패킷", html)
             self.assertIn('id="langtoggle" class="lang-toggle">', html)
 
+    def test_issue_panel_uses_korean_description_overlay(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "workspace").mkdir()
+            (root / "issues" / "058-overlay.md").write_text(
+                "# Issue: `058-overlay`\n\n"
+                "## Summary\n\n"
+                "English detail body.\n",
+                encoding="utf-8",
+            )
+            (root / "workspace" / "issue-descriptions.ko.json").write_text(
+                '{"058-overlay": "상세 페이지에서도 보이는 한글 설명입니다."}',
+                encoding="utf-8",
+            )
+
+            slug, artifacts = project_memory._collect_issue_artifacts(root, "058-overlay")
+            html = project_memory.render_issue_panel(root, "058-overlay")
+
+            self.assertEqual(slug, "058-overlay")
+            self.assertTrue(any(a["name"] == "korean-overview.ko.md" and a["ko_only"] for a in artifacts))
+            self.assertIn("상세 페이지에서도 보이는 한글 설명입니다.", html)
+            self.assertIn('id="langtoggle" class="lang-toggle">', html)
+
     def test_list_memory_ids_returns_all_and_filters_by_kind(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:
