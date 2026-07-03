@@ -14,6 +14,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Recently Completed
 
+- `034-memory-capture-and-sync-workflow`: released via PR #5; memory capture workflow now has review, PR, release, and Korean human-review packet artifacts, with follow-ups 056/057 registered.
 - `052-draft-pr-review-handoff`: PR flow now supports early Draft PR / local PR-ready state, refreshes `specs/<issue>/pr.md` after review, and carries dashboard + issue drill-down evidence into the PR handoff before human approval.
 - `051-autonomous-execute-review-visual-handoff`: execute/review flow now generates a review handoff, maps implementation/QA/PM-spec review to subagent-ready sections, requires verification, and surfaces the dashboard plus issue drill-down HTML for human visual inspection.
 - `050-repo-sync-preflight`: repo freshness preflight for `product:sync`/`product:status`; detects gone upstream branches, local branches behind `origin/main`, remote-only issue files, no-upstream work branches, and dirty worktrees before trusting local Git-file artifacts.

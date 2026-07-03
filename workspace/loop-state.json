@@ -19,21 +19,21 @@
     "037-delegation-level-gate-and-memory-context-graph",
     "040-automatic-memory-candidate-capture"
   ],
-  "active_issue_id": "034-memory-capture-and-sync-workflow",
-  "phase": "pr",
+  "active_issue_id": "056-dashboard-database-list-view",
+  "phase": "spec",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "done",
-  "next_command": "product:release 034-memory-capture-and-sync-workflow",
+  "next_command": "product:spec 056-dashboard-database-list-view",
   "attempts": {
-    "command": "product:release 034-memory-capture-and-sync-workflow",
+    "command": "product:spec 056-dashboard-database-list-view",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-03"
   },
   "blocker": null,
-  "last_action": "added Korean human-review packet for 034 and registered 057-korean-human-review-packet",
-  "last_verification": "pending validation after packet registration",
+  "last_action": "released 034-memory-capture-and-sync-workflow via PR #5 and advanced next work to 056-dashboard-database-list-view",
+  "last_verification": "PR #5 merged; release notes recorded",
   "updated_at": "2026-07-03",
   "git_binding": {
     "mode": "git-files",

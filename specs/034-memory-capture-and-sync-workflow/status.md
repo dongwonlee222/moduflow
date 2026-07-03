@@ -4,7 +4,7 @@ Issue: `034-memory-capture-and-sync-workflow`
 
 ## Current State
 
-Review complete; ready for PR/release handling.
+Released into `main` through PR #5.
 
 ## Done
 
@@ -19,13 +19,14 @@ Review complete; ready for PR/release handling.
 - Generated review handoff: `specs/034-memory-capture-and-sync-workflow/review-handoff.md`.
 - Generated PR handoff: `specs/034-memory-capture-and-sync-workflow/pr.md`.
 - Completed review notes: `specs/034-memory-capture-and-sync-workflow/review.md`.
+- Completed release notes: `specs/034-memory-capture-and-sync-workflow/release.md`.
 - Generated visual review surfaces:
   - `memory/dashboard.html`
   - `memory/issue-034-memory-capture-and-sync-workflow.html`
 
 ## Pending
 
-- Human PR/release approval.
+- None for Issue 034.
 
 ## Verification
 
@@ -50,7 +51,10 @@ Review complete; ready for PR/release handling.
   - `python3 scripts/project_workflow.py . --pr-state --issue-id 034-memory-capture-and-sync-workflow --pr local:034-memory-capture-and-sync-workflow:draft-pr-ready --reviewer Reviewer` recorded local PR-ready state.
   - `gh api repos/dongwonlee222/moduflow/pulls ...` created Draft PR `https://github.com/dongwonlee222/moduflow/pull/5`.
   - `python3 scripts/project_workflow.py . --pr-state --issue-id 034-memory-capture-and-sync-workflow --pr https://github.com/dongwonlee222/moduflow/pull/5 --reviewer Reviewer` updated team workflow state.
+- 2026-07-03 release:
+  - PR #5 merged into `main` with merge commit `eefa3cfe261e2beb59f632edfc727b3a716cc226`.
+  - Release notes written to `specs/034-memory-capture-and-sync-workflow/release.md`.
 
 ## Next Command
 
-`product:release 034-memory-capture-and-sync-workflow` after human approval.
+`product:spec 056-dashboard-database-list-view`

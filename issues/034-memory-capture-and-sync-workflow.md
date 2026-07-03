@@ -12,7 +12,7 @@ Design and implement a clearer long-term memory capture workflow so ModuFlow can
 
 ## Lifecycle
 
-- Phase: done
+- Phase: released
 - Created: 2026-06-26
 - Started: 2026-06-26
 - Target End:
@@ -106,6 +106,7 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - PR Handoff: `specs/034-memory-capture-and-sync-workflow/pr.md`
 - Human Review (KO): `specs/034-memory-capture-and-sync-workflow/human-review.ko.md`
 - Draft PR: `https://github.com/dongwonlee222/moduflow/pull/5`
+- Release: `specs/034-memory-capture-and-sync-workflow/release.md`
 - Sessions: `sessions/034-memory-capture-and-sync-workflow/`
 - Roadmap: `workspace/roadmap.md`
 - projectmem: `https://github.com/riponcm/projectmem`
@@ -115,4 +116,4 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 
 ## Next Command
 
-`/product:release 034-memory-capture-and-sync-workflow` after human approval.
+`/product:spec 056-dashboard-database-list-view`
