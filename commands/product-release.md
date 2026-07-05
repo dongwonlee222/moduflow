@@ -10,12 +10,13 @@ Prepare release.
 ## Do
 
 1. Confirm merged PR, version, deploy target, rollback path, and post-release checks.
-2. Confirm `specs/<issue>/human-review.ko.md` exists and was used as the first human approval surface.
-3. Confirm human approval evidence is recorded before release. The evidence must identify who reviewed the dashboard, issue detail, PR diff or local change scope, verification result, and release readiness.
-4. Hold release if the Korean packet is missing, stale, or does not include verification, hold criteria, and approval checklist.
-5. Run `scripts/release_check.py .` before publishing a plugin/package update.
-6. Save to `specs/<issue>/release.md`.
-7. Update roadmap and status.
+2. Before any local `git commit`/`push` this step needs, run `python3 scripts/project_git_handoff.py <project-path>` first. If `mode` is `github-api-commit`, use the GitHub API instead of local Git; only ask the user to run terminal Git commands when `mode` is `blocked` (see `/product:pr`'s Commit Capability step for the full contract).
+3. Confirm `specs/<issue>/human-review.ko.md` exists and was used as the first human approval surface.
+4. Confirm human approval evidence is recorded before release. The evidence must identify who reviewed the dashboard, issue detail, PR diff or local change scope, verification result, and release readiness.
+5. Hold release if the Korean packet is missing, stale, or does not include verification, hold criteria, and approval checklist.
+6. Run `scripts/release_check.py .` before publishing a plugin/package update.
+7. Save to `specs/<issue>/release.md`.
+8. Update roadmap and status.
 
 ## Korean Human Review Gate
 

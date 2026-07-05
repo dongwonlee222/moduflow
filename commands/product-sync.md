@@ -37,6 +37,7 @@ python3 scripts/vendor_freshness.py vendor.lock.json --sync
 8. Keep local customizations in `overlays/` and `adapters/`.
 9. Run `scripts/release_check.py .` after sync-sensitive changes.
 10. Run `python3 scripts/antigravity_sync.py --host <host task.md> --git <git tasks.md>` to sync checkboxes between Antigravity and ModuFlow.
+11. If this sync needs to write locally (fast-forward, vendor `--sync` bookkeeping), run `python3 scripts/project_git_handoff.py <project-path>` first. When `mode` is `github-api-commit`, use the GitHub API instead of asking the user for terminal Git commands (see `/product:pr`'s Commit Capability step for the full contract).
 
 ## Repo Sync Preflight
 

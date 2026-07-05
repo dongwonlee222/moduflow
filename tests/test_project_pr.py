@@ -89,6 +89,36 @@ class ProjectPrHandoffTests(unittest.TestCase):
             self.assertIn("- QA accepted the handoff evidence.", handoff)
             self.assertIn("Merge approver", handoff)
 
+    def test_build_pr_handoff_records_github_api_commit_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "058-git-write-fallback-via-github-api"
+            (root / "issues").mkdir()
+            (root / "specs" / issue_id).mkdir(parents=True)
+            (root / "issues" / f"{issue_id}.md").write_text("# Issue\n", encoding="utf-8")
+
+            handoff = project_pr.build_pr_handoff(
+                root,
+                issue_id,
+                commit_mode="github-api-commit",
+                commit_reason="local .git write failed: index.lock permission denied",
+            )
+
+            self.assertIn("Commit mode: `github-api-commit`", handoff)
+            self.assertIn("index.lock permission denied", handoff)
+
+    def test_build_pr_handoff_defaults_commit_mode_to_local_git_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "052-draft-pr-review-handoff"
+            (root / "issues").mkdir()
+            (root / "specs" / issue_id).mkdir(parents=True)
+            (root / "issues" / f"{issue_id}.md").write_text("# Issue\n", encoding="utf-8")
+
+            handoff = project_pr.build_pr_handoff(root, issue_id)
+
+            self.assertIn("Commit mode: `local-git-write`", handoff)
+
     def test_write_pr_handoff_creates_pr_artifact(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

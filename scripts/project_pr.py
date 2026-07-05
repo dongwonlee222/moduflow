@@ -250,7 +250,7 @@ def build_human_review_packet_ko(root, issue_id, branch="", pr="", reviewer="Rev
     return "\n".join(lines)
 
 
-def build_pr_handoff(root, issue_id, branch="", pr="", reviewer="Reviewer"):
+def build_pr_handoff(root, issue_id, branch="", pr="", reviewer="Reviewer", commit_mode="", commit_reason=""):
     root = Path(root).resolve()
     spec_dir = root / "specs" / issue_id
     issue_path = root / "issues" / f"{issue_id}.md"
@@ -301,6 +301,8 @@ def build_pr_handoff(root, issue_id, branch="", pr="", reviewer="Reviewer"):
         f"- Fallback reason: {fallback_reason or 'GitHub Draft PR URL is available or expected to be supplied by the workflow.'}",
         "- Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.",
         "- Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.",
+        f"- Commit mode: `{commit_mode or 'local-git-write'}`"
+        + (f" — {commit_reason}" if commit_mode and commit_mode != "local-git-write" and commit_reason else ""),
         "",
         "## Commands",
         "",
@@ -373,11 +375,17 @@ def build_pr_handoff(root, issue_id, branch="", pr="", reviewer="Reviewer"):
     return "\n".join(lines)
 
 
-def write_pr_handoff(root, issue_id, branch="", pr="", reviewer="Reviewer"):
+def write_pr_handoff(root, issue_id, branch="", pr="", reviewer="Reviewer", commit_mode="", commit_reason=""):
     root = Path(root).resolve()
     target = root / "specs" / issue_id / "pr.md"
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(build_pr_handoff(root, issue_id, branch=branch, pr=pr, reviewer=reviewer), encoding="utf-8")
+    target.write_text(
+        build_pr_handoff(
+            root, issue_id, branch=branch, pr=pr, reviewer=reviewer,
+            commit_mode=commit_mode, commit_reason=commit_reason,
+        ),
+        encoding="utf-8",
+    )
     human_target = target.parent / "human-review.ko.md"
     human_target.write_text(
         build_human_review_packet_ko(root, issue_id, branch=branch, pr=pr, reviewer=reviewer),
@@ -393,6 +401,8 @@ def main():
     parser.add_argument("--branch", default="")
     parser.add_argument("--pr", default="")
     parser.add_argument("--reviewer", default="Reviewer")
+    parser.add_argument("--commit-mode", default="", help="local-git-write | github-api-commit | blocked")
+    parser.add_argument("--commit-reason", default="")
     parser.add_argument("--write", action="store_true")
     parser.add_argument(
         "--github-preflight",
@@ -416,6 +426,8 @@ def main():
             branch=args.branch,
             pr=args.pr,
             reviewer=args.reviewer,
+            commit_mode=args.commit_mode,
+            commit_reason=args.commit_reason,
         )
         print(path)
     else:
@@ -426,6 +438,8 @@ def main():
                 branch=args.branch,
                 pr=args.pr,
                 reviewer=args.reviewer,
+                commit_mode=args.commit_mode,
+                commit_reason=args.commit_reason,
             )
         )
     return 0

@@ -1,6 +1,6 @@
 # Issue: `058-git-write-fallback-via-github-api`
 
-**Status: backlog** — created 2026-07-03, planned 2026-07-03 (deprioritized 2026-07-05 in favor of `053`; spec/plan exist, execute not started — pick up via `product:execute 058-git-write-fallback-via-github-api`).
+**Status: done** — created 2026-07-03, planned 2026-07-03, done 2026-07-05.
 
 ## Outcome
 
@@ -43,10 +43,17 @@ During Issues 056 and 057, local file edits and validation worked, but `git add`
 - related: `050-repo-sync-preflight`
 - related: `054-github-issue-sync`
 
+## Workflow Tasks
+
+- [x] spec → `specs/058-git-write-fallback-via-github-api/spec.md`
+- [x] plan → `specs/058-git-write-fallback-via-github-api/plan.md`
+- [x] execute → `scripts/project_git_handoff.py`, `tests/test_project_git_handoff.py`, `commands/product-pr.md`, `commands/product-release.md`, `commands/product-sync.md`, `scripts/project_pr.py`
+
 ## Sessions
 
 - 2026-07-03: User said people should not have to run terminal Git commands. Issues 056 and 057 were pushed through GitHub API because local `.git` writes were blocked.
 - 2026-07-05: Merged into `main` from `origin/codex/058-git-write-fallback-via-github-api` along with 056/057 (which were done on that branch). 058 itself was still at plan phase on that branch — moved back to backlog here since work shifted to `053` this session; not abandoned.
+- 2026-07-05: Executed. Added `scripts/project_git_handoff.py`'s `check_commit_capability()` (injectable-runner pattern, matching `project_sync.py`/`vendor_freshness.py`) classifying `local-git-write` / `github-api-commit` / `blocked`, with a non-destructive `.git` write probe that never touches an existing `index.lock`. Wired the fallback contract into `product:pr`/`product:release`/`product:sync` command docs, and added `commit_mode`/`commit_reason` fields to `project_pr.py`'s PR handoff generator so PR artifacts record how a commit was made. 5 new tests + 2 new PR-handoff tests; full suite (215 tests) and `release_check.py` pass.
 
 ## Links
 

@@ -3,8 +3,8 @@
   "phase": "select",
   "active_goal": "visual-workbench",
   "active_issue": "",
-  "last_command": "product:execute 064-version-bump-policy-and-enforcement",
-  "next_command": "product:execute 058-git-write-fallback-via-github-api",
+  "last_command": "product:execute 058-git-write-fallback-via-github-api",
+  "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-07-05"
 }
