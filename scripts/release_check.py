@@ -155,6 +155,12 @@ def run_release_check(path):
         for err in sec_res["errors"]:
             errors.append(f"Security: {err}")
 
+    version_bump = load_script_module("version_bump", "scripts/version_bump.py")
+    bump_res = version_bump.check_bump_applied(root)
+    checks["version_bump_gate"] = {"ok": bump_res["ok"]}
+    if not bump_res["ok"]:
+        errors.extend(bump_res["errors"])
+
     commands = {
         "tests": [
             "python3",

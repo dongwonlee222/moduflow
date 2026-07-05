@@ -77,13 +77,15 @@ This does **not** extend to:
 - mid-work commits for partial progress (spec/plan-only states, anything `release_check.py` hasn't validated) — those stay ask-first
 - force-push, branch deletion, or other destructive Git operations — those stay explicit-confirmation-only
 
-Before staging the completion commit, bump the version (issue `063-version-bump-on-done`):
+Before staging the completion commit, bump the version (issue `063-version-bump-on-done`, policy corrected by `064-version-bump-policy-and-enforcement`):
 
 ```bash
 python3 scripts/version_bump.py .claude-plugin/plugin.json "<the commit message you are about to use>"
 ```
 
-This classifies the commit message's Conventional-Commit-style prefix (`feat`→minor, `fix`→patch, `!`/`BREAKING CHANGE`→major, anything else→no bump) and updates `.claude-plugin/plugin.json` in place if the level isn't `none`. Stage that file change into the same commit — not a separate follow-up commit. `.codex-plugin/plugin.json` is not touched here; its existing sync mechanism (`010-codex-version-sync-fix`) propagates from `.claude-plugin/plugin.json` separately.
+This classifies the commit message's Conventional-Commit-style prefix (`feat`/`fix`→patch, `!`/`BREAKING CHANGE`→major, anything else→no bump) and updates `.claude-plugin/plugin.json` in place if the level isn't `none`. Stage that file change into the same commit — not a separate follow-up commit. `.codex-plugin/plugin.json` is not touched here; its existing sync mechanism (`010-codex-version-sync-fix`) propagates from `.claude-plugin/plugin.json` separately.
+
+This step is not optional-by-memory: `release_check.py`'s `version_bump_gate` check (issue `064`) fails the pre-push hook if HEAD's commit message classifies to a non-`none` bump level but the version didn't move. Skipping the bump blocks the push it was meant to accompany, instead of silently shipping unversioned.
 
 ## Host Adapter Boundary
 
