@@ -50,6 +50,7 @@ This session's `059-auto-fetch-in-repo-sync` fixed "is my current branch stale v
 
 - 2026-07-05: User asked to re-check sync after being told (via Antigravity, on another session) that 056/057 were already done on a branch. `project_sync.py` reported clean because it only compares against `origin/main`. Manual `git branch -r` + `git log origin/main..<branch>` found the real state. User asked that 059's sync capability extend to cover this.
 - 2026-07-05: Meanwhile, `origin/codex/058-git-write-fallback-via-github-api` (containing 056/057/058) was merged into `main` directly (separate action). Implemented `find_unmerged_branch_work()` in `project_sync.py`: scans remote branches ahead of `origin/main`, reads `Status:` via `project_lifecycle._issue_status` (reused, not re-parsed) on both refs, reports branches with a `done` issue not `done` on `origin/main`. 3 new tests + full suite (183 tests) pass. Fixed a direct-CLI-invocation import bug (`python3 scripts/project_sync.py` vs `from scripts import project_sync`) found while smoke-testing. Docs updated. Done.
+- 2026-07-05: User pointed out the field existed in the JSON result but had no guaranteed slot in the rendered `product:status` dashboard — added a `🌿 다른 브랜치 미병합 작업` section to the Dashboard Format template in `commands/product-status.md` (shown only when non-empty), so this can't silently exist in data but never reach the person reading the dashboard.
 
 ## Links
 

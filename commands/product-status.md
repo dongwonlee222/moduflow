@@ -101,9 +101,14 @@ Use this structure as the default. Keep it compact and adapt missing fields grac
 🚧 블로커
   <blockers or "없음">
 
+🌿 다른 브랜치 미병합 작업
+  <one line per unmerged_branch_work entry: "<branch> — <ahead>커밋, done 이슈: <ids>" or omit this whole section when unmerged_branch_work is empty>
+
 ➡️ 다음 명령
   <next command>
 ```
+
+The 🌿 section only appears when `unmerged_branch_work` is non-empty — omit it entirely on the clean path, per the "adapt missing fields gracefully" rule above. This is the field `062-detect-unmerged-branch-work` added; it must render here, not just exist in the JSON, or a done-but-unmerged issue on another branch stays invisible to the person reading the dashboard.
 
 ## Emoji Guidance
 
