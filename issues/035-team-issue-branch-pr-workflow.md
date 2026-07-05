@@ -1,5 +1,7 @@
 # Issue 035: Team Issue Branch Pr Workflow
 
+**Status: done** — completed 2026-06-26.
+
 ## Summary
 
 Make ModuFlow practical for small teams and TFs by supporting a clear issue-to-branch-to-PR workflow that PMs can drive in natural language and developers can execute through Git.

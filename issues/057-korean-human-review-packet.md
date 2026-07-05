@@ -1,6 +1,6 @@
 # Issue: `057-korean-human-review-packet`
 
-**Status: backlog** — created 2026-07-03.
+**Status: done** — released locally after human approval on 2026-07-03.
 
 ## Outcome
 
@@ -22,10 +22,10 @@ Issue 049 added Korean sidecars for human-facing artifact views, but the policy 
 
 ### In
 
-- Add a Korean human-review packet convention such as `specs/<issue>/human-review.ko.md`.
+- Add a Korean human-review packet convention named `human-review.ko.md` inside each issue's spec folder.
 - Make `product:review` and/or `product:pr` generate or refresh the packet.
 - Include: PR link, summary, files to check, verification summary, dashboard links, approval checklist, hold criteria, and next command.
-- Link the packet from `specs/<issue>/pr.md`, issue file, and dashboard issue drill-down.
+- Link the packet from the issue's PR handoff, issue file, and dashboard issue drill-down.
 - Keep English canonical artifacts unchanged.
 - Dogfood on Issue 034.
 
@@ -38,7 +38,7 @@ Issue 049 added Korean sidecars for human-facing artifact views, but the policy 
 
 ## Acceptance Criteria
 
-- `product:pr <issue>` or `product:review <issue>` produces `specs/<issue>/human-review.ko.md`.
+- `product:pr {issue}` or `product:review {issue}` produces the issue's `human-review.ko.md` packet.
 - PR handoff links to the Korean packet.
 - The packet contains an explicit approval checklist and hold criteria.
 - Dashboard issue drill-down can surface the Korean packet when present.
@@ -59,8 +59,15 @@ Issue 049 added Korean sidecars for human-facing artifact views, but the policy 
 ## Links
 
 - Dogfood packet: `specs/034-memory-capture-and-sync-workflow/human-review.ko.md`
+- Spec: `specs/057-korean-human-review-packet/spec.md`
+- Spec KO: `specs/057-korean-human-review-packet/spec.ko.md`
+- Plan: `specs/057-korean-human-review-packet/plan.md`
+- Plan KO: `specs/057-korean-human-review-packet/plan.ko.md`
+- Tasks: `specs/057-korean-human-review-packet/tasks.md`
+- Status: `specs/057-korean-human-review-packet/status.md`
+- Release: `specs/057-korean-human-review-packet/release.md`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:spec 057-korean-human-review-packet`
+`/product:status`

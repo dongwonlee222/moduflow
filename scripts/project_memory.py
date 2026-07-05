@@ -879,7 +879,7 @@ def _issue_status_bucket(status_word):
     w = (status_word or "").lower()
     if w.startswith("superseded"):
         return "superseded"
-    if w in ("done", "active", "backlog"):
+    if w in ("done", "active", "backlog", "blocked", "review"):
         return w
     return "backlog"
 
@@ -982,6 +982,249 @@ def _collect_issue_graph(root):
     return nodes, edges
 
 
+def _issue_number(issue_id):
+    m = re.match(r"^(\d+)", issue_id or "")
+    return int(m.group(1)) if m else None
+
+
+def _parse_next_command(text):
+    m = re.search(r"^##\s+Next Command\s*$", text, re.M)
+    if not m:
+        return ""
+    section = text[m.end():]
+    nxt = re.search(r"^##\s+", section, re.M)
+    if nxt:
+        section = section[:nxt.start()]
+    m_cmd = re.search(r"`([^`]+)`", section)
+    if m_cmd:
+        return m_cmd.group(1).strip()
+    for line in section.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped.lstrip("- ").strip()
+    return ""
+
+
+def _markdown_section(text, headings):
+    pattern = "|".join(re.escape(h) for h in headings)
+    m = re.search(rf"^##\s+({pattern})\s*$", text or "", re.M | re.I)
+    if not m:
+        return ""
+    section = text[m.end():]
+    nxt = re.search(r"^##\s+", section, re.M)
+    if nxt:
+        section = section[:nxt.start()]
+    return section.strip()
+
+
+def _plain_summary(section):
+    lines = []
+    for line in (section or "").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            if lines:
+                break
+            continue
+        if stripped.startswith(("#", ">", "```")):
+            continue
+        if re.match(r"^(Issue|Prev|Next|Reviewed|Result):\s", stripped):
+            continue
+        lines.append(re.sub(r"^\d+\.\s+|^[-*]\s+", "", stripped))
+    return " ".join(lines).strip()
+
+
+def _short_description(text, limit=180):
+    cleaned = re.sub(r"\s+", " ", text or "").strip()
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[:limit - 1].rstrip() + "…"
+
+
+def _issue_summary(text):
+    for heading in ("Summary", "Outcome", "Opportunity", "Why"):
+        summary = _plain_summary(_markdown_section(text, [heading]))
+        if summary:
+            return _short_description(summary)
+    return ""
+
+
+def _issue_summary_ko(root, issue_id, text):
+    summary = _plain_summary(_markdown_section(text, ["요약", "한글 요약", "Summary (KO)", "Korean Summary", "문제"]))
+    if summary:
+        return _short_description(summary)
+    spec_dir = Path(root).resolve() / "specs" / issue_id
+    for ko_path in (
+        spec_dir / "spec.ko.md",
+        spec_dir / "plan.ko.md",
+        spec_dir / "design.ko.md",
+        spec_dir / "review.ko.md",
+        spec_dir / "human-review.ko.md",
+    ):
+        if not ko_path.is_file():
+            continue
+        spec_text = ko_path.read_text(encoding="utf-8")
+        for heading in ("요약", "문제", "먼저 정리된 질문", "목표"):
+            summary = _plain_summary(_markdown_section(spec_text, [heading]))
+            if summary:
+                return _short_description(summary)
+        summary = _plain_summary(spec_text)
+        if summary:
+            return _short_description(summary)
+    return ""
+
+
+def _issue_description(root, issue_id, title, text):
+    summary_ko = _issue_summary_ko(root, issue_id, text)
+    summary = _issue_summary(text)
+    description = summary_ko or summary or title or issue_id
+    return {
+        "summary": summary,
+        "summary_ko": summary_ko,
+        "description": description,
+        "description_language": "ko" if summary_ko else ("en" if summary else ""),
+    }
+
+
+def _issue_description_overrides(root):
+    path = Path(root).resolve() / "workspace" / "issue-descriptions.ko.json"
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(k): str(v).strip() for k, v in data.items() if str(v).strip()}
+
+
+def _issue_artifact_coverage(root, issue_id):
+    root = Path(root).resolve()
+    spec_dir = root / "specs" / issue_id
+    issue_file = root / "issues" / f"{issue_id}.md"
+    return {
+        "issue": issue_file.is_file(),
+        "spec": (spec_dir / "spec.md").is_file(),
+        "spec_ko": (spec_dir / "spec.ko.md").is_file(),
+        "plan": (spec_dir / "plan.md").is_file(),
+        "plan_ko": (spec_dir / "plan.ko.md").is_file(),
+        "tasks": (spec_dir / "tasks.md").is_file(),
+        "tasks_ko": (spec_dir / "tasks.ko.md").is_file(),
+        "status": (spec_dir / "status.md").is_file(),
+        "review": (spec_dir / "review.md").is_file(),
+        "pr": (spec_dir / "pr.md").is_file(),
+        "release": (spec_dir / "release.md").is_file(),
+        "human_review_ko": (spec_dir / "human-review.ko.md").is_file(),
+    }
+
+
+def _issue_phase_from_coverage(coverage):
+    if coverage.get("release"):
+        return "release"
+    if coverage.get("pr"):
+        return "pr"
+    if coverage.get("review"):
+        return "review"
+    if coverage.get("tasks") or coverage.get("plan"):
+        return "execute"
+    if coverage.get("spec"):
+        return "plan"
+    return "spec"
+
+
+def _issue_table_status(status, coverage):
+    raw_status = status or "backlog"
+    if raw_status in {"active", "blocked", "superseded"}:
+        return raw_status
+    if raw_status == "done" or coverage.get("release"):
+        return "done"
+    if raw_status == "review" or coverage.get("pr") or coverage.get("review"):
+        return "review"
+    return raw_status
+
+
+def _issue_attention_flags(status, next_command, coverage):
+    if status == "done":
+        return []
+    flags = []
+    if not coverage.get("spec"):
+        flags.append("missing_spec")
+    if coverage.get("spec") and not coverage.get("plan"):
+        flags.append("missing_plan")
+    if not next_command:
+        flags.append("no_next")
+    if not coverage.get("review"):
+        flags.append("no_review")
+    if not coverage.get("pr"):
+        flags.append("no_pr")
+    if not (coverage.get("spec_ko") or coverage.get("plan_ko") or coverage.get("tasks_ko") or coverage.get("human_review_ko")):
+        flags.append("no_ko")
+    if status == "blocked":
+        flags.append("blocked")
+    return flags
+
+
+def _issue_updated(text):
+    dates = re.findall(r"\b20\d{2}-\d{2}-\d{2}\b", text or "")
+    return dates[-1] if dates else ""
+
+
+def _issue_created(text):
+    match = re.search(r"(?im)^-\s*Created:\s*(20\d{2}-\d{2}-\d{2})\b", text or "")
+    if match:
+        return match.group(1)
+    dates = re.findall(r"\b20\d{2}-\d{2}-\d{2}\b", text or "")
+    return dates[0] if dates else ""
+
+
+def _collect_issue_table(root):
+    project_root = Path(root).resolve()
+    issues_dir = project_root / "issues"
+    if not issues_dir.is_dir():
+        return []
+    graph_nodes, graph_edges = _collect_issue_graph(project_root)
+    linked = _issue_linked_memory(project_root)
+    description_overrides = _issue_description_overrides(project_root)
+    relation_counts = {}
+    for src, tgt, _rel in graph_edges:
+        relation_counts[src] = relation_counts.get(src, 0) + 1
+        relation_counts[tgt] = relation_counts.get(tgt, 0) + 1
+    rows = []
+    for issue_file in sorted(issues_dir.glob("*.md")):
+        issue_id = issue_file.stem
+        text = issue_file.read_text(encoding="utf-8")
+        info = graph_nodes.get(issue_id, {})
+        coverage = _issue_artifact_coverage(project_root, issue_id)
+        status = _issue_table_status(info.get("status", "backlog"), coverage)
+        next_command = _parse_next_command(text)
+        title = info.get("title", issue_id)
+        description = _issue_description(project_root, issue_id, title, text)
+        if issue_id in description_overrides:
+            description.update({
+                "summary_ko": description_overrides[issue_id],
+                "description": description_overrides[issue_id],
+                "description_language": "ko",
+            })
+        rows.append({
+            "id": issue_id,
+            "number": _issue_number(issue_id),
+            "title": title,
+            "status": status,
+            "goal": info.get("goal", "(기타)"),
+            "phase": _issue_phase_from_coverage(coverage),
+            "next_command": next_command,
+            "href": f"issue-{issue_id}.html",
+            "artifact_coverage": coverage,
+            "linked_memory_count": len(linked.get(issue_id, [])),
+            "relationship_count": relation_counts.get(issue_id, 0),
+            "attention_flags": _issue_attention_flags(status, next_command, coverage),
+            "created": _issue_created(text),
+            "updated": _issue_updated(text),
+            **description,
+        })
+    return rows
+
+
 def _issue_elements(root):
     nodes, edges = _collect_issue_graph(root)
     linked = _issue_linked_memory(root)
@@ -1045,6 +1288,22 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
   .legend span { display: flex; align-items: center; gap: 6px; }
   .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
   .cy { width: 100%; height: 600px; border: 1px solid #ddd; border-radius: 12px; }
+  .db { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+  .dbbar { display: grid; grid-template-columns: minmax(180px, 1fr) auto auto; gap: 8px; align-items: center; padding: 10px; border-bottom: 1px solid #ddd; background: #fafaf8; }
+  .dbbar input, .dbbar select { font: inherit; font-size: 13px; padding: 7px 9px; border: 1px solid #ccc; border-radius: 6px; background: #fff; color: inherit; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font: inherit; font-size: 12px; padding: 6px 9px; border: 1px solid #ccc; border-radius: 999px; background: #fff; cursor: pointer; }
+  .chip.on { border-color: #2a78d6; background: #dcebfb; color: #16467e; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 9px 10px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; }
+  th { font-size: 12px; color: #666; background: #f5f5f3; font-weight: 600; }
+  tr.issue-row { cursor: pointer; }
+  tr.issue-row:hover { background: #f8fbff; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  .badge { display: inline-block; min-width: 18px; text-align: center; padding: 2px 5px; margin: 0 2px 2px 0; border-radius: 5px; border: 1px solid #ccc; font-size: 11px; color: #555; }
+  .badge.missing { color: #aaa; border-style: dashed; }
+  .flag { display: inline-block; padding: 2px 6px; margin: 0 3px 3px 0; border-radius: 999px; background: #faece7; color: #712b13; font-size: 11px; white-space: nowrap; }
+  .empty { padding: 24px; text-align: center; color: #888; }
   .hidden { display: none; }
   #info { margin-top: 12px; min-height: 56px; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; line-height: 1.7; }
   #info a { color: #2a78d6; cursor: pointer; }
@@ -1054,13 +1313,19 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
     body { background: #1a1a19; color: #e8e8e3; }
     .tab { background: #2a2a28; border-color: #444; color: #ddd; }
     .legend, .toggle { color: #aaa; }
-    .cy, #info { border-color: #333; }
+    .cy, .db, #info { border-color: #333; }
+    .dbbar, th { background: #232321; border-color: #333; }
+    .dbbar input, .dbbar select, .chip { background: #2a2a28; border-color: #444; color: #ddd; }
+    td, th { border-bottom-color: #333; }
+    tr.issue-row:hover { background: #202a33; }
+    .chip.on { background: #16467e; color: #dcebfb; }
   }
 </style>
 </head>
 <body>
 <h1>ModuFlow 프로젝트 뷰</h1>
 <div class="tabs">
+  <div class="tab" id="tab-db">이슈 DB</div>
   <div class="tab" id="tab-issues">이슈 그래프</div>
   <div class="tab" id="tab-memory">지식 그래프</div>
   <label class="toggle"><input type="checkbox" id="rel-toggle" checked> 관계선 표시</label>
@@ -1080,10 +1345,12 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
   <span><span class="sw" style="background:#1D9E75"></span>deliverable</span>
   <span><span class="sw" style="background:#D85A30"></span>note</span>
 </div>
-<div id="cy-issues" class="cy"></div>
+<div id="issue-db" class="db"></div>
+<div id="cy-issues" class="cy hidden"></div>
 <div id="cy-memory" class="cy hidden"></div>
-<div id="info">노드를 클릭하면 상세가 표시됩니다. 드래그로 이동, 휠로 줌. 탭으로 그래프를 전환합니다.</div>
+<div id="info">이슈 DB에서 작업 상태를 훑거나, 그래프 탭에서 관계를 확인합니다.</div>
 <script>
+const ISSUE_ROWS = __ISSUE_ROWS__;
 const ISSUE_ELEMENTS = __ISSUE_ELEMENTS__;
 const MEMORY_ELEMENTS = __MEMORY_ELEMENTS__;
 const KIND_ICON = {decision:'\\u{1F4A1}', evidence:'\\u{1F4CE}', deliverable:'\\u{1F4E6}', release:'\\u{1F680}', meeting:'\\u{1F5E3}', note:'\\u{1F4DD}', reference:'\\u{1F517}'};
@@ -1195,14 +1462,144 @@ function wireMotion(cy){
 }
 wireMotion(cyIssues); wireMotion(cyMemory);
 
+const FLAG_LABELS = {
+  missing_spec:'spec 없음', missing_plan:'plan 없음', no_next:'다음 없음',
+  no_review:'review 없음', no_pr:'PR 없음', no_ko:'한글 없음', blocked:'막힘'
+};
+const STATUS_VIEW = {
+  all: row => true,
+  active: row => row.status === 'active',
+  review: row => row.status === 'review' || row.attention_flags.includes('no_review') || row.attention_flags.includes('no_pr'),
+  blocked: row => row.status === 'blocked' || row.attention_flags.includes('blocked'),
+  missing: row => row.attention_flags.length > 0,
+  done: row => row.status === 'done'
+};
+let issueDbState = {view:'all', q:'', sort:'created_desc', group:'status'};
+
+function artifactBadges(row){
+  const c = row.artifact_coverage || {};
+  const pairs = [['I','issue'],['S','spec'],['KO','spec_ko'],['P','plan'],['T','tasks'],['R','review'],['PR','pr'],['Rel','release']];
+  return pairs.map(([label,key]) => '<span class="badge '+(c[key]?'':'missing')+'">'+(c[key]?label:'-')+'</span>').join('');
+}
+function flagBadges(row){
+  const flags = row.attention_flags || [];
+  if(!flags.length) return '<span style="color:#aaa">-</span>';
+  return flags.map(f => '<span class="flag">'+esc(FLAG_LABELS[f] || f)+'</span>').join('');
+}
+function descriptionCell(row){
+  const lang = row.description_language ? '<span class="badge">'+esc(row.description_language.toUpperCase())+'</span> ' : '';
+  return lang + esc(row.description || row.summary || row.title || '');
+}
+function compareRows(a,b){
+  const s = issueDbState.sort;
+  if(s === 'status') return (a.status||'').localeCompare(b.status||'') || ((a.number||0)-(b.number||0));
+  if(s === 'memory') return (b.linked_memory_count||0) - (a.linked_memory_count||0) || ((a.number||0)-(b.number||0));
+  if(s === 'updated_desc') return (b.updated||'').localeCompare(a.updated||'') || ((b.number||0)-(a.number||0));
+  if(s === 'created_asc') return (a.created||'').localeCompare(b.created||'') || ((a.number||0)-(b.number||0));
+  if(s === 'created_desc') return (b.created||'').localeCompare(a.created||'') || ((b.number||0)-(a.number||0));
+  return ((a.number||999999)-(b.number||999999)) || (a.id||'').localeCompare(b.id||'');
+}
+function filteredRows(){
+  const q = issueDbState.q.toLowerCase();
+  return ISSUE_ROWS.filter(row => {
+    const text = [row.id, row.title, row.description, row.summary, row.summary_ko, row.next_command, row.goal].join(' ').toLowerCase();
+    return (!q || text.includes(q)) && (STATUS_VIEW[issueDbState.view] || STATUS_VIEW.all)(row);
+  }).sort(compareRows);
+}
+function groupedRows(rows){
+  if(issueDbState.group === 'none') return [{label:'', rows}];
+  const key = issueDbState.group === 'goal' ? 'goal' : 'status';
+  const groups = [];
+  const by = {};
+  rows.forEach(row => {
+    const label = row[key] || '(없음)';
+    if(!by[label]){ by[label] = {label, rows: []}; groups.push(by[label]); }
+    by[label].rows.push(row);
+  });
+  return groups;
+}
+function renderIssueTable(focusSearch=false){
+  const rows = filteredRows();
+  const body = rows.length ? groupedRows(rows).map(group => (
+    (group.label ? `<tr><th colspan="10">${esc(group.label)} · ${group.rows.length}</th></tr>` : '') +
+    group.rows.map(row => `
+    <tr class="issue-row" onclick="location.href='${esc(row.href)}'">
+      <td class="mono">${esc(String(row.number || ''))}</td>
+      <td><a href="${esc(row.href)}">${esc(row.title || row.id)}</a><br><code>${esc(row.id)}</code></td>
+      <td>${esc(row.status || '')}</td>
+      <td>${esc(row.phase || '')}</td>
+      <td class="mono">${esc(row.created || '-')}</td>
+      <td class="mono">${esc(row.updated || '-')}</td>
+      <td>${descriptionCell(row)}</td>
+      <td>${artifactBadges(row)}</td>
+      <td>${flagBadges(row)}</td>
+      <td class="mono">${esc(String(row.linked_memory_count || 0))}</td>
+    </tr>`).join('')
+  )).join('') : '<tr><td class="empty" colspan="10">검색 결과 없음</td></tr>';
+  document.getElementById('issue-db').innerHTML = `
+    <div class="dbbar">
+      <input id="issue-search" placeholder="Search issue id, title, description" value="${esc(issueDbState.q)}">
+      <div class="chips">
+        <button class="chip" data-view="all">전체</button>
+        <button class="chip" data-view="active">진행중</button>
+        <button class="chip" data-view="review">리뷰필요</button>
+        <button class="chip" data-view="blocked">막힘</button>
+        <button class="chip" data-view="missing">누락있음</button>
+        <button class="chip" data-view="done">완료</button>
+      </div>
+      <select id="issue-sort">
+        <option value="created_desc">등록 최신순</option>
+        <option value="created_asc">등록 오래된순</option>
+        <option value="updated_desc">최근 업데이트</option>
+        <option value="number">이슈 번호</option>
+        <option value="status">상태</option>
+        <option value="memory">메모리 수</option>
+      </select>
+      <select id="issue-group">
+        <option value="status">상태별</option>
+        <option value="goal">Goal별</option>
+        <option value="none">없음</option>
+      </select>
+    </div>
+    <table>
+      <thead><tr><th>ID</th><th>Issue</th><th>Status</th><th>Phase</th><th>Created</th><th>Updated</th><th>Description</th><th>Artifacts</th><th>Flags</th><th>Memory</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>`;
+  document.getElementById('issue-search').addEventListener('input', e=>{ issueDbState.q = e.target.value; renderIssueTable(true); });
+  document.querySelectorAll('[data-view]').forEach(btn=>{
+    btn.classList.toggle('on', btn.dataset.view === issueDbState.view);
+    btn.addEventListener('click', ()=>{ issueDbState.view = btn.dataset.view; renderIssueTable(); });
+  });
+  document.getElementById('issue-sort').value = issueDbState.sort;
+  document.getElementById('issue-sort').addEventListener('change', e=>{ issueDbState.sort = e.target.value; renderIssueTable(); });
+  document.getElementById('issue-group').value = issueDbState.group;
+  document.getElementById('issue-group').addEventListener('change', e=>{ issueDbState.group = e.target.value; renderIssueTable(); });
+  if(focusSearch){
+    const search = document.getElementById('issue-search');
+    search.focus();
+    search.setSelectionRange(search.value.length, search.value.length);
+  }
+}
+renderIssueTable();
+
 function showTab(which){
+  const db = which==='issue-db';
   const issues = which==='issues';
+  const memory = which==='memory';
+  document.getElementById('issue-db').classList.toggle('hidden', !db);
   document.getElementById('cy-issues').classList.toggle('hidden', !issues);
-  document.getElementById('cy-memory').classList.toggle('hidden', issues);
+  document.getElementById('cy-memory').classList.toggle('hidden', !memory);
   document.getElementById('legend-issues').classList.toggle('hidden', !issues);
-  document.getElementById('legend-memory').classList.toggle('hidden', issues);
+  document.getElementById('legend-memory').classList.toggle('hidden', !memory);
+  document.getElementById('tab-db').classList.toggle('on', db);
   document.getElementById('tab-issues').classList.toggle('on', issues);
-  document.getElementById('tab-memory').classList.toggle('on', !issues);
+  document.getElementById('tab-memory').classList.toggle('on', memory);
+  document.getElementById('rel-toggle').closest('label').classList.toggle('hidden', !issues);
+  document.getElementById('badge-toggle').closest('label').classList.toggle('hidden', !issues);
+  if(db){
+    if(location.hash !== '#issue-db') location.hash = 'issue-db';
+    return;
+  }
   const cy = issues ? cyIssues : cyMemory;
   cy.resize();
   if(issues && activeNodes.nonempty()){
@@ -1213,13 +1610,14 @@ function showTab(which){
   }
   if(location.hash !== (issues?'#issues':'#memory')) location.hash = issues?'issues':'memory';
 }
+document.getElementById('tab-db').addEventListener('click', ()=>showTab('issue-db'));
 document.getElementById('tab-issues').addEventListener('click', ()=>showTab('issues'));
 document.getElementById('tab-memory').addEventListener('click', ()=>showTab('memory'));
 function gotoMemory(id){ showTab('memory'); const n=cyMemory.getElementById(id); if(n){ cyMemory.elements().unselect(); n.select(); cyMemory.center(n);} }
 function gotoIssue(id){ showTab('issues'); const n=cyIssues.getElementById(id); if(n){ cyIssues.elements().unselect(); n.select(); cyIssues.center(n);} }
 window.gotoMemory = gotoMemory; window.gotoIssue = gotoIssue;
 
-showTab(location.hash === '#memory' ? 'memory' : 'issues');
+showTab(location.hash === '#memory' ? 'memory' : (location.hash === '#issues' ? 'issues' : 'issue-db'));
 </script>
 </body>
 </html>
@@ -1229,8 +1627,10 @@ showTab(location.hash === '#memory' ? 'memory' : 'issues');
 def render_project_view(root):
     issue_elements, _i_n, _i_e = _issue_elements(root)
     memory_elements, _m_n, _m_e = _memory_elements(root)
+    issue_rows = _collect_issue_table(root)
     return (
         PROJECT_VIEW_TEMPLATE
+        .replace("__ISSUE_ROWS__", json.dumps(issue_rows, ensure_ascii=False, indent=2))
         .replace("__ISSUE_ELEMENTS__", json.dumps(issue_elements, ensure_ascii=False, indent=2))
         .replace("__MEMORY_ELEMENTS__", json.dumps(memory_elements, ensure_ascii=False, indent=2))
     )
@@ -1262,6 +1662,13 @@ ISSUE_PANEL_TEMPLATE = """<!DOCTYPE html>
 <style>
   :root { color-scheme: light dark; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0 auto; max-width: 820px; padding: 24px; background: #fff; color: #1a1a1a; line-height: 1.6; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .back { display: inline-block; color: #2a78d6; text-decoration: none; font-size: 13px; }
+  .back:hover { text-decoration: underline; }
+  .lang-toggle { display: flex; gap: 6px; }
+  .lang-toggle[hidden] { display: none; }
+  .lang-toggle button { padding: 5px 14px; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; font: inherit; font-size: 13px; background: transparent; color: inherit; }
+  .lang-toggle button.on { background: #2a78d6; border-color: #2a78d6; color: #fff; }
   h1 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
   .sub { font-size: 13px; color: #888; margin: 0 0 20px; }
   .artifact { border: 1px solid #ddd; border-radius: 12px; padding: 8px 20px 16px; margin-bottom: 18px; }
@@ -1283,9 +1690,15 @@ ISSUE_PANEL_TEMPLATE = """<!DOCTYPE html>
 </style>
 </head>
 <body>
+<div class="topbar">
+  <a class="back" href="dashboard.html#issue-db">← 이슈 DB로 돌아가기</a>
+  <div id="langtoggle" class="lang-toggle"__LANG_TOGGLE_ATTR__>
+    <button id="lang-en" type="button">English</button>
+    <button id="lang-ko" type="button">한글</button>
+  </div>
+</div>
 <h1>__PANEL_TITLE__</h1>
 <p class="sub">__PANEL_SUB__</p>
-<div id="langtoggle" style="margin-bottom:14px;"></div>
 <div id="artifacts"></div>
 <div id="linked"></div>
 <script type="module">
@@ -1306,6 +1719,7 @@ async function renderArtifacts() {
     return;
   }
   for (const a of ARTIFACTS) {
+    if (lang === 'en' && a.ko_only) continue;  // Korean-only review packet, shown only in Korean mode
     if (lang === 'ko' && !a.ko) continue;  // 한글 모드: 한글본 있는 산출물만 (영문 안 섞음)
     const sec = document.createElement('section');
     sec.className = 'artifact';
@@ -1331,16 +1745,15 @@ async function renderArtifacts() {
 
 if (hasKo) {
   const wrap = document.getElementById('langtoggle');
-  const mk = (id, text) => { const b = document.createElement('button'); b.id = id; b.textContent = text;
-    b.style.cssText = 'padding:5px 14px;margin-right:6px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;'; return b; };
-  const en = mk('lang-en', 'English'), ko = mk('lang-ko', '한글');
+  wrap.hidden = false;
+  const en = document.getElementById('lang-en'), ko = document.getElementById('lang-ko');
   const paint = () => {
-    en.style.background = lang === 'en' ? '#2a78d6' : 'transparent'; en.style.color = lang === 'en' ? '#fff' : 'inherit';
-    ko.style.background = lang === 'ko' ? '#2a78d6' : 'transparent'; ko.style.color = lang === 'ko' ? '#fff' : 'inherit';
+    en.classList.toggle('on', lang === 'en');
+    ko.classList.toggle('on', lang === 'ko');
   };
   en.onclick = async () => { lang = 'en'; paint(); await renderArtifacts(); };
   ko.onclick = async () => { lang = 'ko'; paint(); await renderArtifacts(); };
-  wrap.appendChild(en); wrap.appendChild(ko); paint();
+  paint();
 }
 await renderArtifacts();
 if (LINKED.length) {
@@ -1394,14 +1807,37 @@ def _ko_sidecar(path):
     return ko.read_text(encoding="utf-8") if ko.is_file() else None
 
 
+def _issue_title_from_text(text, fallback):
+    m_title = re.search(r"^#\s+(.+)$", text or "", re.M)
+    if not m_title:
+        return fallback
+    title = re.sub(r"^Issue:\s*", "", m_title.group(1).strip())
+    return title.replace("`", "").strip() or fallback
+
+
+def _korean_overview_artifact(root, issue_id, issue_text):
+    overrides = _issue_description_overrides(root)
+    summary_ko = overrides.get(issue_id) or _issue_summary_ko(root, issue_id, issue_text)
+    if not summary_ko:
+        return None
+    title = _issue_title_from_text(issue_text, issue_id)
+    ko = f"# 한글 개요\n\n## 이슈\n\n{title}\n\n## 설명\n\n{summary_ko}\n"
+    return {"name": "korean-overview.ko.md", "label": "한글 개요",
+            "md": "", "ko": ko, "ko_only": True}
+
+
 def _collect_issue_artifacts(root, issue_id):
     root = Path(root).resolve()
     slug = _resolve_issue_slug(root, issue_id)
     artifacts = []
     issue_file = root / "issues" / f"{slug}.md"
+    issue_text = issue_file.read_text(encoding="utf-8") if issue_file.is_file() else ""
+    ko_overview = _korean_overview_artifact(root, slug, issue_text)
+    if ko_overview:
+        artifacts.append(ko_overview)
     if issue_file.is_file():
         artifacts.append({"name": "issue", "label": "Issue",
-                          "md": issue_file.read_text(encoding="utf-8"), "ko": _ko_sidecar(issue_file)})
+                          "md": issue_text, "ko": _ko_sidecar(issue_file)})
     spec_dir = root / "specs" / slug
     if spec_dir.is_dir():
         seen = set()
@@ -1412,7 +1848,14 @@ def _collect_issue_artifacts(root, issue_id):
                 artifacts.append({"name": fname, "label": ARTIFACT_LABELS.get(fname, fname),
                                   "md": f.read_text(encoding="utf-8"), "ko": _ko_sidecar(f)})
         for f in sorted(spec_dir.glob("*.md")):
-            if f.name in seen or f.name.endswith(".ko.md"):  # .ko.md is a sidecar, not its own artifact
+            if f.name in seen:
+                continue
+            if f.name.endswith(".ko.md"):
+                base_name = f.name[:-6] + ".md"
+                if base_name in seen or (spec_dir / base_name).is_file():
+                    continue
+                artifacts.append({"name": f.name, "label": f.name[:-6].replace("-", " ").title(),
+                                  "md": "", "ko": f.read_text(encoding="utf-8"), "ko_only": True})
                 continue
             artifacts.append({"name": f.name, "label": f.stem.replace("-", " ").title(),
                               "md": f.read_text(encoding="utf-8"), "ko": _ko_sidecar(f)})
@@ -1422,6 +1865,7 @@ def _collect_issue_artifacts(root, issue_id):
 def render_issue_panel(root, issue_id):
     slug, artifacts = _collect_issue_artifacts(root, issue_id)
     linked = _issue_linked_memory(root).get(slug, [])
+    lang_toggle_attr = "" if any(a.get("ko") for a in artifacts) else " hidden"
     # Escape "</" so a literal </script> inside Markdown can't end the module script.
     artifacts_json = json.dumps(artifacts, ensure_ascii=False).replace("</", "<\\/")
     linked_json = json.dumps(linked, ensure_ascii=False).replace("</", "<\\/")
@@ -1430,6 +1874,7 @@ def render_issue_panel(root, issue_id):
         .replace("__PANEL_TITLE__", f"Issue {slug}")
         .replace("__PANEL_SUB__", f"{len(artifacts)} artifact(s) · issues/ + specs/{slug}/ · derived view")
         .replace("__ISSUE_ID__", slug)
+        .replace("__LANG_TOGGLE_ATTR__", lang_toggle_attr)
         .replace("__ARTIFACTS_JSON__", artifacts_json)
         .replace("__LINKED_JSON__", linked_json)
     )

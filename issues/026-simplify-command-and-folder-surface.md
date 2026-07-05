@@ -1,5 +1,7 @@
 # Issue 026: Simplify Command And Folder Surface
 
+**Status: done** — complete.
+
 ## Summary
 
 Make ModuFlow easier to understand by reducing the visible command/folder surface and introducing a small default mental model for users who do not need the full internal workflow map.

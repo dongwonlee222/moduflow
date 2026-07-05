@@ -10,13 +10,15 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `058-git-write-fallback-via-github-api` (phase: execute). Canonical: `issues/058-git-write-fallback-via-github-api.md`.
 
 ## Recently Completed
 
 - `061-auto-commit-push-on-issue-done`: agents now commit+push immediately when an issue reaches `Status: done` and `release_check.py` passes, instead of waiting for a separate user request — fixes a cross-machine gap where completed work sat unpushed until noticed.
 - `059-auto-fetch-in-repo-sync`: `inspect_repo_sync()` now fetches remote refs itself (5s timeout, non-interactive) before comparing, with `fetched`/`fetch_warning` fields and a stale-cache recommendation on failure; `product:sync`/`product:status` no longer need a manual `git fetch` step first.
 - `060-cross-agent-output-format-convention`: added project-root `AGENTS.md` (read natively by Antigravity/Claude Code/Codex) codifying a situation → shape table and deliberate whitespace-rhythm rules, replacing per-agent improvisation; `docs/host-adapter-guidance.md` now points to it.
+- `056-dashboard-database-list-view`: released (merged from `codex/058-...` branch, 2026-07-05); dashboard now has an `이슈 DB` list view, Korean descriptions, issue detail Korean overview, Korean PR review packet generation, and GitHub PR preflight.
+- `057-korean-human-review-packet`: released (merged from `codex/058-...` branch, 2026-07-05); Korean human-review packets are now a release gate with approval evidence.
 - `034-memory-capture-and-sync-workflow`: released via PR #5; memory capture workflow now has review, PR, release, and Korean human-review packet artifacts, with follow-ups 056/057 registered.
 - `052-draft-pr-review-handoff`: PR flow now supports early Draft PR / local PR-ready state, refreshes `specs/<issue>/pr.md` after review, and carries dashboard + issue drill-down evidence into the PR handoff before human approval.
 - `051-autonomous-execute-review-visual-handoff`: execute/review flow now generates a review handoff, maps implementation/QA/PM-spec review to subagent-ready sections, requires verification, and surfaces the dashboard plus issue drill-down HTML for human visual inspection.
@@ -33,8 +35,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Queue (goal `visual-workbench`)
 
-- `056-dashboard-database-list-view`: add a Notion/Jira/Linear-inspired DB/list view alongside the issue graph so users can scan, filter, sort, and triage issue work without relying only on node topology. Benchmark captured in `knowledge/benchmarks/2026-07-03-dashboard-db-list-view-benchmark.md`.
-- `057-korean-human-review-packet`: generate a compact Korean review packet for PR/review/release gates so human approval does not require reading every English canonical artifact.
+- `058-git-write-fallback-via-github-api`: make ModuFlow automatically fall back to GitHub API commits when local `.git` writes are blocked, so users are not asked to run terminal Git commands.
 
 ## Blockers
 
@@ -55,4 +56,4 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Next Command
 
-`product:status`
+`product:execute 058-git-write-fallback-via-github-api`

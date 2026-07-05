@@ -573,7 +573,129 @@ More detail contents here.
             self.assertIn("position", child)
             self.assertEqual(n, 2)
 
-    def test_render_project_view_has_two_tabs_and_korean(self):
+    def test_collect_issue_table_includes_artifacts_flags_and_memory(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "specs" / "056-dashboard").mkdir(parents=True)
+            (root / "issues" / "056-dashboard.md").write_text(
+                "# Issue: `056-dashboard`\n\n"
+                "**Status: active** — Part of goal `visual-workbench`.\n\n"
+                "## Summary\n\n"
+                "Show issues as a scannable database list.\n\n"
+                "## Lifecycle\n\n"
+                "- Created: 2026-07-01\n"
+                "- Last Updated: 2026-07-03\n\n"
+                "## Next Command\n\n"
+                "`/product:execute 056-dashboard`\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "057-review.md").write_text(
+                "# Issue: `057-review`\n\n"
+                "**Status: backlog** — created.\n\n",
+                encoding="utf-8",
+            )
+            (root / "specs" / "056-dashboard" / "spec.md").write_text("# Spec\n", encoding="utf-8")
+            (root / "specs" / "056-dashboard" / "spec.ko.md").write_text(
+                "# 명세\n\n## 문제\n\n그래프만으로는 운영 스캔이 어렵습니다.\n", encoding="utf-8")
+            (root / "specs" / "056-dashboard" / "plan.md").write_text("# Plan\n", encoding="utf-8")
+            project_memory.apply_memory_plan(project_memory.build_memory_plan(root, dry_run=False))
+            project_memory.create_memory_entry(
+                root, kind="decision", title="Dash choice", summary="s", issue_id="056-dashboard")
+
+            rows = project_memory._collect_issue_table(root)
+            by_id = {row["id"]: row for row in rows}
+
+            self.assertEqual([row["id"] for row in rows], ["056-dashboard", "057-review"])
+            self.assertEqual(by_id["056-dashboard"]["number"], 56)
+            self.assertEqual(by_id["056-dashboard"]["status"], "active")
+            self.assertEqual(by_id["056-dashboard"]["goal"], "visual-workbench")
+            self.assertEqual(by_id["056-dashboard"]["summary"], "Show issues as a scannable database list.")
+            self.assertEqual(by_id["056-dashboard"]["summary_ko"], "그래프만으로는 운영 스캔이 어렵습니다.")
+            self.assertEqual(by_id["056-dashboard"]["description"], "그래프만으로는 운영 스캔이 어렵습니다.")
+            self.assertEqual(by_id["056-dashboard"]["description_language"], "ko")
+            self.assertEqual(by_id["056-dashboard"]["next_command"], "/product:execute 056-dashboard")
+            self.assertEqual(by_id["056-dashboard"]["href"], "issue-056-dashboard.html")
+            self.assertEqual(by_id["056-dashboard"]["created"], "2026-07-01")
+            self.assertEqual(by_id["056-dashboard"]["updated"], "2026-07-03")
+            self.assertTrue(by_id["056-dashboard"]["artifact_coverage"]["spec"])
+            self.assertTrue(by_id["056-dashboard"]["artifact_coverage"]["spec_ko"])
+            self.assertTrue(by_id["056-dashboard"]["artifact_coverage"]["plan"])
+            self.assertEqual(by_id["056-dashboard"]["linked_memory_count"], 1)
+            self.assertIn("no_review", by_id["056-dashboard"]["attention_flags"])
+            self.assertIn("missing_spec", by_id["057-review"]["attention_flags"])
+            self.assertIn("no_next", by_id["057-review"]["attention_flags"])
+
+    def test_collect_issue_table_promotes_artifact_complete_status(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "specs" / "034-done").mkdir(parents=True)
+            (root / "specs" / "035-review").mkdir(parents=True)
+            (root / "issues" / "034-done.md").write_text(
+                "# Issue: `034-done`\n\n**Status: backlog** — old issue file.\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "035-review.md").write_text(
+                "# Issue: `035-review`\n\n**Status: backlog** — old issue file.\n",
+                encoding="utf-8",
+            )
+            (root / "specs" / "034-done" / "release.md").write_text("# Release\n", encoding="utf-8")
+            (root / "specs" / "035-review" / "review.md").write_text("# Review\n", encoding="utf-8")
+
+            rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
+
+            self.assertEqual(rows["034-done"]["status"], "done")
+            self.assertEqual(rows["034-done"]["phase"], "release")
+            self.assertEqual(rows["035-review"]["status"], "review")
+
+    def test_collect_issue_table_uses_outcome_as_description_fallback(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "058-outcome.md").write_text(
+                "# Issue: `058-outcome`\n\n"
+                "**Status: backlog** — created.\n\n"
+                "## Outcome\n\n"
+                "Dashboard rows explain the issue even when Summary is missing.\n",
+                encoding="utf-8",
+            )
+
+            rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
+
+            self.assertEqual(
+                rows["058-outcome"]["description"],
+                "Dashboard rows explain the issue even when Summary is missing.",
+            )
+            self.assertEqual(rows["058-outcome"]["description_language"], "en")
+
+    def test_collect_issue_table_uses_korean_description_overlay(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "workspace").mkdir()
+            (root / "issues" / "058-overlay.md").write_text(
+                "# Issue: `058-overlay`\n\n"
+                "## Summary\n\n"
+                "English dashboard description.\n",
+                encoding="utf-8",
+            )
+            (root / "workspace" / "issue-descriptions.ko.json").write_text(
+                '{"058-overlay": "대시보드 한글 설명입니다."}',
+                encoding="utf-8",
+            )
+
+            rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
+
+            self.assertEqual(rows["058-overlay"]["description"], "대시보드 한글 설명입니다.")
+            self.assertEqual(rows["058-overlay"]["description_language"], "ko")
+            self.assertEqual(rows["058-overlay"]["summary"], "English dashboard description.")
+
+    def test_render_project_view_has_issue_db_tab_and_controls(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -584,11 +706,25 @@ More detail contents here.
 
             html = project_memory.render_project_view(root)
 
+            self.assertIn('id="issue-db"', html)
             self.assertIn('id="cy-issues"', html)
             self.assertIn('id="cy-memory"', html)
+            self.assertIn("이슈 DB", html)
             self.assertIn("이슈 그래프", html)
             self.assertIn("지식 그래프", html)
+            self.assertIn("const ISSUE_ROWS =", html)
             self.assertIn("const ISSUE_ELEMENTS =", html)
+            self.assertIn('id="issue-search"', html)
+            self.assertIn('data-view="missing"', html)
+            self.assertIn('id="issue-sort"', html)
+            self.assertIn("등록 최신순", html)
+            self.assertIn("등록 오래된순", html)
+            self.assertIn("최근 업데이트", html)
+            self.assertIn("<th>Created</th>", html)
+            self.assertIn("<th>Updated</th>", html)
+            self.assertIn("<th>Description</th>", html)
+            self.assertNotIn("<th>Next</th>", html)
+            self.assertIn("issue-042-new.html", html)
 
     def test_issue_panel_includes_linked_memory_section_only_when_present(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
@@ -609,6 +745,19 @@ More detail contents here.
             self.assertIn("Why foo", _linked_blob(html_present))
             self.assertIn("연결된 지식", html_present)
 
+    def test_issue_panel_links_back_to_issue_db(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "056-dashboard.md").write_text("# Issue 056\n", encoding="utf-8")
+
+            html = project_memory.render_issue_panel(root, "056-dashboard")
+
+            self.assertIn('href="dashboard.html#issue-db"', html)
+            self.assertIn("이슈 DB로 돌아가기", html)
+            self.assertIn('id="lang-ko"', html)
+            self.assertIn("한글", html)
 
     def test_ko_sidecar_attached_and_not_listed_separately(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
@@ -638,10 +787,54 @@ More detail contents here.
             without = project_memory.render_issue_panel(root, "049-b")
             self.assertIn('"ko": null', without)              # ko slot present, empty
             self.assertNotIn("한글 본문 내용", without)        # no Korean sidecar payload
+            self.assertIn('id="langtoggle" class="lang-toggle" hidden', without)
 
             (root / "specs" / "049-b" / "spec.ko.md").write_text("# 한글 본문 내용\n", encoding="utf-8")
             with_ko = project_memory.render_issue_panel(root, "049-b")
             self.assertIn("한글 본문 내용", with_ko)          # Korean payload present → client offers toggle
+            self.assertIn('id="lang-ko"', with_ko)
+            self.assertIn('id="langtoggle" class="lang-toggle">', with_ko)
+
+    def test_issue_panel_includes_korean_only_artifact(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "specs" / "034-memory").mkdir(parents=True)
+            (root / "specs" / "034-memory" / "human-review.ko.md").write_text(
+                "# 한글 검토 패킷\n", encoding="utf-8")
+
+            slug, artifacts = project_memory._collect_issue_artifacts(root, "034-memory")
+            html = project_memory.render_issue_panel(root, "034-memory")
+
+            self.assertEqual(slug, "034-memory")
+            self.assertTrue(any(a["name"] == "human-review.ko.md" and a["ko_only"] for a in artifacts))
+            self.assertIn("한글 검토 패킷", html)
+            self.assertIn('id="langtoggle" class="lang-toggle">', html)
+
+    def test_issue_panel_uses_korean_description_overlay(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "workspace").mkdir()
+            (root / "issues" / "058-overlay.md").write_text(
+                "# Issue: `058-overlay`\n\n"
+                "## Summary\n\n"
+                "English detail body.\n",
+                encoding="utf-8",
+            )
+            (root / "workspace" / "issue-descriptions.ko.json").write_text(
+                '{"058-overlay": "상세 페이지에서도 보이는 한글 설명입니다."}',
+                encoding="utf-8",
+            )
+
+            slug, artifacts = project_memory._collect_issue_artifacts(root, "058-overlay")
+            html = project_memory.render_issue_panel(root, "058-overlay")
+
+            self.assertEqual(slug, "058-overlay")
+            self.assertTrue(any(a["name"] == "korean-overview.ko.md" and a["ko_only"] for a in artifacts))
+            self.assertIn("상세 페이지에서도 보이는 한글 설명입니다.", html)
+            self.assertIn('id="langtoggle" class="lang-toggle">', html)
 
     def test_list_memory_ids_returns_all_and_filters_by_kind(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")

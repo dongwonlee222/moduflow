@@ -1,5 +1,7 @@
 # Issue 019: Loop Kernel And State Model
 
+**Status: done** — completed 2026-06-18.
+
 ## Summary
 
 Design and implement the core ModuFlow loop kernel so a plugin-installed user can move from a simple request to goal, issue graph, next action, and completion state without learning internal workflow commands.

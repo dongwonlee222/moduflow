@@ -48,8 +48,8 @@ Active goal: `business-document-workflow`
 - Reason: The graph is useful for relationships, but PM workflow also needs dense list/table views for status, next action, missing artifacts, review readiness, and operational triage.
 - Confidence: medium
 - Dependency: 045 issue graph, 047 issue drill-down, 049 bilingual sidecars, current dashboard generator
-- Next command: `product:spec 056-dashboard-database-list-view`
-- Status: backlog; initial benchmark captured in `knowledge/benchmarks/2026-07-03-dashboard-db-list-view-benchmark.md`.
+- Next command: `product:status`
+- Status: done; released locally with `specs/056-dashboard-database-list-view/release.md` after human approval.
 
 ### `057-korean-human-review-packet`
 
@@ -57,8 +57,17 @@ Active goal: `business-document-workflow`
 - Reason: English canonical artifacts are useful for tools, but human approval is currently uncomfortable when PR handoff and review notes are English-heavy.
 - Confidence: high
 - Dependency: 049 bilingual sidecars, 051 review handoff, 052 PR handoff
-- Next command: `product:spec 057-korean-human-review-packet`
-- Status: backlog; dogfooded with `specs/034-memory-capture-and-sync-workflow/human-review.ko.md`.
+- Next command: `product:status`
+- Status: done; released locally after human approval with release note, approval record, PR handoff, Korean packet, and passing gates.
+
+### `058-git-write-fallback-via-github-api`
+
+- Outcome: ModuFlow detects when local `.git` writes are blocked and automatically routes commit/push handoff through GitHub API before asking the user to run terminal commands.
+- Reason: Issues 056 and 057 needed API-created commits because Codex could edit files but could not create `.git/index.lock`; this should be a standard flow, not ad hoc recovery.
+- Confidence: high
+- Dependency: 050 repo sync preflight, 052 PR handoff, 057 Korean human review packet
+- Next command: `product:execute 058-git-write-fallback-via-github-api`
+- Status: active; issue, spec, plan, tasks, and status artifacts created.
 
 ### `035-team-issue-branch-pr-workflow`
 

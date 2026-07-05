@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "select",
+  "phase": "execute",
   "active_goal": "visual-workbench",
-  "active_issue": "",
-  "last_command": "product:execute 061-auto-commit-push-on-issue-done",
-  "next_command": "product:status",
+  "active_issue": "058-git-write-fallback-via-github-api",
+  "last_command": "merge codex/058-git-write-fallback-via-github-api",
+  "next_command": "product:execute 058-git-write-fallback-via-github-api",
   "blockers": [],
   "updated_at": "2026-07-05"
 }

@@ -25,7 +25,7 @@ python3 scripts/project_memory.py <project-path> --issue <issue id>
 ```
 
 5. Save subagent findings, verification output, the dashboard path `memory/dashboard.html`, and the issue drill-down path `memory/issue-<issue>.html` to `specs/<issue>/status.md`.
-6. Ensure `specs/<issue>/pr.md` exists or refresh it so PR review carries the same verification and dashboard evidence:
+6. Ensure `specs/<issue>/pr.md` and `specs/<issue>/human-review.ko.md` exist or refresh them so PR review carries the same verification, dashboard evidence, and Korean human-review surface:
 
 ```bash
 python3 scripts/project_pr.py <project-path> --issue-id <issue id> --write
@@ -58,9 +58,12 @@ Review is not complete until the dashboard and issue drill-down views have been 
 Review is not complete until the PR handoff has the same evidence a human needs in GitHub:
 
 - PR handoff: `specs/<issue>/pr.md`
+- Korean human-review packet: `specs/<issue>/human-review.ko.md`
 - PR state command: `python3 scripts/project_workflow.py <project-path> --pr-state --issue-id <issue id> --pr "<draft-pr-url-or-local-marker>" --reviewer "Reviewer"`
 - Required evidence: summary, verification, dashboard path, issue drill-down path, review findings, and human approval checkpoints.
 - If a GitHub PR exists, mirror the evidence into the PR body or a PR comment. If GitHub sync fails, keep `pr.md` current and report the mirror failure separately.
+
+For Korean reviewers, the packet is the first review surface. The dashboard detail page's `한글` tab must at least show a Korean overview, and any missing full Korean sidecars should be visible as a review limitation rather than hidden.
 
 ## Next
 

@@ -1,5 +1,7 @@
 # Issue 022: Intake To Goal Graph
 
+**Status: done** — completed 2026-06-18.
+
 ## Summary
 
 Turn loose user requests into goal-linked issue graphs across development, planning, design, data, documentation, and operations without forcing users to choose artifact types manually.
