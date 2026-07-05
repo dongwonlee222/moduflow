@@ -14,6 +14,7 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Recently Completed
 
+- `068-machine-query-surface`: `scripts/mcp_server.py` is now a real persistent stdio MCP server (4 read-only tools: status/issues/issue_get/doctor, payloads versioned `moduflow.mcp.v1`), registered in `.mcp.json` via `${CLAUDE_PLUGIN_ROOT}`; `project_lifecycle.py` gained `--issues` JSON. Independent verification caught and we fixed a real path-traversal disclosure, a crash-on-non-object-JSON, a schema clobber, and a duplicated parser — 21 module tests, 248 total.
 - `054-github-issue-sync`: `scripts/project_github_issues.py` projects a git-file issue to a GitHub Issue (opt-in, one-way): title + `moduflow:<status>` label + canonical-source link, URL written back into the issue's `## Links` as the create-vs-update discriminator; wired into the `061` done-flow as a post-push label refresh. Built subagent-TDD + independently verified (SPEC pass; 8 of 11 quality findings fixed, 3 accepted with rationale). Live projection not yet run — ask-first.
 - `055-command-surface-onboarding`: first issue of goal `team-visibility-onboarding` — `product:start` now ends with a 3-command core path (goal → issue → status) instead of the command wall, `product:status` closes with ranked ≤3 next commands from loop state, and README's flat 37-command list is regrouped into Core path / Build cycle / On-demand. Doc-only; no command renamed or removed.
 - `065-installed-plugin-staleness-detection`: `product:doctor` now reports (soft warning, exit unchanged) when the installed Claude Code plugin (`installed_plugins.json`) or Codex personal cache is behind the repo's own `.claude-plugin/plugin.json` version, with the exact update commands — the tool that detects everyone else's drift can now see its own. Built via implementation subagent + independent verification subagent; 2 reviewer-reproduced defects (lexicographic version sort, missing name guard) fixed with regression tests.
@@ -45,7 +46,6 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Queue (post-benchmark, 2026-07-05 — goal `team-visibility-onboarding` issues complete)
 
-- `068-machine-query-surface`: real MCP server + `--json` flags so agents query state structurally instead of parsing ASCII dashboards (P1).
 - `069-issue-dependency-priority-model`: `blocked_by`/`blocks`/`priority` metadata + ready-work query (P2).
 - `070-spec-consistency-analyze`: pre-execution spec↔plan↔tasks coherence check (P3).
 - `071-spec-code-converge-check`: post-implementation code-vs-spec divergence check (P3).

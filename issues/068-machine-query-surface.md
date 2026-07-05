@@ -1,6 +1,6 @@
 # Issue: `068-machine-query-surface`
 
-**Status: backlog** — created 2026-07-05.
+**Status: done** — created 2026-07-05, started 2026-07-05, done 2026-07-05.
 
 ## Outcome
 
@@ -35,9 +35,16 @@ Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): two in
 - related: `069-issue-dependency-priority-model` (ready query rides this surface)
 - related: `027-reduce-approval-popup-friction` (same friction theme, pre-MCP era)
 
+## Workflow Tasks
+
+- [x] spec → `specs/068-machine-query-surface/spec.md`
+- [x] plan → `specs/068-machine-query-surface/plan.md`
+- [x] execute → `scripts/mcp_server.py`, `scripts/project_lifecycle.py`, `.mcp.json`, `tests/test_mcp_server.py`, `docs/host-adapter-guidance.md`, `commands/product-status.md`, `scripts/release_check.py`
+
 ## Sessions
 
 - 2026-07-05: Registered from the competitive-gap benchmark (priority 1 of 5).
+- 2026-07-05: Executed. Spec/plan authored in main loop (old stub judged unsalvageable: single-shot, read retired loop-state.json, wrong root when installed, unregistered; its mutating decompose_goal tool dropped per Non-Goals). Implementation subagent (TDD, 16 tests RED→GREEN, no-sub-delegation clause) delivered a persistent stdio JSON-RPC server with 4 read-only tools (status/issues/issue_get/doctor summary), `list_issues`+`--issues` in project_lifecycle, `.mcp.json` registration via `${CLAUDE_PLUGIN_ROOT}`. Independent verification: SPEC fail + QUALITY fail with reproduced findings — path traversal in issue_get leaking arbitrary file fields (absolute + `../` both), process crash on valid-JSON-non-object stdin lines, status payload schema clobbered by state.json's own schema key, `_issue_title` duplicated against the plan's single-source constraint. All fixed in main loop with 5 regression tests (containment check, -32600/-32603 guards, schema-last + state_schema rename, import from lifecycle, list_issues dir-skip hardening). Final: 21 module tests, 248 full suite, release_check valid, stdio smoke shows crash-line survival.
 
 ## Links
 

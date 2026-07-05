@@ -48,6 +48,34 @@ def lifecycle_state(root):
     }
 
 
+def _issue_title(text):
+    for line in text.splitlines():
+        if line.startswith("# "):
+            heading = line[2:].strip()
+            if ":" in heading:
+                heading = heading.split(":", 1)[1].strip()
+            return heading.strip("`").strip()
+    return ""
+
+
+def list_issues(root):
+    """[{id, status, title}] for every issues/*.md, sorted by id."""
+    root = Path(root).resolve()
+    issues_dir = root / "issues"
+    items = []
+    if issues_dir.is_dir():
+        for f in sorted(issues_dir.glob("*.md")):
+            if not f.is_file():
+                continue
+            text = f.read_text(encoding="utf-8")
+            items.append({
+                "id": f.stem,
+                "status": _issue_status(text),
+                "title": _issue_title(text),
+            })
+    return items
+
+
 def infer_phase(root, issue_id):
     if not issue_id:
         return "select"
@@ -162,8 +190,12 @@ def main():
     parser.add_argument("--state", action="store_true", help="Print canonical lifecycle_state JSON.")
     parser.add_argument("--drift", action="store_true", help="Print lifecycle drift report (consensus).")
     parser.add_argument("--sync", action="store_true", help="Propagate issue Status to state.json + dashboard.")
+    parser.add_argument("--issues", action="store_true", help="Print list_issues(root) JSON.")
     args = parser.parse_args()
 
+    if args.issues:
+        print(json.dumps(list_issues(args.project_path), ensure_ascii=False, indent=2))
+        return 0
     if args.sync:
         print(json.dumps(sync_lifecycle(args.project_path), ensure_ascii=False, indent=2))
         return 0

@@ -7,6 +7,7 @@ For how to *format* status output, issues, and reports across hosts (Antigravity
 ## Default Order
 
 1. Read local artifacts first: `.moduflow/state.json`, `workspace/loop-state.json`, `workspace/goal.md`, `issues/`, and `specs/`.
+   - When the `moduflow` MCP server (`.mcp.json`) is connected, prefer its read-only tools (`moduflow_status`, `moduflow_issues`, `moduflow_issue_get`, `moduflow_doctor`) over a Bash script invocation for routine reads — same data, no approval prompt. The Bash CLI (`project_lifecycle.py`, `project_doctor.py`) stays the fallback when the MCP server isn't connected.
 2. Use importable validation APIs for routine checks:
    - `validate_project_artifacts.validate_project(root)`
    - `validate_moduflow.validate_moduflow(root)`

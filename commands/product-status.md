@@ -7,6 +7,8 @@ argument-hint: "[issue id]"
 
 Make progress visible.
 
+> MCP alternative: if the `moduflow` MCP server is connected, `moduflow_status` and `moduflow_issues` return the same state as steps 1-2 below without a Bash approval prompt — prefer it for a quick read.
+
 ## Do
 
 1. Run repo sync preflight. `project_sync.py` fetches remote refs itself (5s timeout, non-interactive) before comparing — no manual `git fetch` step needed:
