@@ -1,5 +1,7 @@
 # Issue 014: Loop attempts 무한루프 가드
 
+**Status: superseded-by-019** — absorbed into `019-loop-kernel-and-state-model` (done; guard lives in `scripts/project_loop.py`). Status line added 2026-07-05 (issue 066 legacy-schema migration).
+
 ## Summary
 
 `loop-state.json`의 `attempts` 필드를 실제로 증가·임계 차단하는 로직이 없다. 같은 `next_command`를 무한 추천/실행하는 것을 막을 코드 게이트를 추가한다.

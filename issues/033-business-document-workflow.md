@@ -1,5 +1,7 @@
 # Issue 033: Business Document Workflow
 
+**Status: done** — all workflow tasks checked incl. review/validation; deliverables on disk (`templates/business-plan/`, `tests/test_business_document_workflow.py`, commit 5929502). Status line added 2026-07-05 (issue 066 legacy-schema migration).
+
 ## Lifecycle
 
 - Phase: review

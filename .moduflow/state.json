@@ -3,7 +3,7 @@
   "phase": "select",
   "active_goal": "visual-workbench",
   "active_issue": "",
-  "last_command": "product:execute 067-upstream-adapter-absorption",
+  "last_command": "product:execute 066-legacy-issue-status-migration",
   "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-07-05"

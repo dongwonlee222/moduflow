@@ -1,5 +1,7 @@
 # Issue 018: 상태 단일 소스 + dashboard 드리프트 + 워크플로우 그림 통합
 
+**Status: superseded-by-019** — absorbed into `019-loop-kernel-and-state-model` (done). Status line added 2026-07-05 (issue 066 legacy-schema migration).
+
 ## Summary
 
 `next_command`가 state.json·loop-state.json·goal.md 3곳에 중복되고, state.json↔dashboard.md의 active_issue가 실제로 드리프트한다. 또한 workflow.md 다이어그램에 goal·loop이 누락돼 두 워크플로우 모델이 분리돼 있다.

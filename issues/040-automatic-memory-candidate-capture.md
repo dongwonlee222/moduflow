@@ -1,5 +1,7 @@
 # Issue: `040-automatic-memory-candidate-capture`
 
+**Status: done** — released (commits 4e1c74b, 34e36a2; `--list-candidates`/`--approve` live in `project_memory.py`; listed in dashboard Recently Completed). Status line added 2026-07-05 (issue 066 legacy-schema migration).
+
 ## Goal
 
 Automatically capture development decisions, benchmarks, research sessions, and release metadata into a temporary `memory/.candidates/` directory, and provide a workflow to approve them into durable project memory.

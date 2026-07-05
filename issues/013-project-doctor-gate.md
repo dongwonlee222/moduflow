@@ -1,5 +1,7 @@
 # Issue 013: project_doctor 게이트화 + release_check 테스트 누락 보강
 
+**Status: done** — shipped as 0.2.6 (doctor exit-1 gate live in `scripts/project_doctor.py`). Status line added 2026-07-05 (issue 066 legacy-schema migration).
+
 ## Summary
 
 `project_doctor.py`가 항상 `return 0`이라 release_check 안에서 무력 게이트였다. moduflow 미초기화/missing 시 exit 1을 반환하도록 수정하고, release_check 테스트 목록에서 누락됐던 `test_validation_distribution`을 추가한다. Shipped as 0.2.6.

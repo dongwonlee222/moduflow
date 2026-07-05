@@ -1,6 +1,6 @@
 # Issue: `066-legacy-issue-status-migration`
 
-**Status: backlog** — created 2026-07-05.
+**Status: done** — created 2026-07-05, started 2026-07-05, done 2026-07-05.
 
 ## Outcome
 
@@ -37,6 +37,7 @@ Every issue file in `issues/` carries the canonical `**Status: ...**` inline lin
 ## Sessions
 
 - 2026-07-05: Registered during a full-repo audit; parser mis-reports 10 legacy files as backlog, of which at least 4 (`012`, `013`, `030`, `040`) are provably done.
+- 2026-07-05: Executed per the model-tier convention — a subagent gathered per-file evidence (body markers, git history, artifact existence, supersedes cross-references); main loop judged and applied. Verdicts, all high-confidence: `012`/`013` done (shipped as 0.2.6), `030` done (commit 7843122), `033` done (all tasks checked, deliverables on disk), `040` done (released, in dashboard), `014`/`017`/`018` superseded-by-`019`, `015`/`016` superseded-by-`023` (both successors carry explicit `supersedes:` lists and are done). `grep -L "Status:" issues/*.md` now returns empty; drift `[]`; release_check passes. Note kept from evidence: `013`'s AC line about `test_validation_distribution` inclusion was later deliberately reversed by release_check's anti-recursion exclusion — refinement, not incompleteness.
 
 ## Links
 

@@ -1,5 +1,7 @@
 # Issue 015: 워커 병렬 판정 기준(파일 disjoint) + worktree 격리
 
+**Status: superseded-by-023** — absorbed into `023-worker-routing-and-isolation` (done; `merge_order()` + per-task worktree isolation in `worker_orchestrator.py`). Status line added 2026-07-05 (issue 066 legacy-schema migration).
+
 ## Summary
 
 병렬 적격 판정이 "작업 독립성"이 아니라 "워커 도메인 수"(`worker_orchestrator.py:88` `len(unique_workers) >= 2`)를 봐서 양방향 오판한다. 또한 병렬 워커 격리(worktree)·병합 순서가 전무하다.

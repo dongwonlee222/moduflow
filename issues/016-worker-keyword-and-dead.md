@@ -1,5 +1,7 @@
 # Issue 016: assign_worker 키워드 충돌 + dead worker 정의 동기화
 
+**Status: superseded-by-023** — absorbed into `023-worker-routing-and-isolation` (done). Status line added 2026-07-05 (issue 066 legacy-schema migration).
+
 ## Summary
 
 `assign_worker`(`worker_orchestrator.py:46-50`)가 WORKER_RULES를 순서대로 첫 매치 반환해, "acceptance" 같은 키워드가 의도와 다른 워커로 오배정된다. 또한 `workers/` 파일과 WORKER_RULES가 불일치한다.

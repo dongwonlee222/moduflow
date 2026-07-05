@@ -1,5 +1,7 @@
 # Issue 030: Worker Cognitive Demand Model Routing
 
+**Status: done** — completed 2026-06-20 (commit 7843122; `CognitiveDemand` routing live in `worker_orchestrator.py`). Status line added 2026-07-05 (issue 066 legacy-schema migration).
+
 ## Summary
 
 모든 서브에이전트 워커가 `"TypeName": "self"` 로 고정되어 있어 작업 복잡도와 무관하게 동일한 모델이 사용됩니다. 워커 역할별 인지 요구 수준(cognitive demand)을 `deep / balanced / fast` 세 단계로 정의하여, 호스트 에이전트(Gemini/Claude/Codex)가 자신의 플랫폼에서 적합한 모델을 스스로 선택하도록 합니다. 모델명 하드코딩 없이 버전이 바뀌어도 수정이 불필요한 구조를 목표로 합니다.

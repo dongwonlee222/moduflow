@@ -1,5 +1,7 @@
 # Issue 017: Goal multi-issue supervise 스키마/문서 정합
 
+**Status: superseded-by-019** — absorbed into `019-loop-kernel-and-state-model` (done). Status line added 2026-07-05 (issue 066 legacy-schema migration).
+
 ## Summary
 
 문서는 goal이 "one or more issues"를 supervise한다고 하지만, 데이터 모델(`loop-state.json` `issue_id` 단수, goal.md `Linked Issue` 단수, state.json `active_issue` 단수)은 1:1만 표현 가능하다. 선언-구현 불일치를 해소한다.

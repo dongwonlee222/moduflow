@@ -1,5 +1,7 @@
 # Issue 012: CI Pipeline (테스트·검증 자동화)
 
+**Status: done** — shipped as 0.2.6 (commit 7fbb967; `.github/workflows/ci.yml` live). Status line added 2026-07-05 (issue 066 legacy-schema migration).
+
 ## Summary
 
 GitHub Actions CI를 추가해 push/PR마다 unit tests + validate_moduflow + release_check를 자동 실행한다. 회귀를 사람 손이 아닌 파이프라인이 차단한다. Shipped as 0.2.6.

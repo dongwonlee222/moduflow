@@ -14,6 +14,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Recently Completed
 
+- `066-legacy-issue-status-migration`: the 10 pre-048 issue files with no canonical `Status:` line now carry one, evidence-judged per file (subagent-gathered): `012`/`013`/`030`/`033`/`040` done, `014`/`017`/`018` superseded-by-`019`, `015`/`016` superseded-by-`023` — every issue file now parses to its true state; `grep -L "Status:"` returns empty.
 - `067-upstream-adapter-absorption`: adapters had been frozen since 2026-06-12 while upstream moved 100+ commits each; relevance-filtered reviews found spec-kit templates and kwp product-management/productivity trees unchanged, but superpowers v6 rewrote subagent review + plan-writing practices — absorbed into `product-review.md` (read-only reviewers, no finding suppression, dual verdicts) and `product-plan.md` (Global Constraints, Interfaces, task right-sizing). All github adapters now carry `reviewed:` blocks; `--sync` stamp now requires an actual review (`053`'s stamp-without-review hole closed).
 - `058-git-write-fallback-via-github-api`: `scripts/project_git_handoff.py`'s `check_commit_capability()` classifies `local-git-write` / `github-api-commit` / `blocked` before any stage/commit/push, with a non-destructive `.git` write probe (never touches `index.lock`). `product:pr`/`product:release`/`product:sync` now instruct agents to use the GitHub API fallback instead of asking the user for terminal commands; `project_pr.py`'s PR handoff records the chosen `commit_mode`/`commit_reason`.
 - `064-version-bump-policy-and-enforcement`: advisory review of `063` found its version-bump step was convention-only (an agent could skip it, same failure class it fixed) and that `feat`→minor changed cadence unasked. Corrected: `feat`/`fix` now both bump patch (matches this repo's pre-063 history), and `release_check.py` gained a `version_bump_gate` that fails the pre-push hook if a bump-worthy commit lands with no version change. Also ran `010`'s sync mechanism to clear a live desync (`.codex-plugin/plugin.json` was still `0.2.15`, now `0.3.0+codex...`).
@@ -44,7 +45,6 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 - `054-github-issue-sync`: opt-in sync from `issues/*.md` to actual GitHub Issues (status label, one-way local→GitHub).
 - `055-command-surface-onboarding`: rank/stage the 20+ `product-*` commands for a first-time user instead of listing the full surface.
 - `065-installed-plugin-staleness-detection`: doctor warning when the installed Claude Code/Codex plugin copy is behind the repo's own version (found live: 0.2.6 installed vs 0.3.2 repo).
-- `066-legacy-issue-status-migration`: add the canonical `Status:` line to the 10 pre-048 issue files the lifecycle parser currently mis-reports as backlog.
 
 ## Blockers
 
