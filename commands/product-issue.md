@@ -11,10 +11,11 @@ Create the durable work item.
 
 1. Check existing issues for overlap before creating a new issue.
 2. Create or update `issues/<id>-<slug>.md`.
-3. Include lifecycle metadata: phase, created, started, target end, completed, and last updated.
+3. Include lifecycle metadata as the canonical inline `**Status:**` line near the top (`backlog|active|done|superseded`, plus created/started/completed dates in prose after it) — not a separate `## Lifecycle` block (048/069 convention).
 4. Link opportunity, owner, scope, priority, acceptance criteria, related issues, sessions, and related artifacts.
-5. Add a **Workflow Tasks** checklist. Every artifact-producing step (spec, plan, design, execute, review) is a tracked task with its artifact link and status — never produce an artifact off the books. As each step runs, check its box and link the artifact. This keeps the workflow itself visible inside the issue.
-6. If GitHub CLI is available and requested, create or sync the GitHub issue (see GitHub Issue Sync below).
+5. Dependency/priority fields (069): add `**Priority: p0|p1|p2|p3**` near the top, right after the `**Status:**` line (absent ⇒ defaults to `p2`). Add `**Blocked-by: <id>, <id>**` when the issue cannot start until other issues finish (absent ⇒ no blockers). Both are additive inline metadata — same convention as the canonical Status line (048), no frontmatter. `python3 scripts/project_lifecycle.py . --ready` lists unblocked backlog issues sorted by priority; `moduflow_ready` (MCP) returns the same list.
+6. Add a **Workflow Tasks** checklist. Every artifact-producing step (spec, plan, design, execute, review) is a tracked task with its artifact link and status — never produce an artifact off the books. As each step runs, check its box and link the artifact. This keeps the workflow itself visible inside the issue.
+7. If GitHub CLI is available and requested, create or sync the GitHub issue (see GitHub Issue Sync below).
 
 ## GitHub Issue Sync (opt-in)
 

@@ -1,5 +1,8 @@
 # Issue {{issue_id}}: {{title}}
 
+**Status: backlog** — created {{created_date}}.
+**Priority: p2**
+
 ## Summary
 
 {{summary}}
@@ -9,15 +12,6 @@
 - Type: {{source_type}}
 - Link: {{source_link}}
 - Date: {{date}}
-
-## Lifecycle
-
-- Phase: {{phase}}
-- Created: {{created_date}}
-- Started: {{started_date}}
-- Target End: {{target_end_date}}
-- Completed: {{completed_date}}
-- Last Updated: {{last_updated}}
 
 ## Opportunity
 

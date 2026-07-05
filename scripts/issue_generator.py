@@ -118,6 +118,10 @@ def write_issue_file(root_dir, num, issue_data):
     
     content = f"""# Issue {num:03d}: {issue_data["title"]}
 
+**Status: backlog** — created {date.today().isoformat()}.
+
+**Priority: p2**
+
 ## Summary
 
 {issue_data["summary"]}
@@ -127,15 +131,6 @@ def write_issue_file(root_dir, num, issue_data):
 - Type: product improvement / Autonomous PM Agent
 - Link: goal-decomposition
 - Date: {date.today().isoformat()}
-
-## Lifecycle
-
-- Phase: issue
-- Created: {date.today().isoformat()}
-- Started:
-- Target End:
-- Completed:
-- Last Updated: {date.today().isoformat()}
 
 ## Opportunity
 

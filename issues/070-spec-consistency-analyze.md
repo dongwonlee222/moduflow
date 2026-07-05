@@ -1,6 +1,7 @@
 # Issue: `070-spec-consistency-analyze`
 
 **Status: backlog** — created 2026-07-05.
+**Priority: p1**
 
 ## Outcome
 

@@ -56,6 +56,8 @@ class IssueGeneratorTests(unittest.TestCase):
             
             content = file_path.read_text(encoding="utf-8")
             self.assertIn("# Issue 007: OAuth2 Schema setup", content)
-            self.assertIn("- Phase: issue", content)
+            self.assertIn("**Status: backlog**", content)
+            self.assertIn("**Priority: p2**", content)
+            self.assertNotIn("## Lifecycle", content)
             self.assertIn("specs/007-oauth2-schema-setup/spec.md", content)
             self.assertIn("- [ ] Implement migration script", content)

@@ -80,11 +80,11 @@ class MCPServerTests(unittest.TestCase):
         resp = mcp_server.handle_request(req, self.root)
         self.assertIsNone(resp)
 
-    def test_tools_list_returns_four_tools_with_schema(self):
+    def test_tools_list_returns_five_tools_with_schema(self):
         req = {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}
         resp = mcp_server.handle_request(req, self.root)
         tools = resp["result"]["tools"]
-        self.assertEqual(len(tools), 4)
+        self.assertEqual(len(tools), 5)
         for tool in tools:
             self.assertIn("name", tool)
             self.assertIn("description", tool)
@@ -277,6 +277,34 @@ class MCPServerTests(unittest.TestCase):
         self.assertEqual(by_id["002-beta"]["status"], "active")
         self.assertEqual(by_id["003-gamma"]["status"], "backlog")
         self.assertEqual(by_id["001-alpha"]["title"], "001-alpha")
+
+    def test_moduflow_ready_returns_schema_payload_with_only_ready_issues(self):
+        req = {
+            "jsonrpc": "2.0",
+            "id": 14,
+            "method": "tools/call",
+            "params": {"name": "moduflow_ready", "arguments": {}},
+        }
+        resp = mcp_server.handle_request(req, self.root)
+        payload = json.loads(resp["result"]["content"][0]["text"])
+        self.assertEqual(payload["schema"], "moduflow.mcp.v1")
+        ids = [item["id"] for item in payload["ready"]]
+        # 003-gamma is backlog with no blockers -> ready.
+        # 002-beta is active (not backlog) -> excluded.
+        self.assertEqual(ids, ["003-gamma"])
+
+    def test_moduflow_issues_items_carry_priority_and_blocked_by(self):
+        req = {
+            "jsonrpc": "2.0",
+            "id": 15,
+            "method": "tools/call",
+            "params": {"name": "moduflow_issues", "arguments": {}},
+        }
+        resp = mcp_server.handle_request(req, self.root)
+        payload = json.loads(resp["result"]["content"][0]["text"])
+        for item in payload["issues"]:
+            self.assertIn("priority", item)
+            self.assertIn("blocked_by", item)
 
     def test_doctor_tool_is_exception_safe(self):
         req = {

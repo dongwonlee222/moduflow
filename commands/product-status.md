@@ -64,11 +64,15 @@ When resuming work, prepend:
 다음: <next handoff target>
 ```
 
+### Queue Guidance (issue 069)
+
+대기열 is dependency-aware, not just a flat backlog listing. Ready issues (`python3 scripts/project_lifecycle.py . --ready` or MCP `moduflow_ready`) are backlog issues whose `Blocked-by` ids are all `done`/`superseded`; render them sorted by `Priority` (`p0` first, unset defaults to `p2`), then id. Issues still waiting on an open blocker render distinctly — prefix with `⏸` and list the blocking issue ids (e.g. `⏸ 072-x — blocked by 070-y`) — never mixed into the ready ordering as if they were next.
+
 Detailed status mode may include:
 
 - Current phase
 - Active/recent sessions when available
-- Queue
+- Queue (ready vs blocked, per above)
 - Blockers and risks
 - Team work queues from `workflow/team-state.json` when present
 - Source artifact links when useful
@@ -103,6 +107,7 @@ Use this structure as the default. Keep it compact and adapt missing fields grac
   1. <next issue>
   2. <next issue>
   3. <next issue>
+  <blocked entries: "⏸ <issue id> — blocked by <blocker id>, <blocker id>">
 
 🚧 블로커
   <blockers or "없음">

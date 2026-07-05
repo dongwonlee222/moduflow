@@ -1,6 +1,7 @@
 # Issue: `073-project-constitution-steering`
 
 **Status: backlog** — created 2026-07-05.
+**Priority: p2**
 
 ## Outcome
 

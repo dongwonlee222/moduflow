@@ -1,6 +1,7 @@
 # Issue: `071-spec-code-converge-check`
 
 **Status: backlog** — created 2026-07-05.
+**Priority: p1**
 
 ## Outcome
 

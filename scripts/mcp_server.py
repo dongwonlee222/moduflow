@@ -15,7 +15,7 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.project_lifecycle import list_issues, _issue_status, _issue_title
+from scripts.project_lifecycle import list_issues, _issue_status, _issue_title, ready_issues
 
 SCHEMA = "moduflow.mcp.v1"
 PROTOCOL_VERSION = "2024-11-05"
@@ -59,6 +59,14 @@ TOOLS = [
     {
         "name": "moduflow_doctor",
         "description": "프로젝트 초기화/lifecycle drift/schema gate 상태 요약을 조회합니다 (preflight 없이).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+        },
+    },
+    {
+        "name": "moduflow_ready",
+        "description": "차단되지 않은(blocked_by 충족) backlog 이슈를 priority 순으로 조회합니다.",
         "inputSchema": {
             "type": "object",
             "properties": {},
@@ -178,6 +186,10 @@ def _tool_moduflow_issue_get(root, arguments):
     })
 
 
+def _tool_moduflow_ready(root):
+    return _text_result({"ready": ready_issues(root)})
+
+
 def _tool_moduflow_doctor(root):
     try:
         from scripts.project_doctor import inspect_project
@@ -237,6 +249,8 @@ def handle_request(req, root):
             return _rpc_result(req_id, result)
         if tool_name == "moduflow_doctor":
             return _rpc_result(req_id, _tool_moduflow_doctor(root))
+        if tool_name == "moduflow_ready":
+            return _rpc_result(req_id, _tool_moduflow_ready(root))
 
         if not has_id:
             return None
