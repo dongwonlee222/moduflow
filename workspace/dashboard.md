@@ -14,6 +14,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Recently Completed
 
+- `063-version-bump-on-done`: `.claude-plugin/plugin.json`'s version now bumps automatically as part of `061`'s auto-commit-push-on-done flow, classified from the commit message's Conventional-Commit prefix (`feat`→minor, `fix`→patch, `!`/`BREAKING CHANGE`→major, else none) — closes the gap where 7 issues shipped this session with zero version bumps.
 - `053-vendor-freshness-gate`: `scripts/vendor_freshness.py` compares `vendor.lock.json` GitHub sources against their actual latest commit (via `gh api`), same drift-gate pattern as `048`/`062` extended to external sources. Ran against the live lock file — all four sources had never been reviewed; `--sync` recorded current baselines.
 - `062-detect-unmerged-branch-work`: `inspect_repo_sync()` now scans remote branches ahead of `origin/main` for `Status: done` issues that aren't done there, reporting via `unmerged_branch_work` — catches finished work sitting on a forgotten/other-tool branch (found this session: 056/057 were done on `codex/058-...`, invisible to `origin/main`-only comparison).
 - `061-auto-commit-push-on-issue-done`: agents now commit+push immediately when an issue reaches `Status: done` and `release_check.py` passes, instead of waiting for a separate user request — fixes a cross-machine gap where completed work sat unpushed until noticed.

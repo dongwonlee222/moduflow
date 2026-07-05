@@ -1,5 +1,7 @@
 # Issue 010: Codex Manifest Version Sync Fix
 
+**Status: done** — created 2026-06-12, completed 2026-06-12 (status line added 2026-07-05).
+
 ## Summary
 
 Fix `register_codex_personal_marketplace.py` so the Codex manifest base version follows the canonical `.claude-plugin/plugin.json` version instead of staying stale after a release. Resolves the open follow-up from issue 009.
