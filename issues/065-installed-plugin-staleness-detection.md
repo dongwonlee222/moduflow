@@ -1,6 +1,6 @@
 # Issue: `065-installed-plugin-staleness-detection`
 
-**Status: backlog** — created 2026-07-05.
+**Status: done** — created 2026-07-05, started 2026-07-05, done 2026-07-05.
 
 ## Outcome
 
@@ -40,9 +40,14 @@ Found live on 2026-07-05: the repo was at `0.3.2` but the installed `moduflow@mo
 - related: `010-codex-version-sync-fix` (keeps the two manifests aligned; this issue covers the installed copies)
 - related: `061-auto-commit-push-on-issue-done` (auto-push makes releases frequent, which makes silent install staleness worse)
 
+## Workflow Tasks
+
+- [x] execute → `scripts/project_doctor.py` (`installed_plugin_staleness()` + `installed_plugin` doctor key), `tests/test_installed_plugin_staleness.py`, `scripts/release_check.py` (test-module list)
+
 ## Sessions
 
 - 2026-07-05: Registered during a plugin-side audit after finding the installed plugin 8 releases behind the repo (0.2.6 vs 0.3.2). Fixed the immediate staleness by hand (`marketplace update` + `plugin update`, both now 0.3.2); this issue automates the *detection* so it can't silently recur.
+- 2026-07-05: Executed per the model-tier convention: implementation subagent (TDD from a binding task plan, RED→GREEN, 6 tests) + independent read-only verification subagent (dual verdict). Verdicts: SPEC pass, QUALITY pass-with-findings — reviewer empirically reproduced 2 real defects: lexicographic sort misreported the "newest" codex cache dir (0.3.9 shown over 0.3.10), and a missing `name == "moduflow"` guard produced spurious warnings when doctor runs on another plugin's repo. Both fixed in the main loop with regression tests (now 8 tests). Doctor stays exit-0 with a live-stale install (verified on this machine: installed 0.3.2 vs repo 0.3.4 reported as soft warning); release_check remains valid. Done.
 
 ## Links
 

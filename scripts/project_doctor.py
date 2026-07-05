@@ -298,6 +298,66 @@ def skipped_preflight_status():
     }
 
 
+def installed_plugin_staleness(project_root, home=None):
+    """Soft check: is the installed ModuFlow plugin copy behind this repo's version?"""
+    home = Path(home) if home is not None else Path.home()
+    empty = {"checked": False, "stale": [], "recommendations": []}
+
+    plugin_manifest_path = Path(project_root) / ".claude-plugin" / "plugin.json"
+    try:
+        manifest = json.loads(plugin_manifest_path.read_text(encoding="utf-8"))
+    except Exception:
+        return empty
+    # Only the moduflow source repo's own version is comparable to the
+    # installed moduflow copies — any other plugin's manifest must not
+    # produce a spurious staleness warning.
+    if manifest.get("name") != "moduflow":
+        return empty
+    repo_version = manifest.get("version")
+    if not repo_version:
+        return empty
+
+    stale = []
+    recommendations = []
+
+    installed_plugins_path = home / ".claude" / "plugins" / "installed_plugins.json"
+    try:
+        if installed_plugins_path.exists():
+            data = json.loads(installed_plugins_path.read_text(encoding="utf-8"))
+            entries = data.get("plugins", {}).get("moduflow@moduflow", [])
+            for entry in entries:
+                installed_version = entry.get("version")
+                if installed_version and installed_version != repo_version:
+                    stale.append(
+                        {"host": "claude-code", "installed": installed_version, "repo": repo_version}
+                    )
+                    recommendations.append(
+                        "claude plugin marketplace update moduflow && claude plugin update moduflow@moduflow"
+                    )
+    except Exception:
+        pass
+
+    codex_cache_dir = home / ".codex" / "plugins" / "cache" / "personal" / "moduflow"
+    try:
+        if codex_cache_dir.exists():
+            versions = [d.name for d in codex_cache_dir.iterdir() if d.is_dir()]
+            if versions and not any(name.split("+")[0] == repo_version for name in versions):
+
+                def _numeric_base(name):
+                    try:
+                        return tuple(int(part) for part in name.split("+")[0].split("."))
+                    except ValueError:
+                        return (-1,)
+
+                newest = max(versions, key=_numeric_base)
+                stale.append({"host": "codex", "installed": newest, "repo": repo_version})
+                recommendations.append("python3 scripts/register_codex_personal_marketplace.py .")
+    except Exception:
+        pass
+
+    return {"checked": True, "stale": stale, "recommendations": recommendations}
+
+
 def inspect_project(path, include_preflight=True):
     requested = Path(path).resolve()
     if include_preflight:
@@ -323,6 +383,10 @@ def inspect_project(path, include_preflight=True):
         lifecycle_drift = load_project_lifecycle().lifecycle_drift(project_root)
     except Exception:
         lifecycle_drift = []
+    try:
+        plugin_staleness = installed_plugin_staleness(project_root)
+    except Exception:
+        plugin_staleness = {"checked": False, "stale": [], "recommendations": []}
     missing_workflow = missing_workflow_paths(project_root)
     candidates = discover_candidate_paths(project_root)
     migration_mode = recommended_migration_mode(missing, candidates)
@@ -380,6 +444,7 @@ def inspect_project(path, include_preflight=True):
         "lifecycle": {
             "drift": lifecycle_drift,  # 048: issue files vs state.json/dashboard
         },
+        "installed_plugin": plugin_staleness,  # soft hint only — never affects exit code
         "workflow": {
             "initialized": not missing_workflow,
             "missing": missing_workflow,
@@ -451,6 +516,8 @@ def inspect_project(path, include_preflight=True):
 
     if schema_gates.get("errors"):
         result["recommendation"].append("schema gate failed; fix linked artifacts, state drift, or next_command before release.")
+
+    result["recommendation"].extend(plugin_staleness["recommendations"])
 
     return result
 

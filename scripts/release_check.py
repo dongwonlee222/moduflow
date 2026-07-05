@@ -177,6 +177,7 @@ def run_release_check(path):
             "tests.test_project_sync",
             "tests.test_worker_orchestration",
             "tests.test_codex_personal_install",
+            "tests.test_installed_plugin_staleness",
             # NOTE: test_validation_distribution is intentionally excluded here.
             # It calls release_check.run_release_check itself, so listing it would
             # make release_check recurse into itself. CI runs `unittest discover`

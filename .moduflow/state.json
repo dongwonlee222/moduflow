@@ -3,7 +3,7 @@
   "phase": "select",
   "active_goal": "visual-workbench",
   "active_issue": "",
-  "last_command": "product:execute 066-legacy-issue-status-migration",
+  "last_command": "product:execute 065-installed-plugin-staleness-detection",
   "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-07-05"
