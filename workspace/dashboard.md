@@ -14,6 +14,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Recently Completed
 
+- `062-detect-unmerged-branch-work`: `inspect_repo_sync()` now scans remote branches ahead of `origin/main` for `Status: done` issues that aren't done there, reporting via `unmerged_branch_work` — catches finished work sitting on a forgotten/other-tool branch (found this session: 056/057 were done on `codex/058-...`, invisible to `origin/main`-only comparison).
 - `061-auto-commit-push-on-issue-done`: agents now commit+push immediately when an issue reaches `Status: done` and `release_check.py` passes, instead of waiting for a separate user request — fixes a cross-machine gap where completed work sat unpushed until noticed.
 - `059-auto-fetch-in-repo-sync`: `inspect_repo_sync()` now fetches remote refs itself (5s timeout, non-interactive) before comparing, with `fetched`/`fetch_warning` fields and a stale-cache recommendation on failure; `product:sync`/`product:status` no longer need a manual `git fetch` step first.
 - `060-cross-agent-output-format-convention`: added project-root `AGENTS.md` (read natively by Antigravity/Claude Code/Codex) codifying a situation → shape table and deliberate whitespace-rhythm rules, replacing per-agent improvisation; `docs/host-adapter-guidance.md` now points to it.

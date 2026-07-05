@@ -21,6 +21,7 @@ Status reads local files only, so without a fresh fetch it can show a stale snap
    - If `origin/main` has issue files missing locally, report those issue IDs before rendering the local queue.
    - If the working tree is clean, recommend (or run after confirming) `git pull` before rendering, so status reflects the latest.
    - If the working tree is dirty or `@{u}` is unset, do NOT auto-pull — surface the state and let the user decide.
+   - If `unmerged_branch_work` is non-empty, report it plainly (e.g. "다른 브랜치에 완료된 이슈가 있음: `<branch>` — 056, 057") before rendering the queue — this catches finished work on a branch the user forgot about (e.g. from another tool/session), which a `origin/main`-only comparison misses.
    - If `fetched` is `false` in the preflight result, report the `fetch_warning` plainly (e.g. "원격 확인 실패 — 마지막 fetch 기준 정보입니다") instead of presenting the freshness numbers as current.
 2. Read `.moduflow/state.json`, `workspace/loop-state.json` when present, issues, specs, tasks, PR notes, releases, and roadmap.
 3. Render a Korean-first terminal-style dashboard before detailed prose.

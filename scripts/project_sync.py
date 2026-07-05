@@ -3,8 +3,16 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+if __package__ in (None, ""):
+    # Allow `python3 scripts/project_sync.py` (documented CLI usage) to resolve
+    # the cross-script import below, in addition to `from scripts import project_sync`.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from scripts.project_lifecycle import _issue_status
 
 FETCH_TIMEOUT_SECONDS = 5
 
@@ -98,6 +106,65 @@ def _issue_ids_from_paths(paths_text):
     return sorted(set(issue_ids))
 
 
+def _list_remote_branches(runner, cwd, default_remote):
+    result = _run(runner, ["git", "for-each-ref", "--format=%(refname:short)", "refs/remotes"], cwd)
+    if result.returncode != 0:
+        return []
+    branches = []
+    for line in _stdout(result).splitlines():
+        line = line.strip()
+        if not line or line.endswith("/HEAD") or line == default_remote:
+            continue
+        branches.append(line)
+    return branches
+
+
+def _issue_ids_in_ref(runner, cwd, ref):
+    result = _run(runner, ["git", "ls-tree", "-r", "--name-only", ref, "issues"], cwd)
+    if result.returncode != 0:
+        return []
+    return _issue_ids_from_paths(result.stdout)
+
+
+def _status_at_ref(runner, cwd, ref, issue_id):
+    result = _run(runner, ["git", "show", f"{ref}:issues/{issue_id}.md"], cwd)
+    if result.returncode != 0:
+        return None
+    return _issue_status(result.stdout)
+
+
+def find_unmerged_branch_work(runner, cwd, default_remote):
+    findings = []
+    for branch in _list_remote_branches(runner, cwd, default_remote):
+        counts = _run(
+            runner,
+            ["git", "rev-list", "--left-right", "--count", f"{default_remote}...{branch}"],
+            cwd,
+        )
+        if counts.returncode != 0:
+            continue
+        _, ahead = _parse_rev_counts(counts.stdout)
+        if not ahead:
+            continue
+
+        done_issue_ids = []
+        for issue_id in _issue_ids_in_ref(runner, cwd, branch):
+            if _status_at_ref(runner, cwd, branch, issue_id) != "done":
+                continue
+            if _status_at_ref(runner, cwd, default_remote, issue_id) != "done":
+                done_issue_ids.append(issue_id)
+
+        if done_issue_ids:
+            findings.append(
+                {
+                    "branch": branch,
+                    "ahead": ahead,
+                    "done_issue_ids": sorted(done_issue_ids),
+                }
+            )
+    return findings
+
+
 def inspect_repo_sync(path=".", runner=None):
     cwd = Path(path).resolve()
     runner = runner or run_command
@@ -165,6 +232,8 @@ def inspect_repo_sync(path=".", runner=None):
     local_issue_ids = _issue_ids_from_paths(local_issues.stdout if local_issues.returncode == 0 else "")
     remote_only_issue_ids = sorted(set(remote_issue_ids) - set(local_issue_ids))
 
+    unmerged_branch_work = find_unmerged_branch_work(runner, cwd, default_remote)
+
     result = {
         "schema": "moduflow.repo-sync.v1",
         "project_root": str(cwd),
@@ -181,6 +250,7 @@ def inspect_repo_sync(path=".", runner=None):
         "default_remote_ahead": default_remote_ahead,
         "dirty": dirty,
         "remote_only_issue_ids": remote_only_issue_ids,
+        "unmerged_branch_work": unmerged_branch_work,
         "mode_note": "git-files mode stores ModuFlow issues in repo files such as issues/*.md; GitHub Issues objects are optional mirrors.",
     }
     result["recommendations"] = format_recommendations(result)
@@ -221,6 +291,11 @@ def format_recommendations(result):
         sample = ", ".join(result["remote_only_issue_ids"][:5])
         recommendations.append(
             f"{result.get('default_remote')} has issue files missing locally: {sample}. Refresh the checkout before concluding GitHub work is missing."
+        )
+    for finding in result.get("unmerged_branch_work") or []:
+        ids = ", ".join(finding["done_issue_ids"])
+        recommendations.append(
+            f"{finding['branch']} is {finding['ahead']} commits ahead of {result.get('default_remote')} and has done issue(s) not done there: {ids}."
         )
     if not recommendations:
         recommendations.append("Repo sync preflight is clean.")

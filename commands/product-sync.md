@@ -37,6 +37,7 @@ If the fetch could not reach the remote (offline, timeout, auth), the result inc
 - `origin/main` contains issue files that are missing locally
 - worktree is dirty, so fast-forward needs human review first
 - the remote fetch itself failed (offline/timeout/auth) — reported via `fetched`/`fetch_warning`, so a stale-cache read is visible instead of silently treated as current
+- another remote branch (not the current one, not `origin/main`) has a `Status: done` issue that isn't `done` on `origin/main` — reported via `unmerged_branch_work`, so finished work on a forgotten branch (e.g. from another tool/session) isn't invisible. Detection only — merging that branch is a separate, explicitly-confirmed decision.
 
 Recommended recovery path when clean:
 

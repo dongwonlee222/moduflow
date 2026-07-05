@@ -213,6 +213,83 @@ class ProjectSyncTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("timed out", result.stderr)
 
+    def _clean_repo_responses(self, extra=None):
+        responses = {
+            ("git", "fetch", "--quiet"): "",
+            ("git", "rev-parse", "--is-inside-work-tree"): "true\n",
+            ("git", "rev-parse", "--abbrev-ref", "HEAD"): "main\n",
+            ("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"): "origin/main\n",
+            ("git", "branch", "-vv"): "* main af5b086 [origin/main] fix(049)\n",
+            ("git", "rev-list", "--left-right", "--count", "HEAD...origin/main"): "0\t0\n",
+            ("git", "symbolic-ref", "refs/remotes/origin/HEAD"): "refs/remotes/origin/main\n",
+            ("git", "status", "--porcelain"): "",
+            ("git", "ls-tree", "-r", "--name-only", "origin/main", "issues"): "issues/056-x.md\n",
+            ("git", "ls-files", "issues"): "issues/056-x.md\n",
+        }
+        if extra:
+            responses.update(extra)
+        return responses
+
+    def test_reports_done_issue_on_unmerged_branch(self):
+        runner = FakeRunner(
+            self._clean_repo_responses(
+                {
+                    ("git", "for-each-ref", "--format=%(refname:short)", "refs/remotes"): (
+                        "origin/HEAD\norigin/main\norigin/codex/058-feature\n"
+                    ),
+                    ("git", "rev-list", "--left-right", "--count", "origin/main...origin/codex/058-feature"): "0\t22\n",
+                    ("git", "ls-tree", "-r", "--name-only", "origin/codex/058-feature", "issues"): (
+                        "issues/056-x.md\n"
+                    ),
+                    ("git", "show", "origin/codex/058-feature:issues/056-x.md"): "**Status: done** — done.\n",
+                    ("git", "show", "origin/main:issues/056-x.md"): "**Status: backlog** — created.\n",
+                }
+            )
+        )
+
+        result = project_sync.inspect_repo_sync(Path("."), runner=runner)
+
+        self.assertEqual(
+            result["unmerged_branch_work"],
+            [{"branch": "origin/codex/058-feature", "ahead": 22, "done_issue_ids": ["056-x"]}],
+        )
+        joined = " ".join(result["recommendations"])
+        self.assertIn("origin/codex/058-feature", joined)
+        self.assertIn("056-x", joined)
+
+    def test_branch_ahead_with_no_status_diff_is_not_reported(self):
+        runner = FakeRunner(
+            self._clean_repo_responses(
+                {
+                    ("git", "for-each-ref", "--format=%(refname:short)", "refs/remotes"): (
+                        "origin/HEAD\norigin/main\norigin/some-branch\n"
+                    ),
+                    ("git", "rev-list", "--left-right", "--count", "origin/main...origin/some-branch"): "0\t3\n",
+                    ("git", "ls-tree", "-r", "--name-only", "origin/some-branch", "issues"): "issues/056-x.md\n",
+                    ("git", "show", "origin/some-branch:issues/056-x.md"): "**Status: active** — started.\n",
+                    ("git", "show", "origin/main:issues/056-x.md"): "**Status: active** — started.\n",
+                }
+            )
+        )
+
+        result = project_sync.inspect_repo_sync(Path("."), runner=runner)
+
+        self.assertEqual(result["unmerged_branch_work"], [])
+
+    def test_no_branches_ahead_reports_clean(self):
+        runner = FakeRunner(
+            self._clean_repo_responses(
+                {
+                    ("git", "for-each-ref", "--format=%(refname:short)", "refs/remotes"): "origin/HEAD\norigin/main\n",
+                }
+            )
+        )
+
+        result = project_sync.inspect_repo_sync(Path("."), runner=runner)
+
+        self.assertEqual(result["unmerged_branch_work"], [])
+        self.assertIn("Repo sync preflight is clean.", result["recommendations"])
+
 
 if __name__ == "__main__":
     unittest.main()
