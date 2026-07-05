@@ -43,8 +43,14 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 - `042-decision-graph-dashboard`: interactive Cytoscape memory-graph dashboard generated from `memory/` frontmatter (supersedes static-Mermaid `041`).
 - `040-automatic-memory-candidate-capture`: automatic memory candidate capture with `--candidates/--approve/--reject/--capture`, 14-day stale pruning, released-status auto-capture.
 
-## Queue (goal `team-visibility-onboarding`)
+## Queue (post-benchmark, 2026-07-05 — goal `team-visibility-onboarding` issues complete)
 
+- `068-machine-query-surface`: real MCP server + `--json` flags so agents query state structurally instead of parsing ASCII dashboards (P1).
+- `069-issue-dependency-priority-model`: `blocked_by`/`blocks`/`priority` metadata + ready-work query (P2).
+- `070-spec-consistency-analyze`: pre-execution spec↔plan↔tasks coherence check (P3).
+- `071-spec-code-converge-check`: post-implementation code-vs-spec divergence check (P3).
+- `072-lifecycle-hooks-automation`: SessionStart state injection + auto lifecycle sync hooks (P4).
+- `073-project-constitution-steering`: standing versioned project principles replacing per-plan Global Constraints re-authoring (P5).
 
 ## Blockers
 

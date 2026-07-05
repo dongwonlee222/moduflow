@@ -3,8 +3,8 @@
   "phase": "select",
   "active_goal": "team-visibility-onboarding",
   "active_issue": "",
-  "last_command": "product:execute 054-github-issue-sync",
-  "next_command": "product:status",
+  "last_command": "product:benchmark competitive-gap",
+  "next_command": "product:execute 068-machine-query-surface",
   "blockers": [],
   "updated_at": "2026-07-05"
 }

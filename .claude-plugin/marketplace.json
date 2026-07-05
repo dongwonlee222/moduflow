@@ -1,11 +1,16 @@
 {
   "name": "moduflow",
-  "owner": { "name": "Dongwon Lee", "url": "https://github.com/dongwonlee222" },
+  "owner": {
+    "name": "Dongwon Lee",
+    "url": "https://github.com/dongwonlee222"
+  },
   "plugins": [
     {
       "name": "moduflow",
       "source": "./",
-      "description": "Git-native PM execution orchestrator for issues, specs, roadmaps, subagents, analysis, design, PRs, and releases."
+      "description": "Git-native PM execution orchestrator for issues, specs, roadmaps, subagents, analysis, design, PRs, and releases.",
+      "category": "productivity"
     }
-  ]
+  ],
+  "description": "Git-native PM execution orchestrator: issues, specs, roadmaps, subagent execution, PRs, and releases with Markdown as the source of truth."
 }
