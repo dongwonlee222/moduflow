@@ -76,43 +76,32 @@ In Codex, call these through `@ModuFlow` without the leading slash. The default 
 Direct commands remain available for precision, for example `@ModuFlow product:start` or `@ModuFlow product:spec 020-user-facing-simple-loop-ux`.
 Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow issue`, or `@ModuFlow 상태`.
 
+### Core path (start here — these five cover a whole work cycle)
+
 - `/moduflow`: entry point — status, next action, and routing for everything below
 - `/product:start`: initialize ModuFlow in a project
-- `/product:migrate`: safely adopt an existing project without moving files
-- `/product:profile`: create project ownership, environment, and integration metadata
-- `/product:memory`: initialize, write, search, and retrieve portable project memory
-- `/product:knowledge`: initialize knowledge evidence artifacts
-- `/product:decision`: create a decision record
-- `/product:research`: create a research artifact
-- `/product:benchmark`: create a benchmark artifact
-- `/product:report`: create a report artifact
-- `/product:evidence`: review evidence for an issue or spec
-- `/product:portfolio`: initialize or render a multi-project portfolio workspace
-- `/product:projects`: inspect registered projects in a portfolio workspace
-- `/product:issues`: inspect all issues in the current project
-- `/product:weekly`: generate a weekly portfolio status
-- `/product:handoff`: initialize team workflow artifacts or create handoff records
-- `/product:risks`: inspect blockers, risks, and release concerns
-- `/product:inbox`: capture raw requests
-- `/product:opportunity`: shape the problem/opportunity
 - `/product:goal`: create or update an active goal above issues
 - `/product:issue`: create or update a Git issue artifact
-- `/product:spec`: create the spec/PRD
-- `/product:analyze`: run metrics/data analysis
-- `/product:design`: create UX/design brief
-- `/product:prototype`: create or review prototype
-- `/product:roadmap`: update Now/Next/Later roadmap view
-- `/product:plan`: create execution plan and tasks
-- `/product:loop`: recommend or run the next safe workflow step for the active goal
-- `/product:workers`: generate worker assignment and parallel execution plan
-- `/product:execute`: run implementation with Superpowers-style workers
 - `/product:status`: show current state and next command
+- `/product:loop`: recommend or run the next safe workflow step — when unsure, run this
+
+### Build cycle (the loop recommends these when an issue is ready to move)
+
+- `/product:spec`: create the spec/PRD
+- `/product:plan`: create execution plan and tasks
+- `/product:execute`: run implementation with Superpowers-style workers
 - `/product:review`: run PM/UX/data/QA/release review
 - `/product:pr`: prepare GitHub PR
 - `/product:release`: prepare release and rollback notes
-- `/product:update`: create stakeholder update
-- `/product:sync`: update upstream vendor references
-- `/product:doctor`: validate local ModuFlow setup
+
+### On-demand (reach for these when the work calls for them)
+
+- Intake and shaping: `/product:inbox` (capture raw requests), `/product:opportunity` (shape the problem)
+- Evidence and knowledge: `/product:knowledge`, `/product:decision`, `/product:research`, `/product:benchmark`, `/product:report`, `/product:evidence`
+- Analysis and design: `/product:analyze` (metrics/data), `/product:design` (UX brief), `/product:prototype`
+- Views and planning: `/product:roadmap` (Now/Next/Later), `/product:issues` (inspect all issues), `/product:risks` (blockers and release concerns)
+- Portfolio and team: `/product:portfolio`, `/product:projects`, `/product:weekly`, `/product:handoff`, `/product:update` (stakeholder update), `/product:workers` (parallel execution plan)
+- Project setup and health: `/product:migrate` (adopt an existing project), `/product:profile`, `/product:memory`, `/product:sync` (upstream vendor references), `/product:doctor` (validate setup)
 
 ## Source Updates
 

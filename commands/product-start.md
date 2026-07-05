@@ -48,3 +48,16 @@ Initialize ModuFlow project state.
 - Created or reused lightweight project files (must include `workspace/loop-state.json`)
 - Confirmation that ModuFlow tooling remains in the plugin/source package
 - Next command: `product:goal` to set the active goal, then `product:loop` to keep advancing. Never end `product:start` without the loop seeded.
+
+## First-Run Guidance (issue 055)
+
+End the start report with a short ranked "what to run next" list — never the full command index. The core path is three commands:
+
+```text
+➡️ 다음 단계 (핵심 경로)
+  1. product:goal   — 지금 이루려는 목표 한 줄 등록
+  2. product:issue  — 첫 작업을 이슈로 등록
+  3. product:status — 언제든 현재 상태와 다음 액션 확인
+```
+
+Everything else (`spec`, `plan`, `execute`, `review`, `pr`, `release`, analysis/design/knowledge commands) is on-demand — the loop recommends them when the work actually calls for them. Mention that `product:loop` picks the next step automatically when unsure. Do not enumerate the 20+ command surface at start.

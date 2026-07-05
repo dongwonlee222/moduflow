@@ -73,6 +73,10 @@ Detailed status mode may include:
 - Loop status and attempts
 - Next recommended command
 
+### Next-Command Guidance (issue 055)
+
+Always close with a ranked, concrete list of at most 3 next commands (the single best one first) — never the full command index. Rank by the loop state: e.g. an issue in `spec` phase gets `product:plan` first; a completed review gets `product:pr`. When the user seems unsure what any command does, point to `product:loop` ("다음 단계를 알아서 골라줌") instead of explaining the whole surface. New-project states (no goal, no issues) rank `product:goal` → `product:issue` → `product:status`, matching `product:start`'s first-run guidance.
+
 ## Dashboard Format
 
 Use this structure as the default. Keep it compact and adapt missing fields gracefully.

@@ -1,6 +1,6 @@
 # Issue: `055-command-surface-onboarding`
 
-**Status: backlog** — created 2026-07-03.
+**Status: done** — created 2026-07-03, started 2026-07-05, done 2026-07-05.
 
 ## Outcome
 
@@ -34,9 +34,14 @@ A first-time user lands on a small, clear entry point (`product:start` -> `produ
 - related: `026-simplify-command-and-folder-surface`
 - related: `044-product-dashboard-command`
 
+## Workflow Tasks
+
+- [x] execute → `commands/product-start.md`, `commands/product-status.md`, `README.md`
+
 ## Sessions
 
 - 2026-07-03: User asked what to improve next; noted the command surface is still wide for new users despite 026/044. Registered as backlog issue only, per user's choice — implementation deferred.
+- 2026-07-05: Executed as first issue of goal `team-visibility-onboarding`. Scope cross-check confirmed doc-only suffices (044's dashboard covers visualization; no new command grouping code needed). `product:start` gained a First-Run Guidance section (3-command core path: goal → issue → status, full index banned at start); `product:status` gained a Next-Command Guidance section (ranked ≤3 next commands from loop state, `product:loop` as the escape hatch); README's flat 37-command list regrouped into Core path (6) / Build cycle (6) / On-demand (categorized). No command renamed or removed. release_check passes.
 
 ## Links
 
