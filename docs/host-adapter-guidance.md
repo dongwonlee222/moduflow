@@ -2,6 +2,8 @@
 
 ModuFlow should keep routine status, doctor, and review flows calm in hosts that ask for approval before shell commands. The plugin should prefer in-process validation for local read-only checks and reserve shell, Git, GitHub, account, and destructive operations for moments where the user clearly needs them.
 
+For how to *format* status output, issues, and reports across hosts (Antigravity, Claude Code, Codex), see `AGENTS.md` at the project root — this doc covers approval-flow behavior, not output shape.
+
 ## Default Order
 
 1. Read local artifacts first: `.moduflow/state.json`, `workspace/loop-state.json`, `workspace/goal.md`, `issues/`, and `specs/`.

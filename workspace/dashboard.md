@@ -10,10 +10,11 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `059-auto-fetch-in-repo-sync` (phase: spec). Canonical: `issues/059-auto-fetch-in-repo-sync.md`.
 
 ## Recently Completed
 
+- `060-cross-agent-output-format-convention`: added project-root `AGENTS.md` (read natively by Antigravity/Claude Code/Codex) codifying a situation → shape table and deliberate whitespace-rhythm rules, replacing per-agent improvisation; `docs/host-adapter-guidance.md` now points to it.
 - `034-memory-capture-and-sync-workflow`: released via PR #5; memory capture workflow now has review, PR, release, and Korean human-review packet artifacts, with follow-ups 056/057 registered.
 - `052-draft-pr-review-handoff`: PR flow now supports early Draft PR / local PR-ready state, refreshes `specs/<issue>/pr.md` after review, and carries dashboard + issue drill-down evidence into the PR handoff before human approval.
 - `051-autonomous-execute-review-visual-handoff`: execute/review flow now generates a review handoff, maps implementation/QA/PM-spec review to subagent-ready sections, requires verification, and surfaces the dashboard plus issue drill-down HTML for human visual inspection.
