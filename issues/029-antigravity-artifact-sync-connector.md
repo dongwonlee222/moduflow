@@ -1,5 +1,7 @@
 # Issue 029: Antigravity Artifact Sync Connector
 
+**Status: done** — created 2026-06-19, completed 2026-06-19 (status line added 2026-07-05; see `specs/029-antigravity-artifact-sync-connector/status.md`).
+
 ## Summary
 
 Reduce duplicate planning/documentation work by syncing Antigravity-native artifacts with ModuFlow's Git-native issue/spec/status files.
@@ -12,11 +14,11 @@ Reduce duplicate planning/documentation work by syncing Antigravity-native artif
 
 ## Lifecycle
 
-- Phase: backlog
+- Phase: complete (legacy field — canonical is the `Status:` line above, per 048)
 - Created: 2026-06-19
-- Started:
+- Started: 2026-06-19
 - Target End:
-- Completed:
+- Completed: 2026-06-19
 - Last Updated: 2026-06-19
 
 ## Opportunity
