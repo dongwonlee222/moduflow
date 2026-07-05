@@ -61,6 +61,15 @@ When using `host-subagent` backend, `product:execute` will generate a subagent c
 The host agent should invoke the subagent tool using the parameters listed in the task's `subagent` config block in `worker-plan.json`.
 The `CognitiveDemand` field is a hint — the host agent selects the actual model itself based on what is currently available on its platform.
 
+## Model Tier Policy
+
+The main-loop model (the most capable/expensive tier the user is running) is for **orchestration and judgment**, not for everything (absorbed from Superpowers v6's explicit-model-per-dispatch rule, issue `067`; adopted as a working convention 2026-07-05):
+
+- **Main loop keeps**: scope decisions, spec/plan authorship, absorb-or-skip judgments, final synthesis and verification of subagent output, user communication, git commit/push.
+- **Dispatch to subagents** (explicitly on a cheaper tier when the host allows model selection): upstream/external research sweeps, codebase exploration, mechanical implementation streams from an approved plan, and independent review/verification passes (QA, spec-compliance).
+- Every dispatch states its model tier explicitly when the host supports it — an unnamed dispatch silently inherits the most expensive tier, which wastes exactly the capacity the main loop should be reserving for judgment.
+- Verification stays independent: the subagent that implemented a task is never the one that verifies it.
+
 ## Next
 
 - `/product:review` immediately after implementation handoff exists

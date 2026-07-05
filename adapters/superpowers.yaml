@@ -29,9 +29,11 @@ reviewed:
     findings, file-based handoffs (.superpowers/sdd/), explicit model per
     dispatch, pre-flight plan review, whole-branch final review. writing-plans
     gained Global Constraints + per-task Interfaces + task right-sizing.
-    ABSORBED into commands/product-review.md (review integrity rules) and
-    commands/product-plan.md (plan structure). SKIPPED: SDD's file-handoff
-    scripts and model-tier mechanics (harness-specific, ModuFlow delegates
-    subagent mechanics to the host). Brainstorming/TDD/verification unchanged
-    upstream.
+    ABSORBED into commands/product-review.md (review integrity rules),
+    commands/product-plan.md (plan structure), and commands/product-execute.md
+    (explicit model tier per dispatch — initially skipped as harness-specific,
+    reversed same day per user direction: main model orchestrates/judges,
+    cheaper subagents research/implement/verify). SKIPPED: SDD's file-handoff
+    scripts (harness-specific mechanics). Brainstorming/TDD/verification
+    unchanged upstream.
 
