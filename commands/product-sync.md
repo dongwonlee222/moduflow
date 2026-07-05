@@ -20,9 +20,20 @@ If the fetch could not reach the remote (offline, timeout, auth), the result inc
 2. If the current upstream is gone, or `origin/main` is ahead, report that local files may be stale before summarizing issues/specs.
 3. If the worktree is clean and the user approves, fast-forward the local checkout to the default remote branch. Do not auto-pull with local changes.
 4. Explain source mode plainly: in `git-files` mode, ModuFlow issues live in repo files such as `issues/*.md`; the GitHub Issues tab may be empty unless `github-sync` is explicitly enabled.
-5. Read `vendor.lock.json`.
+5. Read `vendor.lock.json`. Check freshness for `type: github` sources against their actual latest commit:
+
+```bash
+python3 scripts/vendor_freshness.py vendor.lock.json
+```
+
+Report drifted sources (never reviewed, or moved since `last_synced`) before showing pins. Informational only — this does not block anything or pull code. `local-plugin` sources are not checked (pinned by version string, not a git ref).
+
 6. Show current pins and available local vendor folders.
-7. Pull or refresh upstream vendor sources only with user approval.
+7. Pull or refresh upstream vendor sources only with user approval. After an explicit review, record the reviewed commit as the new baseline:
+
+```bash
+python3 scripts/vendor_freshness.py vendor.lock.json --sync
+```
 8. Keep local customizations in `overlays/` and `adapters/`.
 9. Run `scripts/release_check.py .` after sync-sensitive changes.
 10. Run `python3 scripts/antigravity_sync.py --host <host task.md> --git <git tasks.md>` to sync checkboxes between Antigravity and ModuFlow.
@@ -47,6 +58,20 @@ git merge --ff-only origin/main
 ```
 
 Use a normal merge/rebase workflow instead when local commits or uncommitted changes are present.
+
+## Vendor Freshness
+
+`vendor_freshness.py` extends the same drift-detection pattern (`048`, `062`) to external vendored sources: for each `type: github` entry in `vendor.lock.json`, it compares the recorded `last_synced.sha` against the actual latest commit on the pinned ref (via `gh api`). A source with no `last_synced` is reported drifted — never reviewed. `local-plugin` sources (pinned by version string, not a git ref) are skipped.
+
+```bash
+python3 scripts/vendor_freshness.py vendor.lock.json
+```
+
+This is informational only — it never pulls or merges upstream code (this repo has no vendored checkouts, only pattern-reference pins). After reviewing drifted sources, record the new baseline explicitly:
+
+```bash
+python3 scripts/vendor_freshness.py vendor.lock.json --sync
+```
 
 ## Antigravity Artifact Sync
 

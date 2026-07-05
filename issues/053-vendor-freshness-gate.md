@@ -1,6 +1,6 @@
 # Issue: `053-vendor-freshness-gate`
 
-**Status: backlog** — created 2026-07-03.
+**Status: done** — created 2026-07-03, started 2026-07-05, done 2026-07-05.
 
 ## Outcome
 
@@ -37,13 +37,23 @@ ModuFlow detects drift between `vendor.lock.json` pinned upstream sources and ac
 - related: `048-artifact-lifecycle-sync` (drift-gate pattern this extends to vendor sources)
 - related: `050-repo-sync-preflight` (repo-freshness precedent for `product:sync`)
 
+## Workflow Tasks
+
+- [x] spec → `specs/053-vendor-freshness-gate/spec.md`
+- [x] plan → `specs/053-vendor-freshness-gate/plan.md`
+- [x] execute → `scripts/vendor_freshness.py`, `tests/test_vendor_freshness.py`, `commands/product-sync.md`
+
 ## Sessions
 
 - 2026-07-03: User asked what to improve next; review of `vendor.lock.json` found no drift-detection mechanism despite ~3 weeks of unreviewed upstream activity across all four GitHub sources. Registered as backlog issue only, per user's choice — implementation deferred.
+- 2026-07-05: User asked to implement, then use it to refresh `vendor.lock.json`'s `last_synced` markers. Confirmed via AskUserQuestion: scope is the freshness check + lock-file bookkeeping only — not vendoring actual upstream code into `vendor/` (no code copy exists in this repo today) and not updating installed Claude Code plugins (a separate, out-of-repo concern).
+- 2026-07-05: Implemented `scripts/vendor_freshness.py` (`gh api` via the same injectable-runner DI pattern as `project_sync.py`), 6 new tests, `product:sync` docs updated. Ran for real against the live `vendor.lock.json`: all four GitHub sources had never been reviewed — `--sync` recorded their current commit SHAs as the baseline. Also fixed a lifecycle conflict found along the way: issue `058` was left `active` from the earlier merge while unstarted (still at plan phase) — moved back to `backlog` since work shifted here. Full suite (189 tests) and `release_check.py` pass. Done.
 
 ## Links
 
 - Roadmap: `workspace/roadmap.md`
+- Spec: `specs/053-vendor-freshness-gate/spec.md`
+- Plan: `specs/053-vendor-freshness-gate/plan.md`
 
 ## Next Command
 

@@ -1,6 +1,6 @@
 # Issue: `058-git-write-fallback-via-github-api`
 
-**Status: active** — created 2026-07-03.
+**Status: backlog** — created 2026-07-03, planned 2026-07-03 (deprioritized 2026-07-05 in favor of `053`; spec/plan exist, execute not started — pick up via `product:execute 058-git-write-fallback-via-github-api`).
 
 ## Outcome
 
@@ -46,6 +46,7 @@ During Issues 056 and 057, local file edits and validation worked, but `git add`
 ## Sessions
 
 - 2026-07-03: User said people should not have to run terminal Git commands. Issues 056 and 057 were pushed through GitHub API because local `.git` writes were blocked.
+- 2026-07-05: Merged into `main` from `origin/codex/058-git-write-fallback-via-github-api` along with 056/057 (which were done on that branch). 058 itself was still at plan phase on that branch — moved back to backlog here since work shifted to `053` this session; not abandoned.
 
 ## Links
 

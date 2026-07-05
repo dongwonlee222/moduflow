@@ -7,7 +7,11 @@
       "url": "https://github.com/anthropics/skills",
       "type": "github",
       "pin": "main",
-      "role": "official reusable skill patterns"
+      "role": "official reusable skill patterns",
+      "last_synced": {
+        "sha": "9d2f1ae187231d8199c64b5b762e1bdf2244733d",
+        "date": "2026-07-01T18:11:23Z"
+      }
     },
     {
       "id": "anthropic-knowledge-work-plugins",
@@ -15,7 +19,11 @@
       "url": "https://github.com/anthropics/knowledge-work-plugins",
       "type": "github",
       "pin": "main",
-      "role": "productivity and product-management plugin patterns"
+      "role": "productivity and product-management plugin patterns",
+      "last_synced": {
+        "sha": "6f13415be2a18d0fd9fa652e29a616cf7e3617a5",
+        "date": "2026-07-04T18:06:53Z"
+      }
     },
     {
       "id": "github-spec-kit",
@@ -23,7 +31,11 @@
       "url": "https://github.com/github/spec-kit",
       "type": "github",
       "pin": "main",
-      "role": "spec, plan, and task workflow"
+      "role": "spec, plan, and task workflow",
+      "last_synced": {
+        "sha": "bba473c223dc298fb76ecf8f87f86d5d2b8ed11c",
+        "date": "2026-07-02T13:49:53Z"
+      }
     },
     {
       "id": "superpowers",
@@ -31,7 +43,11 @@
       "url": "https://github.com/obra/superpowers",
       "type": "github",
       "pin": "main",
-      "role": "execution, subagent, review, and verification practices"
+      "role": "execution, subagent, review, and verification practices",
+      "last_synced": {
+        "sha": "d884ae04edebef577e82ff7c4e143debd0bbec99",
+        "date": "2026-07-02T21:56:55Z"
+      }
     },
     {
       "id": "codex-product-design",
@@ -51,4 +67,3 @@
     }
   ]
 }
-

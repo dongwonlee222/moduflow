@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "execute",
+  "phase": "select",
   "active_goal": "visual-workbench",
-  "active_issue": "058-git-write-fallback-via-github-api",
-  "last_command": "product:execute 062-detect-unmerged-branch-work",
-  "next_command": "product:execute 058-git-write-fallback-via-github-api",
+  "active_issue": "",
+  "last_command": "product:execute 053-vendor-freshness-gate",
+  "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-07-05"
 }
