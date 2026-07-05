@@ -74,6 +74,8 @@ This is informational only — it never pulls or merges upstream code (this repo
 python3 scripts/vendor_freshness.py vendor.lock.json --sync
 ```
 
+**Stamp rule (issue `067`)**: `--sync` may only be run after an actual content review of what changed upstream in the paths ModuFlow borrows — `last_synced` means "reviewed against this SHA", not "SHA recorded". A review updates the matching adapter's `reviewed:` block in `adapters/*.yaml` (what changed, what was absorbed, what was intentionally skipped) in the same commit as the stamp. Stamping without an adapter review note hides drift instead of tracking it — that is how the 2026-06-12→07-05 adapter staleness went unnoticed.
+
 ## Antigravity Artifact Sync
 
 To keep host-native planning artifacts (like `task.md` in Antigravity) synced with Git-native spec tracking (like `tasks.md` in ModuFlow):

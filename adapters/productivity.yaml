@@ -16,4 +16,10 @@ reads:
 writes:
   - generated dashboard views only
 swap_policy: Replaceable as long as it can read Git artifacts and preserve issue IDs.
+reviewed:
+  sha: 6f13415be2a18d0fd9fa652e29a616cf7e3617a5
+  date: 2026-07-05
+  note: >-
+    productivity/ plugin tree has zero commits since 2026-06-12 (path-filtered
+    history). Nothing to absorb.
 

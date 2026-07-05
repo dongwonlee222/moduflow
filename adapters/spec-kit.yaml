@@ -16,4 +16,13 @@ writes:
   - specs/*/plan.md
   - specs/*/tasks.md
 swap_policy: Replaceable if spec, plan, and tasks remain deterministic files.
+reviewed:
+  sha: bba473c223dc298fb76ecf8f87f86d5d2b8ed11c
+  date: 2026-07-05
+  note: >-
+    spec/plan/tasks templates unchanged upstream since 2026-05-12 (756d6321,
+    lint-only). All churn through v0.12.4 (2026-07-02) is CLI, agent
+    integrations, and workflow-engine work outside ModuFlow's borrowed scope.
+    Watch item: new /speckit.converge command (0c29d890) adds a convergence
+    workflow but does not change document structure. Nothing absorbed.
 

@@ -1,7 +1,7 @@
 id: superpowers
 source: superpowers
 source_url: https://github.com/obra/superpowers
-local_path: /Users/dongwon.lee/.codex/superpowers/skills
+local_path: ~/.codex/superpowers/skills
 role: execution_method
 moduflow_use:
   - brainstorming
@@ -19,4 +19,19 @@ writes:
   - specs/*/status.md
   - code changes through normal project workflow
 swap_policy: Replaceable if execution gates and verification evidence remain explicit.
+reviewed:
+  sha: d884ae04edebef577e82ff7c4e143debd0bbec99
+  date: 2026-07-05
+  note: >-
+    Superpowers v6.0.0-v6.1.1 (2026-06-16+) rewrote subagent-driven-development:
+    single dual-verdict task reviewer (spec compliance + quality, "can't verify"
+    allowed), read-only reviewers, controller banned from suppressing/pre-rating
+    findings, file-based handoffs (.superpowers/sdd/), explicit model per
+    dispatch, pre-flight plan review, whole-branch final review. writing-plans
+    gained Global Constraints + per-task Interfaces + task right-sizing.
+    ABSORBED into commands/product-review.md (review integrity rules) and
+    commands/product-plan.md (plan structure). SKIPPED: SDD's file-handoff
+    scripts and model-tier mechanics (harness-specific, ModuFlow delegates
+    subagent mechanics to the host). Brainstorming/TDD/verification unchanged
+    upstream.
 

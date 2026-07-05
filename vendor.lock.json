@@ -64,6 +64,14 @@
       "type": "local-plugin",
       "pin": "0.1.41-cf2b8b6c00d3",
       "role": "metrics, diagnostics, dashboards, reports"
+    },
+    {
+      "id": "codex-documents-presentations-spreadsheets",
+      "name": "Codex Documents / Presentations / Spreadsheets",
+      "url": "local:codex-plugin/documents-presentations-spreadsheets",
+      "type": "local-plugin",
+      "pin": "unpinned",
+      "role": "docx/xlsx/pptx artifact output bridge (referenced by adapters/documents.yaml; was missing from this lock until 2026-07-05)"
     }
   ]
 }

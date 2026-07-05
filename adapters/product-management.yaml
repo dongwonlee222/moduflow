@@ -18,4 +18,12 @@ writes:
   - specs/*/spec.md
   - specs/*/stakeholder-update.md
 swap_policy: Replaceable if it preserves problem, outcome, acceptance, and decision fields.
+reviewed:
+  sha: 6f13415be2a18d0fd9fa652e29a616cf7e3617a5
+  date: 2026-07-05
+  note: >-
+    product-management/ plugin tree has zero commits since 2026-06-12
+    (path-filtered history). All upstream activity was bot submodule bumps,
+    unrelated third-party marketplace registrations, and CI/policy work.
+    Nothing to absorb.
 

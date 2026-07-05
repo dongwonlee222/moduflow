@@ -43,6 +43,12 @@ The host agent must call `invoke_subagent` to execute these reviews, and documen
 
 If the current host exposes a different subagent tool, map the handoff's worker sections to that tool. If no subagent tool is available, record that limitation in `status.md` and perform the same review concerns inline; do not silently skip review.
 
+Review integrity rules (absorbed from Superpowers v6 subagent-driven-development, issue `067`):
+
+- Reviewers are **read-only**: a review task never mutates the working tree or branches; it reports.
+- The coordinating agent must **not suppress or pre-rate reviewer findings** — every finding reaches `status.md` as reported; severity judgment and dismissal belong to the human (or an explicitly recorded decision), not to the agent that dispatched the review.
+- Each review verdict answers two questions separately: does the change match the spec (spec compliance), and is the change well-built (quality)? "Can't verify from the diff" is a valid verdict and must be recorded rather than rounded up to a pass.
+
 ## Visual Review Gate
 
 Review is not complete until the dashboard and issue drill-down views have been generated or the failure is documented:
