@@ -1,5 +1,16 @@
 # Upgrade Guide
 
+## Claude Code Plugin
+
+The installed plugin does NOT auto-update when new versions are pushed to the repo. The marketplace clone under `~/.claude/plugins/marketplaces/moduflow` and the install pointer in `installed_plugins.json` both stay frozen until updated explicitly:
+
+```bash
+claude plugin marketplace update moduflow
+claude plugin update moduflow@moduflow
+```
+
+Run both after each release (or whenever `product:status` output looks older than the repo), then restart Claude Code to apply.
+
 ## Existing Users
 
 Existing commands remain available:
@@ -33,7 +44,7 @@ New layers are opt-in:
 After changing the plugin package, refresh the cachebuster and run the local bootstrap installer:
 
 ```bash
-python3 /Users/dongwon.lee/.codex/skills/.system/plugin-creator/scripts/update_plugin_cachebuster.py .
+python3 ~/.codex/skills/.system/plugin-creator/scripts/update_plugin_cachebuster.py .
 python3 scripts/register_codex_personal_marketplace.py .
 ```
 

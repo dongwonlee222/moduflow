@@ -11,11 +11,25 @@ Use this package as a Claude plugin source:
 - `skills/` contains ModuFlow bridge skills.
 - `.mcp.json` is intentionally empty until a concrete MCP server is needed.
 
-For local Claude usage, symlink this source package:
+Recommended install is through the GitHub marketplace:
+
+```bash
+claude plugin marketplace add dongwonlee222/moduflow
+claude plugin install moduflow@moduflow
+```
+
+To pick up a new release later (the marketplace clone does NOT auto-update):
+
+```bash
+claude plugin marketplace update moduflow
+claude plugin update moduflow@moduflow
+```
+
+For local development against a checkout, symlink this source package instead:
 
 ```bash
 mkdir -p ~/.claude/plugins/local
-ln -sfn /Users/dongwon.lee/workhub/company/shared/context-tools/moduflow ~/.claude/plugins/local/moduflow
+ln -sfn "$(pwd)" ~/.claude/plugins/local/moduflow
 ```
 
 Keep this source package in Git and treat installed copies/caches as derived.
@@ -41,7 +55,7 @@ Run:
 
 ```bash
 python3 scripts/register_codex_personal_marketplace.py .
-python3 /Users/dongwon.lee/.codex/skills/.system/plugin-creator/scripts/update_plugin_cachebuster.py .
+python3 ~/.codex/skills/.system/plugin-creator/scripts/update_plugin_cachebuster.py .
 ```
 
 The registration script installs the local package into the personal marketplace, creates the

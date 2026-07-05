@@ -42,6 +42,8 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 
 - `054-github-issue-sync`: opt-in sync from `issues/*.md` to actual GitHub Issues (status label, one-way local→GitHub).
 - `055-command-surface-onboarding`: rank/stage the 20+ `product-*` commands for a first-time user instead of listing the full surface.
+- `065-installed-plugin-staleness-detection`: doctor warning when the installed Claude Code/Codex plugin copy is behind the repo's own version (found live: 0.2.6 installed vs 0.3.2 repo).
+- `066-legacy-issue-status-migration`: add the canonical `Status:` line to the 10 pre-048 issue files the lifecycle parser currently mis-reports as backlog.
 
 ## Blockers
 
