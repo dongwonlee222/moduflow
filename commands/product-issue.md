@@ -14,7 +14,20 @@ Create the durable work item.
 3. Include lifecycle metadata: phase, created, started, target end, completed, and last updated.
 4. Link opportunity, owner, scope, priority, acceptance criteria, related issues, sessions, and related artifacts.
 5. Add a **Workflow Tasks** checklist. Every artifact-producing step (spec, plan, design, execute, review) is a tracked task with its artifact link and status — never produce an artifact off the books. As each step runs, check its box and link the artifact. This keeps the workflow itself visible inside the issue.
-6. If GitHub CLI is available and requested, create or sync the GitHub issue.
+6. If GitHub CLI is available and requested, create or sync the GitHub issue (see GitHub Issue Sync below).
+
+## GitHub Issue Sync (opt-in)
+
+Project a git-file issue to a GitHub Issue only when the user explicitly asks — never automatically. Skips itself when `.moduflow/config.json`'s `git.github_sync` is `"off"`.
+
+```bash
+python3 scripts/project_github_issues.py . --issue-id <id> --sync
+```
+
+- First sync creates the GitHub Issue (title from the issue heading, body from `## Outcome`, label `moduflow:<status>`) and writes `- GitHub: <url>` into the issue file's `## Links` section.
+- Later syncs reuse that link and refresh the status label on the existing GitHub Issue — no duplicates.
+- Missing `moduflow:backlog|active|done|superseded` labels are created in the repo before use.
+- One-way only: `issues/<id>.md` stays canonical; the GitHub Issue is a projection. GitHub-side edits never flow back.
 
 ## Granularity Rule
 

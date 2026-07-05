@@ -87,6 +87,14 @@ This classifies the commit message's Conventional-Commit-style prefix (`feat`/`f
 
 This step is not optional-by-memory: `release_check.py`'s `version_bump_gate` check (issue `064`) fails the pre-push hook if HEAD's commit message classifies to a non-`none` bump level but the version didn't move. Skipping the bump blocks the push it was meant to accompany, instead of silently shipping unversioned.
 
+After the push, if the completed issue's file carries a `- GitHub:` link in its `## Links` section and `.moduflow/config.json`'s `git.github_sync` is not `"off"`, refresh the GitHub Issue's status label so the GitHub projection reflects the new `done` status (issue `054-github-issue-sync`):
+
+```bash
+python3 scripts/project_github_issues.py . --issue-id <id> --sync
+```
+
+Issues without a `- GitHub:` link are skipped — the sync is opt-in per issue and this step never creates a new GitHub Issue on its own.
+
 ## Host Adapter Boundary
 
 Host-specific integrations such as Antigravity should live outside core validation logic. The core should expose stable Python functions and CLI wrappers. A host adapter may call those functions directly, or expose them through MCP/tool calls, but it should not force routine read-only checks through repeated shell prompts.

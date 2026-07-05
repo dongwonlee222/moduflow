@@ -3,8 +3,8 @@
   "phase": "select",
   "active_goal": "team-visibility-onboarding",
   "active_issue": "",
-  "last_command": "product:execute 055-command-surface-onboarding",
-  "next_command": "product:spec 054-github-issue-sync",
+  "last_command": "product:execute 054-github-issue-sync",
+  "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-07-05"
 }

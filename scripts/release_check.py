@@ -175,6 +175,7 @@ def run_release_check(path):
             "tests.test_project_execution",
             "tests.test_project_pr",
             "tests.test_project_sync",
+            "tests.test_github_issue_sync",
             "tests.test_worker_orchestration",
             "tests.test_codex_personal_install",
             "tests.test_installed_plugin_staleness",

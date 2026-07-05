@@ -14,6 +14,7 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Recently Completed
 
+- `054-github-issue-sync`: `scripts/project_github_issues.py` projects a git-file issue to a GitHub Issue (opt-in, one-way): title + `moduflow:<status>` label + canonical-source link, URL written back into the issue's `## Links` as the create-vs-update discriminator; wired into the `061` done-flow as a post-push label refresh. Built subagent-TDD + independently verified (SPEC pass; 8 of 11 quality findings fixed, 3 accepted with rationale). Live projection not yet run — ask-first.
 - `055-command-surface-onboarding`: first issue of goal `team-visibility-onboarding` — `product:start` now ends with a 3-command core path (goal → issue → status) instead of the command wall, `product:status` closes with ranked ≤3 next commands from loop state, and README's flat 37-command list is regrouped into Core path / Build cycle / On-demand. Doc-only; no command renamed or removed.
 - `065-installed-plugin-staleness-detection`: `product:doctor` now reports (soft warning, exit unchanged) when the installed Claude Code plugin (`installed_plugins.json`) or Codex personal cache is behind the repo's own `.claude-plugin/plugin.json` version, with the exact update commands — the tool that detects everyone else's drift can now see its own. Built via implementation subagent + independent verification subagent; 2 reviewer-reproduced defects (lexicographic version sort, missing name guard) fixed with regression tests.
 - `066-legacy-issue-status-migration`: the 10 pre-048 issue files with no canonical `Status:` line now carry one, evidence-judged per file (subagent-gathered): `012`/`013`/`030`/`033`/`040` done, `014`/`017`/`018` superseded-by-`019`, `015`/`016` superseded-by-`023` — every issue file now parses to its true state; `grep -L "Status:"` returns empty.
@@ -44,7 +45,6 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Queue (goal `team-visibility-onboarding`)
 
-- `054-github-issue-sync`: opt-in sync from `issues/*.md` to actual GitHub Issues (status label, one-way local→GitHub).
 
 ## Blockers
 

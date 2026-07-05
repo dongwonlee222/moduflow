@@ -1,6 +1,6 @@
 # Issue: `054-github-issue-sync`
 
-**Status: backlog** — created 2026-07-03.
+**Status: done** — created 2026-07-03, started 2026-07-05, done 2026-07-05.
 
 ## Outcome
 
@@ -43,9 +43,17 @@ ModuFlow's own repository has zero GitHub Issues in use; every issue lives only 
 - related: `035-team-issue-branch-pr-workflow`
 - related: `052-draft-pr-review-handoff` (equivalent GitHub-facing pattern on the PR side)
 
+## Workflow Tasks
+
+- [x] spec → `specs/054-github-issue-sync/spec.md`
+- [x] plan → `specs/054-github-issue-sync/plan.md`
+- [x] execute → `scripts/project_github_issues.py`, `tests/test_github_issue_sync.py`, `commands/product-issue.md`, `docs/host-adapter-guidance.md`, `scripts/release_check.py`
+
 ## Sessions
 
 - 2026-07-03: User asked what to improve next; GitHub check showed 0 GitHub Issues in use despite an active PR/CI flow. Registered as backlog issue only, per user's choice — implementation deferred.
+- 2026-07-05: Pre-implementation design review recorded the 4 binding decisions above (mapping storage, trigger, explicit `-R`, label bootstrap). Spec/plan authored with the `067`-absorbed structure (Global Constraints + stream Interfaces).
+- 2026-07-05: Executed per the model-tier convention. One process incident: the first implementation dispatch mis-delegated to a duplicate child agent (produced nothing; corrected via re-instruction, and future dispatch prompts now forbid sub-delegation). Implementation landed via TDD (5 tests RED→GREEN); independent read-only verification returned SPEC pass / QUALITY fail with 11 findings, of which 8 were fixed in the main loop (code-fence-aware Outcome extraction, Links-section-scoped discriminator, replace-instead-of-duplicate link write-back, `blob/HEAD` canonical link, nested-path rejection in owner/repo parsing, "already exists" tolerance in label bootstrap, unused import, update-path file-unchanged assertion) and 3 accepted with rationale (`--body` plan amendment documented; `ssh://` URL form out of documented scope; state.json bookkeeping handled at closure). Final: 9 module tests, 232 full suite, release_check valid. Live projection to the real GitHub repo intentionally not run yet — external publish, ask-first.
 
 ## Links
 
