@@ -10,6 +10,7 @@ Run implementation from an approved plan.
 ## Do
 
 1. Verify issue, spec, plan, and tasks exist.
+   - Soft pre-check: run `python3 scripts/spec_consistency.py . --issue-id <id>` and report the findings. Proceed on warn/info findings; stop and fix on structure errors unless the user says otherwise — this is agent judgment, not a hard gate.
 2. Run `scripts/worker_orchestrator.py <issue> --write` if `specs/<issue>/worker-plan.md` is missing.
 3. Use Superpowers process: plan, TDD when applicable, workers for independent tasks, review, verification.
 4. Update `specs/<issue>/status.md` as work progresses.

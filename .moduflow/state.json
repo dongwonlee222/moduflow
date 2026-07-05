@@ -3,8 +3,8 @@
   "phase": "select",
   "active_goal": "team-visibility-onboarding",
   "active_issue": "",
-  "last_command": "product:execute 069-issue-dependency-priority-model",
-  "next_command": "product:execute 070-spec-consistency-analyze",
+  "last_command": "product:execute 070-spec-consistency-analyze",
+  "next_command": "product:execute 071-spec-code-converge-check",
   "blockers": [],
   "updated_at": "2026-07-05"
 }

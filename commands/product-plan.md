@@ -20,6 +20,7 @@ Prepare implementation.
 
 ## Next
 
+- Recommended: `python3 scripts/spec_consistency.py . --issue-id <id>` once plan.md and tasks.md exist, to catch coverage gaps, vague terms, and stream mismatches before execution.
 - `/product:execute` when ready to build
 - `/product:review` if the plan needs challenge
 

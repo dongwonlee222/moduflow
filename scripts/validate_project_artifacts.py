@@ -102,6 +102,8 @@ def linked_artifacts(issue_text):
     linked = []
     for match in LINK_RE.finditer(issue_text):
         value = match.group("path").strip()
+        if any(ch in value for ch in "<>{}"):
+            continue  # placeholder path (e.g. specs/<id>/{spec,plan,tasks}.md), not a real link
         if value.startswith("specs/") or value.startswith("workspace/") or value.startswith("memory/"):
             linked.append(value)
     return linked

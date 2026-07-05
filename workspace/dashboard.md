@@ -14,6 +14,7 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Recently Completed
 
+- `070-spec-consistency-analyze`: `scripts/spec_consistency.py` runs a deterministic pre-execution check over spec↔plan↔tasks — AC coverage (token-overlap "possibly uncovered" warns), vague-term lint (no-digit bullets), structural stream tracing — report-only JSON, recommended in `product:plan`/`product:execute`. Also fixed a pre-existing gate false positive (placeholder paths in issue prose treated as real links). Dogfood on specs/069: clean.
 - `069-issue-dependency-priority-model`: issues now carry `**Priority: p0-p3**` and `**Blocked-by:**` metadata (blocked_by canonical, blocks derived); `ready_issues`/`--ready`/`moduflow_ready` answer "지금 시작 가능한 일" priority-sorted; dangling refs, cycles, and active-with-unmet-blocker are drift-gate errors. Also repaired the pre-048 schema still emitted by the issue template and the orphaned generator. Verification caught 4 real findings (prose false-parse, RecursionError on deep chains, generator landmine, silent active-blocked state) — all fixed with regression tests.
 - `068-machine-query-surface`: `scripts/mcp_server.py` is now a real persistent stdio MCP server (4 read-only tools: status/issues/issue_get/doctor, payloads versioned `moduflow.mcp.v1`), registered in `.mcp.json` via `${CLAUDE_PLUGIN_ROOT}`; `project_lifecycle.py` gained `--issues` JSON. Independent verification caught and we fixed a real path-traversal disclosure, a crash-on-non-object-JSON, a schema clobber, and a duplicated parser — 21 module tests, 248 total.
 - `054-github-issue-sync`: `scripts/project_github_issues.py` projects a git-file issue to a GitHub Issue (opt-in, one-way): title + `moduflow:<status>` label + canonical-source link, URL written back into the issue's `## Links` as the create-vs-update discriminator; wired into the `061` done-flow as a post-push label refresh. Built subagent-TDD + independently verified (SPEC pass; 8 of 11 quality findings fixed, 3 accepted with rationale). Live projection not yet run — ask-first.
@@ -47,7 +48,6 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Queue (post-benchmark, 2026-07-05 — goal `team-visibility-onboarding` issues complete)
 
-- `070-spec-consistency-analyze`: pre-execution spec↔plan↔tasks coherence check (P3).
 - `071-spec-code-converge-check`: post-implementation code-vs-spec divergence check (P3).
 - `072-lifecycle-hooks-automation`: SessionStart state injection + auto lifecycle sync hooks (P4).
 - `073-project-constitution-steering`: standing versioned project principles replacing per-plan Global Constraints re-authoring (P5).
