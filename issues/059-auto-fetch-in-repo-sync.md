@@ -1,6 +1,6 @@
 # Issue: `059-auto-fetch-in-repo-sync`
 
-**Status: active** — created 2026-07-05, started 2026-07-05.
+**Status: done** — created 2026-07-05, started 2026-07-05, done 2026-07-05.
 
 ## Outcome
 
@@ -36,8 +36,8 @@ Git is offline-first. Without running `git fetch` or `git pull`, the local Git d
 Every artifact-producing step is a tracked task here — never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
 
 - [x] spec → `specs/059-auto-fetch-in-repo-sync/spec.md`
-- [ ] plan
-- [ ] execute
+- [x] plan → `specs/059-auto-fetch-in-repo-sync/plan.md`, `specs/059-auto-fetch-in-repo-sync/tasks.md`
+- [x] execute → `scripts/project_sync.py`, `tests/test_project_sync.py`, `commands/product-sync.md`, `commands/product-status.md`
 
 ## Related Issues
 
@@ -48,6 +48,8 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 - 2026-07-05: User pointed out that new remote branches (up to 058) were not visible to ModuFlow status/sync because there was no automatic background fetch.
 - 2026-07-05: User confirmed the draft (originally authored via Antigravity) should be continued in Claude Code. Issue moved to active; spec drafting started.
+- 2026-07-05: Wrote plan.md/tasks.md — RED-tests-first TDD plan for the fetch step, timeout handling, and doc updates.
+- 2026-07-05: Implemented — `inspect_repo_sync()` now fetches (`git fetch --quiet`, 5s timeout, `GIT_TERMINAL_PROMPT=0`) before comparing refs; adds `fetched`/`fetch_warning` fields and a stale-cache recommendation on failure. 4 new tests (success/failure/timeout/`run_command` timeout conversion) + 4 existing tests updated with a passing fetch fixture. Full suite (169 tests) and `release_check.py` pass. `product:sync`/`product:status` docs updated to describe fetch as automatic. Done.
 
 ## Links
 
@@ -55,4 +57,4 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 ## Next Command
 
-`/product:plan 059-auto-fetch-in-repo-sync`
+`/product:status`

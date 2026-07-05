@@ -9,11 +9,13 @@ Keep the local repo, upstream skills/plugins, and host-native planning artifacts
 
 ## Do
 
-1. Run repo sync preflight before reading local artifacts:
+1. Run repo sync preflight before reading local artifacts. `project_sync.py` fetches remote refs itself (5s timeout, non-interactive) before comparing — no manual `git fetch` needed:
 
 ```bash
 python3 scripts/project_sync.py <project-path>
 ```
+
+If the fetch could not reach the remote (offline, timeout, auth), the result includes `fetched: false` and a `fetch_warning`, and a recommendation flags that the freshness numbers reflect the last local fetch, not the current remote — report that caveat rather than treating the numbers as current.
 
 2. If the current upstream is gone, or `origin/main` is ahead, report that local files may be stale before summarizing issues/specs.
 3. If the worktree is clean and the user approves, fast-forward the local checkout to the default remote branch. Do not auto-pull with local changes.
@@ -34,6 +36,7 @@ python3 scripts/project_sync.py <project-path>
 - local branch is behind `origin/main`
 - `origin/main` contains issue files that are missing locally
 - worktree is dirty, so fast-forward needs human review first
+- the remote fetch itself failed (offline/timeout/auth) — reported via `fetched`/`fetch_warning`, so a stale-cache read is visible instead of silently treated as current
 
 Recommended recovery path when clean:
 

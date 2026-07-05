@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "spec",
+  "phase": "select",
   "active_goal": "visual-workbench",
-  "active_issue": "059-auto-fetch-in-repo-sync",
-  "last_command": "product:spec 059-auto-fetch-in-repo-sync",
-  "next_command": "product:plan 059-auto-fetch-in-repo-sync",
+  "active_issue": "",
+  "last_command": "product:execute 061-auto-commit-push-on-issue-done",
+  "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-07-05"
 }

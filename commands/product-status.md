@@ -9,18 +9,19 @@ Make progress visible.
 
 ## Do
 
-1. Run a non-destructive `git fetch` first, then run repo sync preflight:
+1. Run repo sync preflight. `project_sync.py` fetches remote refs itself (5s timeout, non-interactive) before comparing — no manual `git fetch` step needed:
 
 ```bash
 python3 scripts/project_sync.py <project-path>
 ```
 
-Status reads local files only, so without this it can show a stale snapshot as if current.
+Status reads local files only, so without a fresh fetch it can show a stale snapshot as if current — this is why the fetch happens inside the preflight call itself rather than being a separate manual step.
    - If local is behind, report "원격이 N커밋 앞섬 — pull 필요" in the dashboard.
    - If the upstream branch is gone, report "현재 브랜치의 원격이 삭제됨 — main 동기화 필요".
    - If `origin/main` has issue files missing locally, report those issue IDs before rendering the local queue.
    - If the working tree is clean, recommend (or run after confirming) `git pull` before rendering, so status reflects the latest.
    - If the working tree is dirty or `@{u}` is unset, do NOT auto-pull — surface the state and let the user decide.
+   - If `fetched` is `false` in the preflight result, report the `fetch_warning` plainly (e.g. "원격 확인 실패 — 마지막 fetch 기준 정보입니다") instead of presenting the freshness numbers as current.
 2. Read `.moduflow/state.json`, `workspace/loop-state.json` when present, issues, specs, tasks, PR notes, releases, and roadmap.
 3. Render a Korean-first terminal-style dashboard before detailed prose.
 4. Report current phase, active issue, active/recent sessions, blockers, queue, risks, changed files, and next command.

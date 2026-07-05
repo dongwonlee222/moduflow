@@ -1,3 +1,4 @@
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -9,12 +10,14 @@ class FakeRunner:
         self.responses = responses
         self.calls = []
 
-    def __call__(self, args, cwd):
+    def __call__(self, args, cwd, timeout=None):
         self.calls.append(tuple(args))
         key = tuple(args)
         if key not in self.responses:
             return project_sync.CommandResult(1, "", f"unexpected command: {' '.join(args)}")
         value = self.responses[key]
+        if isinstance(value, BaseException):
+            raise value
         if isinstance(value, project_sync.CommandResult):
             return value
         return project_sync.CommandResult(0, value, "")
@@ -24,6 +27,7 @@ class ProjectSyncTests(unittest.TestCase):
     def test_reports_gone_upstream_branch(self):
         runner = FakeRunner(
             {
+                ("git", "fetch", "--quiet"): "",
                 ("git", "rev-parse", "--is-inside-work-tree"): "true\n",
                 ("git", "rev-parse", "--abbrev-ref", "HEAD"): "codex/034-memory-capture-sync\n",
                 ("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"): project_sync.CommandResult(
@@ -52,6 +56,7 @@ class ProjectSyncTests(unittest.TestCase):
     def test_reports_local_main_behind_origin_main(self):
         runner = FakeRunner(
             {
+                ("git", "fetch", "--quiet"): "",
                 ("git", "rev-parse", "--is-inside-work-tree"): "true\n",
                 ("git", "rev-parse", "--abbrev-ref", "HEAD"): "main\n",
                 ("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"): "origin/main\n",
@@ -75,6 +80,7 @@ class ProjectSyncTests(unittest.TestCase):
     def test_reports_remote_only_issue_files(self):
         runner = FakeRunner(
             {
+                ("git", "fetch", "--quiet"): "",
                 ("git", "rev-parse", "--is-inside-work-tree"): "true\n",
                 ("git", "rev-parse", "--abbrev-ref", "HEAD"): "main\n",
                 ("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"): "origin/main\n",
@@ -98,6 +104,7 @@ class ProjectSyncTests(unittest.TestCase):
     def test_untracked_work_branch_without_upstream_is_not_reported_clean(self):
         runner = FakeRunner(
             {
+                ("git", "fetch", "--quiet"): "",
                 ("git", "rev-parse", "--is-inside-work-tree"): "true\n",
                 ("git", "rev-parse", "--abbrev-ref", "HEAD"): "codex/050-repo-sync-preflight\n",
                 ("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"): project_sync.CommandResult(
@@ -122,6 +129,89 @@ class ProjectSyncTests(unittest.TestCase):
         self.assertIn("has no upstream", joined)
         self.assertIn("worktree has local changes", joined)
         self.assertNotIn("Repo sync preflight is clean", joined)
+
+    def test_fetch_success_sets_fetched_true(self):
+        runner = FakeRunner(
+            {
+                ("git", "fetch", "--quiet"): "",
+                ("git", "rev-parse", "--is-inside-work-tree"): "true\n",
+                ("git", "rev-parse", "--abbrev-ref", "HEAD"): "main\n",
+                ("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"): "origin/main\n",
+                ("git", "branch", "-vv"): "* main af5b086 [origin/main] fix(049)\n",
+                ("git", "rev-list", "--left-right", "--count", "HEAD...origin/main"): "0\t0\n",
+                ("git", "symbolic-ref", "refs/remotes/origin/HEAD"): "refs/remotes/origin/main\n",
+                ("git", "status", "--porcelain"): "",
+                ("git", "ls-tree", "-r", "--name-only", "origin/main", "issues"): "",
+                ("git", "ls-files", "issues"): "",
+            }
+        )
+
+        result = project_sync.inspect_repo_sync(Path("."), runner=runner)
+
+        self.assertTrue(result["fetched"])
+        self.assertIsNone(result["fetch_warning"])
+
+    def test_fetch_failure_sets_warning_and_still_reports_local_state(self):
+        runner = FakeRunner(
+            {
+                ("git", "fetch", "--quiet"): project_sync.CommandResult(
+                    1, "", "fatal: unable to access 'https://...': Could not resolve host"
+                ),
+                ("git", "rev-parse", "--is-inside-work-tree"): "true\n",
+                ("git", "rev-parse", "--abbrev-ref", "HEAD"): "main\n",
+                ("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"): "origin/main\n",
+                ("git", "branch", "-vv"): "* main af5b086 [origin/main] fix(049)\n",
+                ("git", "rev-list", "--left-right", "--count", "HEAD...origin/main"): "0\t0\n",
+                ("git", "symbolic-ref", "refs/remotes/origin/HEAD"): "refs/remotes/origin/main\n",
+                ("git", "status", "--porcelain"): "",
+                ("git", "ls-tree", "-r", "--name-only", "origin/main", "issues"): "",
+                ("git", "ls-files", "issues"): "",
+            }
+        )
+
+        result = project_sync.inspect_repo_sync(Path("."), runner=runner)
+
+        self.assertFalse(result["fetched"])
+        self.assertIn("Could not resolve host", result["fetch_warning"])
+        # Local-ref comparison still runs and is reported despite the failed fetch.
+        self.assertEqual(result["branch"], "main")
+        self.assertEqual(result["upstream"], "origin/main")
+        self.assertIn("Could not fetch from the remote", " ".join(result["recommendations"]))
+
+    def test_fetch_timeout_sets_warning_without_raising(self):
+        runner = FakeRunner(
+            {
+                ("git", "fetch", "--quiet"): subprocess.TimeoutExpired(cmd=["git", "fetch", "--quiet"], timeout=5),
+                ("git", "rev-parse", "--is-inside-work-tree"): "true\n",
+                ("git", "rev-parse", "--abbrev-ref", "HEAD"): "main\n",
+                ("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"): "origin/main\n",
+                ("git", "branch", "-vv"): "* main af5b086 [origin/main] fix(049)\n",
+                ("git", "rev-list", "--left-right", "--count", "HEAD...origin/main"): "0\t0\n",
+                ("git", "symbolic-ref", "refs/remotes/origin/HEAD"): "refs/remotes/origin/main\n",
+                ("git", "status", "--porcelain"): "",
+                ("git", "ls-tree", "-r", "--name-only", "origin/main", "issues"): "",
+                ("git", "ls-files", "issues"): "",
+            }
+        )
+
+        result = project_sync.inspect_repo_sync(Path("."), runner=runner)
+
+        self.assertFalse(result["fetched"])
+        self.assertIn("timed out", result["fetch_warning"])
+
+    def test_run_command_converts_timeout_to_command_result(self):
+        def raising_subprocess_run(*args, **kwargs):
+            raise subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs.get("timeout"))
+
+        original_run = subprocess.run
+        subprocess.run = raising_subprocess_run
+        try:
+            result = project_sync.run_command(["git", "fetch", "--quiet"], Path("."), timeout=5)
+        finally:
+            subprocess.run = original_run
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("timed out", result.stderr)
 
 
 if __name__ == "__main__":

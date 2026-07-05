@@ -66,6 +66,17 @@ Full preflight is appropriate when:
 
 When full preflight is needed, say why before running it.
 
+## Auto Commit + Push On Issue Done
+
+Completing an issue is itself a trigger for commit + push — do not wait for a separate user request. When an issue's `Status:` line moves to `done` and `python3 scripts/release_check.py .` passes, commit and push immediately without asking for confirmation first (issue `061-auto-commit-push-on-issue-done`).
+
+Rationale: work done in one session/machine is otherwise invisible to the next session/machine until the user notices and manually asks for a push — the exact gap that caused a real cross-machine incident. The repo's pre-push hook re-runs `release_check.py` and blocks a broken push, so this is not push-without-verification.
+
+This does **not** extend to:
+
+- mid-work commits for partial progress (spec/plan-only states, anything `release_check.py` hasn't validated) — those stay ask-first
+- force-push, branch deletion, or other destructive Git operations — those stay explicit-confirmation-only
+
 ## Host Adapter Boundary
 
 Host-specific integrations such as Antigravity should live outside core validation logic. The core should expose stable Python functions and CLI wrappers. A host adapter may call those functions directly, or expose them through MCP/tool calls, but it should not force routine read-only checks through repeated shell prompts.

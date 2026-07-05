@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+
+FETCH_TIMEOUT_SECONDS = 5
 
 
 @dataclass
@@ -13,7 +16,13 @@ class CommandResult:
     stderr: str
 
 
-def run_command(args, cwd):
+def _no_prompt_env():
+    env = dict(os.environ)
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    return env
+
+
+def run_command(args, cwd, timeout=None):
     try:
         result = subprocess.run(
             args,
@@ -22,13 +31,20 @@ def run_command(args, cwd):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
+            timeout=timeout,
+            env=_no_prompt_env(),
         )
     except FileNotFoundError as exc:
         return CommandResult(127, "", str(exc))
+    except subprocess.TimeoutExpired:
+        suffix = f" after {timeout}s" if timeout else ""
+        return CommandResult(124, "", f"git command timed out{suffix}")
     return CommandResult(result.returncode, result.stdout, result.stderr)
 
 
-def _run(runner, args, cwd):
+def _run(runner, args, cwd, timeout=None):
+    if timeout is not None:
+        return runner(args, cwd, timeout=timeout)
     return runner(args, cwd)
 
 
@@ -95,6 +111,16 @@ def inspect_repo_sync(path=".", runner=None):
             "errors": [_stdout(is_repo) or (is_repo.stderr or "").strip()],
         }
 
+    try:
+        fetch_result = _run(runner, ["git", "fetch", "--quiet"], cwd, timeout=FETCH_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        fetch_result = CommandResult(124, "", f"git fetch timed out after {FETCH_TIMEOUT_SECONDS}s")
+    fetched = fetch_result.returncode == 0
+    fetch_warning = None
+    if not fetched:
+        stderr = (fetch_result.stderr or "").strip()
+        fetch_warning = f"git fetch failed: {stderr}" if stderr else "git fetch failed"
+
     branch_result = _run(runner, ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd)
     branch = _stdout(branch_result) if branch_result.returncode == 0 else None
 
@@ -143,6 +169,8 @@ def inspect_repo_sync(path=".", runner=None):
         "schema": "moduflow.repo-sync.v1",
         "project_root": str(cwd),
         "is_repo": True,
+        "fetched": fetched,
+        "fetch_warning": fetch_warning,
         "branch": branch,
         "upstream": upstream,
         "upstream_gone": upstream_gone,
@@ -163,6 +191,10 @@ def format_recommendations(result):
     recommendations = []
     if not result.get("is_repo"):
         return result.get("recommendations", [])
+    if result.get("fetched") is False:
+        recommendations.append(
+            f"Could not fetch from the remote ({result.get('fetch_warning')}); freshness numbers below reflect the last local fetch, not the current remote."
+        )
     if not result.get("upstream"):
         recommendations.append(
             f"Current branch {result.get('branch') or '(unknown)'} has no upstream; compare against the default remote before trusting local artifact state."
