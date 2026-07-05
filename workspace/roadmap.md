@@ -2,9 +2,26 @@
 
 ## Now
 
-Business document workflow after project memory: make ModuFlow produce decision-ready business documents with sources, assumptions, calculations, validation, exports, memory, and small-team execution workflows.
+Team visibility and onboarding: make work visible to non-local collaborators (GitHub Issues projection) and give first-time users a small, ranked entry path instead of a 20+ command wall.
 
-Active goal: `business-document-workflow`
+Active goal: `team-visibility-onboarding`
+
+Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Data quality / Planning-artifact depth) shipped: `042`–`047`, `049`, plus follow-ons `056`/`057`. See `workspace/goal.md` history note.
+
+### `055-command-surface-onboarding`
+
+- Outcome: `product:start`/`product:status` name 2-3 concrete next commands; command reference groups core path vs on-demand.
+- Confidence: high
+- Next command: `product:execute 055-command-surface-onboarding`
+- Status: backlog (next up)
+
+### `054-github-issue-sync`
+
+- Outcome: opt-in one-way projection of `issues/*.md` to GitHub Issues with status labels, so external collaborators see progress in the GitHub UI.
+- Confidence: high
+- Dependency: design decisions recorded in the issue (mapping storage, trigger, explicit `-R` repo, label bootstrap)
+- Next command: `product:spec 054-github-issue-sync` after 055
+- Status: backlog
 
 ### `050-repo-sync-preflight`
 

@@ -2,11 +2,11 @@
 
 ## Current Phase
 
-Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per-issue artifact drill-down) while keeping Git-native Markdown canonical. Organized into 3 axes — View / Data quality / Planning-artifact depth.
+Goal `team-visibility-onboarding`: make work visible to non-local collaborators (GitHub Issues projection, `054`) and give first-time users a ranked entry path (`055`). Previous goal `visual-workbench` closed 2026-07-05 with all three axes shipped.
 
 ## Active Goal
 
-- `visual-workbench`: see and (eventually) act on issues, relationships, memory, and planning artifacts through a visual surface, per project. See `workspace/goal.md`.
+- `team-visibility-onboarding`: external collaborators see progress from the GitHub UI; new users get a small ranked entry path. See `workspace/goal.md`.
 
 ## Active Issue
 
@@ -41,7 +41,7 @@ Goal `visual-workbench`: moving ModuFlow toward a visual workbench (graphs + per
 - `042-decision-graph-dashboard`: interactive Cytoscape memory-graph dashboard generated from `memory/` frontmatter (supersedes static-Mermaid `041`).
 - `040-automatic-memory-candidate-capture`: automatic memory candidate capture with `--candidates/--approve/--reject/--capture`, 14-day stale pruning, released-status auto-capture.
 
-## Queue (goal `visual-workbench`)
+## Queue (goal `team-visibility-onboarding`)
 
 - `054-github-issue-sync`: opt-in sync from `issues/*.md` to actual GitHub Issues (status label, one-way local→GitHub).
 - `055-command-surface-onboarding`: rank/stage the 20+ `product-*` commands for a first-time user instead of listing the full surface.

@@ -18,6 +18,13 @@ ModuFlow's own repository has zero GitHub Issues in use; every issue lives only 
 - Map the canonical `**Status:** backlog|active|done|superseded` line to a GitHub label, so status stays visible from the GitHub Issues list view.
 - Keep `issues/*.md` as the single canonical source; GitHub Issue is a synced projection, not a second source of truth.
 
+### Design decisions (recorded 2026-07-05 pre-implementation review; binding for spec/plan)
+
+1. **Mapping storage**: the GitHub issue number is written back into the git-file issue's `## Links` section as `- GitHub: <issue url>` — canonical file carries the mapping, so re-sync updates instead of duplicating. No separate mapping file.
+2. **Update trigger**: no hook mechanism exists for "lifecycle actions". Label updates ride the existing surfaces: (a) the `061` done-flow (when an issue completes, sync its label if a GitHub mapping exists) and (b) an explicit `product:sync` pass for bulk reconciliation. Nothing fires on raw file edits.
+3. **Repo resolution**: `gh` cannot infer owner/repo from a non-`github.com` remote host (this machine's origin is the `github-evmodu` SSH alias). The sync command parses `owner/repo` from the origin URL path and passes it explicitly via `-R owner/repo` on every `gh` call. Tests cover the SSH-alias URL form.
+4. **Label bootstrap**: on first sync, ensure the four status labels exist (`moduflow:backlog|active|done|superseded`, namespaced to avoid colliding with repo-native labels), creating any that are missing before applying.
+
 ### Out
 
 - No automatic creation of a GitHub Issue for every git-file issue by default — opt-in only.

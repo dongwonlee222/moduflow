@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
   "phase": "select",
-  "active_goal": "visual-workbench",
+  "active_goal": "team-visibility-onboarding",
   "active_issue": "",
-  "last_command": "product:execute 065-installed-plugin-staleness-detection",
-  "next_command": "product:status",
+  "last_command": "product:goal team-visibility-onboarding",
+  "next_command": "product:execute 055-command-surface-onboarding",
   "blockers": [],
   "updated_at": "2026-07-05"
 }
