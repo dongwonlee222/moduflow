@@ -1,6 +1,6 @@
 # Issue 075: Issue-Less Context Capture
 
-**Status: active** — created 2026-07-06, spec 2026-07-06 (v2 rescoped), plan 2026-07-06, started 2026-07-06.
+**Status: done** — created 2026-07-06, spec 2026-07-06 (v2 rescoped), plan 2026-07-06, started 2026-07-06, done 2026-07-06.
 **Priority: p1**
 
 ## Summary
@@ -59,7 +59,7 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 - [x] adversarial spec review → `specs/075-issue-less-context-capture/adversarial-review.md`
 - [x] plan → `specs/075-issue-less-context-capture/plan.md` (+ `tasks.md`; spec_consistency clean)
 - [x] execute → commits `2f850f3` (wave 1), `5668373` (wave 2), `c82eb7a` (wave 3), D1 docs commit
-- [ ] review → review notes
+- [x] review → specs/075-issue-less-context-capture/review.md (pass)
 - [x] define linkage convention + repair release_check → `scripts/linkage_check.py`, `scripts/release_check.py`
 - [x] implement product:promote with bidirectional links → `scripts/project_promote.py`, `commands/product-promote.md`
 - [x] human-identity validation for no-issue declarations → `.moduflow/humans.json`, `releases/no-issue-declarations.md`, packet section in `scripts/project_pr.py`
@@ -93,4 +93,4 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 ## Next Command
 
-`/product:execute 075-issue-less-context-capture`
+`product:status`

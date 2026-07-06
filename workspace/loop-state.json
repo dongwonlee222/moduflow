@@ -21,12 +21,12 @@
     "057-korean-human-review-packet",
     "058-git-write-fallback-via-github-api"
   ],
-  "active_issue_id": "075-issue-less-context-capture",
-  "phase": "execute",
+  "active_issue_id": "",
+  "phase": "select",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:execute 075-issue-less-context-capture",
+  "next_command": "product:status",
   "attempts": {
     "command": "product:execute 058-git-write-fallback-via-github-api",
     "count": 0,
@@ -34,16 +34,16 @@
     "last_changed_at": "2026-07-03"
   },
   "blocker": null,
-  "last_action": "075 v2 plan committed; dispatching wave 1 workers",
-  "last_verification": "planning artifacts created; gates pending after implementation",
+  "last_action": "released 075 as 0.3.13 via PR #8",
+  "last_verification": "346 tests OK; release_check valid; human merge approval",
   "updated_at": "2026-07-06",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/075-issue-less-context-capture",
+    "branch": null,
     "base_branch": "main",
     "commits": [],
-    "pull_request": null,
-    "release": null,
+    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/8",
+    "release": "0.3.13",
     "execution_backend": {
       "type": "host-subagent",
       "status": "selected",

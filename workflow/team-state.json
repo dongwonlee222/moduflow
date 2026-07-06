@@ -81,14 +81,14 @@
       "owner": "",
       "assignee": "",
       "reviewer": "Dongwon",
-      "status": "review",
-      "branch": "",
+      "status": "done",
+      "branch": "codex/075-issue-less-context-capture",
       "pr": "https://github.com/dongwonlee222/moduflow/pull/8",
-      "lock_state": "active",
+      "lock_state": "released",
       "locked_by": "",
       "blocker": "",
-      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/8",
-      "next_command": "product:review 075-issue-less-context-capture",
+      "last_handoff": "Merged PR #8 into main after review pass and human approval; released 0.3.13.",
+      "next_command": "product:status",
       "updated_at": "2026-07-06"
     }
   ]
