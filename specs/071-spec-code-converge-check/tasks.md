@@ -26,3 +26,11 @@ Status: ready-for-execute · Parallel: A1 → (A2 ∥ B1) → B2 → D1
 ## Gates recap
 
 test → self-application (dogfood on 075) → review (071 reviews itself with the new auto-run) → release (version bump in completion commit, linkage gate on `codex/071-*`). Rollback: revert merge commit; additive files.
+
+## Converge Findings (auto)
+
+- [x] CV-1 [high] build_findings emits source_ref "unrequested:<file>" for high/medium unrequested items, producing CV lines whose source-ref is neither AC#<k> nor GC#<k>. GC#6 fixes the grammar to "source-ref is `AC#<k>` or `GC#<k>`" and commands/product-converge.md repeats that restriction, so any high/medium unrequested finding will write a tasks.md line outside the fixed grammar. — unrequested:scripts/project_converge.py, from converge 2026-07-06
+- [x] CV-2 [medium] unverifiable: The missing/unrequested fixtures are asserted to live in the test file, but its content is truncated out of the bundle; a doc claim in status.md is not code evidence. — AC#1, from converge 2026-07-06
+- [x] CV-3 [medium] unverifiable: Evidence-only input and the unverifiable verdict in the vocabulary are verified in command doc and script, but the judge template content and the fixture that exercises unverifiable are truncated — the 'exercised in at least one fixture' clause cannot be judged. — AC#3, from converge 2026-07-06
+- [x] CV-4 [medium] unverifiable: Non-zero exit on git/bundle failure in both output modes is clearly converged in code, but 'Global-Constraint violations grade high automatically' is enforced by the judge prompt template, whose content is truncated out of the bundle. — AC#5, from converge 2026-07-06
+- [x] CV-5 [medium] unverifiable: The required focused tests cannot be verified: the test file content is truncated; test counts exist only as status.md prose. — AC#9, from converge 2026-07-06

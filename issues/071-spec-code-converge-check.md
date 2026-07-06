@@ -43,7 +43,7 @@ Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): both m
 - [x] spec → `specs/071-spec-code-converge-check/spec.md` (+ `spec.ko.md`)
 - [x] plan → `specs/071-spec-code-converge-check/plan.md` (+ tasks.md, spec_consistency clean)
 - [x] execute → commits `8a62d24` (wave 1), `87ea20a` (wave 2), D1 dogfood
-- [ ] review → review notes
+- [x] review → specs/071-spec-code-converge-check/review.md (pass; self-converge caught+resolved 1 high)
 
 ## Links
 

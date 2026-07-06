@@ -23,6 +23,12 @@ Updated: 2026-07-06
 - Bundle file ordering: with tight caps the bundle truncated the implementing scripts/tests first, driving 8/9 ACs to `unverifiable`. Evidence collection should prioritize code/tests over docs when capping. (071 follow-up, not blocking.)
 - CV-2..4 (medium unverifiable) remain open on 075 tasks.md as honest bundle-cap artifacts; the behaviors they name are covered by the 393-test suite outside the bundle.
 
+## Review Evidence
+
+- Review: specs/071-spec-code-converge-check/review.md (pass)
+- Converge (self): specs/071-spec-code-converge-check/converge.md — 1 high finding caught and resolved via dated plan amendment
+- Dashboard: memory/dashboard.html · Drill-down: memory/issue-071-spec-code-converge-check.html
+
 ## Verification log
 
 - 2026-07-06: spec_consistency clean after plan authoring; validate clean.
