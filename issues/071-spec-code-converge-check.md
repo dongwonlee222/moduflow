@@ -1,6 +1,6 @@
 # Issue: `071-spec-code-converge-check`
 
-**Status: backlog** — created 2026-07-05.
+**Status: plan** — created 2026-07-05, spec 2026-07-06, plan 2026-07-06.
 **Priority: p1**
 
 ## Outcome
@@ -9,7 +9,7 @@ After implementation (and any time later), a converge pass assesses the actual c
 
 ## Why
 
-Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): both major spec-driven comparators grew this — spec-kit `/speckit.converge` (append-only gap tasks, severity-classified) and OpenSpec `/opsx:verify` (mandatory archive gate). ModuFlow's drift gate covers lifecycle state, not artifact-vs-code. The spec-kit adapter's reviewed note already flagged converge as watched-but-unabsorbed.
+Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): both major spec-driven comparators grew this — spec-kit `/speckit.converge` (append-only gap tasks, severity-classified) and OpenSpec `/opsx:verify` (optional quality report; archive blocking is a separate deterministic validator — corrected 2026-07-06 by mechanism benchmark). ModuFlow's drift gate covers lifecycle state, not artifact-vs-code. The spec-kit adapter's reviewed note already flagged converge as watched-but-unabsorbed.
 
 ## Scope
 
@@ -38,10 +38,19 @@ Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): both m
 
 - 2026-07-05: Registered from the competitive-gap benchmark (priority 3 of 5, post-implementation half).
 
+## Workflow Tasks
+
+- [x] spec → `specs/071-spec-code-converge-check/spec.md` (+ `spec.ko.md`)
+- [x] plan → `specs/071-spec-code-converge-check/plan.md` (+ tasks.md, spec_consistency clean)
+- [ ] execute → PR / commits
+- [ ] review → review notes
+
 ## Links
 
-- Benchmark: `knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md`
+- Benchmark (existence): `knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md`
+- Benchmark (mechanism): `memory/evidence/2026-07-06-converge-mechanism-benchmark.md`
+- Spec: `specs/071-spec-code-converge-check/spec.md`
 
 ## Next Command
 
-`/product:status`
+`/product:execute 071-spec-code-converge-check`
