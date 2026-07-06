@@ -1,0 +1,265 @@
+{
+  "schema": "moduflow.worker-plan.v1",
+  "issue_id": "075-issue-less-context-capture",
+  "project_root": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
+  "workers": {
+    "configured": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "files": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "dead_workers": []
+  },
+  "parallel": {
+    "eligible": false,
+    "mode": "sequential",
+    "risks": [
+      "Task 2 touches shared state: A2. `release_check.py` repair: explicit merge-base, remove both silent `except Exception: pass` blocks, integrate `find_unlinked_behavior_commits`, CI fetch depth in `.github/workflows/ci.yml`, `tests/test_release_check.py` — depends: A1",
+      "Task 6 touches shared state: B2. `scripts/project_promote.py` (record→issue, `promoted_to` in place, `Promoted-from` on issue, AI-field prefill or `TODO(blocking-execution)`) + `commands/product-promote.md` + `tests/test_project_promote.py` covering all 4 record kinds — depends: B1, C1",
+      "Task 7 touches shared state: C1. Shared frontmatter contract (`kind`, `date`, `summary`, `retrieval_trigger`, `promoted_to`, `superseded_by`) + ADD/UPDATE/SUPERSEDE/NOOP write discipline documented in `commands/product-decision.md`, `product-inbox.md`, `product-memory.md`, `product-knowledge.md` — depends: none"
+    ],
+    "merge_order": [
+      "T01",
+      "T02",
+      "T03",
+      "T04",
+      "T05",
+      "T06",
+      "T07",
+      "T08",
+      "T09"
+    ],
+    "fallback": "sequential",
+    "criteria": [
+      "separate worker domains",
+      "non-overlapping expected files",
+      "no shared-state risk",
+      "dependency-aware merge order"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "text": "A1. `scripts/linkage_check.py` module (branch/trailer resolution, path classification, declaration blame validation) + `tests/test_linkage_check.py` (FakeRunner; error-path tests mandatory) — depends: none",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/075-issue-less-context-capture-t01",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: A1. `scripts/linkage_check.py` module (branch/trailer resolution, path classification, declaration blame validation) + `tests/test_linkage_check.py` (FakeRunner; error-path tests mandatory) — depends: none\nExpected files: none\nCognitive demand: balanced — use your standard production model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [AI-Native Context and Issue-Contract Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-ai-native-context-benchmark.md): Second-round benchmark covering AI-native memory systems (Claude Code, Cursor, Devin, Letta/Mem0/Zep) and human-AI issue contracts (Linear agents, Copilot coding agent) — corrects the human-tool assumptions of the first benchmark.\n- [Issue-Less Context Capture External Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-issue-less-context-benchmark.md): External precedents for issue-less capture with promotion gates across GitHub Discussions, Linear Triage, Shape Up, ADR, Azure DevOps/Jira link gates, Zettelkasten, and OSS CI checks.\n- [Promote And Linkage Over New Capture Tier](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md): 075 drops the new 5-type capture tier and product:capture command; it delivers commit-issue linkage convention, a repaired release gate, product:promote with human Git-identity approval, and AI-first issue fields, reusing the four existing capture commands.\n- [Use Issue-Less Context Tiers](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-use-issue-less-context-tiers.md): ModuFlow should allow issue-less work, but every durable context must be typed as session, inbox, note, decision, or issue and promoted when it changes product behavior or spans sessions.\n"
+      }
+    },
+    {
+      "id": "T02",
+      "text": "A2. `release_check.py` repair: explicit merge-base, remove both silent `except Exception: pass` blocks, integrate `find_unlinked_behavior_commits`, CI fetch depth in `.github/workflows/ci.yml`, `tests/test_release_check.py` — depends: A1",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/075-issue-less-context-capture-t02",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: A2. `release_check.py` repair: explicit merge-base, remove both silent `except Exception: pass` blocks, integrate `find_unlinked_behavior_commits`, CI fetch depth in `.github/workflows/ci.yml`, `tests/test_release_check.py` — depends: A1\nExpected files: none\nCognitive demand: balanced — use your standard production model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [AI-Native Context and Issue-Contract Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-ai-native-context-benchmark.md): Second-round benchmark covering AI-native memory systems (Claude Code, Cursor, Devin, Letta/Mem0/Zep) and human-AI issue contracts (Linear agents, Copilot coding agent) — corrects the human-tool assumptions of the first benchmark.\n- [Issue-Less Context Capture External Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-issue-less-context-benchmark.md): External precedents for issue-less capture with promotion gates across GitHub Discussions, Linear Triage, Shape Up, ADR, Azure DevOps/Jira link gates, Zettelkasten, and OSS CI checks.\n- [Promote And Linkage Over New Capture Tier](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md): 075 drops the new 5-type capture tier and product:capture command; it delivers commit-issue linkage convention, a repaired release gate, product:promote with human Git-identity approval, and AI-first issue fields, reusing the four existing capture commands.\n- [Use Issue-Less Context Tiers](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-use-issue-less-context-tiers.md): ModuFlow should allow issue-less work, but every durable context must be typed as session, inbox, note, decision, or issue and promoted when it changes product behavior or spans sessions.\n"
+      }
+    },
+    {
+      "id": "T03",
+      "text": "A3. `.moduflow/humans.json` + `releases/no-issue-declarations.md` + blame validation + declaration listing in `human-review.ko.md` via `scripts/project_pr.py` + tests — depends: A1, A2",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/075-issue-less-context-capture-t03",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: A3. `.moduflow/humans.json` + `releases/no-issue-declarations.md` + blame validation + declaration listing in `human-review.ko.md` via `scripts/project_pr.py` + tests — depends: A1, A2\nExpected files: none\nCognitive demand: balanced — use your standard production model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [AI-Native Context and Issue-Contract Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-ai-native-context-benchmark.md): Second-round benchmark covering AI-native memory systems (Claude Code, Cursor, Devin, Letta/Mem0/Zep) and human-AI issue contracts (Linear agents, Copilot coding agent) — corrects the human-tool assumptions of the first benchmark.\n- [Issue-Less Context Capture External Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-issue-less-context-benchmark.md): External precedents for issue-less capture with promotion gates across GitHub Discussions, Linear Triage, Shape Up, ADR, Azure DevOps/Jira link gates, Zettelkasten, and OSS CI checks.\n- [Promote And Linkage Over New Capture Tier](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md): 075 drops the new 5-type capture tier and product:capture command; it delivers commit-issue linkage convention, a repaired release gate, product:promote with human Git-identity approval, and AI-first issue fields, reusing the four existing capture commands.\n- [Use Issue-Less Context Tiers](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-use-issue-less-context-tiers.md): ModuFlow should allow issue-less work, but every durable context must be typed as session, inbox, note, decision, or issue and promoted when it changes product behavior or spans sessions.\n"
+      }
+    },
+    {
+      "id": "T04",
+      "text": "A-gate. Self-application: this issue's own branch passes the new linkage gate",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/075-issue-less-context-capture-t04",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: A-gate. Self-application: this issue's own branch passes the new linkage gate\nExpected files: none\nCognitive demand: balanced — use your standard production model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [AI-Native Context and Issue-Contract Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-ai-native-context-benchmark.md): Second-round benchmark covering AI-native memory systems (Claude Code, Cursor, Devin, Letta/Mem0/Zep) and human-AI issue contracts (Linear agents, Copilot coding agent) — corrects the human-tool assumptions of the first benchmark.\n- [Issue-Less Context Capture External Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-issue-less-context-benchmark.md): External precedents for issue-less capture with promotion gates across GitHub Discussions, Linear Triage, Shape Up, ADR, Azure DevOps/Jira link gates, Zettelkasten, and OSS CI checks.\n- [Promote And Linkage Over New Capture Tier](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md): 075 drops the new 5-type capture tier and product:capture command; it delivers commit-issue linkage convention, a repaired release gate, product:promote with human Git-identity approval, and AI-first issue fields, reusing the four existing capture commands.\n- [Use Issue-Less Context Tiers](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-use-issue-less-context-tiers.md): ModuFlow should allow issue-less work, but every durable context must be typed as session, inbox, note, decision, or issue and promoted when it changes product behavior or spans sessions.\n"
+      }
+    },
+    {
+      "id": "T05",
+      "text": "B1. `templates/issues/issue.md`: add `## Verification`, `## Entry Points`, `## Scope Fence` sections (backward-compatible — parsers must not require them on old issues) — depends: none",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/075-issue-less-context-capture-t05",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: B1. `templates/issues/issue.md`: add `## Verification`, `## Entry Points`, `## Scope Fence` sections (backward-compatible — parsers must not require them on old issues) — depends: none\nExpected files: none\nCognitive demand: balanced — use your standard production model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [AI-Native Context and Issue-Contract Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-ai-native-context-benchmark.md): Second-round benchmark covering AI-native memory systems (Claude Code, Cursor, Devin, Letta/Mem0/Zep) and human-AI issue contracts (Linear agents, Copilot coding agent) — corrects the human-tool assumptions of the first benchmark.\n- [Issue-Less Context Capture External Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-issue-less-context-benchmark.md): External precedents for issue-less capture with promotion gates across GitHub Discussions, Linear Triage, Shape Up, ADR, Azure DevOps/Jira link gates, Zettelkasten, and OSS CI checks.\n- [Promote And Linkage Over New Capture Tier](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md): 075 drops the new 5-type capture tier and product:capture command; it delivers commit-issue linkage convention, a repaired release gate, product:promote with human Git-identity approval, and AI-first issue fields, reusing the four existing capture commands.\n- [Use Issue-Less Context Tiers](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-use-issue-less-context-tiers.md): ModuFlow should allow issue-less work, but every durable context must be typed as session, inbox, note, decision, or issue and promoted when it changes product behavior or spans sessions.\n"
+      }
+    },
+    {
+      "id": "T06",
+      "text": "B2. `scripts/project_promote.py` (record→issue, `promoted_to` in place, `Promoted-from` on issue, AI-field prefill or `TODO(blocking-execution)`) + `commands/product-promote.md` + `tests/test_project_promote.py` covering all 4 record kinds — depends: B1, C1",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/075-issue-less-context-capture-t06",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: B2. `scripts/project_promote.py` (record→issue, `promoted_to` in place, `Promoted-from` on issue, AI-field prefill or `TODO(blocking-execution)`) + `commands/product-promote.md` + `tests/test_project_promote.py` covering all 4 record kinds — depends: B1, C1\nExpected files: none\nCognitive demand: balanced — use your standard production model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [AI-Native Context and Issue-Contract Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-ai-native-context-benchmark.md): Second-round benchmark covering AI-native memory systems (Claude Code, Cursor, Devin, Letta/Mem0/Zep) and human-AI issue contracts (Linear agents, Copilot coding agent) — corrects the human-tool assumptions of the first benchmark.\n- [Issue-Less Context Capture External Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-issue-less-context-benchmark.md): External precedents for issue-less capture with promotion gates across GitHub Discussions, Linear Triage, Shape Up, ADR, Azure DevOps/Jira link gates, Zettelkasten, and OSS CI checks.\n- [Promote And Linkage Over New Capture Tier](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md): 075 drops the new 5-type capture tier and product:capture command; it delivers commit-issue linkage convention, a repaired release gate, product:promote with human Git-identity approval, and AI-first issue fields, reusing the four existing capture commands.\n- [Use Issue-Less Context Tiers](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-use-issue-less-context-tiers.md): ModuFlow should allow issue-less work, but every durable context must be typed as session, inbox, note, decision, or issue and promoted when it changes product behavior or spans sessions.\n"
+      }
+    },
+    {
+      "id": "T07",
+      "text": "C1. Shared frontmatter contract (`kind`, `date`, `summary`, `retrieval_trigger`, `promoted_to`, `superseded_by`) + ADD/UPDATE/SUPERSEDE/NOOP write discipline documented in `commands/product-decision.md`, `product-inbox.md`, `product-memory.md`, `product-knowledge.md` — depends: none",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/075-issue-less-context-capture-t07",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: C1. Shared frontmatter contract (`kind`, `date`, `summary`, `retrieval_trigger`, `promoted_to`, `superseded_by`) + ADD/UPDATE/SUPERSEDE/NOOP write discipline documented in `commands/product-decision.md`, `product-inbox.md`, `product-memory.md`, `product-knowledge.md` — depends: none\nExpected files: none\nCognitive demand: balanced — use your standard production model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [AI-Native Context and Issue-Contract Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-ai-native-context-benchmark.md): Second-round benchmark covering AI-native memory systems (Claude Code, Cursor, Devin, Letta/Mem0/Zep) and human-AI issue contracts (Linear agents, Copilot coding agent) — corrects the human-tool assumptions of the first benchmark.\n- [Issue-Less Context Capture External Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-issue-less-context-benchmark.md): External precedents for issue-less capture with promotion gates across GitHub Discussions, Linear Triage, Shape Up, ADR, Azure DevOps/Jira link gates, Zettelkasten, and OSS CI checks.\n- [Promote And Linkage Over New Capture Tier](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md): 075 drops the new 5-type capture tier and product:capture command; it delivers commit-issue linkage convention, a repaired release gate, product:promote with human Git-identity approval, and AI-first issue fields, reusing the four existing capture commands.\n- [Use Issue-Less Context Tiers](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-use-issue-less-context-tiers.md): ModuFlow should allow issue-less work, but every durable context must be typed as session, inbox, note, decision, or issue and promoted when it changes product behavior or spans sessions.\n"
+      }
+    },
+    {
+      "id": "T08",
+      "text": "C2. `commands/product-status.md` unpromoted-record count/oldest surfacing + 2-release retention archive (frontmatter `archived:`, file stays, queryable list) in `scripts/project_memory.py` or `project_retention.py` + tests — depends: C1, A3",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/075-issue-less-context-capture-t08",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: C2. `commands/product-status.md` unpromoted-record count/oldest surfacing + 2-release retention archive (frontmatter `archived:`, file stays, queryable list) in `scripts/project_memory.py` or `project_retention.py` + tests — depends: C1, A3\nExpected files: none\nCognitive demand: balanced — use your standard production model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [AI-Native Context and Issue-Contract Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-ai-native-context-benchmark.md): Second-round benchmark covering AI-native memory systems (Claude Code, Cursor, Devin, Letta/Mem0/Zep) and human-AI issue contracts (Linear agents, Copilot coding agent) — corrects the human-tool assumptions of the first benchmark.\n- [Issue-Less Context Capture External Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-issue-less-context-benchmark.md): External precedents for issue-less capture with promotion gates across GitHub Discussions, Linear Triage, Shape Up, ADR, Azure DevOps/Jira link gates, Zettelkasten, and OSS CI checks.\n- [Promote And Linkage Over New Capture Tier](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md): 075 drops the new 5-type capture tier and product:capture command; it delivers commit-issue linkage convention, a repaired release gate, product:promote with human Git-identity approval, and AI-first issue fields, reusing the four existing capture commands.\n- [Use Issue-Less Context Tiers](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-use-issue-less-context-tiers.md): ModuFlow should allow issue-less work, but every durable context must be typed as session, inbox, note, decision, or issue and promoted when it changes product behavior or spans sessions.\n"
+      }
+    },
+    {
+      "id": "T09",
+      "text": "D1. 074 case writeup against v2 mechanisms + docs sweep (no v1 capture-tier references remain; `commands/product-release.md` gate description updated) — depends: Stream A, Stream B",
+      "status": "ready",
+      "worker": "release-manager",
+      "worker_file": "workers/release-manager.md",
+      "parallel_group": "group-3",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/075-issue-less-context-capture-t09",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow release-manager",
+        "CognitiveDemand": "fast",
+        "Workspace": "share",
+        "Prompt": "Implement task: D1. 074 case writeup against v2 mechanisms + docs sweep (no v1 capture-tier references remain; `commands/product-release.md` gate description updated) — depends: Stream A, Stream B\nExpected files: none\nCognitive demand: fast — use your lightest, fastest model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [AI-Native Context and Issue-Contract Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-ai-native-context-benchmark.md): Second-round benchmark covering AI-native memory systems (Claude Code, Cursor, Devin, Letta/Mem0/Zep) and human-AI issue contracts (Linear agents, Copilot coding agent) — corrects the human-tool assumptions of the first benchmark.\n- [Issue-Less Context Capture External Benchmark](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-issue-less-context-benchmark.md): External precedents for issue-less capture with promotion gates across GitHub Discussions, Linear Triage, Shape Up, ADR, Azure DevOps/Jira link gates, Zettelkasten, and OSS CI checks.\n- [Promote And Linkage Over New Capture Tier](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md): 075 drops the new 5-type capture tier and product:capture command; it delivers commit-issue linkage convention, a repaired release gate, product:promote with human Git-identity approval, and AI-first issue fields, reusing the four existing capture commands.\n- [Use Issue-Less Context Tiers](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/decisions/2026-07-06-use-issue-less-context-tiers.md): ModuFlow should allow issue-less work, but every durable context must be typed as session, inbox, note, decision, or issue and promoted when it changes product behavior or spans sessions.\n"
+      }
+    }
+  ],
+  "next_command": "product:execute 075-issue-less-context-capture"
+}

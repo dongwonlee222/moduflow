@@ -500,7 +500,9 @@ class ValidationDistributionTests(unittest.TestCase):
             # Mock get_modified_python_files to return the leak file
             orig_get_modified = release_check.get_modified_python_files
             try:
-                release_check.get_modified_python_files = lambda r: [leak_file]
+                release_check.get_modified_python_files = (
+                    lambda r, *a, **k: {"files": [leak_file], "errors": []}
+                )
                 result = release_check.run_release_check(root)
             finally:
                 release_check.get_modified_python_files = orig_get_modified
@@ -513,7 +515,9 @@ class ValidationDistributionTests(unittest.TestCase):
 
             orig_get_modified = release_check.get_modified_python_files
             try:
-                release_check.get_modified_python_files = lambda r: [leak_file]
+                release_check.get_modified_python_files = (
+                    lambda r, *a, **k: {"files": [leak_file], "errors": []}
+                )
                 result = release_check.run_release_check(root)
             finally:
                 release_check.get_modified_python_files = orig_get_modified
