@@ -23,6 +23,7 @@ Updated: 2026-07-06
 - `python3 -m unittest tests.test_project_sync -v` passed.
 - `python3 scripts/release_check.py .` passed.
 - `python3 scripts/validate_project_artifacts.py .` passed.
+- Re-review 2026-07-06 (Claude): full suite `python3 -m unittest discover tests` passed (280 tests). Spec compliance: pass — `--no-fetch` opt-in preserved default auto-fetch; `fetch_mode: skipped` suppresses the false fetch-failure recommendation. Quality: pass. PR #7 open and mergeable with evidence mirrored in body.
 
 ## Notes
 
