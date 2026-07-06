@@ -1,8 +1,8 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "plan",
+  "phase": "execute",
   "active_goal": "team-visibility-onboarding",
-  "active_issue": "",
+  "active_issue": "071-spec-code-converge-check",
   "last_command": "product:plan 071-spec-code-converge-check",
   "next_command": "product:execute 071-spec-code-converge-check",
   "blockers": [],
