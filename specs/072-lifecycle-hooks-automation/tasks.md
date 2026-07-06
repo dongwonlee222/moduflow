@@ -34,3 +34,8 @@ test → self-application (silent-on-linked / warn-once-on-unlinked) → review 
 ## Coordination note
 
 Parallel session (028 chip) owns `scripts/validate_project_artifacts.py` — do not touch; targeted `git add` only.
+
+## Converge Findings (auto)
+
+- [x] CV-1 [medium] partial: The sync-trigger mechanism is clearly implemented, but the fixture-based verification demanded by the AC cannot be confirmed — the test file content is absent from the bundle. — AC#2, from converge 2026-07-06
+- [x] CV-2 [medium] unverifiable: Test files exist in the commit file list, which suggests tests were written, but null-content entries prove nothing about banner-content, marker, dedup-fingerprint, fail-open, or doctor-surfacing coverage. — AC#8, from converge 2026-07-06

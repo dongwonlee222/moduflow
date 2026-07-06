@@ -1,0 +1,86 @@
+{
+  "schema": "moduflow.converge-judgment.v1",
+  "verdicts": [
+    {
+      "ac_id": "AC#2",
+      "verdict": "partial",
+      "severity": "medium",
+      "evidence_quote": "hooks/on_stop.py maybe_sync(): computes issues/*.md hash vs .moduflow/state/.last-sync marker and runs `[sys.executable, project_lifecycle.py, project_root, \"--sync\"]` when changed; marker updated only after successful sync. However the AC's verification clause ('verified by fixture: mutate a Status line, invoke the Stop hook script directly, assert state.json updated') maps to tests/test_hooks_on_stop.py, which has content:null, truncated:true in the bundle.",
+      "note": "The sync-trigger mechanism is clearly implemented, but the fixture-based verification demanded by the AC cannot be confirmed — the test file content is absent from the bundle."
+    },
+    {
+      "ac_id": "AC#8",
+      "verdict": "unverifiable",
+      "severity": "medium",
+      "evidence_quote": "tests/test_hooks_on_stop.py, tests/test_hooks_session_start.py, tests/test_linkage_check.py, tests/test_project_doctor.py all appear in the bundle with \"content\": null, \"truncated\": true.",
+      "note": "Test files exist in the commit file list, which suggests tests were written, but null-content entries prove nothing about banner-content, marker, dedup-fingerprint, fail-open, or doctor-surfacing coverage."
+    },
+    {
+      "ac_id": "AC#7",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "AC#7: \"`python3 scripts/release_check.py .` passes\" — the bundle contains no execution output, no release_check.py source, and no CI log.",
+      "note": "A command-execution AC cannot be judged from static file contents alone; no run evidence is present in the bundle."
+    },
+    {
+      "ac_id": "AC#1",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "hooks/hooks.json registers SessionStart (matcher \"startup|resume|clear|compact\") running hooks/session_start.py; session_start.py build_banner() emits \"목표: <goal>\", \"활성 이슈: <issue> (단계: <phase>)\", \"다음 명령: <next_command>\" via hookSpecificOutput.additionalContext, sourced from .moduflow/state.json and workspace/loop-state.json.",
+      "note": "Goal, active issue, and next command are injected at session start without any manual product:status call; commands/product-status.md documents the banner."
+    },
+    {
+      "ac_id": "AC#3",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "hooks/on_stop.py: build_warning() emits one line (\"⚠️ 이슈 연결 없는 동작 변경 감지: ...\", up to 3 paths + '+n more'); linkage_warning() suppresses when _read_marker(fingerprint_path) == warning_fingerprint(unlinked); detect_unlinked() returns silent for codex/<issue-id> branches (linkage.BRANCH_ISSUE_RE) and clears the fingerprint when the state resolves.",
+      "note": "Single warning line, fingerprint dedupe across turns, silence for linked (issue-branch) changes, and re-warn after resolution are all implemented."
+    },
+    {
+      "ac_id": "AC#4",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "hooks/session_start.py: 'sys.exit(0)' after a top-level try/except that calls append_log(..., \"unhandled: %r\"); hooks/on_stop.py main(): 'return 0  # ALWAYS 0 — exit 2 / decision:\"block\" forbidden' with per-step try/except writing to .moduflow/logs/hooks.log; log_line/append_log themselves never raise.",
+      "note": "Every failure path exits 0 and appends to hooks.log; stdout is reserved for the JSON contract, so the session is unaffected."
+    },
+    {
+      "ac_id": "AC#5",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "scripts/project_doctor.py check_hook_log(): returns [] for absent file, unreadable file, or empty content; filters entries to last 7 days, caps at 20; inspect_project() exposes result[\"hooks\"][\"warnings\"] and appends 'hook health: N lifecycle hook event(s) logged in last 7 days...' to recommendations only when non-empty. commands/product-doctor.md adds the 'Hook Health (issue 072)' section.",
+      "note": "Absent/empty log yields silence; recent entries surface as warnings, matching the AC."
+    },
+    {
+      "ac_id": "AC#6",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "Both hooks set SELF_BUDGET_SECONDS = 5.0 with deadline checks before each expensive step; on_stop.py reuses scripts/linkage_check.py via importlib (\"GC1: reuse, never reimplement\") and subprocesses project_lifecycle.py --sync; session_start.py imports project_retention for the record count; hooks.json adds manifest timeouts (30s/15s) as defense in depth.",
+      "note": "Exit-0 discipline, 5s self-budget, and reuse of existing sync/linkage/retention scripts are all visible in code; GC#1/GC#2 satisfied."
+    }
+  ],
+  "unrequested": [
+    {
+      "behavior": "Stop-hook linkage warning is suppressed entirely when releases/no-issue-declarations.md exists (reason \"no-issue-declaration\"), a condition not mentioned in AC#3 or the global constraints (it defers to the issue-075 release gate).",
+      "file": "hooks/on_stop.py",
+      "severity": "low"
+    },
+    {
+      "behavior": "SessionStart matcher includes \"resume\" in addition to the startup|clear|compact set; documented in hook-schema-notes.md as implementation delta 1 ('spec said three; resume added') but not in the parsed AC/GC list.",
+      "file": "hooks/hooks.json",
+      "severity": "low"
+    },
+    {
+      "behavior": ".gitignore extended to exclude .moduflow/state/ and .moduflow/logs/ ('machine-local hook state (issue 072) — never commit') — consistent with GC#7's machine-local write surface but not itself requested by any AC/GC.",
+      "file": ".gitignore",
+      "severity": "low"
+    }
+  ],
+  "bundle_gaps": [
+    "All four test files (tests/test_hooks_on_stop.py, tests/test_hooks_session_start.py, tests/test_linkage_check.py, tests/test_project_doctor.py) have content:null/truncated:true — AC#8 and the fixture-verification clause of AC#2 cannot be judged, and the '+ test' requirement of GC#8 (hooks/ prefix coverage in linkage_check tests) cannot be confirmed (the prefix itself IS present in scripts/linkage_check.py BEHAVIOR_PREFIXES).",
+    "specs/072-lifecycle-hooks-automation/spec.md, plan.md, tasks.md, status.md, spec.ko.md, worker-plan.json, worker-plan.md are all null/truncated — judgments rely solely on the parsed AC/GC extracts in the bundle.",
+    "AC#7 requires running `python3 scripts/release_check.py .`; the bundle contains no execution output and release_check.py is not among the bundled files.",
+    "workspace/loop-state.json and workspace/dashboard.md are null/truncated — the dashboard-propagation half of AC#2 ('propagates state.json/dashboard') can only be inferred from the sync-invocation code, not observed.",
+    "GC#9 (parallel-session hygiene: never touch scripts/validate_project_artifacts.py, targeted `git add`) is not checkable — the bundle has commit subjects only, no per-commit diffs or staging information; validate_project_artifacts.py is at least absent from the touched-files list.",
+    "Bundle top-level \"truncated\": true — the evidence set itself is declared incomplete."
+  ]
+}

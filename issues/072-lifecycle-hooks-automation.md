@@ -44,7 +44,7 @@ Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): ModuFl
 - [x] spec → `specs/072-lifecycle-hooks-automation/spec.md` (+ `spec.ko.md`; scope expanded 2026-07-06 with 075-deferred session-time linkage warning + doctor log surfacing, both user-approved)
 - [x] plan → `specs/072-lifecycle-hooks-automation/plan.md` (+ tasks.md)
 - [x] execute → commits `3eacb90` (planning), V1 notes, `1300881` (main wave), D1 dogfood
-- [ ] review
+- [x] review → specs/072-lifecycle-hooks-automation/review.md (pass; converge 5/8 converged, 0 violations)
 
 ## Links
 
