@@ -1,5 +1,7 @@
 # Issue 031: Goal-driven Autonomous Benchmarking and Issue Generation
 
+**Status: done** — body and status.md say `Phase: done` (commit 1285183, `issue_generator.py` live). Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 ModuFlow의 제품 개발 자율성을 극대화하기 위해, 사용자가 상위 수준의 제품 목표(Goal)를 정의하거나 갱신했을 때 에이전트가 외부 모범 사례 및 기술 동향을 스스로 검색(벤치마킹)하고, 이를 달성하기 위한 구체적인 하위 작업들을 도출하여 새로운 Issue 아티팩트(`issues/0xx-*.md`)로 자동 작성 및 제안하는 기능을 구축합니다.

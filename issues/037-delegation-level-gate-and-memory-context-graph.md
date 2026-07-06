@@ -1,5 +1,7 @@
 # Issue 037: Delegation Level Gate And Memory Context Graph
 
+**Status: done** — implemented in commit 4e1c74b (`delegation_level` in loop-state/project_loop.py, `--graph` in project_memory.py, tests live); body checkboxes were never updated. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Add a delegation level control gate to the workspace loop-state and extend the memory parser to support `depends_on` and `references` relationships, including a `--graph` CLI option to render a visual Mermaid graph of the memory context.

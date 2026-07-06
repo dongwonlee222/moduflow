@@ -1,5 +1,7 @@
 # Issue 005: Team Workflow
 
+**Status: done** — `scripts/project_workflow.py` shipped in the 0.1.x era; status.md shows all verification passed. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Add team-ready workflow states, review gates, roles, approvals, and handoff artifacts.

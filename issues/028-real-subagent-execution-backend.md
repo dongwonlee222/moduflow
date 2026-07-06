@@ -1,5 +1,7 @@
 # Issue 028: Real Subagent Execution Backend
 
+**Status: done** — body Lifecycle says `Phase: done`; commit 57abe3e finalizes status, 43 tests passing per status.md. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Upgrade ModuFlow worker orchestration from static worker-plan simulation into an optional real subagent execution backend that can dispatch independent work to host-provided coding agents.

@@ -1,5 +1,7 @@
 # Issue 004: Portfolio Workspace
 
+**Status: done** — `scripts/project_portfolio.py` shipped in the 0.1.x era; status.md shows all verification passed. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Create a central workspace for tracking multiple ModuFlow projects and building a portfolio-level dashboard.

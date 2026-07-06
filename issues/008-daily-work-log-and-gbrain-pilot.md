@@ -1,5 +1,7 @@
 # Issue 008: Daily Work Log And GBrain Pilot
 
+**Status: done** — status.md shows only optional follow-ups remaining; daily work-log flow shipped. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Record the June 11, 2026 ModuFlow release follow-up, install bootstrap fix, short alias update, and GBrain local memory pilot.

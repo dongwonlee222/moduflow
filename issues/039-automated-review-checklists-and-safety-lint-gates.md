@@ -1,5 +1,7 @@
 # Issue 039: Automated Review Checklists And Safety Lint Gates
 
+**Status: done** — implemented in commit 4e1c74b; all workflow tasks checked, status.md records 133 tests passing. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Enhance the `product:review` status output with automated spec-diff checklist comparisons and add code linting and security vulnerability gates to the release checker.

@@ -1,5 +1,7 @@
 # Issue 002: Project Profile
 
+**Status: done** — `scripts/project_profile.py` shipped in the 0.1.x era; status.md shows all verification passed. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Create a standard project profile layer for product context, environments, integrations, ownership, and operating notes.

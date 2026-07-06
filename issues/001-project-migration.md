@@ -1,5 +1,7 @@
 # Issue 001: Project Migration
 
+**Status: done** — `scripts/project_migrate.py` shipped in the 0.1.x era; status.md shows all verification passed. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Add a safe migration workflow for projects that already have their own folder structures, documents, issues, reports, and planning artifacts.

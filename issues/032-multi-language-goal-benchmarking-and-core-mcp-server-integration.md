@@ -1,5 +1,7 @@
 # Issue 032: Multi-Language Goal Benchmarking and Core MCP Server Integration
 
+**Status: done** — body and status.md say `Phase: done` (commit db3edda, `scripts/mcp_server.py` live). Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 ModuFlow 플러그인의 완성도를 넥스트 레벨로 올리기 위해 다음 두 가지 핵심 개선 사항을 구현합니다.

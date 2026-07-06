@@ -1,5 +1,7 @@
 # Issue 036: Portfolio Team Dashboard
 
+**Status: done** — all workflow tasks checked; status.md shows validation and release checks passed. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Reflect per-project team workflow state in portfolio dashboards so small teams can see active work, review queues, blockers, and next actions across projects.

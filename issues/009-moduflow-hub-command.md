@@ -1,5 +1,7 @@
 # Issue 009: ModuFlow Hub Command And 0.2.4 Release
 
+**Status: done** — shipped as 0.2.4 (commit 9724ed5 records "done"). Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Add a single `/moduflow` hub entry point so users only need to remember one command, release it as `0.2.4`, sync the Codex personal marketplace, and document the entry point in the README.

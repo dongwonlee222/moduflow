@@ -1,5 +1,7 @@
 # Issue 038: Worker Context Memory Path Injection
 
+**Status: done** — implemented in commit 4e1c74b; all workflow tasks checked. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Implement dynamic injection of relevant memory paths and short summaries into task worker prompts in `worker_orchestrator.py` during execution, respecting context isolation rules to avoid prompt bloat.

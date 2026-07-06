@@ -1,5 +1,7 @@
 # Issue 011: Workflow Task Tracking (산출물=추적)
 
+**Status: done** — shipped as 0.2.6 (same release commit 7fbb967 as issue 012); status.md shows only optional follow-ups. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Make every artifact-producing workflow step (spec, plan, design, review) a tracked task inside its owning issue, so no artifact is produced off the books. Shipped as ModuFlow 0.2.6.

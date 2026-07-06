@@ -240,6 +240,22 @@ def validate_schema_gates(root, project_loop, errors):
         pass
 
 
+def validate_issue_status_lines(root, warnings):
+    # 066 follow-up: every issue file must carry the canonical `**Status: ...**`
+    # line or project_lifecycle.py silently defaults it to backlog. Warning, not
+    # error — target projects mid-adoption may still carry legacy files.
+    paths = read_config_paths(root, [])
+    issues_dir = root / paths.get("issues", "issues")
+    if not issues_dir.is_dir():
+        return
+    for issue_file in sorted(issues_dir.glob("*.md")):
+        if not re.search(r"\*\*Status:", issue_file.read_text(encoding="utf-8")):
+            warnings.append(
+                f"issues/{issue_file.name}: missing canonical `**Status: ...**` line "
+                "(lifecycle parser will report it as backlog)"
+            )
+
+
 def read_json(path, errors):
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -315,6 +331,7 @@ def validate_project(path):
     validate_schema_gates(root, project_loop, errors)
     validate_memory_links(root, errors)
     validate_team_workflow_state(root, errors)
+    validate_issue_status_lines(root, warnings)
 
     return {
         "schema": "moduflow.project-validation.v1",

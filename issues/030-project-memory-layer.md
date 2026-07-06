@@ -1,5 +1,7 @@
 # Issue 030: Project Memory Layer
 
+**Status: backlog** — half-implemented prototype (`Phase: prototype`, 5 of 10 workflow tasks unchecked); much of the memory scope later landed via 034/040/043, so re-scope before picking up. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Expand ModuFlow from issue-centric PM tracking into project-level long-term memory management for deliverables, decisions, evidence, operating context, and reusable project memory.

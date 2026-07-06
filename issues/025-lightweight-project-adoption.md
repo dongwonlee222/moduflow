@@ -1,5 +1,7 @@
 # Issue 025: Lightweight Project Adoption
 
+**Status: done** — body Lifecycle says `Phase: done`; commits 70cb1b9/d4e6ad6 finalize implementation and status. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Reduce ModuFlow's footprint in target projects so project adoption keeps only durable state and PM artifacts in the project, while commands, scripts, skills, and templates stay in the central ModuFlow plugin/tooling repo.

@@ -1,5 +1,7 @@
 # Issue 006: Validation And Distribution
 
+**Status: done** — `validate_project_artifacts.py`/`release_check.py` shipped and gate every release; status.md shows all verification passed. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+
 ## Summary
 
 Strengthen validation, install, migration, and release tooling so ModuFlow can be safely used by multiple people across projects.

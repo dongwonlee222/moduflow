@@ -52,6 +52,25 @@ class ValidationDistributionTests(unittest.TestCase):
             self.assertTrue(result["valid"])
             self.assertEqual(result["errors"], [])
 
+    def test_validate_project_artifacts_warns_on_issue_missing_status_line(self):
+        validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+            (root / "issues" / "001-with-status.md").write_text(
+                "# Issue 001\n\n**Status: done** — shipped.\n", encoding="utf-8"
+            )
+            (root / "issues" / "002-legacy.md").write_text(
+                "# Issue 002\n\n## Links\n\n- Status: `specs/002/status.md`\n", encoding="utf-8"
+            )
+
+            result = validator.validate_project(root)
+
+            self.assertTrue(result["valid"])
+            matching = [w for w in result["warnings"] if "002-legacy.md" in w and "**Status:" in w]
+            self.assertEqual(len(matching), 1)
+            self.assertFalse(any("001-with-status.md" in w for w in result["warnings"]))
+
     def test_validate_project_artifacts_reports_invalid_state_json(self):
         validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
         with tempfile.TemporaryDirectory() as tmp:
