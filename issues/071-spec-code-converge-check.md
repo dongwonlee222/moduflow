@@ -1,6 +1,6 @@
 # Issue: `071-spec-code-converge-check`
 
-**Status: active** — created 2026-07-05, spec 2026-07-06, plan 2026-07-06, started 2026-07-06.
+**Status: done** — created 2026-07-05, spec 2026-07-06, plan 2026-07-06, started 2026-07-06, done 2026-07-06.
 **Priority: p1**
 
 ## Outcome
@@ -53,4 +53,4 @@ Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): both m
 
 ## Next Command
 
-`/product:execute 071-spec-code-converge-check`
+`product:status`

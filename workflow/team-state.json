@@ -96,14 +96,14 @@
       "owner": "",
       "assignee": "",
       "reviewer": "Dongwon",
-      "status": "review",
+      "status": "done",
       "branch": "",
       "pr": "https://github.com/dongwonlee222/moduflow/pull/9",
-      "lock_state": "active",
+      "lock_state": "released",
       "locked_by": "",
       "blocker": "",
-      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/9",
-      "next_command": "product:review 071-spec-code-converge-check",
+      "last_handoff": "Merged PR #9 into main after review pass and explicit human approval; released 0.3.14.",
+      "next_command": "product:status",
       "updated_at": "2026-07-06"
     }
   ]

@@ -21,12 +21,12 @@
     "057-korean-human-review-packet",
     "058-git-write-fallback-via-github-api"
   ],
-  "active_issue_id": "071-spec-code-converge-check",
-  "phase": "execute",
+  "active_issue_id": "",
+  "phase": "select",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:execute 071-spec-code-converge-check",
+  "next_command": "product:status",
   "attempts": {
     "command": "product:execute 058-git-write-fallback-via-github-api",
     "count": 0,
@@ -34,16 +34,16 @@
     "last_changed_at": "2026-07-03"
   },
   "blocker": null,
-  "last_action": "071 plan committed; dispatching A1+B1",
-  "last_verification": "346 tests OK; release_check valid; human merge approval",
+  "last_action": "released 071 as 0.3.14 via PR #9",
+  "last_verification": "393 tests OK; release_check valid; self-converge x2 caught real issues; explicit human merge approval",
   "updated_at": "2026-07-06",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/071-spec-code-converge-check",
+    "branch": null,
     "base_branch": "main",
     "commits": [],
-    "pull_request": null,
-    "release": null,
+    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/9",
+    "release": "0.3.14",
     "execution_backend": {
       "type": "host-subagent",
       "status": "selected",
