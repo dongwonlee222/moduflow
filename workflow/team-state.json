@@ -45,6 +45,21 @@
       "last_handoff": "PR ready for review: local:056-dashboard-db-list-view-spec:review-ready",
       "next_command": "product:status",
       "updated_at": "2026-07-03"
+    },
+    {
+      "issue_id": "057-korean-human-review-packet",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Dongwon",
+      "status": "done",
+      "branch": "",
+      "pr": "local:057-korean-human-review-packet:pr-ready",
+      "lock_state": "released",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "Released locally after human approval.",
+      "next_command": "product:status",
+      "updated_at": "2026-07-03"
     }
   ]
 }

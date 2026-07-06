@@ -10,7 +10,7 @@ ModuFlow intentionally keeps canonical artifacts in English to reduce token cost
 
 - Keep English artifacts canonical.
 - Provide a Korean-first review surface for PR, review, and release gates.
-- Make `product:pr` generate `specs/<issue>/human-review.ko.md`.
+- Make `product:pr` generate a per-issue `human-review.ko.md` packet.
 - Make the dashboard issue detail page expose at least a Korean overview for every issue.
 - Make missing full Korean sidecars visible instead of silently falling back to English.
 - Let reviewers start from the Korean packet and drill down to English only when needed.
@@ -35,21 +35,21 @@ The model is layered:
 
 ## Product Behavior
 
-`product:pr <issue>` should run:
+`product:pr {issue}` should run:
 
 ```bash
-python3 scripts/project_pr.py <project-path> --issue-id <issue> --write
+python3 scripts/project_pr.py <project-path> --issue-id {issue} --write
 ```
 
 This writes:
 
-- `specs/<issue>/pr.md`
-- `specs/<issue>/human-review.ko.md`
+- the issue's `pr.md`
+- the issue's `human-review.ko.md`
 
 The Korean packet links to:
 
 - `memory/dashboard.html#issue-db`
-- `memory/issue-<issue>.html`
+- the dashboard issue detail page
 - PR URL or local PR-ready marker
 - key source artifacts
 
