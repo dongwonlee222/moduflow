@@ -165,7 +165,7 @@ def find_unmerged_branch_work(runner, cwd, default_remote):
     return findings
 
 
-def inspect_repo_sync(path=".", runner=None):
+def inspect_repo_sync(path=".", runner=None, fetch=True):
     cwd = Path(path).resolve()
     runner = runner or run_command
     is_repo = _run(runner, ["git", "rev-parse", "--is-inside-work-tree"], cwd)
@@ -178,15 +178,21 @@ def inspect_repo_sync(path=".", runner=None):
             "errors": [_stdout(is_repo) or (is_repo.stderr or "").strip()],
         }
 
-    try:
-        fetch_result = _run(runner, ["git", "fetch", "--quiet"], cwd, timeout=FETCH_TIMEOUT_SECONDS)
-    except subprocess.TimeoutExpired:
-        fetch_result = CommandResult(124, "", f"git fetch timed out after {FETCH_TIMEOUT_SECONDS}s")
-    fetched = fetch_result.returncode == 0
-    fetch_warning = None
-    if not fetched:
-        stderr = (fetch_result.stderr or "").strip()
-        fetch_warning = f"git fetch failed: {stderr}" if stderr else "git fetch failed"
+    fetch_mode = "auto"
+    if fetch:
+        try:
+            fetch_result = _run(runner, ["git", "fetch", "--quiet"], cwd, timeout=FETCH_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired:
+            fetch_result = CommandResult(124, "", f"git fetch timed out after {FETCH_TIMEOUT_SECONDS}s")
+        fetched = fetch_result.returncode == 0
+        fetch_warning = None
+        if not fetched:
+            stderr = (fetch_result.stderr or "").strip()
+            fetch_warning = f"git fetch failed: {stderr}" if stderr else "git fetch failed"
+    else:
+        fetched = False
+        fetch_warning = "git fetch skipped by request"
+        fetch_mode = "skipped"
 
     branch_result = _run(runner, ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd)
     branch = _stdout(branch_result) if branch_result.returncode == 0 else None
@@ -238,6 +244,7 @@ def inspect_repo_sync(path=".", runner=None):
         "schema": "moduflow.repo-sync.v1",
         "project_root": str(cwd),
         "is_repo": True,
+        "fetch_mode": fetch_mode,
         "fetched": fetched,
         "fetch_warning": fetch_warning,
         "branch": branch,
@@ -261,7 +268,7 @@ def format_recommendations(result):
     recommendations = []
     if not result.get("is_repo"):
         return result.get("recommendations", [])
-    if result.get("fetched") is False:
+    if result.get("fetched") is False and result.get("fetch_mode") != "skipped":
         recommendations.append(
             f"Could not fetch from the remote ({result.get('fetch_warning')}); freshness numbers below reflect the last local fetch, not the current remote."
         )
@@ -305,8 +312,13 @@ def format_recommendations(result):
 def main():
     parser = argparse.ArgumentParser(description="Inspect ModuFlow repo sync freshness.")
     parser.add_argument("project_path", nargs="?", default=".")
+    parser.add_argument(
+        "--no-fetch",
+        action="store_true",
+        help="Skip the internal git fetch. Use after running a top-level git fetch in approval-sensitive hosts.",
+    )
     args = parser.parse_args()
-    print(json.dumps(inspect_repo_sync(args.project_path), ensure_ascii=False, indent=2))
+    print(json.dumps(inspect_repo_sync(args.project_path, fetch=not args.no_fetch), ensure_ascii=False, indent=2))
     return 0
 
 

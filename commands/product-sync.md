@@ -17,6 +17,15 @@ python3 scripts/project_sync.py <project-path>
 
 If the fetch could not reach the remote (offline, timeout, auth), the result includes `fetched: false` and a `fetch_warning`, and a recommendation flags that the freshness numbers reflect the last local fetch, not the current remote — report that caveat rather than treating the numbers as current.
 
+In approval-sensitive hosts where Python subprocesses cannot write Git remote refs
+(for example `.git/FETCH_HEAD` is blocked), run a top-level fetch first and then
+skip the internal fetch:
+
+```bash
+git fetch
+python3 scripts/project_sync.py <project-path> --no-fetch
+```
+
 2. If the current upstream is gone, or `origin/main` is ahead, report that local files may be stale before summarizing issues/specs.
 3. If the worktree is clean and the user approves, fast-forward the local checkout to the default remote branch. Do not auto-pull with local changes.
 4. Explain source mode plainly: in `git-files` mode, ModuFlow issues live in repo files such as `issues/*.md`; the GitHub Issues tab may be empty unless `github-sync` is explicitly enabled.
