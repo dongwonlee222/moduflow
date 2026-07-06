@@ -610,5 +610,354 @@ class MainTests(unittest.TestCase):
         self.assertTrue(any("cannot write evidence" in e for e in errors))
 
 
+def verdict_entry(ac_id, verdict, severity="", evidence_quote="", note=""):
+    return {
+        "ac_id": ac_id,
+        "verdict": verdict,
+        "severity": severity,
+        "evidence_quote": evidence_quote,
+        "note": note,
+    }
+
+
+def make_judgment(verdicts=None, unrequested=None, bundle_gaps=None):
+    return {
+        "schema": "moduflow.converge-judgment.v1",
+        "verdicts": verdicts if verdicts is not None else [],
+        "unrequested": unrequested if unrequested is not None else [],
+        "bundle_gaps": bundle_gaps if bundle_gaps is not None else [],
+    }
+
+
+def mixed_judgment():
+    """1 converged, 1 medium missing, 1 high missing, 1 low unverifiable,
+    plus 1 high unrequested and a bundle gap."""
+    return make_judgment(
+        verdicts=[
+            verdict_entry("AC#1", "converged", "", "quoted evidence", "ok"),
+            verdict_entry("AC#2", "missing", "medium", "", "no report writer"),
+            verdict_entry("AC#3", "missing", "high", "", "no converge.md writer"),
+            verdict_entry("AC#4", "unverifiable", "low", "", "cannot run from bundle"),
+        ],
+        unrequested=[
+            {"behavior": "adds retry loop", "file": "scripts/retry.py", "severity": "high"}
+        ],
+        bundle_gaps=["tests dir truncated"],
+    )
+
+
+class ApplyJudgmentTests(unittest.TestCase):
+    DATE = "2026-07-06"
+
+    def _project(self, **kwargs):
+        root = make_project(**kwargs)
+        self.addCleanup(lambda: __import__("shutil").rmtree(root))
+        return root
+
+    def _write_judgment(self, root, judgment, name="judgment.json"):
+        path = root / name
+        path.write_text(json.dumps(judgment, ensure_ascii=False), encoding="utf-8")
+        return path
+
+    def _run(self, root, judgment_path, extra=(), date=DATE):
+        argv = [
+            str(root),
+            "--issue-id",
+            ISSUE,
+            "--apply-judgment",
+            str(judgment_path),
+            "--date",
+            date,
+            *extra,
+        ]
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            code = project_converge.main(argv, runner=FakeRunner({}))
+        return code, stdout.getvalue()
+
+    def _tasks_path(self, root):
+        return root / "specs" / ISSUE / "tasks.md"
+
+    def _converge_path(self, root):
+        return root / "specs" / ISSUE / "converge.md"
+
+    # -- happy path: converge.md section + ordered, grammar-exact CV lines --
+
+    def test_valid_judgment_writes_report_and_cv_lines_in_order(self):
+        root = self._project()
+        judgment_path = self._write_judgment(root, mixed_judgment())
+
+        code, out = self._run(root, judgment_path)
+
+        self.assertEqual(code, 0)
+        report = self._converge_path(root).read_text(encoding="utf-8")
+        self.assertTrue(report.startswith(f"# Converge: {ISSUE}\n"))
+        self.assertIn(f"## Converge Run {self.DATE}\n", report)
+        self.assertIn("| AC | Verdict | Severity | Note |", report)
+        self.assertIn("| AC#3 | missing | high | no converge.md writer |", report)
+        self.assertIn("| AC#4 | unverifiable | low | cannot run from bundle |", report)
+        self.assertIn("- [high] adds retry loop — scripts/retry.py", report)
+        self.assertIn("- tests dir truncated", report)
+        self.assertIn(
+            "Summary: 4 AC: 1 converged, 2 missing, 1 unverifiable; 1 unrequested",
+            report,
+        )
+        # tasks.md: high before medium (GC7), exact GC6 grammar, section
+        # created once at file end.
+        tasks = self._tasks_path(root).read_text(encoding="utf-8")
+        self.assertEqual(
+            tasks,
+            "## Converge Findings (auto)\n"
+            "\n"
+            f"- [ ] CV-1 [high] missing: no converge.md writer — AC#3, from converge {self.DATE}\n"
+            f"- [ ] CV-2 [high] adds retry loop — unrequested:scripts/retry.py, from converge {self.DATE}\n"
+            f"- [ ] CV-3 [medium] missing: no report writer — AC#2, from converge {self.DATE}\n",
+        )
+
+    # -- idempotency: rerun dedups tasks.md, converge.md accumulates --
+
+    def test_second_apply_dedups_tasks_but_adds_report_section(self):
+        root = self._project()
+        judgment_path = self._write_judgment(root, mixed_judgment())
+        first_code, _ = self._run(root, judgment_path)
+        self.assertEqual(first_code, 0)
+        tasks_before = self._tasks_path(root).read_bytes()
+
+        code, out = self._run(root, judgment_path)
+
+        self.assertEqual(code, 0)
+        # GC3/GC6: byte-for-byte identical tasks.md on rerun.
+        self.assertEqual(self._tasks_path(root).read_bytes(), tasks_before)
+        report = self._converge_path(root).read_text(encoding="utf-8")
+        self.assertIn(f"## Converge Run {self.DATE}\n", report)
+        self.assertIn(f"## Converge Run {self.DATE} (run 2)\n", report)
+
+    # -- regression: a checked-off CV item does not block re-append --
+
+    def test_checked_cv_item_reappends_and_numbering_continues(self):
+        root = self._project()
+        tasks = (
+            "# Tasks\n\n- [ ] T1 existing task\n\n"
+            "## Converge Findings (auto)\n\n"
+            "- [x] CV-3 [high] missing: no converge.md writer — AC#3, from converge 2026-06-01\n"
+        )
+        self._tasks_path(root).write_text(tasks, encoding="utf-8")
+        judgment = make_judgment(
+            verdicts=[verdict_entry("AC#3", "missing", "high", "", "no converge.md writer")]
+        )
+        judgment_path = self._write_judgment(root, judgment)
+
+        code, _ = self._run(root, judgment_path)
+
+        self.assertEqual(code, 0)
+        text = self._tasks_path(root).read_text(encoding="utf-8")
+        # Re-appended as CV-4 (numbering continues past checked CV-3).
+        self.assertIn(
+            f"- [ ] CV-4 [high] missing: no converge.md writer — AC#3, from converge {self.DATE}\n",
+            text,
+        )
+        # Existing lines untouched; only one findings header.
+        self.assertIn("- [x] CV-3 [high]", text)
+        self.assertIn("- [ ] T1 existing task", text)
+        self.assertEqual(text.count("## Converge Findings (auto)"), 1)
+
+    # -- GC3: fully converged run is a byte-for-byte no-op on tasks.md --
+
+    def test_fully_converged_is_byte_identical_noop(self):
+        root = self._project()
+        original = "# Tasks\n\n- [ ] T1 keep me\n"
+        self._tasks_path(root).write_text(original, encoding="utf-8")
+        judgment = make_judgment(
+            verdicts=[
+                verdict_entry("AC#1", "converged", "", "q", "ok"),
+                verdict_entry("AC#2", "converged", "", "q", "ok"),
+            ]
+        )
+        judgment_path = self._write_judgment(root, judgment)
+
+        code, _ = self._run(root, judgment_path)
+
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            self._tasks_path(root).read_bytes(), original.encode("utf-8")
+        )
+        self.assertNotIn(
+            "Converge Findings", self._tasks_path(root).read_text(encoding="utf-8")
+        )
+        # converge.md still records the run.
+        self.assertIn(
+            f"## Converge Run {self.DATE}",
+            self._converge_path(root).read_text(encoding="utf-8"),
+        )
+
+    def test_noop_without_tasks_file_does_not_create_it(self):
+        root = self._project()
+        judgment = make_judgment(
+            verdicts=[verdict_entry("AC#1", "converged", "", "q", "ok")]
+        )
+        judgment_path = self._write_judgment(root, judgment)
+
+        code, _ = self._run(root, judgment_path)
+
+        self.assertEqual(code, 0)
+        self.assertFalse(self._tasks_path(root).exists())
+
+    # -- low severity is report-only --
+
+    def test_low_severity_is_report_only(self):
+        root = self._project()
+        original = "# Tasks\n"
+        self._tasks_path(root).write_text(original, encoding="utf-8")
+        judgment = make_judgment(
+            verdicts=[verdict_entry("AC#1", "partial", "low", "", "minor gap")],
+            unrequested=[
+                {"behavior": "debug print", "file": "scripts/x.py", "severity": "low"}
+            ],
+        )
+        judgment_path = self._write_judgment(root, judgment)
+
+        code, _ = self._run(root, judgment_path)
+
+        self.assertEqual(code, 0)
+        self.assertEqual(self._tasks_path(root).read_bytes(), original.encode("utf-8"))
+        report = self._converge_path(root).read_text(encoding="utf-8")
+        self.assertIn("| AC#1 | partial | low | minor gap |", report)
+        self.assertIn("- [low] debug print — scripts/x.py", report)
+
+    # -- CV numbering continues after existing (unchecked, different) items --
+
+    def test_cv_numbering_continues_after_existing_cv3(self):
+        root = self._project()
+        self._tasks_path(root).write_text(
+            "## Converge Findings (auto)\n\n"
+            "- [ ] CV-3 [high] old finding — AC#1, from converge 2026-06-01\n",
+            encoding="utf-8",
+        )
+        judgment = make_judgment(
+            verdicts=[verdict_entry("AC#2", "contradicting", "high", "", "wrong exit code")]
+        )
+        judgment_path = self._write_judgment(root, judgment)
+
+        code, _ = self._run(root, judgment_path)
+
+        self.assertEqual(code, 0)
+        text = self._tasks_path(root).read_text(encoding="utf-8")
+        self.assertIn(
+            f"- [ ] CV-4 [high] contradicting: wrong exit code — AC#2, from converge {self.DATE}\n",
+            text,
+        )
+        self.assertEqual(text.count("## Converge Findings (auto)"), 1)
+        # Existing unchecked line preserved verbatim above the new one.
+        self.assertLess(text.index("CV-3"), text.index("CV-4"))
+
+    # -- unrequested high item gets unrequested:<file> source-ref --
+
+    def test_unrequested_high_item_uses_unrequested_source_ref(self):
+        root = self._project()
+        judgment = make_judgment(
+            unrequested=[
+                {"behavior": "opens network socket", "file": "scripts/net.py", "severity": "high"}
+            ]
+        )
+        judgment_path = self._write_judgment(root, judgment)
+
+        code, _ = self._run(root, judgment_path)
+
+        self.assertEqual(code, 0)
+        self.assertIn(
+            f"- [ ] CV-1 [high] opens network socket — unrequested:scripts/net.py, from converge {self.DATE}\n",
+            self._tasks_path(root).read_text(encoding="utf-8"),
+        )
+
+    # -- GC4: invalid judgment / missing spec dir exit non-zero, both modes --
+
+    def test_unknown_verdict_value_exits_nonzero_json_mode(self):
+        root = self._project()
+        judgment = make_judgment(
+            verdicts=[verdict_entry("AC#1", "kinda-done", "high", "", "n")]
+        )
+        judgment_path = self._write_judgment(root, judgment)
+
+        code, out = self._run(root, judgment_path, extra=("--json",))
+
+        self.assertEqual(code, 1)
+        errors = json.loads(out)["errors"]
+        self.assertTrue(any("unknown verdict" in e for e in errors))
+        self.assertFalse(self._converge_path(root).exists())
+        self.assertFalse(self._tasks_path(root).exists())
+
+    def test_unknown_verdict_value_exits_nonzero_human_mode_too(self):
+        root = self._project()
+        judgment = make_judgment(
+            verdicts=[verdict_entry("AC#1", "kinda-done", "high", "", "n")]
+        )
+        judgment_path = self._write_judgment(root, judgment)
+
+        code, out = self._run(root, judgment_path)
+
+        self.assertEqual(code, 1)
+        self.assertIn("unknown verdict", out)
+
+    def test_missing_required_verdict_key_exits_nonzero(self):
+        root = self._project()
+        judgment = make_judgment(
+            verdicts=[{"ac_id": "AC#1", "verdict": "missing", "severity": "high"}]
+        )
+        judgment_path = self._write_judgment(root, judgment)
+
+        code, out = self._run(root, judgment_path, extra=("--json",))
+
+        self.assertEqual(code, 1)
+        errors = json.loads(out)["errors"]
+        self.assertTrue(any("missing required keys" in e for e in errors))
+
+    def test_wrong_schema_exits_nonzero(self):
+        root = self._project()
+        judgment = mixed_judgment()
+        judgment["schema"] = "moduflow.other.v9"
+        judgment_path = self._write_judgment(root, judgment)
+
+        code, out = self._run(root, judgment_path, extra=("--json",))
+
+        self.assertEqual(code, 1)
+        self.assertTrue(
+            any("schema" in e for e in json.loads(out)["errors"])
+        )
+
+    def test_malformed_json_file_exits_nonzero(self):
+        root = self._project()
+        judgment_path = root / "judgment.json"
+        judgment_path.write_text("{not json", encoding="utf-8")
+
+        code, out = self._run(root, judgment_path, extra=("--json",))
+
+        self.assertEqual(code, 1)
+        self.assertTrue(
+            any("not valid JSON" in e for e in json.loads(out)["errors"])
+        )
+
+    def test_missing_judgment_file_exits_nonzero(self):
+        root = self._project()
+
+        code, out = self._run(root, root / "nope.json", extra=("--json",))
+
+        self.assertEqual(code, 1)
+        self.assertTrue(
+            any("cannot read judgment file" in e for e in json.loads(out)["errors"])
+        )
+
+    def test_missing_spec_dir_exits_nonzero(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(root))
+        judgment_path = self._write_judgment(root, mixed_judgment())
+
+        code, out = self._run(root, judgment_path, extra=("--json",))
+
+        self.assertEqual(code, 1)
+        self.assertTrue(
+            any("issue spec dir missing" in e for e in json.loads(out)["errors"])
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
