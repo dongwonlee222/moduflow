@@ -1,6 +1,6 @@
 # Issue 075: Issue-Less Context Capture
 
-**Status: plan** — created 2026-07-06, spec 2026-07-06 (v2 rescoped), plan 2026-07-06.
+**Status: active** — created 2026-07-06, spec 2026-07-06 (v2 rescoped), plan 2026-07-06, started 2026-07-06.
 **Priority: p1**
 
 ## Summary

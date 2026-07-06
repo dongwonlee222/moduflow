@@ -31,6 +31,24 @@
 
 - {{acceptance_criteria}}
 
+## Verification
+
+Commands the executing agent runs to self-check before handing off.
+
+- {{verification_commands}}
+
+## Entry Points
+
+Starting files/components for the executing agent.
+
+- {{entry_points}}
+
+## Scope Fence
+
+Do NOT touch (files, behaviors, or decisions out of bounds for this issue).
+
+- {{scope_fence}}
+
 ## Workflow Tasks
 
 Every artifact-producing step is a tracked task here — never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
