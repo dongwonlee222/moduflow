@@ -6,6 +6,7 @@ issue_id: 075-issue-less-context-capture
 spec: specs/075-issue-less-context-capture/spec.md
 source_event: three-subagent-panel-review
 source_artifacts: [memory/evidence/2026-07-06-issue-less-context-benchmark.md, memory/evidence/2026-07-06-ai-native-context-benchmark.md, specs/075-issue-less-context-capture/adversarial-review.md]
+retrieval_trigger: when revisiting capture/promotion design, adding new capture commands, or when a teammate joins and the reversal conditions might trigger
 review_after: 2026-08-06
 supersedes: [2026-07-06-use-issue-less-context-tiers]
 superseded_by: []

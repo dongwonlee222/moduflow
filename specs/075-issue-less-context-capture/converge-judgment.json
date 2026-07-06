@@ -1,0 +1,99 @@
+{
+  "schema": "moduflow.converge-judgment.v1",
+  "verdicts": [
+    {
+      "ac_id": "AC#6",
+      "verdict": "partial",
+      "severity": "high",
+      "evidence_quote": "All four capture command docs (commands/product-decision.md, product-inbox.md, product-memory.md, product-knowledge.md) contain a 'Record Contract (issue 075)' section listing kind/date/summary/retrieval_trigger/promoted_to/superseded_by and the ADD/UPDATE/SUPERSEDE/NOOP discipline. However, both newly created records in the bundle — memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md and memory/decisions/2026-07-06-use-issue-less-context-tiers.md — have frontmatter with no retrieval_trigger key.",
+      "note": "First clause converged: all four command docs carry the shared contract. Second clause ('retrieval_trigger present in newly created records') is contradicted by the only two new records visible in the bundle, both dated 2026-07-06 and missing retrieval_trigger. GC#8 requires exactly these frontmatter key names including retrieval_trigger, so this is graded high. Possible mitigating context: the records may predate the wave-1 contract commit within the same day, but the bundle cannot confirm that."
+    },
+    {
+      "ac_id": "AC#1",
+      "verdict": "unverifiable",
+      "severity": "medium",
+      "evidence_quote": "scripts/release_check.py and scripts/linkage_check.py both have content null / truncated:true in the bundle. Documentation intent is present: commands/product-release.md step 6 describes the linkage gate ('every behavior-affecting commit since origin/main ... must resolve to an issue via branch name (codex/<issue-id>-*) or commit trailer (Issue: <id>) ... Git plumbing failures make the gate error loudly').",
+      "note": "The gate's fail/pass/error-on-git-failure/merge-base behavior lives in scripts/release_check.py and scripts/linkage_check.py, both truncated. Only the command documentation of the behavior is verifiable; the code itself cannot be judged. Medium because this is the issue's core mechanism and relates to GC#2/GC#6/GC#7."
+    },
+    {
+      "ac_id": "AC#2",
+      "verdict": "unverifiable",
+      "severity": "medium",
+      "evidence_quote": ".github/workflows/ci.yml confirms the CI half: 'fetch-depth: 0' with comment 'Full history so git merge-base HEAD origin/main works for the release-check linkage gate (issue 075)' and a 'Release check' step running scripts/release_check.py. But scripts/release_check.py content is null/truncated, so removal of the two silent 'except Exception: pass' holes cannot be confirmed.",
+      "note": "CI fetch depth and gate invocation are converged; the except-hole removal (also GC#2) is unverifiable because release_check.py is truncated. Overall unverifiable rather than partial — there is no evidence the holes remain, only absence of the file content."
+    },
+    {
+      "ac_id": "AC#4",
+      "verdict": "unverifiable",
+      "severity": "medium",
+      "evidence_quote": ".moduflow/humans.json exists and configures human identities (dongwon.lee / Dongwon Lee, webn77@gmail.com) with a note on the single-machine blame limitation. But releases/no-issue-declarations.md, scripts/release_check.py, scripts/linkage_check.py, and scripts/project_pr.py (human-review packet section) are all content null/truncated.",
+      "note": "The identity config half exists; the enforcement (reject agent-authored declarations, pass human-authored, list declarations in human-review.ko.md) lives entirely in truncated files, including specs/075-issue-less-context-capture/human-review.ko.md itself. GC#5-related, hence medium."
+    },
+    {
+      "ac_id": "AC#3",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "commands/product-promote.md fully documents the contract: 'issues/<id>.md from templates/issues/issue.md ... Promoted-from: <record-id> under Source' and 'promoted_to: <issue-id> inserted into the record frontmatter in place — the record file is never moved, renamed, or rewritten beyond that one line.' But scripts/project_promote.py and tests/test_project_promote.py are content null/truncated.",
+      "note": "Documentation matches the AC exactly (bidirectional links, file stays in place, per GC#3), but the implementing script and its tests are truncated, so actual behavior across the four record kinds cannot be verified from the bundle."
+    },
+    {
+      "ac_id": "AC#5",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "templates/issues/issue.md has content null/truncated. commands/product-promote.md documents 'the AI-first sections (Verification, Entry Points, Scope Fence) derived from record fields where possible, else TODO(blocking-execution)', and issues/075-issue-less-context-capture.md checks off 'AI-first issue template fields → templates/issues/issue.md'.",
+      "note": "The template file that must contain the three sections is truncated; only documentation and a checked task box reference it. Cannot confirm the template content."
+    },
+    {
+      "ac_id": "AC#7",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "commands/product-status.md contains an 'Issue-Less Records (issue 075)' section: 'Detailed status runs python3 scripts/project_retention.py <project-path> --status and surfaces the unpromoted-record count, the oldest record, and archive candidates (records 2+ releases old with no promoted_to)'. But scripts/project_retention.py and tests/test_project_retention.py are content null/truncated.",
+      "note": "The status-surface half is converged at the documentation level; the 2-release archival behavior and queryable list live in the truncated retention script, so the AC as a whole cannot be confirmed."
+    },
+    {
+      "ac_id": "AC#8",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "memory/evidence/2026-07-06-074-promotion-recovery-case.md is in the bundle but content is null/truncated. issues/075-issue-less-context-capture.md checks off '074 case writeup → memory/evidence/2026-07-06-074-promotion-recovery-case.md'.",
+      "note": "The file exists at the expected path (it was touched by the linked commits), but its content is truncated, so whether it analyzes the 074 case against the v2 mechanisms (linkage gate, one-command promote) cannot be verified."
+    },
+    {
+      "ac_id": "AC#9",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "tests/test_linkage_check.py, tests/test_release_check.py, tests/test_project_promote.py, tests/test_project_retention.py, and tests/test_validation_distribution.py all appear in the bundle with content null/truncated:true. CI (.github/workflows/ci.yml) runs 'python3 -m unittest discover -s tests -v'.",
+      "note": "Test files exist for each required area and CI runs the suite, but the truncated contents prevent confirming coverage of gate fail/pass/error paths, trailer/branch resolution, human-identity validation, promote link writing, and the archive threshold."
+    }
+  ],
+  "unrequested": [
+    {
+      "behavior": "Plugin version bumped to 0.3.14 in .claude-plugin/plugin.json and 0.3.14+codex.20260626145655 in .codex-plugin/plugin.json, while the linked commit subject says 'release 0.3.13 record'; no AC/GC asks for a version bump.",
+      "file": ".claude-plugin/plugin.json",
+      "severity": "low"
+    },
+    {
+      "behavior": ".moduflow/state.json points at unrelated issue 071 (last_command 'product:plan 071-spec-code-converge-check', phase 'plan') despite being included in the 075 evidence bundle; likely routine state reconciliation, not 075 scope.",
+      "file": ".moduflow/state.json",
+      "severity": "low"
+    },
+    {
+      "behavior": ".moduflow/humans.json contains duplicate human entries (two name variants for the same email) plus a free-text 'note' field documenting a blame limitation; harmless/defensive, not required by any AC/GC.",
+      "file": ".moduflow/humans.json",
+      "severity": "low"
+    }
+  ],
+  "bundle_gaps": [
+    "scripts/release_check.py truncated (content null) — blocks direct verification of AC#1, AC#2, AC#4 and GC#2/GC#4/GC#7 gate behavior.",
+    "scripts/linkage_check.py truncated — blocks AC#1 and GC#6 (importable module) / GC#7 (branch regex, trailer precedence) verification; file existence in the bundle is the only signal.",
+    "scripts/project_promote.py truncated — blocks AC#3 and AC#5 (population/TODO-blocking-execution) and GC#3 (in-place write) verification.",
+    "scripts/project_retention.py truncated — blocks AC#7 archival/queryable-list verification.",
+    "scripts/project_pr.py and releases/no-issue-declarations.md truncated — blocks AC#4 declaration-listing and human-identity enforcement verification (GC#5).",
+    "templates/issues/issue.md truncated — blocks AC#5 template-section verification.",
+    "memory/evidence/2026-07-06-074-promotion-recovery-case.md truncated — blocks AC#8.",
+    "tests/test_linkage_check.py, tests/test_release_check.py, tests/test_project_promote.py, tests/test_project_retention.py, tests/test_validation_distribution.py all truncated — blocks AC#9 coverage verification.",
+    "specs/075-issue-less-context-capture/spec.md, spec.ko.md, plan.md, tasks.md, review.md, review-handoff.md, pr.md, release.md, status.md, human-review.ko.md, adversarial-review.md, worker-plan.json, worker-plan.md all truncated — no cross-check of spec/plan/review claims possible.",
+    "memory/evidence/2026-07-06-issue-less-context-benchmark.md and 2026-07-06-ai-native-context-benchmark.md truncated — cannot check whether these newly created evidence records carry retrieval_trigger (relevant to AC#6/GC#8); the AC#6 partial verdict rests only on the two visible decision records.",
+    "workflow/team-state.json, workspace/dashboard.md, workspace/loop-state.json truncated — no impact on any AC, listed for completeness.",
+    "Bundle top-level flag 'truncated': true — the evidence set as a whole is incomplete; 8 of 9 ACs could only be judged from documentation and file existence, not implementation content."
+  ]
+}

@@ -33,3 +33,10 @@ Merge order: C1 → A1 → A2 → A3 → B1 → B2 → C2 → D1
 ## Gates recap
 
 test (`unittest discover`) → self-application (A-gate) → review (`product:review 075`, adversarial re-check of HIGH-1/2/3 closure) → release (version bump, empty declarations file). Rollback: revert the merge commit; new files are additive.
+
+## Converge Findings (auto)
+
+- [x] CV-1 [high] partial: First clause converged: all four command docs carry the shared contract. Second clause ('retrieval_trigger present in newly created records') is contradicted by the only two new records visible in the bundle, both dated 2026-07-06 and missing retrieval_trigger. GC#8 requires exactly these frontmatter key names including retrieval_trigger, so this is graded high. Possible mitigating context: the records may predate the wave-1 contract commit within the same day, but the bundle cannot confirm that. — AC#6, from converge 2026-07-06
+- [ ] CV-2 [medium] unverifiable: The gate's fail/pass/error-on-git-failure/merge-base behavior lives in scripts/release_check.py and scripts/linkage_check.py, both truncated. Only the command documentation of the behavior is verifiable; the code itself cannot be judged. Medium because this is the issue's core mechanism and relates to GC#2/GC#6/GC#7. — AC#1, from converge 2026-07-06
+- [ ] CV-3 [medium] unverifiable: CI fetch depth and gate invocation are converged; the except-hole removal (also GC#2) is unverifiable because release_check.py is truncated. Overall unverifiable rather than partial — there is no evidence the holes remain, only absence of the file content. — AC#2, from converge 2026-07-06
+- [ ] CV-4 [medium] unverifiable: The identity config half exists; the enforcement (reject agent-authored declarations, pass human-authored, list declarations in human-review.ko.md) lives entirely in truncated files, including specs/075-issue-less-context-capture/human-review.ko.md itself. GC#5-related, hence medium. — AC#4, from converge 2026-07-06

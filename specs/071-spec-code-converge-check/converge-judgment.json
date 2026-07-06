@@ -1,0 +1,87 @@
+{
+  "schema": "moduflow.converge-judgment.v1",
+  "verdicts": [
+    {
+      "ac_id": "AC#1",
+      "verdict": "unverifiable",
+      "severity": "medium",
+      "evidence_quote": "Bundle file tests/test_project_converge.py has \"content\": null, \"truncated\": true; status.md only claims \"Fixture coverage for missing/unrequested/unverifiable lives in A2 unit tests\"",
+      "note": "The missing/unrequested fixtures are asserted to live in the test file, but its content is truncated out of the bundle; a doc claim in status.md is not code evidence."
+    },
+    {
+      "ac_id": "AC#3",
+      "verdict": "unverifiable",
+      "severity": "medium",
+      "evidence_quote": "commands/product-converge.md: judge \"Receives only the evidence JSON (no repo access)\"; scripts/project_converge.py VERDICTS includes \"unverifiable\"; but templates/converge-judgment-prompt.md and tests/test_project_converge.py both have \"content\": null, \"truncated\": true",
+      "note": "Evidence-only input and the unverifiable verdict in the vocabulary are verified in command doc and script, but the judge template content and the fixture that exercises unverifiable are truncated — the 'exercised in at least one fixture' clause cannot be judged."
+    },
+    {
+      "ac_id": "AC#5",
+      "verdict": "unverifiable",
+      "severity": "medium",
+      "evidence_quote": "scripts/project_converge.py _run_evidence/_run_apply both end with \"return 0 if ok else 1\" after printing in either --json or human mode (GC4 comment: identical exit behavior in both output modes); auto-high rule lives in templates/converge-judgment-prompt.md which has \"content\": null",
+      "note": "Non-zero exit on git/bundle failure in both output modes is clearly converged in code, but 'Global-Constraint violations grade high automatically' is enforced by the judge prompt template, whose content is truncated out of the bundle."
+    },
+    {
+      "ac_id": "AC#9",
+      "verdict": "unverifiable",
+      "severity": "medium",
+      "evidence_quote": "tests/test_project_converge.py appears in the bundle only as {\"path\": ..., \"content\": null, \"truncated\": true}; status.md claims \"32 tests\" (wave 1) and \"14 tests: dedup, regression re-append, byte-for-byte no-op, exit contract\" (wave 2)",
+      "note": "The required focused tests cannot be verified: the test file content is truncated; test counts exist only as status.md prose."
+    },
+    {
+      "ac_id": "AC#2",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "scripts/project_converge.py resolve_commits matches trailer_re \"^Issue:\\\\s*<id>\\\\s*$\" and merge subjects containing \"codex/<id>\"; collect_files sets per-file and top-level truncated: true past max_files/max_bytes; git failures append _error_text and set ok=False -> exit 1. This bundle itself shows 5 trailer-sourced commits and \"truncated\": true.",
+      "note": "Both linkage sources, loud caps, and loud git-failure paths are all present in the shipped script; the bundle under judgment is a live demonstration."
+    },
+    {
+      "ac_id": "AC#4",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "scripts/project_converge.py: FINDINGS_HEADER = \"## Converge Findings (auto)\"; append line f\"- [ ] CV-{next_n} [{severity}] {finding} — {source_ref}, from converge {date}\"; build_findings skips severities not in (high, medium); append_cv_findings returns changed: False without writing when nothing is appended (\"no empty header\"; byte-for-byte).",
+      "note": "High/medium-only append, fixed CV grammar, no-write no-op path, and insertion that leaves existing lines untouched are all visible in code."
+    },
+    {
+      "ac_id": "AC#6",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "scripts/project_converge.py append_converge_report: \"Append a dated run section to converge.md ... Never rewrites prior sections\"; text = existing + \"\\n\" + section; _run_heading adds \"(run N)\" suffix when the same-date heading already exists.",
+      "note": "Repeat runs strictly append; same-date collisions get distinct run-numbered headings instead of overwriting."
+    },
+    {
+      "ac_id": "AC#7",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "commands/product-review.md step 5: \"Run the converge pass as the final evidence step (issue 071)\" with the evidence/dispatch/apply-judgment sequence; commands/product-converge.md \"Standalone Usage ... This works on: Merged issues ... Released features (re-audit after maintenance)\".",
+      "note": "Review auto-run step is present in the review doc; the converge command doc frames standalone re-runs on released issues, and the full-git-log trailer scan mechanically supports it."
+    },
+    {
+      "ac_id": "AC#8",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "AC#8 requires \"python3 scripts/release_check.py . passes\"; the bundle contains no release_check.py content and no captured run output.",
+      "note": "A command-execution result is inherently untestable from a static evidence bundle; no run log is included."
+    }
+  ],
+  "unrequested": [
+    {
+      "behavior": "build_findings emits source_ref \"unrequested:<file>\" for high/medium unrequested items, producing CV lines whose source-ref is neither AC#<k> nor GC#<k>. GC#6 fixes the grammar to \"source-ref is `AC#<k>` or `GC#<k>`\" and commands/product-converge.md repeats that restriction, so any high/medium unrequested finding will write a tasks.md line outside the fixed grammar.",
+      "file": "scripts/project_converge.py",
+      "severity": "high"
+    },
+    {
+      "behavior": "_run_heading appends a \"(run N)\" suffix to same-date converge.md headings; no AC or GC asked for same-date run disambiguation. Defensive and consistent with the never-overwrite rule.",
+      "file": "scripts/project_converge.py",
+      "severity": "low"
+    }
+  ],
+  "bundle_gaps": [
+    "Bundle top-level \"truncated\": true; 11 of 22 files have content: null (spec.md, spec.ko.md, templates/converge-judgment-prompt.md, tests/test_project_converge.py, worker-plan.json, workspace/dashboard.md, workspace/loop-state.json, and all four 075 dogfood artifacts) — truncated files prove nothing.",
+    "tests/test_project_converge.py truncated — AC#1 fixtures, AC#3 fixture exercise, and AC#9 focused tests are judged only through status.md prose, hence unverifiable.",
+    "templates/converge-judgment-prompt.md truncated — the auto-high rule for Global-Constraint violations (AC#5 second clause) and the judge's evidence-only/prefer-unverifiable instructions cannot be verified from the bundle.",
+    "specs/075-issue-less-context-capture/converge-evidence.json, converge-judgment.json, converge.md, and tasks.md all truncated — the D1 dogfood end-to-end claim (AC#2's '075 itself is the dogfood fixture', AC#3 exercise) rests on status.md narrative only.",
+    "AC#8 (release_check.py passes) depends on executing a command; no run output is captured in the bundle."
+  ]
+}

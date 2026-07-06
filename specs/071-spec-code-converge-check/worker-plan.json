@@ -1,0 +1,169 @@
+{
+  "schema": "moduflow.worker-plan.v1",
+  "issue_id": "071-spec-code-converge-check",
+  "project_root": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
+  "workers": {
+    "configured": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "files": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "dead_workers": []
+  },
+  "parallel": {
+    "eligible": false,
+    "mode": "sequential",
+    "risks": [
+      "Task 1 touches shared state: A1. `scripts/project_converge.py --evidence`: commit resolution (trailer + merge-subject), current-file bundle with caps + explicit `truncated`, single-parse of AC (checkbox + prose) and plan Global Constraints, evidence JSON per schema, non-zero exit on git/bundle failure in both output modes + `tests/test_project_converge.py` (FakeRunner) — depends: none",
+      "Task 3 touches shared state: B1. `templates/converge-judgment-prompt.md` (evidence-only input, prefer-unverifiable, Judgment JSON schema) + `commands/product-converge.md` (standalone flow, inline fallback per GC9, no-evidence handling, non-gate framing) — depends: A1 (schema)",
+      "Task 4 touches shared state: B2. `commands/product-review.md`: converge as final review evidence step; reported, never blocking — depends: B1"
+    ],
+    "merge_order": [
+      "T01",
+      "T02",
+      "T03",
+      "T04",
+      "T05"
+    ],
+    "fallback": "sequential",
+    "criteria": [
+      "separate worker domains",
+      "non-overlapping expected files",
+      "no shared-state risk",
+      "dependency-aware merge order"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "text": "A1. `scripts/project_converge.py --evidence`: commit resolution (trailer + merge-subject), current-file bundle with caps + explicit `truncated`, single-parse of AC (checkbox + prose) and plan Global Constraints, evidence JSON per schema, non-zero exit on git/bundle failure in both output modes + `tests/test_project_converge.py` (FakeRunner) — depends: none",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/071-spec-code-converge-check-t01",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: A1. `scripts/project_converge.py --evidence`: commit resolution (trailer + merge-subject), current-file bundle with caps + explicit `truncated`, single-parse of AC (checkbox + prose) and plan Global Constraints, evidence JSON per schema, non-zero exit on git/bundle failure in both output modes + `tests/test_project_converge.py` (FakeRunner) — depends: none\nExpected files: none\nCognitive demand: balanced — use your standard production model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [Converge Mechanism Benchmark (spec-kit vs OpenSpec)](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-converge-mechanism-benchmark.md): Source-level reading of spec-kit /speckit.converge and OpenSpec /opsx:verify — taxonomies, evidence scoping (both prompt-only), append/report contracts, reported failure modes, and what 071 keeps/adjusts.\n"
+      }
+    },
+    {
+      "id": "T02",
+      "text": "A2. `--apply-judgment` mode: converge.md dated-section append (never overwrite), tasks.md CV append per fixed grammar with source-ref dedup, byte-for-byte no-op on fully-converged, low = report-only + idempotency/regression-reappend tests — depends: A1",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/071-spec-code-converge-check-t02",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: A2. `--apply-judgment` mode: converge.md dated-section append (never overwrite), tasks.md CV append per fixed grammar with source-ref dedup, byte-for-byte no-op on fully-converged, low = report-only + idempotency/regression-reappend tests — depends: A1\nExpected files: none\nCognitive demand: balanced — use your standard production model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [Converge Mechanism Benchmark (spec-kit vs OpenSpec)](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-converge-mechanism-benchmark.md): Source-level reading of spec-kit /speckit.converge and OpenSpec /opsx:verify — taxonomies, evidence scoping (both prompt-only), append/report contracts, reported failure modes, and what 071 keeps/adjusts.\n"
+      }
+    },
+    {
+      "id": "T03",
+      "text": "B1. `templates/converge-judgment-prompt.md` (evidence-only input, prefer-unverifiable, Judgment JSON schema) + `commands/product-converge.md` (standalone flow, inline fallback per GC9, no-evidence handling, non-gate framing) — depends: A1 (schema)",
+      "status": "ready",
+      "worker": "ux-flow-worker",
+      "worker_file": "workers/ux-flow-worker.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/071-spec-code-converge-check-t03",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow ux-flow-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: B1. `templates/converge-judgment-prompt.md` (evidence-only input, prefer-unverifiable, Judgment JSON schema) + `commands/product-converge.md` (standalone flow, inline fallback per GC9, no-evidence handling, non-gate framing) — depends: A1 (schema)\nExpected files: none\nCognitive demand: balanced — use your standard production model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [Converge Mechanism Benchmark (spec-kit vs OpenSpec)](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-converge-mechanism-benchmark.md): Source-level reading of spec-kit /speckit.converge and OpenSpec /opsx:verify — taxonomies, evidence scoping (both prompt-only), append/report contracts, reported failure modes, and what 071 keeps/adjusts.\n"
+      }
+    },
+    {
+      "id": "T04",
+      "text": "B2. `commands/product-review.md`: converge as final review evidence step; reported, never blocking — depends: B1",
+      "status": "ready",
+      "worker": "data-reviewer",
+      "worker_file": "workers/data-reviewer.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/071-spec-code-converge-check-t04",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow data-reviewer",
+        "CognitiveDemand": "fast",
+        "Workspace": "share",
+        "Prompt": "Implement task: B2. `commands/product-review.md`: converge as final review evidence step; reported, never blocking — depends: B1\nExpected files: none\nCognitive demand: fast — use your lightest, fastest model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [Converge Mechanism Benchmark (spec-kit vs OpenSpec)](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-converge-mechanism-benchmark.md): Source-level reading of spec-kit /speckit.converge and OpenSpec /opsx:verify — taxonomies, evidence scoping (both prompt-only), append/report contracts, reported failure modes, and what 071 keeps/adjusts.\n"
+      }
+    },
+    {
+      "id": "T05",
+      "text": "D1. Fixtures exercising `missing` / `unrequested` / `unverifiable`; dogfood run on issue 075 end-to-end with its converge.md committed; docs sweep — depends: A2, B1",
+      "status": "ready",
+      "worker": "release-manager",
+      "worker_file": "workers/release-manager.md",
+      "parallel_group": "group-4",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/071-spec-code-converge-check-t05",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow release-manager",
+        "CognitiveDemand": "fast",
+        "Workspace": "share",
+        "Prompt": "Implement task: D1. Fixtures exercising `missing` / `unrequested` / `unverifiable`; dogfood run on issue 075 end-to-end with its converge.md committed; docs sweep — depends: A2, B1\nExpected files: none\nCognitive demand: fast — use your lightest, fastest model.\n### Related Project Decisions\n\nThe following past architectural decisions/rules are relevant to your task.\nPlease use your tools to read the full file contents if you need details:\n- [Converge Mechanism Benchmark (spec-kit vs OpenSpec)](file:////Users/dongwon.lee/workhub/company/shared/context-tools/moduflow/memory/evidence/2026-07-06-converge-mechanism-benchmark.md): Source-level reading of spec-kit /speckit.converge and OpenSpec /opsx:verify — taxonomies, evidence scoping (both prompt-only), append/report contracts, reported failure modes, and what 071 keeps/adjusts.\n"
+      }
+    }
+  ],
+  "next_command": "product:execute 071-spec-code-converge-check"
+}

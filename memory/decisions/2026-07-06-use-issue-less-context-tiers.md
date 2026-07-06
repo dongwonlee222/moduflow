@@ -6,6 +6,7 @@ issue_id: 075-issue-less-context-capture
 spec: specs/075-issue-less-context-capture/spec.md
 source_event: user-design-discussion
 source_artifacts: [issues/074-sync-fetch-sandbox-handling.md]
+retrieval_trigger: superseded — read only for the history of why the 5-type tier was first chosen before the 2026-07-06 rescope
 review_after: 2026-08-06
 supersedes: []
 superseded_by: [2026-07-06-promote-and-linkage-over-new-capture-tier]

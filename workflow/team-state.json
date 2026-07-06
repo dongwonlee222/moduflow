@@ -90,6 +90,21 @@
       "last_handoff": "Merged PR #8 into main after review pass and human approval; released 0.3.13.",
       "next_command": "product:status",
       "updated_at": "2026-07-06"
+    },
+    {
+      "issue_id": "071-spec-code-converge-check",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Dongwon",
+      "status": "review",
+      "branch": "",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/9",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/9",
+      "next_command": "product:review 071-spec-code-converge-check",
+      "updated_at": "2026-07-06"
     }
   ]
 }
