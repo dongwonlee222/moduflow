@@ -199,6 +199,29 @@ class ProjectSyncTests(unittest.TestCase):
         self.assertFalse(result["fetched"])
         self.assertIn("timed out", result["fetch_warning"])
 
+    def test_no_fetch_mode_skips_internal_fetch_warning(self):
+        runner = FakeRunner(
+            {
+                ("git", "rev-parse", "--is-inside-work-tree"): "true\n",
+                ("git", "rev-parse", "--abbrev-ref", "HEAD"): "main\n",
+                ("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"): "origin/main\n",
+                ("git", "branch", "-vv"): "* main af5b086 [origin/main] fix(049)\n",
+                ("git", "rev-list", "--left-right", "--count", "HEAD...origin/main"): "0\t0\n",
+                ("git", "symbolic-ref", "refs/remotes/origin/HEAD"): "refs/remotes/origin/main\n",
+                ("git", "status", "--porcelain"): "",
+                ("git", "ls-tree", "-r", "--name-only", "origin/main", "issues"): "",
+                ("git", "ls-files", "issues"): "",
+            }
+        )
+
+        result = project_sync.inspect_repo_sync(Path("."), runner=runner, fetch=False)
+
+        self.assertNotIn(("git", "fetch", "--quiet"), runner.calls)
+        self.assertFalse(result["fetched"])
+        self.assertEqual(result["fetch_mode"], "skipped")
+        self.assertEqual(result["fetch_warning"], "git fetch skipped by request")
+        self.assertNotIn("Could not fetch from the remote", " ".join(result["recommendations"]))
+
     def test_run_command_converts_timeout_to_command_result(self):
         def raising_subprocess_run(*args, **kwargs):
             raise subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs.get("timeout"))

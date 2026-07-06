@@ -18,6 +18,10 @@ python3 scripts/project_sync.py <project-path>
 ```
 
 Status reads local files only, so without a fresh fetch it can show a stale snapshot as if current — this is why the fetch happens inside the preflight call itself rather than being a separate manual step.
+In approval-sensitive hosts where Python subprocesses cannot write `.git/FETCH_HEAD`,
+run `git fetch` as a top-level command first and call
+`python3 scripts/project_sync.py <project-path> --no-fetch` so status uses the
+fresh local refs without repeating the blocked internal fetch.
    - If local is behind, report "원격이 N커밋 앞섬 — pull 필요" in the dashboard.
    - If the upstream branch is gone, report "현재 브랜치의 원격이 삭제됨 — main 동기화 필요".
    - If `origin/main` has issue files missing locally, report those issue IDs before rendering the local queue.

@@ -8,12 +8,53 @@ Active goal: `team-visibility-onboarding`
 
 Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Data quality / Planning-artifact depth) shipped: `042`–`047`, `049`, plus follow-ons `056`/`057`. See `workspace/goal.md` history note.
 
+## Current Execution Queue
+
+### `074-sync-fetch-sandbox-handling`
+
+- Outcome: Approval-sensitive hosts can run a top-level `git fetch` and then `project_sync.py --no-fetch`, avoiding misleading `.git/FETCH_HEAD` warnings from Python subprocess fetches.
+- Confidence: high
+- Next command: `product:spec 075-issue-less-context-capture`
+- Status: done; hotfix, tests, review, release notes, version bump, and follow-up issue complete.
+
+### `075-issue-less-context-capture`
+
+- Outcome: ModuFlow gains first-class issue-less context tiers (`session`, `inbox`, `note`, `decision`, `issue`) with promotion gates so exploratory work does not disappear but also does not require premature issues.
+- Confidence: high
+- Dependency: 074 recovery case, 069 ready issue model, memory/decision capture.
+- Next command: `product:spec 075-issue-less-context-capture`
+- Status: backlog (next up)
+
+### `071-spec-code-converge-check`
+
+- Outcome: Post-implementation review compares actual code against spec/plan/tasks and reports missing, partial, contradictory, or unrequested behavior.
+- Confidence: high
+- Dependency: 070 spec consistency analyzer.
+- Next command: `product:spec 071-spec-code-converge-check`
+- Status: backlog
+
+### `072-lifecycle-hooks-automation`
+
+- Outcome: SessionStart/Stop hooks inject current state and run lifecycle sync when issue files change, reducing manual state/dashboard drift.
+- Confidence: medium
+- Dependency: 048 lifecycle sync, 065 installed plugin staleness detection.
+- Next command: `product:spec 072-lifecycle-hooks-automation`
+- Status: backlog
+
+### `073-project-constitution-steering`
+
+- Outcome: A versioned project constitution centralizes shared engineering principles so plans reference one governed source instead of restating house rules.
+- Confidence: medium
+- Dependency: 070 spec analyzer, 060 output convention.
+- Next command: `product:spec 073-project-constitution-steering`
+- Status: backlog
+
 ### `055-command-surface-onboarding`
 
 - Outcome: `product:start`/`product:status` name 2-3 concrete next commands; command reference groups core path vs on-demand.
 - Confidence: high
 - Next command: `product:execute 055-command-surface-onboarding`
-- Status: backlog (next up)
+- Status: done; released on `origin/main`.
 
 ### `054-github-issue-sync`
 
@@ -21,7 +62,7 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Confidence: high
 - Dependency: design decisions recorded in the issue (mapping storage, trigger, explicit `-R` repo, label bootstrap)
 - Next command: `product:spec 054-github-issue-sync` after 055
-- Status: backlog
+- Status: done; implementation complete, live projection remains ask-first.
 
 ### `050-repo-sync-preflight`
 
@@ -84,7 +125,7 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Confidence: high
 - Dependency: 050 repo sync preflight, 052 PR handoff, 057 Korean human review packet
 - Next command: `product:execute 058-git-write-fallback-via-github-api`
-- Status: active; issue, spec, plan, tasks, and status artifacts created.
+- Status: done; commit-capability classification and GitHub API fallback guidance shipped.
 
 ### `035-team-issue-branch-pr-workflow`
 
