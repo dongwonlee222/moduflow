@@ -75,6 +75,21 @@
       "last_handoff": "Merged PR #7 into main after review pass and human approval.",
       "next_command": "product:spec 075-issue-less-context-capture",
       "updated_at": "2026-07-06"
+    },
+    {
+      "issue_id": "075-issue-less-context-capture",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Dongwon",
+      "status": "review",
+      "branch": "",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/8",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/8",
+      "next_command": "product:review 075-issue-less-context-capture",
+      "updated_at": "2026-07-06"
     }
   ]
 }

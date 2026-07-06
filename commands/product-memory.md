@@ -70,3 +70,20 @@ python3 scripts/project_memory.py <project-path> --export-guidance google-drive
 
 - `/product:evidence` to review related memory and evidence
 - `/product:decision` when a memory entry supports a decision
+
+## Record Contract (issue 075)
+
+Every memory record this command writes carries shared frontmatter so `product:promote` and retention tooling can operate on it:
+
+- `kind`: `memory`
+- `date`: ISO date
+- `summary`: one line
+- `retrieval_trigger`: when a future session should re-read this record (semantic cue, required for new records)
+- `promoted_to`: issue id, written by `product:promote` only
+- `superseded_by`: record id — supersede, never delete or move record files
+
+Write discipline (AI writers create records for free, so creation is NOT the default):
+
+1. Before creating, search existing records of this kind for the same subject.
+2. Prefer UPDATE (extend the existing record) or SUPERSEDE (new record + `superseded_by` on the old one) over ADD.
+3. NOOP when nothing genuinely new — do not write a file to log activity.

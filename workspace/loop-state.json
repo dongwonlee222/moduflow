@@ -21,12 +21,12 @@
     "057-korean-human-review-packet",
     "058-git-write-fallback-via-github-api"
   ],
-  "active_issue_id": "058-git-write-fallback-via-github-api",
+  "active_issue_id": "075-issue-less-context-capture",
   "phase": "execute",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:execute 058-git-write-fallback-via-github-api",
+  "next_command": "product:execute 075-issue-less-context-capture",
   "attempts": {
     "command": "product:execute 058-git-write-fallback-via-github-api",
     "count": 0,
@@ -34,21 +34,21 @@
     "last_changed_at": "2026-07-03"
   },
   "blocker": null,
-  "last_action": "created 058 git write fallback plan",
+  "last_action": "075 v2 plan committed; dispatching wave 1 workers",
   "last_verification": "planning artifacts created; gates pending after implementation",
-  "updated_at": "2026-07-03",
+  "updated_at": "2026-07-06",
   "git_binding": {
     "mode": "git-files",
-    "branch": null,
+    "branch": "codex/075-issue-less-context-capture",
     "base_branch": "main",
     "commits": [],
     "pull_request": null,
     "release": null,
     "execution_backend": {
-      "type": "manual",
-      "status": "not_selected",
-      "reason": "",
-      "session": null
+      "type": "host-subagent",
+      "status": "selected",
+      "reason": "parallel-eligible plan A1/B1/C1 disjoint files; host Agent tool available",
+      "session": "claude-2026-07-06"
     }
   }
 }

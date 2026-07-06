@@ -1,11 +1,13 @@
 # Issue 075: Issue-Less Context Capture
 
-**Status: backlog** — created 2026-07-06.
+**Status: active** — created 2026-07-06, spec 2026-07-06 (v2 rescoped), plan 2026-07-06, started 2026-07-06.
 **Priority: p1**
 
 ## Summary
 
-Add a first-class issue-less context workflow so ModuFlow can track sessions, inbox items, notes, and decisions without forcing every piece of work into an issue too early.
+Make issue-less work traceable for an AI-operated repo: a machine-checkable commit↔issue linkage convention, a repaired release gate, `product:promote` for existing records, human-Git-identity approval for no-issue declarations, and AI-first issue fields.
+
+> Rescoped 2026-07-06 after a three-subagent panel review (human-tool benchmark, AI-native benchmark, adversarial review). The original "new capture tier + product:capture command" scope was dropped — see `specs/075-issue-less-context-capture/adversarial-review.md` and decision `2026-07-06-promote-and-linkage-over-new-capture-tier`.
 
 ## Source
 
@@ -21,37 +23,49 @@ Users often investigate, discuss, verify, or make small operational changes befo
 
 ### In
 
-- Define context types: `session`, `inbox`, `note`, `decision`, `issue`.
-- Define promotion gates from issue-less context to issue.
-- Add or document commands such as `product:note`, `product:decision`, `product:session`, and `product:promote`.
-- Add validation or release-check guidance so code-changing work cannot remain silently issue-less.
+- Commit↔issue linkage convention: branch `codex/<issue-id>-*` (normative) + commit trailer `Issue: <id>`.
+- Repair `release_check`: explicit merge-base, error (not silent pass) on git failure, linkage verification on behavior-affecting paths including `commands/*.md`.
+- `product:promote`: existing record (decision/inbox/memory/knowledge) → issue with automatic bidirectional links.
+- Human-Git-identity validation for no-issue declarations; declarations listed in `human-review.ko.md`.
+- AI-first issue template fields: Verification, Entry points, Scope fence.
+- Normalize the four existing capture commands: shared frontmatter (incl. `retrieval_trigger`) + ADD/UPDATE/SUPERSEDE/NOOP write discipline.
+- Release-count-based retention (archive unpromoted records after 2 releases).
 - Dogfood with the 074 recovery case.
 
 ### Out
 
+- New `product:capture` command or new context-type tier (v1 scope, dropped — existing commands are the capture layer).
+- Real-time session threshold detection (belongs to `072-lifecycle-hooks-automation`; 075 provides the checker it will call).
+- Staged severity config; wall-clock archival; commit-time blocking.
 - Replacing Git-file issues as the canonical execution unit.
 - Requiring every conversation turn to create a file.
 - Building a database or external SaaS sync for context in this issue.
 
 ## Acceptance Criteria
 
-- ModuFlow can capture durable context without an issue when work is exploratory or low-risk.
-- A clear rule says when issue-less context must be promoted to an issue.
-- Code, command behavior, or policy changes require either an issue or an explicit approved issue-less context record.
-- Status/doctor/release guidance can surface issue-less context that needs promotion.
-- The 074 case is documented as an example of promotion recovery.
+- Behavior-affecting release changes must resolve to an issue via branch/trailer, or to a no-issue declaration authored/approved by a **human Git identity**; agent-authored declarations are rejected.
+- `release_check` errors loudly on git failure and covers direct-to-main commits; the existing silent-pass holes are removed.
+- `product:promote` converts records to issues with bidirectional links, files staying in place.
+- Issue template carries Verification / Entry points / Scope fence.
+- Status surfaces unpromoted-record count/age; 2-release retention archives the rest, queryably.
+- The 074 case is documented against the v2 mechanisms.
 
 ## Workflow Tasks
 
 Every artifact-producing step is a tracked task here — never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
 
-- [ ] spec → `specs/075-issue-less-context-capture/spec.md`
-- [ ] plan → `specs/075-issue-less-context-capture/plan.md`
-- [ ] execute → PR / commits
+- [x] spec → `specs/075-issue-less-context-capture/spec.md` (+ `spec.ko.md`; v2 rescoped 2026-07-06)
+- [x] benchmark → `memory/evidence/2026-07-06-issue-less-context-benchmark.md`, `memory/evidence/2026-07-06-ai-native-context-benchmark.md`
+- [x] adversarial spec review → `specs/075-issue-less-context-capture/adversarial-review.md`
+- [x] plan → `specs/075-issue-less-context-capture/plan.md` (+ `tasks.md`; spec_consistency clean)
+- [x] execute → commits `2f850f3` (wave 1), `5668373` (wave 2), `c82eb7a` (wave 3), D1 docs commit
 - [ ] review → review notes
-- [ ] design context type schema
-- [ ] define promotion gates
-- [ ] update status/doctor/release guidance
+- [x] define linkage convention + repair release_check → `scripts/linkage_check.py`, `scripts/release_check.py`
+- [x] implement product:promote with bidirectional links → `scripts/project_promote.py`, `commands/product-promote.md`
+- [x] human-identity validation for no-issue declarations → `.moduflow/humans.json`, `releases/no-issue-declarations.md`, packet section in `scripts/project_pr.py`
+- [x] AI-first issue template fields → `templates/issues/issue.md`
+- [x] normalize four capture commands (frontmatter + write discipline) → Record Contract sections
+- [x] 074 case writeup → `memory/evidence/2026-07-06-074-promotion-recovery-case.md`
 
 ## Related Issues
 
@@ -60,7 +74,7 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 - duplicates:
 - follows_up: `074-sync-fetch-sandbox-handling`, `069-issue-dependency-priority-model`
 - supersedes:
-- related: `034-memory-capture-and-sync-workflow`, `040-automatic-memory-candidate-capture`
+- related: `034-memory-capture-and-sync-workflow`, `040-automatic-memory-candidate-capture`, `072-lifecycle-hooks-automation` (session-time detection hands off to 072; 075 provides the linkage checker it calls)
 
 ## Sessions
 
@@ -68,12 +82,15 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 ## Links
 
-- Decision: `memory/decisions/2026-07-06-use-issue-less-context-tiers.md`
+- Decision (v2): `memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md`
+- Decision (v1, superseded): `memory/decisions/2026-07-06-use-issue-less-context-tiers.md`
+- Benchmark (human tools): `memory/evidence/2026-07-06-issue-less-context-benchmark.md`
+- Benchmark (AI-native): `memory/evidence/2026-07-06-ai-native-context-benchmark.md`
+- Adversarial review: `specs/075-issue-less-context-capture/adversarial-review.md`
 - Spec: `specs/075-issue-less-context-capture/spec.md`
 - Status: `specs/075-issue-less-context-capture/status.md`
-- Sessions: `sessions/075-issue-less-context-capture/`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:spec 075-issue-less-context-capture`
+`/product:execute 075-issue-less-context-capture`

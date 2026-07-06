@@ -10,7 +10,7 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `075-issue-less-context-capture` (phase: execute). Canonical: `issues/075-issue-less-context-capture.md`.
 
 ## Recently Completed
 

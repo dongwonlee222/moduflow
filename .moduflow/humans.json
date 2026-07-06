@@ -1,0 +1,13 @@
+{
+  "humans": [
+    {
+      "name": "dongwon.lee",
+      "email": "webn77@gmail.com"
+    },
+    {
+      "name": "Dongwon Lee",
+      "email": "webn77@gmail.com"
+    }
+  ],
+  "note": "Known limitation on single-machine setups: agent commits share the human's git identity, so blame-based validation cannot distinguish them locally. The stronger channel is a GitHub PR approval/comment from the human account. See specs/075-issue-less-context-capture/spec.md Risks."
+}

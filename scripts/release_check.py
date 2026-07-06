@@ -25,6 +25,11 @@ def load_script_module(name, relative_path):
     return module
 
 
+linkage_check = load_script_module("linkage_check", "scripts/linkage_check.py")
+
+DECLARATIONS_RELPATH = "releases/no-issue-declarations.md"
+
+
 def run_importable_validation(name, func, root):
     result = func(root)
     return {
@@ -40,35 +45,48 @@ SECRET_RE = re.compile(
 )
 
 
-def get_modified_python_files(root):
+def get_modified_python_files(root, runner=None, diff_base=None):
+    """Collect modified .py files for targeted lint checks.
+
+    Returns {"files": [Path, ...], "errors": [str, ...]}. Global Constraint 2
+    (plan 075): a git failure surfaces as an explicit error entry — it never
+    silently degrades to an empty set.
+    """
+    runner = runner or linkage_check.run_command
+    diff_base = diff_base or "main"
     files = set()
-    try:
-        out = subprocess.check_output(["git", "diff", "--name-only", "main"], cwd=str(root), text=True)
-        for line in out.splitlines():
+    errors = []
+
+    diff_args = ["git", "diff", "--name-only", diff_base]
+    diff = runner(diff_args, str(root))
+    if diff.returncode != 0:
+        errors.append(linkage_check._error_text(diff_args, diff))
+    else:
+        for line in (diff.stdout or "").splitlines():
             line = line.strip()
             if line.endswith(".py"):
                 files.add(root / line)
-    except Exception:
-        pass
 
-    try:
-        out = subprocess.check_output(["git", "status", "--porcelain"], cwd=str(root), text=True)
-        for line in out.splitlines():
+    status_args = ["git", "status", "--porcelain"]
+    status = runner(status_args, str(root))
+    if status.returncode != 0:
+        errors.append(linkage_check._error_text(status_args, status))
+    else:
+        for line in (status.stdout or "").splitlines():
             if len(line) > 3:
                 path_str = line[3:].strip()
                 if path_str.endswith(".py"):
                     files.add(root / path_str)
-    except Exception:
-        pass
 
-    return [p for p in files if p.exists()]
+    return {"files": [p for p in files if p.exists()], "errors": errors}
 
 
-def run_lint_check(root):
+def run_lint_check(root, runner=None, diff_base=None):
     errors = []
     root = Path(root).resolve()
-    modified_files = get_modified_python_files(root)
-    for path in sorted(modified_files):
+    modified = get_modified_python_files(root, runner, diff_base)
+    errors.extend(modified["errors"])
+    for path in sorted(modified["files"]):
         path = path.resolve()
         if "__pycache__" in str(path) or ".venv" in str(path) or ".git" in str(path):
             continue
@@ -122,6 +140,160 @@ def run_security_check(root):
     }
 
 
+def resolve_merge_base(root, runner=None):
+    """Resolve `git merge-base HEAD origin/main`, fetching main once for
+    shallow clones. Returns {"merge_base": sha|None, "errors": [...]}.
+    A None merge_base always comes with errors — never a silent pass."""
+    runner = runner or linkage_check.run_command
+    merge_base_args = ["git", "merge-base", "HEAD", "origin/main"]
+
+    first = runner(merge_base_args, str(root))
+    if first.returncode == 0 and (first.stdout or "").strip():
+        return {"merge_base": first.stdout.strip(), "errors": []}
+
+    errors = [linkage_check._error_text(merge_base_args, first)]
+
+    fetch_args = ["git", "fetch", "origin", "main", "--depth=200"]
+    fetch = runner(fetch_args, str(root))
+    if fetch.returncode != 0:
+        errors.append(linkage_check._error_text(fetch_args, fetch))
+
+    second = runner(merge_base_args, str(root))
+    if second.returncode == 0 and (second.stdout or "").strip():
+        # Shallow clone recovered by the fetch: not an error condition.
+        return {"merge_base": second.stdout.strip(), "errors": []}
+    errors.append(linkage_check._error_text(merge_base_args, second))
+
+    return {"merge_base": None, "errors": errors}
+
+
+def load_declaration_lines(root):
+    """Non-empty, non-heading lines of releases/no-issue-declarations.md.
+
+    Missing file means zero declarations (fine only when nothing is unlinked).
+    Returns [{"line_no": int, "text": str}, ...] with 1-based line numbers
+    matching git blame."""
+    path = Path(root) / DECLARATIONS_RELPATH
+    if not path.exists():
+        return []
+    declarations = []
+    for line_no, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        text = raw.strip()
+        # Headings, blockquote prose, and format examples in backticks are
+        # documentation, not declarations — only bare lines count, so prose
+        # can never be mistaken for an approved declaration.
+        if not text or text.startswith(("#", ">", "`")):
+            continue
+        declarations.append({"line_no": line_no, "text": text})
+    return declarations
+
+
+def _declaration_mentions_sha(text, sha):
+    for token in text.replace("—", " ").split():
+        token = token.strip(",;:()")
+        if len(token) >= 7 and sha.startswith(token):
+            return True
+    return False
+
+
+def _declaration_mentions_path(text, path):
+    for token in text.replace("—", " ").split():
+        token = token.strip(",;:()")
+        if token == path or (token.endswith("/") and path.startswith(token)):
+            return True
+    return False
+
+
+def _commit_covered_by_declarations(entry, valid_declarations):
+    """A commit is covered when a valid declaration names its sha, or every
+    behavior path is named (exactly or by a directory scope)."""
+    texts = [decl["text"] for decl in valid_declarations]
+    if any(_declaration_mentions_sha(text, entry["sha"]) for text in texts):
+        return True
+    if not entry["behavior_paths"]:
+        return False
+    return all(
+        any(_declaration_mentions_path(text, path) for text in texts)
+        for path in entry["behavior_paths"]
+    )
+
+
+def run_linkage_gate(root, runner=None):
+    """Fail when merge_base..HEAD contains behavior commits that neither link
+    to an issue nor carry a valid human no-issue declaration.
+
+    Returns {"ok", "merge_base", "unlinked", "uncovered", "invalid_declarations",
+    "errors"}. ok is True only with zero errors (Global Constraint 2)."""
+    runner = runner or linkage_check.run_command
+    root = Path(root)
+    errors = []
+
+    merge_base_result = resolve_merge_base(root, runner)
+    merge_base = merge_base_result["merge_base"]
+    if merge_base is None:
+        return {
+            "ok": False,
+            "merge_base": None,
+            "unlinked": [],
+            "uncovered": [],
+            "invalid_declarations": [],
+            "errors": list(merge_base_result["errors"]),
+        }
+
+    linkage = linkage_check.find_unlinked_behavior_commits(runner, root, merge_base, "HEAD")
+    errors.extend(linkage["errors"])
+
+    uncovered = []
+    invalid_declarations = []
+    if linkage["unlinked"]:
+        try:
+            identities = linkage_check.load_human_identities(root)
+        except Exception as exc:
+            identities = []
+            errors.append(f"failed to load human identities: {exc}")
+
+        valid_declarations = []
+        for declaration in load_declaration_lines(root):
+            validation = linkage_check.validate_no_issue_declaration(
+                runner, root, DECLARATIONS_RELPATH, declaration["line_no"], identities
+            )
+            if validation["valid"]:
+                valid_declarations.append(declaration)
+            else:
+                invalid_declarations.append(
+                    {
+                        "line_no": declaration["line_no"],
+                        "text": declaration["text"],
+                        "reason": validation["reason"],
+                    }
+                )
+
+        for entry in linkage["unlinked"]:
+            if _commit_covered_by_declarations(entry, valid_declarations):
+                continue
+            uncovered.append(entry)
+            errors.append(
+                "unlinked behavior commit "
+                f"{entry['sha']} has no linked issue and no valid no-issue "
+                f"declaration (behavior paths: {', '.join(entry['behavior_paths'])})"
+            )
+        if uncovered and invalid_declarations:
+            for invalid in invalid_declarations:
+                errors.append(
+                    f"declaration rejected at {DECLARATIONS_RELPATH}:"
+                    f"{invalid['line_no']}: {invalid['reason']}"
+                )
+
+    return {
+        "ok": not errors,
+        "merge_base": merge_base,
+        "unlinked": linkage["unlinked"],
+        "uncovered": uncovered,
+        "invalid_declarations": invalid_declarations,
+        "errors": errors,
+    }
+
+
 def run_release_check(path):
     root = Path(path).resolve()
     checks = {}
@@ -143,7 +315,15 @@ def run_release_check(path):
         if not result["ok"]:
             errors.append(f"{name} failed: {'; '.join(result['errors'])}")
 
-    lint_res = run_lint_check(root)
+    linkage_gate = run_linkage_gate(root)
+    checks["linkage_gate"] = {
+        "ok": linkage_gate["ok"],
+        "merge_base": linkage_gate["merge_base"],
+    }
+    for err in linkage_gate["errors"]:
+        errors.append(f"Linkage: {err}")
+
+    lint_res = run_lint_check(root, diff_base=linkage_gate["merge_base"] or "origin/main")
     checks["lint_check"] = {"ok": lint_res["ok"]}
     if not lint_res["ok"]:
         for err in lint_res["errors"]:
@@ -182,6 +362,8 @@ def run_release_check(path):
             "tests.test_installed_plugin_staleness",
             "tests.test_mcp_server",
             "tests.test_spec_consistency",
+            "tests.test_linkage_check",
+            "tests.test_release_check",
             # NOTE: test_validation_distribution is intentionally excluded here.
             # It calls release_check.run_release_check itself, so listing it would
             # make release_check recurse into itself. CI runs `unittest discover`

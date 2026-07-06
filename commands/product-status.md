@@ -82,6 +82,11 @@ Detailed status mode may include:
 - Source artifact links when useful
 - Loop status and attempts
 - Next recommended command
+- Issue-less record retention (per below)
+
+### Issue-Less Records (issue 075)
+
+Detailed status runs `python3 scripts/project_retention.py <project-path> --status` and surfaces the unpromoted-record count, the oldest record, and archive candidates (records 2+ releases old with no `promoted_to`). Render one line in the dashboard, e.g. `📝 미승격 레코드 12건 (최고령 2026-06-24, 아카이브 후보 8건)`. Do not auto-archive during status — `--write` is an explicit ops action. If the count grows release over release, recommend `product:promote` for records that now drive work.
 
 ### Next-Command Guidance (issue 055)
 

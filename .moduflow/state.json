@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "select",
+  "phase": "execute",
   "active_goal": "team-visibility-onboarding",
-  "active_issue": "",
-  "last_command": "product:pr 074-sync-fetch-sandbox-handling",
-  "next_command": "product:spec 075-issue-less-context-capture",
+  "active_issue": "075-issue-less-context-capture",
+  "last_command": "product:plan 075-issue-less-context-capture",
+  "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-07-06"
 }

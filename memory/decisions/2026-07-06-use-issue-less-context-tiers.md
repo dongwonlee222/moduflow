@@ -8,7 +8,7 @@ source_event: user-design-discussion
 source_artifacts: [issues/074-sync-fetch-sandbox-handling.md]
 review_after: 2026-08-06
 supersedes: []
-superseded_by: []
+superseded_by: [2026-07-06-promote-and-linkage-over-new-capture-tier]
 storage_policy: git-canonical
 mirror_targets: []
 owner: Dongwon Lee

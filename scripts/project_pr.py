@@ -151,6 +151,31 @@ def _artifact_check_rows(spec_dir):
     return rows
 
 
+def _no_issue_declaration_lines(root):
+    """Korean packet section body listing releases/no-issue-declarations.md
+    entries (issue 075). Declarations are the auditable escape hatch for
+    behavior changes shipping without an issue; the human packet is the
+    surface where a human actually reads them."""
+    path = Path(root) / "releases" / "no-issue-declarations.md"
+    if not path.exists():
+        return ["- 선언 없음 (선언 파일 미생성)."]
+    entries = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped.startswith((">", "`")):
+            continue
+        entries.append(f"- {stripped}")
+    if not entries:
+        return ["- 선언 없음 — 모든 동작 변경이 이슈에 연결되어 있습니다."]
+    header = [
+        "다음 변경은 이슈 없이 출시가 선언되었습니다. 각 항목은 인간 git 신원의 blame 검증 대상입니다.",
+        "",
+    ]
+    return header + entries
+
+
 def build_human_review_packet_ko(root, issue_id, branch="", pr="", reviewer="Reviewer"):
     root = Path(root).resolve()
     spec_dir = root / "specs" / issue_id
@@ -218,6 +243,10 @@ def build_human_review_packet_ko(root, issue_id, branch="", pr="", reviewer="Rev
         "## 검증 요약",
         "",
         verification,
+        "",
+        "## no-issue 선언 (issue 075)",
+        "",
+        *_no_issue_declaration_lines(root),
         "",
         "## 리뷰 결과",
         "",
