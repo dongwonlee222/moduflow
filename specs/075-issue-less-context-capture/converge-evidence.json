@@ -1,0 +1,363 @@
+{
+  "schema": "moduflow.converge-evidence.v1",
+  "issue_id": "075-issue-less-context-capture",
+  "generated": "2026-07-06",
+  "commits": [
+    {
+      "sha": "4ff949ce375c513c46635bed85b253e7ab1e718f",
+      "subject": "docs: release 0.3.13 record and state reconciliation for issue 075",
+      "source": "trailer"
+    },
+    {
+      "sha": "a4ae79f4f44e72aeec840e27c58075b6d6cd7969",
+      "subject": "Merge pull request #8 from dongwonlee222/codex/075-issue-less-context-capture",
+      "source": "merge-subject"
+    },
+    {
+      "sha": "16cf7707b27159bd33461b4ecdaafda358677a91",
+      "subject": "docs: review pass, pr packet, dashboards for issue 075",
+      "source": "trailer"
+    },
+    {
+      "sha": "d3b320e74bf0754bb0daefca7d3f82326bfe1dcf",
+      "subject": "docs: 074 replay case, release gate docs, review handoff (075)",
+      "source": "trailer"
+    },
+    {
+      "sha": "c82eb7a70a631ad8a18cc5abf2f1197dbcf2aabe",
+      "subject": "feat: human identity gate and retention (075 wave 3)",
+      "source": "trailer"
+    },
+    {
+      "sha": "566837365ef316602897e1ba099d10fc4943ebd7",
+      "subject": "feat: release gate linkage + product promote (075 wave 2)",
+      "source": "trailer"
+    },
+    {
+      "sha": "2f850f3eef9ccd968649edd504e50f634c5c0cd9",
+      "subject": "feat: linkage checker, AI issue fields, record contract (075 wave 1)",
+      "source": "trailer"
+    },
+    {
+      "sha": "06afa2b5c5e77a7841e511c69edb4a6c6b66a7c1",
+      "subject": "docs: spec v2, plan, benchmarks for issue 075",
+      "source": "trailer"
+    }
+  ],
+  "files": [
+    {
+      "path": ".claude-plugin/plugin.json",
+      "content": "{\n  \"name\": \"moduflow\",\n  \"displayName\": \"ModuFlow\",\n  \"version\": \"0.3.14\",\n  \"description\": \"Git-native PM execution orchestrator for issues, specs, roadmaps, subagents, analysis, design, PRs, and releases.\",\n  \"author\": {\n    \"name\": \"Dongwon Lee\",\n    \"url\": \"https://github.com/dongwonlee222\"\n  },\n  \"homepage\": \"https://github.com/dongwonlee222/moduflow\",\n  \"repository\": \"https://github.com/dongwonlee222/moduflow\",\n  \"license\": \"UNLICENSED\",\n  \"keywords\": [\n    \"product-management\",\n    \"roadmap\",\n    \"spec\",\n    \"github\",\n    \"superpowers\",\n    \"codex\",\n    \"claude\"\n  ],\n  \"skills\": \"./skills/\",\n  \"mcpServers\": \"./.mcp.json\"\n}\n",
+      "truncated": false
+    },
+    {
+      "path": ".codex-plugin/plugin.json",
+      "content": "{\n  \"name\": \"moduflow\",\n  \"version\": \"0.3.14+codex.20260626145655\",\n  \"description\": \"Git-native PM execution orchestrator for issues, specs, roadmaps, subagents, analysis, design, PRs, and releases.\",\n  \"author\": {\n    \"name\": \"Dongwon Lee\",\n    \"url\": \"https://github.com/dongwonlee222\"\n  },\n  \"homepage\": \"https://github.com/dongwonlee222/moduflow\",\n  \"repository\": \"https://github.com/dongwonlee222/moduflow\",\n  \"license\": \"UNLICENSED\",\n  \"keywords\": [\n    \"product-management\",\n    \"roadmap\",\n    \"spec\",\n    \"github\",\n    \"superpowers\",\n    \"codex\",\n    \"claude\"\n  ],\n  \"skills\": \"./skills/\",\n  \"mcpServers\": \"./.mcp.json\",\n  \"interface\": {\n    \"displayName\": \"ModuFlow\",\n    \"shortDescription\": \"Git-native PM execution flow\",\n    \"longDescription\": \"Run product work from inbox to issue, spec, roadmap, data analysis, design, subagent execution, PR, release, and stakeholder update while keeping Git as the source of truth. In Codex, use @ModuFlow product:start or @ModuFlow product:status.\",\n    \"developerName\": \"Dongwon Lee\",\n    \"category\": \"Productivity\",\n    \"capabilities\": [\n      \"Read\",\n      \"Write\",\n      \"Interactive\"\n    ],\n    \"websiteURL\": \"https://github.com/dongwonlee222/moduflow\",\n    \"defaultPrompt\": [\n      \"status\",\n      \"start\",\n      \"product:start\",\n      \"product:status\",\n      \"모두플로우 시작\"\n    ],\n    \"brandColor\": \"#2563EB\",\n    \"composerIcon\": \"./assets/composerIcon.png\",\n    \"logo\": \"./assets/logo.png\",\n    \"screenshots\": []\n  }\n}",
+      "truncated": false
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "content": "name: CI\n\non:\n  push:\n    branches: [main]\n  pull_request:\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          # Full history so `git merge-base HEAD origin/main` works for the\n          # release-check linkage gate (issue 075).\n          fetch-depth: 0\n      - uses: actions/setup-python@v5\n        with:\n          python-version: \"3.11\"\n      - name: Run unit tests\n        run: python3 -m unittest discover -s tests -v\n      - name: Validate plugin package\n        run: python3 scripts/validate_moduflow.py .\n      - name: Release check\n        run: python3 scripts/release_check.py .\n",
+      "truncated": false
+    },
+    {
+      "path": ".moduflow/humans.json",
+      "content": "{\n  \"humans\": [\n    {\n      \"name\": \"dongwon.lee\",\n      \"email\": \"webn77@gmail.com\"\n    },\n    {\n      \"name\": \"Dongwon Lee\",\n      \"email\": \"webn77@gmail.com\"\n    }\n  ],\n  \"note\": \"Known limitation on single-machine setups: agent commits share the human's git identity, so blame-based validation cannot distinguish them locally. The stronger channel is a GitHub PR approval/comment from the human account. See specs/075-issue-less-context-capture/spec.md Risks.\"\n}\n",
+      "truncated": false
+    },
+    {
+      "path": ".moduflow/state.json",
+      "content": "{\n  \"schema\": \"moduflow.state.v1\",\n  \"phase\": \"plan\",\n  \"active_goal\": \"team-visibility-onboarding\",\n  \"active_issue\": \"\",\n  \"last_command\": \"product:plan 071-spec-code-converge-check\",\n  \"next_command\": \"product:execute 071-spec-code-converge-check\",\n  \"blockers\": [],\n  \"updated_at\": \"2026-07-06\"\n}",
+      "truncated": false
+    },
+    {
+      "path": "commands/product-decision.md",
+      "content": "---\ndescription: Create a decision record tied to an issue, spec, or roadmap choice.\nargument-hint: \"<title> [--issue-id id] [--spec path]\"\n---\n\n# /product:decision\n\nRecord why a product or technical decision was made.\n\n## Script\n\n```bash\npython3 scripts/project_knowledge.py . --kind decision --title \"Payment priority\" --issue-id 003-payment --spec specs/003-payment/spec.md --decision-supported \"Prioritize card onboarding\"\n```\n\n## Required Fields\n\n- issue ID when applicable\n- spec path when applicable\n- decision supported\n- evidence\n- caveats\n- next action\n\n## Next\n\n- `/product:evidence` to review supporting material\n- `/product:roadmap` when priority changes\n\n## Record Contract (issue 075)\n\nEvery decision record this command writes carries shared frontmatter so `product:promote` and retention tooling can operate on it:\n\n- `kind`: `decision`\n- `date`: ISO date\n- `summary`: one line\n- `retrieval_trigger`: when a future session should re-read this record (semantic cue, required for new records)\n- `promoted_to`: issue id, written by `product:promote` only\n- `superseded_by`: record id — supersede, never delete or move record files\n\nWrite discipline (AI writers create records for free, so creation is NOT the default):\n\n1. Before creating, search existing records of this kind for the same subject.\n2. Prefer UPDATE (extend the existing record) or SUPERSEDE (new record + `superseded_by` on the old one) over ADD.\n3. NOOP when nothing genuinely new — do not write a file to log activity.\n",
+      "truncated": false
+    },
+    {
+      "path": "commands/product-inbox.md",
+      "content": "---\ndescription: Capture raw requests, notes, customer feedback, ideas, or bugs.\nargument-hint: \"<raw request or source>\"\n---\n\n# /product:inbox\n\nCapture unstructured input without over-shaping it.\n\n## Do\n\n1. Append the request to `workspace/inbox.md`.\n2. Preserve source, date, owner, and confidence when available.\n3. Suggest whether it should become an opportunity, issue, or parking-lot item.\n4. When available, preserve `moduflow.intake-routing.v1` JSON from `scripts/project_intake.py --write` so later commands can create/link issues without reclassifying the request.\n\n## Next\n\n- `/product:opportunity` for product shaping\n- `/product:issue` for obvious implementation work\n- `/product:status` to inspect queue\n\n## Record Contract (issue 075)\n\nEvery inbox record this command writes carries shared frontmatter so `product:promote` and retention tooling can operate on it:\n\n- `kind`: `inbox`\n- `date`: ISO date\n- `summary`: one line\n- `retrieval_trigger`: when a future session should re-read this record (semantic cue, required for new records)\n- `promoted_to`: issue id, written by `product:promote` only\n- `superseded_by`: record id — supersede, never delete or move record files\n\nWrite discipline (AI writers create records for free, so creation is NOT the default):\n\n1. Before creating, search existing records of this kind for the same subject.\n2. Prefer UPDATE (extend the existing record) or SUPERSEDE (new record + `superseded_by` on the old one) over ADD.\n3. NOOP when nothing genuinely new — do not write a file to log activity.\n",
+      "truncated": false
+    },
+    {
+      "path": "commands/product-knowledge.md",
+      "content": "---\ndescription: Initialize or inspect the project knowledge evidence layer.\nargument-hint: \"[project path] [--write]\"\n---\n\n# /product:knowledge\n\nCreate or inspect Git-native evidence folders for decisions, benchmarks, reports, research, data notes, and references.\n\n## Do\n\n1. Run dry-run first:\n\n```bash\npython3 scripts/project_knowledge.py <project-path>\n```\n\n2. Use `--write` to create missing folders and `knowledge/index.md` only:\n\n```bash\npython3 scripts/project_knowledge.py <project-path> --write\n```\n\n3. Preserve existing files.\n4. Link artifacts to issue IDs and specs when known.\n5. **Capture relationships at write time (043).** When a knowledge artifact becomes a memory entry, list existing ids and link real nodes — `python3 scripts/project_memory.py <project-path> --list-ids` — then set `--issue-id` and any content-verified `--supersedes/--depends-on/--references`. Present options; never auto-link by topic (042's anti-goal).\n\n## Next\n\n- `/product:decision` for decision records\n- `/product:evidence` to gather evidence for an issue or spec\n\n## Record Contract (issue 075)\n\nEvery knowledge record this command writes carries shared frontmatter so `product:promote` and retention tooling can operate on it:\n\n- `kind`: `knowledge`\n- `date`: ISO date\n- `summary`: one line\n- `retrieval_trigger`: when a future session should re-read this record (semantic cue, required for new records)\n- `promoted_to`: issue id, written by `product:promote` only\n- `superseded_by`: record id — supersede, never delete or move record files\n\nWrite discipline (AI writers create records for free, so creation is NOT the default):\n\n1. Before creating, search existing records of this kind for the same subject.\n2. Prefer UPDATE (extend the existing record) or SUPERSEDE (new record + `superseded_by` on the old one) over ADD.\n3. NOOP when nothing genuinely new — do not write a file to log activity.\n",
+      "truncated": false
+    },
+    {
+      "path": "commands/product-memory.md",
+      "content": "---\ndescription: Initialize, write, search, or retrieve portable project memory.\nargument-hint: \"[project path] [--write|--kind|--search|--get]\"\n---\n\n# /product:memory\n\nManage repo-local project memory for deliverables, decisions, evidence, meetings, releases, notes, and references.\n\n## PM-Friendly Flow\n\n1. Initialize memory:\n\n```bash\npython3 scripts/project_memory.py <project-path> --write\n```\n\n2. **Capture relationships at write time (043).** Before creating an entry, list existing ids so you link to *real* nodes — never free-type ids, never auto-link by topic:\n\n```bash\npython3 scripts/project_memory.py <project-path> --list-ids          # all entries (id/kind/title)\npython3 scripts/project_memory.py <project-path> --list-ids --kind decision   # filter by kind\n```\n\nThen, when writing, pass the relationships you can **content-verify** plus the `issue_id`:\n\n```bash\npython3 scripts/project_memory.py <project-path> --candidate --kind decision --title \"Use Git canonical memory\" --issue-id 034-memory-capture-and-sync-workflow --spec specs/034-memory-capture-and-sync-workflow/spec.md --summary \"Keep memory canonical in Git-tracked Markdown.\" --source-event decision-detected --source-artifacts specs/034-memory-capture-and-sync-workflow/spec.md --supersedes 2026-06-24-use-portable-project-memory --references 2026-06-25-some-evidence --tags memory,team,pm\n```\n\n- Always set `--issue-id` when the entry came from an issue — this is what fills the issue↔memory cross-links the 045 project view shows.\n- Pass `--supersedes` / `--depends-on` / `--references` only for links you can justify from the content. **Present options, never auto-link** (042's anti-goal). Relationships survive `--approve` unchanged.\n- `product:doctor` surfaces \"isolated\" entries (no links, no issue_id) as an informational hint — a nudge to link, never a hard failure.\n\n3. Review candidates:\n\n```bash\npython3 scripts/project_memory.py <project-path> --list-candidates\n```\n\n4. Approve a candidate:\n\n```bash\npython3 scripts/project_memory.py <project-path> --approve 2026-06-26-use-git-canonical-memory\n```\n\n5. Search with source links and match reasons:\n\n```bash\npython3 scripts/project_memory.py <project-path> --search \"canonical memory\"\n```\n\n6. Get mirror/export guidance:\n\n```bash\npython3 scripts/project_memory.py <project-path> --export-guidance google-drive\n```\n\n## Rules\n\n- `memory/` is the source of truth.\n- External indexes, MCP servers, vector stores, and databases are rebuildable caches/adapters.\n- Prefer relative project-local links so projects remain portable when copied, cloned, or zipped.\n- Do not import private personal memory into a project automatically.\n- In team mode, shared memory should be approved through Git branch/PR review before merge.\n- RAG, LangGraph, MCP servers, Basic Memory, projectmem, mem0, Supermemory, Google Drive, and Obsidian are adapters or mirrors, not the source of truth.\n- PMs can approve memory candidates through natural language; implementation hosts may translate that approval into the CLI calls above.\n\n## Next\n\n- `/product:evidence` to review related memory and evidence\n- `/product:decision` when a memory entry supports a decision\n\n## Record Contract (issue 075)\n\nEvery memory record this command writes carries shared frontmatter so `product:promote` and retention tooling can operate on it:\n\n- `kind`: `memory`\n- `date`: ISO date\n- `summary`: one line\n- `retrieval_trigger`: when a future session should re-read this record (semantic cue, required for new records)\n- `promoted_to`: issue id, written by `product:promote` only\n- `superseded_by`: record id — supersede, never delete or move record files\n\nWrite discipline (AI writers create records for free, so creation is NOT the default):\n\n1. Before creating, search existing records of this kind for the same subject.\n2. Prefer UPDATE (extend the existing record) or SUPERSEDE (new record + `superseded_by` on the old one) over ADD.\n3. NOOP when nothing genuinely new — do not write a file to log activity.\n",
+      "truncated": false
+    },
+    {
+      "path": "commands/product-promote.md",
+      "content": "---\ndescription: Promote a capture record (decision/inbox/memory/knowledge) into a Git-native issue.\nargument-hint: \"<record-path> [--issue-id id] [--write]\"\n---\n\n# /product:promote\n\nConvert an existing record into an issue when the work crosses the promotion threshold. Records never move — links are written both ways automatically.\n\n## When Promotion Is Required\n\nPromote a record when the work it describes:\n\n- changes code, a command, or policy (`commands/*.md` classify as behavior, not docs), or\n- needs execution tracking (assignee, branch, review, release gate).\n\nA decision with no code change is terminal — it never requires promotion.\n\n## When Promotion Is Ready\n\nReadiness = \"the issue works as an AI prompt\":\n\n- scope is known,\n- acceptance checks are verifiable,\n- entry points (starting files) are known.\n\nIf promotion is **required but not ready**, shape the record first (UPDATE it with scope, checks, entry points) — do NOT create a hollow issue. Early unshaped issues measurably lower agent merge rates. The script marks underivable sections `TODO(blocking-execution)`; an issue with those markers is not executable yet.\n\n## Script\n\nDry-run first (prints the planned issue JSON, writes nothing):\n\n```bash\npython3 scripts/project_promote.py . --record memory/decisions/2026-07-06-use-issue-less-context-tiers.md\n```\n\nApply:\n\n```bash\npython3 scripts/project_promote.py . --record memory/decisions/2026-07-06-use-issue-less-context-tiers.md --write\n```\n\nOptions:\n\n- `--issue-id <id>`: explicit issue number or full id (default: next `NNN` in `issues/` + kebab-case title slug)\n- `--date <YYYY-MM-DD>`: source date for the issue (default: record `date`)\n\n## What The Script Writes (both directions, automatically)\n\n- `issues/<id>.md` from `templates/issues/issue.md`: summary/source prefilled from the record, `Promoted-from: <record-id>` under Source, and the AI-first sections (`Verification`, `Entry Points`, `Scope Fence`) derived from record fields where possible, else `TODO(blocking-execution)`.\n- `promoted_to: <issue-id>` inserted into the record frontmatter **in place** — the record file is never moved, renamed, or rewritten beyond that one line.\n\nDo not write these links by hand — manual linking gets skipped.\n\n## Refusals (no writes)\n\n- record already has a non-empty `promoted_to` (promote once; supersede with `superseded_by` if the record itself is outdated)\n- record has no YAML frontmatter (fix the record per the capture command contracts first)\n- target issue file already exists\n\n## Next\n\n- `/product:spec <issue-id>` to shape the promoted issue\n- `/product:roadmap` when the promotion changes priority\n",
+      "truncated": false
+    },
+    {
+      "path": "commands/product-release.md",
+      "content": "---\ndescription: Prepare release, deploy, rollback, and post-release checks.\nargument-hint: \"<issue id>\"\n---\n\n# /product:release\n\nPrepare release.\n\n## Do\n\n1. Confirm merged PR, version, deploy target, rollback path, and post-release checks.\n2. Before any local `git commit`/`push` this step needs, run `python3 scripts/project_git_handoff.py <project-path>` first. If `mode` is `github-api-commit`, use the GitHub API instead of local Git; only ask the user to run terminal Git commands when `mode` is `blocked` (see `/product:pr`'s Commit Capability step for the full contract).\n3. Confirm `specs/<issue>/human-review.ko.md` exists and was used as the first human approval surface.\n4. Confirm human approval evidence is recorded before release. The evidence must identify who reviewed the dashboard, issue detail, PR diff or local change scope, verification result, and release readiness.\n5. Hold release if the Korean packet is missing, stale, or does not include verification, hold criteria, and approval checklist.\n6. Run `scripts/release_check.py .` before publishing a plugin/package update. Since issue 075 this includes the **linkage gate**: every behavior-affecting commit since `origin/main` (paths under `scripts/`, `commands/`, `skills/`, `templates/`, workflow config — `commands/*.md` count as behavior) must resolve to an issue via branch name (`codex/<issue-id>-*`) or commit trailer (`Issue: <id>`), or be covered by a no-issue declaration in `releases/no-issue-declarations.md` whose `git blame` author is a human identity from `.moduflow/humans.json`. Git plumbing failures make the gate error loudly — a failing or erroring gate holds the release; never work around it by weakening paths or config.\n7. Save to `specs/<issue>/release.md`.\n8. Update roadmap and status.\n\n## Korean Human Review Gate\n\nRelease can proceed only after a Korean-speaking reviewer can start from `human-review.ko.md` and make an approve/hold decision without searching through English-only artifacts.\n\nThe release note should link:\n\n- `specs/<issue>/human-review.ko.md`\n- `specs/<issue>/pr.md`\n- `memory/dashboard.html#issue-db`\n- `memory/issue-<issue>.html`\n\nIf GitHub PR creation is unavailable, record the local PR-ready marker and keep the Korean packet current. Do not treat the local marker as merge or release approval.\n\n## Next\n\n- `/product:update` for stakeholder communication\n- `/product:analyze` for post-release metric readout\n",
+      "truncated": false
+    },
+    {
+      "path": "commands/product-status.md",
+      "content": "---\ndescription: Show current product execution state and next recommended command.\nargument-hint: \"[issue id]\"\n---\n\n# /product:status\n\nMake progress visible.\n\n> MCP alternative: if the `moduflow` MCP server is connected, `moduflow_status` and `moduflow_issues` return the same state as steps 1-2 below without a Bash approval prompt — prefer it for a quick read.\n\n## Do\n\n1. Run repo sync preflight. `project_sync.py` fetches remote refs itself (5s timeout, non-interactive) before comparing — no manual `git fetch` step needed:\n\n```bash\npython3 scripts/project_sync.py <project-path>\n```\n\nStatus reads local files only, so without a fresh fetch it can show a stale snapshot as if current — this is why the fetch happens inside the preflight call itself rather than being a separate manual step.\nIn approval-sensitive hosts where Python subprocesses cannot write `.git/FETCH_HEAD`,\nrun `git fetch` as a top-level command first and call\n`python3 scripts/project_sync.py <project-path> --no-fetch` so status uses the\nfresh local refs without repeating the blocked internal fetch.\n   - If local is behind, report \"원격이 N커밋 앞섬 — pull 필요\" in the dashboard.\n   - If the upstream branch is gone, report \"현재 브랜치의 원격이 삭제됨 — main 동기화 필요\".\n   - If `origin/main` has issue files missing locally, report those issue IDs before rendering the local queue.\n   - If the working tree is clean, recommend (or run after confirming) `git pull` before rendering, so status reflects the latest.\n   - If the working tree is dirty or `@{u}` is unset, do NOT auto-pull — surface the state and let the user decide.\n   - If `unmerged_branch_work` is non-empty, report it plainly (e.g. \"다른 브랜치에 완료된 이슈가 있음: `<branch>` — 056, 057\") before rendering the queue — this catches finished work on a branch the user forgot about (e.g. from another tool/session), which a `origin/main`-only comparison misses.\n   - If `fetched` is `false` in the preflight result, report the `fetch_warning` plainly (e.g. \"원격 확인 실패 — 마지막 fetch 기준 정보입니다\") instead of presenting the freshness numbers as current.\n2. Read `.moduflow/state.json`, `workspace/loop-state.json` when present, issues, specs, tasks, PR notes, releases, and roadmap.\n3. Render a Korean-first terminal-style dashboard before detailed prose.\n4. Report current phase, active issue, active/recent sessions, blockers, queue, risks, changed files, and next command.\n5. In `git-files` mode, explain that GitHub repo files under `issues/*.md` are canonical; GitHub Issues objects are optional mirrors and may be empty.\n6. If project mode is available from doctor/status context, show plain guidance such as \"프로젝트 설정이 가볍고 정상입니다\" instead of raw labels like `lightweight`, `dogfooding`, or `heavy`.\n7. If `workflow/team-state.json` exists, include the PM-friendly team view:\n\n```bash\npython3 scripts/project_workflow.py <project-path> --team-status\n```\n\n8. When status is shown after a completed action, render the same structured next handoff used by `product:loop`: next work, reasons, concrete actions, follow-on priority, and exact command when useful.\n9. When status is shown after a resumed or interrupted task, include the resume banner before the dashboard.\n10. Do not mutate local artifact files during normal status display (the `git fetch` in step 1 is read-only; an approved `git pull` is the only allowed sync).\n11. If source artifacts look stale or inconsistent, report the mismatch and recommend `product:doctor`.\n\n## Output\n\nDefault `상태` output is concise and Korean-first. When `workspace/loop-state.json` exists, use it for the active goal, active issue cursor, phase, blocker, and next command. Do not expose raw JSON, full artifact lists, attempts counters, or long queues unless the user asks for diagnostics or details.\n\n```text\n현재 목표: <goal>\n현재 이슈: <issue> (<phase>)\n다음: <plain-language next action>\n명령: <product:* command>\n막힘: 없음 | <blocker>\n```\n\nAfter completed work, prefer the richer handoff format from `product:loop` over this compact status block.\n\nWhen resuming work, prepend:\n\n```text\n이어받음: <goal or issue id>\n완료됨: <already completed items>\n지금: <current action>\n다음: <next handoff target>\n```\n\n### Queue Guidance (issue 069)\n\n대기열 is dependency-aware, not just a flat backlog listing. Ready issues (`python3 scripts/project_lifecycle.py . --ready` or MCP `moduflow_ready`) are backlog issues whose `Blocked-by` ids are all `done`/`superseded`; render them sorted by `Priority` (`p0` first, unset defaults to `p2`), then id. Issues still waiting on an open blocker render distinctly — prefix with `⏸` and list the blocking issue ids (e.g. `⏸ 072-x — blocked by 070-y`) — never mixed into the ready ordering as if they were next.\n\nDetailed status mode may include:\n\n- Current phase\n- Active/recent sessions when available\n- Queue (ready vs blocked, per above)\n- Blockers and risks\n- Team work queues from `workflow/team-state.json` when present\n- Source artifact links when useful\n- Loop status and attempts\n- Next recommended command\n- Issue-less record retention (per below)\n\n### Issue-Less Records (issue 075)\n\nDetailed status runs `python3 scripts/project_retention.py <project-path> --status` and surfaces the unpromoted-record count, the oldest record, and archive candidates (records 2+ releases old with no `promoted_to`). Render one line in the dashboard, e.g. `📝 미승격 레코드 12건 (최고령 2026-06-24, 아카이브 후보 8건)`. Do not auto-archive during status — `--write` is an explicit ops action. If the count grows release over release, recommend `product:promote` for records that now drive work.\n\n### Next-Command Guidance (issue 055)\n\nAlways close with a ranked, concrete list of at most 3 next commands (the single best one first) — never the full command index. Rank by the loop state: e.g. an issue in `spec` phase gets `product:plan` first; a completed review gets `product:pr`. When the user seems unsure what any command does, point to `product:loop` (\"다음 단계를 알아서 골라줌\") instead of explaining the whole surface. New-project states (no goal, no issues) rank `product:goal` → `product:issue` → `product:status`, matching `product:start`'s first-run guidance.\n\n## Dashboard Format\n\nUse this structure as the default. Keep it compact and adapt missing fields gracefully.\n\n```text\n╭─ 🧭 ModuFlow 상태 ─────────────────────────╮\n│ 프로젝트  <project name>                    │\n│ 모드      <git-files|github-sync>           │\n│ 브랜치    <branch> <동기화: 최신|N커밋 뒤> │\n│ 원격      <upstream|gone|없음>              │\n│ 단계      <emoji> <phase>                   │\n╰────────────────────────────────────────────╯\n\n🎯 현재 이슈\n  <issue id>\n  <issue summary>\n\n🧵 진행 세션\n  <active/recent sessions or \"아직 기록된 세션 없음\">\n\n📌 대기열\n  1. <next issue>\n  2. <next issue>\n  3. <next issue>\n  <blocked entries: \"⏸ <issue id> — blocked by <blocker id>, <blocker id>\">\n\n🚧 블로커\n  <blockers or \"없음\">\n\n🌿 다른 브랜치 미병합 작업\n  <one line per unmerged_branch_work entry: \"<branch> — <ahead>커밋, done 이슈: <ids>\" or omit this whole section when unmerged_branch_work is empty>\n\n➡️ 다음 명령\n  <next command>\n```\n\nThe 🌿 section only appears when `unmerged_branch_work` is non-empty — omit it entirely on the clean path, per the \"adapt missing fields gracefully\" rule above. This is the field `062-detect-unmerged-branch-work` added; it must render here, not just exist in the JSON, or a done-but-unmerged issue on another branch stays invisible to the person reading the dashboard.\n\n## Emoji Guidance\n\n- 🟢 healthy, done, or unblocked\n- 🟡 in progress, warning, or needs attention\n- 🔴 blocked or failing\n- ⚪ not started or optional\n\nPrefer Korean labels. Use emojis sparingly for scanning, not decoration.\n",
+      "truncated": false
+    },
+    {
+      "path": "issues/075-issue-less-context-capture.md",
+      "content": "# Issue 075: Issue-Less Context Capture\n\n**Status: done** — created 2026-07-06, spec 2026-07-06 (v2 rescoped), plan 2026-07-06, started 2026-07-06, done 2026-07-06.\n**Priority: p1**\n\n## Summary\n\nMake issue-less work traceable for an AI-operated repo: a machine-checkable commit↔issue linkage convention, a repaired release gate, `product:promote` for existing records, human-Git-identity approval for no-issue declarations, and AI-first issue fields.\n\n> Rescoped 2026-07-06 after a three-subagent panel review (human-tool benchmark, AI-native benchmark, adversarial review). The original \"new capture tier + product:capture command\" scope was dropped — see `specs/075-issue-less-context-capture/adversarial-review.md` and decision `2026-07-06-promote-and-linkage-over-new-capture-tier`.\n\n## Source\n\n- Type: user workflow feedback\n- Link: local Codex session\n- Date: 2026-07-06\n\n## Opportunity\n\nUsers often investigate, discuss, verify, or make small operational changes before the work deserves an issue. The current issue-only model makes this feel too heavy, but untracked work can still become invisible. ModuFlow needs a lighter context layer with clear promotion rules.\n\n## Scope\n\n### In\n\n- Commit↔issue linkage convention: branch `codex/<issue-id>-*` (normative) + commit trailer `Issue: <id>`.\n- Repair `release_check`: explicit merge-base, error (not silent pass) on git failure, linkage verification on behavior-affecting paths including `commands/*.md`.\n- `product:promote`: existing record (decision/inbox/memory/knowledge) → issue with automatic bidirectional links.\n- Human-Git-identity validation for no-issue declarations; declarations listed in `human-review.ko.md`.\n- AI-first issue template fields: Verification, Entry points, Scope fence.\n- Normalize the four existing capture commands: shared frontmatter (incl. `retrieval_trigger`) + ADD/UPDATE/SUPERSEDE/NOOP write discipline.\n- Release-count-based retention (archive unpromoted records after 2 releases).\n- Dogfood with the 074 recovery case.\n\n### Out\n\n- New `product:capture` command or new context-type tier (v1 scope, dropped — existing commands are the capture layer).\n- Real-time session threshold detection (belongs to `072-lifecycle-hooks-automation`; 075 provides the checker it will call).\n- Staged severity config; wall-clock archival; commit-time blocking.\n- Replacing Git-file issues as the canonical execution unit.\n- Requiring every conversation turn to create a file.\n- Building a database or external SaaS sync for context in this issue.\n\n## Acceptance Criteria\n\n- Behavior-affecting release changes must resolve to an issue via branch/trailer, or to a no-issue declaration authored/approved by a **human Git identity**; agent-authored declarations are rejected.\n- `release_check` errors loudly on git failure and covers direct-to-main commits; the existing silent-pass holes are removed.\n- `product:promote` converts records to issues with bidirectional links, files staying in place.\n- Issue template carries Verification / Entry points / Scope fence.\n- Status surfaces unpromoted-record count/age; 2-release retention archives the rest, queryably.\n- The 074 case is documented against the v2 mechanisms.\n\n## Workflow Tasks\n\nEvery artifact-producing step is a tracked task here — never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.\n\n- [x] spec → `specs/075-issue-less-context-capture/spec.md` (+ `spec.ko.md`; v2 rescoped 2026-07-06)\n- [x] benchmark → `memory/evidence/2026-07-06-issue-less-context-benchmark.md`, `memory/evidence/2026-07-06-ai-native-context-benchmark.md`\n- [x] adversarial spec review → `specs/075-issue-less-context-capture/adversarial-review.md`\n- [x] plan → `specs/075-issue-less-context-capture/plan.md` (+ `tasks.md`; spec_consistency clean)\n- [x] execute → commits `2f850f3` (wave 1), `5668373` (wave 2), `c82eb7a` (wave 3), D1 docs commit\n- [x] review → specs/075-issue-less-context-capture/review.md (pass)\n- [x] define linkage convention + repair release_check → `scripts/linkage_check.py`, `scripts/release_check.py`\n- [x] implement product:promote with bidirectional links → `scripts/project_promote.py`, `commands/product-promote.md`\n- [x] human-identity validation for no-issue declarations → `.moduflow/humans.json`, `releases/no-issue-declarations.md`, packet section in `scripts/project_pr.py`\n- [x] AI-first issue template fields → `templates/issues/issue.md`\n- [x] normalize four capture commands (frontmatter + write discipline) → Record Contract sections\n- [x] 074 case writeup → `memory/evidence/2026-07-06-074-promotion-recovery-case.md`\n\n## Related Issues\n\n- blocks:\n- blocked_by:\n- duplicates:\n- follows_up: `074-sync-fetch-sandbox-handling`, `069-issue-dependency-priority-model`\n- supersedes:\n- related: `034-memory-capture-and-sync-workflow`, `040-automatic-memory-candidate-capture`, `072-lifecycle-hooks-automation` (session-time detection hands off to 072; 075 provides the linkage checker it calls)\n\n## Sessions\n\n- 2026-07-06: User observed that real work often happens without an issue and asked whether issue-less work is possible and enforceable.\n\n## Links\n\n- Decision (v2): `memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md`\n- Decision (v1, superseded): `memory/decisions/2026-07-06-use-issue-less-context-tiers.md`\n- Benchmark (human tools): `memory/evidence/2026-07-06-issue-less-context-benchmark.md`\n- Benchmark (AI-native): `memory/evidence/2026-07-06-ai-native-context-benchmark.md`\n- Adversarial review: `specs/075-issue-less-context-capture/adversarial-review.md`\n- Spec: `specs/075-issue-less-context-capture/spec.md`\n- Status: `specs/075-issue-less-context-capture/status.md`\n- Roadmap: `workspace/roadmap.md`\n\n## Next Command\n\n`product:status`\n",
+      "truncated": false
+    },
+    {
+      "path": "memory/decisions/2026-07-06-promote-and-linkage-over-new-capture-tier.md",
+      "content": "---\nid: 2026-07-06-promote-and-linkage-over-new-capture-tier\nkind: decision\ntitle: Promote And Linkage Over New Capture Tier\nissue_id: 075-issue-less-context-capture\nspec: specs/075-issue-less-context-capture/spec.md\nsource_event: three-subagent-panel-review\nsource_artifacts: [memory/evidence/2026-07-06-issue-less-context-benchmark.md, memory/evidence/2026-07-06-ai-native-context-benchmark.md, specs/075-issue-less-context-capture/adversarial-review.md]\nreview_after: 2026-08-06\nsupersedes: [2026-07-06-use-issue-less-context-tiers]\nsuperseded_by: []\nstorage_policy: git-canonical\nmirror_targets: []\nowner: Dongwon Lee\ndate: 2026-07-06\ntags: [context, workflow, issue-tracking, moduflow, ai-operator]\nsummary: 075 drops the new 5-type capture tier and product:capture command; it delivers commit-issue linkage convention, a repaired release gate, product:promote with human Git-identity approval, and AI-first issue fields, reusing the four existing capture commands.\nrationale: The operator is an AI agent, so issue-creation cost is near zero and capture friction is not the constraint — the constraints are the self-approval loop, missing machine-checkable diff-to-issue linkage, and the human PM's attention. Four of the five proposed context types already exist as commands (decision, inbox, memory, knowledge).\nevidence: Adversarial review verified 38 existing commands including product-decision/memory/knowledge/inbox, no frontmatter in the issue template, no sessions/ directory, silent-pass holes in release_check.py, and ~75 issues in 24 days of agent-driven velocity. Two benchmarks (human-tools and AI-native) converged on capture-free/promotion-human-gated.\nalternatives: Keep v1 capture-tier spec with amendments; split 075 into gate-repair and context-cleanup issues.\nreversal_conditions: If a real teammate (human) joins and needs a capture surface distinct from the existing commands, or if normalizing the four existing commands proves messier than one unified entry point, revisit product:capture.\nconfidence: high\n---\n\n# Promote And Linkage Over New Capture Tier\n\nSupersedes [[2026-07-06-use-issue-less-context-tiers]] — the typed-tier idea is absorbed: the types already exist as `product:decision`, `product:inbox`, `product:memory`, `product:knowledge`; what was missing is promotion, linkage, and a human gate, not a new tier.\n\n## Decision\n\n075 delivers, in order of importance:\n\n1. Machine-checkable commit/branch ↔ issue linkage convention (branch `codex/<issue-id>-*` or commit trailer), release_check rebuilt on it with hard failure on git errors.\n2. `product:promote`: existing record → issue with automatic bidirectional links.\n3. Human approval via Git identity for no-issue declarations; declarations listed in the human-review packet.\n4. AI-first issue template fields: verification, entry points, scope fence.\n5. Normalization (shared frontmatter, ADD/UPDATE/SUPERSEDE/NOOP write discipline) of the four existing capture commands — no new command, no new tier.\n\nReal-time threshold detection is explicitly out — it belongs to `072-lifecycle-hooks-automation`.\n",
+      "truncated": false
+    },
+    {
+      "path": "memory/decisions/2026-07-06-use-issue-less-context-tiers.md",
+      "content": "---\nid: 2026-07-06-use-issue-less-context-tiers\nkind: decision\ntitle: Use Issue-Less Context Tiers\nissue_id: 075-issue-less-context-capture\nspec: specs/075-issue-less-context-capture/spec.md\nsource_event: user-design-discussion\nsource_artifacts: [issues/074-sync-fetch-sandbox-handling.md]\nreview_after: 2026-08-06\nsupersedes: []\nsuperseded_by: [2026-07-06-promote-and-linkage-over-new-capture-tier]\nstorage_policy: git-canonical\nmirror_targets: []\nowner: Dongwon Lee\ndate: 2026-07-06\ntags: [context, workflow, issue-tracking, moduflow]\nsummary: ModuFlow should allow issue-less work, but every durable context must be typed as session, inbox, note, decision, or issue and promoted when it changes product behavior or spans sessions.\nrationale: Issue-only tracking is too heavy for normal exploration, questions, repo checks, and small operational work. Completely untracked issue-less work loses context. A typed context tier keeps low-friction work possible while preserving promotion gates for durable changes.\nevidence: The 074 sync-fetch sandbox fix began as issue-less troubleshooting but crossed the threshold into code, tests, and command-documentation changes; it had to be recovered into a formal issue afterward.\nalternatives: Keep issue-only tracking; allow untracked ad hoc work; require issues for every conversation.\nreversal_conditions: If typed issue-less contexts create more overhead than issues or fail to improve recovery/promotion behavior, collapse back to a simpler inbox-first model.\nconfidence: medium\n---\n\n# Use Issue-Less Context Tiers\n\n## Summary\n\nModuFlow should allow issue-less work, but every durable context must be typed as `session`, `inbox`, `note`, `decision`, or `issue`.\n\n## Rationale\n\nIssue-only tracking is too heavy for normal exploration, questions, repo checks, and small operational work. Completely untracked issue-less work loses context. A typed context tier keeps low-friction work possible while preserving promotion gates for durable changes.\n\n## Evidence\n\nThe 074 sync-fetch sandbox fix began as issue-less troubleshooting but crossed the threshold into code, tests, and command-documentation changes. It had to be recovered into a formal issue afterward.\n\n## Alternatives\n\n- Keep issue-only tracking: strong traceability, too much friction.\n- Allow untracked ad hoc work: low friction, loses durable context.\n- Require issues for every conversation: simple rule, poor fit for real exploratory work.\n\n## Links\n\n- Issue: `075-issue-less-context-capture`\n- Spec: `specs/075-issue-less-context-capture/spec.md`\n- Recovery example: `issues/074-sync-fetch-sandbox-handling.md`\n\n## Reversal Conditions\n\nIf typed issue-less contexts create more overhead than issues or fail to improve recovery/promotion behavior, collapse back to a simpler inbox-first model.\n",
+      "truncated": false
+    },
+    {
+      "path": "memory/evidence/2026-07-06-074-promotion-recovery-case.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "memory/evidence/2026-07-06-ai-native-context-benchmark.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "memory/evidence/2026-07-06-issue-less-context-benchmark.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "releases/no-issue-declarations.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "scripts/linkage_check.py",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "scripts/project_pr.py",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "scripts/project_promote.py",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "scripts/project_retention.py",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "scripts/release_check.py",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/adversarial-review.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/human-review.ko.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/plan.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/pr.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/release.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/review-handoff.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/review.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/spec.ko.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/spec.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/status.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/tasks.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/worker-plan.json",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "specs/075-issue-less-context-capture/worker-plan.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "templates/issues/issue.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "tests/test_linkage_check.py",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "tests/test_project_promote.py",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "tests/test_project_retention.py",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "tests/test_release_check.py",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "tests/test_validation_distribution.py",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "workflow/team-state.json",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "workspace/dashboard.md",
+      "content": null,
+      "truncated": true
+    },
+    {
+      "path": "workspace/loop-state.json",
+      "content": null,
+      "truncated": true
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC#1",
+      "text": "`release_check` fails when the release diff contains behavior-affecting changes (`scripts/`, `commands/`, `skills/`, workflow config) not attributable to an issue via branch name or commit trailer; passes when attributable; **errors** (not passes) on any git failure; covers direct-to-main commits via merge-base.",
+      "parseable": true
+    },
+    {
+      "id": "AC#2",
+      "text": "The two silent `except Exception: pass` holes in `release_check.py` are removed; CI runs the gate with sufficient fetch depth.",
+      "parseable": true
+    },
+    {
+      "id": "AC#3",
+      "text": "`product:promote` converts each of the four record kinds into an issue with `promoted_to`/`Promoted-from` written automatically both ways; record file stays in place.",
+      "parseable": true
+    },
+    {
+      "id": "AC#4",
+      "text": "A no-issue declaration authored by the agent's git identity is rejected by the gate; one authored/approved by a configured human identity passes; all declarations in a release appear in `human-review.ko.md`.",
+      "parseable": true
+    },
+    {
+      "id": "AC#5",
+      "text": "Issue template includes `Verification`, `Entry points`, `Scope fence` sections; `product:promote` populates them or marks them TODO-blocking-execution.",
+      "parseable": true
+    },
+    {
+      "id": "AC#6",
+      "text": "The four capture commands document shared frontmatter + ADD/UPDATE/SUPERSEDE/NOOP discipline; `retrieval_trigger` present in newly created records.",
+      "parseable": true
+    },
+    {
+      "id": "AC#7",
+      "text": "`product:status` surfaces unpromoted-record count and oldest; records unpromoted after 2 releases are archived with a queryable list.",
+      "parseable": true
+    },
+    {
+      "id": "AC#8",
+      "text": "The 074 case is written up against the v2 mechanisms (linkage gate would have caught the unlinked branch at release; promote makes recovery one command).",
+      "parseable": true
+    },
+    {
+      "id": "AC#9",
+      "text": "Focused tests: gate fail/pass/error paths, trailer and branch resolution, human-identity validation, promote link writing, archive threshold.",
+      "parseable": true
+    }
+  ],
+  "global_constraints": [
+    {
+      "id": "GC#1",
+      "text": "**Only one new command**: `product:promote`. No `product:capture`, no new context tier. Capture work modifies the four existing command docs only."
+    },
+    {
+      "id": "GC#2",
+      "text": "**Gate code never passes silently**: any git subprocess failure inside linkage/release checking returns an error result. `except Exception: pass` is banned in gate paths."
+    },
+    {
+      "id": "GC#3",
+      "text": "**Records never move**: promotion writes `promoted_to` in place; supersession uses `superseded_by`, never file deletion or relocation."
+    },
+    {
+      "id": "GC#4",
+      "text": "**`commands/*.md` classify as behavior**, not docs, in path classification."
+    },
+    {
+      "id": "GC#5",
+      "text": "**Human-identity grounding**: a no-issue declaration validates only against `git blame`/PR-approval of a configured human identity; the identity config itself validates the same way (its blame must be human). No agent-writable escape."
+    },
+    {
+      "id": "GC#6",
+      "text": "**Linkage logic lives in an importable module** (`scripts/linkage_check.py`), not inline in `release_check.py` — issue 072's hooks will import it."
+    },
+    {
+      "id": "GC#7",
+      "text": "**Naming**: issue ids resolve from branch `codex/<issue-id>-*` (regex on the full id, e.g. `codex/075-issue-less-context-capture-gate`) or commit trailer line `Issue: <issue-id>`. Trailer wins on conflict."
+    },
+    {
+      "id": "GC#8",
+      "text": "Frontmatter keys for records: `kind`, `date`, `summary`, `retrieval_trigger`, optional `promoted_to`, `superseded_by`. Exactly these names."
+    }
+  ],
+  "truncated": true,
+  "no_evidence": false,
+  "errors": []
+}

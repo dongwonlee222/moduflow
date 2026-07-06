@@ -1,6 +1,6 @@
 # Issue: `071-spec-code-converge-check`
 
-**Status: plan** — created 2026-07-05, spec 2026-07-06, plan 2026-07-06.
+**Status: active** — created 2026-07-05, spec 2026-07-06, plan 2026-07-06, started 2026-07-06.
 **Priority: p1**
 
 ## Outcome
@@ -42,7 +42,7 @@ Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): both m
 
 - [x] spec → `specs/071-spec-code-converge-check/spec.md` (+ `spec.ko.md`)
 - [x] plan → `specs/071-spec-code-converge-check/plan.md` (+ tasks.md, spec_consistency clean)
-- [ ] execute → PR / commits
+- [x] execute → commits `8a62d24` (wave 1), `87ea20a` (wave 2), D1 dogfood
 - [ ] review → review notes
 
 ## Links
