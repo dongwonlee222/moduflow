@@ -14,7 +14,7 @@ Prepare release.
 3. Confirm `specs/<issue>/human-review.ko.md` exists and was used as the first human approval surface.
 4. Confirm human approval evidence is recorded before release. The evidence must identify who reviewed the dashboard, issue detail, PR diff or local change scope, verification result, and release readiness.
 5. Hold release if the Korean packet is missing, stale, or does not include verification, hold criteria, and approval checklist.
-6. Run `scripts/release_check.py .` before publishing a plugin/package update.
+6. Run `scripts/release_check.py .` before publishing a plugin/package update. Since issue 075 this includes the **linkage gate**: every behavior-affecting commit since `origin/main` (paths under `scripts/`, `commands/`, `skills/`, `templates/`, workflow config — `commands/*.md` count as behavior) must resolve to an issue via branch name (`codex/<issue-id>-*`) or commit trailer (`Issue: <id>`), or be covered by a no-issue declaration in `releases/no-issue-declarations.md` whose `git blame` author is a human identity from `.moduflow/humans.json`. Git plumbing failures make the gate error loudly — a failing or erroring gate holds the release; never work around it by weakening paths or config.
 7. Save to `specs/<issue>/release.md`.
 8. Update roadmap and status.
 

@@ -58,13 +58,14 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 - [x] benchmark → `memory/evidence/2026-07-06-issue-less-context-benchmark.md`, `memory/evidence/2026-07-06-ai-native-context-benchmark.md`
 - [x] adversarial spec review → `specs/075-issue-less-context-capture/adversarial-review.md`
 - [x] plan → `specs/075-issue-less-context-capture/plan.md` (+ `tasks.md`; spec_consistency clean)
-- [ ] execute → PR / commits
+- [x] execute → commits `2f850f3` (wave 1), `5668373` (wave 2), `c82eb7a` (wave 3), D1 docs commit
 - [ ] review → review notes
-- [ ] define linkage convention + repair release_check
-- [ ] implement product:promote with bidirectional links
-- [ ] human-identity validation for no-issue declarations
-- [ ] AI-first issue template fields
-- [ ] normalize four capture commands (frontmatter + write discipline)
+- [x] define linkage convention + repair release_check → `scripts/linkage_check.py`, `scripts/release_check.py`
+- [x] implement product:promote with bidirectional links → `scripts/project_promote.py`, `commands/product-promote.md`
+- [x] human-identity validation for no-issue declarations → `.moduflow/humans.json`, `releases/no-issue-declarations.md`, packet section in `scripts/project_pr.py`
+- [x] AI-first issue template fields → `templates/issues/issue.md`
+- [x] normalize four capture commands (frontmatter + write discipline) → Record Contract sections
+- [x] 074 case writeup → `memory/evidence/2026-07-06-074-promotion-recovery-case.md`
 
 ## Related Issues
 

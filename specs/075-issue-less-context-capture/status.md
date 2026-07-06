@@ -18,14 +18,15 @@ Updated: 2026-07-06
 - Wave 1 (`2f850f3`): A1 linkage_check module (29 tests), B1 template AI fields, C1 record contracts. Independently verified: 309 tests OK, no silent excepts, HEAD resolves to 075 via trailer.
 - Wave 2: A2 release_check repair (silent holes removed, merge-base linkage gate, CI fetch-depth 0) + B2 project_promote.py/product-promote.md (promote dry-run auto-numbers 076, sections prefilled). Both workers were cut off by a session limit AFTER completing file work; coordinator verified outputs independently (31 new tests green) and finished the loose end (plugin bump 0.3.12 — version_bump_gate requires the bump in the completion commit).
 
-## In Progress — wave 3 (coordinator inline, session limit makes subagent dispatch unreliable)
+## Done — waves 3-4 (coordinator inline after subagent session limits)
 
-- A3: humans.json + releases/no-issue-declarations.md + human-review packet inclusion
-- C2: status unpromoted surfacing + 2-release retention
+- Wave 3 (`c82eb7a`): A3 humans.json + declarations file + packet section (declaration parser hardened: prose in headings/blockquotes/backticks can never parse as a declaration); C2 `project_retention.py` release-count retention (live: 12 unpromoted, 8 archive candidates surfaced, not auto-archived) + status guidance. Plugin 0.3.13.
+- Wave 4: D1 — 074 replay writeup (`memory/evidence/2026-07-06-074-promotion-recovery-case.md`), `product-release.md` linkage-gate description; docs sweep found zero v1-tier references.
+- Self-application gate: **passed** — this branch satisfies its own linkage gate (branch name + `Issue:` trailers), release_check `valid: true`.
 
-## Queued
+## Known limitation (flagged for review)
 
-- Wave 4: D1 (074 writeup + docs sweep), self-application gate, review handoff
+Local blame cannot distinguish agent vs human on this machine (shared git identity `dongwon.lee`). The GitHub PR-approval channel is the stronger human gate; documented in humans.json note and spec Risks. Plan's open question stands for 072/follow-up.
 
 ## Verification log
 
