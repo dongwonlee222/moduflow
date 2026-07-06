@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "plan",
+  "phase": "execute",
   "active_goal": "team-visibility-onboarding",
-  "active_issue": "",
+  "active_issue": "072-lifecycle-hooks-automation",
   "last_command": "product:plan 072-lifecycle-hooks-automation",
-  "next_command": "product:execute 072-lifecycle-hooks-automation",
+  "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-07-06"
 }

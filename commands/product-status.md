@@ -9,6 +9,10 @@ Make progress visible.
 
 > MCP alternative: if the `moduflow` MCP server is connected, `moduflow_status` and `moduflow_issues` return the same state as steps 1-2 below without a Bash approval prompt — prefer it for a quick read.
 
+## Session Banner (issue 072)
+
+Sessions in a ModuFlow project now open with a SessionStart hook banner (goal, active issue, next command, unpromoted-record count) — `product:status` is no longer required just to learn where you are. Status remains the detailed view: queue, blockers, team state, retention, and sync freshness live here, not in the banner.
+
 ## Do
 
 1. Run repo sync preflight. `project_sync.py` fetches remote refs itself (5s timeout, non-interactive) before comparing — no manual `git fetch` step needed:

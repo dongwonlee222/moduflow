@@ -66,3 +66,7 @@ Git and GitHub CLI checks are preflight checks. They are skipped in local-only m
 - `product:start` if project is not initialized
 - `product:migrate` if existing artifact folders should be mapped first
 - `product:status` if healthy
+
+## Hook Health (issue 072)
+
+Doctor surfaces recent entries from `.moduflow/logs/hooks.log` (last 7 days, 20 max) as warnings — hook failures are fail-open at runtime, so this log is the only place they become visible. An absent or empty log is silence, not an error. Recurring entries suggest a broken hook script or an environment problem; hook state files live under `.moduflow/state/` and are machine-local (gitignored).

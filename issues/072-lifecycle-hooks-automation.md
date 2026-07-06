@@ -1,6 +1,6 @@
 # Issue: `072-lifecycle-hooks-automation`
 
-**Status: plan** — created 2026-07-05, spec 2026-07-06, plan 2026-07-06.
+**Status: active** — created 2026-07-05, spec 2026-07-06, plan 2026-07-06, started 2026-07-06.
 **Priority: p2**
 
 ## Outcome
@@ -43,7 +43,7 @@ Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): ModuFl
 
 - [x] spec → `specs/072-lifecycle-hooks-automation/spec.md` (+ `spec.ko.md`; scope expanded 2026-07-06 with 075-deferred session-time linkage warning + doctor log surfacing, both user-approved)
 - [x] plan → `specs/072-lifecycle-hooks-automation/plan.md` (+ tasks.md)
-- [ ] execute
+- [x] execute → commits `3eacb90` (planning), V1 notes, `1300881` (main wave), D1 dogfood
 - [ ] review
 
 ## Links
