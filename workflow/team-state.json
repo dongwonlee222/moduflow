@@ -65,15 +65,15 @@
       "issue_id": "074-sync-fetch-sandbox-handling",
       "owner": "",
       "assignee": "",
-      "reviewer": "Reviewer",
-      "status": "review",
+      "reviewer": "Dongwon",
+      "status": "done",
       "branch": "",
       "pr": "https://github.com/dongwonlee222/moduflow/pull/7",
-      "lock_state": "active",
+      "lock_state": "released",
       "locked_by": "",
       "blocker": "",
-      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/7",
-      "next_command": "product:review 074-sync-fetch-sandbox-handling",
+      "last_handoff": "Merged PR #7 into main after review pass and human approval.",
+      "next_command": "product:spec 075-issue-less-context-capture",
       "updated_at": "2026-07-06"
     }
   ]

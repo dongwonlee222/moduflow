@@ -3,8 +3,8 @@
   "phase": "select",
   "active_goal": "team-visibility-onboarding",
   "active_issue": "",
-  "last_command": "product:execute 070-spec-consistency-analyze",
-  "next_command": "product:status",
+  "last_command": "product:pr 074-sync-fetch-sandbox-handling",
+  "next_command": "product:spec 075-issue-less-context-capture",
   "blockers": [],
   "updated_at": "2026-07-06"
 }
