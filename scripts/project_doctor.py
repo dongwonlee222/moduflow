@@ -4,6 +4,7 @@ import importlib.util
 import json
 import shutil
 import subprocess
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -358,6 +359,94 @@ def installed_plugin_staleness(project_root, home=None):
     return {"checked": True, "stale": stale, "recommendations": recommendations}
 
 
+def check_hook_log(root):
+    """Parse .moduflow/logs/hooks.log and return recent warnings.
+
+    Format: <iso-ts> <hook> <level:warn|error> <message>
+    Returns: list of warning dicts with hook, level, timestamp, message
+    Filters: last 7 days, capped at 20 most recent
+
+    Absent file or zero recent entries: return empty list (silent)
+    Unparseable lines: include with a malformed note
+    """
+    warnings = []
+    log_path = root / ".moduflow" / "logs" / "hooks.log"
+
+    if not log_path.exists():
+        return warnings
+
+    try:
+        content = log_path.read_text(encoding="utf-8")
+    except Exception:
+        return warnings
+
+    if not content.strip():
+        return warnings
+
+    # Calculate cutoff: last 7 days
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=7)
+
+    lines = content.splitlines()
+    recent_entries = []
+
+    for line in lines:
+        if not line.strip():
+            continue
+
+        parts = line.split(None, 3)  # Split on whitespace, max 4 parts
+
+        if len(parts) < 4:
+            # Malformed line: include with a note
+            recent_entries.append({
+                "hook": "unknown",
+                "level": "warn",
+                "timestamp": None,
+                "message": f"malformed hook log entry: {line}",
+                "malformed": True,
+            })
+            continue
+
+        iso_ts_str, hook, level, message = parts
+
+        # Try to parse ISO timestamp
+        try:
+            # Handle both with/without microseconds
+            if "." in iso_ts_str:
+                ts = datetime.fromisoformat(iso_ts_str.replace("Z", "+00:00"))
+            else:
+                ts = datetime.fromisoformat(iso_ts_str.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            # Unparseable timestamp: include with a note
+            recent_entries.append({
+                "hook": hook,
+                "level": level,
+                "timestamp": None,
+                "message": message,
+                "malformed": True,
+                "note": f"unparseable timestamp: {iso_ts_str}",
+            })
+            continue
+
+        # Check if within 7-day window
+        if ts >= cutoff:
+            recent_entries.append({
+                "hook": hook,
+                "level": level,
+                "timestamp": iso_ts_str,
+                "message": message,
+            })
+
+    # Sort by timestamp descending (most recent first) and cap at 20
+    recent_entries.sort(
+        key=lambda x: x.get("timestamp") or "",
+        reverse=True
+    )
+
+    # Return the 20 most recent
+    return recent_entries[:20]
+
+
 def inspect_project(path, include_preflight=True):
     requested = Path(path).resolve()
     if include_preflight:
@@ -387,6 +476,10 @@ def inspect_project(path, include_preflight=True):
         plugin_staleness = installed_plugin_staleness(project_root)
     except Exception:
         plugin_staleness = {"checked": False, "stale": [], "recommendations": []}
+    try:
+        hook_log_warnings = check_hook_log(project_root)
+    except Exception:
+        hook_log_warnings = []
     missing_workflow = missing_workflow_paths(project_root)
     candidates = discover_candidate_paths(project_root)
     migration_mode = recommended_migration_mode(missing, candidates)
@@ -458,6 +551,9 @@ def inspect_project(path, include_preflight=True):
             "errors": schema_gates.get("errors", []),
             "warnings": schema_gates.get("warnings", []),
         },
+        "hooks": {
+            "warnings": hook_log_warnings,
+        },
         "recommendation": [],
     }
 
@@ -516,6 +612,12 @@ def inspect_project(path, include_preflight=True):
 
     if schema_gates.get("errors"):
         result["recommendation"].append("schema gate failed; fix linked artifacts, state drift, or next_command before release.")
+
+    if hook_log_warnings:
+        result["recommendation"].append(
+            f"hook health: {len(hook_log_warnings)} lifecycle hook event(s) logged in last 7 days (warnings/errors) — "
+            "review .moduflow/logs/hooks.log for details."
+        )
 
     result["recommendation"].extend(plugin_staleness["recommendations"])
 

@@ -188,6 +188,12 @@ class ClassifyChangedPathsTests(unittest.TestCase):
         result = linkage_check.classify_changed_paths(["commands/product-release.md"])
         self.assertEqual(result["behavior"], ["commands/product-release.md"])
 
+    def test_hooks_dir_is_behavior(self):
+        # Issue 072: plugin hooks are executable surface, gated from day one.
+        result = linkage_check.classify_changed_paths(["hooks/on_stop.py", "hooks/hooks.json"])
+        self.assertEqual(result["behavior"], ["hooks/on_stop.py", "hooks/hooks.json"])
+        self.assertEqual(result["neutral"], [])
+
     def test_neutral_paths(self):
         result = linkage_check.classify_changed_paths(
             [

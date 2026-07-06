@@ -27,6 +27,7 @@ BEHAVIOR_PREFIXES = (
     "commands/",
     "skills/",
     "templates/",
+    "hooks/",
     ".github/workflows/",
 )
 BEHAVIOR_FILES = frozenset(
