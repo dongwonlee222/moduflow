@@ -179,7 +179,10 @@ def load_declaration_lines(root):
     declarations = []
     for line_no, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         text = raw.strip()
-        if not text or text.startswith("#"):
+        # Headings, blockquote prose, and format examples in backticks are
+        # documentation, not declarations — only bare lines count, so prose
+        # can never be mistaken for an approved declaration.
+        if not text or text.startswith(("#", ">", "`")):
             continue
         declarations.append({"line_no": line_no, "text": text})
     return declarations
