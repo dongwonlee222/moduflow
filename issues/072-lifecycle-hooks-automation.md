@@ -1,6 +1,6 @@
 # Issue: `072-lifecycle-hooks-automation`
 
-**Status: backlog** — created 2026-07-05.
+**Status: plan** — created 2026-07-05, spec 2026-07-06, plan 2026-07-06.
 **Priority: p2**
 
 ## Outcome
@@ -39,10 +39,18 @@ Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): ModuFl
 
 - 2026-07-05: Registered from the competitive-gap benchmark (priority 4 of 5).
 
+## Workflow Tasks
+
+- [x] spec → `specs/072-lifecycle-hooks-automation/spec.md` (+ `spec.ko.md`; scope expanded 2026-07-06 with 075-deferred session-time linkage warning + doctor log surfacing, both user-approved)
+- [x] plan → `specs/072-lifecycle-hooks-automation/plan.md` (+ tasks.md)
+- [ ] execute
+- [ ] review
+
 ## Links
 
 - Benchmark: `knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md`
+- Spec: `specs/072-lifecycle-hooks-automation/spec.md`
 
 ## Next Command
 
-`/product:status`
+`/product:execute 072-lifecycle-hooks-automation`
