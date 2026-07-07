@@ -1,6 +1,6 @@
 # Issue: `072-lifecycle-hooks-automation`
 
-**Status: active** — created 2026-07-05, spec 2026-07-06, plan 2026-07-06, started 2026-07-06.
+**Status: done** — created 2026-07-05, spec 2026-07-06, plan 2026-07-06, started 2026-07-06, done 2026-07-07.
 **Priority: p2**
 
 ## Outcome
@@ -53,4 +53,4 @@ Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): ModuFl
 
 ## Next Command
 
-`/product:execute 072-lifecycle-hooks-automation`
+`product:status`

@@ -21,12 +21,12 @@
     "057-korean-human-review-packet",
     "058-git-write-fallback-via-github-api"
   ],
-  "active_issue_id": "072-lifecycle-hooks-automation",
-  "phase": "execute",
+  "active_issue_id": "",
+  "phase": "select",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:execute 072-lifecycle-hooks-automation",
+  "next_command": "product:status",
   "attempts": {
     "command": "product:execute 058-git-write-fallback-via-github-api",
     "count": 0,
@@ -34,16 +34,16 @@
     "last_changed_at": "2026-07-03"
   },
   "blocker": null,
-  "last_action": "072 planning committed; V1 schema verification dispatched to claude-code-guide",
-  "last_verification": "393 tests OK; release_check valid; self-converge x2 caught real issues; explicit human merge approval",
-  "updated_at": "2026-07-06",
+  "last_action": "released 072 as 0.3.16 via PR #10",
+  "last_verification": "439 tests OK; converge 5/8 converged 0 violations; human approval",
+  "updated_at": "2026-07-07",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/072-lifecycle-hooks-automation",
+    "branch": null,
     "base_branch": "main",
     "commits": [],
-    "pull_request": null,
-    "release": null,
+    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/10",
+    "release": "0.3.16",
     "execution_backend": {
       "type": "host-subagent",
       "status": "selected",
