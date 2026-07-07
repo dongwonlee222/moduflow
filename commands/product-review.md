@@ -50,6 +50,7 @@ Review integrity rules (absorbed from Superpowers v6 subagent-driven-development
 - Reviewers are **read-only**: a review task never mutates the working tree or branches; it reports.
 - The coordinating agent must **not suppress or pre-rate reviewer findings** — every finding reaches `status.md` as reported; severity judgment and dismissal belong to the human (or an explicitly recorded decision), not to the agent that dispatched the review.
 - Each review verdict answers two questions separately: does the change match the spec (spec compliance), and is the change well-built (quality)? "Can't verify from the diff" is a valid verdict and must be recorded rather than rounded up to a pass.
+- **Constitution compliance (issue 073)**: every review verdict includes a constitution-check line against `workspace/constitution.md` — `Constitution: v<X.Y> checked — no violations` or the explicit violation list (C-refs). An amendment adopted without a logged human approval is itself a violation to report.
 
 ## Visual Review Gate
 
