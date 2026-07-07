@@ -1,0 +1,193 @@
+{
+  "schema": "moduflow.worker-plan.v1",
+  "issue_id": "072-lifecycle-hooks-automation",
+  "project_root": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
+  "workers": {
+    "configured": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "files": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "dead_workers": []
+  },
+  "parallel": {
+    "eligible": false,
+    "mode": "sequential",
+    "risks": [
+      "Task 1 touches shared state: V1. Hook schema verification: official Claude Code plugin-hooks docs + superpowers shipped hooks → `specs/072-lifecycle-hooks-automation/hook-schema-notes.md` (hooks.json shape, SessionStart matchers, Stop payload, context-injection channel, timeout semantics, plugin-cache CWD behavior; doc URLs cited) — depends: none. **No hook code before this lands.**",
+      "Task 2 touches shared state: A1. `hooks/hooks.json` + `hooks/session_start.py` (≤10-line Korean-first banner from state.json/loop-state; corrupt/missing → silent + hooks.log; exit 0 always) + tests — depends: V1",
+      "Task 6 touches shared state: D1. Direct-invocation dogfood (Status mutation → on_stop → state propagated; session_start banner matches live state; deliberate unlinked scratch edit → exactly one warning) + `product-doctor.md`/`product-status.md` doc updates — depends: A1, A2, B1"
+    ],
+    "merge_order": [
+      "T01",
+      "T02",
+      "T03",
+      "T04",
+      "T05",
+      "T06"
+    ],
+    "fallback": "sequential",
+    "criteria": [
+      "separate worker domains",
+      "non-overlapping expected files",
+      "no shared-state risk",
+      "dependency-aware merge order"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "text": "V1. Hook schema verification: official Claude Code plugin-hooks docs + superpowers shipped hooks → `specs/072-lifecycle-hooks-automation/hook-schema-notes.md` (hooks.json shape, SessionStart matchers, Stop payload, context-injection channel, timeout semantics, plugin-cache CWD behavior; doc URLs cited) — depends: none. **No hook code before this lands.**",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/072-lifecycle-hooks-automation-t01",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: V1. Hook schema verification: official Claude Code plugin-hooks docs + superpowers shipped hooks → `specs/072-lifecycle-hooks-automation/hook-schema-notes.md` (hooks.json shape, SessionStart matchers, Stop payload, context-injection channel, timeout semantics, plugin-cache CWD behavior; doc URLs cited) — depends: none. **No hook code before this lands.**\nExpected files: none\nCognitive demand: balanced — use your standard production model."
+      }
+    },
+    {
+      "id": "T02",
+      "text": "A1. `hooks/hooks.json` + `hooks/session_start.py` (≤10-line Korean-first banner from state.json/loop-state; corrupt/missing → silent + hooks.log; exit 0 always) + tests — depends: V1",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/072-lifecycle-hooks-automation-t02",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: A1. `hooks/hooks.json` + `hooks/session_start.py` (≤10-line Korean-first banner from state.json/loop-state; corrupt/missing → silent + hooks.log; exit 0 always) + tests — depends: V1\nExpected files: none\nCognitive demand: balanced — use your standard production model."
+      }
+    },
+    {
+      "id": "T03",
+      "text": "A2. `hooks/on_stop.py` (sync-marker change detection → `project_lifecycle.py --sync`; linkage quick-check → one deduped warning line via fingerprint; 5s budget bail; exit 0 always) + tests — depends: V1",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/072-lifecycle-hooks-automation-t03",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: A2. `hooks/on_stop.py` (sync-marker change detection → `project_lifecycle.py --sync`; linkage quick-check → one deduped warning line via fingerprint; 5s budget bail; exit 0 always) + tests — depends: V1\nExpected files: none\nCognitive demand: balanced — use your standard production model."
+      }
+    },
+    {
+      "id": "T04",
+      "text": "B1. Doctor surfaces `.moduflow/logs/hooks.log` tail as warnings (absent/empty → silence) + tests — depends: V1 (log format from Interfaces)",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/072-lifecycle-hooks-automation-t04",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: B1. Doctor surfaces `.moduflow/logs/hooks.log` tail as warnings (absent/empty → silence) + tests — depends: V1 (log format from Interfaces)\nExpected files: none\nCognitive demand: balanced — use your standard production model."
+      }
+    },
+    {
+      "id": "T05",
+      "text": "B2. Add `hooks/` to `linkage_check.classify_changed_paths` behavior prefixes + test (data-list change only) — depends: none",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/072-lifecycle-hooks-automation-t05",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: B2. Add `hooks/` to `linkage_check.classify_changed_paths` behavior prefixes + test (data-list change only) — depends: none\nExpected files: none\nCognitive demand: balanced — use your standard production model."
+      }
+    },
+    {
+      "id": "T06",
+      "text": "D1. Direct-invocation dogfood (Status mutation → on_stop → state propagated; session_start banner matches live state; deliberate unlinked scratch edit → exactly one warning) + `product-doctor.md`/`product-status.md` doc updates — depends: A1, A2, B1",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/072-lifecycle-hooks-automation-t06",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: D1. Direct-invocation dogfood (Status mutation → on_stop → state propagated; session_start banner matches live state; deliberate unlinked scratch edit → exactly one warning) + `product-doctor.md`/`product-status.md` doc updates — depends: A1, A2, B1\nExpected files: none\nCognitive demand: balanced — use your standard production model."
+      }
+    }
+  ],
+  "next_command": "product:execute 072-lifecycle-hooks-automation"
+}

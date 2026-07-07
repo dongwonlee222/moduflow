@@ -105,6 +105,21 @@
       "last_handoff": "Merged PR #9 into main after review pass and explicit human approval; released 0.3.14.",
       "next_command": "product:status",
       "updated_at": "2026-07-06"
+    },
+    {
+      "issue_id": "072-lifecycle-hooks-automation",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Dongwon",
+      "status": "review",
+      "branch": "",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/10",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/10",
+      "next_command": "product:review 072-lifecycle-hooks-automation",
+      "updated_at": "2026-07-07"
     }
   ]
 }

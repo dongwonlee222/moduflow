@@ -21,12 +21,12 @@
     "057-korean-human-review-packet",
     "058-git-write-fallback-via-github-api"
   ],
-  "active_issue_id": "",
-  "phase": "select",
+  "active_issue_id": "072-lifecycle-hooks-automation",
+  "phase": "execute",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:status",
+  "next_command": "product:execute 072-lifecycle-hooks-automation",
   "attempts": {
     "command": "product:execute 058-git-write-fallback-via-github-api",
     "count": 0,
@@ -34,20 +34,20 @@
     "last_changed_at": "2026-07-03"
   },
   "blocker": null,
-  "last_action": "released 071 as 0.3.14 via PR #9",
+  "last_action": "072 planning committed; V1 schema verification dispatched to claude-code-guide",
   "last_verification": "393 tests OK; release_check valid; self-converge x2 caught real issues; explicit human merge approval",
   "updated_at": "2026-07-06",
   "git_binding": {
     "mode": "git-files",
-    "branch": null,
+    "branch": "codex/072-lifecycle-hooks-automation",
     "base_branch": "main",
     "commits": [],
-    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/9",
-    "release": "0.3.14",
+    "pull_request": null,
+    "release": null,
     "execution_backend": {
       "type": "host-subagent",
       "status": "selected",
-      "reason": "parallel plan A1/B1 disjoint files; schema fixed in plan Interfaces",
+      "reason": "V1 docs verification via claude-code-guide; A/B streams parallel after V1",
       "session": "claude-2026-07-06"
     }
   }
