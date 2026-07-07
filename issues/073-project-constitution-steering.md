@@ -1,6 +1,6 @@
 # Issue: `073-project-constitution-steering`
 
-**Status: plan** — created 2026-07-05, spec 2026-07-07, plan 2026-07-07.
+**Status: active** — created 2026-07-05, spec 2026-07-07, plan 2026-07-07, started 2026-07-07.
 **Priority: p2**
 
 ## Outcome
@@ -43,8 +43,8 @@ Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): spec-k
 
 - [x] spec → `specs/073-project-constitution-steering/spec.md` (+ `spec.ko.md`; amendments human-gated, template+doc scope — user decisions 2026-07-07)
 - [x] plan → `specs/073-project-constitution-steering/plan.md` (+ tasks.md; inline coordinator mode)
-- [ ] execute
-- [ ] review
+- [x] execute → constitution v1.0 draft + 5-surface wiring (inline)
+- [x] review → specs/073-project-constitution-steering/review.md (pass; first constitution compliance line; converge 4/8 converged 0 violations)
 
 ## Links
 

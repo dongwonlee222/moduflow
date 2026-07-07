@@ -26,3 +26,7 @@ Status: ready-for-execute · Mode: inline coordinator (no worker split — judgm
 ## Gates recap
 
 test → self-application (own review uses the line) → review (converge auto-run) → release (version bump in completion commit; human ratification = merge approval). Rollback: revert merge; docs + one template string.
+
+## Converge Findings (auto)
+
+- [ ] CV-1 [medium] unverifiable: AC requires the NEXT issue's plan to use the reference form with dogfood evidence recorded in status.md. That artifact is absent from the bundle and the event is future-facing relative to these commits; cannot judge. — AC#8, from converge 2026-07-07

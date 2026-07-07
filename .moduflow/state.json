@@ -1,8 +1,8 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "plan",
+  "phase": "execute",
   "active_goal": "team-visibility-onboarding",
-  "active_issue": "",
+  "active_issue": "073-project-constitution-steering",
   "last_command": "product:plan 073-project-constitution-steering",
   "next_command": "product:execute 073-project-constitution-steering",
   "blockers": [],

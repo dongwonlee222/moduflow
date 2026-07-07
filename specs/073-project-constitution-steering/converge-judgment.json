@@ -1,0 +1,79 @@
+{
+  "schema": "moduflow.converge-judgment.v1",
+  "verdicts": [
+    {
+      "ac_id": "AC#8",
+      "verdict": "unverifiable",
+      "severity": "medium",
+      "evidence_quote": "Bundle contains no status.md for 073 and no post-073 plan; .moduflow/state.json shows last_command 'product:plan 073-project-constitution-steering' and next_command 'product:execute 073-project-constitution-steering'.",
+      "note": "AC requires the NEXT issue's plan to use the reference form with dogfood evidence recorded in status.md. That artifact is absent from the bundle and the event is future-facing relative to these commits; cannot judge."
+    },
+    {
+      "ac_id": "AC#7",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "AC: '`python3 scripts/release_check.py .` passes'. The bundle contains no command output, CI result, or test log.",
+      "note": "Runtime gate result is not testable from file contents alone."
+    },
+    {
+      "ac_id": "AC#1",
+      "verdict": "partial",
+      "severity": "low",
+      "evidence_quote": "workspace/constitution.md: 'Version: **v1.0** (ratification pending — see amendment log)'; amendment log row: '2026-07-07 | v1.0 | Initial ratification — 11 principles extracted... | Claude (agent) | **pending human ratification**'. constitution.ko.md mirrors it.",
+      "note": "File + .ko.md exist with semver version, 11 MUST/SHOULD principles each carrying rationale + origin, amendment procedure, and an amendment log. The first log entry is 'pending human ratification', not yet 'human-approved' as the AC literally states — but GC#3 explicitly mandates shipping pending, with approval expected at PR merge. Complete except the human-approval event itself."
+    },
+    {
+      "ac_id": "AC#2",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "All 11 principles C1–C11 in workspace/constitution.md carry an Origin field, e.g. 'Origin: 075 GC2 and the repaired release_check.py', 'Origin: 072 spec + hook-schema-notes.md', 'Origin: 071 GC1', 'Origin: 049 convention', 'Origin: 067 convention (2026-07-05)'.",
+      "note": "Every principle has an origin reference, and the referenced issues (075/071/072/067/049/060) are corroborated as real by the spec, plan, and command files within the bundle. Full resolution to the source artifacts is not in the bundle (see bundle_gaps) but no principle lacks an origin."
+    },
+    {
+      "ac_id": "AC#3",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "commands/product-plan.md: 'open with the constitution reference — Constitution v<X.Y> applies (workspace/constitution.md). Plan-specific additions: — then author ONLY the additions this issue needs. Never restate constitution principles; a per-issue tightening of a principle is an addition, not an amendment'. commands/product-spec.md: '## Constitution Assumed (issue 073) — Specs assume workspace/constitution.md — do not restate its principles in a spec.'",
+      "note": "Reference-form + additions-only instruction and the additions-not-amendments distinction present in product-plan.md; assumption note present in product-spec.md, matching the plan's Interface wording verbatim."
+    },
+    {
+      "ac_id": "AC#4",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "scripts/project_execution.py review-handoff template string: 'Constitution check (issue 073): verify against workspace/constitution.md and record the compliance line in review.md — Constitution: v<X.Y> checked — no violations or the violation list.' commands/product-review.md: 'Constitution compliance (issue 073): every review verdict includes a constitution-check line against workspace/constitution.md...'",
+      "note": "Both surfaces carry the constitution-check line, using the compliance-line format defined in the plan's Interfaces section."
+    },
+    {
+      "ac_id": "AC#5",
+      "verdict": "partial",
+      "severity": "low",
+      "evidence_quote": "commands/product-converge.md: '## Constitution Relationship (issue 073) — Plan Global Constraints are constitution-derived since 073... converge's existing \"Global Constraint violation = automatically high\" rule transitively enforces constitution principles wherever a plan applies them. No converge code change was needed.'",
+      "note": "Transitive-enforcement note is clearly present (converged half). The 'no script code changed anywhere' half cannot be positively verified: the bundle carries current file content only, no diffs. scripts/project_execution.py was touched, which GC#1 sanctions as a string-template-only edit, and its current content shows only a string-list addition — consistent with, but not proof of, no logic change."
+    },
+    {
+      "ac_id": "AC#6",
+      "verdict": "converged",
+      "severity": "low",
+      "evidence_quote": "workspace/constitution.md Amendment procedure item 4: '**Unlogged edits are void**: a change to the principles without a matching approved log entry has no force. Revert path: git log -- workspace/constitution.md, revert any commit lacking a logged human approval.'",
+      "note": "Unlogged-edit-void rule and the revert path are stated in the file's top governance block (header + amendment procedure), also mirrored in constitution.ko.md. Satisfies GC#4."
+    }
+  ],
+  "unrequested": [
+    {
+      "behavior": "Plugin version bumped to 0.3.17 in .claude-plugin/plugin.json and 0.3.17+codex.20260626145655 in .codex-plugin/plugin.json — not requested by any AC/GC, though the plan's Deploy gate mentions 'version bump in completion commit'.",
+      "file": ".claude-plugin/plugin.json",
+      "severity": "low"
+    },
+    {
+      "behavior": ".moduflow/state.json updated to phase 'plan' with next_command 'product:execute 073' — routine state tracking not asked for by AC/GC; slightly stale relative to the implementation commit it ships alongside.",
+      "file": ".moduflow/state.json",
+      "severity": "low"
+    }
+  ],
+  "bundle_gaps": [
+    "Bundle contains current file contents only, no commit diffs: AC#5's 'no script code changed anywhere', GC#7 (shipped plans 075/071/072 untouched), and GC#8 (targeted git add, branch name, trailers beyond the listed subjects) cannot be positively verified.",
+    "AC#7 requires a runtime result (release_check.py passing); no command output or CI log is in the bundle.",
+    "AC#8 depends on specs/073-project-constitution-steering/status.md and a post-073 plan, neither of which is in the bundle; the AC is future-facing relative to the two linked commits.",
+    "AC#2 origin references (075/071/072/067/049/060 source artifacts) are not included in the bundle; resolution is corroborated only by cross-references within the bundled spec, plan, and command files."
+  ]
+}
