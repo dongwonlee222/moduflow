@@ -56,6 +56,10 @@ flowchart TD
 ## Risks & Open Questions
 ````
 
+## Constitution Assumed (issue 073)
+
+Specs assume `workspace/constitution.md` — do not restate its principles in a spec. Only constraints specific to this issue belong in the spec body; shared engineering law arrives by reference when the plan is written.
+
 ## Selective depth (not every artifact on every issue)
 
 The diagram, Non-Goals, and Alternatives belong in essentially every spec. The heavier planning artifacts — user scenario detail, IA tree, customer journey, screen plans — are produced **only when the issue warrants them** (a UX feature needs screens; a refactor does not). Reach for `/product:design` / `/product:analyze` then, not by default. See `046-planning-artifact-templates`.

@@ -165,6 +165,10 @@ If judgment dispatch fails:
 - The inline fallback is used
 - The limitation is recorded in converge.md for future review
 
+## Constitution Relationship (issue 073)
+
+Plan Global Constraints are constitution-derived since 073 (`Constitution vX.Y applies + plan-specific additions`), so converge's existing "Global Constraint violation = automatically high" rule transitively enforces constitution principles wherever a plan applies them. No converge code change was needed.
+
 ## Standalone Usage
 
 Run converge on an issue anytime:

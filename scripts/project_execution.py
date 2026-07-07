@@ -82,6 +82,7 @@ def build_review_handoff(root, issue_id):
         "- Worker: `pm-strategist`",
         "- Worker: `spec-architect`",
         "- Goal: compare implementation against problem, goals, non-goals, and acceptance criteria.",
+        "- Constitution check (issue 073): verify against `workspace/constitution.md` and record the compliance line in review.md — `Constitution: v<X.Y> checked — no violations` or the violation list.",
         "",
         "## Visual Handoff",
         "",

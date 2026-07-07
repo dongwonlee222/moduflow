@@ -14,7 +14,7 @@ Prepare implementation.
 3. Split tasks by independent work streams for possible parallel workers.
 4. Define test, review, deploy, and rollback gates.
 5. Structure the plan for handoff quality (absorbed from Superpowers v6 writing-plans, issue `067`):
-   - **Global Constraints** block at the top: binding rules every task must honor verbatim (naming, dependency, compatibility constraints) — so per-task workers can't drift from them.
+   - **Global Constraints** block at the top (issue 073): open with the constitution reference — `Constitution v<X.Y> applies (workspace/constitution.md). Plan-specific additions:` — then author ONLY the additions this issue needs. Never restate constitution principles; a per-issue *tightening* of a principle is an addition, not an amendment (no constitution log entry needed). Additions remain binding rules every task must honor verbatim, so per-task workers can't drift from them.
    - Per-task **Interfaces** notes where tasks hand data to each other: what each task consumes and produces, so parallel workers agree on contracts before building.
    - Right-size tasks: one reviewable outcome each — split a task whose diff a reviewer couldn't judge in one sitting; merge tasks too small to verify independently.
 
