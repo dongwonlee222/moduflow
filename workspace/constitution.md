@@ -1,6 +1,6 @@
 # ModuFlow Project Constitution
 
-Version: **v1.0** (ratification pending — see amendment log)
+Version: **v1.0** (ratified 2026-07-07 — see amendment log)
 Jurisdiction: engineering principles for this project. Output/format conventions for agents live in `AGENTS.md` (issue 060 boundary) — the two do not overlap.
 
 ## Amendment procedure
@@ -31,4 +31,4 @@ Each principle: force · rule · rationale · origin (the practiced law it codif
 
 | Date | Version | Change | Proposer | Approver (human) |
 | --- | --- | --- | --- | --- |
-| 2026-07-07 | v1.0 | Initial ratification — 11 principles extracted from practiced law (075/071/072 plan GCs; 067/049/060 conventions) | Claude (agent) | **pending human ratification** |
+| 2026-07-07 | v1.0 | Initial ratification — 11 principles extracted from practiced law (075/071/072 plan GCs; 067/049/060 conventions) | Claude (agent) | Dongwon Lee (merge approval of PR #11, 2026-07-07: "비준하고 병합합시다") |

@@ -1,6 +1,6 @@
 # Issue: `073-project-constitution-steering`
 
-**Status: active** — created 2026-07-05, spec 2026-07-07, plan 2026-07-07, started 2026-07-07.
+**Status: done** — created 2026-07-05, spec 2026-07-07, plan 2026-07-07, started 2026-07-07, done 2026-07-07.
 **Priority: p2**
 
 ## Outcome
@@ -53,4 +53,4 @@ Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): spec-k
 
 ## Next Command
 
-`/product:execute 073-project-constitution-steering`
+`product:status`

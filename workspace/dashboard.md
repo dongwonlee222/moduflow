@@ -10,7 +10,7 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Active Issue
 
-- `073-project-constitution-steering` (phase: execute). Canonical: `issues/073-project-constitution-steering.md`.
+- None active. Run `product:status` to pick the next issue.
 
 ## Recently Completed
 

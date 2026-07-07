@@ -126,14 +126,14 @@
       "owner": "",
       "assignee": "",
       "reviewer": "Dongwon",
-      "status": "review",
+      "status": "done",
       "branch": "",
       "pr": "https://github.com/dongwonlee222/moduflow/pull/11",
-      "lock_state": "active",
+      "lock_state": "released",
       "locked_by": "",
       "blocker": "",
-      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/11",
-      "next_command": "product:review 073-project-constitution-steering",
+      "last_handoff": "Merged PR #11; Constitution v1.0 ratified by human approval; released 0.3.17.",
+      "next_command": "product:status",
       "updated_at": "2026-07-07"
     }
   ]
