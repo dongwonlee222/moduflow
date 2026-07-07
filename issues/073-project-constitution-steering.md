@@ -1,6 +1,6 @@
 # Issue: `073-project-constitution-steering`
 
-**Status: backlog** — created 2026-07-05.
+**Status: plan** — created 2026-07-05, spec 2026-07-07, plan 2026-07-07.
 **Priority: p2**
 
 ## Outcome
@@ -39,10 +39,18 @@ Benchmark (knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md): spec-k
 
 - 2026-07-05: Registered from the competitive-gap benchmark (priority 5 of 5).
 
+## Workflow Tasks
+
+- [x] spec → `specs/073-project-constitution-steering/spec.md` (+ `spec.ko.md`; amendments human-gated, template+doc scope — user decisions 2026-07-07)
+- [x] plan → `specs/073-project-constitution-steering/plan.md` (+ tasks.md; inline coordinator mode)
+- [ ] execute
+- [ ] review
+
 ## Links
 
 - Benchmark: `knowledge/benchmarks/2026-07-05-competitive-gap-benchmark.md`
+- Spec: `specs/073-project-constitution-steering/spec.md`
 
 ## Next Command
 
-`/product:status`
+`/product:execute 073-project-constitution-steering`
