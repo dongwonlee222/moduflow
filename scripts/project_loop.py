@@ -176,6 +176,20 @@ def issue_path(root, issue_id):
     return Path(root).resolve() / "issues" / f"{issue_id}.md"
 
 
+def implementation_readiness_path(root, issue_id):
+    return Path(root).resolve() / "specs" / issue_id / "implementation-readiness.json"
+
+
+def load_implementation_readiness(root, issue_id):
+    path = implementation_readiness_path(root, issue_id)
+    if not path.exists():
+        return None
+    try:
+        return read_json(path)
+    except Exception:
+        return None
+
+
 def workflow_checkbox_state(issue_text, label):
     checked_pattern = f"- [x] {label}"
     unchecked_pattern = f"- [ ] {label}"
@@ -255,6 +269,17 @@ def recommend_loop(root):
     phase = infer_issue_phase(root, active_issue_id)
     command = recommend_next_command(active_issue_id, phase)
     state["phase"] = phase
+
+    if phase == "execute":
+        readiness = load_implementation_readiness(root, active_issue_id)
+        if readiness and readiness.get("status") == "not_ready":
+            state["phase"] = "plan"
+            state["status"] = "needs_decision"
+            state["blocker"] = (
+                "Implementation readiness is not_ready; return to product:plan before execution."
+            )
+            state["next_command"] = f"product:plan {active_issue_id}"
+            return state
 
     delegation_level = state.get("delegation_level", "review_required")
     if phase == "execute" and delegation_level in {"manual", "review_required"}:

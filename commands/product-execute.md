@@ -11,13 +11,22 @@ Run implementation from an approved plan.
 
 1. Verify issue, spec, plan, and tasks exist.
    - Soft pre-check: run `python3 scripts/spec_consistency.py . --issue-id <id>` and report the findings. Proceed on warn/info findings; stop and fix on structure errors unless the user says otherwise — this is agent judgment, not a hard gate.
-2. Run `scripts/worker_orchestrator.py <issue> --write` if `specs/<issue>/worker-plan.md` is missing.
-3. Use Superpowers process: plan, TDD when applicable, workers for independent tasks, review, verification.
-4. Update `specs/<issue>/status.md` as work progresses.
-5. Keep Git branch and commits tied to issue ID.
-6. Recommend and record an execution backend before starting substantial implementation.
-7. Before entering review, ensure early PR state exists: when GitHub sync is available and the workflow/user has allowed GitHub writes, open a Draft PR after the first meaningful commit. If GitHub writes are unavailable, record a local PR-ready marker through `product:pr` instead of waiting until review is finished.
-8. At implementation completion, generate the review handoff before asking the user what to do next:
+2. Run implementation-readiness before worker dispatch:
+
+```bash
+python3 scripts/project_execution.py . --issue-id <id> --readiness --write
+```
+
+   - `ready`: proceed.
+   - `warning`: proceed only after reporting concrete gaps and risk.
+   - `not_ready`: recommend `product:plan <id>` and ask for explicit user approval before continuing. This is report-only in v1, not an automatic hard block.
+3. Run `scripts/worker_orchestrator.py <issue> --write` if `specs/<issue>/worker-plan.md` is missing.
+4. Use Superpowers process: plan, TDD when applicable, workers for independent tasks, review, verification.
+5. Update `specs/<issue>/status.md` as work progresses.
+6. Keep Git branch and commits tied to issue ID.
+7. Recommend and record an execution backend before starting substantial implementation.
+8. Before entering review, ensure early PR state exists: when GitHub sync is available and the workflow/user has allowed GitHub writes, open a Draft PR after the first meaningful commit. If GitHub writes are unavailable, record a local PR-ready marker through `product:pr` instead of waiting until review is finished.
+9. At implementation completion, generate the review handoff before asking the user what to do next:
 
 ```bash
 python3 scripts/project_execution.py <project-path> --issue-id <issue id> --review-handoff --write
@@ -25,7 +34,7 @@ python3 scripts/project_execution.py <project-path> --issue-id <issue id> --revi
 
 This writes `specs/<issue>/review-handoff.md`, including implementation-worker, review-worker, verification, and dashboard plus issue drill-down handoff instructions.
 
-9. Continue directly into `product:review <issue id>` unless a blocker, failing test, dirty Git conflict, missing artifact, or explicit user stop prevents review. Do not ask the user whether to review after implementation; review is part of the implementation completion contract.
+10. Continue directly into `product:review <issue id>` unless a blocker, failing test, dirty Git conflict, missing artifact, or explicit user stop prevents review. Do not ask the user whether to review after implementation; review is part of the implementation completion contract.
 
 ## Execution Backend
 

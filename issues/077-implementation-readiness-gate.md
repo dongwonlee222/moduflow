@@ -1,6 +1,6 @@
 # Issue 077: Implementation Readiness Gate
 
-**Status: backlog** — created 2026-07-09.
+**Status: in_progress** — created 2026-07-09, spec 2026-07-09, plan 2026-07-09.
 **Priority: p1**
 
 ## Summary
@@ -81,10 +81,10 @@ Do NOT touch (files, behaviors, or decisions out of bounds for this issue).
 
 Every artifact-producing step is a tracked task here — never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
 
-- [ ] spec → `specs/077-implementation-readiness-gate/spec.md`
-- [ ] plan → `specs/077-implementation-readiness-gate/plan.md`
-- [ ] execute → PR / commits
-- [ ] review → review notes
+- [x] spec → `specs/077-implementation-readiness-gate/spec.md`
+- [x] plan → `specs/077-implementation-readiness-gate/plan.md`
+- [x] execute → readiness checker, loop routing, command docs
+- [x] review → `specs/077-implementation-readiness-gate/review.md`
 
 ## Related Issues
 
@@ -106,6 +106,11 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 - Sessions: `sessions/077-implementation-readiness-gate/`
 - Roadmap: `workspace/roadmap.md`
 
+## PR
+
+- Draft PR: https://github.com/dongwonlee222/moduflow/pull/14
+- Base: `codex/079-plan-discipline-skill-matrix`
+
 ## Next Command
 
-`product:spec 077-implementation-readiness-gate`
+`product:pr 077-implementation-readiness-gate`

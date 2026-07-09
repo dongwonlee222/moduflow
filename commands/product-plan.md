@@ -33,6 +33,23 @@ Recommended Discipline example:
 
 The matrix is guidance, not an execution gate. Do not block `product:execute` from this section alone; issue 077 owns implementation-readiness gates.
 
+## Implementation Readiness Inputs
+
+Before recommending `/product:execute`, plans should state the applicable
+contracts that issue 077 checks:
+
+- API contract mapping, or explicit `not applicable`.
+- Test strategy and what each test proves.
+- Storybook required states when frontend UI is in scope.
+- MSW fixture baseline when API-backed UI is in scope.
+- Playwright smoke matrix when browser-visible user flows are in scope.
+- Permission/role model when access control is in scope.
+- Release/rollback verification condition.
+
+Do not paste the full frontend QA template pack here; issue 078 owns reusable
+template details. The plan only needs enough evidence for the readiness check
+to route correctly.
+
 ## Next
 
 - Recommended: `python3 scripts/spec_consistency.py . --issue-id <id>` once plan.md and tasks.md exist, to catch coverage gaps, vague terms, and stream mismatches before execution.
