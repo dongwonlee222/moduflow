@@ -40,6 +40,11 @@ Apply:
 python3 scripts/project_promote.py . --record memory/decisions/2026-07-06-use-issue-less-context-tiers.md --write
 ```
 
+Reference-improvement entries live in `workspace/reference-improvements.md`.
+Promote them only after shaping the entry into an executable record with scope,
+checks, and entry points; do not treat every captured reference suggestion as
+issue-worthy by default.
+
 Options:
 
 - `--issue-id <id>`: explicit issue number or full id (default: next `NNN` in `issues/` + kebab-case title slug)

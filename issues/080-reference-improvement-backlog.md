@@ -1,6 +1,6 @@
 # Issue 080: Reference Improvement Backlog
 
-**Status: backlog** — created 2026-07-09.
+**Status: reviewed** — created 2026-07-09, started 2026-07-09, reviewed 2026-07-09.
 **Priority: p2**
 
 ## Summary
@@ -75,10 +75,10 @@ Do NOT touch (files, behaviors, or decisions out of bounds for this issue).
 
 Every artifact-producing step is a tracked task here — never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
 
-- [ ] spec → `specs/080-reference-improvement-backlog/spec.md`
-- [ ] plan → `specs/080-reference-improvement-backlog/plan.md`
-- [ ] execute → PR / commits
-- [ ] review → review notes
+- [x] spec → `specs/080-reference-improvement-backlog/spec.md`
+- [x] plan → `specs/080-reference-improvement-backlog/plan.md`
+- [x] execute → PR / commits
+- [x] review → `specs/080-reference-improvement-backlog/review.md`
 
 ## Related Issues
 
@@ -99,7 +99,8 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 - Status: `specs/080-reference-improvement-backlog/status.md`
 - Sessions: `sessions/080-reference-improvement-backlog/`
 - Roadmap: `workspace/roadmap.md`
+- PR: https://github.com/dongwonlee222/moduflow/pull/16
 
 ## Next Command
 
-`product:spec 080-reference-improvement-backlog`
+`product:pr 080-reference-improvement-backlog`

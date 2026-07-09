@@ -26,7 +26,8 @@ python3 scripts/project_execution.py . --issue-id <id> --readiness --write
 6. Keep Git branch and commits tied to issue ID.
 7. Recommend and record an execution backend before starting substantial implementation.
 8. Before entering review, ensure early PR state exists: when GitHub sync is available and the workflow/user has allowed GitHub writes, open a Draft PR after the first meaningful commit. If GitHub writes are unavailable, record a local PR-ready marker through `product:pr` instead of waiting until review is finished.
-9. At implementation completion, generate the review handoff before asking the user what to do next:
+9. If implementation exposes an improvement for a reference repo, reusable template, or upstream example that is outside the active issue, capture it in `workspace/reference-improvements.md` with `scripts/project_reference_backlog.py --write`. Do not mutate the reference repo or expand the current issue without explicit user approval.
+10. At implementation completion, generate the review handoff before asking the user what to do next:
 
 ```bash
 python3 scripts/project_execution.py <project-path> --issue-id <issue id> --review-handoff --write
@@ -34,7 +35,7 @@ python3 scripts/project_execution.py <project-path> --issue-id <issue id> --revi
 
 This writes `specs/<issue>/review-handoff.md`, including implementation-worker, review-worker, verification, and dashboard plus issue drill-down handoff instructions.
 
-10. Continue directly into `product:review <issue id>` unless a blocker, failing test, dirty Git conflict, missing artifact, or explicit user stop prevents review. Do not ask the user whether to review after implementation; review is part of the implementation completion contract.
+11. Continue directly into `product:review <issue id>` unless a blocker, failing test, dirty Git conflict, missing artifact, or explicit user stop prevents review. Do not ask the user whether to review after implementation; review is part of the implementation completion contract.
 
 ## Execution Backend
 

@@ -1,0 +1,48 @@
+{
+  "schema": "moduflow.converge-evidence.v1",
+  "issue_id": "080-reference-improvement-backlog",
+  "generated": "2026-07-09",
+  "commits": [],
+  "files": [],
+  "acceptance_criteria": [
+    {
+      "id": "AC#1",
+      "text": "`templates/workspace/reference-improvements.md` exists and documents the backlog shape.",
+      "parseable": true
+    },
+    {
+      "id": "AC#2",
+      "text": "`scripts/project_reference_backlog.py` can dry-run and write candidate records.",
+      "parseable": true
+    },
+    {
+      "id": "AC#3",
+      "text": "Records include source reference, originating issue/spec, observed gap, suggested improvement, priority, status, and promotion target.",
+      "parseable": true
+    },
+    {
+      "id": "AC#4",
+      "text": "Duplicate title/source pairs do not append duplicate records.",
+      "parseable": true
+    },
+    {
+      "id": "AC#5",
+      "text": "Command docs explain capture, status/loop visibility, and promotion path.",
+      "parseable": true
+    },
+    {
+      "id": "AC#6",
+      "text": "Validation includes the new template/script surface.",
+      "parseable": true
+    },
+    {
+      "id": "AC#7",
+      "text": "Validation passes: `python3 scripts/validate_moduflow.py .`, `python3 scripts/validate_project_artifacts.py .`, and `python3 scripts/release_check.py .`.",
+      "parseable": true
+    }
+  ],
+  "global_constraints": [],
+  "truncated": false,
+  "no_evidence": true,
+  "errors": []
+}

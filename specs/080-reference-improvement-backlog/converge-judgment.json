@@ -1,0 +1,58 @@
+{
+  "schema": "moduflow.converge-judgment.v1",
+  "verdicts": [
+    {
+      "ac_id": "AC#1",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "",
+      "note": "Converge evidence ran before the implementation commit existed, so the bundle had no changed files to judge."
+    },
+    {
+      "ac_id": "AC#2",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "",
+      "note": "Covered by targeted unittest and local verification, but not visible in the pre-commit converge bundle."
+    },
+    {
+      "ac_id": "AC#3",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "",
+      "note": "Covered by targeted unittest and local verification, but not visible in the pre-commit converge bundle."
+    },
+    {
+      "ac_id": "AC#4",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "",
+      "note": "Covered by targeted unittest and local verification, but not visible in the pre-commit converge bundle."
+    },
+    {
+      "ac_id": "AC#5",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "",
+      "note": "Command guidance changed locally, but the pre-commit converge bundle had no changed files."
+    },
+    {
+      "ac_id": "AC#6",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "",
+      "note": "Validation passed locally, but the pre-commit converge bundle had no changed files."
+    },
+    {
+      "ac_id": "AC#7",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "",
+      "note": "Verification commands passed locally, but the pre-commit converge bundle had no changed files."
+    }
+  ],
+  "unrequested": [],
+  "bundle_gaps": [
+    "Converge was run before the branch had a commit, so evidence reported no commits/files. Treat this as review evidence limitation, not as a blocking failure."
+  ]
+}

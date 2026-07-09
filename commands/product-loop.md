@@ -145,6 +145,14 @@ Simple user aliases should route here: `상태`, `다음`, `이거 해줘`, `완
 
 Record repeated failures or uncertainty in `specs/<issue>/reflection.md`.
 
+## Reference Improvement Routing
+
+`workspace/reference-improvements.md` is optional context. `product:loop`
+may mention pending reference-improvement entries after the active issue
+handoff, but it should not switch the active cursor to them unless the user
+explicitly chooses to promote or work on one. Use `product:promote` only when
+the entry has enough scope, checks, and entry points to become a normal issue.
+
 ## Implementation Readiness Routing
 
 When the active issue is in `execute` phase and
