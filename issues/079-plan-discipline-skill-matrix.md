@@ -85,6 +85,7 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 - [x] plan → `specs/079-plan-discipline-skill-matrix/plan.md`
 - [x] execute → docs guidance updates
 - [x] review → `specs/079-plan-discipline-skill-matrix/review.md`
+- [x] pr → `specs/079-plan-discipline-skill-matrix/pr.md`
 
 ## Related Issues
 

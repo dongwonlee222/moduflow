@@ -13,6 +13,7 @@ Updated: 2026-07-09
 - Plan and tasks written; the plan dogfoods the `Recommended Discipline` matrix.
 - Command and skill docs updated so future plans surface recommended disciplines without adding readiness gates.
 - Self-review written with no blocking findings.
+- PR handoff and Korean review packet written for human-first review.
 
 ## Verification
 
