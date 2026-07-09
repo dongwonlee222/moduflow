@@ -15,7 +15,7 @@
 ## 이슈 요약
 
 - 제목: Issue 076: Fast Path Shaping Router
-- 설명: Keep the normal "make an issue" path fast, while adding a lightweight shaping router that asks 1-3 questions only when a request is vague, risky, strategic, or too broad to turn into an agent-ready issue.
+- 설명: 평소의 “이슈 만들어줘” 경로는 빠르게 유지하면서, 요청이 애매하거나 위험하거나 전략적이거나 너무 넓을 때만 1-3개 질문으로 가볍게 shaping하는 라우터를 추가합니다.
 
 ## 사람이 확인할 내용
 
@@ -39,12 +39,12 @@
 
 ## 검증 요약
 
-- 2026-07-09: RED confirmed before implementation: new intake tests failed on missing `shaping_path` and old `create_issue` routing for ambiguous/strategic requests.
-- 2026-07-09: `python3 -m unittest tests.test_project_intake.ProjectIntakeTests -v` passed, 10 tests OK.
-- 2026-07-09: `python3 scripts/validate_moduflow.py .` passed.
-- 2026-07-09: `python3 scripts/validate_project_artifacts.py .` passed with only the existing optional memory warning.
-- 2026-07-09: `python3 scripts/release_check.py .` passed.
-- 2026-07-09: Expanded intake matrix passed, 13 tests OK. Manual case sweep confirmed README improvement, bug fix, benchmark research, metric diagnostics, and API implementation route fast; adoption and strategy questions route short/panel.
+- 2026-07-09: 구현 전 RED 확인 — 신규 intake 테스트가 `shaping_path` 부재와 애매한/전략 요청의 기존 `create_issue` 라우팅 때문에 실패했습니다.
+- 2026-07-09: `python3 -m unittest tests.test_project_intake.ProjectIntakeTests -v` 통과, 10 tests OK.
+- 2026-07-09: `python3 scripts/validate_moduflow.py .` 통과.
+- 2026-07-09: `python3 scripts/validate_project_artifacts.py .` 통과. 기존 optional memory warning만 있습니다.
+- 2026-07-09: `python3 scripts/release_check.py .` 통과.
+- 2026-07-09: 확장 intake matrix 통과, 13 tests OK. README 개선, 버그 수정, 벤치마크 조사, 지표 진단, API 구현은 fast로 가고, 채택/전략 질문은 short/panel로 가는 것을 확인했습니다.
 
 ## no-issue 선언 (issue 075)
 
@@ -52,18 +52,18 @@
 
 ## 리뷰 결과
 
-No blocking issues found.
+차단 이슈는 없습니다.
 
-Accepted residual risks:
+수용한 잔여 리스크:
 
-- The first implementation uses keyword heuristics for ambiguous/strategic requests. This is intentionally small and testable; richer classification can follow after real usage examples.
-- The heuristic now treats clear execution domains (`dev`, `design`, `data`, `docs`, `ops`, `research`, `business`) as fast path even when the request contains words like "왜" or "개선"; this should be watched against future false negatives where a domain word appears in a genuinely strategic question.
-- Panel shaping is represented as compressed routing metadata and docs, not a full multi-agent execution engine. That keeps 076 scoped; deeper skill-matrix/discipline automation belongs to 079.
-- Review was performed inline in the current session. A separate review pass is still recommended before PR/merge.
+- 첫 구현은 애매한/전략적 요청을 키워드 휴리스틱으로 판단합니다. 일부러 작고 테스트 가능하게 시작했으며, 실제 사용 예시가 쌓이면 분류를 더 정교하게 만들 수 있습니다.
+- 명확한 실행 도메인(`dev`, `design`, `data`, `docs`, `ops`, `research`, `business`)이 있으면 요청에 `왜`나 `개선`이 들어가도 fast path로 둡니다. 정말 전략적인 질문에 실행 도메인 단어가 섞이는 경우 false negative가 생길 수 있어 후속 튜닝 때 봐야 합니다.
+- panel shaping은 완전한 다중 에이전트 엔진이 아니라 압축된 라우팅 메타데이터와 문서 규칙입니다. 더 깊은 skill matrix/discipline 자동화는 079에서 다룹니다.
+- 리뷰는 현재 세션에서 inline으로 수행했습니다. PR/merge 전 별도 리뷰 패스를 한 번 더 권장합니다.
 
-Follow-on operating rule:
+후속 운영 원칙:
 
-- Future routing or discipline optimization should be treated as data-backed tuning: collect representative request examples, encode them as regression tests, verify RED/GREEN, then update docs with the resulting rule.
+- 앞으로 라우터나 discipline 추천을 최적화할 때는 감으로 바꾸지 않고, 여러 실제 요청 예시를 모아 회귀 테스트로 고정하고 RED/GREEN을 확인한 뒤 문서에 규칙을 반영합니다.
 
 ## 보류 조건
 
