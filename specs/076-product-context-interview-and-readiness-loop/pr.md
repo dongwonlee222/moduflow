@@ -9,11 +9,13 @@ Use a Draft PR or a local PR-ready marker early, then attach review, verificatio
 
 - Branch: `codex/076-product-context-interview-and-readiness-loop`
 - PR: `local:076-product-context-interview-and-readiness-loop:draft-pr-ready`
+- Remote branch: `origin/codex/076-product-context-interview-and-readiness-loop`
+- GitHub PR creation URL: `https://github.com/dongwonlee222/moduflow/pull/new/codex/076-product-context-interview-and-readiness-loop`
 - Reviewer: `Dongwon Lee`
-- Fallback reason: GitHub Draft PR creation is unavailable in this environment: `gh auth status` reports invalid tokens for the configured accounts, and the commit capability preflight reported local `.git` write probing blocked in the sandbox. This local PR-ready marker preserves review state until GitHub sync creates or mirrors the PR.
+- Fallback reason: The branch was pushed successfully, but GitHub Draft PR creation is unavailable through CLI in this environment: `gh auth status` reports invalid tokens for the configured accounts. This local PR-ready marker preserves review state until GitHub sync creates or mirrors the PR.
 - Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
-- Commit mode: `local commit already created; PR preflight fallback is local-pr-ready`
+- Commit mode: `local commit pushed to origin; PR preflight fallback is local-pr-ready`
 
 ## Commands
 
