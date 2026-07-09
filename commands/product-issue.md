@@ -34,6 +34,16 @@ python3 scripts/project_github_issues.py . --issue-id <id> --sync
 
 One issue = one deliverable with its own lifecycle. The workflow steps that produce planning artifacts (spec, plan, design) are **tasks inside that issue**, not separate top-level issues — this avoids infinite regress (a "write the spec" issue would itself need a spec). The artifact is always tracked; only the unit is the issue's task list. Split into a new issue only when a step grows into its own deliverable.
 
+## Fast Path Shaping
+
+Clear issue requests stay fast:
+
+```text
+"이슈 만들어줘: README 설치법 추가" -> product:issue
+```
+
+Do not ask interview questions when the deliverable, target artifact, and verification path are already clear. If the request is ambiguous, broad, strategic, or risky, ask at most 1-3 shaping questions first or route through `/product:opportunity`. When the user explicitly wants speed, create a discovery issue and record unknowns in `Opportunity`, `Acceptance Criteria`, or `Scope Fence` instead of blocking.
+
 ## Lifecycle Actions
 
 Support short commands and Korean natural-language equivalents:

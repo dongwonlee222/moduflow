@@ -135,6 +135,12 @@ Minimum loop-state v2 fields:
 
 `이거 해줘: <request>` should use `scripts/project_intake.py` semantics before creating work: classify the request, check related issues, attach to the active issue when it matches, generate issue candidates for new work, or append an inbox record when `--write` is requested.
 
+The intake result may recommend three shaping paths:
+
+- `create_issue` / `fast`: create the issue now; clear requests do not need an interview.
+- `shape_then_issue` / `short`: ask 1-3 user-facing questions before issue/spec/goal creation.
+- `panel_shape` / `panel`: use compressed multi-perspective product shaping through `/product:opportunity`; show only the final questions, not raw panel notes.
+
 Simple user aliases should route here: `상태`, `다음`, `이거 해줘`, `완료`.
 
 Record repeated failures or uncertainty in `specs/<issue>/reflection.md`.

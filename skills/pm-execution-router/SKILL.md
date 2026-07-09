@@ -19,6 +19,16 @@ Prefer these aliases for broad user intent before asking the user to choose amon
 
 Exact `product:*` input (direct product command) is a direct command and should bypass broad alias routing.
 
+## Fast Path Shaping Router
+
+Before creating new product work, choose the smallest useful path:
+
+- **Fast path**: clear, bounded, low-risk requests go directly to `/product:issue`; do not run an interview.
+- **Short shaping path**: ambiguous or broad requests ask 1-3 concise questions, then promote the answer to issue/spec/goal context.
+- **Panel path**: strategic, high-risk, or product-direction requests may use multiple perspectives internally, but show only the compressed 1-3 user-facing questions.
+
+Never expose raw panel notes. Never make interview mandatory for all issues. If the user asks for speed, create a bounded discovery issue with explicit unknowns instead of blocking.
+
 ## Routing
 
 - Raw idea, feedback, bug, or loose note: `/product:inbox` (`inbox`, `인박스`)

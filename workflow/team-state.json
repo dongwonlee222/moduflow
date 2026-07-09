@@ -135,6 +135,21 @@
       "last_handoff": "Merged PR #11; Constitution v1.0 ratified by human approval; released 0.3.17.",
       "next_command": "product:status",
       "updated_at": "2026-07-07"
+    },
+    {
+      "issue_id": "076-product-context-interview-and-readiness-loop",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Dongwon Lee",
+      "status": "review",
+      "branch": "",
+      "pr": "local-pr-ready",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: local-pr-ready",
+      "next_command": "product:review 076-product-context-interview-and-readiness-loop",
+      "updated_at": "2026-07-09"
     }
   ]
 }

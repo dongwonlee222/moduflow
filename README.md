@@ -1,20 +1,41 @@
 # ModuFlow
 
-ModuFlow is a Git-native PM execution orchestrator.
+ModuFlow is a product execution loop that helps AI agents keep product context from goal to execution and verification.
 
-It keeps product work in Git, then uses skills/plugins as replaceable adapters:
+In Korean:
 
-- Claude Productivity: dashboard/view inspiration
-- Claude Product Management: PM artifact patterns
-- GitHub Spec Kit: spec, plan, and task structure
-- Superpowers: subagent execution, review, and verification
-- Codex Product Design: UX brief, ideation, prototype bridge
-- Data Analytics: metrics, diagnostics, dashboards, reports
-- Documents/Presentations/Spreadsheets: PM-ready artifacts
+```text
+모두플로는 AI가 제품 맥락을 잊지 않고 목표부터 실행, 검증까지 이어가게 해주는 작업 루프입니다.
+```
+
+It connects ideas to goals, specs, issues, execution plans, reviews, and releases. Every work record is kept as Markdown/JSON inside the repo and versioned with Git, so product intent, decisions, evidence, and next actions survive across agent sessions.
+
+## Method
+
+ModuFlow keeps AI work aligned through five operating methods:
+
+- **Spec-first planning**: clarify the goal, scope, non-goals, and acceptance criteria before asking an agent to build.
+- **Issue-driven execution**: split product intent into traceable issues, plans, tasks, and worker handoffs.
+- **Review-gated completion**: do not accept "done" until review, verification, and release evidence are recorded.
+- **Evidence-based decisions**: keep decisions, benchmarks, analysis, and context as durable repo files.
+- **Git-versioned memory**: treat the repo as the durable record for goals, specs, issues, reviews, and releases.
+
+## Adapter Sources
+
+ModuFlow uses external workflow sources through replaceable adapters tracked in `vendor.lock.json` and `adapters/*.yaml`:
+
+- GitHub Spec Kit: spec, plan, and task structure.
+- Superpowers: brainstorming, planning, TDD, subagent execution, review, and verification discipline.
+- Anthropic Knowledge Work Plugins: product-management and productivity workflow patterns.
+- Codex Product Design: UX brief, ideation, prototype, and image-to-code bridge.
+- Codex Data Analytics: KPI design, metric diagnostics, dashboards, and reports.
+- Codex Documents / Presentations / Spreadsheets: docx/xlsx/pptx artifact output bridge.
+
+ModuFlow is packaged for both Claude and Codex (`.claude-plugin/` and `.codex-plugin/`). The adapters keep those upstream workflows replaceable while preserving the same ModuFlow product loop.
 
 ## Principle
 
-Git is the source of truth. Dashboards, web views, generated docs, and updates are views over Git artifacts.
+Git is the source of truth. Dashboards, web views, generated docs, and updates are views over repo files, not separate product state.
 
 ## Git Preflight
 
