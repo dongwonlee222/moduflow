@@ -6,7 +6,7 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-080-reference-improvement-backlog.html`
-- PR/로컬 마커: `local:080-reference-improvement-backlog:draft-pr-ready`
+- PR: https://github.com/dongwonlee222/moduflow/pull/16
 - 브랜치: `codex/080-reference-improvement-backlog`
 - 리뷰어: `Reviewer`
 

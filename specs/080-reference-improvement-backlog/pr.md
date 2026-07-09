@@ -38,5 +38,6 @@
 
 ## 승인
 
+- Draft PR: https://github.com/dongwonlee222/moduflow/pull/16
 - Human approval: 아직 없음.
 - Merge gate: PR diff, status checks, reviewer approval 확인 후 merge.
