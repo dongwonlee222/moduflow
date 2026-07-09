@@ -43,8 +43,8 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Reason: Frontend work needs state/fixture/test evidence before implementation and review can be trusted.
 - Confidence: medium
 - Dependency: 077 implementation readiness gate, 046 planning templates.
-- Next command: `product:spec 078-frontend-qa-template-pack`
-- Status: backlog
+- Next command: `product:pr 078-frontend-qa-template-pack`
+- Status: pr
 
 ### `080-reference-improvement-backlog`
 

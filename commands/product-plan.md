@@ -50,6 +50,11 @@ Do not paste the full frontend QA template pack here; issue 078 owns reusable
 template details. The plan only needs enough evidence for the readiness check
 to route correctly.
 
+For frontend work, copy the relevant templates from `templates/frontend-qa/`
+into `specs/<issue>/frontend-qa/` and link them from the plan. Use
+`Status: not_applicable` inside a copied template when a reviewer deliberately
+skips that evidence surface.
+
 ## Next
 
 - Recommended: `python3 scripts/spec_consistency.py . --issue-id <id>` once plan.md and tasks.md exist, to catch coverage gaps, vague terms, and stream mismatches before execution.

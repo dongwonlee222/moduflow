@@ -1,6 +1,6 @@
 # Issue 078: Frontend QA Template Pack
 
-**Status: backlog** — created 2026-07-09.
+**Status: in_progress** — created 2026-07-09, spec 2026-07-09, plan 2026-07-09.
 **Priority: p2**
 
 ## Summary
@@ -77,10 +77,10 @@ Do NOT touch (files, behaviors, or decisions out of bounds for this issue).
 
 Every artifact-producing step is a tracked task here — never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
 
-- [ ] spec → `specs/078-frontend-qa-template-pack/spec.md`
-- [ ] plan → `specs/078-frontend-qa-template-pack/plan.md`
-- [ ] execute → PR / commits
-- [ ] review → review notes
+- [x] spec → `specs/078-frontend-qa-template-pack/spec.md`
+- [x] plan → `specs/078-frontend-qa-template-pack/plan.md`
+- [x] execute → frontend QA templates, validation list, command docs
+- [x] review → `specs/078-frontend-qa-template-pack/review.md`
 
 ## Related Issues
 
@@ -104,4 +104,4 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 ## Next Command
 
-`product:spec 078-frontend-qa-template-pack`
+`product:pr 078-frontend-qa-template-pack`
