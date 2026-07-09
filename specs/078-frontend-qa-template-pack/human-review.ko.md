@@ -7,6 +7,7 @@
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-078-frontend-qa-template-pack.html`
 - PR/로컬 마커: `local:078-frontend-qa-template-pack:draft-pr-ready`
+- GitHub PR: https://github.com/dongwonlee222/moduflow/pull/15
 - 브랜치: `codex/078-frontend-qa-template-pack`
 - 권장 base: `codex/077-implementation-readiness-gate`
 - 리뷰어: `Dongwon Lee`

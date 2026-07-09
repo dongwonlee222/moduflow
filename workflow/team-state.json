@@ -180,6 +180,21 @@
       "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/14",
       "next_command": "product:review 077-implementation-readiness-gate",
       "updated_at": "2026-07-09"
+    },
+    {
+      "issue_id": "078-frontend-qa-template-pack",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Dongwon Lee",
+      "status": "review",
+      "branch": "codex/078-frontend-qa-template-pack",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/15",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/15",
+      "next_command": "product:review 078-frontend-qa-template-pack",
+      "updated_at": "2026-07-09"
     }
   ]
 }

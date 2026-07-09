@@ -16,6 +16,7 @@ Updated: 2026-07-09
 - Product plan/design/prototype/review docs and design-prototype bridge now point to the template pack.
 - Review notes written with no blocking findings.
 - `.claude-plugin/plugin.json` bumped to `0.3.21`.
+- Draft PR created: https://github.com/dongwonlee222/moduflow/pull/15, stacked on `codex/077-implementation-readiness-gate`.
 
 ## Verification
 

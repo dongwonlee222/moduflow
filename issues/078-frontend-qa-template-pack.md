@@ -102,6 +102,11 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 - Sessions: `sessions/078-frontend-qa-template-pack/`
 - Roadmap: `workspace/roadmap.md`
 
+## PR
+
+- Draft PR: https://github.com/dongwonlee222/moduflow/pull/15
+- Base: `codex/077-implementation-readiness-gate`
+
 ## Next Command
 
 `product:pr 078-frontend-qa-template-pack`

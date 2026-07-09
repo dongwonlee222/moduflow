@@ -16,10 +16,11 @@
 ## PR 정보
 
 - 브랜치: `codex/078-frontend-qa-template-pack`
+- PR: https://github.com/dongwonlee222/moduflow/pull/15
 - 권장 base: `codex/077-implementation-readiness-gate`
 - 이유: 078은 077 readiness gate의 frontend evidence surface를 채우는 스택 작업입니다.
 - 리뷰어: `Dongwon Lee`
-- 상태: PR 생성 전
+- 상태: Draft PR 생성됨
 - 병합 조건: 079 → 077 순서 정리, 사람 승인, PR diff 확인, 필요한 상태 체크 통과
 
 ## 사람이 먼저 볼 것
@@ -58,7 +59,7 @@
 
 ## 다음 액션
 
-1. Draft PR을 `base=codex/077-implementation-readiness-gate`로 생성합니다.
+1. PR diff를 확인합니다.
 2. 079와 077이 main에 merge되면 078 base를 main으로 정리하거나 rebase합니다.
 3. `human-review.ko.md` 기준으로 사람이 검토합니다.
 4. 괜찮으면 approve/merge합니다.
