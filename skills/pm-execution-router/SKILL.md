@@ -29,6 +29,15 @@ Before creating new product work, choose the smallest useful path:
 
 Never expose raw panel notes. Never make interview mandatory for all issues. If the user asks for speed, create a bounded discovery issue with explicit unknowns instead of blocking.
 
+## Planning Discipline Surface
+
+After `product:spec`, `product:plan` should surface the recommended execution
+disciplines for the issue or task streams. The matrix should make implicit
+adapter choices visible, for example writing-plans, TDD, product-design,
+data-analysis, Storybook/MSW, Playwright/QA, review, and
+verification-before-completion. This is guidance only; readiness blocking
+belongs to `077-implementation-readiness-gate`.
+
 ## Routing
 
 - Raw idea, feedback, bug, or loose note: `/product:inbox` (`inbox`, `인박스`)

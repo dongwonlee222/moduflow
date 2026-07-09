@@ -150,6 +150,21 @@
       "last_handoff": "Draft PR ready for review: https://github.com/dongwonlee222/moduflow/pull/12",
       "next_command": "product:review 076-product-context-interview-and-readiness-loop",
       "updated_at": "2026-07-09"
+    },
+    {
+      "issue_id": "079-plan-discipline-skill-matrix",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Dongwon Lee",
+      "status": "review",
+      "branch": "codex/079-plan-discipline-skill-matrix",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/13",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/13",
+      "next_command": "product:review 079-plan-discipline-skill-matrix",
+      "updated_at": "2026-07-09"
     }
   ]
 }

@@ -17,6 +17,29 @@ Use Superpowers as the execution discipline.
 6. Request review after implementation.
 7. Verify before completion.
 
+## Recommended Discipline Catalog
+
+When `product:plan` creates a plan, include a visible `Recommended Discipline`
+matrix that names the discipline or adapter each stream should use and why.
+Keep recommendations selective: name only the disciplines that match the issue's
+files, artifacts, risk, or evidence needs.
+
+- **writing-plans**: multi-step implementation, cross-file changes, worker handoff, or work that needs clear interfaces before execution.
+- **TDD**: behavior changes, bug fixes, routing logic, parsers, validators, command behavior, or release gates.
+- **product-design**: UX flows, screen decisions, IA, prototypes, visual review, screenshot-to-code, or image-to-code work.
+- **data-analysis**: KPI design, metric diagnostics, dashboard/report work, market sizing, or evidence-backed product decisions.
+- **Storybook/MSW**: frontend component states, API fixture contracts, mocked edge cases, or repeatable UI QA.
+- **Playwright/QA**: browser-visible workflows, smoke tests, regression paths, or release evidence.
+- **review**: non-trivial implementation, behavior-affecting docs, commands, templates, or any work that changes product-facing behavior.
+- **verification-before-completion**: every completion claim, PR handoff, release, or done-state transition.
+
+These are recommendations, not readiness gates. Issue 077 owns any future
+implementation-readiness blocking behavior.
+
+When tuning recommendations, use data-backed examples: collect representative
+requests/issues, encode executable cases as regression tests when the logic
+becomes code, then update the guidance.
+
 ## Parallel Criteria
 
 Parallel work is allowed when tasks have:
