@@ -1,0 +1,49 @@
+{
+  "project": "moduflow",
+  "project_root": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
+  "updated_at": "2026-07-09",
+  "current_goal": "ModuFlow improvement stack merged and verified on GitHub main.",
+  "latest_decisions": [
+    "Issues 079, 077, 078, and 080 were implemented as stacked PRs, then retargeted and merged into main in order.",
+    "Reference repo/template improvement ideas should be captured in workspace/reference-improvements.md and promoted later only when actionable.",
+    ".codex-plugin/plugin.json local cache timestamp change was reverted; repository ended clean."
+  ],
+  "last_done": [
+    "Merged PR #13 for issue 079 plan discipline matrix.",
+    "Merged PR #14 for issue 077 implementation readiness gate.",
+    "Merged PR #15 for issue 078 frontend QA template pack.",
+    "Merged PR #16 for issue 080 reference improvement backlog.",
+    "Fast-forwarded local main to origin/main.",
+    "Ran python3 scripts/release_check.py . successfully after merge.",
+    "Confirmed working tree is clean."
+  ],
+  "next_todo": [
+    "If continuing product work, choose the next backlog issue after the merged improvement stack.",
+    "If preparing a user-facing release, update/install the ModuFlow plugin cache from the merged main."
+  ],
+  "key_files": [
+    "commands/product-plan.md",
+    "commands/product-execute.md",
+    "commands/product-review.md",
+    "scripts/project_execution.py",
+    "scripts/project_reference_backlog.py",
+    "templates/frontend-qa/README.md",
+    "templates/workspace/reference-improvements.md",
+    "workspace/reference-improvements.md",
+    "workspace/roadmap.md"
+  ],
+  "github": {
+    "merged_prs": [
+      "https://github.com/dongwonlee222/moduflow/pull/13",
+      "https://github.com/dongwonlee222/moduflow/pull/14",
+      "https://github.com/dongwonlee222/moduflow/pull/15",
+      "https://github.com/dongwonlee222/moduflow/pull/16"
+    ],
+    "main_status": "local main equals origin/main"
+  },
+  "verification": {
+    "release_check": "pass",
+    "working_tree": "clean"
+  },
+  "next_start_keyword": "moduflow next backlog"
+}
