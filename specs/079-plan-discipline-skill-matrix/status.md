@@ -1,7 +1,7 @@
 # Status: 079-plan-discipline-skill-matrix
 
 Issue: `079-plan-discipline-skill-matrix`
-Phase: pr
+Phase: review
 Branch: `codex/079-plan-discipline-skill-matrix`
 Updated: 2026-07-09
 
@@ -14,6 +14,7 @@ Updated: 2026-07-09
 - Command and skill docs updated so future plans surface recommended disciplines without adding readiness gates.
 - Self-review written with no blocking findings.
 - PR handoff and Korean review packet written for human-first review.
+- Draft PR created: https://github.com/dongwonlee222/moduflow/pull/13
 
 ## Verification
 
@@ -24,4 +25,4 @@ Updated: 2026-07-09
 
 ## Next
 
-`product:pr 079-plan-discipline-skill-matrix`
+`product:review 079-plan-discipline-skill-matrix`

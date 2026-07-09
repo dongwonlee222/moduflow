@@ -107,6 +107,10 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 - Sessions: `sessions/079-plan-discipline-skill-matrix/`
 - Roadmap: `workspace/roadmap.md`
 
+## PR
+
+- Draft PR: https://github.com/dongwonlee222/moduflow/pull/13
+
 ## Next Command
 
-`product:pr 079-plan-discipline-skill-matrix`
+`product:review 079-plan-discipline-skill-matrix`

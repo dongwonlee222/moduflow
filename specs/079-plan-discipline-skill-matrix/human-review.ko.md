@@ -7,6 +7,7 @@
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-079-plan-discipline-skill-matrix.html`
 - PR/로컬 마커: `local:079-plan-discipline-skill-matrix:draft-pr-ready`
+- GitHub PR: https://github.com/dongwonlee222/moduflow/pull/13
 - 브랜치: `codex/079-plan-discipline-skill-matrix`
 - 리뷰어: `Dongwon Lee`
 

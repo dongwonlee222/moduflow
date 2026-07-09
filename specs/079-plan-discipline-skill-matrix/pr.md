@@ -15,8 +15,9 @@
 ## PR 정보
 
 - 브랜치: `codex/079-plan-discipline-skill-matrix`
+- PR: https://github.com/dongwonlee222/moduflow/pull/13
 - 리뷰어: `Dongwon Lee`
-- 상태: PR 생성 전
+- 상태: Draft PR 생성됨
 - 병합 조건: 사람 승인, PR diff 확인, 필요한 상태 체크 통과
 
 ## 사람이 먼저 볼 것
@@ -54,7 +55,7 @@
 
 ## 다음 액션
 
-1. PR 생성 후 diff를 확인합니다.
+1. PR diff를 확인합니다.
 2. `human-review.ko.md` 기준으로 사람이 검토합니다.
 3. 괜찮으면 approve/merge합니다.
 4. merge 후 `product:release 079-plan-discipline-skill-matrix`를 진행합니다.
