@@ -11,6 +11,7 @@ Run staged verification.
 
 1. Assign review concerns to workers where useful.
 2. Check acceptance criteria, tests, UX, metrics, release risk, and docs.
+   - For frontend or API-backed browser work, check whether the copied `templates/frontend-qa/` evidence exists, is linked from the plan, and has explicit pass/fail/not-applicable decisions.
 3. Ensure `specs/<issue>/review-handoff.md` exists; if missing, generate it:
 
 ```bash

@@ -93,6 +93,20 @@ class ValidationDistributionTests(unittest.TestCase):
         self.assertEqual(result["errors"], [])
         self.assertGreater(result["checked_files"], 0)
 
+    def test_validate_moduflow_requires_frontend_qa_templates(self):
+        validator = load_module("validate_moduflow", "scripts/validate_moduflow.py")
+
+        expected = {
+            "templates/frontend-qa/README.md",
+            "templates/frontend-qa/api-contract-mapping.md",
+            "templates/frontend-qa/storybook-required-states.md",
+            "templates/frontend-qa/msw-fixture-catalog.md",
+            "templates/frontend-qa/playwright-smoke-matrix.md",
+            "templates/frontend-qa/qa-evidence-checklist.md",
+        }
+
+        self.assertTrue(expected.issubset(set(validator.REQUIRED_FILES)))
+
     def test_validate_moduflow_importable_api_reports_missing_files(self):
         validator = load_module("validate_moduflow", "scripts/validate_moduflow.py")
         with tempfile.TemporaryDirectory() as tmp:

@@ -11,10 +11,10 @@ Create or evaluate a prototype.
 
 1. Link prototype source, screenshots, live URL, or generated app.
 2. Capture key flows, known gaps, and review notes.
-3. Save to `specs/<issue>/prototype.md`.
+3. For implementation-bound prototypes, note which `templates/frontend-qa/` files are needed for state, fixture, smoke, and evidence coverage.
+4. Save to `specs/<issue>/prototype.md`.
 
 ## Next
 
 - `/product:review` for UX/QA review
 - `/product:plan` for implementation tasks
-
