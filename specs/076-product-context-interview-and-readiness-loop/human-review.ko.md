@@ -6,10 +6,10 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-076-product-context-interview-and-readiness-loop.html`
-- PR/로컬 마커: `local:076-product-context-interview-and-readiness-loop:draft-pr-ready`
+- PR/로컬 마커: `https://github.com/dongwonlee222/moduflow/pull/12`
 - 브랜치: `codex/076-product-context-interview-and-readiness-loop`
 - 원격 브랜치: `origin/codex/076-product-context-interview-and-readiness-loop`
-- GitHub PR 생성 URL: `https://github.com/dongwonlee222/moduflow/pull/new/codex/076-product-context-interview-and-readiness-loop`
+- GitHub PR 생성 URL: `https://github.com/dongwonlee222/moduflow/pull/12`
 - 리뷰어: `Dongwon Lee`
 
 ## 이슈 요약

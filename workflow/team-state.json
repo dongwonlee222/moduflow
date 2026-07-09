@@ -143,11 +143,11 @@
       "reviewer": "Dongwon Lee",
       "status": "review",
       "branch": "",
-      "pr": "local-pr-ready",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/12",
       "lock_state": "active",
       "locked_by": "",
       "blocker": "",
-      "last_handoff": "PR ready for review: local-pr-ready",
+      "last_handoff": "Draft PR ready for review: https://github.com/dongwonlee222/moduflow/pull/12",
       "next_command": "product:review 076-product-context-interview-and-readiness-loop",
       "updated_at": "2026-07-09"
     }
