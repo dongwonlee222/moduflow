@@ -145,6 +145,20 @@ Simple user aliases should route here: `상태`, `다음`, `이거 해줘`, `완
 
 Record repeated failures or uncertainty in `specs/<issue>/reflection.md`.
 
+## Implementation Readiness Routing
+
+When the active issue is in `execute` phase and
+`specs/<issue>/implementation-readiness.json` exists with
+`"status": "not_ready"`, route back to:
+
+```bash
+product:plan <issue>
+```
+
+Report the blocker plainly: implementation readiness is not ready, and v1 is
+report-only. The user can still explicitly approve execution, but the default
+loop recommendation should repair the plan first.
+
 ## Next
 
 - `/product:status` to inspect the current state

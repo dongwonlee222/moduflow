@@ -36,6 +36,23 @@ files, artifacts, risk, or evidence needs.
 These are recommendations, not readiness gates. Issue 077 owns any future
 implementation-readiness blocking behavior.
 
+## Implementation Readiness Handoff
+
+Before `product:execute` dispatches workers, run the ModuFlow implementation
+readiness check. It turns the planning discipline into a concrete execution
+handoff:
+
+- API contract mapping
+- test strategy
+- Storybook required states when frontend UI is in scope
+- MSW fixture baseline when API-backed UI is in scope
+- Playwright smoke matrix when browser-visible flows are in scope
+- permission/role model when access control is in scope
+- release/rollback verification
+
+The v1 gate is report-only. `not_ready` should route back to `product:plan`
+unless the user explicitly approves continuing with the recorded risk.
+
 When tuning recommendations, use data-backed examples: collect representative
 requests/issues, encode executable cases as regression tests when the logic
 becomes code, then update the guidance.

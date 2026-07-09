@@ -1,0 +1,65 @@
+{
+  "schema": "moduflow.implementation-readiness.v1",
+  "issue_id": "077-implementation-readiness-gate",
+  "status": "ready",
+  "mode": "report-only",
+  "checks": [
+    {
+      "id": "api_contract",
+      "state": "pass",
+      "severity": "low",
+      "evidence": "API contract mapping evidence found.",
+      "gap": "",
+      "recommendation": ""
+    },
+    {
+      "id": "test_strategy",
+      "state": "pass",
+      "severity": "low",
+      "evidence": "Test strategy evidence found.",
+      "gap": "",
+      "recommendation": ""
+    },
+    {
+      "id": "storybook_states",
+      "state": "pass",
+      "severity": "low",
+      "evidence": "Storybook required states evidence found.",
+      "gap": "",
+      "recommendation": ""
+    },
+    {
+      "id": "msw_fixtures",
+      "state": "pass",
+      "severity": "low",
+      "evidence": "MSW fixture baseline evidence found.",
+      "gap": "",
+      "recommendation": ""
+    },
+    {
+      "id": "playwright_smoke",
+      "state": "pass",
+      "severity": "low",
+      "evidence": "Playwright smoke matrix evidence found.",
+      "gap": "",
+      "recommendation": ""
+    },
+    {
+      "id": "permission_model",
+      "state": "pass",
+      "severity": "low",
+      "evidence": "Permission/role model evidence found.",
+      "gap": "",
+      "recommendation": ""
+    },
+    {
+      "id": "release_rollback",
+      "state": "pass",
+      "severity": "low",
+      "evidence": "Release/rollback verification evidence found.",
+      "gap": "",
+      "recommendation": ""
+    }
+  ],
+  "next_command": "product:execute 077-implementation-readiness-gate"
+}

@@ -167,6 +167,52 @@ class ProjectLoopTests(unittest.TestCase):
             self.assertEqual(result["next_command"], "product:plan 019-loop-kernel-and-state-model")
             self.assertEqual(result["status"], "active")
 
+    def test_recommend_loop_routes_not_ready_execute_phase_back_to_plan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "077-implementation-readiness-gate"
+            (root / "workspace").mkdir()
+            (root / "issues").mkdir()
+            spec_dir = root / "specs" / issue_id
+            spec_dir.mkdir(parents=True)
+            (root / "workspace" / "loop-state.json").write_text(
+                json.dumps({
+                    "schema": "moduflow.loop-state.v2",
+                    "goal_id": "goal-a",
+                    "issue_ids": [issue_id],
+                    "active_issue_id": issue_id,
+                    "status": "active",
+                    "next_command": f"product:execute {issue_id}",
+                    "attempts": {"command": f"product:execute {issue_id}", "count": 1, "max": 3},
+                }) + "\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / f"{issue_id}.md").write_text(
+                f"# Issue\n\n## Workflow Tasks\n\n"
+                f"- [x] spec → `specs/{issue_id}/spec.md`\n"
+                f"- [x] plan → `specs/{issue_id}/plan.md`\n"
+                f"- [ ] execute → implementation\n",
+                encoding="utf-8",
+            )
+            (spec_dir / "implementation-readiness.json").write_text(
+                json.dumps({
+                    "schema": "moduflow.implementation-readiness.v1",
+                    "issue_id": issue_id,
+                    "status": "not_ready",
+                    "mode": "report-only",
+                    "checks": [],
+                    "next_command": f"product:plan {issue_id}",
+                }) + "\n",
+                encoding="utf-8",
+            )
+
+            result = project_loop.recommend_loop(root)
+
+            self.assertEqual(result["phase"], "plan")
+            self.assertEqual(result["next_command"], f"product:plan {issue_id}")
+            self.assertEqual(result["status"], "needs_decision")
+            self.assertIn("Implementation readiness is not_ready", result["blocker"])
+
     def test_write_loop_state_persists_v2_state(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -369,4 +415,3 @@ class ProjectLoopTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
