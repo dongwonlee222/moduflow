@@ -1,7 +1,7 @@
 # Status: 076-product-context-interview-and-readiness-loop
 
 Issue: `076-product-context-interview-and-readiness-loop`
-Phase: pr
+Phase: release
 Branch: current working tree
 Updated: 2026-07-09
 
@@ -27,7 +27,8 @@ Updated: 2026-07-09
 - 2026-07-09: `python3 scripts/release_check.py .` passed.
 - 2026-07-09: Expanded intake matrix passed, 13 tests OK. Manual case sweep confirmed README improvement, bug fix, benchmark research, metric diagnostics, and API implementation route fast; adoption and strategy questions route short/panel.
 - 2026-07-09: Branch pushed to `origin/codex/076-product-context-interview-and-readiness-loop`; Draft PR created at `https://github.com/dongwonlee222/moduflow/pull/12` after host keyring authentication was confirmed outside the sandbox.
+- 2026-07-09: PR #12 merged into `main`; release recorded in `specs/076-product-context-interview-and-readiness-loop/release.md`.
 
 ## Next
 
-`product:review 076-product-context-interview-and-readiness-loop`
+`product:spec 079-plan-discipline-skill-matrix`

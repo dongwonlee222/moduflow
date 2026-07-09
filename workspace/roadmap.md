@@ -16,8 +16,8 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Reason: The clearest product promise is not "more commands"; it is keeping AI agents aligned with product context without forcing every request through a long interview.
 - Confidence: high
 - Dependency: 020 simple loop UX, 046 planning templates, 075 AI-first issue fields.
-- Next command: `product:review 076-product-context-interview-and-readiness-loop`
-- Status: in_progress
+- Next command: `product:spec 079-plan-discipline-skill-matrix`
+- Status: done; merged via PR #12 and released locally in `specs/076-product-context-interview-and-readiness-loop/release.md`.
 
 ### `079-plan-discipline-skill-matrix`
 
