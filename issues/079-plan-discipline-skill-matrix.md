@@ -1,6 +1,6 @@
 # Issue 079: Plan Discipline and Skill Matrix
 
-**Status: backlog** — created 2026-07-09.
+**Status: in_progress** — created 2026-07-09, started 2026-07-09.
 **Priority: p1**
 
 ## Summary
@@ -81,10 +81,10 @@ Do NOT touch (files, behaviors, or decisions out of bounds for this issue).
 
 Every artifact-producing step is a tracked task here — never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
 
-- [ ] spec → `specs/079-plan-discipline-skill-matrix/spec.md`
-- [ ] plan → `specs/079-plan-discipline-skill-matrix/plan.md`
-- [ ] execute → PR / commits
-- [ ] review → review notes
+- [x] spec → `specs/079-plan-discipline-skill-matrix/spec.md`
+- [x] plan → `specs/079-plan-discipline-skill-matrix/plan.md`
+- [x] execute → docs guidance updates
+- [x] review → `specs/079-plan-discipline-skill-matrix/review.md`
 
 ## Related Issues
 
@@ -108,4 +108,4 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 ## Next Command
 
-`product:spec 079-plan-discipline-skill-matrix`
+`product:pr 079-plan-discipline-skill-matrix`
