@@ -18,6 +18,7 @@ Updated: 2026-07-09
 - Command docs and Superpowers bridge updated for report-only readiness behavior.
 - Dogfood readiness artifact generated for 077 with status `ready`.
 - Review handoff and review notes written.
+- Draft PR created: https://github.com/dongwonlee222/moduflow/pull/14, stacked on `codex/079-plan-discipline-skill-matrix`.
 
 ## Verification
 

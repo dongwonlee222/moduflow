@@ -106,6 +106,11 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 - Sessions: `sessions/077-implementation-readiness-gate/`
 - Roadmap: `workspace/roadmap.md`
 
+## PR
+
+- Draft PR: https://github.com/dongwonlee222/moduflow/pull/14
+- Base: `codex/079-plan-discipline-skill-matrix`
+
 ## Next Command
 
 `product:pr 077-implementation-readiness-gate`
