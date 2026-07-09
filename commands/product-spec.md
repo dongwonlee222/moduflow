@@ -7,9 +7,11 @@ argument-hint: "<issue id>"
 
 Turn a Git issue into a spec.
 
-## Clarify first (do not hand over an empty template)
+## Clarify only when needed
 
-Before writing `spec.md`, ask the user **3-5 clarifying questions** grounded in this issue, then write the spec from the answers. Draw from: target user, the pain point, in/out of scope, success signal, main exception paths. If the issue and its evidence already answer a question, skip it — do not ask what you can read. This is the ai-dev-tasks pattern: question → fill, never blank → fill.
+Before writing `spec.md`, read the issue, linked opportunity, benchmark, inbox, and prior notes. If they already answer target user, pain point, in/out of scope, success signal, and main exception paths, write the spec without extra questions.
+
+Ask the user only when the missing answer changes scope, priority, risk, or acceptance criteria. Default to **1-3 concise questions**, not a long interview. Preserve shaped product rationale from opportunity/issue/interview notes so execution and review do not lose the original context.
 
 ## Do
 

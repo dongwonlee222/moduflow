@@ -10,6 +10,51 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 
 ## Current Execution Queue
 
+### `076-product-context-interview-and-readiness-loop`
+
+- Outcome: ModuFlow keeps the fast issue path fast, while routing vague/risky/strategic requests through short shaping or panel-assisted questioning before issue/spec creation.
+- Reason: The clearest product promise is not "more commands"; it is keeping AI agents aligned with product context without forcing every request through a long interview.
+- Confidence: high
+- Dependency: 020 simple loop UX, 046 planning templates, 075 AI-first issue fields.
+- Next command: `product:review 076-product-context-interview-and-readiness-loop`
+- Status: in_progress
+
+### `079-plan-discipline-skill-matrix`
+
+- Outcome: `product:plan` shows which Superpowers disciplines and ModuFlow adapter skills each issue/task should use, such as writing-plans, TDD, product-design, data-analysis, Storybook/MSW, Playwright/QA, review, and verification.
+- Reason: ModuFlow already contains Superpowers, but users should not have to know when each discipline should be activated.
+- Confidence: high
+- Dependency: 067 upstream adapter absorption, 073 constitution steering.
+- Next command: `product:spec 079-plan-discipline-skill-matrix`
+- Status: backlog
+
+### `077-implementation-readiness-gate`
+
+- Outcome: `product:execute` checks implementation readiness before worker dispatch, including API contracts, test strategy, frontend fixtures, smoke checks, permissions, and release conditions.
+- Reason: Agent execution fails most often when the plan lacks concrete contracts, not when the agent lacks coding ability.
+- Confidence: high
+- Dependency: 079 plan discipline matrix, 070 spec consistency analyzer.
+- Next command: `product:spec 077-implementation-readiness-gate`
+- Status: backlog
+
+### `078-frontend-qa-template-pack`
+
+- Outcome: ModuFlow ships reusable templates for Storybook required states, MSW fixture catalogs, API contract mapping, Playwright smoke matrices, and QA evidence checklists.
+- Reason: Frontend work needs state/fixture/test evidence before implementation and review can be trusted.
+- Confidence: medium
+- Dependency: 077 implementation readiness gate, 046 planning templates.
+- Next command: `product:spec 078-frontend-qa-template-pack`
+- Status: backlog
+
+### `080-reference-improvement-backlog`
+
+- Outcome: Improvements discovered in reference repositories or templates are captured in a separate backlog and can be promoted later without polluting the active product issue queue.
+- Reason: Reference repo insights appear during real work and currently risk disappearing or getting mixed into the wrong issue.
+- Confidence: medium
+- Dependency: 075 issue-less context capture.
+- Next command: `product:spec 080-reference-improvement-backlog`
+- Status: backlog
+
 ### `074-sync-fetch-sandbox-handling`
 
 - Outcome: Approval-sensitive hosts can run a top-level `git fetch` and then `project_sync.py --no-fetch`, avoiding misleading `.git/FETCH_HEAD` warnings from Python subprocess fetches.

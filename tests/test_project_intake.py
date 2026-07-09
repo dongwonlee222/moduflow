@@ -88,6 +88,112 @@ class ProjectIntakeTests(unittest.TestCase):
             self.assertGreaterEqual(len(routed["issue_candidates"]), 3)
             self.assertEqual(routed["next_command"], "product:goal")
 
+    def test_route_intake_marks_clear_request_as_fast_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "workspace").mkdir()
+            (root / "issues").mkdir()
+
+            routed = project_intake.route_intake(root, "README 설치법 추가 이슈 만들어줘")
+
+            self.assertEqual(routed["recommended_action"], "create_issue")
+            self.assertEqual(routed["shaping_path"], "fast")
+            self.assertEqual(routed["question_count"], 0)
+            self.assertEqual(routed["suggested_questions"], [])
+            self.assertEqual(routed["durable_context"], "issue")
+
+    def test_route_intake_marks_ambiguous_request_as_short_shaping(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "workspace").mkdir()
+            (root / "issues").mkdir()
+
+            routed = project_intake.route_intake(root, "모두플로 인기가 없는 이유 개선해줘")
+
+            self.assertEqual(routed["recommended_action"], "shape_then_issue")
+            self.assertEqual(routed["shaping_path"], "short")
+            self.assertGreaterEqual(routed["question_count"], 1)
+            self.assertLessEqual(routed["question_count"], 3)
+            self.assertEqual(routed["durable_context"], "opportunity")
+
+    def test_route_intake_marks_strategy_request_as_panel_shaping(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "workspace").mkdir()
+            (root / "issues").mkdir()
+
+            routed = project_intake.route_intake(
+                root,
+                "모두플로 제품 방향과 포지셔닝을 다시 잡고 로드맵까지 정리해줘",
+            )
+
+            self.assertEqual(routed["recommended_action"], "panel_shape")
+            self.assertEqual(routed["shaping_path"], "panel")
+            self.assertLessEqual(routed["question_count"], 3)
+            self.assertEqual(routed["next_command"], "product:opportunity")
+
+    def test_route_intake_keeps_clear_improvement_requests_fast(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "workspace").mkdir()
+            (root / "issues").mkdir()
+
+            examples = [
+                "README 문구 개선 이슈 만들어줘",
+                "로그인 버그 수정하고 테스트 추가해줘",
+                "경쟁사 조사해서 벤치마크 문서 만들어줘",
+                "대시보드 지표가 왜 떨어졌는지 분석해줘",
+                "결제 API 구현 계획 이슈 만들어줘",
+            ]
+
+            for request in examples:
+                with self.subTest(request=request):
+                    routed = project_intake.route_intake(root, request)
+
+                    self.assertEqual(routed["recommended_action"], "create_issue")
+                    self.assertEqual(routed["shaping_path"], "fast")
+                    self.assertEqual(routed["question_count"], 0)
+
+    def test_route_intake_shapes_product_context_questions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "workspace").mkdir()
+            (root / "issues").mkdir()
+
+            examples = [
+                ("사용자들이 모두플로를 안 쓰는 이유 찾아줘", "shape_then_issue", "short"),
+                ("모두플로 온보딩 개선 방향 잡아줘", "panel_shape", "panel"),
+                ("AI 작업 루프 제품 전략 다시 정리해줘", "panel_shape", "panel"),
+            ]
+
+            for request, action, path in examples:
+                with self.subTest(request=request):
+                    routed = project_intake.route_intake(root, request)
+
+                    self.assertEqual(routed["recommended_action"], action)
+                    self.assertEqual(routed["shaping_path"], path)
+                    self.assertGreaterEqual(routed["question_count"], 1)
+                    self.assertLessEqual(routed["question_count"], 3)
+
+    def test_route_intake_question_cap_is_three_across_shaping_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "workspace").mkdir()
+            (root / "issues").mkdir()
+
+            requests = [
+                "모두플로 인기가 없는 이유 개선해줘",
+                "모두플로 제품 방향과 포지셔닝을 다시 잡고 로드맵까지 정리해줘",
+                "사용자들이 모두플로를 안 쓰는 이유 찾아줘",
+            ]
+
+            for request in requests:
+                with self.subTest(request=request):
+                    routed = project_intake.route_intake(root, request)
+
+                    self.assertLessEqual(routed["question_count"], 3)
+                    self.assertEqual(len(routed["suggested_questions"]), routed["question_count"])
+
     def test_write_intake_appends_inbox_record(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

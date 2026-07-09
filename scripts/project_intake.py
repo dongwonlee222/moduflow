@@ -74,6 +74,16 @@ DOMAIN_TITLES = {
     "business": "business planning work",
 }
 
+STRATEGIC_KEYWORDS = {
+    "strategy", "positioning", "direction", "vision",
+    "전략", "포지셔닝", "방향", "비전",
+}
+
+AMBIGUOUS_KEYWORDS = {
+    "improve", "better", "popular", "why",
+    "개선", "좋게", "왜", "이유", "인기",
+}
+
 
 def base_tokens(text):
     raw_tokens = re.findall(r"[0-9A-Za-z가-힣]+", (text or "").lower())
@@ -114,6 +124,52 @@ def request_size(text, classification=None):
     if len(matched_domains) >= 3 or connectors >= 2 or len(tokenize(text)) >= 12:
         return "large"
     return "small"
+
+
+def shaping_signals(text, classification=None, size=None):
+    lowered = (text or "").lower()
+    classification = classification or classify_request(text)
+    size = size or request_size(text, classification)
+    matched_domains = [
+        domain for domain, score in classification.get("scores", {}).items() if score > 0
+    ]
+    clear_execution_domains = {"dev", "design", "data", "docs", "ops", "research", "business"}
+    has_clear_execution_domain = any(domain in clear_execution_domains for domain in matched_domains)
+    has_strategy = any(keyword in lowered for keyword in STRATEGIC_KEYWORDS)
+    has_ambiguity = any(keyword in lowered for keyword in AMBIGUOUS_KEYWORDS)
+    return {
+        "strategic": has_strategy,
+        "ambiguous": has_ambiguity and not has_strategy and not has_clear_execution_domain,
+        "matched_domains": matched_domains,
+        "size": size,
+    }
+
+
+def suggested_shaping_questions(path):
+    if path == "panel":
+        return [
+            "가장 먼저 바꾸고 싶은 대상 사용자는 누구인가요?",
+            "인기가 없다고 판단한 근거는 사용량, 설치, 반복 사용, 피드백 중 무엇인가요?",
+            "이번 개선의 성공 기준은 채택률, 재사용률, 작업 완료율 중 어디에 두나요?",
+        ]
+    if path == "short":
+        return [
+            "이 요청의 주 대상 사용자는 누구인가요?",
+            "현재 문제를 판단한 근거는 무엇인가요?",
+            "완료됐다고 볼 수 있는 기준은 무엇인가요?",
+        ]
+    return []
+
+
+def shaping_metadata(path, reason, durable_context):
+    questions = suggested_shaping_questions(path)[:3]
+    return {
+        "shaping_path": path,
+        "shaping_reason": reason,
+        "question_count": len(questions),
+        "suggested_questions": questions,
+        "durable_context": durable_context,
+    }
 
 
 def issue_files(root):
@@ -255,19 +311,33 @@ def route_intake(root, request, write=False):
     active_issue = loop.get("active_issue_id") or loop.get("issue_id")
     active_goal = loop.get("goal_id")
     related = find_related_issues(root, request)
+    signals = shaping_signals(request, classification, size)
 
-    if size == "large":
-        action = "create_goal_with_issues"
-        candidates = split_issue_candidates(root, request, classification)
-        next_command = "product:goal"
-    elif active_issue_matches(active_issue, related):
+    if active_issue_matches(active_issue, related):
         action = "attach_active_issue"
         candidates = []
         next_command = loop.get("next_command") or f"product:issue {active_issue}"
+        shaping = shaping_metadata("fast", "active_issue_match", "issue")
+    elif signals["strategic"]:
+        action = "panel_shape"
+        candidates = []
+        next_command = "product:opportunity"
+        shaping = shaping_metadata("panel", "strategic_product_direction", "opportunity")
+    elif signals["ambiguous"]:
+        action = "shape_then_issue"
+        candidates = split_issue_candidates(root, request, classification)[:1]
+        next_command = "product:opportunity"
+        shaping = shaping_metadata("short", "ambiguous_product_request", "opportunity")
+    elif size == "large":
+        action = "create_goal_with_issues"
+        candidates = split_issue_candidates(root, request, classification)
+        next_command = "product:goal"
+        shaping = shaping_metadata("fast", "large_request_goal_graph", "issue")
     else:
         action = "create_issue"
         candidates = split_issue_candidates(root, request, classification)[:1]
         next_command = candidates[0]["next_command"] if candidates else "product:issue"
+        shaping = shaping_metadata("fast", "clear_bounded_request", "issue")
 
     routed = {
         "schema": INTAKE_SCHEMA,
@@ -282,6 +352,7 @@ def route_intake(root, request, write=False):
         "next_command": next_command,
         "updated_at": date.today().isoformat(),
     }
+    routed.update(shaping)
     if write:
         append_inbox_record(root, routed)
     return routed
