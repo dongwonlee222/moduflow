@@ -107,6 +107,16 @@ class ValidationDistributionTests(unittest.TestCase):
 
         self.assertTrue(expected.issubset(set(validator.REQUIRED_FILES)))
 
+    def test_validate_moduflow_requires_reference_improvement_surface(self):
+        validator = load_module("validate_moduflow", "scripts/validate_moduflow.py")
+
+        expected = {
+            "templates/workspace/reference-improvements.md",
+            "scripts/project_reference_backlog.py",
+        }
+
+        self.assertTrue(expected.issubset(set(validator.REQUIRED_FILES)))
+
     def test_validate_moduflow_importable_api_reports_missing_files(self):
         validator = load_module("validate_moduflow", "scripts/validate_moduflow.py")
         with tempfile.TemporaryDirectory() as tmp:

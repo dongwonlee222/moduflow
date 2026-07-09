@@ -27,14 +27,15 @@ python3 scripts/project_memory.py <project-path> --issue <issue id>
 
 5. Run the converge pass as the final evidence step (issue 071): collect evidence with `python3 scripts/project_converge.py <project-path> --issue-id <issue id> --evidence --json`, dispatch the judge subagent with `templates/converge-judgment-prompt.md` + the evidence JSON inline (coordinator judges and records the limitation if dispatch is unavailable), then `python3 scripts/project_converge.py <project-path> --issue-id <issue id> --apply-judgment specs/<issue id>/converge-judgment.json`. Converge findings are review evidence — include `specs/<issue>/converge.md` in status.md's evidence list. Converge never blocks the review verdict (`no_evidence` or a failed run is reported, not gating), but must be reported.
 
-6. Save subagent findings, verification output, the dashboard path `memory/dashboard.html`, the issue drill-down path `memory/issue-<issue>.html`, and converge report `specs/<issue>/converge.md` to `specs/<issue>/status.md`.
-7. Ensure `specs/<issue>/pr.md` and `specs/<issue>/human-review.ko.md` exist or refresh them so PR review carries the same verification, dashboard evidence, and Korean human-review surface:
+6. Check whether the work discovered improvements for reference repos, reusable templates, or upstream examples. If yes, capture each one with `scripts/project_reference_backlog.py --write`; if no, record "reference improvements: none found" in the review notes/status.
+7. Save subagent findings, verification output, the dashboard path `memory/dashboard.html`, the issue drill-down path `memory/issue-<issue>.html`, and converge report `specs/<issue>/converge.md` to `specs/<issue>/status.md`.
+8. Ensure `specs/<issue>/pr.md` and `specs/<issue>/human-review.ko.md` exist or refresh them so PR review carries the same verification, dashboard evidence, and Korean human-review surface:
 
 ```bash
 python3 scripts/project_pr.py <project-path> --issue-id <issue id> --write
 ```
 
-8. Reconcile issue workflow tasks, `tasks.md`, `.moduflow/state.json`, and `workspace/dashboard.md` before reporting completion. A completed review should not leave the issue routing back to `product:execute`.
+9. Reconcile issue workflow tasks, `tasks.md`, `.moduflow/state.json`, and `workspace/dashboard.md` before reporting completion. A completed review should not leave the issue routing back to `product:execute`.
 
 ## Subagent Review
 

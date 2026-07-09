@@ -48,6 +48,7 @@ python3 scripts/project_workflow.py <project-path> --team-status
 9. When status is shown after a resumed or interrupted task, include the resume banner before the dashboard.
 10. Do not mutate local artifact files during normal status display (the `git fetch` in step 1 is read-only; an approved `git pull` is the only allowed sync).
 11. If source artifacts look stale or inconsistent, report the mismatch and recommend `product:doctor`.
+12. If `workspace/reference-improvements.md` exists, surface pending reference-improvement entries as optional context only. They should never appear as blockers or active issue scope unless promoted into `issues/*.md`.
 
 ## Output
 
@@ -91,6 +92,10 @@ Detailed status mode may include:
 ### Issue-Less Records (issue 075)
 
 Detailed status runs `python3 scripts/project_retention.py <project-path> --status` and surfaces the unpromoted-record count, the oldest record, and archive candidates (records 2+ releases old with no `promoted_to`). Render one line in the dashboard, e.g. `📝 미승격 레코드 12건 (최고령 2026-06-24, 아카이브 후보 8건)`. Do not auto-archive during status — `--write` is an explicit ops action. If the count grows release over release, recommend `product:promote` for records that now drive work.
+
+### Reference Improvements (issue 080)
+
+Detailed status may mention pending entries from `workspace/reference-improvements.md` in one compact line, e.g. `참고 개선 후보 3건 — 필요 시 product:promote로 이슈화`. These are advisory; do not route the main loop to them unless the user chooses one.
 
 ### Next-Command Guidance (issue 055)
 

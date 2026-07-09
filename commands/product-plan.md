@@ -55,6 +55,16 @@ into `specs/<issue>/frontend-qa/` and link them from the plan. Use
 `Status: not_applicable` inside a copied template when a reviewer deliberately
 skips that evidence surface.
 
+## Reference Improvement Capture
+
+If planning with a reference repo, template, or upstream example reveals an
+improvement that belongs to the reference rather than the active issue, capture
+it separately instead of expanding scope:
+
+```bash
+python3 scripts/project_reference_backlog.py . --issue-id <id> --title "<short title>" --source "<repo/path/template>" --gap "<observed gap>" --recommendation "<suggested improvement>" --write
+```
+
 ## Next
 
 - Recommended: `python3 scripts/spec_consistency.py . --issue-id <id>` once plan.md and tasks.md exist, to catch coverage gaps, vague terms, and stream mismatches before execution.
