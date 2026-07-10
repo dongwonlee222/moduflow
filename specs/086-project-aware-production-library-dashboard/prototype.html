@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ModuFlow 프로젝트 뷰</title>
+<style>
+  html,body { margin:0; min-height:100%; background:#fff; }
+  body { padding:20px; }
+  #mf-original-v2 { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:#1a1a1a; background:#fff; }
+  #mf-original-v2 * { box-sizing:border-box; }
+  #mf-original-v2 .title-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+  #mf-original-v2 h1 { font-size:19px; font-weight:500; margin:0; }
+  #mf-original-v2 .project-control { display:flex; align-items:center; gap:7px; font-size:13px; color:#555; }
+  #mf-original-v2 .project-control select { font:inherit; padding:6px 28px 6px 9px; border:1px solid #ccc; border-radius:6px; background:#fff; color:inherit; min-width:180px; }
+  #mf-original-v2 .tabs { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+  #mf-original-v2 .tab { padding:6px 14px; border:1px solid #ccc; border-radius:8px; background:#f5f5f3; cursor:pointer; font-size:14px; color:#1a1a1a; }
+  #mf-original-v2 .tab.on { background:#2a78d6; color:#fff; border-color:#2a78d6; }
+  #mf-original-v2 .sync { margin-left:auto; font-size:12px; color:#777; }
+  #mf-original-v2 .project-summary { display:flex; gap:14px; flex-wrap:wrap; font-size:13px; margin-bottom:10px; color:#555; align-items:center; }
+  #mf-original-v2 .project-summary span { display:flex; align-items:center; gap:5px; }
+  #mf-original-v2 .dot { width:8px; height:8px; border-radius:50%; background:#0f6e56; display:inline-block; }
+  #mf-original-v2 .db { border:1px solid #ddd; border-radius:8px; overflow:hidden; }
+  #mf-original-v2 .dbbar { display:grid; grid-template-columns:minmax(180px,1fr) auto auto; gap:8px; align-items:center; padding:10px; border-bottom:1px solid #ddd; background:#fafaf8; }
+  #mf-original-v2 .dbbar input,#mf-original-v2 .dbbar select { font:inherit; font-size:13px; padding:7px 9px; border:1px solid #ccc; border-radius:6px; background:#fff; color:inherit; min-width:0; }
+  #mf-original-v2 .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  #mf-original-v2 .chip { font:inherit; font-size:12px; padding:6px 9px; border:1px solid #ccc; border-radius:999px; background:#fff; cursor:pointer; color:#1a1a1a; }
+  #mf-original-v2 .chip.on { border-color:#2a78d6; background:#dcebfb; color:#16467e; }
+  #mf-original-v2 .production-layout { min-height:410px; }
+  #mf-original-v2 .table-wrap { min-width:0; overflow:auto; }
+  #mf-original-v2 table { width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; }
+  #mf-original-v2 th,#mf-original-v2 td { padding:9px 10px; border-bottom:1px solid #eee; text-align:left; vertical-align:top; overflow:hidden; text-overflow:ellipsis; }
+  #mf-original-v2 th { font-size:12px; color:#666; background:#f5f5f3; font-weight:600; white-space:nowrap; }
+  #mf-original-v2 tr.record-row { cursor:pointer; }
+  #mf-original-v2 tr.record-row:hover { background:#f8fbff; }
+  #mf-original-v2 tr.record-row.selected { background:#edf5ff; }
+  #mf-original-v2 .record-title { font-weight:600; display:block; margin-bottom:4px; }
+  #mf-original-v2 .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; color:#777; }
+  #mf-original-v2 .badge { display:inline-block; min-width:18px; text-align:center; padding:2px 5px; border-radius:5px; border:1px solid #ccc; font-size:11px; color:#555; white-space:nowrap; }
+  #mf-original-v2 .badge.approved { border-color:#83b9a7; color:#0f6e56; background:#eef8f4; }
+  #mf-original-v2 .badge.review { border-color:#d8b86b; color:#76520a; background:#fff8e7; }
+  #mf-original-v2 .modal-backdrop { position:fixed; inset:0; z-index:30; display:grid; place-items:center; padding:32px; background:rgba(0,0,0,.42); }
+  #mf-original-v2 .modal { position:relative; width:min(880px,calc(100vw - 64px)); max-height:min(760px,calc(100vh - 64px)); overflow:auto; border:1px solid #ccc; border-radius:10px; background:#fff; box-shadow:0 18px 60px rgba(0,0,0,.26); }
+  #mf-original-v2 .modal-close { position:sticky; top:10px; float:right; z-index:2; width:32px; height:32px; margin:10px 10px 0 0; border:1px solid #ccc; border-radius:6px; background:#fff; color:#555; font:22px/1 sans-serif; cursor:pointer; }
+  #mf-original-v2 .detail { padding:22px 24px 26px; background:#fff; min-width:0; }
+  #mf-original-v2 .detail h2 { font-size:17px; font-weight:600; margin:0 0 5px; }
+  #mf-original-v2 .detail-meta { color:#777; font-size:12px; margin-bottom:12px; }
+  #mf-original-v2 .section { padding:10px 0; border-top:1px solid #eee; }
+  #mf-original-v2 .section h3 { margin:0 0 6px; font-size:12px; color:#666; font-weight:600; }
+  #mf-original-v2 .section p,#mf-original-v2 .section li { font-size:13px; line-height:1.55; margin:0; }
+  #mf-original-v2 .section ul { margin:0; padding-left:18px; }
+  #mf-original-v2 .artifact { display:block; padding:7px 9px; border:1px solid #ddd; border-radius:6px; color:#2a78d6; text-decoration:none; background:#fafaf8; }
+  #mf-original-v2 .copy-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  #mf-original-v2 .copy-box { padding:8px; border:1px solid #ddd; border-radius:6px; background:#fafaf8; }
+  #mf-original-v2 .copy-box strong { display:block; font-size:11px; color:#666; margin-bottom:4px; }
+  #mf-original-v2 #info { margin-top:12px; min-height:56px; padding:12px 16px; border:1px solid #ddd; border-radius:8px; font-size:14px; line-height:1.7; }
+  #mf-original-v2 #info code { font-size:13px; color:#888; }
+  #mf-original-v2 .empty { padding:50px 24px; text-align:center; color:#888; }
+  #mf-original-v2 .hidden { display:none !important; }
+  @media(max-width:860px) {
+    #mf-original-v2 .title-row { align-items:flex-start; flex-direction:column; }
+    #mf-original-v2 .project-control { width:100%; }
+    #mf-original-v2 .project-control select { flex:1; min-width:0; }
+    #mf-original-v2 .sync { width:100%; margin-left:0; }
+    #mf-original-v2 .dbbar { grid-template-columns:1fr; }
+    #mf-original-v2 .modal-backdrop { padding:0; align-items:end; }
+    #mf-original-v2 .modal { width:100vw; max-height:92vh; border-radius:10px 10px 0 0; border-bottom:0; }
+    #mf-original-v2 .detail { padding:18px 18px 24px; }
+    #mf-original-v2 .copy-grid { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="mf-original-v2">
+  <div class="title-row">
+    <h1>ModuFlow 프로젝트 뷰</h1>
+    <label class="project-control">프로젝트
+      <select id="mf2-project"><option value="charge">모두의충전</option><option value="adpopcorn">애드팝콘</option><option value="all">전체 프로젝트</option></select>
+    </label>
+  </div>
+  <div class="tabs">
+    <button class="tab" data-view="issue-db">이슈 DB</button>
+    <button class="tab" data-view="issue-graph">이슈 그래프</button>
+    <button class="tab" data-view="knowledge">지식 그래프</button>
+    <button class="tab on" data-view="production">제작 기록</button>
+    <button class="tab" data-view="playbooks">플레이북</button>
+    <span class="sync" id="mf2-sync">2026-07-10 15:42 생성</span>
+  </div>
+  <div class="project-summary" id="mf2-summary">
+    <span><i class="dot"></i><b>active 4</b></span><span>review 2</span><span>제작 기록 4</span><span>플레이북 2</span><span>다음: 배너 플레이북 검토</span>
+  </div>
+
+  <section id="mf2-production">
+    <div class="db">
+      <div class="dbbar">
+        <input id="mf2-search" type="search" placeholder="Search title, decision, failure">
+        <div class="chips" id="mf2-chips"><button class="chip on" data-state="">전체</button><button class="chip" data-state="승인">승인</button><button class="chip" data-state="검토">검토</button><button class="chip" data-state="완료">완료</button></div>
+        <select id="mf2-type"><option value="">모든 유형</option><option>배너</option><option>PR</option><option>알림톡</option><option>Push</option></select>
+      </div>
+      <div class="production-layout">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th style="width:42%">Production Record</th><th style="width:14%">Type</th><th style="width:16%">Channel</th><th style="width:14%">Status</th><th style="width:14%">Playbook</th></tr></thead>
+            <tbody id="mf2-rows"></tbody>
+          </table>
+          <div class="empty hidden" id="mf2-empty">현재 조건에 맞는 제작 기록이 없습니다.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section id="mf2-other" class="db hidden"><div class="empty"><b id="mf2-other-title">이슈 DB</b><br>선택 프로젝트의 기존 화면을 그대로 표시합니다.</div></section>
+  <div id="info">프로젝트를 선택하면 모든 탭의 이슈, 제작 기록, 플레이북과 지식 범위가 함께 바뀝니다.</div>
+  <div class="modal-backdrop hidden" id="mf2-modal" role="dialog" aria-modal="true" aria-labelledby="mf2-modal-title">
+    <div class="modal">
+      <button class="modal-close" id="mf2-close" aria-label="상세 닫기">×</button>
+      <aside class="detail" id="mf2-detail"></aside>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const root=document.getElementById('mf-original-v2');
+  const records={
+    charge:[
+      {id:'banner',title:'여름 충전 혜택 배너',date:'2026-07-09',type:'배너',channel:'홈',status:'승인',playbook:'반영',artifact:'최종 홈 배너 · Figma',decision:'검정 카드형 UI가 작은 화면에서 가장 안정적이었다.',failure:'휴대폰 화면 안의 작은 한글은 이미지 생성 시 깨졌다.',pattern:'혜택 수치와 CTA는 HTML 텍스트로 분리한다.',external:'충전하고 여름 혜택을 받아보세요.',internal:'검정 카드형 레이아웃으로 확정했으며 클릭률을 추적한다.'},
+      {id:'press',title:'충전 혜택 제휴 보도자료',date:'2026-07-08',type:'PR',channel:'언론',status:'검토',playbook:'후보',artifact:'배포 검토본 · Google Docs',decision:'제목은 제휴사보다 고객 혜택을 먼저 보여준다.',failure:'기능 설명이 길어져 첫 문단의 뉴스성이 약해졌다.',pattern:'첫 문단에 누가, 무엇을, 언제, 왜 하는지 먼저 쓴다.',external:'모두의충전, 전기차 이용자 대상 여름 충전 혜택 제공',internal:'제휴사 최종 확인 후 7월 15일 배포 예정이다.'},
+      {id:'alim',title:'7월 휴면 사용자 알림톡',date:'2026-07-06',type:'알림톡',channel:'카카오',status:'완료',playbook:'미반영',artifact:'발송 문안 · Braze',decision:'첫 줄에 소멸 예정 혜택을 배치했다.',failure:'내부 캠페인명을 고객 문구에 그대로 사용했다.',pattern:'고객 행동과 기한을 2문장 안에 전달한다.',external:'남은 충전 혜택이 곧 사라져요.',internal:'휴면 30일 세그먼트 12,400명 대상 발송.'},
+      {id:'push',title:'주말 충전 리워드 Push',date:'2026-07-04',type:'Push',channel:'앱',status:'완료',playbook:'반영',artifact:'Push 결과 · Firebase',decision:'혜택 금액을 제목에 배치했다.',failure:'제목이 길어 일부 기기에서 잘렸다.',pattern:'Push 제목은 22자 이내로 유지한다.',external:'주말 충전하면 2천 포인트',internal:'금요일 17시 발송, 전환율로 재사용 여부 판단.'}
+    ],
+    adpopcorn:[{id:'proposal',title:'일본 퍼블리셔 제휴 제안서',date:'2026-07-10',type:'PR',channel:'파트너',status:'검토',playbook:'후보',artifact:'제안서 v4 · Google Slides',decision:'수익 수치보다 운영 안정성 사례를 앞에 배치했다.',failure:'한국 시장 용어를 번역만 해 현지 독자가 이해하기 어려웠다.',pattern:'시장별 용어집과 검증된 레퍼런스를 먼저 적용한다.',external:'안정적인 글로벌 리워드 광고 수익화를 지원합니다.',internal:'기술 검토 의견 반영 후 금요일 재발송한다.'}]
+  };
+  let project='charge', selected='banner', state='';
+  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const current=()=>project==='all'?[]:records[project];
+  function detail(r){
+    const el=root.querySelector('#mf2-detail');
+    if(!r){el.innerHTML='<div class="empty">목록에서 제작 기록을 선택하세요.</div>';return;}
+    el.innerHTML=`<h2 id="mf2-modal-title">${esc(r.title)}</h2><div class="detail-meta">${esc(r.date)} · ${esc(r.type)} · ${esc(r.channel)} · <span class="badge ${r.status==='승인'?'approved':r.status==='검토'?'review':''}">${esc(r.status)}</span></div><div class="section"><h3>Artifacts</h3><a class="artifact" href="#">${esc(r.artifact)} ↗</a></div><div class="section"><h3>Decisions</h3><p>${esc(r.decision)}</p></div><div class="section"><h3>Failed Attempts</h3><p>${esc(r.failure)}</p></div><div class="section"><h3>Reusable Patterns</h3><p>${esc(r.pattern)}</p></div><div class="section"><h3>Copy</h3><div class="copy-grid"><div class="copy-box"><strong>외부 배포용</strong><p>${esc(r.external)}</p></div><div class="copy-box"><strong>내부 보고용</strong><p>${esc(r.internal)}</p></div></div></div>`;
+    root.querySelector('#mf2-modal').classList.remove('hidden');
+  }
+  function render(){
+    const q=root.querySelector('#mf2-search').value.toLowerCase();
+    const type=root.querySelector('#mf2-type').value;
+    const list=current().filter(r=>(!q||`${r.title} ${r.decision} ${r.failure}`.toLowerCase().includes(q))&&(!state||r.status===state)&&(!type||r.type===type));
+    const rows=root.querySelector('#mf2-rows');
+    rows.innerHTML=list.map(r=>`<tr class="record-row ${r.id===selected?'selected':''}" data-id="${esc(r.id)}"><td><span class="record-title">${esc(r.title)}</span><span class="mono">${esc(r.date)}</span></td><td>${esc(r.type)}</td><td>${esc(r.channel)}</td><td><span class="badge ${r.status==='승인'?'approved':r.status==='검토'?'review':''}">${esc(r.status)}</span></td><td>${esc(r.playbook)}</td></tr>`).join('');
+    root.querySelector('#mf2-empty').classList.toggle('hidden',list.length>0);
+    rows.closest('table').classList.toggle('hidden',list.length===0);
+    rows.querySelectorAll('tr').forEach(tr=>tr.onclick=()=>{selected=tr.dataset.id;render();detail(current().find(r=>r.id===selected));});
+    const picked=current().find(r=>r.id===selected)||list[0]; if(picked)selected=picked.id;
+  }
+  root.querySelector('#mf2-project').onchange=e=>{
+    project=e.target.value; selected=project==='charge'?'banner':project==='adpopcorn'?'proposal':''; state='';
+    root.querySelectorAll('.chip').forEach((c,i)=>c.classList.toggle('on',i===0));
+    root.querySelector('#mf2-search').value=''; root.querySelector('#mf2-type').value='';
+    const summary=root.querySelector('#mf2-summary');
+    summary.innerHTML=project==='charge'?'<span><i class="dot"></i><b>active 4</b></span><span>review 2</span><span>제작 기록 4</span><span>플레이북 2</span><span>다음: 배너 플레이북 검토</span>':project==='adpopcorn'?'<span><i class="dot"></i><b>active 2</b></span><span>review 1</span><span>제작 기록 1</span><span>플레이북 후보 1</span><span>다음: 제휴 제안서 승인</span>':'<span><b>프로젝트 2</b></span><span>active 6</span><span>review 3</span><span>검증 경고 1</span><span>상세를 보려면 프로젝트 선택</span>';
+    root.querySelector('#mf2-modal').classList.add('hidden'); render();
+  };
+  root.querySelector('#mf2-search').oninput=render; root.querySelector('#mf2-type').onchange=render;
+  root.querySelectorAll('.chip').forEach(chip=>chip.onclick=()=>{state=chip.dataset.state;root.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===chip));render();});
+  root.querySelectorAll('.tab').forEach(tab=>tab.onclick=()=>{root.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===tab));const production=tab.dataset.view==='production';root.querySelector('#mf2-production').classList.toggle('hidden',!production);root.querySelector('#mf2-other').classList.toggle('hidden',production);root.querySelector('#mf2-other-title').textContent=tab.textContent;});
+  root.querySelector('#mf2-close').onclick=()=>root.querySelector('#mf2-modal').classList.add('hidden');
+  root.querySelector('#mf2-modal').onclick=e=>{if(e.target===root.querySelector('#mf2-modal'))root.querySelector('#mf2-modal').classList.add('hidden');};
+  render();
+})();
+</script>
+</body>
+</html>

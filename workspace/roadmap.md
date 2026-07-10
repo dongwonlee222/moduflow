@@ -70,8 +70,8 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Reason: Projects have different folders and brand knowledge, so the dashboard must use registered project metadata without mixing project context or crawling arbitrary paths.
 - Confidence: high
 - Dependency: `085-project-production-records-and-playbooks`, `056-dashboard-database-list-view`, `047-issue-artifact-drilldown`.
-- Next command: `product:design 086-project-aware-production-library-dashboard`
-- Status: ready; `085` released, so design and implementation are unblocked.
+- Next command: `product:plan 086-project-aware-production-library-dashboard`
+- Status: design approved; existing ModuFlow UI is preserved and Production Record details use a dimmed modal.
 
 ### `087-korean-github-pr-review-surface`
 

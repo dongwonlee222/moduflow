@@ -88,8 +88,8 @@ Do NOT introduce browser-side Git mutation or an external database in v1. Do not
 Every artifact-producing step is a tracked task here — never produce a spec, plan, design, prototype, or review off the books. Check the box and link the artifact when done.
 
 - [x] spec → `specs/086-project-aware-production-library-dashboard/spec.md` (+ `spec.ko.md`)
-- [ ] design → `specs/086-project-aware-production-library-dashboard/design.md`
-- [ ] prototype → `specs/086-project-aware-production-library-dashboard/prototype.md`
+- [x] design → `specs/086-project-aware-production-library-dashboard/design.md` (+ `design.ko.md`)
+- [x] prototype → `specs/086-project-aware-production-library-dashboard/prototype.md` + `prototype.html`
 - [ ] plan → `specs/086-project-aware-production-library-dashboard/plan.md`
 - [ ] execute → project selector, production views, URL state, responsive UI, and tests
 - [ ] review → `specs/086-project-aware-production-library-dashboard/review.md`
@@ -107,6 +107,7 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 
 - 2026-07-10: User approved a production library/playbook dashboard concept.
 - 2026-07-10: User decided the top project selector must control issue, production, knowledge, and status views globally.
+- 2026-07-10: User approved preserving the existing ModuFlow UI and opening Production Record details in a dimmed modal.
 
 ## Links
 
@@ -119,4 +120,4 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 
 ## Next Command
 
-`product:design 086-project-aware-production-library-dashboard`
+`product:plan 086-project-aware-production-library-dashboard`

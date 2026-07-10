@@ -49,7 +49,7 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 ## Queue (post-benchmark, 2026-07-05 — goal `team-visibility-onboarding` issues complete)
 
 - `085-project-production-records-and-playbooks`: done; PR #17 merged and version 0.3.23 released after Korean-first human approval.
-- `086-project-aware-production-library-dashboard`: ready; global project selector plus project-scoped production/playbook views are unblocked for `product:design 086-project-aware-production-library-dashboard`.
+- `086-project-aware-production-library-dashboard`: design approved; existing UI plus global project selector, Production Records/Playbooks tabs, and dimmed detail modal. Next: `product:plan 086-project-aware-production-library-dashboard`.
 - `087-korean-github-pr-review-surface`: make GitHub PR bodies, review comments, and approval summaries Korean-first when a Korean review packet exists. Next: `product:spec 087-korean-github-pr-review-surface`.
 - `071-spec-code-converge-check`: post-implementation code-vs-spec divergence check (P3).
 - `072-lifecycle-hooks-automation`: SessionStart state injection + auto lifecycle sync hooks (P4).

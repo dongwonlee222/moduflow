@@ -237,8 +237,8 @@
       "lock_state": "available",
       "locked_by": "",
       "blocker": "",
-      "last_handoff": "Issue 085 released; Issue 086 is unblocked and ready for design.",
-      "next_command": "product:design 086-project-aware-production-library-dashboard",
+      "last_handoff": "Design approved: preserve existing ModuFlow UI and use a dimmed modal for Production Record details.",
+      "next_command": "product:plan 086-project-aware-production-library-dashboard",
       "updated_at": "2026-07-10"
     }
   ]
