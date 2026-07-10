@@ -73,6 +73,15 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Next command: `product:design 086-project-aware-production-library-dashboard`
 - Status: spec complete; design can proceed while implementation remains blocked by `085`.
 
+### `087-korean-github-pr-review-surface`
+
+- Outcome: Korean reviewers see Korean-first GitHub PR bodies, review findings, check summaries, and approval requests without losing English canonical artifacts.
+- Reason: Issue 057 creates a Korean packet, but the upload step can still publish English `pr.md`, so the human review surface does not enforce the agreed language.
+- Confidence: high
+- Dependency: `057-korean-human-review-packet`, `052-draft-pr-review-handoff`.
+- Next command: `product:spec 087-korean-github-pr-review-surface`
+- Status: backlog; PR #17 body corrected manually as dogfood.
+
 ### `074-sync-fetch-sandbox-handling`
 
 - Outcome: Approval-sensitive hosts can run a top-level `git fetch` and then `project_sync.py --no-fetch`, avoiding misleading `.git/FETCH_HEAD` warnings from Python subprocess fetches.
