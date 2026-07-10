@@ -7,6 +7,8 @@ argument-hint: "[project path] [--write|--kind|--search|--get]"
 
 Manage repo-local project memory for deliverables, decisions, evidence, meetings, releases, notes, and references.
 
+For recurring production outputs that must preserve artifacts, decisions, failed attempts, reusable patterns, external copy, internal reporting copy, and human-approved playbooks, use `/product:production`. This command remains the generic long-term memory path.
+
 ## PM-Friendly Flow
 
 1. Initialize memory:
