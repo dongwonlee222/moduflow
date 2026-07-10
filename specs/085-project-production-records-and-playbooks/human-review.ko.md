@@ -37,15 +37,15 @@
 
 ## 검증 요약
 
-- Focused production suite: 24 passed.
-- Full repository suite: 483 passed.
-- Spec consistency: 0 findings.
-- Package, project, release, lint, and security gates: passed.
-- GitHub CI `test`: success; PR is mergeable.
-- Constitution: v1.0 checked — no violations.
-- Converge: 13 unverifiable due numbered-AC parser limitation; no blocking findings.
-- Visual evidence: `memory/dashboard.html`, `memory/issue-085-project-production-records-and-playbooks.html`.
-- Reference improvements: none found.
+- 제작 지식 집중 테스트: 24개 통과.
+- 전체 저장소 테스트: 483개 통과.
+- 스펙 일치 검사: 발견 사항 0건.
+- 패키지·프로젝트·릴리스·린트·보안 게이트: 모두 통과.
+- GitHub CI `test`: 통과, PR 병합 가능 상태.
+- 프로젝트 헌법 v1.0: 위반 없음.
+- Converge: 번호형 수용 기준 파서 한계로 13개를 검증 불가로 기록했으며 차단 사항은 없음.
+- 시각 검토 자료: `memory/dashboard.html`, `memory/issue-085-project-production-records-and-playbooks.html`.
+- 참고 저장소 개선 후보: 없음.
 
 ## no-issue 선언 (issue 075)
 
@@ -53,9 +53,9 @@
 
 ## 리뷰 결과
 
-1. **High — same-day/title ID collision blocked distinct records.** Resolved by preserving the simple base ID for the first record and deterministically adding source context when a different capture key collides. Added a regression test proving both records are created without overwrite.
-2. **Medium — CLI usage errors raised `SystemExit(2)` instead of returning `2`.** Resolved with a returning argument parser and a focused direct-`main(argv)` test.
-3. **Medium — missing `--issue-id` and `--source-context` returned mutation failure `1`.** Resolved by classifying the missing source as a usage error and returning `2`.
+1. **높음 — 같은 날짜와 제목을 가진 서로 다른 작업이 하나의 기록으로 충돌했습니다.** 첫 기록은 단순 ID를 유지하고, 다른 작업 키가 충돌하면 출처 식별자를 결정적으로 덧붙이도록 수정했습니다. 두 기록이 덮어쓰기 없이 생성되는 회귀 테스트를 추가했습니다.
+2. **중간 — CLI 사용 오류가 반환값 `2` 대신 `SystemExit(2)`를 발생시켰습니다.** 호출자가 종료 코드를 직접 받을 수 있는 인자 파서를 적용하고 `main(argv)` 회귀 테스트를 추가했습니다.
+3. **중간 — `--issue-id`와 `--source-context`가 모두 없을 때 변경 실패 `1`로 처리됐습니다.** 입력 사용 오류로 분류해 종료 코드 `2`를 반환하도록 수정했습니다.
 
 ## 보류 조건
 
