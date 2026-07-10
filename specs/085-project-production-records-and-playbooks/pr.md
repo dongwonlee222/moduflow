@@ -8,9 +8,9 @@ Use a Draft PR or a local PR-ready marker early, then attach review, verificatio
 ## Draft PR
 
 - Branch: `codex/085-project-production-records-and-playbooks`
-- PR: `local:085-project-production-records-and-playbooks:draft-pr-ready`
-- Reviewer: `Reviewer`
-- Fallback reason: GitHub Draft PR URL is not recorded yet. This local PR-ready marker preserves review state until GitHub sync creates or mirrors the PR.
+- PR: `https://github.com/dongwonlee222/moduflow/pull/17`
+- Reviewer: `Dongwon Lee`
+- Fallback reason: GitHub Draft PR URL is available or expected to be supplied by the workflow.
 - Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
 - Commit mode: `local-git-write`
@@ -22,7 +22,7 @@ python3 scripts/project_pr.py . --issue-id 085-project-production-records-and-pl
 ```
 
 ```bash
-python3 scripts/project_workflow.py . --pr-state --issue-id 085-project-production-records-and-playbooks --pr "local:085-project-production-records-and-playbooks:draft-pr-ready" --reviewer "Reviewer"
+python3 scripts/project_workflow.py . --pr-state --issue-id 085-project-production-records-and-playbooks --pr "https://github.com/dongwonlee222/moduflow/pull/17" --reviewer "Dongwon Lee"
 ```
 
 - Continue review: `product:review 085-project-production-records-and-playbooks`
@@ -60,8 +60,8 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 085-project-producti
 
 ## Approval Record
 
-- Dashboard reviewer: `Reviewer` or assigned reviewer before merge.
-- PR diff reviewer: `Reviewer` or assigned reviewer before merge.
+- Dashboard reviewer: `Dongwon Lee` or assigned reviewer before merge.
+- PR diff reviewer: `Dongwon Lee` or assigned reviewer before merge.
 - Merge approver: human approval required; not granted by this handoff.
 - Deployment approver: required only when a protected deployment environment is configured.
 

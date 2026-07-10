@@ -61,8 +61,8 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Reason: Issue completion records what happened, but recurring banner, PR, proposal, Alimtalk, SMS, and Push work must improve the next production cycle.
 - Confidence: high
 - Dependency: existing project memory and candidate-promotion foundations (`030`, `040`, `043`).
-- Next command: `product:pr 085-project-production-records-and-playbooks`
-- Status: active; implementation, dogfood, and independent review complete.
+- Next command: `product:review 085-project-production-records-and-playbooks`
+- Status: Draft PR #17 open; implementation, dogfood, and independent review complete.
 
 ### `086-project-aware-production-library-dashboard`
 

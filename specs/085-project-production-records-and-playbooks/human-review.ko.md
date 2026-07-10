@@ -6,9 +6,9 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-085-project-production-records-and-playbooks.html`
-- PR/로컬 마커: `local:085-project-production-records-and-playbooks:draft-pr-ready`
+- PR/로컬 마커: `https://github.com/dongwonlee222/moduflow/pull/17`
 - 브랜치: `codex/085-project-production-records-and-playbooks`
-- 리뷰어: `Reviewer`
+- 리뷰어: `Dongwon Lee`
 
 ## 이슈 요약
 

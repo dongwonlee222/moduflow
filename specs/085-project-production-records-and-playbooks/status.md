@@ -1,7 +1,7 @@
 # Status: Project Production Records and Playbooks
 
 Issue: `085-project-production-records-and-playbooks`
-Phase: ready-for-pr
+Phase: draft-pr-review
 Updated: 2026-07-10
 
 ## Completed
@@ -15,7 +15,8 @@ Updated: 2026-07-10
 
 ## Pending
 
-- PR/release artifacts.
+- Human review and merge approval for Draft PR #17.
+- Release artifact after merge.
 
 ## Blockers
 
@@ -31,4 +32,4 @@ Updated: 2026-07-10
 
 ## Next Command
 
-`product:pr 085-project-production-records-and-playbooks`
+`product:review 085-project-production-records-and-playbooks`

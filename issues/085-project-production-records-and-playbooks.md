@@ -106,9 +106,10 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 
 - Spec: `specs/085-project-production-records-and-playbooks/spec.md`
 - Status: `specs/085-project-production-records-and-playbooks/status.md`
+- PR: `https://github.com/dongwonlee222/moduflow/pull/17`
 - Sessions: `sessions/085-project-production-records-and-playbooks/`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`product:pr 085-project-production-records-and-playbooks`
+`product:review 085-project-production-records-and-playbooks`
