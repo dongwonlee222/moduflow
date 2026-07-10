@@ -2,7 +2,7 @@
 
 **Status: backlog** — created 2026-07-10.
 **Priority: p2**
-**Blocked-by: `085-project-production-records-and-playbooks`**
+**Dependency: `085-project-production-records-and-playbooks` (done 2026-07-10; unblocked)**
 
 ## Summary
 

@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "execute",
+  "phase": "select",
   "active_goal": "team-visibility-onboarding",
-  "active_issue": "085-project-production-records-and-playbooks",
-  "last_command": "product:execute 085-project-production-records-and-playbooks",
-  "next_command": "product:release 085-project-production-records-and-playbooks",
+  "active_issue": "",
+  "last_command": "product:release 085-project-production-records-and-playbooks",
+  "next_command": "product:design 086-project-aware-production-library-dashboard",
   "blockers": [],
   "updated_at": "2026-07-10"
 }

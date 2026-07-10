@@ -1,7 +1,7 @@
 # Status: Project Production Records and Playbooks
 
 Issue: `085-project-production-records-and-playbooks`
-Phase: ready-for-human-approval
+Phase: done
 Updated: 2026-07-10
 
 ## Completed
@@ -14,16 +14,18 @@ Updated: 2026-07-10
 - Independent review found three actionable defects; all were fixed with regression tests. See `review.md`.
 - Draft PR #17 CI and staged ModuFlow review passed.
 - Review handoff, dashboard, issue drill-down, and converge evidence generated.
+- Dongwon Lee approved the Korean-first review surface and release readiness.
+- PR #17 merged to `main` as `0356b75`; version 0.3.23 released.
+- Release record saved to `release.md`.
 
 ## Pending
 
-- Human review and merge approval for PR #17.
-- Release artifact after merge.
+- None.
 
 ## Blockers
 
 - None for Issue 085.
-- Issue 086 implementation remains blocked until Issue 085's parser and normalized payload interfaces are complete.
+- None. Issue 086 is unblocked and ready for design.
 
 ## Verification
 
@@ -39,4 +41,4 @@ Updated: 2026-07-10
 
 ## Next Command
 
-`product:release 085-project-production-records-and-playbooks` after human merge approval
+`product:design 086-project-aware-production-library-dashboard`

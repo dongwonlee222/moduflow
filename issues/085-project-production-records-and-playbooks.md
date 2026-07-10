@@ -1,6 +1,6 @@
 # Issue 085: Project Production Records and Playbooks
 
-**Status: active** — created 2026-07-10, started 2026-07-10.
+**Status: done** — created 2026-07-10, started 2026-07-10, done 2026-07-10.
 **Priority: p1**
 
 ## Summary
@@ -107,9 +107,10 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 - Spec: `specs/085-project-production-records-and-playbooks/spec.md`
 - Status: `specs/085-project-production-records-and-playbooks/status.md`
 - PR: `https://github.com/dongwonlee222/moduflow/pull/17`
+- Release: `specs/085-project-production-records-and-playbooks/release.md`
 - Sessions: `sessions/085-project-production-records-and-playbooks/`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`product:release 085-project-production-records-and-playbooks` after human merge approval
+`product:design 086-project-aware-production-library-dashboard`

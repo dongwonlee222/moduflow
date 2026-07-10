@@ -61,8 +61,8 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Reason: Issue completion records what happened, but recurring banner, PR, proposal, Alimtalk, SMS, and Push work must improve the next production cycle.
 - Confidence: high
 - Dependency: existing project memory and candidate-promotion foundations (`030`, `040`, `043`).
-- Next command: `product:release 085-project-production-records-and-playbooks` after merge
-- Status: PR #17 automated review and CI passed; awaiting human merge approval.
+- Next command: `product:design 086-project-aware-production-library-dashboard`
+- Status: done; PR #17 merged and version 0.3.23 released after Korean-first human approval.
 
 ### `086-project-aware-production-library-dashboard`
 
@@ -71,7 +71,7 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Confidence: high
 - Dependency: `085-project-production-records-and-playbooks`, `056-dashboard-database-list-view`, `047-issue-artifact-drilldown`.
 - Next command: `product:design 086-project-aware-production-library-dashboard`
-- Status: spec complete; design can proceed while implementation remains blocked by `085`.
+- Status: ready; `085` released, so design and implementation are unblocked.
 
 ### `087-korean-github-pr-review-surface`
 

@@ -10,7 +10,7 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Active Issue
 
-- `085-project-production-records-and-playbooks`: PR #17 automated review and CI passed; awaiting human merge approval.
+- None active. Run `product:status` to pick the next issue.
 
 ## Recently Completed
 
@@ -48,8 +48,8 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Queue (post-benchmark, 2026-07-05 — goal `team-visibility-onboarding` issues complete)
 
-- `085-project-production-records-and-playbooks`: project-local recurring production records and human-approved playbooks passed review in PR #17. Next: `product:release 085-project-production-records-and-playbooks` after merge.
-- `086-project-aware-production-library-dashboard`: spec complete for a global project selector plus project-scoped production/playbook views. Next: `product:design 086-project-aware-production-library-dashboard`; implementation blocked by `085`.
+- `085-project-production-records-and-playbooks`: done; PR #17 merged and version 0.3.23 released after Korean-first human approval.
+- `086-project-aware-production-library-dashboard`: ready; global project selector plus project-scoped production/playbook views are unblocked for `product:design 086-project-aware-production-library-dashboard`.
 - `087-korean-github-pr-review-surface`: make GitHub PR bodies, review comments, and approval summaries Korean-first when a Korean review packet exists. Next: `product:spec 087-korean-github-pr-review-surface`.
 - `071-spec-code-converge-check`: post-implementation code-vs-spec divergence check (P3).
 - `072-lifecycle-hooks-automation`: SessionStart state injection + auto lifecycle sync hooks (P4).
