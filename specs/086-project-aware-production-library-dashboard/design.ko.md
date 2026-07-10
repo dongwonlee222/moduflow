@@ -12,6 +12,16 @@ Issue: `086-project-aware-production-library-dashboard`
 
 제작 기록 상세는 오른쪽 고정 패널이 아니라 딤 처리된 모달로 엽니다. 기존 테이블 폭을 유지하면서 긴 제작 이력을 읽기 위한 공간을 확보하기 위한 결정입니다.
 
+## 기존 구현 보존 계약
+
+이 디자인의 구현 기준은 새로 그린 유사 화면이 아니라 현재 `scripts/project_memory.py`가 생성하는 `memory/dashboard.html`입니다.
+
+- Issue 056의 이슈 DB 전체 데이터, 검색, 상태 chip, 정렬, 그룹, 산출물 배지, attention flag, 이슈 상세 이동을 그대로 유지합니다.
+- Issue 045의 Cytoscape 이슈 그래프와 지식 그래프, status/kind 색상, goal compound node, 관계선 토글, 지식 배지, node motion, node preview, 이슈↔지식 이동, `#issues`·`#memory` deep link를 그대로 유지합니다.
+- Issue 047의 이슈·지식 상세 HTML 링크와 한글 sidecar 동작을 유지합니다.
+- 새 탭 때문에 기존 collector, node/edge payload, graph layout, hash routing을 재구현하거나 단순화하지 않습니다.
+- 프로토타입과 구현 검증은 실제 생성 대시보드의 노드·관계·이슈 행 수를 기준으로 회귀 확인합니다.
+
 ## 기존 UI 유지 기준
 
 - 폰트: `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`; macOS에서는 SF Pro로 표시됩니다.
@@ -30,7 +40,9 @@ Issue: `086-project-aware-production-library-dashboard`
 
 기존 `ModuFlow 프로젝트 뷰` 제목은 왼쪽에 그대로 둡니다. 오른쪽에 간결한 `프로젝트` 선택기를 추가합니다.
 
-단일 프로젝트 모드에서는 프로젝트 이름 또는 비활성 선택기로 표시할 수 있지만, 내부적으로는 다중 프로젝트와 같은 전역 프로젝트 상태를 사용합니다. 포트폴리오 모드는 등록 프로젝트와 `전체 프로젝트`를 표시합니다.
+프로젝트 이름은 예시 문자열을 하드코딩하지 않습니다. 단일 프로젝트 모드는 `.moduflow/config.json`의 `project_name` 또는 프로젝트 프로필을 사용합니다. 포트폴리오 모드는 `portfolio/projects.json`의 등록 항목만 사용합니다.
+
+현재 ModuFlow 저장소에는 `moduflow / ModuFlow` 한 프로젝트만 등록되어 있으므로 프로토타입의 선택기는 `ModuFlow`만 표시하고 비활성화합니다. 프로젝트가 둘 이상 등록됐을 때만 선택을 활성화하고 `전체 프로젝트`를 제공합니다.
 
 ### 탭
 
@@ -131,6 +143,9 @@ Issue: `086-project-aware-production-library-dashboard`
 - 모바일: 제목/프로젝트 배치, 탭·필터 줄바꿈, 테이블 스크롤, 하단 모달.
 - 동작: 프로젝트 전환, URL 복원, 잘못된 프로젝트 fallback, 필터 초기화, 모달 focus, 빈 상태, 누락 링크 경고.
 - 회귀: 기존 이슈 DB·이슈 그래프·지식 그래프·이슈 상세.
+- 현재 ModuFlow 기준 회귀 기준선: 이슈 그래프 87 nodes/198 edges, 지식 그래프 14 nodes/4 edges. 데이터가 바뀌면 고정 수치가 아니라 생성 전후 동일성으로 비교합니다.
+- 이슈 DB는 샘플 행이 아니라 `issues/*.md` 전체 collector 결과를 표시해야 합니다.
+- 프로젝트 표시 이름은 `.moduflow/config.json`과 `portfolio/projects.json`의 실제 값과 일치해야 합니다.
 - 최종 게이트: 집중 테스트, 프로젝트 검증, `python3 scripts/release_check.py .`.
 
 ## 기각한 대안
@@ -143,3 +158,5 @@ Issue: `086-project-aware-production-library-dashboard`
 ## 승인 결과
 
 승인된 방향은 기존 ModuFlow UI에 전역 프로젝트 선택기, 제작 기록·플레이북 탭, 딤 처리 상세 모달만 추가하는 것입니다. 이 디자인은 재설계가 아니라 기존 대시보드의 점진적 확장입니다.
+
+프로토타입도 실제 생성된 ModuFlow 대시보드를 베이스로 하며, 이슈 DB와 두 그래프를 샘플로 다시 그리지 않습니다. ModuFlow 저장소에는 아직 실제 제작 기록과 플레이북이 없으므로 해당 탭은 정직한 빈 상태를 표시합니다.
