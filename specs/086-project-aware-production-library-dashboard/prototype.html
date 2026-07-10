@@ -57,6 +57,19 @@
   #mf-original-v2 #info code { font-size:13px; color:#888; }
   #mf-original-v2 .empty { padding:50px 24px; text-align:center; color:#888; }
   #mf-original-v2 .hidden { display:none !important; }
+  #mf-original-v2 .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:13px; margin-bottom:10px; color:#555; align-items:center; }
+  #mf-original-v2 .legend span { display:flex; align-items:center; gap:6px; }
+  #mf-original-v2 .sw { width:12px; height:12px; border-radius:3px; display:inline-block; }
+  #mf-original-v2 .graph-canvas { position:relative; width:100%; height:480px; border:1px solid #ddd; border-radius:12px; overflow:hidden; background:#fff; }
+  #mf-original-v2 .graph-canvas svg { position:absolute; inset:0; width:100%; height:100%; }
+  #mf-original-v2 .graph-canvas line { stroke:#aaa; stroke-width:1.5; }
+  #mf-original-v2 .node { position:absolute; z-index:2; width:132px; padding:9px 8px; border:2px solid transparent; border-radius:8px; color:#fff; font-size:11px; line-height:1.35; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,.12); }
+  #mf-original-v2 .node.active { background:#2a78d6; border-color:#e8590c; }
+  #mf-original-v2 .node.done { background:#0f6e56; }
+  #mf-original-v2 .node.backlog { background:#888780; }
+  #mf-original-v2 .node.memory { background:#378add; }
+  #mf-original-v2 .node.evidence { background:#888780; }
+  #mf-original-v2 .node.deliverable { background:#1d9e75; }
   @media(max-width:860px) {
     #mf-original-v2 .title-row { align-items:flex-start; flex-direction:column; }
     #mf-original-v2 .project-control { width:100%; }
@@ -80,10 +93,10 @@
     </label>
   </div>
   <div class="tabs">
-    <button class="tab" data-view="issue-db">이슈 DB</button>
+    <button class="tab on" data-view="issue-db">이슈 DB</button>
     <button class="tab" data-view="issue-graph">이슈 그래프</button>
     <button class="tab" data-view="knowledge">지식 그래프</button>
-    <button class="tab on" data-view="production">제작 기록</button>
+    <button class="tab" data-view="production">제작 기록</button>
     <button class="tab" data-view="playbooks">플레이북</button>
     <span class="sync" id="mf2-sync">2026-07-10 15:42 생성</span>
   </div>
@@ -91,7 +104,49 @@
     <span><i class="dot"></i><b>active 4</b></span><span>review 2</span><span>제작 기록 4</span><span>플레이북 2</span><span>다음: 배너 플레이북 검토</span>
   </div>
 
-  <section id="mf2-production">
+  <section id="mf2-issue-db">
+    <div class="db">
+      <div class="dbbar">
+        <input type="search" placeholder="Search issue id, title, description">
+        <div class="chips"><button class="chip on">전체</button><button class="chip">진행중</button><button class="chip">리뷰필요</button><button class="chip">막힘</button><button class="chip">완료</button></div>
+        <select><option>등록 최신순</option><option>최근 업데이트</option><option>이슈 번호</option><option>상태</option></select>
+      </div>
+      <table>
+        <thead><tr><th style="width:7%">ID</th><th style="width:24%">Issue</th><th style="width:12%">Status</th><th style="width:11%">Phase</th><th>Description</th><th style="width:12%">Artifacts</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">086</td><td><span class="record-title">Project-Aware Production Library Dashboard</span><span class="mono">086-project-aware-production-library-dashboard</span></td><td><span class="badge review">backlog</span></td><td>design</td><td>상단 프로젝트 선택에 따라 이슈와 제작 기록, 플레이북, 지식 화면이 같은 프로젝트 범위로 전환됩니다.</td><td><span class="badge">I</span> <span class="badge">S</span> <span class="badge">KO</span></td></tr>
+          <tr><td class="mono">085</td><td><span class="record-title">Project Production Records and Playbooks</span><span class="mono">085-project-production-records-and-playbooks</span></td><td><span class="badge approved">done</span></td><td>release</td><td>반복 제작물의 결과물, 판단, 실패, 재사용 패턴을 프로젝트별로 축적합니다.</td><td><span class="badge">I</span> <span class="badge">S</span> <span class="badge">Rel</span></td></tr>
+          <tr><td class="mono">080</td><td><span class="record-title">Reference Improvement Backlog</span><span class="mono">080-reference-improvement-backlog</span></td><td><span class="badge review">review</span></td><td>pr</td><td>외부 레퍼런스에서 발견한 개선 사항을 별도 백로그로 관리합니다.</td><td><span class="badge">I</span> <span class="badge">PR</span></td></tr>
+          <tr><td class="mono">079</td><td><span class="record-title">Plan Discipline and Skill Matrix</span><span class="mono">079-plan-discipline-skill-matrix</span></td><td><span class="badge review">review</span></td><td>pr</td><td>계획 작성과 스킬 선택 규칙을 표준화합니다.</td><td><span class="badge">I</span> <span class="badge">P</span> <span class="badge">PR</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="mf2-issue-graph" class="hidden">
+    <div class="legend" id="mf2-graph-legend"><span><i class="sw" style="background:#2a78d6"></i>active</span><span><i class="sw" style="background:#0f6e56"></i>done</span><span><i class="sw" style="background:#888780"></i>backlog</span><span>관계선 표시</span></div>
+    <div class="graph-canvas" id="mf2-graph-canvas">
+      <svg viewBox="0 0 1000 480" preserveAspectRatio="none"><line x1="190" y1="230" x2="430" y2="140"></line><line x1="190" y1="230" x2="430" y2="320"></line><line x1="560" y1="140" x2="780" y2="230"></line><line x1="560" y1="320" x2="780" y2="230"></line></svg>
+      <div class="node done" style="left:8%;top:42%">085<br>Production Records</div>
+      <div class="node active" style="left:38%;top:19%">086<br>Dashboard</div>
+      <div class="node backlog" style="left:38%;top:67%">087<br>Korean Review</div>
+      <div class="node done" style="left:72%;top:42%">056<br>Issue DB View</div>
+    </div>
+  </section>
+
+  <section id="mf2-knowledge" class="hidden">
+    <div class="legend"><span><i class="sw" style="background:#378add"></i>decision</span><span><i class="sw" style="background:#888780"></i>evidence</span><span><i class="sw" style="background:#1d9e75"></i>deliverable</span></div>
+    <div class="graph-canvas">
+      <svg viewBox="0 0 1000 480" preserveAspectRatio="none"><line x1="250" y1="120" x2="500" y2="240"></line><line x1="250" y1="360" x2="500" y2="240"></line><line x1="630" y1="240" x2="820" y2="140"></line><line x1="630" y1="240" x2="820" y2="340"></line></svg>
+      <div class="node memory" style="left:16%;top:17%">Decision<br>프로젝트 로컬 지식</div>
+      <div class="node evidence" style="left:16%;top:66%">Evidence<br>배너 제작 학습</div>
+      <div class="node deliverable" style="left:44%;top:42%">Production Record<br>여름 혜택 배너</div>
+      <div class="node memory" style="left:75%;top:19%">Playbook<br>모바일 배너</div>
+      <div class="node deliverable" style="left:75%;top:65%">Artifact<br>최종 홈 배너</div>
+    </div>
+  </section>
+
+  <section id="mf2-production" class="hidden">
     <div class="db">
       <div class="dbbar">
         <input id="mf2-search" type="search" placeholder="Search title, decision, failure">
@@ -109,7 +164,10 @@
       </div>
     </div>
   </section>
-  <section id="mf2-other" class="db hidden"><div class="empty"><b id="mf2-other-title">이슈 DB</b><br>선택 프로젝트의 기존 화면을 그대로 표시합니다.</div></section>
+  <section id="mf2-playbooks" class="db hidden">
+    <div class="dbbar"><input type="search" placeholder="Search playbook title, scope, pattern"><div class="chips"><button class="chip on">전체</button><button class="chip">승인</button><button class="chip">검토</button></div><select><option>최근 업데이트</option><option>승인 상태</option></select></div>
+    <table><thead><tr><th>Playbook</th><th>Scope</th><th>Status</th><th>Version</th><th>Sources</th><th>Review</th></tr></thead><tbody><tr><td><span class="record-title">모바일 배너 제작</span><span class="mono">playbooks/mobile-banner.md</span></td><td>배너 · 홈 · 고객</td><td><span class="badge approved">approved</span></td><td>1.2</td><td>3 records</td><td>2026-09-30</td></tr><tr><td><span class="record-title">보도자료 리드문</span><span class="mono">candidate</span></td><td>PR · 언론 · 기자</td><td><span class="badge review">review</span></td><td>0.1</td><td>2 records</td><td>승인 필요</td></tr></tbody></table>
+  </section>
   <div id="info">프로젝트를 선택하면 모든 탭의 이슈, 제작 기록, 플레이북과 지식 범위가 함께 바뀝니다.</div>
   <div class="modal-backdrop hidden" id="mf2-modal" role="dialog" aria-modal="true" aria-labelledby="mf2-modal-title">
     <div class="modal">
@@ -161,7 +219,18 @@
   };
   root.querySelector('#mf2-search').oninput=render; root.querySelector('#mf2-type').onchange=render;
   root.querySelectorAll('.chip').forEach(chip=>chip.onclick=()=>{state=chip.dataset.state;root.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===chip));render();});
-  root.querySelectorAll('.tab').forEach(tab=>tab.onclick=()=>{root.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===tab));const production=tab.dataset.view==='production';root.querySelector('#mf2-production').classList.toggle('hidden',!production);root.querySelector('#mf2-other').classList.toggle('hidden',production);root.querySelector('#mf2-other-title').textContent=tab.textContent;});
+  const views={
+    'issue-db':'#mf2-issue-db',
+    'issue-graph':'#mf2-issue-graph',
+    'knowledge':'#mf2-knowledge',
+    'production':'#mf2-production',
+    'playbooks':'#mf2-playbooks'
+  };
+  root.querySelectorAll('.tab').forEach(tab=>tab.onclick=()=>{
+    root.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t===tab));
+    Object.values(views).forEach(selector=>root.querySelector(selector).classList.add('hidden'));
+    root.querySelector(views[tab.dataset.view]).classList.remove('hidden');
+  });
   root.querySelector('#mf2-close').onclick=()=>root.querySelector('#mf2-modal').classList.add('hidden');
   root.querySelector('#mf2-modal').onclick=e=>{if(e.target===root.querySelector('#mf2-modal'))root.querySelector('#mf2-modal').classList.add('hidden');};
   render();

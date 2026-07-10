@@ -15,6 +15,7 @@ Issue: `086-project-aware-production-library-dashboard`
 
 - `모두의충전`, `애드팝콘`, `전체 프로젝트` 전환.
 - 모든 대시보드 탭 위에서 프로젝트 범위 유지.
+- 기존 이슈 DB, 이슈 그래프, 지식 그래프 화면이 제거되지 않고 같은 위치와 스타일로 유지됨.
 - 기존 ModuFlow DB 컨트롤로 제작 기록 검색과 필터링.
 - 테이블 폭을 줄이지 않고 딤 모달로 제작 기록 상세 열기.
 - Artifacts, Decisions, Failed Attempts, Reusable Patterns와 분리된 외부/내부 문장 확인.
@@ -23,7 +24,7 @@ Issue: `086-project-aware-production-library-dashboard`
 
 ## 시각 검토 결정
 
-첫 탐색안은 새 앱 shell과 오른쪽 고정 상세 패널을 사용했지만 기존 UI 변화가 커서 기각했습니다. 승인안은 기존 ModuFlow 제목, 시스템 폰트, 파란 탭, 필터, 테이블, 테두리, 정보 패널을 유지하고 Issue 086에 필요한 컨트롤만 추가합니다.
+첫 탐색안은 새 앱 shell과 오른쪽 고정 상세 패널을 사용했지만 기존 UI 변화가 커서 기각했습니다. 승인안은 기존 ModuFlow 제목, 시스템 폰트, 파란 탭, 필터, 테이블, 테두리, 정보 패널과 이슈 DB·이슈 그래프·지식 그래프를 유지하고 Issue 086에 필요한 컨트롤만 추가합니다.
 
 ## 구현 참고
 
