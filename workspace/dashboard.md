@@ -10,7 +10,7 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `086-project-aware-production-library-dashboard` (phase: plan). Canonical: `issues/086-project-aware-production-library-dashboard.md`.
 
 ## Recently Completed
 

@@ -18,6 +18,7 @@ Issue: `086-project-aware-production-library-dashboard`
 - 등록 프로젝트가 하나일 때 선택기를 비활성화하고, 둘 이상일 때만 전환 가능하게 하는 계약.
 - 기존 이슈 DB, 이슈 그래프, 지식 그래프 화면이 제거되지 않고 같은 위치와 스타일로 유지됨.
 - 실제 전체 이슈 DB 행, Cytoscape 이슈 그래프 87 nodes/198 edges, 지식 그래프 14 nodes/4 edges 유지 확인.
+- 현재 활성 이슈 `086-project-aware-production-library-dashboard`에 `.current` 강조, 중앙 이동, 기존 zoom 1.15 적용 확인.
 - 기존 이슈 DB의 검색, filter chip, 정렬, grouping과 상세 이동 유지.
 - 기존 그래프의 관계선·지식 배지 토글, node interaction, hash deep link 유지.
 - 제작 기록과 플레이북 탭이 기존 화면을 대체하지 않고 추가됨.

@@ -71,7 +71,7 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Confidence: high
 - Dependency: `085-project-production-records-and-playbooks`, `056-dashboard-database-list-view`, `047-issue-artifact-drilldown`.
 - Next command: `product:plan 086-project-aware-production-library-dashboard`
-- Status: design approved; existing ModuFlow UI is preserved and Production Record details use a dimmed modal.
+- Status: active; design approved, existing dashboard behavior is a regression contract, and the next step is implementation planning.
 
 ### `087-korean-github-pr-review-surface`
 

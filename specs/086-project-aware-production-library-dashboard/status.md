@@ -1,7 +1,7 @@
 # Status: Project-Aware Production Library Dashboard
 
 Issue: `086-project-aware-production-library-dashboard`
-Phase: design-approved
+Phase: plan-ready
 Updated: 2026-07-10
 
 ## Completed
@@ -12,6 +12,7 @@ Updated: 2026-07-10
 - Approved a full-width Production Records table with dimmed modal details.
 - Approved project selector placement, new Production Records and Playbooks tabs, responsive behavior, and external/internal copy separation.
 - Interactive prototype and design specification completed.
+- Issue lifecycle corrected to active so the current-work graph focus targets Issue 086.
 
 ## Pending
 

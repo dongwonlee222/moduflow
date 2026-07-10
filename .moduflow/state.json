@@ -1,8 +1,8 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "select",
+  "phase": "plan",
   "active_goal": "team-visibility-onboarding",
-  "active_issue": "",
+  "active_issue": "086-project-aware-production-library-dashboard",
   "last_command": "product:design 086-project-aware-production-library-dashboard",
   "next_command": "product:plan 086-project-aware-production-library-dashboard",
   "blockers": [],

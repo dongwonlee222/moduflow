@@ -231,13 +231,13 @@
       "owner": "Dongwon Lee",
       "assignee": "Codex",
       "reviewer": "Dongwon Lee",
-      "status": "backlog",
-      "branch": "",
+      "status": "active",
+      "branch": "codex/086-project-aware-production-library-dashboard",
       "pr": "",
-      "lock_state": "available",
-      "locked_by": "",
+      "lock_state": "active",
+      "locked_by": "Codex",
       "blocker": "",
-      "last_handoff": "Design approved: preserve existing ModuFlow UI and use a dimmed modal for Production Record details.",
+      "last_handoff": "Design approved and Issue 086 activated; existing dashboard views and current-issue focus are required regression contracts.",
       "next_command": "product:plan 086-project-aware-production-library-dashboard",
       "updated_at": "2026-07-10"
     }
