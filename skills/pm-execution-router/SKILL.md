@@ -44,6 +44,7 @@ belongs to `077-implementation-readiness-gate`.
 - Existing project adoption or different folder structure: `/product:migrate` (`migrate`, `마이그레이션`)
 - Project owner, environment, link, or integration metadata: `/product:profile` (`profile`, `프로필`)
 - Portable project memory, deliverables, decisions, evidence, meetings, releases, operating notes, or long-term project context: `/product:memory` (`memory`, `메모리`, `장기기억`)
+- Recurring banners, event pages, PR/press releases, ads, proposals, Alimtalk, SMS, Push, production records, reusable production patterns, or playbooks: `/product:production` (`production`, `제작 기록`, `제작지식`, `플레이북`)
 - Legacy knowledge folders, benchmarks, reports, decisions, research, data notes, or references: `/product:knowledge` (`knowledge`, `지식`)
 - Evidence review for an issue/spec/roadmap item: `/product:evidence` (`evidence`, `근거`)
 - Multi-project overview, central dashboard, or weekly cross-project status: `/product:portfolio` (`portfolio`, `포트폴리오`)

@@ -118,7 +118,7 @@ Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow iss
 ### On-demand (reach for these when the work calls for them)
 
 - Intake and shaping: `/product:inbox` (capture raw requests), `/product:opportunity` (shape the problem)
-- Evidence and knowledge: `/product:knowledge`, `/product:decision`, `/product:research`, `/product:benchmark`, `/product:report`, `/product:evidence`
+- Evidence and knowledge: `/product:knowledge`, `/product:memory`, `/product:production` (recurring production records/playbooks), `/product:decision`, `/product:research`, `/product:benchmark`, `/product:report`, `/product:evidence`
 - Analysis and design: `/product:analyze` (metrics/data), `/product:design` (UX brief), `/product:prototype`
 - Views and planning: `/product:roadmap` (Now/Next/Later), `/product:issues` (inspect all issues), `/product:risks` (blockers and release concerns)
 - Portfolio and team: `/product:portfolio`, `/product:projects`, `/product:weekly`, `/product:handoff`, `/product:update` (stakeholder update), `/product:workers` (parallel execution plan)
@@ -158,6 +158,13 @@ For portable project memory, initialize the structure and create searchable entr
 python3 scripts/project_memory.py /path/to/project --write
 python3 scripts/project_memory.py /path/to/project --kind decision --title "Use repo-local memory" --issue-id 030-project-memory-layer --summary "Keep memory portable inside the repo."
 python3 scripts/project_memory.py /path/to/project --search "portable memory"
+```
+
+For recurring production records and human-approved playbooks:
+
+```bash
+python3 scripts/project_production.py /path/to/project --init
+python3 scripts/project_production.py /path/to/project --search "mobile banner" --type banner --channel home-popup
 ```
 
 For legacy knowledge evidence artifacts, initialize the structure and create linked evidence:

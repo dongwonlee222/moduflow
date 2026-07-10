@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "select",
+  "phase": "execute",
   "active_goal": "team-visibility-onboarding",
-  "active_issue": "",
-  "last_command": "product:plan 073-project-constitution-steering",
-  "next_command": "product:status",
+  "active_issue": "085-project-production-records-and-playbooks",
+  "last_command": "product:execute 085-project-production-records-and-playbooks",
+  "next_command": "product:pr 085-project-production-records-and-playbooks",
   "blockers": [],
-  "updated_at": "2026-07-07"
+  "updated_at": "2026-07-10"
 }

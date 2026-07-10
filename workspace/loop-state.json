@@ -21,12 +21,12 @@
     "057-korean-human-review-packet",
     "058-git-write-fallback-via-github-api"
   ],
-  "active_issue_id": "",
-  "phase": "select",
+  "active_issue_id": "085-project-production-records-and-playbooks",
+  "phase": "execute",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:status",
+  "next_command": "product:pr 085-project-production-records-and-playbooks",
   "attempts": {
     "command": "product:execute 058-git-write-fallback-via-github-api",
     "count": 0,
@@ -34,9 +34,9 @@
     "last_changed_at": "2026-07-03"
   },
   "blocker": null,
-  "last_action": "released 073 as 0.3.17; Constitution v1.0 ratified",
+  "last_action": "completed implementation, dogfood, and independent review for 085 project production records/playbooks",
   "last_verification": "suite green; converge 0 violations; human ratification recorded in amendment log",
-  "updated_at": "2026-07-07",
+  "updated_at": "2026-07-10",
   "git_binding": {
     "mode": "git-files",
     "branch": null,

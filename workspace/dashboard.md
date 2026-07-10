@@ -10,7 +10,7 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `085-project-production-records-and-playbooks`: implementation, dogfood, and independent review complete; ready for PR handoff.
 
 ## Recently Completed
 
@@ -48,6 +48,8 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Queue (post-benchmark, 2026-07-05 — goal `team-visibility-onboarding` issues complete)
 
+- `085-project-production-records-and-playbooks`: project-local recurring production records and human-approved playbooks implemented and reviewed. Next: `product:pr 085-project-production-records-and-playbooks`.
+- `086-project-aware-production-library-dashboard`: spec complete for a global project selector plus project-scoped production/playbook views. Next: `product:design 086-project-aware-production-library-dashboard`; implementation blocked by `085`.
 - `071-spec-code-converge-check`: post-implementation code-vs-spec divergence check (P3).
 - `072-lifecycle-hooks-automation`: SessionStart state injection + auto lifecycle sync hooks (P4).
 - `073-project-constitution-steering`: standing versioned project principles replacing per-plan Global Constraints re-authoring (P5).

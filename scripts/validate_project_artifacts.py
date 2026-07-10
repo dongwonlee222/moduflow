@@ -73,6 +73,14 @@ def load_project_lifecycle():
     return module
 
 
+def load_project_production():
+    path = Path(__file__).resolve().parent / "project_production.py"
+    spec = importlib.util.spec_from_file_location("project_production_validation", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 LINK_RE = re.compile(r"`(?P<path>[^`]+)`")
 
 
@@ -330,6 +338,9 @@ def validate_project(path):
     errors.extend(project_loop.validate_loop_state(root))
     validate_schema_gates(root, project_loop, errors)
     validate_memory_links(root, errors)
+    production = load_project_production().validate_production_project(root)
+    errors.extend(production["errors"])
+    warnings.extend(production["warnings"])
     validate_team_workflow_state(root, errors)
     validate_issue_status_lines(root, warnings)
 

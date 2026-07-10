@@ -55,6 +55,24 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Next command: `product:pr 080-reference-improvement-backlog`
 - Status: review
 
+### `085-project-production-records-and-playbooks`
+
+- Outcome: Each project preserves recurring production outputs, decisions, failures, reusable patterns, and approved playbooks without forcing existing asset folders into a central structure.
+- Reason: Issue completion records what happened, but recurring banner, PR, proposal, Alimtalk, SMS, and Push work must improve the next production cycle.
+- Confidence: high
+- Dependency: existing project memory and candidate-promotion foundations (`030`, `040`, `043`).
+- Next command: `product:pr 085-project-production-records-and-playbooks`
+- Status: active; implementation, dogfood, and independent review complete.
+
+### `086-project-aware-production-library-dashboard`
+
+- Outcome: One global project selector controls Issue DB, production records, playbooks, knowledge, decisions, roadmap, and status across the dashboard.
+- Reason: Projects have different folders and brand knowledge, so the dashboard must use registered project metadata without mixing project context or crawling arbitrary paths.
+- Confidence: high
+- Dependency: `085-project-production-records-and-playbooks`, `056-dashboard-database-list-view`, `047-issue-artifact-drilldown`.
+- Next command: `product:design 086-project-aware-production-library-dashboard`
+- Status: spec complete; design can proceed while implementation remains blocked by `085`.
+
 ### `074-sync-fetch-sandbox-handling`
 
 - Outcome: Approval-sensitive hosts can run a top-level `git fetch` and then `project_sync.py --no-fetch`, avoiding misleading `.git/FETCH_HEAD` warnings from Python subprocess fetches.

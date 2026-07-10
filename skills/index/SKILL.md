@@ -83,6 +83,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `product:migrate`: plan or apply a safe migration for an existing project
 - `product:profile`: create or inspect project profile metadata
 - `product:memory`: initialize, write, search, or retrieve portable project memory
+- `product:production`: capture, search, retrieve, and approve recurring production records and playbooks
 - `product:dashboard`: generate the interactive decision-graph dashboard from project memory
 - `product:knowledge`: initialize or inspect project knowledge artifacts
 - `product:decision`: create a decision record
@@ -125,6 +126,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `migrate`, `마이그레이션`: `product:migrate`
 - `profile`, `프로필`: `product:profile`
 - `memory`, `메모리`, `장기기억`: `product:memory`
+- `production`, `제작 기록`, `제작지식`, `플레이북`: `product:production`
 - `graph`, `그래프`, `의사결정 그래프`: `product:dashboard`
 - `knowledge`, `지식`: `product:knowledge`
 - `decision`, `결정`: `product:decision`

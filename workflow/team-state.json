@@ -210,6 +210,21 @@
       "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/16",
       "next_command": "product:review 080-reference-improvement-backlog",
       "updated_at": "2026-07-09"
+    },
+    {
+      "issue_id": "085-project-production-records-and-playbooks",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Reviewer",
+      "status": "review",
+      "branch": "",
+      "pr": "local:085-project-production-records-and-playbooks:draft-pr-ready",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: local:085-project-production-records-and-playbooks:draft-pr-ready",
+      "next_command": "product:review 085-project-production-records-and-playbooks",
+      "updated_at": "2026-07-10"
     }
   ]
 }

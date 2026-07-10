@@ -117,6 +117,16 @@ class ValidationDistributionTests(unittest.TestCase):
 
         self.assertTrue(expected.issubset(set(validator.REQUIRED_FILES)))
 
+    def test_validate_moduflow_requires_production_knowledge_surface(self):
+        validator = load_module("validate_moduflow_production", "scripts/validate_moduflow.py")
+        expected = {
+            "commands/product-production.md",
+            "scripts/project_production.py",
+            "templates/production/record.md",
+            "templates/production/playbook.md",
+        }
+        self.assertTrue(expected.issubset(set(validator.REQUIRED_FILES)))
+
     def test_validate_moduflow_importable_api_reports_missing_files(self):
         validator = load_module("validate_moduflow", "scripts/validate_moduflow.py")
         with tempfile.TemporaryDirectory() as tmp:
