@@ -112,4 +112,4 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 
 ## Next Command
 
-`product:review 085-project-production-records-and-playbooks`
+`product:release 085-project-production-records-and-playbooks` after human merge approval

@@ -4,6 +4,9 @@ Issue: `085-project-production-records-and-playbooks`
 Reviewer: independent read-only Codex (`gpt-5.5`, medium reasoning)
 Date: 2026-07-10
 Verdict: approved after fixes
+Spec compliance: pass; converge criterion-level audit limited by numbered AC parsing
+Quality: pass
+Constitution: v1.0 checked — no violations
 
 ## Scope
 
@@ -29,3 +32,22 @@ A second read-only review confirmed the same-day/title collision fix. It re-rais
 
 - The Markdown frontmatter parser intentionally follows ModuFlow's existing lightweight YAML-like conventions; complex quoted YAML values remain outside this issue's scope.
 - Cross-project retrieval remains unavailable by design and requires a future explicit human-approved workflow.
+
+## QA Evidence
+
+- GitHub CI `test`: success on PR #17.
+- Local focused suite: 24 passed; full suite: 483 passed.
+- Package, project, release, lint, security, and version gates: passed.
+- Dashboard: `memory/dashboard.html`.
+- Issue drill-down: `memory/issue-085-project-production-records-and-playbooks.html`.
+
+## Converge
+
+- Evidence: `converge-evidence.json`; explicit `truncated: true`.
+- Judgment: 13 AC entries recorded as `unverifiable` because the current parser classified numbered AC lines as `parseable:false`.
+- Blocking findings: none; `tasks.md` unchanged.
+- Judge limitation: independent read-only judge consumed the bundle but did not persist output, so the coordinator applied the fixed unverifiable rule and recorded the fallback in `converge-judgment.json`.
+
+## Reference Improvements
+
+None found.

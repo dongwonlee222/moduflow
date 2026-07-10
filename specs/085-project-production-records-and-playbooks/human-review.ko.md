@@ -41,6 +41,11 @@
 - Full repository suite: 483 passed.
 - Spec consistency: 0 findings.
 - Package, project, release, lint, and security gates: passed.
+- GitHub CI `test`: success; PR is mergeable.
+- Constitution: v1.0 checked — no violations.
+- Converge: 13 unverifiable due numbered-AC parser limitation; no blocking findings.
+- Visual evidence: `memory/dashboard.html`, `memory/issue-085-project-production-records-and-playbooks.html`.
+- Reference improvements: none found.
 
 ## no-issue 선언 (issue 075)
 

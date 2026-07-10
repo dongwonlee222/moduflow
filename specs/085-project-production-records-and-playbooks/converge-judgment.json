@@ -1,0 +1,103 @@
+{
+  "schema": "moduflow.converge-judgment.v1",
+  "verdicts": [
+    {
+      "ac_id": "AC#1",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#1 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    },
+    {
+      "ac_id": "AC#2",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#2 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    },
+    {
+      "ac_id": "AC#3",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#3 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    },
+    {
+      "ac_id": "AC#4",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#4 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    },
+    {
+      "ac_id": "AC#5",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#5 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    },
+    {
+      "ac_id": "AC#6",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#6 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    },
+    {
+      "ac_id": "AC#7",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#7 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    },
+    {
+      "ac_id": "AC#8",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#8 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    },
+    {
+      "ac_id": "AC#9",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#9 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    },
+    {
+      "ac_id": "AC#10",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#10 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    },
+    {
+      "ac_id": "AC#11",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#11 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    },
+    {
+      "ac_id": "AC#12",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#12 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    },
+    {
+      "ac_id": "AC#13",
+      "verdict": "unverifiable",
+      "severity": "low",
+      "evidence_quote": "converge-evidence.json marks AC#13 with parseable: false",
+      "note": "Judgment rules require every unparseable acceptance criterion to be emitted as unverifiable."
+    }
+  ],
+  "unrequested": [],
+  "bundle_gaps": [
+    "The evidence bundle is truncated after the configured file/byte caps.",
+    "All numbered acceptance criteria were classified parseable:false by the current converge parser, so criterion-level compliance cannot be judged from this bundle.",
+    "Independent read-only judge consumed the evidence but did not persist its output file; coordinator applied the fixed unverifiable rule as the documented fallback."
+  ]
+}
+
