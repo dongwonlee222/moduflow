@@ -20,6 +20,21 @@ ModuFlow keeps AI work aligned through five operating methods:
 - **Evidence-based decisions**: keep decisions, benchmarks, analysis, and context as durable repo files.
 - **Git-versioned memory**: treat the repo as the durable record for goals, specs, issues, reviews, and releases.
 
+## Architecture
+
+`/moduflow` is the only command you need to remember. Everything else — the 38 `product:*` commands — is reached through it.
+
+```mermaid
+flowchart TD
+    U["User input"] --> MF["/moduflow (single entry point)"]
+    MF -->|"no arguments"| ST["product:status summary<br/>reads state.json, loop-state.json, goal.md, dashboard.md"]
+    MF -->|"with arguments"| IDX["index skill routing<br/>skills/index/SKILL.md"]
+    IDX --> CMD["one of 38 product:* commands"]
+    PMR["pm-execution-router skill<br/>separate entry for ambiguous PM requests"] -.parallel entry.-> CMD
+```
+
+With no arguments, `/moduflow` reads `.moduflow/state.json`, `workspace/loop-state.json`, `workspace/goal.md`, and `workspace/dashboard.md` and reports only the current goal, active issue, phase, blocker, and next command. With arguments, it hands off to the `index` skill's alias and command map, which resolves natural language (Korean or English) to the smallest useful `product:*` command. `pm-execution-router` is a separate skill that can also be triggered directly by ambiguous product/roadmap/execution requests — it is not a sub-step of `/moduflow`, it is a parallel entry point that lands on the same commands.
+
 ## Adapter Sources
 
 ModuFlow uses external workflow sources through replaceable adapters tracked in `vendor.lock.json` and `adapters/*.yaml`:
@@ -97,7 +112,7 @@ In Codex, call these through `@ModuFlow` without the leading slash. The default 
 Direct commands remain available for precision, for example `@ModuFlow product:start` or `@ModuFlow product:spec 020-user-facing-simple-loop-ux`.
 Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow issue`, or `@ModuFlow 상태`.
 
-### Core path (start here — these five cover a whole work cycle)
+### Core path (start here — these six cover a whole work cycle)
 
 - `/moduflow`: entry point — status, next action, and routing for everything below
 - `/product:start`: initialize ModuFlow in a project
@@ -128,9 +143,30 @@ Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow iss
 
 Upstream sources are tracked in `vendor.lock.json`. Local changes belong in `overlays/` and `adapters/`, so upstream updates can be pulled without rewriting Dongwon-specific process rules.
 
-## Goal Loop
+## Goal, Loop, and Roadmap
 
-The goal loop is a thin layer above issues. `product:goal` records the objective and completion criteria, while `product:loop` reads Git artifacts and recommends the next existing ModuFlow command. `product:loop --step` may run one safe step, then stops for review.
+Git is the only source of truth. `goal.md`, the loop, and the roadmap are three different relationships to that same set of files — not three separate stores.
+
+```mermaid
+flowchart TD
+    subgraph SOT["Git repo (source of truth)"]
+        ISS["issues/"]
+        SPEC["specs/, plans"]
+        STAT["status, release records"]
+    end
+    GOAL["goal.md<br/>durable objective, above issues"] -->|"writes"| STATE["loop-state.json"]
+    STATE --> LOOP["product:loop<br/>recommends next action (read-only by default)"]
+    LOOP -->|"--step (explicit mutation only)"| SOT
+    SOT --> RM["product:roadmap<br/>Now / Next / Later (derived view)"]
+    RM -.human reviews, sets.-> GOAL
+    SOT --> RISK["product:risks<br/>blockers (read-only view)"]
+    RISK -.references.-> RM
+```
+
+- `product:goal` records the objective and completion criteria in `goal.md`, above issues in the hierarchy, and writes `loop-state.json`.
+- `product:loop` reads `goal.md`, `loop-state.json`, and the linked issue/spec/plan/status/release artifacts, then recommends the next command. It is read-only by default; `product:loop --step` runs exactly one safe step, then stops for review.
+- `product:roadmap` is a view, not a source of truth. It reads opportunities, issues, specs, status, and releases to render Now/Next/Later — it does not feed the loop. A human reads the roadmap to decide what the next goal should be.
+- `product:risks` is likewise a read-only view over `workflow/risks.md` and `workflow/records/*.md`, cross-linked to issues, specs, releases, and the roadmap.
 
 ## Validate
 
