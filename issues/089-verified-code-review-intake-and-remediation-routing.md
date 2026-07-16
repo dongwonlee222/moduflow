@@ -1,6 +1,6 @@
 # Issue 089: Verified Code-Review Intake and Remediation Routing
 
-**Status: in_progress** — created 2026-07-16, spec drafted 2026-07-16.
+**Status: in_progress** — created 2026-07-16, spec drafted 2026-07-16, plan drafted 2026-07-16.
 **Priority: p1**
 
 ## Summary
@@ -13,7 +13,7 @@ Verify external code-review findings before disposition, record evidence and con
 - Link: local Codex session, 2026-07-16
 - Owner / decision maker: Dongwon Lee
 - Original requested ID: `082`; mapped to `089` because local issue `082` already exists.
-- Current phase: spec review
+- Current phase: plan review
 
 ## Problem
 
@@ -108,7 +108,7 @@ Do not auto-apply review suggestions or publish GitHub issues. The v1 result is 
 ## Workflow Tasks
 
 - [x] spec → `specs/089-verified-code-review-intake-and-remediation-routing/spec.md` (+ `spec.ko.md`)
-- [ ] plan → `specs/089-verified-code-review-intake-and-remediation-routing/plan.md`
+- [x] plan → `specs/089-verified-code-review-intake-and-remediation-routing/plan.md` (+ `tasks.md`)
 - [ ] execute → intake schema, verifier, remediation router, candidate generator, and tests
 - [ ] review → `specs/089-verified-code-review-intake-and-remediation-routing/review.md`
 
@@ -141,9 +141,11 @@ Do not auto-apply review suggestions or publish GitHub issues. The v1 result is 
 - Goal: `workspace/goal.md`
 - Spec: `specs/089-verified-code-review-intake-and-remediation-routing/spec.md`
 - Korean spec: `specs/089-verified-code-review-intake-and-remediation-routing/spec.ko.md`
+- Plan: `specs/089-verified-code-review-intake-and-remediation-routing/plan.md`
+- Tasks: `specs/089-verified-code-review-intake-and-remediation-routing/tasks.md`
 - Dogfood: `modu-biz/workspace/reviews/2026-07-16-external-code-review.md`
 - GitHub: https://github.com/dongwonlee222/moduflow/issues/19
 
 ## Next Command
 
-Human review of the spec, then `product:plan 089-verified-code-review-intake-and-remediation-routing`
+Choose an execution method, then `product:execute 089-verified-code-review-intake-and-remediation-routing`
