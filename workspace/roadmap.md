@@ -4,13 +4,15 @@
 
 ### Now
 
-- `088-canonical-repository-remote-identity-gate` — isolated PR scope; complete Draft PR, CI, and human review.
+- `093-frontmatter-issue-schema-readiness-gate` — normalize frontmatter and Markdown issue state before execution routing.
 
 ### Next
 
-- `089-verified-code-review-intake-and-remediation-routing` — preserve review source and verify disposition evidence.
-- `093-frontmatter-issue-schema-readiness-gate` — block contradictory readiness and dependency state.
 - `094-risk-based-security-and-quality-review-gate` — convert approved findings into preventive checks; blocked by 089.
+
+### Recently Shipped
+
+- `088-canonical-repository-remote-identity-gate` and `089-verified-code-review-intake-and-remediation-routing` — merged, reviewed, approved, and packaged in v0.3.26.
 
 ### Then
 

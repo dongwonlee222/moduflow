@@ -146,7 +146,8 @@ Do not auto-apply review suggestions or publish GitHub issues. The v1 result is 
 - Tasks: `specs/089-verified-code-review-intake-and-remediation-routing/tasks.md`
 - Dogfood: `modu-biz/workspace/reviews/2026-07-16-external-code-review.md`
 - GitHub: https://github.com/dongwonlee222/moduflow/issues/19
+- Release: https://github.com/dongwonlee222/moduflow/releases/tag/v0.3.26
 
 ## Next Command
 
-`product:release 089-verified-code-review-intake-and-remediation-routing`
+`product:update 089-verified-code-review-intake-and-remediation-routing`
