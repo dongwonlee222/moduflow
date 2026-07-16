@@ -50,16 +50,55 @@ class GithubIssueSyncTests(unittest.TestCase):
         self.root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.root, True)
 
-    def _write_project(self, github_sync="optional", issue_text=ISSUE_TEXT):
+    def _write_project(self, github_sync="optional", issue_text=ISSUE_TEXT, repo="dongwonlee222/moduflow"):
         (self.root / ".moduflow").mkdir()
         (self.root / ".moduflow" / "config.json").write_text(
-            json.dumps({"git": {"github_sync": github_sync, "issue_source": "git-files"}}),
+            json.dumps(
+                {
+                    "git": {
+                        "github_sync": github_sync,
+                        "issue_source": "git-files",
+                        "identity": {
+                            "mode": "remote",
+                            "provider": "github",
+                            "canonical_repository": f"github.com/{repo}",
+                            "remote_name_hint": "origin",
+                            "base_branch": "main",
+                            "lifecycle": "active",
+                        },
+                    }
+                }
+            ),
             encoding="utf-8",
         )
         (self.root / "issues").mkdir()
         issue_path = self.root / "issues" / f"{ISSUE_ID}.md"
         issue_path.write_text(issue_text, encoding="utf-8")
         return issue_path
+
+    def _identity_responses(self, repo):
+        return {
+            ("git", "rev-parse", "--show-toplevel"): f"{self.root}\n",
+            ("git", "remote", "get-url", "--all", "origin"): f"https://github.com/{repo}.git\n",
+            ("git", "remote", "get-url", "--push", "--all", "origin"): f"git@github.com:{repo}.git\n",
+            ("git", "rev-parse", "--abbrev-ref", "HEAD"): "codex/054-sync\n",
+            ("git", "show-ref", "--verify", "--quiet", "refs/remotes/origin/main"): "",
+            (
+                "gh",
+                "repo",
+                "view",
+                repo,
+                "--json",
+                "nameWithOwner,defaultBranchRef,isArchived,isFork",
+            ): json.dumps(
+                {
+                    "nameWithOwner": repo,
+                    "defaultBranchRef": {"name": "main"},
+                    "isArchived": False,
+                    "isFork": False,
+                }
+            ),
+        }
 
     def test_disabled_config_makes_sync_a_noop(self):
         self._write_project(github_sync="off")
@@ -80,9 +119,9 @@ class GithubIssueSyncTests(unittest.TestCase):
             "<!-- moduflow:issue-sync -->"
         )
         url = f"https://github.com/{repo}/issues/7"
-        runner = FakeRunner(
+        responses = self._identity_responses(repo)
+        responses.update(
             {
-                ("git", "remote", "get-url", "origin"): "git@github-evmodu:dongwonlee222/moduflow.git\n",
                 ("gh", "label", "list", "-R", repo, "--json", "name"): json.dumps(
                     [{"name": "moduflow:backlog"}, {"name": "moduflow:done"}]
                 ),
@@ -103,6 +142,7 @@ class GithubIssueSyncTests(unittest.TestCase):
                 ): url + "\n",
             }
         )
+        runner = FakeRunner(responses)
 
         result = project_github_issues.sync_issue(self.root, ISSUE_ID, runner=runner)
 
@@ -121,11 +161,11 @@ class GithubIssueSyncTests(unittest.TestCase):
             "- Roadmap: `workspace/roadmap.md`",
             "- Roadmap: `workspace/roadmap.md`\n- GitHub: https://github.com/o/r/issues/42",
         )
-        self._write_project(issue_text=issue_text)
+        self._write_project(issue_text=issue_text, repo=repo)
         all_labels = json.dumps([{"name": name} for name in project_github_issues.LABELS.values()])
-        runner = FakeRunner(
+        responses = self._identity_responses(repo)
+        responses.update(
             {
-                ("git", "remote", "get-url", "origin"): "https://github.com/o/r\n",
                 ("gh", "label", "list", "-R", repo, "--json", "name"): all_labels,
                 (
                     "gh",
@@ -145,6 +185,7 @@ class GithubIssueSyncTests(unittest.TestCase):
                 ): "",
             }
         )
+        runner = FakeRunner(responses)
 
         before = (self.root / "issues" / f"{ISSUE_ID}.md").read_text(encoding="utf-8")
         result = project_github_issues.sync_issue(self.root, ISSUE_ID, runner=runner)
@@ -156,6 +197,37 @@ class GithubIssueSyncTests(unittest.TestCase):
             self.assertNotEqual(call[:3], ("gh", "issue", "create"))
         after = (self.root / "issues" / f"{ISSUE_ID}.md").read_text(encoding="utf-8")
         self.assertEqual(before, after)
+
+    def test_identity_mismatch_stops_before_label_or_issue_write(self):
+        self._write_project(repo="owner/repo")
+        responses = self._identity_responses("owner/repo")
+        responses[("git", "remote", "get-url", "--push", "--all", "origin")] = (
+            "git@github.com:other/repo.git\n"
+        )
+        runner = FakeRunner(responses)
+
+        result = project_github_issues.sync_issue(self.root, ISSUE_ID, runner=runner)
+
+        self.assertEqual(result["action"], "error")
+        self.assertIn("push_remote_mismatch", json.dumps(result))
+        self.assertFalse(any(call[:2] == ("gh", "label") for call in runner.calls))
+        self.assertFalse(any(call[:2] == ("gh", "issue") for call in runner.calls))
+
+    def test_stale_issue_link_repository_stops_before_label_or_issue_write(self):
+        issue_text = ISSUE_TEXT.replace(
+            "- Roadmap: `workspace/roadmap.md`",
+            "- Roadmap: `workspace/roadmap.md`\n"
+            "- GitHub: https://github.com/other/repo/issues/42",
+        )
+        self._write_project(issue_text=issue_text, repo="owner/repo")
+        runner = FakeRunner(self._identity_responses("owner/repo"))
+
+        result = project_github_issues.sync_issue(self.root, ISSUE_ID, runner=runner)
+
+        self.assertEqual(result["action"], "error")
+        self.assertEqual(result["reason_code"], "stale_artifact_repository")
+        self.assertFalse(any(call[:2] == ("gh", "label") for call in runner.calls))
+        self.assertFalse(any(call[:2] == ("gh", "issue") for call in runner.calls))
 
     def test_parse_owner_repo_forms(self):
         cases = [

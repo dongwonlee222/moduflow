@@ -1,0 +1,28 @@
+{
+  "schema": "moduflow.converge-judgment.v1",
+  "verdicts": [
+    {"ac_id": "AC#1", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#1 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#2", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#2 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#3", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#3 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#4", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#4 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#5", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#5 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#6", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#6 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#7", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#7 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#8", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#8 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#9", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#9 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#10", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#10 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#11", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#11 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#12", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#12 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#13", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#13 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#14", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#14 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#15", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#15 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#16", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#16 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."},
+    {"ac_id": "AC#17", "verdict": "unverifiable", "severity": "low", "evidence_quote": "converge-evidence.json marks AC#17 parseable:false and contains no linked commits", "note": "The fixed judgment rule requires unverifiable."}
+  ],
+  "unrequested": [],
+  "bundle_gaps": [
+    "The implementation is uncommitted, so the converge evidence bundle contains no linked commits or files.",
+    "All numbered acceptance criteria were classified parseable:false by the current converge parser.",
+    "Subagent dispatch was unavailable under the active execution constraints; the coordinator applied the fixed unverifiable rule and performed the broader review inline."
+  ]
+}

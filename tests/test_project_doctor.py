@@ -282,5 +282,53 @@ class CheckHookLogTests(unittest.TestCase):
         self.assertEqual(len(hook_recs), 0)
 
 
+class RepositoryIdentityDoctorTests(unittest.TestCase):
+    def test_doctor_includes_shared_repository_identity_result_without_reparsing(self):
+        expected = {
+            "schema": "moduflow.repository-identity.v1",
+            "status": "mismatch",
+            "expected": {"repository": "github.com/owner/repo", "base_branch": "main"},
+            "observed": {"fetch_repositories": ["github.com/other/repo"]},
+            "capabilities": {"read": True, "execute": False},
+            "reasons": [{"code": "fetch_remote_mismatch", "message": "wrong repository"}],
+        }
+        calls = []
+        original = getattr(project_doctor, "inspect_repository_identity", None)
+
+        def fake_identity(root, runner=None, provider_check=None):
+            calls.append((Path(root), runner, provider_check))
+            return expected
+
+        project_doctor.inspect_repository_identity = fake_identity
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / ".moduflow").mkdir()
+                (root / ".moduflow" / "config.json").write_text("{}\n", encoding="utf-8")
+                (root / ".moduflow" / "state.json").write_text("{}\n", encoding="utf-8")
+
+                result = project_doctor.inspect_project(root, include_preflight=True)
+        finally:
+            if original is None:
+                delattr(project_doctor, "inspect_repository_identity")
+            else:
+                project_doctor.inspect_repository_identity = original
+
+        self.assertEqual(result["repository_identity"], expected)
+        self.assertEqual(len(calls), 1)
+
+    def test_no_preflight_reports_repository_identity_as_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text("{}\n", encoding="utf-8")
+            (root / ".moduflow" / "state.json").write_text("{}\n", encoding="utf-8")
+
+            result = project_doctor.inspect_project(root, include_preflight=False)
+
+        self.assertIsNone(result["repository_identity"])
+        self.assertIn("repository_identity", result["preflight"]["skipped"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -5,6 +5,11 @@ import re
 import sys
 from pathlib import Path
 
+try:
+    from scripts.project_repository_identity import audit_repository_links
+except ModuleNotFoundError:
+    from project_repository_identity import audit_repository_links
+
 
 REQUIRED_PATHS = [
     ".moduflow/config.json",
@@ -264,6 +269,23 @@ def validate_issue_status_lines(root, warnings):
             )
 
 
+def validate_repository_links(root, errors, warnings):
+    for finding in audit_repository_links(root):
+        if finding["classification"] != "mismatch":
+            continue
+        location = f"{finding['artifact']}:{finding['line']}"
+        if finding["write_handoff"]:
+            errors.append(
+                f"{location}: non-canonical repository link is unsafe for a write handoff "
+                f"({finding['repository']})"
+            )
+        else:
+            warnings.append(
+                f"{location}: non-canonical repository link needs an explicit mirror/reference role "
+                f"({finding['repository']})"
+            )
+
+
 def read_json(path, errors):
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -343,6 +365,7 @@ def validate_project(path):
     warnings.extend(production["warnings"])
     validate_team_workflow_state(root, errors)
     validate_issue_status_lines(root, warnings)
+    validate_repository_links(root, errors, warnings)
 
     return {
         "schema": "moduflow.project-validation.v1",

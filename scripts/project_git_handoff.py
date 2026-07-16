@@ -8,6 +8,10 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from scripts.project_sync import run_command
+from scripts.project_repository_identity import (
+    inspect_repository_identity,
+    operation_decision,
+)
 
 PROBE_FILENAME = ".moduflow-write-probe"
 
@@ -28,13 +32,35 @@ def _github_api_available(root, runner):
     return result.returncode == 0
 
 
-def check_commit_capability(root, runner=None, probe_write=None):
+def check_commit_capability(root, runner=None, probe_write=None, operation="commit"):
     """Classify commit capability as local-git-write, github-api-commit, or blocked."""
     if runner is None:
         runner = run_command
     if probe_write is None:
         probe_write = _default_probe_write
     root = Path(root)
+    identity = None
+
+    if (root / ".moduflow" / "config.json").is_file():
+        identity = inspect_repository_identity(root, runner=runner)
+        decision = operation_decision(identity, operation)
+        if not decision["allowed"]:
+            reason = "; ".join(
+                item.get("message", item.get("code", "identity denied"))
+                for item in decision["reasons"]
+            )
+            return {
+                "mode": "identity-blocked",
+                "ok": False,
+                "local_git_write": False,
+                "github_api_available": False,
+                "reason": reason,
+                "recommendations": [
+                    "Fix or explicitly migrate canonical repository identity before Git/GitHub writes."
+                ],
+                "repository_identity": decision,
+            }
+
     git_dir = root / ".git"
 
     if not git_dir.exists():
@@ -51,6 +77,22 @@ def check_commit_capability(root, runner=None, probe_write=None):
             "reason": "",
             "recommendations": [],
         }
+
+    if identity is not None:
+        fallback_decision = operation_decision(identity, "github_api_commit")
+        if not fallback_decision["allowed"]:
+            return {
+                "mode": "blocked",
+                "ok": False,
+                "local_git_write": False,
+                "github_api_available": False,
+                "reason": local_reason,
+                "recommendations": [
+                    "GitHub API fallback is unavailable because canonical repository "
+                    "identity does not allow github_write."
+                ],
+                "repository_identity": fallback_decision,
+            }
 
     github_ok = _github_api_available(root, runner)
     if github_ok:
@@ -83,9 +125,10 @@ def check_commit_capability(root, runner=None, probe_write=None):
 def main():
     parser = argparse.ArgumentParser(description="Classify local Git vs GitHub API commit capability.")
     parser.add_argument("root", nargs="?", default=".", help="Project root path")
+    parser.add_argument("--operation", choices=["commit", "push"], default="commit")
     args = parser.parse_args()
 
-    result = check_commit_capability(args.root)
+    result = check_commit_capability(args.root, operation=args.operation)
     print(json.dumps(result, indent=2))
     return 0 if result["ok"] else 1
 

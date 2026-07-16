@@ -13,6 +13,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from scripts.project_lifecycle import _issue_status
+from scripts.project_repository_identity import inspect_repository_identity
 
 FETCH_TIMEOUT_SECONDS = 5
 
@@ -80,7 +81,12 @@ def _current_branch_vv_line(branch_vv, branch):
     return ""
 
 
-def _default_remote_branch(runner, cwd):
+def _default_remote_branch(runner, cwd, repository_identity=None):
+    expected = (repository_identity or {}).get("expected", {})
+    remote_name = expected.get("remote_name_hint")
+    base_branch = expected.get("base_branch")
+    if remote_name and base_branch:
+        return f"{remote_name}/{base_branch}"
     result = _run(runner, ["git", "symbolic-ref", "refs/remotes/origin/HEAD"], cwd)
     if result.returncode == 0:
         ref = _stdout(result)
@@ -178,6 +184,8 @@ def inspect_repo_sync(path=".", runner=None, fetch=True):
             "errors": [_stdout(is_repo) or (is_repo.stderr or "").strip()],
         }
 
+    repository_identity = inspect_repository_identity(cwd, runner=runner)
+
     fetch_mode = "auto"
     if fetch:
         try:
@@ -209,7 +217,7 @@ def inspect_repo_sync(path=".", runner=None, fetch=True):
     branch_line = _current_branch_vv_line(branch_vv, branch)
     upstream_gone = ": gone]" in branch_line or "[gone]" in branch_line
 
-    default_remote = _default_remote_branch(runner, cwd)
+    default_remote = _default_remote_branch(runner, cwd, repository_identity)
 
     upstream_ahead = 0
     upstream_behind = 0
@@ -258,6 +266,7 @@ def inspect_repo_sync(path=".", runner=None, fetch=True):
         "dirty": dirty,
         "remote_only_issue_ids": remote_only_issue_ids,
         "unmerged_branch_work": unmerged_branch_work,
+        "repository_identity": repository_identity,
         "mode_note": "git-files mode stores ModuFlow issues in repo files such as issues/*.md; GitHub Issues objects are optional mirrors.",
     }
     result["recommendations"] = format_recommendations(result)

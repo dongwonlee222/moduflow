@@ -1,6 +1,6 @@
 ---
-description: Create or inspect project profile metadata for ownership, environments, links, and integrations.
-argument-hint: "[project path] [--write]"
+description: Create or inspect project profile metadata and canonical repository identity.
+argument-hint: "[project path] [--write] [--canonical-repository <host/owner/repo> | --local-only]"
 ---
 
 # /product:profile
@@ -24,6 +24,31 @@ python3 scripts/project_profile.py <project-path> --write
 
 4. Preserve existing files.
 5. Keep secrets and sensitive documents out of Git.
+6. For a remote-backed project, inspect the proposal first and then explicitly record the canonical identity:
+
+```bash
+python3 scripts/project_profile.py <project-path> \
+  --canonical-repository github.com/OWNER/REPOSITORY \
+  --provider github \
+  --remote-name-hint origin \
+  --base-branch main \
+  --lifecycle active
+```
+
+Add `--write` only after the project owner confirms the canonical repository. An existing `git.remote` is shown as a candidate but is never adopted automatically.
+
+7. For an intentional local-only project, confirm the local policy explicitly:
+
+```bash
+python3 scripts/project_profile.py <project-path> \
+  --local-only \
+  --provider generic \
+  --base-branch main \
+  --lifecycle active \
+  --write
+```
+
+8. `active`, `read_only`, and `archived` are policy states. Changing them requires explicit human direction; ModuFlow does not unarchive repositories or mutate remotes.
 
 ## Sensitive Data Rules
 

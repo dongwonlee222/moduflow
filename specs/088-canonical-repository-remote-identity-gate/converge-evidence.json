@@ -1,0 +1,98 @@
+{
+  "schema": "moduflow.converge-evidence.v1",
+  "issue_id": "088-canonical-repository-remote-identity-gate",
+  "generated": "2026-07-16",
+  "commits": [],
+  "files": [],
+  "acceptance_criteria": [
+    {
+      "id": "AC#1",
+      "text": "1. `.moduflow/config.json` supports the specified identity fields and `product:profile` can propose and write them without overwriting unrelated profile content.",
+      "parseable": false
+    },
+    {
+      "id": "AC#2",
+      "text": "2. The human project profile shows canonical repository, base branch, mode, and lifecycle derived from configuration.",
+      "parseable": false
+    },
+    {
+      "id": "AC#3",
+      "text": "3. URL normalization treats GitHub HTTPS, SSH URL, and SCP-style SSH forms for the same owner/repo as equal and redacts credentials.",
+      "parseable": false
+    },
+    {
+      "id": "AC#4",
+      "text": "4. Generic providers preserve case-sensitive paths and reject malformed or ambiguous remotes.",
+      "parseable": false
+    },
+    {
+      "id": "AC#5",
+      "text": "5. The inspector reports all fetch and push identities, base-ref evidence, and provider evidence through `moduflow.repository-identity.v1`.",
+      "parseable": false
+    },
+    {
+      "id": "AC#6",
+      "text": "6. A remote called `origin` that points to a different repository produces `fetch_remote_mismatch` and cannot execute or write.",
+      "parseable": false
+    },
+    {
+      "id": "AC#7",
+      "text": "7. A matching fetch URL with a different push URL produces `push_remote_mismatch` before commit/push/PR/release handoff.",
+      "parseable": false
+    },
+    {
+      "id": "AC#8",
+      "text": "8. Missing canonical identity produces `unconfigured`; doctor/status remain readable, while remote-mode write operations stop.",
+      "parseable": false
+    },
+    {
+      "id": "AC#9",
+      "text": "9. `read_only` and `archived` repositories allow inspection but block execution and all write capabilities.",
+      "parseable": false
+    },
+    {
+      "id": "AC#10",
+      "text": "10. `local_only` projects do not require a remote and never advertise push, GitHub write, PR, or release capability.",
+      "parseable": false
+    },
+    {
+      "id": "AC#11",
+      "text": "11. GitHub issue, PR, and release operations use the explicit canonical owner/repo and block when provider repository/default-branch/archive evidence contradicts configuration or is unavailable.",
+      "parseable": false
+    },
+    {
+      "id": "AC#12",
+      "text": "12. Current feature branches remain valid when the configured base branch exists and identity matches.",
+      "parseable": false
+    },
+    {
+      "id": "AC#13",
+      "text": "13. Every gated consumer uses the shared identity module; no duplicate URL/config parser is introduced.",
+      "parseable": false
+    },
+    {
+      "id": "AC#14",
+      "text": "14. Focused tests cover matching URLs, wrong repo, wrong push URL, missing remote, missing base branch, fork, provider unavailable, credential redaction, local-only, read-only, and archived cases using injected runners.",
+      "parseable": false
+    },
+    {
+      "id": "AC#15",
+      "text": "15. `python3 scripts/validate_moduflow.py .`, `python3 scripts/validate_project_artifacts.py .`, and `python3 scripts/release_check.py .` pass.",
+      "parseable": false
+    },
+    {
+      "id": "AC#16",
+      "text": "16. Doctor/status identify stale issue, plan, review, PR, and release links that target a non-canonical repository without an explicit mirror/reference role.",
+      "parseable": false
+    },
+    {
+      "id": "AC#17",
+      "text": "17. GitHub write workflows ignore or block stale artifact URLs and always resolve the explicit canonical owner/repo.",
+      "parseable": false
+    }
+  ],
+  "global_constraints": [],
+  "truncated": false,
+  "no_evidence": true,
+  "errors": []
+}

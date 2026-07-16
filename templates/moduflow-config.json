@@ -5,7 +5,15 @@
     "required": true,
     "github_sync": "optional",
     "issue_source": "git-files",
-    "remote": "{{git_remote}}"
+    "remote": "{{git_remote}}",
+    "identity": {
+      "mode": "remote",
+      "provider": "{{git_provider}}",
+      "canonical_repository": "{{canonical_repository}}",
+      "remote_name_hint": "{{git_remote_name}}",
+      "base_branch": "{{git_base_branch}}",
+      "lifecycle": "active"
+    }
   },
   "paths": {
     "issues": "issues",
