@@ -1,34 +1,49 @@
-# Goal: Team Visibility & Onboarding
+# Goal: Trustworthy Execution and Project Knowledge
 
 ## Objective
 
-Make ModuFlow work visible and approachable beyond the local operator: external collaborators can see issue progress from the GitHub UI without reading repo-local Markdown, and a first-time user lands on a small ranked entry path instead of a 20+ command wall.
+Make ModuFlow stop unsafe work before it reaches the wrong repository, turn external review into evidence-backed remediation, and give each project a reproducible knowledge, artifact, analysis, and dashboard home.
 
 ## Owner
 
 Dongwon Lee
 
-## Why now
+## Why Now
 
-The `visual-workbench` goal (closed 2026-07-05) built the local visual surfaces — L1 issue/knowledge graphs, L2 per-issue drill-down, issue DB list view, Korean review packets. What's left unaddressed is the *other-people* dimension: nothing is visible from GitHub's own UI (`054`), and the command surface still assumes an operator who already knows the tool (`055`).
+Repository sync, review handoff, production records, and dashboard foundations already exist. The remaining risk is trust and continuity: remote names can conceal the wrong repository, external review can be accepted without proof, and project conclusions or artifacts can become scattered across files and Sheets.
 
 ## Issues
 
-- `055-command-surface-onboarding` — first-run guidance: `product:start`/`product:status` name 2-3 concrete next commands; command reference groups core path vs on-demand. (First: small, doc-only.)
-- `054-github-issue-sync` — opt-in, one-way projection of `issues/*.md` to GitHub Issues with status labels. Design decisions recorded in the issue file before implementation.
+- `088-canonical-repository-remote-identity-gate` — P0; canonical repo/base identity and pre-write blocking.
+- `089-verified-code-review-intake-and-remediation-routing` — P1; evidence-backed review disposition.
+- `093-frontmatter-issue-schema-readiness-gate` — P1; contradictory readiness/dependency blocking.
+- `094-risk-based-security-and-quality-review-gate` — P1; preventive checks learned from approved review history.
+- `086-project-aware-production-library-dashboard` — P2; project-scoped production/playbook views after the safety gate sequence.
+- `090-project-knowledge-and-artifact-registry` — P1; structured project wiki and artifact registry.
+- `091-reproducible-analysis-runs-and-template-pack` — P1; reproducible analysis history and templates.
+- `092-project-home-dashboard` — P2; final project home; blocked by 086, 090, and 091.
+- `087-korean-github-pr-review-surface` — P1; Korean-first GitHub review publication.
 
 ## Completion Criteria
 
-- A brand-new user can go from install → first issue → status without reading the full command index.
-- A collaborator with only GitHub access can see which issues exist, their status, and where progress lives.
-- `issues/*.md` stays the single canonical source; GitHub Issues remain a projection.
+- Wrong repository or archived/read-only identity stops execute, PR, release, and push before writes.
+- External review findings have evidence, disposition, remediation timing, and issue candidates.
+- Mixed issue schemas cannot report ready/execute while dependencies or readiness are unmet.
+- Projects maintain structured knowledge, artifact, and reproducible analysis records.
+- The project home shows current work, recent outputs, key Sheets, conclusions, and next actions.
 
 ## Constraints
 
-- Git-tracked Markdown stays canonical — GitHub Issues are one-way projections, never a second source of truth.
-- Opt-in only: no automatic GitHub writes without explicit enablement (consistent with `github_sync: "optional"`).
-- No command renames/removals for onboarding — grouping and guidance only (muscle memory preserved).
+- Git-tracked project files remain canonical; GitHub and dashboard surfaces are projections.
+- No automatic remote rewrite or unapproved external publication.
+- Sensitive source data and credentials stay outside the repository.
+- Existing staged work for issues 081–084 remains independent from this branch.
 
 ## History
 
-- `visual-workbench` — closed 2026-07-05, all three axes shipped (`042`–`047`, `049`; follow-ons `056`/`057`). Its "Later — Write/Execute (interactive workbench)" stage remains deliberately deferred, gated on validating a chat-backed visual surface before committing to a standalone app; revisit as its own goal when demand shows up. Full axis breakdown preserved in git history of this file (commit `96ede08` and earlier).
+- `team-visibility-onboarding` — closed before 2026-07-16.
+- `visual-workbench` — closed 2026-07-05.
+
+## Next Command
+
+`product:pr 088-canonical-repository-remote-identity-gate`

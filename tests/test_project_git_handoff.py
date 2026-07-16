@@ -31,6 +31,28 @@ class CheckCommitCapabilityTests(unittest.TestCase):
         self.assertEqual(result["reason"], "")
         self.assertFalse((self.root / ".git" / project_git_handoff.PROBE_FILENAME).exists())
 
+    def test_linked_worktree_git_file_probes_resolved_git_directory(self):
+        worktree_git_dir = self.root / "actual-git-dir"
+        worktree_git_dir.mkdir()
+        (self.root / ".git").write_text(
+            "gitdir: actual-git-dir\n",
+            encoding="utf-8",
+        )
+        runner = self._runner(
+            {("gh", "auth", "status"): CommandResult(0, "Logged in", "")}
+        )
+
+        result = project_git_handoff.check_commit_capability(
+            self.root,
+            runner=runner,
+        )
+
+        self.assertEqual(result["mode"], "local-git-write")
+        self.assertTrue(result["local_git_write"])
+        self.assertFalse(
+            (worktree_git_dir / project_git_handoff.PROBE_FILENAME).exists()
+        )
+
     def test_missing_git_dir_falls_back_to_github_api_when_available(self):
         runner = self._runner({("gh", "auth", "status"): CommandResult(0, "Logged in", "")})
         result = project_git_handoff.check_commit_capability(self.root, runner=runner)

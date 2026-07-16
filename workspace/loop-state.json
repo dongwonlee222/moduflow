@@ -1,54 +1,49 @@
 {
   "schema": "moduflow.loop-state.v2",
-  "loop_id": "business-document-workflow-20260624",
-  "goal_id": "business-document-workflow",
-  "objective": "Make ModuFlow produce decision-ready business documents with sources, assumptions, calculations, validation, exports, and project memory.",
+  "loop_id": "trustworthy-execution-and-project-knowledge-20260716",
+  "goal_id": "trustworthy-execution-and-project-knowledge",
+  "objective": "Make ModuFlow repository-safe, evidence-backed in review, and reproducible across project knowledge, artifacts, analysis, and dashboard views.",
   "issue_ids": [
-    "025-lightweight-project-adoption",
-    "026-simplify-command-and-folder-surface",
-    "027-reduce-approval-popup-friction",
-    "028-real-subagent-execution-backend",
-    "029-antigravity-artifact-sync-connector",
-    "030-project-memory-layer",
-    "031-goal-driven-autonomous-benchmarking-and-issue-generation",
-    "032-multi-language-goal-benchmarking-and-core-mcp-server-integration",
-    "033-business-document-workflow",
-    "034-memory-capture-and-sync-workflow",
-    "035-team-issue-branch-pr-workflow",
-    "036-portfolio-team-dashboard",
-    "037-delegation-level-gate-and-memory-context-graph",
-    "040-automatic-memory-candidate-capture",
-    "057-korean-human-review-packet",
-    "058-git-write-fallback-via-github-api"
+    "088-canonical-repository-remote-identity-gate",
+    "089-verified-code-review-intake-and-remediation-routing",
+    "093-frontmatter-issue-schema-readiness-gate",
+    "094-risk-based-security-and-quality-review-gate",
+    "086-project-aware-production-library-dashboard",
+    "090-project-knowledge-and-artifact-registry",
+    "091-reproducible-analysis-runs-and-template-pack",
+    "092-project-home-dashboard",
+    "087-korean-github-pr-review-surface"
   ],
-  "active_issue_id": "085-project-production-records-and-playbooks",
-  "phase": "execute",
+  "active_issue_id": "088-canonical-repository-remote-identity-gate",
+  "phase": "pr",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:release 085-project-production-records-and-playbooks",
+  "next_command": "product:pr 088-canonical-repository-remote-identity-gate",
   "attempts": {
-    "command": "product:execute 058-git-write-fallback-via-github-api",
+    "command": "product:pr 088-canonical-repository-remote-identity-gate",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-07-03"
+    "last_changed_at": "2026-07-16"
   },
   "blocker": null,
-  "last_action": "completed automated review and CI for PR #17; awaiting human merge approval",
-  "last_verification": "suite green; converge 0 violations; human ratification recorded in amendment log",
-  "updated_at": "2026-07-10",
+  "last_action": "isolated 088 code, tests, and specs into a clean branch and prepared PR evidence",
+  "last_verification": "2026-07-16: clean baseline 483 tests passed; final branch verification pending",
+  "updated_at": "2026-07-16",
   "git_binding": {
     "mode": "git-files",
-    "branch": null,
+    "branch": "codex/088-canonical-repository-remote-identity-gate",
     "base_branch": "main",
-    "commits": [],
-    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/11",
-    "release": "0.3.17",
+    "commits": [
+      "afa9cc3"
+    ],
+    "pull_request": null,
+    "release": null,
     "execution_backend": {
       "type": "manual",
       "status": "selected",
-      "reason": "single governance doc + 5 doc touches; drafting is judgment-class main-loop work; worker overhead exceeds task size",
-      "session": "claude-2026-07-07"
+      "reason": "mixed source worktree required isolated branch publication",
+      "session": "codex-2026-07-16"
     }
   }
 }

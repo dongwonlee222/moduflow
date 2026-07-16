@@ -1,5 +1,28 @@
 # ModuFlow Roadmap
 
+## Priority Refresh — 2026-07-16
+
+### Now
+
+- `088-canonical-repository-remote-identity-gate` — isolated PR scope; complete Draft PR, CI, and human review.
+
+### Next
+
+- `089-verified-code-review-intake-and-remediation-routing` — preserve review source and verify disposition evidence.
+- `093-frontmatter-issue-schema-readiness-gate` — block contradictory readiness and dependency state.
+- `094-risk-based-security-and-quality-review-gate` — convert approved findings into preventive checks; blocked by 089.
+
+### Then
+
+- `086-project-aware-production-library-dashboard` — approved design/prototype; implement global project selector plus Production Records and Playbooks tabs.
+
+### Later
+
+- `090-project-knowledge-and-artifact-registry` → `091-reproducible-analysis-runs-and-template-pack` → `092-project-home-dashboard`.
+- `087-korean-github-pr-review-surface` is independent and does not block 086.
+
+This priority refresh is authoritative over the historical snapshots below.
+
 ## Now
 
 Team visibility and onboarding: make work visible to non-local collaborators (GitHub Issues projection) and give first-time users a small, ranked entry path instead of a 20+ command wall.

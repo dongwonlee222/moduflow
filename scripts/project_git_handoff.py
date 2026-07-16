@@ -27,6 +27,30 @@ def _default_probe_write(git_dir):
         return False, f"local .git write failed: {exc}"
 
 
+def _resolve_git_dir(root):
+    """Return the directory Git uses for repository-local state."""
+    git_entry = root / ".git"
+    if not git_entry.exists():
+        return None, "not a git repository (.git missing)"
+    if git_entry.is_dir():
+        return git_entry, ""
+
+    try:
+        marker = git_entry.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        return None, f"cannot read .git worktree pointer: {exc}"
+    prefix = "gitdir:"
+    if not marker.lower().startswith(prefix):
+        return None, "invalid .git worktree pointer"
+    target = marker[len(prefix) :].strip()
+    if not target:
+        return None, "invalid .git worktree pointer: missing gitdir"
+    git_dir = Path(target)
+    if not git_dir.is_absolute():
+        git_dir = git_entry.parent / git_dir
+    return git_dir.resolve(), ""
+
+
 def _github_api_available(root, runner):
     result = runner(["gh", "auth", "status"], root)
     return result.returncode == 0
@@ -61,10 +85,10 @@ def check_commit_capability(root, runner=None, probe_write=None, operation="comm
                 "repository_identity": decision,
             }
 
-    git_dir = root / ".git"
+    git_dir, resolve_reason = _resolve_git_dir(root)
 
-    if not git_dir.exists():
-        local_ok, local_reason = False, "not a git repository (.git missing)"
+    if git_dir is None:
+        local_ok, local_reason = False, resolve_reason
     else:
         local_ok, local_reason = probe_write(git_dir)
 

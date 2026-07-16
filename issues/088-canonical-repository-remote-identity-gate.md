@@ -1,6 +1,6 @@
 # Issue 088: Canonical Repository/Remote Identity Gate
 
-**Status: active** — created 2026-07-16, prioritized first 2026-07-16, implementation completed and reviewed after fixes 2026-07-16; PR scope isolation pending.
+**Status: active** — created 2026-07-16, prioritized first 2026-07-16, implementation completed and reviewed after fixes 2026-07-16; isolated PR branch prepared.
 **Priority: p0**
 
 ## Summary

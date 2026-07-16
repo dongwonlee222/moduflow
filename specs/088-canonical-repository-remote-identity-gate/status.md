@@ -29,7 +29,7 @@ Updated: 2026-07-16
 ## Review
 
 - Verdict: code/spec approved after fixes; no unresolved critical or important code findings.
-- Constitution: v1.0 checked; C10 process hold remains until the 088 scope is isolated from pre-existing staged user changes before commit/PR.
+- Constitution: v1.0 checked; no violation remains after isolating the 088 scope on a dedicated branch with an issue-linked commit.
 - Review artifact: `specs/088-canonical-repository-remote-identity-gate/review.md`.
 - Visual evidence: `memory/dashboard.html`, `memory/issue-088-canonical-repository-remote-identity-gate.html`.
 - Converge: 17 AC entries are `unverifiable` because the implementation is uncommitted and the numbered AC parser returned `parseable:false`; direct review/test evidence is recorded separately.
@@ -38,9 +38,9 @@ Updated: 2026-07-16
 ## Non-Blocking Findings
 
 - Artifact audit reports nine existing external GitHub links without explicit `reference` or `mirror` wording. They are read-only warnings, not write-handoff errors; cleanup can be handled during review or a follow-up documentation pass.
-- The worktree already contained staged and unrelated unstaged changes before 088 implementation. They were preserved; no stage, commit, pull, reset, or push was performed.
+- The original worktree's staged and unrelated unstaged changes were preserved. The 088 scope was isolated into a clean worktree from `origin/main`, and unrelated changes were excluded.
 - GitHub issues `#18`–`#24` mirror local issues `088`–`094`; historical completed issues were not bulk-created.
 
 ## Next
 
-`product:pr 088-canonical-repository-remote-identity-gate` after isolating the intended 088 file set from pre-existing staged changes.
+`product:pr 088-canonical-repository-remote-identity-gate`

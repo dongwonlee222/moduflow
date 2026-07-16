@@ -9,6 +9,17 @@ Run implementation from an approved plan.
 
 ## Do
 
+0. Run the canonical repository identity gate before readiness artifacts, worker dispatch, or any other execution write:
+
+```bash
+python3 scripts/project_repository_identity.py . --operation execute
+```
+
+   - Continue only when `allowed` is `true`.
+   - A wrong fetch repository, missing canonical identity/base ref, or `read_only`/`archived` lifecycle is a hard stop before file mutation.
+   - The remote name `origin` and branch name `main` are not proof; normalized repository URLs and configured base-ref evidence decide.
+   - There is no generic force bypass. Remotes and lifecycle metadata change only through an explicit user-approved profile update.
+
 1. Verify issue, spec, plan, and tasks exist.
    - Soft pre-check: run `python3 scripts/spec_consistency.py . --issue-id <id>` and report the findings. Proceed on warn/info findings; stop and fix on structure errors unless the user says otherwise — this is agent judgment, not a hard gate.
 2. Run implementation-readiness before worker dispatch:

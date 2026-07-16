@@ -2,15 +2,22 @@
 
 ## Current Phase
 
-Goal `team-visibility-onboarding`: make work visible to non-local collaborators (GitHub Issues projection, `054`) and give first-time users a ranked entry path (`055`). Previous goal `visual-workbench` closed 2026-07-05 with all three axes shipped.
+Goal `trustworthy-execution-and-project-knowledge`: repository identity safety first, followed by evidence-backed review, readiness/security gates, project-scoped production views, and reproducible project knowledge.
 
 ## Active Goal
 
-- `team-visibility-onboarding`: external collaborators see progress from the GitHub UI; new users get a small ranked entry path. See `workspace/goal.md`.
+- `trustworthy-execution-and-project-knowledge`: make execution repository-safe and project knowledge reproducible. See `workspace/goal.md`.
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `088-canonical-repository-remote-identity-gate` (`p0`, phase: pr). Scope is isolated on `codex/088-canonical-repository-remote-identity-gate`; next is Draft PR creation.
+
+## Priority Queue — 2026-07-16
+
+- Now: `088` PR and human review.
+- Next: `089` → `093` → `094` safety sequence.
+- Then: `086` project-aware production/playbook dashboard.
+- Later: `090` → `091` → `092`; `087` is independent and does not block 086.
 
 ## Recently Completed
 

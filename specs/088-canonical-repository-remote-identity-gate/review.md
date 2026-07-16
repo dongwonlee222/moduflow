@@ -3,10 +3,10 @@
 Issue: `088-canonical-repository-remote-identity-gate`
 Reviewer: coordinator inline review (independent subagent unavailable under active execution constraints)
 Date: 2026-07-16
-Verdict: code approved after fixes; PR handoff held for clean Git scope isolation
-Spec compliance: pass by direct issue/spec/plan/test inspection; converge criterion-level audit is unverifiable because the implementation is uncommitted
+Verdict: code approved after fixes; PR handoff ready on an isolated branch
+Spec compliance: pass by direct issue/spec/plan/test inspection; converge criterion-level audit will be refreshed from isolated commits
 Quality: pass after three important safety fixes
-Constitution: v1.0 checked — C10 process hold: behavior changes are currently uncommitted on `main`; move the intended scope to `codex/088-canonical-repository-remote-identity-gate` or use an `Issue: 088-canonical-repository-remote-identity-gate` commit trailer before commit/PR
+Constitution: v1.0 checked — no violation; the behavior changes are isolated on `codex/088-canonical-repository-remote-identity-gate` with an `Issue: 088-canonical-repository-remote-identity-gate` commit trailer
 
 ## Scope
 
@@ -58,11 +58,11 @@ No unresolved critical or important code findings remain.
 
 Reference improvements: none found.
 
-## PR Hold
+## Scope Isolation
 
-- Existing staged user changes and unrelated unstaged changes predate this review.
-- No branch switch, staging, commit, pull, reset, or push was performed.
-- Before `product:pr`, isolate the intended 088 file set without absorbing unrelated staged content.
+- The 088 scope was copied through an isolated Git index into a clean worktree based on the latest `origin/main`.
+- Existing staged user changes in the original worktree remain untouched.
+- Unrelated GPT guidance and other pre-existing changes were excluded from this branch.
 
 ## Next
 
