@@ -364,13 +364,43 @@ def validate_packet(packet, final=False):
                 path + ".verification.state",
                 "unsupported verification state",
             )
-        disposition = finding.get("disposition", {}).get("state")
+        disposition_record = finding.get("disposition") or {}
+        disposition = disposition_record.get("state")
         if final and disposition not in FINAL_DISPOSITIONS:
             add(
                 "disposition_pending",
                 path + ".disposition.state",
                 "final packets require a disposition",
             )
+        elif final:
+            if not str(disposition_record.get("rationale") or "").strip():
+                add(
+                    "disposition_rationale_missing",
+                    path + ".disposition.rationale",
+                    "final dispositions require rationale",
+                )
+            verification_state = finding.get("verification", {}).get("state")
+            if disposition == "accept" and verification_state != "confirmed":
+                add(
+                    "accept_requires_evidence",
+                    path + ".verification.state",
+                    "accept requires confirmed evidence",
+                )
+            if disposition == "partial_accept":
+                if verification_state not in {"confirmed", "inconclusive"}:
+                    add(
+                        "partial_accept_requires_evidence",
+                        path + ".verification.state",
+                        "partial accept requires confirmed or inconclusive evidence",
+                    )
+                if not str(
+                    disposition_record.get("accepted_scope") or ""
+                ).strip():
+                    add(
+                        "partial_accept_scope_missing",
+                        path + ".disposition.accepted_scope",
+                        "partial accept requires the accepted observation or scope",
+                    )
     return errors
 
 
@@ -441,6 +471,11 @@ def _provenance_key(actor):
     )
 
 
+def _actor_identity(actor):
+    actor = actor or {}
+    return (actor.get("kind"), actor.get("identity"))
+
+
 def _normalized_verification(decision):
     verification = copy.deepcopy(decision.get("verification") or {})
     state = verification.get("state")
@@ -502,6 +537,12 @@ def apply_decision(packet, decision):
             "disposition_rationale_missing",
             "every disposition requires rationale",
         )
+    accepted_scope = str(decision.get("accepted_scope") or "").strip()
+    if disposition == "partial_accept" and not accepted_scope:
+        raise ReviewIntakeError(
+            "partial_accept_scope_missing",
+            "partial accept requires the accepted observation or scope",
+        )
     state = verification["state"]
     if disposition == "accept" and state != "confirmed":
         raise ReviewIntakeError(
@@ -525,12 +566,18 @@ def apply_decision(packet, decision):
                 "verifier_missing",
                 "policy requires explicit verifier provenance",
             )
-        blocked_keys = {
-            _provenance_key(finding.get("source_author")),
-            _provenance_key(finding.get("router", {}).get("actor")),
-        }
-        blocked_keys = {key for key in blocked_keys if any(key)}
-        if _provenance_key(verifier) in blocked_keys:
+        source_identity = _actor_identity(finding.get("source_author"))
+        router_key = _provenance_key(
+            finding.get("router", {}).get("actor")
+        )
+        same_source_reviewer = (
+            any(source_identity)
+            and _actor_identity(verifier) == source_identity
+        )
+        same_router_run = (
+            any(router_key) and _provenance_key(verifier) == router_key
+        )
+        if same_source_reviewer or same_router_run:
             raise ReviewIntakeError(
                 "verifier_not_independent",
                 "verifier must differ from source reviewer and Router run",
@@ -563,6 +610,7 @@ def apply_decision(packet, decision):
         "decided_by": actor,
         "decided_at": date.today().isoformat(),
         "human_approved": human_approved,
+        "accepted_scope": accepted_scope or None,
     }
     finding.setdefault("decision_history", []).append(copy.deepcopy(event))
     finding["disposition"] = event
@@ -628,13 +676,16 @@ def build_candidates(packet, existing_candidates=(), proposals=()):
         if item.get("disposition", {}).get("state")
         in {"accept", "partial_accept"}
     }
-    candidate_specs = list(proposals) or [
-        {
-            "title": finding["recommendation"] or finding["observation"],
-            "finding_ids": [finding_id],
-        }
-        for finding_id, finding in accepted.items()
-    ]
+    candidate_specs = list(proposals) or []
+    if not candidate_specs:
+        for finding_id, finding in accepted.items():
+            if finding["disposition"]["state"] == "partial_accept":
+                title = finding["disposition"]["accepted_scope"]
+            else:
+                title = finding["recommendation"] or finding["observation"]
+            candidate_specs.append(
+                {"title": title, "finding_ids": [finding_id]}
+            )
     candidates = []
     finding_to_candidates = {finding_id: [] for finding_id in accepted}
     candidate_to_findings = {}

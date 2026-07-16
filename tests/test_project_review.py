@@ -401,6 +401,21 @@ class ArtifactAndCliTests(unittest.TestCase):
 
             self.assertEqual(caught.exception.code, "source_integrity_mismatch")
 
+    def test_decision_update_rejects_review_id_path_traversal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            decisions = root / "decisions.json"
+            decisions.write_text(
+                json.dumps({"decisions": []}), encoding="utf-8"
+            )
+
+            with self.assertRaises(ri.ReviewIntakeError) as caught:
+                pr.apply_decisions_to_path(
+                    root, "../../outside", decisions, write=False
+                )
+
+            self.assertEqual(caught.exception.code, "review_id_invalid")
+
     def test_candidate_queue_retains_other_review_packets(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -456,6 +471,44 @@ class ArtifactAndCliTests(unittest.TestCase):
         self.assertFalse(result["valid"])
         self.assertIn(
             "disposition_pending", {error["code"] for error in result["errors"]}
+        )
+
+    def test_validate_final_rejects_disposition_without_rationale(self):
+        packet = sample_final_packet()
+        packet["findings"][0]["disposition"]["rationale"] = ""
+
+        result = pr.run_validation(packet, final=True)
+
+        self.assertFalse(result["valid"])
+        self.assertIn(
+            "disposition_rationale_missing",
+            {error["code"] for error in result["errors"]},
+        )
+
+    def test_validate_final_rejects_accept_without_confirmed_evidence(self):
+        packet = sample_final_packet()
+        packet["findings"][0]["verification"]["state"] = "inconclusive"
+
+        result = pr.run_validation(packet, final=True)
+
+        self.assertFalse(result["valid"])
+        self.assertIn(
+            "accept_requires_evidence",
+            {error["code"] for error in result["errors"]},
+        )
+
+    def test_validate_final_rejects_partial_accept_without_scope(self):
+        packet = sample_final_packet()
+        packet["findings"][0]["verification"]["state"] = "inconclusive"
+        packet["findings"][0]["disposition"]["state"] = "partial_accept"
+        packet["findings"][0]["disposition"]["accepted_scope"] = None
+
+        result = pr.run_validation(packet, final=True)
+
+        self.assertFalse(result["valid"])
+        self.assertIn(
+            "partial_accept_scope_missing",
+            {error["code"] for error in result["errors"]},
         )
 
 

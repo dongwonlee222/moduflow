@@ -1,6 +1,6 @@
 # Issue 089: Verified Code-Review Intake and Remediation Routing
 
-**Status: in_progress** — created 2026-07-16, spec drafted 2026-07-16, plan drafted 2026-07-16, implementation verified 2026-07-16.
+**Status: backlog** — created 2026-07-16, spec drafted 2026-07-16, plan drafted 2026-07-16, implementation verified 2026-07-16, staged review passed 2026-07-16; Draft PR #26 waits behind active Issue 088.
 **Priority: p1**
 
 ## Summary
@@ -13,7 +13,7 @@ Verify external code-review findings before disposition, record evidence and con
 - Link: local Codex session, 2026-07-16
 - Owner / decision maker: Dongwon Lee
 - Original requested ID: `082`; mapped to `089` because local issue `082` already exists.
-- Current phase: implementation complete; staged review next
+- Current phase: staged review passed; Draft PR #26 awaits human review
 
 ## Problem
 
@@ -110,7 +110,7 @@ Do not auto-apply review suggestions or publish GitHub issues. The v1 result is 
 - [x] spec → `specs/089-verified-code-review-intake-and-remediation-routing/spec.md` (+ `spec.ko.md`)
 - [x] plan → `specs/089-verified-code-review-intake-and-remediation-routing/plan.md` (+ `tasks.md`)
 - [x] execute → intake schema, verifier, remediation router, candidate generator, and tests; evidence in `specs/089-verified-code-review-intake-and-remediation-routing/status.md`
-- [ ] review → `specs/089-verified-code-review-intake-and-remediation-routing/review.md`
+- [x] review → `specs/089-verified-code-review-intake-and-remediation-routing/review.md`
 
 ## Related Issues
 
@@ -148,4 +148,4 @@ Do not auto-apply review suggestions or publish GitHub issues. The v1 result is 
 
 ## Next Command
 
-`product:review 089-verified-code-review-intake-and-remediation-routing`
+`product:pr 089-verified-code-review-intake-and-remediation-routing`

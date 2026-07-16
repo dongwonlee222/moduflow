@@ -23,6 +23,7 @@ Plan: `specs/089-verified-code-review-intake-and-remediation-routing/plan.md`
 - English and Korean spec written and committed.
 - TDD implementation plan and task dependency graph written.
 - T01–T07 implemented and verified; staged product review remains.
+- Staged review completed with four review findings fixed by TDD; `review.md`, converge evidence, dashboard, PR handoff, and Korean packet generated.
 
 ## Blocked
 
@@ -40,4 +41,4 @@ Plan: `specs/089-verified-code-review-intake-and-remediation-routing/plan.md`
 
 ## Next
 
-`product:review 089-verified-code-review-intake-and-remediation-routing`
+`product:pr 089-verified-code-review-intake-and-remediation-routing`

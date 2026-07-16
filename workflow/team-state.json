@@ -231,7 +231,7 @@
       "owner": "Dongwon Lee",
       "assignee": "Codex",
       "reviewer": "Dongwon Lee",
-      "status": "backlog",
+      "status": "ready",
       "branch": "",
       "pr": "",
       "lock_state": "available",
@@ -254,6 +254,21 @@
       "blocker": "",
       "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/25",
       "next_command": "product:review 088-canonical-repository-remote-identity-gate",
+      "updated_at": "2026-07-16"
+    },
+    {
+      "issue_id": "089-verified-code-review-intake-and-remediation-routing",
+      "owner": "Dongwon Lee",
+      "assignee": "Codex",
+      "reviewer": "Dongwon Lee",
+      "status": "review",
+      "branch": "codex/089-verified-code-review-intake-and-remediation-routing",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/26",
+      "lock_state": "active",
+      "locked_by": "Codex",
+      "blocker": "",
+      "last_handoff": "Staged review passed; Draft PR #26 is ready for human review.",
+      "next_command": "product:pr 089-verified-code-review-intake-and-remediation-routing",
       "updated_at": "2026-07-16"
     }
   ]

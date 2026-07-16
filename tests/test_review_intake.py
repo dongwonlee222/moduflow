@@ -349,6 +349,21 @@ class DecisionPolicyTests(unittest.TestCase):
 
         self.assertEqual(caught.exception.code, "verifier_not_independent")
 
+    def test_source_reviewer_cannot_self_verify_with_new_run_id(self):
+        packet = make_packet(severity="medium")
+        decision = decision_for("F-001")
+        decision["verification"]["verifier"] = {
+            "kind": "human",
+            "identity": "source-reviewer",
+            "role": "verifier",
+            "run_id": "different-run",
+        }
+
+        with self.assertRaises(ri.ReviewIntakeError) as caught:
+            ri.apply_decision(packet, decision)
+
+        self.assertEqual(caught.exception.code, "verifier_not_independent")
+
     def test_accept_requires_confirmed_evidence(self):
         with self.assertRaises(ri.ReviewIntakeError) as caught:
             ri.apply_decision(
@@ -363,19 +378,51 @@ class DecisionPolicyTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "accept_requires_evidence")
 
     def test_partial_accept_allows_explicit_inconclusive_evidence(self):
+        decision = decision_for(
+            "F-001",
+            disposition="partial_accept",
+            verification_state="inconclusive",
+        )
+        decision["accepted_scope"] = "Preserve the verified observation only."
         updated = ri.apply_decision(
             make_packet(),
-            decision_for(
-                "F-001",
-                disposition="partial_accept",
-                verification_state="inconclusive",
-            ),
+            decision,
         )
 
         self.assertEqual(
             updated["findings"][0]["disposition"]["state"],
             "partial_accept",
         )
+
+    def test_partial_accept_candidate_uses_accepted_scope_not_original_remedy(self):
+        decision = decision_for(
+            "F-001",
+            disposition="partial_accept",
+            verification_state="inconclusive",
+        )
+        decision["accepted_scope"] = "Preserve the verified observation only."
+        packet = ri.apply_decision(make_packet(), decision)
+
+        candidate = ri.build_candidates(packet)["candidates"][0]
+
+        self.assertEqual(
+            candidate["title"], "Preserve the verified observation only."
+        )
+        self.assertNotEqual(
+            candidate["title"], packet["findings"][0]["recommendation"]
+        )
+
+    def test_partial_accept_requires_accepted_scope(self):
+        decision = decision_for(
+            "F-001",
+            disposition="partial_accept",
+            verification_state="inconclusive",
+        )
+
+        with self.assertRaises(ri.ReviewIntakeError) as caught:
+            ri.apply_decision(make_packet(), decision)
+
+        self.assertEqual(caught.exception.code, "partial_accept_scope_missing")
 
     def test_every_disposition_requires_rationale(self):
         decision = decision_for("F-001", disposition="defer")
@@ -463,14 +510,14 @@ def finalized_packet(dispositions, *, severity="low"):
                 else "confirmed"
             )
         )
-        packet = ri.apply_decision(
-            packet,
-            decision_for(
-                f"F-{index:03d}",
-                disposition=disposition,
-                verification_state=verification_state,
-            ),
+        decision = decision_for(
+            f"F-{index:03d}",
+            disposition=disposition,
+            verification_state=verification_state,
         )
+        if disposition == "partial_accept":
+            decision["accepted_scope"] = f"Observation {index} only"
+        packet = ri.apply_decision(packet, decision)
     return packet
 
 

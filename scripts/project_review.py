@@ -550,6 +550,11 @@ def _verify_reference_integrity(packet):
 
 
 def apply_decisions_to_path(root, review_id, decisions_path, write=False):
+    if not ri.REVIEW_ID_RE.fullmatch(str(review_id or "")):
+        raise ri.ReviewIntakeError(
+            "review_id_invalid",
+            "review_id must be a safe 3-128 character artifact identifier",
+        )
     packet_path = (
         Path(root).resolve()
         / "workspace"
