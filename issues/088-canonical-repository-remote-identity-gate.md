@@ -1,6 +1,6 @@
 # Issue 088: Canonical Repository/Remote Identity Gate
 
-**Status: active** — created 2026-07-16, prioritized first 2026-07-16, implementation completed and reviewed after fixes 2026-07-16; Draft PR #25 opened for human review.
+**Status: done** — created 2026-07-16, prioritized first 2026-07-16, implementation completed and reviewed after fixes 2026-07-16; human merge approval recorded 2026-07-16 for PR #25.
 **Priority: p0**
 
 ## Summary
@@ -13,7 +13,7 @@ Store the canonical repository, remote identity, and base branch in the project 
 - Link: local Codex session, 2026-07-16
 - Owner / decision maker: Dongwon Lee
 - Original requested ID: `081`; mapped to `088` because local issues `081`–`087` already exist.
-- Current phase: pr
+- Current phase: approved for merge and release handoff
 
 ## Problem
 
@@ -106,6 +106,7 @@ Do not mutate remotes automatically. The first release must prove identity and b
 ## Sessions
 
 - 2026-07-16: User approved the identity gate as the first priority after reviewing the proposed change map.
+- 2026-07-16: User explicitly authorized Codex to complete PR #25 and the stacked PR #26; this records the human canonical-transition approval required by Constitution C6.
 
 ## Links
 
@@ -122,4 +123,4 @@ Do not mutate remotes automatically. The first release must prove identity and b
 
 ## Next Command
 
-Human review and merge of [PR #25](https://github.com/dongwonlee222/moduflow/pull/25). Use `product:review 088-canonical-repository-remote-identity-gate` if feedback or checks fail; after merge use `product:release 088-canonical-repository-remote-identity-gate`.
+`product:release 088-canonical-repository-remote-identity-gate`

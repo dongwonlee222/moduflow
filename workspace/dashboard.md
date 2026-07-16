@@ -10,17 +10,18 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Active Issue
 
-- `088-canonical-repository-remote-identity-gate` (`p0`, phase: pr). [Draft PR #25](https://github.com/dongwonlee222/moduflow/pull/25) is open on `codex/088-canonical-repository-remote-identity-gate` and awaits human review.
+- None active. Run `product:status` to pick the next issue.
 
 ## Priority Queue — 2026-07-16
 
-- Now: `088` PR and human review.
-- Next: `089` → `093` → `094` safety sequence.
+- Now: `089` Draft PR #26 review and merge after approved PR #25.
+- Next: `093` → `094` safety sequence.
 - Then: `086` project-aware production/playbook dashboard.
 - Later: `090` → `091` → `092`; `087` is independent and does not block 086.
 
 ## Recently Completed
 
+- `088-canonical-repository-remote-identity-gate`: implementation and staged review passed; Dongwon Lee approved PR #25 for merge on 2026-07-16 after CI and canonical identity checks passed.
 - `070-spec-consistency-analyze`: `scripts/spec_consistency.py` runs a deterministic pre-execution check over spec↔plan↔tasks — AC coverage (token-overlap "possibly uncovered" warns), vague-term lint (no-digit bullets), structural stream tracing — report-only JSON, recommended in `product:plan`/`product:execute`. Also fixed a pre-existing gate false positive (placeholder paths in issue prose treated as real links). Dogfood on specs/069: clean.
 - `069-issue-dependency-priority-model`: issues now carry `**Priority: p0-p3**` and `**Blocked-by:**` metadata (blocked_by canonical, blocks derived); `ready_issues`/`--ready`/`moduflow_ready` answer "지금 시작 가능한 일" priority-sorted; dangling refs, cycles, and active-with-unmet-blocker are drift-gate errors. Also repaired the pre-048 schema still emitted by the issue template and the orphaned generator. Verification caught 4 real findings (prose false-parse, RecursionError on deep chains, generator landmine, silent active-blocked state) — all fixed with regression tests.
 - `068-machine-query-surface`: `scripts/mcp_server.py` is now a real persistent stdio MCP server (4 read-only tools: status/issues/issue_get/doctor, payloads versioned `moduflow.mcp.v1`), registered in `.mcp.json` via `${CLAUDE_PLUGIN_ROOT}`; `project_lifecycle.py` gained `--issues` JSON. Independent verification caught and we fixed a real path-traversal disclosure, a crash-on-non-object-JSON, a schema clobber, and a duplicated parser — 21 module tests, 248 total.

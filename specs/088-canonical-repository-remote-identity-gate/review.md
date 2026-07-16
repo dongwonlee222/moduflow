@@ -66,6 +66,11 @@ Reference improvements: none found.
 - Existing staged user changes in the original worktree remain untouched.
 - Unrelated GPT guidance and other pre-existing changes were excluded from this branch.
 
+## Human Approval
+
+- 2026-07-16: Dongwon Lee explicitly authorized Codex to complete PR #25 and the stacked PR #26 in the active Codex task.
+- This satisfies Constitution C6 for the canonical merge transition; it does not waive CI or release gates.
+
 ## Next
 
-Human review of [PR #25](https://github.com/dongwonlee222/moduflow/pull/25); return to `product:review 088-canonical-repository-remote-identity-gate` if changes are requested.
+`product:release 088-canonical-repository-remote-identity-gate`

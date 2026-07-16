@@ -1,7 +1,7 @@
 # Status: Canonical Repository/Remote Identity Gate
 
 Issue: `088-canonical-repository-remote-identity-gate`
-Phase: pr
+Phase: approved
 Updated: 2026-07-16
 
 ## Implemented
@@ -45,4 +45,4 @@ Updated: 2026-07-16
 
 ## Next
 
-Human review and merge of [PR #25](https://github.com/dongwonlee222/moduflow/pull/25). Return to `product:review 088-canonical-repository-remote-identity-gate` on requested changes; run `product:release 088-canonical-repository-remote-identity-gate` only after merge.
+Human approval was recorded on 2026-07-16. Merge PR #25 after fresh CI, then run `product:release 088-canonical-repository-remote-identity-gate`.
