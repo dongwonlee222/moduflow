@@ -16,6 +16,12 @@ if __package__ in (None, ""):
 
 from scripts.project_sync import run_command
 from scripts.project_lifecycle import _issue_status
+from scripts.project_repository_identity import (
+    IdentityConfigError,
+    inspect_repository_identity,
+    operation_decision,
+    repository_from_github_artifact_url,
+)
 
 LABELS = {
     "backlog": "moduflow:backlog",
@@ -202,8 +208,13 @@ def _ensure_labels(runner, cwd, repo):
     return None
 
 
-def _error(message, issue_id):
-    return {"action": "error", "issue_id": issue_id, "error": message}
+def _error(message, issue_id, repository_identity=None, reason_code=None):
+    result = {"action": "error", "issue_id": issue_id, "error": message}
+    if repository_identity is not None:
+        result["repository_identity"] = repository_identity
+    if reason_code is not None:
+        result["reason_code"] = reason_code
+    return result
 
 
 def sync_issue(root, issue_id, runner=None):
@@ -219,6 +230,29 @@ def sync_issue(root, issue_id, runner=None):
 
     runner = runner or run_command
 
+    identity = inspect_repository_identity(root, runner=runner)
+    decision = operation_decision(identity, "github_issue")
+    if not decision["allowed"]:
+        decision_codes = {reason["code"] for reason in decision["reasons"]}
+        return _error(
+            "canonical repository identity denied GitHub issue sync",
+            issue_id,
+            repository_identity=decision,
+            reason_code=(
+                "stale_artifact_repository"
+                if "artifact_write_repository_mismatch" in decision_codes
+                else None
+            ),
+        )
+    canonical_repository = identity["expected"].get("repository", "")
+    if not canonical_repository.startswith("github.com/"):
+        return _error(
+            "canonical GitHub repository is unavailable",
+            issue_id,
+            repository_identity=decision,
+        )
+    repo = canonical_repository[len("github.com/") :]
+
     issue_path = root / "issues" / f"{issue_id}.md"
     if not issue_path.is_file():
         return _error(f"issue file not found: {issue_path}", issue_id)
@@ -227,18 +261,29 @@ def sync_issue(root, issue_id, runner=None):
     status = _issue_status(text)
     label = LABELS[status]
 
-    remote = runner(["git", "remote", "get-url", "origin"], root)
-    if remote.returncode != 0:
-        return _error(f"git remote get-url origin failed: {(remote.stderr or '').strip()}", issue_id)
-    repo = _parse_owner_repo((remote.stdout or "").strip())
-    if not repo:
-        return _error(f"could not parse owner/repo from origin URL: {(remote.stdout or '').strip()}", issue_id)
+    existing_url = _github_link(text)
+    if existing_url:
+        try:
+            linked_repository = repository_from_github_artifact_url(existing_url)
+        except IdentityConfigError:
+            return _error(
+                "existing GitHub issue URL is malformed",
+                issue_id,
+                repository_identity=decision,
+                reason_code="artifact_repository_unverifiable",
+            )
+        if linked_repository != canonical_repository:
+            return _error(
+                "existing GitHub issue URL targets a non-canonical repository",
+                issue_id,
+                repository_identity=decision,
+                reason_code="stale_artifact_repository",
+            )
 
     label_error = _ensure_labels(runner, root, repo)
     if label_error:
         return _error(label_error, issue_id)
 
-    existing_url = _github_link(text)
     if existing_url:
         number_match = ISSUE_NUMBER_RE.search(existing_url)
         if not number_match:

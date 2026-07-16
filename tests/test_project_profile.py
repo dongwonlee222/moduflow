@@ -89,6 +89,133 @@ class ProjectProfileTests(unittest.TestCase):
 
             self.assertEqual(missing, [])
 
+    def test_legacy_remote_is_only_a_confirmation_candidate(self):
+        project_profile = load_module("project_profile", "scripts/project_profile.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_path = root / ".moduflow" / "config.json"
+            config_path.parent.mkdir()
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.config.v1",
+                        "git": {
+                            "remote": "https://oauth2:secret@github.com/Owner/Repo.git"
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            proposal = project_profile.build_repository_identity_proposal(root)
+
+        self.assertTrue(proposal["requires_confirmation"])
+        self.assertIsNone(proposal["proposed_identity"])
+        self.assertEqual(proposal["legacy_remote_candidate"], "github.com/owner/repo")
+        self.assertNotIn("secret", json.dumps(proposal))
+
+    def test_explicit_remote_identity_write_preserves_unrelated_config_and_profile_content(self):
+        project_profile = load_module("project_profile", "scripts/project_profile.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_path = root / ".moduflow" / "config.json"
+            config_path.parent.mkdir()
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.config.v1",
+                        "project_name": "Example",
+                        "git": {"required": True, "remote": "https://github.com/Old/Repo"},
+                        "paths": {"issues": "custom-issues"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            profile_path = root / ".moduflow" / "project-profile.md"
+            profile_path.write_text(
+                "# Existing Profile\n\n## Private Operating Note\n\nKeep this text.\n",
+                encoding="utf-8",
+            )
+            proposal = project_profile.build_repository_identity_proposal(
+                root,
+                canonical_repository="git@github.com:Owner/Repo.git",
+                provider="github",
+                remote_name_hint="upstream",
+                base_branch="main",
+                lifecycle="active",
+            )
+
+            result = project_profile.apply_repository_identity_proposal(root, proposal)
+
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            profile = profile_path.read_text(encoding="utf-8")
+
+        self.assertTrue(result["written"])
+        self.assertEqual(config["project_name"], "Example")
+        self.assertEqual(config["paths"], {"issues": "custom-issues"})
+        self.assertEqual(config["git"]["remote"], "https://github.com/Old/Repo")
+        self.assertEqual(
+            config["git"]["identity"]["canonical_repository"],
+            "github.com/owner/repo",
+        )
+        self.assertEqual(config["git"]["identity"]["remote_name_hint"], "upstream")
+        self.assertIn("Keep this text.", profile)
+        self.assertIn("Canonical repository: `github.com/owner/repo`", profile)
+        self.assertIn("Base branch: `main`", profile)
+
+    def test_local_only_proposal_omits_remote_identity_fields(self):
+        project_profile = load_module("project_profile", "scripts/project_profile.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            proposal = project_profile.build_repository_identity_proposal(
+                tmp,
+                local_only=True,
+                provider="generic",
+                base_branch="main",
+                lifecycle="active",
+            )
+
+        identity = proposal["proposed_identity"]
+        self.assertEqual(identity["mode"], "local_only")
+        self.assertNotIn("canonical_repository", identity)
+        self.assertNotIn("remote_name_hint", identity)
+
+    def test_repository_projection_update_is_idempotent(self):
+        project_profile = load_module("project_profile", "scripts/project_profile.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile_path = root / ".moduflow" / "project-profile.md"
+            profile_path.parent.mkdir()
+            profile_path.write_text("# Existing\n", encoding="utf-8")
+            proposal = project_profile.build_repository_identity_proposal(
+                root,
+                canonical_repository="github.com/Owner/Repo",
+                provider="github",
+                remote_name_hint="origin",
+                base_branch="main",
+                lifecycle="active",
+            )
+
+            project_profile.apply_repository_identity_proposal(root, proposal)
+            first = profile_path.read_text(encoding="utf-8")
+            project_profile.apply_repository_identity_proposal(root, proposal)
+            second = profile_path.read_text(encoding="utf-8")
+
+        self.assertEqual(first, second)
+        self.assertEqual(first.count("<!-- moduflow:repository-identity:start -->"), 1)
+
+    def test_invalid_repository_lifecycle_is_rejected_before_write(self):
+        project_profile = load_module("project_profile", "scripts/project_profile.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                project_profile.build_repository_identity_proposal(
+                    tmp,
+                    canonical_repository="github.com/Owner/Repo",
+                    provider="github",
+                    remote_name_hint="origin",
+                    base_branch="main",
+                    lifecycle="frozen",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

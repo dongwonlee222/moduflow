@@ -1,12 +1,70 @@
 import tempfile
 import unittest
 import json
+import sys
+import io
+from contextlib import redirect_stdout
 from pathlib import Path
 
 from scripts import project_execution
 
 
 class ProjectExecutionHandoffTests(unittest.TestCase):
+    def test_write_mode_stops_before_artifact_mutation_on_identity_mismatch(self):
+        identity = {
+            "schema": "moduflow.repository-identity.v1",
+            "status": "mismatch",
+            "capabilities": {"read": True, "execute": False},
+            "reasons": [
+                {"code": "fetch_remote_mismatch", "message": "wrong repository"}
+            ],
+        }
+        calls = []
+        originals = {
+            "inspect": getattr(project_execution, "inspect_repository_identity", None),
+            "decision": getattr(project_execution, "operation_decision", None),
+            "writer": project_execution.write_implementation_readiness,
+            "argv": sys.argv,
+        }
+        project_execution.inspect_repository_identity = lambda root: identity
+        project_execution.operation_decision = lambda result, operation: {
+            "schema": "moduflow.repository-operation-decision.v1",
+            "operation": operation,
+            "capability": "execute",
+            "allowed": False,
+            "reasons": result["reasons"],
+            "identity": result,
+        }
+        project_execution.write_implementation_readiness = (
+            lambda root, issue_id: calls.append((root, issue_id))
+        )
+        sys.argv = [
+            "project_execution.py",
+            ".",
+            "--issue-id",
+            "088-canonical-repository-remote-identity-gate",
+            "--readiness",
+            "--write",
+        ]
+        try:
+            with redirect_stdout(io.StringIO()) as output:
+                result = project_execution.main()
+        finally:
+            sys.argv = originals["argv"]
+            project_execution.write_implementation_readiness = originals["writer"]
+            if originals["inspect"] is None:
+                delattr(project_execution, "inspect_repository_identity")
+            else:
+                project_execution.inspect_repository_identity = originals["inspect"]
+            if originals["decision"] is None:
+                delattr(project_execution, "operation_decision")
+            else:
+                project_execution.operation_decision = originals["decision"]
+
+        self.assertEqual(result, 3)
+        self.assertEqual(calls, [])
+        self.assertIn("fetch_remote_mismatch", output.getvalue())
+
     def test_build_review_handoff_includes_subagents_verification_and_html(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

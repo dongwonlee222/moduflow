@@ -2,7 +2,16 @@
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from scripts.project_repository_identity import (
+    inspect_repository_identity,
+    operation_decision,
+)
 
 
 READINESS_SCHEMA = "moduflow.implementation-readiness.v1"
@@ -303,6 +312,13 @@ def main():
     parser.add_argument("--review-handoff", action="store_true")
     parser.add_argument("--write", action="store_true")
     args = parser.parse_args()
+
+    if args.write:
+        identity = inspect_repository_identity(args.project_path)
+        decision = operation_decision(identity, "execute")
+        if not decision["allowed"]:
+            print(json.dumps(decision, ensure_ascii=False, indent=2))
+            return 3
 
     if args.readiness:
         if args.write:

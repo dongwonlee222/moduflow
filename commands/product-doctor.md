@@ -13,11 +13,12 @@ Validate setup.
 2. Run `scripts/project_doctor.py <project-path>` for the target project.
 3. Run `scripts/validate_project_artifacts.py <project-path>` when the project is initialized.
 4. Separate required setup errors from optional capability warnings.
-5. Check Git repo, GitHub remote, GitHub CLI auth, and required `.moduflow`, `issues`, `specs`, and `workspace` files.
+5. Check Git repo, canonical repository identity, actual fetch/push URLs, configured base ref, GitHub provider evidence, GitHub CLI auth, and required `.moduflow`, `issues`, `specs`, and `workspace` files.
 6. Detect likely existing project artifact folders for migration.
 7. Preserve raw `mode` in JSON diagnostics, but render `mode_guidance.message` and `mode_guidance.details` before any raw mode labels in user-facing output.
 8. Report missing files and suggested fix commands.
-9. For approval-sensitive hosts, call `inspect_project(path, include_preflight=False)` or `scripts/project_doctor.py <project-path> --no-preflight` first, then run full preflight only when Git/GitHub sync state is needed.
+9. Render the versioned `repository_identity` result as expected identity, observed identity, lifecycle, capabilities, reason codes, and exact remediation. Doctor is report-only even on mismatch.
+10. For approval-sensitive hosts, call `inspect_project(path, include_preflight=False)` or `scripts/project_doctor.py <project-path> --no-preflight` first, then run full preflight only when Git/GitHub sync state is needed. The result explicitly lists `repository_identity` as skipped.
 
 ## Korean Output
 
@@ -35,6 +36,9 @@ Render a Korean-first health check:
 
 ✅ 필수 체크
   Git repo: OK
+  Canonical repo: github.com/owner/repository
+  Fetch / push: 일치
+  Base branch: main
   .moduflow: OK
   issues/: OK
   workspace/: OK
@@ -55,9 +59,13 @@ Missing optional capabilities are warnings, not failures, in `git-files` mode.
 ## Git Checks
 
 - Git repo exists
-- Git root matches intended project root
-- `origin` remote exists when GitHub sync is expected
+- Git root is reported as observed evidence
+- configured canonical repository matches every fetch/push URL used by the operation
+- configured base branch exists; the current feature branch may differ
+- remote names such as `origin` are hints and never identity evidence by themselves
+- lifecycle is one of `active`, `read_only`, or `archived`
 - `gh auth status` passes when issue/PR/release sync is expected
+- explicit canonical GitHub `nameWithOwner`, default branch, archive state, and fork state are reported when provider evidence is available
 
 Git and GitHub CLI checks are preflight checks. They are skipped in local-only mode so routine doctor/status rendering can avoid approval popups.
 
