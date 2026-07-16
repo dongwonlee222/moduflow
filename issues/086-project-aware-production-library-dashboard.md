@@ -116,6 +116,7 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 - Status: `specs/086-project-aware-production-library-dashboard/status.md`
 - Sessions: `sessions/086-project-aware-production-library-dashboard/`
 - Roadmap: `workspace/roadmap.md`
+- GitHub: https://github.com/dongwonlee222/moduflow/issues/27
 
 ## Next Command
 
