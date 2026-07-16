@@ -1,5 +1,28 @@
 # PR Handoff: 088-canonical-repository-remote-identity-gate
 
+## 사람이 먼저 볼 요약
+
+이 PR은 모두플로가 **엉뚱한 저장소에 실행 결과를 쓰거나 push·PR·release하는 사고를 막는 것**이 목적입니다.
+
+| 질문 | 답 |
+| --- | --- |
+| 무엇을 저장하나? | canonical repository, base branch, remote 역할, 저장소 상태 |
+| 무엇을 확인하나? | 실제 fetch/push URL, GitHub owner/repo, default branch, archive/fork 상태 |
+| 다르면 어떻게 하나? | 파일·Git·GitHub 쓰기 전에 중단하고 이유 표시 |
+| 자동으로 remote를 고치나? | 아니요. 변경·삭제하지 않고 중단만 함 |
+| 사람은 무엇을 승인하나? | 이 안전 정책과 현재 기준 `dongwonlee222/moduflow` · `main` · `active` |
+
+```mermaid
+flowchart LR
+    A["ModuFlow 명령"] --> B["저장된 canonical 기준"]
+    B --> C["실제 Git·GitHub 상태 비교"]
+    C --> D{"일치?"}
+    D -- "예" --> E["계속"]
+    D -- "아니오" --> F["쓰기 전 중단"]
+```
+
+검증 결과는 전체 528개 테스트와 GitHub CI 모두 통과했습니다. 상세한 구현·검증 로그는 아래에 보존합니다.
+
 ## Purpose
 
 Make the pull request the visible review surface instead of waiting until all local review work is finished.

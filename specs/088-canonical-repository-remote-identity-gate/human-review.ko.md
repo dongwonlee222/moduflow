@@ -2,25 +2,56 @@
 
 > 영어 산출물은 canonical입니다. 이 파일은 사람이 PR을 검토하기 위한 한국어 읽기용 패킷입니다.
 
-## 먼저 볼 것
+## 한 줄 결론
 
+모두플로가 **잘못된 GitHub 저장소를 보고 있으면 실행·커밋·푸시·PR·릴리스 전에 멈추게 하는 안전장치**입니다.
+
+## 무엇이 달라지나
+
+| 구분 | 기존 | 개선 후 |
+| --- | --- | --- |
+| 저장소 확인 | `origin`, `main` 같은 이름을 주로 확인 | 실제 fetch/push URL과 GitHub 저장소까지 확인 |
+| 기준 정보 | 실행 시점 Git 상태에서 추정 | 프로젝트에 canonical repo·base branch·상태를 명시적으로 저장 |
+| 잘못된 저장소 | 이름이 같으면 통과할 가능성 | URL이 다르면 쓰기 전에 즉시 중단 |
+| legacy 저장소 | 상태가 불분명 | `active`, `read_only`, `archived`로 구분 |
+| 문제 대응 | 뒤늦게 발견하거나 수동 확인 | 중단 이유와 예상값·실제값을 doctor/status에 표시 |
+
+## 실제 동작
+
+```mermaid
+flowchart LR
+    A["execute / push / PR / release"] --> B["프로젝트에 저장된 기준 확인"]
+    B --> C["실제 Git·GitHub URL과 base branch 확인"]
+    C --> D{"모두 일치하는가?"}
+    D -- "예" --> E["작업 계속"]
+    D -- "아니오" --> F["쓰기 전에 중단하고 이유 표시"]
+```
+
+## 사람이 결정할 것
+
+- [ ] 잘못된 저장소를 바라볼 때 자동 진행하지 않고 중단하는 정책에 동의합니다.
+- [ ] 모두플로가 remote를 자동 변경하거나 저장소를 삭제하지 않고, 안전하게 멈추기만 하는 범위에 동의합니다.
+- [ ] 현재 canonical 기준 `dongwonlee222/moduflow` · `main` · `active`가 맞습니다.
+
+이 세 항목이 맞으면 구현 세부사항을 모두 읽지 않아도 승인할 수 있습니다. 하나라도 다르면 보류하고 수정 요청합니다.
+
+## 바로 볼 것
+
+- GitHub PR: https://github.com/dongwonlee222/moduflow/pull/25
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-088-canonical-repository-remote-identity-gate.html`
-- PR/로컬 마커: `https://github.com/dongwonlee222/moduflow/pull/25`
 - 브랜치: `codex/088-canonical-repository-remote-identity-gate`
-- 리뷰어: `Reviewer`
 
 ## 이슈 요약
 
-- 제목: Issue 088: Canonical Repository/Remote Identity Gate
-- 설명: Store the canonical repository, remote identity, and base branch in the project profile, then stop execute, PR, release, or push workflows before any write when the current repository does not match that identity.
+- 제목: canonical 저장소·remote 신원 확인 게이트
+- 목적: 실행 전에 “지금 보고 있는 저장소가 이 프로젝트의 진짜 저장소가 맞는가?”를 확인하고, 다르면 외부 쓰기를 막습니다.
 
 ## 사람이 확인할 내용
 
-- 대시보드 DB에서 상태, 설명, 산출물 누락, 검증 플래그를 확인합니다.
-- 이슈 상세 페이지에서 `한글` 탭을 먼저 보고, 필요한 경우 `English` 원문으로 내려갑니다.
-- GitHub PR이 있으면 diff, conversation, status checks를 확인합니다.
-- 아래 보류 조건에 해당하면 승인하지 말고 수정 요청합니다.
+- 정책 판단은 위의 `사람이 결정할 것` 세 항목만 확인합니다.
+- 기술 검토가 필요하면 PR diff에서 identity gate와 테스트 변경을 확인합니다.
+- 테스트나 GitHub CI가 실패했거나 변경 범위가 088을 벗어나면 승인하지 않습니다.
 
 ## 산출물 체크
 
@@ -53,12 +84,12 @@
 
 ## 리뷰 결과
 
-1. **Important — generic providers advertised GitHub write/release capability. Resolved.** `github_write` and `release` now require `provider == github`; a regression test proves a healthy generic remote can execute/commit/push but cannot create GitHub PRs or releases.
-2. **Important — accidental parent Git roots could pass. Resolved.** The inspector now emits `git_root_mismatch`, reports mismatch status, and blocks every write capability when the observed Git root differs from the requested project root.
-3. **Important — local-only/generic projects could select GitHub API commit fallback. Resolved.** `github_api_commit` now maps to the shared `github_write` capability, and the handoff checks it before calling `gh`.
-4. **Important — linked worktrees were misclassified as locally unwritable. Resolved.** The handoff now resolves a `.git` worktree pointer to the actual Git directory before its non-destructive probe; the regression test was observed failing before the fix and passing afterward.
+1. GitHub이 아닌 일반 저장소가 GitHub 쓰기·릴리스 가능으로 표시되던 문제를 수정했습니다.
+2. 상위 폴더의 다른 Git 저장소를 현재 프로젝트로 오인할 수 있던 문제를 수정했습니다.
+3. 로컬 전용 저장소가 GitHub API 우회 커밋을 선택할 수 있던 문제를 수정했습니다.
+4. Git worktree를 로컬 쓰기 불가로 잘못 판단하던 문제를 수정했습니다.
 
-No unresolved critical or important code findings remain.
+해결되지 않은 치명적·중요 리뷰 항목은 없습니다.
 
 ## 보류 조건
 
