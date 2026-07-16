@@ -255,6 +255,21 @@
       "last_handoff": "Human approved PR #25 for merge; CI and release gates remain required.",
       "next_command": "product:status",
       "updated_at": "2026-07-16"
+    },
+    {
+      "issue_id": "089-verified-code-review-intake-and-remediation-routing",
+      "owner": "Dongwon Lee",
+      "assignee": "Codex",
+      "reviewer": "Dongwon Lee",
+      "status": "done",
+      "branch": "codex/089-verified-code-review-intake-and-remediation-routing",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/26",
+      "lock_state": "released",
+      "locked_by": "Codex",
+      "blocker": "",
+      "last_handoff": "Human approved PR #26 for merge; final CI and release gates remain required.",
+      "next_command": "product:status",
+      "updated_at": "2026-07-16"
     }
   ]
 }

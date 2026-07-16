@@ -148,6 +148,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `workers`, `워커`: `product:workers`
 - `execute`, `실행`: `product:execute`
 - `review`, `리뷰`: `product:review`
+- `@ModuFlow 외부 코드리뷰 접수`, `리뷰 의견 검증`, `보안 리뷰 결과 접수`: `product:review --intake`; plain implementation-completion `review` remains the staged post-implementation review.
 - `release`, `릴리즈`: `product:release`
 - `business-plan`, `사업계획서`, `사업구상`, `린캔버스`, `페르소나`: `moduflow:business-plan`
 - `update`, `공유`: `product:update`

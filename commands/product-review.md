@@ -7,6 +7,30 @@ argument-hint: "<issue id>"
 
 Run staged verification.
 
+## Verified Intake Mode
+
+Use `product:review --intake <source>` when an external human, AI, GitHub,
+CodeQL, or SARIF review arrives. This mode records the review as evidence; it
+does not treat the source's recommendation as an approved change.
+
+1. Adapt the source into `moduflow.review-intake.v1` with
+   `scripts/project_review.py`.
+2. A Router AI proposes `accept`, `partial`, `defer`, or `reject`, plus the
+   security, pre-release, or post-release-refactor lane.
+3. An independent Verifier checks source identity, target commit, tests,
+   import boundaries, architecture conflicts, and risk evidence.
+4. Preview is the default. `--write` only creates local packet, Korean summary,
+   and candidate-issue queue artifacts.
+5. Intake must **never reply, resolve, publish, implement** or mutate GitHub.
+   Those actions require their own explicit workflow and user authorization.
+
+Example:
+
+```bash
+python3 scripts/project_review.py <project-path> --source manual --input <review.json>
+python3 scripts/project_review.py <project-path> --source sarif --input <results.sarif> --write
+```
+
 ## Do
 
 1. Assign review concerns to workers where useful.

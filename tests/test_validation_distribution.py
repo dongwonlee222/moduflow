@@ -127,6 +127,69 @@ class ValidationDistributionTests(unittest.TestCase):
         }
         self.assertTrue(expected.issubset(set(validator.REQUIRED_FILES)))
 
+    def test_validate_moduflow_requires_review_intake_surface(self):
+        validator = load_module(
+            "validate_moduflow_review", "scripts/validate_moduflow.py"
+        )
+        required = {
+            "scripts/review_intake.py",
+            "scripts/project_review.py",
+            "adapters/github-review.yaml",
+            "adapters/security-review.yaml",
+            "overlays/review-policy.yaml",
+            "templates/reviews/review-intake.json",
+            "templates/reviews/review-summary.ko.md",
+            "templates/reviews/review-candidates.md",
+        }
+
+        self.assertTrue(required.issubset(set(validator.REQUIRED_FILES)))
+
+    def test_review_upstreams_and_policy_are_registered(self):
+        vendor = json.loads((ROOT / "vendor.lock.json").read_text(encoding="utf-8"))
+        source_ids = {source["id"] for source in vendor["sources"]}
+        github_adapter = (ROOT / "adapters" / "github-review.yaml").read_text(
+            encoding="utf-8"
+        )
+        security_adapter = (
+            ROOT / "adapters" / "security-review.yaml"
+        ).read_text(encoding="utf-8")
+        superpowers_adapter = (
+            ROOT / "adapters" / "superpowers.yaml"
+        ).read_text(encoding="utf-8")
+        policy = (ROOT / "overlays" / "review-policy.yaml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("codex-github", source_ids)
+        self.assertIn("thread-aware GraphQL", github_adapter)
+        self.assertIn("none by default", github_adapter)
+        self.assertIn("CodeQL alert intake", security_adapter)
+        self.assertIn("SARIF result intake", security_adapter)
+        self.assertIn("receiving code review", superpowers_adapter)
+        for reason_code in [
+            "sensitive_path",
+            "elevated_severity",
+            "no_risk_evidence_missing",
+            "high_risk_reject_requires_human",
+            "target_commit_mismatch",
+        ]:
+            self.assertIn(reason_code, policy)
+
+    def test_product_review_and_index_route_intake_without_remote_write(self):
+        command = (ROOT / "commands" / "product-review.md").read_text(
+            encoding="utf-8"
+        )
+        index = (ROOT / "skills" / "index" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("product:review --intake", command)
+        self.assertIn("Router AI", command)
+        self.assertIn("Verifier", command)
+        self.assertIn("never reply, resolve, publish, implement", command)
+        self.assertIn("외부 코드리뷰 접수", index)
+        self.assertIn("product:review --intake", index)
+
     def test_validate_moduflow_importable_api_reports_missing_files(self):
         validator = load_module("validate_moduflow", "scripts/validate_moduflow.py")
         with tempfile.TemporaryDirectory() as tmp:

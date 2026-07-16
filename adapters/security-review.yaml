@@ -1,0 +1,17 @@
+id: security-review
+source: github-code-scanning
+source_url: https://github.com/github/codeql-action
+role: security_finding_source
+moduflow_use:
+  - CodeQL alert intake
+  - SARIF result intake
+  - stable rule and fingerprint mapping
+  - severity, location, state, and dismissal evidence
+source_of_truth: git
+reads:
+  - exported CodeQL alert JSON
+  - SARIF 2.1 JSON
+writes:
+  - workspace/reviews/*.json
+  - workspace/reviews/*.md
+swap_policy: Replaceable if rule identity, fingerprint, severity, location, tool version, and disposition evidence remain explicit.

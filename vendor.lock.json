@@ -72,6 +72,14 @@
       "type": "local-plugin",
       "pin": "unpinned",
       "role": "docx/xlsx/pptx artifact output bridge (referenced by adapters/documents.yaml; was missing from this lock until 2026-07-05)"
+    },
+    {
+      "id": "codex-github",
+      "name": "Codex GitHub",
+      "url": "local:codex-plugin/github",
+      "type": "local-plugin",
+      "pin": "0.1.8-2841cf9749ae",
+      "role": "repository, pull-request thread, issue, CI, and publish workflow adapter"
     }
   ]
 }

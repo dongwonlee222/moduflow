@@ -1,0 +1,31 @@
+{
+  "schema": "moduflow.converge-judgment.v1",
+  "verdicts": [
+    {"ac_id": "AC#1", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#1 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#2", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#2 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#3", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#3 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#4", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#4 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#5", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#5 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#6", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#6 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#7", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#7 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#8", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#8 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#9", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#9 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#10", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#10 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#11", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#11 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#12", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#12 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#13", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#13 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#14", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#14 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#15", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#15 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#16", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#16 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#17", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#17 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#18", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#18 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#19", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#19 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."},
+    {"ac_id": "AC#20", "verdict": "unverifiable", "severity": "low", "evidence_quote": "AC#20 is marked parseable: false in the evidence bundle.", "note": "The converge prompt requires unverifiable for non-parseable criteria."}
+  ],
+  "unrequested": [],
+  "bundle_gaps": [
+    "All acceptance criteria were emitted as parseable: false, so the converge protocol forbids semantic judgments.",
+    "The evidence bundle reports truncated: true.",
+    "No independent subagent judgment was dispatched because the current task did not authorize subagent use; the coordinator applied the mandatory non-parseable verdict rule inline."
+  ]
+}
