@@ -4,7 +4,7 @@ Issue: `089-verified-code-review-intake-and-remediation-routing`
 
 ## Phase
 
-Staged product review passed after four TDD fixes; human approval is recorded for PR #26 merge.
+Release handoff for v0.3.26 is approved after PR #25, PR #26, and PR #29 merged to main.
 
 ## Progress
 
@@ -51,8 +51,8 @@ Staged product review passed after four TDD fixes; human approval is recorded fo
 
 ## Blockers
 
-- Merge must still wait for the fresh approval-state CI. Release remains a separate workflow. Issue 094 remains downstream of this issue.
+- No release blocker remains. Issue 094 remains downstream of this issue.
 
 ## Next Command
 
-`product:release 089-verified-code-review-intake-and-remediation-routing`
+`product:update 089-verified-code-review-intake-and-remediation-routing`
