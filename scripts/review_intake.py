@@ -20,6 +20,16 @@ SEVERITIES = {"low", "medium", "high", "critical"}
 REVIEW_ID_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z._-]{2,127}")
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 COMMIT_RE = re.compile(r"[0-9a-f]{40}")
+SENSITIVE_PATH_PARTS = (
+    "auth",
+    "permission",
+    "payment",
+    "billing",
+    "secret",
+    "upload",
+    "deploy",
+    ".github/workflows",
+)
 
 
 class ReviewIntakeError(ValueError):
@@ -362,3 +372,207 @@ def validate_packet(packet, final=False):
                 "final packets require a disposition",
             )
     return errors
+
+
+def evaluate_policy(finding):
+    """Return deterministic routing and approval requirements for a finding."""
+    paths = [
+        item["path"].lower() for item in finding.get("locations", [])
+    ]
+    severity = finding.get("risk", {}).get("severity", "medium")
+    sensitive = any(
+        any(part in path for part in SENSITIVE_PATH_PARTS) for path in paths
+    )
+    security_signal = (
+        sensitive
+        or finding.get("router", {}).get("classification") == "security"
+        or finding.get("provider_evidence", {}).get("kind") == "security"
+    )
+    reasons = []
+    if sensitive:
+        reasons.append("sensitive_path")
+    if severity in {"high", "critical"}:
+        reasons.append("elevated_severity")
+
+    verification = finding.get("verification") or {}
+    if finding.get("risk", {}).get("no_risk_claim") and not (
+        verification.get("tests") and verification.get("import_boundaries")
+    ):
+        reasons.append("no_risk_evidence_missing")
+
+    if security_signal:
+        lane = "security"
+    elif (
+        severity in {"high", "critical"}
+        or finding.get("risk", {}).get("release_impact") == "blocking"
+    ):
+        lane = "pre_release"
+    else:
+        lane = "post_release_refactor"
+
+    if lane == "security" or verification.get("architecture"):
+        cognitive_demand = "deep"
+    elif lane == "pre_release":
+        cognitive_demand = "balanced"
+    else:
+        cognitive_demand = "fast"
+
+    router = finding.get("router") or {}
+    return {
+        "lane": lane,
+        "CognitiveDemand": cognitive_demand,
+        "requires_verifier": (
+            severity in {"medium", "high", "critical"}
+            or router.get("confidence") != "high"
+        ),
+        "requires_human_for_reject": (
+            severity in {"high", "critical"} or lane == "security"
+        ),
+        "reason_codes": reasons,
+    }
+
+
+def _provenance_key(actor):
+    actor = actor or {}
+    return (
+        actor.get("kind"),
+        actor.get("identity"),
+        actor.get("run_id"),
+    )
+
+
+def _normalized_verification(decision):
+    verification = copy.deepcopy(decision.get("verification") or {})
+    state = verification.get("state")
+    if state not in VERIFICATION_STATES:
+        raise ReviewIntakeError(
+            "verification_state_invalid",
+            "decision requires a valid verification state",
+        )
+    verification.setdefault("verifier", None)
+    for key in (
+        "files_checked",
+        "reproduction",
+        "tests",
+        "architecture",
+        "import_boundaries",
+        "contradictions",
+    ):
+        value = verification.setdefault(key, [])
+        if not isinstance(value, list):
+            raise ReviewIntakeError(
+                "verification_evidence_invalid",
+                f"verification {key} must be a list",
+            )
+    verification.setdefault("verified_at", date.today().isoformat())
+    return verification
+
+
+def apply_decision(packet, decision):
+    """Apply one evidence-backed disposition and return a new packet."""
+    updated = copy.deepcopy(packet)
+    if decision.get("target_commit") != updated.get("target", {}).get("commit"):
+        raise ReviewIntakeError(
+            "target_commit_mismatch",
+            "decision target commit differs from the reviewed commit",
+        )
+
+    finding = next(
+        (
+            item
+            for item in updated.get("findings", [])
+            if item.get("id") == decision.get("finding_id")
+        ),
+        None,
+    )
+    if finding is None:
+        raise ReviewIntakeError(
+            "finding_not_found", "decision finding does not exist"
+        )
+
+    verification = _normalized_verification(decision)
+    disposition = decision.get("disposition")
+    if disposition not in FINAL_DISPOSITIONS:
+        raise ReviewIntakeError(
+            "disposition_invalid", "decision requires a final disposition"
+        )
+    rationale = str(decision.get("rationale") or "").strip()
+    if not rationale:
+        raise ReviewIntakeError(
+            "disposition_rationale_missing",
+            "every disposition requires rationale",
+        )
+    state = verification["state"]
+    if disposition == "accept" and state != "confirmed":
+        raise ReviewIntakeError(
+            "accept_requires_evidence", "accept requires confirmed evidence"
+        )
+    if disposition == "partial_accept" and state not in {
+        "confirmed",
+        "inconclusive",
+    }:
+        raise ReviewIntakeError(
+            "partial_accept_requires_evidence",
+            "partial accept requires confirmed or inconclusive evidence",
+        )
+
+    finding["verification"] = verification
+    policy = evaluate_policy(finding)
+    verifier = verification.get("verifier") or {}
+    if policy["requires_verifier"]:
+        if verifier.get("role") != "verifier" or not verifier.get("identity"):
+            raise ReviewIntakeError(
+                "verifier_missing",
+                "policy requires explicit verifier provenance",
+            )
+        blocked_keys = {
+            _provenance_key(finding.get("source_author")),
+            _provenance_key(finding.get("router", {}).get("actor")),
+        }
+        blocked_keys = {key for key in blocked_keys if any(key)}
+        if _provenance_key(verifier) in blocked_keys:
+            raise ReviewIntakeError(
+                "verifier_not_independent",
+                "verifier must differ from source reviewer and Router run",
+            )
+
+    actor = copy.deepcopy(
+        decision.get("actor") or {"kind": "unknown", "identity": "unknown"}
+    )
+    human_approved = bool(decision.get("human_approved"))
+    if (
+        disposition == "reject"
+        and policy["requires_human_for_reject"]
+        and not human_approved
+    ):
+        raise ReviewIntakeError(
+            "high_risk_reject_requires_human",
+            "high-risk rejection requires human approval",
+        )
+
+    if finding["risk"].get("no_risk_claim"):
+        finding["risk"]["no_risk_state"] = (
+            "verified"
+            if verification["tests"] and verification["import_boundaries"]
+            else "unverified"
+        )
+
+    event = {
+        "state": disposition,
+        "rationale": rationale,
+        "decided_by": actor,
+        "decided_at": date.today().isoformat(),
+        "human_approved": human_approved,
+    }
+    finding.setdefault("decision_history", []).append(copy.deepcopy(event))
+    finding["disposition"] = event
+    if disposition in {"accept", "partial_accept"}:
+        finding["route"].update(
+            lane=policy["lane"],
+            CognitiveDemand=policy["CognitiveDemand"],
+        )
+    else:
+        finding["route"].update(lane=None, CognitiveDemand=None)
+    finding["policy"] = policy
+    updated["updated_at"] = date.today().isoformat()
+    return updated

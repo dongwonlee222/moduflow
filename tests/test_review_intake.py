@@ -248,5 +248,180 @@ class SourceAndPacketTests(unittest.TestCase):
         self.assertEqual(packet, before)
 
 
+class DecisionPolicyTests(unittest.TestCase):
+    def test_no_risk_stays_unverified_without_tests_and_boundaries(self):
+        finding = make_packet(no_risk_claim=True)["findings"][0]
+
+        policy = ri.evaluate_policy(finding)
+
+        self.assertIn("no_risk_evidence_missing", policy["reason_codes"])
+
+    def test_ai_cannot_reject_high_risk_without_human_approval(self):
+        packet = make_packet(severity="high")
+        decision = decision_for(
+            "F-001",
+            disposition="reject",
+            actor_kind="ai",
+            human_approved=False,
+        )
+
+        with self.assertRaises(ri.ReviewIntakeError) as caught:
+            ri.apply_decision(packet, decision)
+
+        self.assertEqual(
+            caught.exception.code, "high_risk_reject_requires_human"
+        )
+        self.assertEqual(
+            packet["findings"][0]["disposition"]["state"],
+            "pending_verification",
+        )
+
+    def test_confirmed_sensitive_finding_routes_security(self):
+        packet = make_packet(path="src/auth/token.py")
+
+        updated = ri.apply_decision(
+            packet,
+            decision_for(
+                "F-001",
+                disposition="accept",
+                actor_kind="human",
+                human_approved=True,
+            ),
+        )
+
+        finding = updated["findings"][0]
+        self.assertEqual(finding["route"]["lane"], "security")
+        self.assertEqual(finding["route"]["CognitiveDemand"], "deep")
+
+    def test_high_nonsecurity_finding_routes_pre_release(self):
+        packet = make_packet(severity="high", path="src/calculator.py")
+
+        updated = ri.apply_decision(
+            packet,
+            decision_for("F-001", disposition="accept", human_approved=True),
+        )
+
+        finding = updated["findings"][0]
+        self.assertEqual(finding["route"]["lane"], "pre_release")
+        self.assertEqual(finding["route"]["CognitiveDemand"], "balanced")
+
+    def test_tool_security_evidence_routes_security(self):
+        packet = make_packet(
+            raw_findings=[
+                {
+                    "observation": "Scanner finding",
+                    "locations": [
+                        {"path": "src/view.py", "line": 2, "anchor": "render"}
+                    ],
+                    "severity": "medium",
+                    "provider_evidence": {"kind": "security"},
+                }
+            ]
+        )
+
+        updated = ri.apply_decision(
+            packet,
+            decision_for("F-001", disposition="accept", human_approved=True),
+        )
+
+        self.assertEqual(updated["findings"][0]["route"]["lane"], "security")
+
+    def test_target_commit_mismatch_requires_reverification(self):
+        with self.assertRaises(ri.ReviewIntakeError) as caught:
+            ri.apply_decision(
+                make_packet(),
+                decision_for("F-001", target_commit="c" * 40),
+            )
+
+        self.assertEqual(caught.exception.code, "target_commit_mismatch")
+
+    def test_required_verifier_must_be_independent(self):
+        packet = make_packet(severity="medium")
+        decision = decision_for("F-001")
+        decision["verification"]["verifier"] = {
+            "kind": "human",
+            "identity": "source-reviewer",
+            "role": "verifier",
+        }
+
+        with self.assertRaises(ri.ReviewIntakeError) as caught:
+            ri.apply_decision(packet, decision)
+
+        self.assertEqual(caught.exception.code, "verifier_not_independent")
+
+    def test_accept_requires_confirmed_evidence(self):
+        with self.assertRaises(ri.ReviewIntakeError) as caught:
+            ri.apply_decision(
+                make_packet(),
+                decision_for(
+                    "F-001",
+                    disposition="accept",
+                    verification_state="inconclusive",
+                ),
+            )
+
+        self.assertEqual(caught.exception.code, "accept_requires_evidence")
+
+    def test_partial_accept_allows_explicit_inconclusive_evidence(self):
+        updated = ri.apply_decision(
+            make_packet(),
+            decision_for(
+                "F-001",
+                disposition="partial_accept",
+                verification_state="inconclusive",
+            ),
+        )
+
+        self.assertEqual(
+            updated["findings"][0]["disposition"]["state"],
+            "partial_accept",
+        )
+
+    def test_every_disposition_requires_rationale(self):
+        decision = decision_for("F-001", disposition="defer")
+        decision["rationale"] = ""
+
+        with self.assertRaises(ri.ReviewIntakeError) as caught:
+            ri.apply_decision(make_packet(), decision)
+
+        self.assertEqual(caught.exception.code, "disposition_rationale_missing")
+
+    def test_no_risk_becomes_verified_with_tests_and_boundaries(self):
+        updated = ri.apply_decision(
+            make_packet(no_risk_claim=True),
+            decision_for("F-001", disposition="accept"),
+        )
+
+        self.assertEqual(
+            updated["findings"][0]["risk"]["no_risk_state"], "verified"
+        )
+
+    def test_changed_disposition_keeps_append_only_history(self):
+        packet = ri.apply_decision(
+            make_packet(severity="low"),
+            decision_for(
+                "F-001",
+                disposition="defer",
+                verification_state="inconclusive",
+            ),
+        )
+        packet = ri.apply_decision(
+            packet,
+            decision_for(
+                "F-001",
+                disposition="accept",
+                verification_state="confirmed",
+            ),
+        )
+
+        self.assertEqual(
+            [
+                event["state"]
+                for event in packet["findings"][0]["decision_history"]
+            ],
+            ["defer", "accept"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
