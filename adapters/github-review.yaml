@@ -1,0 +1,17 @@
+id: github-review
+source: codex-github
+source_url: local:codex-plugin/github
+role: pull_request_review_source
+moduflow_use:
+  - pull request metadata
+  - unresolved review threads
+  - inline file and line anchors
+  - resolved and outdated state
+source_of_truth: git
+reads:
+  - GitHub pull request metadata through the connector
+  - thread-aware GraphQL snapshots through gh
+writes:
+  - none by default
+write_policy: Reply, resolve, review submission, and issue publication require an explicit separate user-approved GitHub action.
+swap_policy: Replaceable if thread identity, resolution state, file anchors, reviewer provenance, and write safety remain explicit.

@@ -68,6 +68,9 @@ REQUIRED_FILES = [
     "adapters/documents.yaml",
     "adapters/git.yaml",
     "adapters/goal-loop.yaml",
+    "adapters/github-review.yaml",
+    "adapters/security-review.yaml",
+    "overlays/review-policy.yaml",
     "templates/issues/issue.md",
     "templates/specs/spec.md",
     "templates/specs/plan.md",
@@ -103,6 +106,9 @@ REQUIRED_FILES = [
     "templates/frontend-qa/msw-fixture-catalog.md",
     "templates/frontend-qa/playwright-smoke-matrix.md",
     "templates/frontend-qa/qa-evidence-checklist.md",
+    "templates/reviews/review-intake.json",
+    "templates/reviews/review-summary.ko.md",
+    "templates/reviews/review-candidates.md",
     "templates/business-plan/brief.md",
     "templates/business-plan/lean-canvas.md",
     "templates/business-plan/persona-scenarios.md",
@@ -129,6 +135,8 @@ REQUIRED_FILES = [
     "scripts/project_portfolio.py",
     "scripts/project_workflow.py",
     "scripts/project_reference_backlog.py",
+    "scripts/review_intake.py",
+    "scripts/project_review.py",
     "scripts/worker_orchestrator.py",
     "scripts/validate_project_artifacts.py",
     "scripts/portfolio_doctor.py",
@@ -176,6 +184,7 @@ def validate_moduflow(path) -> dict:
             "superpowers",
             "codex-product-design",
             "codex-data-analytics",
+            "codex-github",
         ]:
             if required not in source_ids:
                 errors.append(f"vendor.lock.json missing source: {required}")

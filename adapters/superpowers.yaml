@@ -9,6 +9,7 @@ moduflow_use:
   - test-driven development
   - dispatching parallel agents
   - subagent-driven development
+  - receiving code review
   - requesting code review
   - verification before completion
 source_of_truth: git
@@ -35,5 +36,6 @@ reviewed:
     reversed same day per user direction: main model orchestrates/judges,
     cheaper subagents research/implement/verify). SKIPPED: SDD's file-handoff
     scripts (harness-specific mechanics). Brainstorming/TDD/verification
-    unchanged upstream.
-
+    unchanged upstream. Issue 089 also adopts receiving-code-review's
+    evidence-first intake discipline while keeping final disposition under
+    ModuFlow's independent Router/Verifier policy.

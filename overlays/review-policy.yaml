@@ -1,0 +1,15 @@
+id: review-policy-v1
+default_retention: reference
+lanes:
+  - security
+  - pre_release
+  - post_release_refactor
+rules:
+  - sensitive_path
+  - elevated_severity
+  - no_risk_evidence_missing
+  - high_risk_reject_requires_human
+  - target_commit_mismatch
+write_policy:
+  local_packet_requires: --write
+  github_write: explicit_external_workflow_only
