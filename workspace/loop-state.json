@@ -14,37 +14,44 @@
     "092-project-home-dashboard",
     "087-korean-github-pr-review-surface"
   ],
-  "active_issue_id": "088-canonical-repository-remote-identity-gate",
+  "active_issue_id": "089-verified-code-review-intake-and-remediation-routing",
   "phase": "pr",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:status",
+  "next_command": "product:pr 089-verified-code-review-intake-and-remediation-routing",
   "attempts": {
-    "command": "product:pr 088-canonical-repository-remote-identity-gate",
+    "command": "product:pr 089-verified-code-review-intake-and-remediation-routing",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-16"
   },
   "blocker": null,
-  "last_action": "opened Draft PR #25 for issue 088 after isolated verification and publication",
-  "last_verification": "2026-07-16: 528 tests passed and release_check valid after linked-worktree regression fix",
+  "last_action": "human approved PR #25 merge; stacked PR #26 is the next review and merge target",
+  "last_verification": "2026-07-16: PR #25 CI passed, mergeable CLEAN, unresolved review threads 0",
   "updated_at": "2026-07-16",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/088-canonical-repository-remote-identity-gate",
+    "branch": "codex/089-verified-code-review-intake-and-remediation-routing",
     "base_branch": "main",
     "commits": [
-      "afa9cc3",
-      "46b171a",
-      "d10f1a7"
+      "648bf70",
+      "e813347",
+      "f3804b9",
+      "962cae3",
+      "d539f22",
+      "c794028",
+      "e7f84c4",
+      "4bad53d",
+      "6dbf3ef",
+      "1c9d2ba"
     ],
-    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/25",
+    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/26",
     "release": null,
     "execution_backend": {
       "type": "manual",
       "status": "selected",
-      "reason": "mixed source worktree required isolated branch publication",
+      "reason": "Issue 089 is stacked on the approved Issue 088 identity-gate branch",
       "session": "codex-2026-07-16"
     }
   }
