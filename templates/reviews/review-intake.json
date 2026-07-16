@@ -1,0 +1,33 @@
+{
+  "schema": "moduflow.review-intake.v1",
+  "review_id": "example-review",
+  "source": {
+    "kind": "human",
+    "provider": "example-provider",
+    "identity": "unknown",
+    "received_at": "1970-01-01",
+    "retention": "hash_only",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "target": {
+    "repository": "example.invalid/owner/repository",
+    "commit": "0000000000000000000000000000000000000000",
+    "base_branch": "main"
+  },
+  "trigger": {
+    "event": "manual_intake",
+    "reason_codes": ["example"]
+  },
+  "adapter_run": {
+    "invoked": [],
+    "skipped": [],
+    "reason_codes": ["example"]
+  },
+  "findings": [],
+  "candidates": [],
+  "trace": {
+    "finding_to_candidates": {},
+    "candidate_to_findings": {}
+  },
+  "updated_at": "1970-01-01"
+}
