@@ -240,6 +240,21 @@
       "last_handoff": "Issue 085 released; Issue 086 is unblocked and ready for design.",
       "next_command": "product:design 086-project-aware-production-library-dashboard",
       "updated_at": "2026-07-10"
+    },
+    {
+      "issue_id": "088-canonical-repository-remote-identity-gate",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Reviewer",
+      "status": "review",
+      "branch": "codex/088-canonical-repository-remote-identity-gate",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/25",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/25",
+      "next_command": "product:review 088-canonical-repository-remote-identity-gate",
+      "updated_at": "2026-07-16"
     }
   ]
 }

@@ -45,4 +45,4 @@ Updated: 2026-07-16
 
 ## Next
 
-`product:pr 088-canonical-repository-remote-identity-gate`
+Human review and merge of [PR #25](https://github.com/dongwonlee222/moduflow/pull/25). Return to `product:review 088-canonical-repository-remote-identity-gate` on requested changes; run `product:release 088-canonical-repository-remote-identity-gate` only after merge.

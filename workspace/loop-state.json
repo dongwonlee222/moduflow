@@ -19,7 +19,7 @@
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:pr 088-canonical-repository-remote-identity-gate",
+  "next_command": "product:status",
   "attempts": {
     "command": "product:pr 088-canonical-repository-remote-identity-gate",
     "count": 0,
@@ -27,7 +27,7 @@
     "last_changed_at": "2026-07-16"
   },
   "blocker": null,
-  "last_action": "isolated 088 code, tests, and specs into a clean branch and prepared PR evidence",
+  "last_action": "opened Draft PR #25 for issue 088 after isolated verification and publication",
   "last_verification": "2026-07-16: 528 tests passed and release_check valid after linked-worktree regression fix",
   "updated_at": "2026-07-16",
   "git_binding": {
@@ -36,9 +36,10 @@
     "base_branch": "main",
     "commits": [
       "afa9cc3",
-      "46b171a"
+      "46b171a",
+      "d10f1a7"
     ],
-    "pull_request": null,
+    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/25",
     "release": null,
     "execution_backend": {
       "type": "manual",

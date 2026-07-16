@@ -10,7 +10,7 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Active Issue
 
-- `088-canonical-repository-remote-identity-gate` (`p0`, phase: pr). Scope is isolated on `codex/088-canonical-repository-remote-identity-gate`; next is Draft PR creation.
+- `088-canonical-repository-remote-identity-gate` (`p0`, phase: pr). [Draft PR #25](https://github.com/dongwonlee222/moduflow/pull/25) is open on `codex/088-canonical-repository-remote-identity-gate` and awaits human review.
 
 ## Priority Queue — 2026-07-16
 

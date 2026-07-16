@@ -8,9 +8,9 @@ Use a Draft PR or a local PR-ready marker early, then attach review, verificatio
 ## Draft PR
 
 - Branch: `codex/088-canonical-repository-remote-identity-gate`
-- PR: `local:088-canonical-repository-remote-identity-gate:draft-pr-ready`
+- PR: `https://github.com/dongwonlee222/moduflow/pull/25`
 - Reviewer: `Reviewer`
-- Fallback reason: GitHub Draft PR URL is not recorded yet. This local PR-ready marker preserves review state until GitHub sync creates or mirrors the PR.
+- Fallback reason: GitHub Draft PR URL is available or expected to be supplied by the workflow.
 - Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
 - Commit mode: `local-git-write`
@@ -22,7 +22,7 @@ python3 scripts/project_pr.py . --issue-id 088-canonical-repository-remote-ident
 ```
 
 ```bash
-python3 scripts/project_workflow.py . --pr-state --issue-id 088-canonical-repository-remote-identity-gate --pr "local:088-canonical-repository-remote-identity-gate:draft-pr-ready" --reviewer "Reviewer"
+python3 scripts/project_workflow.py . --pr-state --issue-id 088-canonical-repository-remote-identity-gate --pr "https://github.com/dongwonlee222/moduflow/pull/25" --reviewer "Reviewer"
 ```
 
 - Continue review: `product:review 088-canonical-repository-remote-identity-gate`
@@ -89,7 +89,7 @@ No unresolved critical or important code findings remain.
 
 ## Source Snapshot
 
-- Issue bytes: 6221
+- Issue bytes: 6490
 - Spec bytes: 17591
-- Status bytes: 3775
-- Review bytes: 4715
+- Status bytes: 3984
+- Review bytes: 4832

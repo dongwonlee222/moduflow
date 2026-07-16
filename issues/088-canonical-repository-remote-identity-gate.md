@@ -1,6 +1,6 @@
 # Issue 088: Canonical Repository/Remote Identity Gate
 
-**Status: active** — created 2026-07-16, prioritized first 2026-07-16, implementation completed and reviewed after fixes 2026-07-16; isolated PR branch prepared.
+**Status: active** — created 2026-07-16, prioritized first 2026-07-16, implementation completed and reviewed after fixes 2026-07-16; Draft PR #25 opened for human review.
 **Priority: p0**
 
 ## Summary
@@ -118,7 +118,8 @@ Do not mutate remotes automatically. The first release must prove identity and b
 - Roadmap: `workspace/roadmap.md`
 - Goal: `workspace/goal.md`
 - GitHub: https://github.com/dongwonlee222/moduflow/issues/18
+- PR: https://github.com/dongwonlee222/moduflow/pull/25
 
 ## Next Command
 
-`product:pr 088-canonical-repository-remote-identity-gate`
+Human review and merge of [PR #25](https://github.com/dongwonlee222/moduflow/pull/25). Use `product:review 088-canonical-repository-remote-identity-gate` if feedback or checks fail; after merge use `product:release 088-canonical-repository-remote-identity-gate`.

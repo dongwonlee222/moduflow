@@ -68,4 +68,4 @@ Reference improvements: none found.
 
 ## Next
 
-`product:pr 088-canonical-repository-remote-identity-gate`
+Human review of [PR #25](https://github.com/dongwonlee222/moduflow/pull/25); return to `product:review 088-canonical-repository-remote-identity-gate` if changes are requested.

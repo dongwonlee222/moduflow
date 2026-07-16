@@ -6,7 +6,7 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-088-canonical-repository-remote-identity-gate.html`
-- PR/로컬 마커: `local:088-canonical-repository-remote-identity-gate:draft-pr-ready`
+- PR/로컬 마커: `https://github.com/dongwonlee222/moduflow/pull/25`
 - 브랜치: `codex/088-canonical-repository-remote-identity-gate`
 - 리뷰어: `Reviewer`
 
