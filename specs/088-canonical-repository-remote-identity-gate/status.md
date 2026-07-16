@@ -14,12 +14,14 @@ Updated: 2026-07-16
 - GitHub Issue/PR workflows resolve explicit canonical `owner/repo`; stale issue/PR/release handoff links block provider writes.
 - Added artifact validation warnings for undeclared non-canonical read links and errors for non-canonical write handoffs.
 - Review fixed three safety gaps: generic providers cannot advertise GitHub writes/releases, accidental parent Git roots block writes, and local-only/generic projects cannot select GitHub API commit fallback.
+- Final PR verification fixed linked-worktree handoff detection by resolving `.git` pointer files before the local write probe.
 
 ## Verification
 
-- `python3 -m unittest discover -s tests -p 'test_*.py'` — 527 tests passed.
+- `python3 -m unittest discover -s tests -p 'test_*.py'` — 528 tests passed.
 - Focused identity/link/issue suites — 40 tests passed after the generic-provider capability fix.
 - Focused identity/Git handoff suites — 35 tests passed after Git-root and API-fallback fixes.
+- `python3 -m unittest tests.test_project_git_handoff -v` — 8 tests passed after the linked-worktree fix.
 - `python3 scripts/spec_consistency.py . --issue-id 088-canonical-repository-remote-identity-gate` — 0 errors, 0 warnings.
 - `python3 scripts/validate_moduflow.py .` — passed, 137 required files checked.
 - `python3 scripts/validate_project_artifacts.py .` — valid, 0 errors.
@@ -32,7 +34,7 @@ Updated: 2026-07-16
 - Constitution: v1.0 checked; no violation remains after isolating the 088 scope on a dedicated branch with an issue-linked commit.
 - Review artifact: `specs/088-canonical-repository-remote-identity-gate/review.md`.
 - Visual evidence: `memory/dashboard.html`, `memory/issue-088-canonical-repository-remote-identity-gate.html`.
-- Converge: 17 AC entries are `unverifiable` because the implementation is uncommitted and the numbered AC parser returned `parseable:false`; direct review/test evidence is recorded separately.
+- Converge: two issue-linked commits and changed files are present, but 17 AC entries remain `unverifiable` because the numbered AC parser returned `parseable:false`; direct review/test evidence is recorded separately.
 - Independent subagent review was unavailable under the active execution constraints; the same QA/spec/constitution concerns were reviewed inline and the limitation is explicit.
 
 ## Non-Blocking Findings

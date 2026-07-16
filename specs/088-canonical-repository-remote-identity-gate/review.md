@@ -17,6 +17,7 @@ Reviewed the canonical identity parser, URL normalizer, Git/provider inspection,
 1. **Important — generic providers advertised GitHub write/release capability. Resolved.** `github_write` and `release` now require `provider == github`; a regression test proves a healthy generic remote can execute/commit/push but cannot create GitHub PRs or releases.
 2. **Important — accidental parent Git roots could pass. Resolved.** The inspector now emits `git_root_mismatch`, reports mismatch status, and blocks every write capability when the observed Git root differs from the requested project root.
 3. **Important — local-only/generic projects could select GitHub API commit fallback. Resolved.** `github_api_commit` now maps to the shared `github_write` capability, and the handoff checks it before calling `gh`.
+4. **Important — linked worktrees were misclassified as locally unwritable. Resolved.** The handoff now resolves a `.git` worktree pointer to the actual Git directory before its non-destructive probe; the regression test was observed failing before the fix and passing afterward.
 
 No unresolved critical or important code findings remain.
 
@@ -30,9 +31,10 @@ No unresolved critical or important code findings remain.
 
 ## QA Evidence
 
-- `python3 -m unittest discover -s tests -p 'test_*.py'` — 527 passed.
+- `python3 -m unittest discover -s tests -p 'test_*.py'` — 528 passed.
 - Focused identity/link/GitHub issue suites — 40 passed after generic-provider fix.
 - Focused identity/Git handoff suites — 35 passed after root and fallback fixes.
+- `python3 -m unittest tests.test_project_git_handoff -v` — 8 passed after the linked-worktree fix.
 - `python3 scripts/validate_moduflow.py .` — passed; 137 required files checked.
 - `python3 scripts/validate_project_artifacts.py .` — valid; 0 errors.
 - `python3 scripts/release_check.py .` — valid; every check passed.
@@ -45,9 +47,9 @@ No unresolved critical or important code findings remain.
 
 ## Converge
 
-- `converge-evidence.json`: `no_evidence: true`; no linked commits/files because implementation remains uncommitted.
+- `converge-evidence.json`: `no_evidence: false`; two issue-linked commits and the changed files are present.
 - `converge.md`: 17 acceptance criteria recorded as `unverifiable` under the fixed parseability rule.
-- This limitation does not replace the direct review and test evidence above.
+- The limitation is the numbered AC parser returning `parseable:false`, not missing implementation evidence; direct review and tests remain the criterion evidence.
 
 ## Non-Blocking Findings
 

@@ -28,14 +28,15 @@
   },
   "blocker": null,
   "last_action": "isolated 088 code, tests, and specs into a clean branch and prepared PR evidence",
-  "last_verification": "2026-07-16: clean baseline 483 tests passed; final branch verification pending",
+  "last_verification": "2026-07-16: 528 tests passed and release_check valid after linked-worktree regression fix",
   "updated_at": "2026-07-16",
   "git_binding": {
     "mode": "git-files",
     "branch": "codex/088-canonical-repository-remote-identity-gate",
     "base_branch": "main",
     "commits": [
-      "afa9cc3"
+      "afa9cc3",
+      "46b171a"
     ],
     "pull_request": null,
     "release": null,

@@ -26,8 +26,7 @@ Unrequested:
 - none
 
 Bundle gaps:
-- The implementation is uncommitted, so the converge evidence bundle contains no linked commits or files.
-- All numbered acceptance criteria were classified parseable:false by the current converge parser.
+- All numbered acceptance criteria were classified parseable:false, so the fixed judgment rule cannot map the linked commits and files to individual criteria.
 - Subagent dispatch was unavailable under the active execution constraints; the coordinator applied the fixed unverifiable rule and performed the broader review inline.
 
 Summary: 17 AC: 17 unverifiable

@@ -37,9 +37,10 @@
 
 ## 검증 요약
 
-- `python3 -m unittest discover -s tests -p 'test_*.py'` — 527 tests passed.
+- `python3 -m unittest discover -s tests -p 'test_*.py'` — 528 tests passed.
 - Focused identity/link/issue suites — 40 tests passed after the generic-provider capability fix.
 - Focused identity/Git handoff suites — 35 tests passed after Git-root and API-fallback fixes.
+- `python3 -m unittest tests.test_project_git_handoff -v` — 8 tests passed after the linked-worktree fix.
 - `python3 scripts/spec_consistency.py . --issue-id 088-canonical-repository-remote-identity-gate` — 0 errors, 0 warnings.
 - `python3 scripts/validate_moduflow.py .` — passed, 137 required files checked.
 - `python3 scripts/validate_project_artifacts.py .` — valid, 0 errors.
@@ -55,6 +56,7 @@
 1. **Important — generic providers advertised GitHub write/release capability. Resolved.** `github_write` and `release` now require `provider == github`; a regression test proves a healthy generic remote can execute/commit/push but cannot create GitHub PRs or releases.
 2. **Important — accidental parent Git roots could pass. Resolved.** The inspector now emits `git_root_mismatch`, reports mismatch status, and blocks every write capability when the observed Git root differs from the requested project root.
 3. **Important — local-only/generic projects could select GitHub API commit fallback. Resolved.** `github_api_commit` now maps to the shared `github_write` capability, and the handoff checks it before calling `gh`.
+4. **Important — linked worktrees were misclassified as locally unwritable. Resolved.** The handoff now resolves a `.git` worktree pointer to the actual Git directory before its non-destructive probe; the regression test was observed failing before the fix and passing afterward.
 
 No unresolved critical or important code findings remain.
 
