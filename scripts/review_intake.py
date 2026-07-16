@@ -576,3 +576,182 @@ def apply_decision(packet, decision):
     finding["policy"] = policy
     updated["updated_at"] = date.today().isoformat()
     return updated
+
+
+def _candidate_fingerprint(findings):
+    fingerprints = sorted(finding["fingerprint"] for finding in findings)
+    if len(fingerprints) == 1:
+        return fingerprints[0]
+    return "sha256:" + _sha256_bytes("|".join(fingerprints).encode("utf-8"))
+
+
+def _candidate_lane(findings):
+    lanes = {finding["route"]["lane"] for finding in findings}
+    if "security" in lanes:
+        return "security"
+    if "pre_release" in lanes:
+        return "pre_release"
+    return "post_release_refactor"
+
+
+def _candidate_demand(findings):
+    rank = {"fast": 0, "balanced": 1, "deep": 2}
+    return max(
+        (finding["route"]["CognitiveDemand"] for finding in findings),
+        key=lambda value: rank[value],
+    )
+
+
+def _candidate_priority(findings):
+    priorities = []
+    for finding in findings:
+        if finding["risk"]["severity"] == "critical":
+            priorities.append("p0")
+        elif finding["route"]["lane"] in {"security", "pre_release"}:
+            priorities.append("p1")
+        else:
+            priorities.append("p2")
+    rank = {"p2": 0, "p1": 1, "p0": 2}
+    return max(priorities, key=lambda value: rank[value])
+
+
+def build_candidates(packet, existing_candidates=(), proposals=()):
+    """Build local remediation candidates and bidirectional trace metadata."""
+    existing_by_fingerprint = {
+        item.get("fingerprint"): item
+        for item in existing_candidates
+        if item.get("fingerprint")
+    }
+    accepted = {
+        item["id"]: item
+        for item in packet.get("findings", [])
+        if item.get("disposition", {}).get("state")
+        in {"accept", "partial_accept"}
+    }
+    candidate_specs = list(proposals) or [
+        {
+            "title": finding["recommendation"] or finding["observation"],
+            "finding_ids": [finding_id],
+        }
+        for finding_id, finding in accepted.items()
+    ]
+    candidates = []
+    finding_to_candidates = {finding_id: [] for finding_id in accepted}
+    candidate_to_findings = {}
+
+    for spec in candidate_specs:
+        finding_ids = list(dict.fromkeys(spec.get("finding_ids") or []))
+        if not finding_ids or any(
+            finding_id not in accepted for finding_id in finding_ids
+        ):
+            raise ReviewIntakeError(
+                "candidate_finding_invalid",
+                "candidate proposals must reference accepted findings",
+            )
+        findings = [accepted[finding_id] for finding_id in finding_ids]
+        fingerprint = _candidate_fingerprint(findings)
+        existing = existing_by_fingerprint.get(fingerprint)
+        candidate_id = (
+            f"{packet['review_id']}-RC-{len(candidates) + 1:03d}"
+        )
+        existing_issue_ids = (
+            list(existing.get("existing_issue_ids") or []) if existing else []
+        )
+        if (
+            existing
+            and existing.get("issue_id")
+            and existing["issue_id"] not in existing_issue_ids
+        ):
+            existing_issue_ids.append(existing["issue_id"])
+
+        dependencies = list(spec.get("dependencies") or [])
+        if not dependencies:
+            dependencies = sorted(
+                {
+                    dependency
+                    for finding in findings
+                    for dependency in (
+                        finding.get("router", {}).get("dependency_hints") or []
+                    )
+                }
+            )
+        reason_codes = sorted(
+            {
+                reason
+                for finding in findings
+                for reason in (
+                    (finding.get("router", {}).get("reason_codes") or [])
+                    + (finding.get("policy", {}).get("reason_codes") or [])
+                )
+            }
+        )
+        title = str(
+            spec.get("title")
+            or findings[0]["recommendation"]
+            or findings[0]["observation"]
+        )
+        candidate = {
+            "id": candidate_id,
+            "state": "linked_existing" if existing else "candidate",
+            "title": title[:100],
+            "problem": "\n".join(
+                finding["observation"] for finding in findings
+            ),
+            "scope": sorted(
+                {
+                    location["path"]
+                    for finding in findings
+                    for location in finding.get("locations", [])
+                }
+            ),
+            "acceptance_evidence": {
+                finding["id"]: copy.deepcopy(finding["verification"])
+                for finding in findings
+            },
+            "priority": _candidate_priority(findings),
+            "dependencies": dependencies,
+            "CognitiveDemand": _candidate_demand(findings),
+            "routing_reason_codes": reason_codes,
+            "lane": _candidate_lane(findings),
+            "release_impact": (
+                "blocking"
+                if any(
+                    finding["risk"]["release_impact"] == "blocking"
+                    for finding in findings
+                )
+                else "non_blocking"
+            ),
+            "finding_ids": finding_ids,
+            "fingerprint": fingerprint,
+            "existing_issue_ids": existing_issue_ids,
+            "linked_candidate_id": existing.get("id") if existing else None,
+            "overlap_hints": [],
+            "next_command": (
+                f"product:issue {existing_issue_ids[0]}"
+                if existing_issue_ids
+                else (
+                    "product:review --intake"
+                    if existing
+                    else "product:issue"
+                )
+            ),
+        }
+        candidates.append(candidate)
+        for finding_id in finding_ids:
+            finding_to_candidates[finding_id].append(candidate_id)
+        candidate_to_findings[candidate_id] = finding_ids
+
+    if any(
+        not candidate_ids for candidate_ids in finding_to_candidates.values()
+    ):
+        raise ReviewIntakeError(
+            "accepted_finding_unmapped",
+            "every accepted finding must map to a candidate",
+        )
+    return {
+        "candidates": candidates,
+        "trace": {
+            "finding_to_candidates": finding_to_candidates,
+            "candidate_to_findings": candidate_to_findings,
+        },
+    }

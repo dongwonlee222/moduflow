@@ -423,5 +423,160 @@ class DecisionPolicyTests(unittest.TestCase):
         )
 
 
+def finalized_packet(dispositions, *, severity="low"):
+    raw_findings = [
+        {
+            "observation": f"Observation {index}",
+            "recommendation": f"Recommendation {index}",
+            "locations": [
+                {
+                    "path": f"src/file_{index}.py",
+                    "line": index,
+                    "anchor": f"fn_{index}",
+                }
+            ],
+            "severity": severity,
+            "release_impact": "non_blocking",
+            "router": {
+                "classification": "actionable",
+                "confidence": "high",
+                "proposed_lane": None,
+                "reason_codes": ["router_actionable"],
+                "dependency_hints": ["010-foundation"] if index == 1 else [],
+                "actor": {
+                    "kind": "ai",
+                    "identity": "router",
+                    "run_id": "router-1",
+                },
+            },
+        }
+        for index in range(1, len(dispositions) + 1)
+    ]
+    packet = make_packet(raw_findings=raw_findings)
+    for index, disposition in enumerate(dispositions, 1):
+        verification_state = (
+            "contradicted"
+            if disposition == "reject"
+            else (
+                "inconclusive"
+                if disposition in {"partial_accept", "defer"}
+                else "confirmed"
+            )
+        )
+        packet = ri.apply_decision(
+            packet,
+            decision_for(
+                f"F-{index:03d}",
+                disposition=disposition,
+                verification_state=verification_state,
+            ),
+        )
+    return packet
+
+
+def accepted_packet():
+    return finalized_packet(["accept"])
+
+
+class CandidateRoutingTests(unittest.TestCase):
+    def test_only_accept_and_partial_create_candidates(self):
+        packet = finalized_packet(
+            ["accept", "partial_accept", "defer", "reject"]
+        )
+
+        candidates = ri.build_candidates(packet)["candidates"]
+
+        self.assertEqual(len(candidates), 2)
+        self.assertEqual(
+            [candidate["finding_ids"] for candidate in candidates],
+            [["F-001"], ["F-002"]],
+        )
+
+    def test_exact_fingerprint_links_existing_candidate(self):
+        packet = accepted_packet()
+        existing = [
+            {
+                "id": "older-review-RC-001",
+                "fingerprint": packet["findings"][0]["fingerprint"],
+                "issue_id": "123-existing",
+            }
+        ]
+
+        result = ri.build_candidates(packet, existing_candidates=existing)
+
+        candidate = result["candidates"][0]
+        self.assertEqual(candidate["state"], "linked_existing")
+        self.assertEqual(candidate["existing_issue_ids"], ["123-existing"])
+        self.assertEqual(candidate["linked_candidate_id"], "older-review-RC-001")
+
+    def test_local_candidate_duplicate_does_not_invent_issue_id(self):
+        packet = accepted_packet()
+        existing = [
+            {
+                "id": "older-review-RC-001",
+                "fingerprint": packet["findings"][0]["fingerprint"],
+                "existing_issue_ids": [],
+            }
+        ]
+
+        candidate = ri.build_candidates(
+            packet, existing_candidates=existing
+        )["candidates"][0]
+
+        self.assertEqual(candidate["existing_issue_ids"], [])
+        self.assertEqual(candidate["next_command"], "product:review --intake")
+
+    def test_trace_is_bidirectional(self):
+        result = ri.build_candidates(accepted_packet())
+        candidate = result["candidates"][0]
+
+        self.assertEqual(
+            result["trace"]["finding_to_candidates"]["F-001"],
+            [candidate["id"]],
+        )
+        self.assertEqual(
+            result["trace"]["candidate_to_findings"][candidate["id"]],
+            ["F-001"],
+        )
+
+    def test_explicit_proposals_support_grouping_and_splitting(self):
+        packet = finalized_packet(["accept", "accept"])
+        proposals = [
+            {
+                "title": "Shared remediation",
+                "finding_ids": ["F-001", "F-002"],
+            },
+            {"title": "Separate hardening", "finding_ids": ["F-001"]},
+        ]
+
+        trace = ri.build_candidates(packet, proposals=proposals)["trace"]
+
+        self.assertEqual(len(trace["finding_to_candidates"]["F-001"]), 2)
+        self.assertEqual(len(trace["finding_to_candidates"]["F-002"]), 1)
+
+    def test_proposal_cannot_leave_accepted_finding_unmapped(self):
+        packet = finalized_packet(["accept", "accept"])
+
+        with self.assertRaises(ri.ReviewIntakeError) as caught:
+            ri.build_candidates(
+                packet,
+                proposals=[{"title": "Only first", "finding_ids": ["F-001"]}],
+            )
+
+        self.assertEqual(caught.exception.code, "accepted_finding_unmapped")
+
+    def test_candidate_carries_priority_dependencies_and_route_reasons(self):
+        packet = finalized_packet(["accept"], severity="high")
+
+        candidate = ri.build_candidates(packet)["candidates"][0]
+
+        self.assertEqual(candidate["priority"], "p1")
+        self.assertEqual(candidate["lane"], "pre_release")
+        self.assertEqual(candidate["CognitiveDemand"], "balanced")
+        self.assertEqual(candidate["dependencies"], ["010-foundation"])
+        self.assertIn("elevated_severity", candidate["routing_reason_codes"])
+        self.assertIn("router_actionable", candidate["routing_reason_codes"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
