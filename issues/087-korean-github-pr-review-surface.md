@@ -71,6 +71,7 @@ English `pr.md` remains the canonical machine-oriented handoff. For Korean revie
 - Dogfood PR: `https://github.com/dongwonlee222/moduflow/pull/17`
 - Prior issue: `issues/057-korean-human-review-packet.md`
 - Roadmap: `workspace/roadmap.md`
+- GitHub: https://github.com/dongwonlee222/moduflow/issues/28
 
 ## Next Command
 
