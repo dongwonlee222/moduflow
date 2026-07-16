@@ -41,4 +41,4 @@ Plan: `specs/089-verified-code-review-intake-and-remediation-routing/plan.md`
 
 ## Next
 
-`product:pr 089-verified-code-review-intake-and-remediation-routing`
+`product:release 089-verified-code-review-intake-and-remediation-routing`

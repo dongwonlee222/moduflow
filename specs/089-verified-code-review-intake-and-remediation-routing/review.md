@@ -56,6 +56,11 @@ Reviewer mode: inline independent-concern review; no subagent dispatch was autho
 - No live GitHub thread reply, resolution, CodeQL service call, issue publication, merge, or release was performed.
 - Reference improvements: none found beyond the adapters and templates already implemented in Issue 089.
 
+## Human Approval
+
+- 2026-07-16: Dongwon Lee explicitly authorized Codex to complete PR #25 and PR #26 in the active Codex task.
+- This satisfies Constitution C6 for the canonical merge transition; it does not waive CI or release gates.
+
 ## Next Command
 
-`product:pr 089-verified-code-review-intake-and-remediation-routing`
+`product:release 089-verified-code-review-intake-and-remediation-routing`

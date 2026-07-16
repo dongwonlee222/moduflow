@@ -1,6 +1,6 @@
 # Issue 089: Verified Code-Review Intake and Remediation Routing
 
-**Status: backlog** — created 2026-07-16, spec drafted 2026-07-16, plan drafted 2026-07-16, implementation verified 2026-07-16, staged review passed 2026-07-16; Draft PR #26 waits behind active Issue 088.
+**Status: done** — created 2026-07-16, spec drafted 2026-07-16, plan drafted 2026-07-16, implementation verified 2026-07-16, staged review passed 2026-07-16; human merge approval recorded 2026-07-16 for PR #26.
 **Priority: p1**
 
 ## Summary
@@ -13,7 +13,7 @@ Verify external code-review findings before disposition, record evidence and con
 - Link: local Codex session, 2026-07-16
 - Owner / decision maker: Dongwon Lee
 - Original requested ID: `082`; mapped to `089` because local issue `082` already exists.
-- Current phase: staged review passed; Draft PR #26 awaits human review
+- Current phase: approved for merge and release handoff
 
 ## Problem
 
@@ -134,6 +134,7 @@ Do not auto-apply review suggestions or publish GitHub issues. The v1 result is 
 - 2026-07-16: User approved verified review intake and remediation routing after reviewing the public implementation patterns.
 - 2026-07-16: ModuPay Biz dogfood added source authorship/retention, finding IDs, fact-vs-hypothesis separation, and finding-to-issue trace requirements.
 - 2026-07-16: User approved the adapter-first design: lazy risk-based invocation, Router AI plus independent Verifier, deterministic policy gates, and human approval for high-risk exceptions.
+- 2026-07-16: User explicitly authorized Codex to complete PR #25 and PR #26; this records the human canonical-transition approval required by Constitution C6.
 
 ## Links
 
@@ -148,4 +149,4 @@ Do not auto-apply review suggestions or publish GitHub issues. The v1 result is 
 
 ## Next Command
 
-`product:pr 089-verified-code-review-intake-and-remediation-routing`
+`product:release 089-verified-code-review-intake-and-remediation-routing`

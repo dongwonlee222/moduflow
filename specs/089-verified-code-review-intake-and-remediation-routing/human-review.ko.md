@@ -47,7 +47,7 @@
 - `validate_moduflow.py`: passed, 145 required files checked.
 - `validate_project_artifacts.py`: passed; only pre-existing non-blocking optional/link-role warnings remain.
 - `release_check.py`: passed all package, artifact, linkage, lint, security, version, test, doctor, and documentation gates.
-- GitHub CI `test`: passed on Draft PR #26 before the review-fix commit; a fresh run is required after push.
+- GitHub CI `test`: passed after the review-fix commit and again after retargeting PR #26 to `main`; final approval-state CI remains required before merge.
 - Staged review: four important findings reproduced and fixed; details in `review.md`.
 - Dashboard and issue drill-down generated; local `file://` browser rendering was blocked by browser security policy and was not bypassed.
 - Converge: 20 AC entries unverifiable because the evidence parser marked them non-parseable and truncated the bundle; non-blocking limitation recorded in `converge.md`.

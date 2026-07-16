@@ -15,20 +15,20 @@
     "087-korean-github-pr-review-surface"
   ],
   "active_issue_id": "089-verified-code-review-intake-and-remediation-routing",
-  "phase": "pr",
+  "phase": "release",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:pr 089-verified-code-review-intake-and-remediation-routing",
+  "next_command": "product:release 089-verified-code-review-intake-and-remediation-routing",
   "attempts": {
-    "command": "product:pr 089-verified-code-review-intake-and-remediation-routing",
+    "command": "product:release 089-verified-code-review-intake-and-remediation-routing",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-16"
   },
   "blocker": null,
-  "last_action": "human approved PR #25 merge; stacked PR #26 is the next review and merge target",
-  "last_verification": "2026-07-16: PR #25 CI passed, mergeable CLEAN, unresolved review threads 0",
+  "last_action": "human approved PR #26 merge after PR #25 merged to main; final CI remains required",
+  "last_verification": "2026-07-16: PR #26 retargeted to main, mergeable CLEAN, unresolved review threads 0",
   "updated_at": "2026-07-16",
   "git_binding": {
     "mode": "git-files",
