@@ -5,6 +5,16 @@ from pathlib import Path
 from scripts import project_pr
 
 
+MATCHING_IDENTITY = {
+    "schema": "moduflow.repository-identity.v1",
+    "status": "match",
+    "expected": {"repository": "github.com/dongwonlee222/moduflow", "base_branch": "main"},
+    "observed": {},
+    "capabilities": {"read": True, "github_write": True, "release": True},
+    "reasons": [],
+}
+
+
 class ProjectPrHandoffTests(unittest.TestCase):
     def test_github_pr_preflight_falls_back_when_api_unreachable(self):
         calls = []
@@ -17,7 +27,9 @@ class ProjectPrHandoffTests(unittest.TestCase):
                 return project_pr.CommandResult(1, "", "error connecting to api.github.com")
             return project_pr.CommandResult(1, "", "unexpected")
 
-        result = project_pr.github_pr_preflight(Path("."), runner=runner)
+        result = project_pr.github_pr_preflight(
+            Path("."), runner=runner, identity_result=MATCHING_IDENTITY
+        )
 
         self.assertFalse(result["ok"])
         self.assertEqual(result["mode"], "local-pr-ready")
@@ -34,11 +46,37 @@ class ProjectPrHandoffTests(unittest.TestCase):
                 return project_pr.CommandResult(0, '{"resources":{}}', "")
             return project_pr.CommandResult(1, "", "unexpected")
 
-        result = project_pr.github_pr_preflight(Path("."), runner=runner)
+        result = project_pr.github_pr_preflight(
+            Path("."), runner=runner, identity_result=MATCHING_IDENTITY
+        )
 
         self.assertTrue(result["ok"])
         self.assertEqual(result["mode"], "github-draft-pr")
         self.assertIn("Draft PR creation may proceed", result["recommendations"][0])
+
+    def test_github_pr_preflight_stops_before_auth_on_identity_mismatch(self):
+        calls = []
+
+        def runner(args, cwd):
+            calls.append(tuple(args))
+            return project_pr.CommandResult(0, "", "")
+
+        identity = {
+            "schema": "moduflow.repository-identity.v1",
+            "status": "mismatch",
+            "expected": {"repository": "github.com/owner/repo"},
+            "observed": {"push_repositories": ["github.com/other/repo"]},
+            "capabilities": {"read": True, "github_write": False},
+            "reasons": [{"code": "push_remote_mismatch", "message": "wrong push repo"}],
+        }
+
+        result = project_pr.github_pr_preflight(
+            Path("."), runner=runner, identity_result=identity
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(calls, [])
+        self.assertEqual(result["repository_identity"]["reasons"][0]["code"], "push_remote_mismatch")
 
     def test_build_pr_handoff_includes_draft_pr_review_and_dashboard_contract(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -182,6 +220,8 @@ class ProjectPrHandoffTests(unittest.TestCase):
         self.assertIn("first human approval surface", command_doc)
         self.assertIn("Korean Human Review Gate", command_doc)
         self.assertIn("Do not treat the local marker as merge or release approval", command_doc)
+        self.assertIn("project_repository_identity.py <project-path> --operation release", command_doc)
+        self.assertIn("before tag, release, deploy, or publish", command_doc)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
 from scripts import project_git_handoff
@@ -68,6 +69,106 @@ class CheckCommitCapabilityTests(unittest.TestCase):
 
         self.assertEqual(lock_path.read_text(encoding="utf-8"), "held by another process")
         self.assertEqual(result["mode"], "local-git-write")
+
+    def test_identity_mismatch_blocks_before_git_probe_or_github_fallback(self):
+        config_path = self.root / ".moduflow" / "config.json"
+        config_path.parent.mkdir()
+        config_path.write_text(
+            json.dumps(
+                {
+                    "schema": "moduflow.config.v1",
+                    "git": {
+                        "identity": {
+                            "mode": "remote",
+                            "provider": "github",
+                            "canonical_repository": "github.com/owner/repo",
+                            "remote_name_hint": "origin",
+                            "base_branch": "main",
+                            "lifecycle": "active",
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        identity = {
+            "schema": "moduflow.repository-identity.v1",
+            "status": "mismatch",
+            "capabilities": {"read": True, "commit": False, "push": False},
+            "reasons": [
+                {"code": "push_remote_mismatch", "message": "wrong push repository"}
+            ],
+        }
+        original = getattr(project_git_handoff, "inspect_repository_identity", None)
+        project_git_handoff.inspect_repository_identity = lambda root, runner=None: identity
+        probe_calls = []
+
+        def probe(git_dir):
+            probe_calls.append(git_dir)
+            return True, ""
+
+        def runner(args, cwd, timeout=None):
+            raise AssertionError(f"runner must not be called after identity denial: {args}")
+
+        try:
+            result = project_git_handoff.check_commit_capability(
+                self.root,
+                runner=runner,
+                probe_write=probe,
+            )
+        finally:
+            if original is None:
+                delattr(project_git_handoff, "inspect_repository_identity")
+            else:
+                project_git_handoff.inspect_repository_identity = original
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["mode"], "identity-blocked")
+        self.assertEqual(probe_calls, [])
+        self.assertEqual(result["repository_identity"]["reasons"][0]["code"], "push_remote_mismatch")
+
+    def test_local_only_commit_never_falls_back_to_github_api(self):
+        config_path = self.root / ".moduflow" / "config.json"
+        config_path.parent.mkdir()
+        config_path.write_text("{}\n", encoding="utf-8")
+        identity = {
+            "schema": "moduflow.repository-identity.v1",
+            "status": "local_only",
+            "expected": {"mode": "local_only", "provider": "generic"},
+            "capabilities": {
+                "read": True,
+                "execute": True,
+                "commit": True,
+                "push": False,
+                "github_write": False,
+                "release": False,
+            },
+            "reasons": [],
+        }
+        original = getattr(project_git_handoff, "inspect_repository_identity", None)
+        project_git_handoff.inspect_repository_identity = lambda root, runner=None: identity
+        runner_calls = []
+
+        def runner(args, cwd, timeout=None):
+            runner_calls.append(tuple(args))
+            return CommandResult(0, "", "")
+
+        try:
+            result = project_git_handoff.check_commit_capability(
+                self.root,
+                runner=runner,
+                probe_write=lambda git_dir: (False, "local .git write failed"),
+            )
+        finally:
+            if original is None:
+                delattr(project_git_handoff, "inspect_repository_identity")
+            else:
+                project_git_handoff.inspect_repository_identity = original
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["mode"], "blocked")
+        self.assertEqual(runner_calls, [])
+        self.assertIn("GitHub API fallback", result["recommendations"][0])
 
 
 if __name__ == "__main__":

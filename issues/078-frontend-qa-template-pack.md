@@ -1,6 +1,6 @@
 # Issue 078: Frontend QA Template Pack
 
-**Status: in_progress** — created 2026-07-09, spec 2026-07-09, plan 2026-07-09.
+**Status: done** — created 2026-07-09, spec 2026-07-09, plan 2026-07-09, done 2026-07-09 via PR #15.
 **Priority: p2**
 
 ## Summary
@@ -109,4 +109,4 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 ## Next Command
 
-`product:pr 078-frontend-qa-template-pack`
+`product:status`

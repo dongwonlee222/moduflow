@@ -25,6 +25,17 @@ ModuFlow is a Git-native PM execution orchestrator for issues, specs, roadmaps, 
 - Release cadence: versioned plugin updates as features land
 - Support channel: local Codex/Claude sessions and GitHub repo history
 
+<!-- moduflow:repository-identity:start -->
+## Repository Identity
+
+- Mode: `remote`
+- Provider: `github`
+- Canonical repository: `github.com/dongwonlee222/moduflow`
+- Remote name hint: `origin`
+- Base branch: `main`
+- Lifecycle: `active`
+<!-- moduflow:repository-identity:end -->
+
 ## Sensitive Data Rules
 
 - Do not store credentials, API keys, private keys, signed originals, seals, identity documents, or direct personal contact/payment identifiers in this repo.

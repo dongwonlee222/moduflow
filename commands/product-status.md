@@ -33,6 +33,8 @@ fresh local refs without repeating the blocked internal fetch.
    - If the working tree is dirty or `@{u}` is unset, do NOT auto-pull — surface the state and let the user decide.
    - If `unmerged_branch_work` is non-empty, report it plainly (e.g. "다른 브랜치에 완료된 이슈가 있음: `<branch>` — 056, 057") before rendering the queue — this catches finished work on a branch the user forgot about (e.g. from another tool/session), which a `origin/main`-only comparison misses.
    - If `fetched` is `false` in the preflight result, report the `fetch_warning` plainly (e.g. "원격 확인 실패 — 마지막 fetch 기준 정보입니다") instead of presenting the freshness numbers as current.
+   - Read `repository_identity` from the same result. Show canonical repository/base/lifecycle, observed fetch/push/provider values, capabilities, and reason codes. A mismatch is reported here but status itself remains read-only.
+   - Do not treat `origin/main` as canonical merely because the name matches. Freshness comparison and canonical identity are separate checks.
 2. Read `.moduflow/state.json`, `workspace/loop-state.json` when present, issues, specs, tasks, PR notes, releases, and roadmap.
 3. Render a Korean-first terminal-style dashboard before detailed prose.
 4. Report current phase, active issue, active/recent sessions, blockers, queue, risks, changed files, and next command.
@@ -111,6 +113,7 @@ Use this structure as the default. Keep it compact and adapt missing fields grac
 │ 모드      <git-files|github-sync>           │
 │ 브랜치    <branch> <동기화: 최신|N커밋 뒤> │
 │ 원격      <upstream|gone|없음>              │
+│ 저장소    <canonical match|mismatch|미설정> │
 │ 단계      <emoji> <phase>                   │
 ╰────────────────────────────────────────────╯
 

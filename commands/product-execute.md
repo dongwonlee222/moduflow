@@ -9,6 +9,17 @@ Run implementation from an approved plan.
 
 ## Do
 
+0. Run the canonical repository identity gate before readiness artifacts, worker dispatch, or any other execution write:
+
+```bash
+python3 scripts/project_repository_identity.py . --operation execute
+```
+
+   - Continue only when `allowed` is `true`.
+   - A wrong fetch repository, missing canonical identity/base ref, or `read_only`/`archived` lifecycle is a hard stop before file mutation.
+   - The remote name `origin` and branch name `main` are not proof; normalized repository URLs and configured base-ref evidence decide.
+   - There is no generic force bypass. Remotes and lifecycle metadata change only through an explicit user-approved profile update.
+
 1. Verify issue, spec, plan, and tasks exist.
    - Soft pre-check: run `python3 scripts/spec_consistency.py . --issue-id <id>` and report the findings. Proceed on warn/info findings; stop and fix on structure errors unless the user says otherwise — this is agent judgment, not a hard gate.
 2. Run implementation-readiness before worker dispatch:
@@ -64,13 +75,24 @@ When using `host-subagent` backend, `product:execute` will generate a subagent c
 │ Task: T01 (implementation-worker)                       │
 │ Type: self                                              │
 │ Cognitive Demand: balanced                              │
-│   → Use your standard production model for this task.  │
+│   → Use your standard production model for this task.   │
+│   → OpenAI GPT-5.6 example: gpt-5.6-terra, medium.      │
 │ Workspace: share                                        │
 │ Command: Please call invoke_subagent for T01            │
 ╰────────────────────────────────────────────────────────╯
 ```
 The host agent should invoke the subagent tool using the parameters listed in the task's `subagent` config block in `worker-plan.json`.
 The `CognitiveDemand` field is a hint — the host agent selects the actual model itself based on what is currently available on its platform.
+
+When the host exposes the OpenAI GPT-5.6 family, use this starting map:
+
+| Cognitive Demand | GPT-5.6 model | Reasoning starting point |
+| --- | --- | --- |
+| `deep` | `gpt-5.6-sol` | high/xhigh; use max or pro mode only for quality-first gates after comparison |
+| `balanced` | `gpt-5.6-terra` | medium, then compare one level lower on representative tasks |
+| `fast` | `gpt-5.6-luna` | low or none for latency-sensitive/high-volume work |
+
+This is a current OpenAI mapping, not a permanent schema value. Keep worker files and JSON on `deep` / `balanced` / `fast` so future model families can be swapped in without rewriting ModuFlow artifacts.
 
 ## Model Tier Policy
 

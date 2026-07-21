@@ -1,6 +1,6 @@
 # Issue 077: Implementation Readiness Gate
 
-**Status: in_progress** — created 2026-07-09, spec 2026-07-09, plan 2026-07-09.
+**Status: done** — created 2026-07-09, spec 2026-07-09, plan 2026-07-09, done 2026-07-09 via PR #14.
 **Priority: p1**
 
 ## Summary
@@ -113,4 +113,4 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 ## Next Command
 
-`product:pr 077-implementation-readiness-gate`
+`product:status`

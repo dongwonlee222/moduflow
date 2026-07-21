@@ -92,3 +92,18 @@ names — pick based on the demand level:
 
 This keeps the system version-agnostic: new model releases are automatically
 used without any changes to worker files or orchestrator config.
+
+### OpenAI GPT-5.6 Mapping
+
+If the current host exposes the OpenAI GPT-5.6 family, map the semantic demand
+levels this way:
+
+| CognitiveDemand | GPT-5.6 starting point | Reasoning guidance |
+| --- | --- | --- |
+| `deep` | `gpt-5.6-sol` | Start from the current high-quality baseline; compare `high`/`xhigh`, and reserve `max` or `reasoning.mode: "pro"` for the hardest quality-first review, architecture, and release gates. |
+| `balanced` | `gpt-5.6-terra` | Start with `medium`; compare one level lower on representative tasks before increasing effort. |
+| `fast` | `gpt-5.6-luna` | Use `low` or `none` when latency, cost, or volume matters more than deep reasoning. |
+
+Keep the prompt focused on the outcome, constraints, evidence, and success
+criteria. Do not add model-specific ceremony such as "think harder"; set model,
+reasoning effort, and pro mode in the request/config when the host supports it.

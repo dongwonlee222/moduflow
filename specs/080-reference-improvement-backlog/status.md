@@ -2,16 +2,16 @@
 
 Issue: `080-reference-improvement-backlog`
 
-**Status: reviewed** — created 2026-07-09, started 2026-07-09, reviewed 2026-07-09.
+**Status: done** — created 2026-07-09, started 2026-07-09, reviewed 2026-07-09, done 2026-07-09 via PR #16.
 
 ## Snapshot
 
 | Field | Value |
 | --- | --- |
-| Phase | review |
+| Phase | done |
 | Branch | `codex/080-reference-improvement-backlog` |
-| Current command | `product:pr 080-reference-improvement-backlog` |
-| Next command | `product:pr 080-reference-improvement-backlog` |
+| Current command | `product:status` |
+| Next command | `product:status` |
 
 ## Evidence
 
@@ -30,6 +30,7 @@ Issue: `080-reference-improvement-backlog`
 - Converge: `specs/080-reference-improvement-backlog/converge.md` recorded low-severity unverifiable findings because the branch had no commit yet.
 - Review: `specs/080-reference-improvement-backlog/review.md`.
 - Draft PR: https://github.com/dongwonlee222/moduflow/pull/16.
+- PR #16 merged to `main` on 2026-07-09 with successful CI; local lifecycle status reconciled 2026-07-16.
 
 ## Notes
 

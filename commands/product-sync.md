@@ -26,10 +26,11 @@ git fetch
 python3 scripts/project_sync.py <project-path> --no-fetch
 ```
 
-2. If the current upstream is gone, or `origin/main` is ahead, report that local files may be stale before summarizing issues/specs.
-3. If the worktree is clean and the user approves, fast-forward the local checkout to the default remote branch. Do not auto-pull with local changes.
-4. Explain source mode plainly: in `git-files` mode, ModuFlow issues live in repo files such as `issues/*.md`; the GitHub Issues tab may be empty unless `github-sync` is explicitly enabled.
-5. Read `vendor.lock.json`. Check freshness for `type: github` sources against their actual latest commit:
+2. Read `repository_identity` from the same preflight. Report the configured canonical repository/base/lifecycle and observed fetch/push/provider evidence before freshness. A remote name is only a hint; URL identity decides whether it is the intended repository.
+3. If the current upstream is gone, or the configured canonical base ref is ahead, report that local files may be stale before summarizing issues/specs.
+4. If the worktree is clean and the user approves, fast-forward the local checkout to the canonical base ref. Do not auto-pull with local changes or an identity mismatch.
+5. Explain source mode plainly: in `git-files` mode, ModuFlow issues live in repo files such as `issues/*.md`; the GitHub Issues tab may be empty unless `github-sync` is explicitly enabled.
+6. Read `vendor.lock.json`. Check freshness for `type: github` sources against their actual latest commit:
 
 ```bash
 python3 scripts/vendor_freshness.py vendor.lock.json
@@ -37,16 +38,16 @@ python3 scripts/vendor_freshness.py vendor.lock.json
 
 Report drifted sources (never reviewed, or moved since `last_synced`) before showing pins. Informational only — this does not block anything or pull code. `local-plugin` sources are not checked (pinned by version string, not a git ref).
 
-6. Show current pins and available local vendor folders.
-7. Pull or refresh upstream vendor sources only with user approval. After an explicit review, record the reviewed commit as the new baseline:
+7. Show current pins and available local vendor folders.
+8. Pull or refresh upstream vendor sources only with user approval. After an explicit review, record the reviewed commit as the new baseline:
 
 ```bash
 python3 scripts/vendor_freshness.py vendor.lock.json --sync
 ```
-8. Keep local customizations in `overlays/` and `adapters/`.
-9. Run `scripts/release_check.py .` after sync-sensitive changes.
-10. Run `python3 scripts/antigravity_sync.py --host <host task.md> --git <git tasks.md>` to sync checkboxes between Antigravity and ModuFlow.
-11. If this sync needs to write locally (fast-forward, vendor `--sync` bookkeeping), run `python3 scripts/project_git_handoff.py <project-path>` first. When `mode` is `github-api-commit`, use the GitHub API instead of asking the user for terminal Git commands (see `/product:pr`'s Commit Capability step for the full contract).
+9. Keep local customizations in `overlays/` and `adapters/`.
+10. Run `scripts/release_check.py .` after sync-sensitive changes.
+11. Run `python3 scripts/antigravity_sync.py --host <host task.md> --git <git tasks.md>` to sync checkboxes between Antigravity and ModuFlow.
+12. If this sync needs to write locally (fast-forward, vendor `--sync` bookkeeping), run `python3 scripts/project_git_handoff.py <project-path>` first. A canonical identity mismatch blocks the write before commit/push/API fallback selection.
 
 ## Repo Sync Preflight
 

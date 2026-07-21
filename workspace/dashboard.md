@@ -2,18 +2,27 @@
 
 ## Current Phase
 
-Goal `team-visibility-onboarding`: make work visible to non-local collaborators (GitHub Issues projection, `054`) and give first-time users a ranked entry path (`055`). Previous goal `visual-workbench` closed 2026-07-05 with all three axes shipped.
+Goal `trustworthy-execution-and-project-knowledge`: repository identity safety is first, followed by durable review history, issue readiness integrity, preventive risk checks, project knowledge/artifact registries, reproducible analysis, and a project-scoped home dashboard.
 
 ## Active Goal
 
-- `team-visibility-onboarding`: external collaborators see progress from the GitHub UI; new users get a small ranked entry path. See `workspace/goal.md`.
+- `trustworthy-execution-and-project-knowledge`: make execution repository-safe and project knowledge reproducible. See `workspace/goal.md`.
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `088-canonical-repository-remote-identity-gate` (`p0`) passed direct code/spec review after three safety fixes. Canonical ModuFlow fetch/push/provider/root identity matches; next is `product:pr 088-canonical-repository-remote-identity-gate`, held until mixed staged changes are safely isolated.
+
+## Priority Queue — 2026-07-16
+
+- Now: `088` canonical repository identity gate.
+- Next: `089` verified review history → `093` schema/readiness gate → `094` risk-based security gate; `090` knowledge/artifact registry → `091` reproducible analysis; `087` Korean GitHub review surface.
+- Then: `086` project-aware dashboard foundation → `092` project home.
+- Later: `082` cross-host model routing → `083` evaluation and `084` context budget; re-scope `030`.
+- Reconciled done: `077`–`080`; PRs #13–#16 are merged with successful CI.
 
 ## Recently Completed
 
+- `077-implementation-readiness-gate`, `078-frontend-qa-template-pack`, `079-plan-discipline-skill-matrix`, `080-reference-improvement-backlog`: local lifecycle metadata reconciled to done on 2026-07-16 after confirming merged PRs #13–#16 and successful CI.
 - `070-spec-consistency-analyze`: `scripts/spec_consistency.py` runs a deterministic pre-execution check over spec↔plan↔tasks — AC coverage (token-overlap "possibly uncovered" warns), vague-term lint (no-digit bullets), structural stream tracing — report-only JSON, recommended in `product:plan`/`product:execute`. Also fixed a pre-existing gate false positive (placeholder paths in issue prose treated as real links). Dogfood on specs/069: clean.
 - `069-issue-dependency-priority-model`: issues now carry `**Priority: p0-p3**` and `**Blocked-by:**` metadata (blocked_by canonical, blocks derived); `ready_issues`/`--ready`/`moduflow_ready` answer "지금 시작 가능한 일" priority-sorted; dangling refs, cycles, and active-with-unmet-blocker are drift-gate errors. Also repaired the pre-048 schema still emitted by the issue template and the orphaned generator. Verification caught 4 real findings (prose false-parse, RecursionError on deep chains, generator landmine, silent active-blocked state) — all fixed with regression tests.
 - `068-machine-query-surface`: `scripts/mcp_server.py` is now a real persistent stdio MCP server (4 read-only tools: status/issues/issue_get/doctor, payloads versioned `moduflow.mcp.v1`), registered in `.mcp.json` via `${CLAUDE_PLUGIN_ROOT}`; `project_lifecycle.py` gained `--issues` JSON. Independent verification caught and we fixed a real path-traversal disclosure, a crash-on-non-object-JSON, a schema clobber, and a duplicated parser — 21 module tests, 248 total.
@@ -57,7 +66,7 @@ Goal `team-visibility-onboarding`: make work visible to non-local collaborators 
 
 ## Blockers
 
-- None.
+- `088` PR scope isolation: existing staged user changes and unrelated dirty files must not be absorbed into the 088 commit.
 
 ## Verification
 

@@ -5,7 +5,15 @@
     "required": true,
     "github_sync": "optional",
     "issue_source": "git-files",
-    "remote": "https://github.com/dongwonlee222/moduflow"
+    "remote": "https://github.com/dongwonlee222/moduflow",
+    "identity": {
+      "mode": "remote",
+      "provider": "github",
+      "canonical_repository": "github.com/dongwonlee222/moduflow",
+      "remote_name_hint": "origin",
+      "base_branch": "main",
+      "lifecycle": "active"
+    }
   },
   "paths": {
     "issues": "issues",

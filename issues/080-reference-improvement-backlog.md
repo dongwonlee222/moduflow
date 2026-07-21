@@ -1,6 +1,6 @@
 # Issue 080: Reference Improvement Backlog
 
-**Status: reviewed** — created 2026-07-09, started 2026-07-09, reviewed 2026-07-09.
+**Status: done** — created 2026-07-09, started 2026-07-09, reviewed 2026-07-09, done 2026-07-09 via PR #16.
 **Priority: p2**
 
 ## Summary
@@ -103,4 +103,4 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 ## Next Command
 
-`product:pr 080-reference-improvement-backlog`
+`product:status`

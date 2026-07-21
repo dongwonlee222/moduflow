@@ -7,6 +7,11 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+try:
+    from scripts.project_repository_identity import inspect_repository_identity
+except ModuleNotFoundError:
+    from project_repository_identity import inspect_repository_identity
+
 
 REQUIRED_PROJECT_PATHS = [
     ".moduflow/config.json",
@@ -454,11 +459,13 @@ def inspect_project(path, include_preflight=True):
         project_root = detected_git_root or requested
         remote = git_remote(project_root) if detected_git_root else None
         gh_status = gh_auth_status(project_root)
+        repository_identity = inspect_repository_identity(project_root)
     else:
         detected_git_root = None
         project_root = local_project_root(requested)
         remote = None
         gh_status = skipped_preflight_status()
+        repository_identity = None
 
     missing = missing_project_paths(project_root)
     missing_profile = missing_profile_paths(project_root)
@@ -500,7 +507,7 @@ def inspect_project(path, include_preflight=True):
         "mode_guidance": mode_guidance(mode),
         "preflight": {
             "enabled": include_preflight,
-            "skipped": [] if include_preflight else ["git", "github_cli"],
+            "skipped": [] if include_preflight else ["git", "github_cli", "repository_identity"],
         },
         "git": {
             "is_repo": detected_git_root is not None,
@@ -513,6 +520,7 @@ def inspect_project(path, include_preflight=True):
             "errors": loop_errors,
         },
         "github_cli": gh_status,
+        "repository_identity": repository_identity,
         "moduflow": {
             "initialized": not missing,
             "missing": missing,

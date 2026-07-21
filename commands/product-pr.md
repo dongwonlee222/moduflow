@@ -10,10 +10,10 @@ Prepare or refresh the pull request review surface.
 ## Do
 
 1. Check branch, commits, changed files, tests, linked issue, and whether a Draft PR already exists.
-2. Before any local `git add`/`commit`/`push`, run the commit capability preflight:
+2. Before any local `git add`/`commit`, run the commit capability preflight:
 
 ```bash
-python3 scripts/project_git_handoff.py <project-path>
+python3 scripts/project_git_handoff.py <project-path> --operation commit
 ```
 
 - `mode: local-git-write` — proceed with normal local Git commands.
@@ -22,6 +22,14 @@ python3 scripts/project_git_handoff.py <project-path>
 
 Record the chosen `mode`, `reason`, branch, base ref, commit URL/SHA, and file count in `specs/<issue>/pr.md` whenever the mode is not `local-git-write`, so PR/release artifacts can cite how the commit was made.
 
+Before push, rerun fresh evidence for the push capability:
+
+```bash
+python3 scripts/project_git_handoff.py <project-path> --operation push
+```
+
+`identity-blocked` is a hard stop before Git probe, staging, commit, push, or GitHub API fallback. Fix or explicitly migrate canonical repository identity; do not select a fallback that bypasses the mismatch.
+
 3. Before any `gh pr create`, run GitHub PR preflight:
 
 ```bash
@@ -29,6 +37,8 @@ python3 scripts/project_pr.py <project-path> --github-preflight
 ```
 
 If `ok` is false or `mode` is `local-pr-ready`, do not run `gh pr create` in this environment. Record a local PR-ready marker and include the preflight error in `specs/<issue>/status.md` or `specs/<issue>/pr.md`.
+
+The preflight resolves the repository only from canonical `git.identity` and verifies fetch, push, base branch, GitHub `nameWithOwner`, default branch, archive state, and fork state before auth/API checks. Every `gh pr create/view/edit` call must include explicit `-R OWNER/REPOSITORY`; never rely on the current directory or a stale PR URL.
 
 4. Generate or refresh the PR handoff:
 

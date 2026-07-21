@@ -348,6 +348,8 @@ def run_release_check(path):
             "unittest",
             "tests.test_project_migration",
             "tests.test_project_profile",
+            "tests.test_project_repository_identity",
+            "tests.test_project_repository_links",
             "tests.test_project_knowledge",
             "tests.test_project_memory",
             "tests.test_project_portfolio",

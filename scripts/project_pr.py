@@ -3,8 +3,17 @@ import argparse
 import json
 import re
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from scripts.project_repository_identity import (
+    inspect_repository_identity,
+    operation_decision,
+)
 
 
 @dataclass
@@ -66,7 +75,7 @@ def _run_command(args, cwd):
     return CommandResult(completed.returncode, completed.stdout, completed.stderr)
 
 
-def github_pr_preflight(root, runner=None):
+def github_pr_preflight(root, runner=None, identity_result=None):
     root = Path(root).resolve()
     run = runner or _run_command
     result = {
@@ -75,12 +84,30 @@ def github_pr_preflight(root, runner=None):
         "ok": False,
         "mode": "local-pr-ready",
         "checks": {
+            "repository_identity": {"ok": False, "repository": "", "detail": ""},
             "gh_auth": {"ok": False, "returncode": None, "detail": ""},
             "github_api": {"ok": False, "returncode": None, "detail": ""},
         },
         "errors": [],
         "recommendations": [],
     }
+
+    identity = identity_result or inspect_repository_identity(root, runner=run)
+    decision = operation_decision(identity, "pr")
+    result["repository_identity"] = decision
+    result["checks"]["repository_identity"] = {
+        "ok": decision["allowed"],
+        "repository": identity.get("expected", {}).get("repository", ""),
+        "detail": "; ".join(reason["code"] for reason in decision["reasons"]),
+    }
+    if not decision["allowed"]:
+        result["errors"].append(
+            "Canonical repository identity denied GitHub Draft PR creation."
+        )
+        result["recommendations"].append(
+            "Fix or explicitly migrate repository identity before gh pr create/update."
+        )
+        return result
 
     auth = run(["gh", "auth", "status"], cwd=root)
     result["checks"]["gh_auth"] = {

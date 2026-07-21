@@ -24,6 +24,42 @@ class FakeRunner:
 
 
 class ProjectSyncTests(unittest.TestCase):
+    def test_sync_includes_shared_repository_identity_result(self):
+        expected = {
+            "schema": "moduflow.repository-identity.v1",
+            "status": "unconfigured",
+            "expected": {},
+            "observed": {},
+            "capabilities": {"read": True, "execute": False},
+            "reasons": [
+                {"code": "canonical_identity_missing", "message": "identity missing"}
+            ],
+        }
+        original = getattr(project_sync, "inspect_repository_identity", None)
+        project_sync.inspect_repository_identity = lambda root, runner=None: expected
+        runner = FakeRunner(
+            {
+                ("git", "rev-parse", "--is-inside-work-tree"): "true\n",
+                ("git", "rev-parse", "--abbrev-ref", "HEAD"): "main\n",
+                ("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"): "origin/main\n",
+                ("git", "branch", "-vv"): "* main abc123 [origin/main] test\n",
+                ("git", "symbolic-ref", "refs/remotes/origin/HEAD"): "refs/remotes/origin/main\n",
+                ("git", "rev-list", "--left-right", "--count", "HEAD...origin/main"): "0\t0\n",
+                ("git", "status", "--porcelain"): "",
+                ("git", "ls-tree", "-r", "--name-only", "origin/main", "issues"): "",
+                ("git", "ls-files", "issues"): "",
+            }
+        )
+        try:
+            result = project_sync.inspect_repo_sync(Path("."), runner=runner, fetch=False)
+        finally:
+            if original is None:
+                delattr(project_sync, "inspect_repository_identity")
+            else:
+                project_sync.inspect_repository_identity = original
+
+        self.assertEqual(result["repository_identity"], expected)
+
     def test_reports_gone_upstream_branch(self):
         runner = FakeRunner(
             {

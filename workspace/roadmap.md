@@ -1,6 +1,133 @@
 # ModuFlow Roadmap
 
-## Now
+## Priority Refresh — 2026-07-16
+
+This is the current authoritative queue. Older execution snapshots below are retained as historical context and do not override this order.
+
+### Now
+
+#### `088-canonical-repository-remote-identity-gate`
+
+- Outcome: stop execute, PR, release, and push before writes when the actual normalized repository identity differs from the project profile.
+- Reason: writing to the wrong repository is the highest-impact failure and invalidates every downstream automation.
+- Confidence: high.
+- Dependency: none; follows existing profile, doctor, sync, and Git handoff foundations.
+- State: implementation and direct review complete after three safety fixes; PR scope isolation is pending because the worktree contains pre-existing staged changes.
+- Verification: 527 tests and release check passed; current release identity decision is allowed; review/converge/visual artifacts exist.
+- Next command: `product:pr 088-canonical-repository-remote-identity-gate` after isolating the intended file set.
+
+### Next
+
+Execution order inside Next: `089` verified review history → `093` readiness/dependency integrity → `094` preventive risk gate, then the project-knowledge and Korean-review tracks.
+
+#### `090-project-knowledge-and-artifact-registry`
+
+- Outcome: structured `workspace/knowledge.md` plus canonical `workspace/artifacts.md` for definitions, caveats, Sheets, reports, periods, and final/draft state.
+- Reason: this is the user’s immediate project-wiki need and the data source for analysis history and the project home.
+- Confidence: high.
+- Dependency: existing memory/knowledge and production-record foundations.
+- Next command: `product:spec 090-project-knowledge-and-artifact-registry`.
+
+#### `091-reproducible-analysis-runs-and-template-pack`
+
+- Outcome: reproducible analysis history plus monthly, CPO, amount-band, charging-speed, and policy-impact templates.
+- Reason: repeated business analysis needs source, exclusion, processing, and conclusion-change traceability.
+- Confidence: high.
+- Dependency: blocked by `090-project-knowledge-and-artifact-registry`.
+- Next command: `product:spec 091-reproducible-analysis-runs-and-template-pack` after 090.
+
+#### `089-verified-code-review-intake-and-remediation-routing`
+
+- Outcome: preserve external-review authorship and source hash, verify each finding, record accept/partial/defer/reject rationale, and trace security/pre-release/post-release candidates with CognitiveDemand.
+- Reason: review suggestions and “no-risk” claims must be evidence-backed before implementation or issue publication.
+- Confidence: high.
+- Dependency: independent locally; use 088 identity when GitHub sync is enabled.
+- Next command: `product:spec 089-verified-code-review-intake-and-remediation-routing`.
+
+#### `093-frontmatter-issue-schema-readiness-gate`
+
+- Outcome: normalize frontmatter and Markdown issue schemas, then block ready/execute when dependencies, readiness, lifecycle, or next command conflict.
+- Reason: ModuPay Biz validation reported valid and zero drift while BIZ-038/039 depended on active BIZ-033 and BIZ-040 was draft-but-ready.
+- Confidence: high.
+- Dependency: existing lifecycle, dependency, and readiness gates.
+- Next command: `product:spec 093-frontmatter-issue-schema-readiness-gate`.
+
+#### `094-risk-based-security-and-quality-review-gate`
+
+- Outcome: select preventive security/quality checks by feature risk and promote verified review findings into governed checks with human approval.
+- Reason: generic tests and lint did not catch CSV spreadsheet injection; the external finding should become a future export/download guardrail.
+- Confidence: high.
+- Dependency: blocked by `089-verified-code-review-intake-and-remediation-routing`.
+- Next command: `product:spec 094-risk-based-security-and-quality-review-gate` after 089.
+
+#### `087-korean-github-pr-review-surface`
+
+- Outcome: Korean-first PR bodies, review summaries, and approval requests while English artifacts remain canonical.
+- Reason: the local Korean packet exists, but the external human review surface can still regress to English.
+- Confidence: high.
+- Dependency: 057 and 052 are done.
+- Next command: `product:spec 087-korean-github-pr-review-surface`.
+
+### Then
+
+#### `086-project-aware-production-library-dashboard`
+
+- Outcome: one project selector scopes issues, production records, playbooks, knowledge, decisions, roadmap, and status.
+- Reason: the project-home view must inherit a safe project-scoping foundation.
+- Confidence: high.
+- Dependency: 085 is done; design/prototype work exists on `codex/086-project-aware-production-library-dashboard` and must be reconciled before resume.
+- Next command: `product:plan 086-project-aware-production-library-dashboard` after branch reconciliation.
+
+#### `092-project-home-dashboard`
+
+- Outcome: current issues, recent reports, key Sheets, final conclusions, next actions, and update dates in one project-scoped view.
+- Reason: this is the requested daily project home, but building it before its canonical registries would create duplicated dashboard-only data.
+- Confidence: high.
+- Dependency: blocked by 086, 090, and 091.
+- Next command: `product:spec 092-project-home-dashboard` after dependencies.
+
+### Later
+
+#### `082-cross-host-model-capability-routing`
+
+- Outcome: map deep/balanced/fast intent to source-backed host capabilities.
+- Reason: valuable cost/quality optimization, but lower operational risk than repository and project-knowledge gaps.
+- Confidence: high.
+- Dependency: 081 is done.
+- Next command: `product:spec 082-cross-host-model-capability-routing`.
+
+#### `083-model-routing-evaluation-harness`
+
+- Outcome: measure routing quality, latency, tokens, and cost with repeatable fixtures.
+- Reason: model guidance should change only from comparable evidence.
+- Confidence: high.
+- Dependency: blocked by 082.
+- Next command: `product:spec 083-model-routing-evaluation-harness` after 082.
+
+#### `084-worker-prompt-context-budget`
+
+- Outcome: reduce repeated worker context while preserving task-critical guidance.
+- Reason: prompt efficiency matters after host routing is stable.
+- Confidence: high.
+- Dependency: blocked by 082.
+- Next command: `product:spec 084-worker-prompt-context-budget` after 082.
+
+#### `030-project-memory-layer`
+
+- Outcome: retain only memory-layer scope not already delivered by 034, 040, 043, 085, and 090, or mark the issue superseded.
+- Reason: the current backlog item is half-implemented and substantially overlapped; executing it unchanged would duplicate shipped work.
+- Confidence: medium.
+- Dependency: review overlap after 090’s spec fixes the remaining knowledge boundary.
+- Next command: `product:review 030-project-memory-layer`.
+
+### Reconciled as Done
+
+- `077-implementation-readiness-gate` — PR #14 merged with successful CI.
+- `078-frontend-qa-template-pack` — PR #15 merged with successful CI.
+- `079-plan-discipline-skill-matrix` — PR #13 merged with successful CI.
+- `080-reference-improvement-backlog` — PR #16 merged with successful CI.
+
+## Historical Snapshot (pre-2026-07-16)
 
 Team visibility and onboarding: make work visible to non-local collaborators (GitHub Issues projection) and give first-time users a small, ranked entry path instead of a 20+ command wall.
 
@@ -27,6 +154,51 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Dependency: 067 upstream adapter absorption, 073 constitution steering.
 - Next command: `product:pr 079-plan-discipline-skill-matrix`
 - Status: in_progress
+
+### `082-cross-host-model-capability-routing`
+
+- Outcome: The same `deep` / `balanced` / `fast` work request receives appropriate, source-backed guidance in Codex, Claude Code, and Gemini/Antigravity, with a generic fallback for unknown hosts.
+- Reason: Model names and capabilities differ by host, but users should not need to rewrite task intent or become experts in every provider.
+- Confidence: high
+- Dependency: 081 GPT-5.6 tier guidance (complete).
+- Next command: `product:spec 082-cross-host-model-capability-routing`
+- Status: backlog (next model-routing implementation).
+
+### `083-model-routing-evaluation-harness`
+
+- Outcome: Routing changes can be assessed with repeatable quality, latency, token, and cost evidence rather than provider intuition.
+- Reason: A lower-cost default only helps when it keeps representative work at an acceptable quality level.
+- Confidence: high
+- Dependency: 082 cross-host model capability routing.
+- Next command: `product:spec 083-model-routing-evaluation-harness`
+- Status: backlog.
+
+### `084-worker-prompt-context-budget`
+
+- Outcome: Worker prompts preserve required task context while removing repeated guidance, reducing everyday latency and token cost.
+- Reason: Model selection gains are diluted when prompts repeatedly carry the same policy and routing text.
+- Confidence: high
+- Dependency: 082 cross-host model capability routing.
+- Next command: `product:spec 084-worker-prompt-context-budget`
+- Status: backlog.
+
+### `085-project-production-records-and-playbooks`
+
+- Outcome: Each project preserves recurring production outputs, decisions, failures, reusable patterns, and approved playbooks without forcing existing asset folders into a central structure.
+- Reason: Issue completion records what happened, but recurring banner, PR, proposal, Alimtalk, SMS, and Push work must improve the next production cycle.
+- Confidence: high
+- Dependency: existing project memory and candidate-promotion foundations (`030`, `040`, `043`).
+- Next command: `product:pr 085-project-production-records-and-playbooks`
+- Status: active; implementation, dogfood, and independent review complete.
+
+### `086-project-aware-production-library-dashboard`
+
+- Outcome: One global project selector controls Issue DB, production records, playbooks, knowledge, decisions, roadmap, and status across the dashboard.
+- Reason: Projects have different folders and brand knowledge, so the dashboard must use registered project metadata without mixing project context or crawling arbitrary paths.
+- Confidence: high
+- Dependency: 085 production records and playbooks.
+- Next command: `product:design 086-project-aware-production-library-dashboard`
+- Status: spec complete; design can proceed while implementation remains blocked by `085`.
 
 ### `077-implementation-readiness-gate`
 

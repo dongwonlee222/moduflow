@@ -1,9 +1,9 @@
 # Status: 078-frontend-qa-template-pack
 
 Issue: `078-frontend-qa-template-pack`
-Phase: pr
+Phase: done
 Branch: `codex/078-frontend-qa-template-pack`
-Updated: 2026-07-09
+Updated: 2026-07-16
 
 ## Done
 
@@ -17,6 +17,7 @@ Updated: 2026-07-09
 - Review notes written with no blocking findings.
 - `.claude-plugin/plugin.json` bumped to `0.3.21`.
 - Draft PR created: https://github.com/dongwonlee222/moduflow/pull/15, stacked on `codex/077-implementation-readiness-gate`.
+- PR #15 merged to `main` on 2026-07-09 with successful CI; local lifecycle status reconciled 2026-07-16.
 
 ## Verification
 
@@ -29,4 +30,4 @@ Updated: 2026-07-09
 
 ## Next
 
-`product:pr 078-frontend-qa-template-pack`
+`product:status`

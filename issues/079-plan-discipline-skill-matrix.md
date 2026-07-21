@@ -1,6 +1,6 @@
 # Issue 079: Plan Discipline and Skill Matrix
 
-**Status: in_progress** — created 2026-07-09, started 2026-07-09.
+**Status: done** — created 2026-07-09, started 2026-07-09, done 2026-07-09 via PR #13.
 **Priority: p1**
 
 ## Summary
@@ -113,4 +113,4 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 ## Next Command
 
-`product:review 079-plan-discipline-skill-matrix`
+`product:status`
