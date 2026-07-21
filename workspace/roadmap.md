@@ -59,8 +59,8 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Reason: Agent execution fails most often when the plan lacks concrete contracts, not when the agent lacks coding ability.
 - Confidence: high
 - Dependency: 079 plan discipline matrix, 070 spec consistency analyzer.
-- Next command: `product:pr 077-implementation-readiness-gate`
-- Status: pr
+- Next command: `product:status`
+- Status: done; PR #14 merged on 2026-07-09 and lifecycle/release evidence reconciled on 2026-07-21.
 
 ### `078-frontend-qa-template-pack`
 

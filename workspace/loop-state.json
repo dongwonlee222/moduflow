@@ -4,6 +4,7 @@
   "goal_id": "trustworthy-execution-and-project-knowledge",
   "objective": "Make ModuFlow repository-safe, evidence-backed in review, and reproducible across project knowledge, artifacts, analysis, and dashboard views.",
   "issue_ids": [
+    "078-frontend-qa-template-pack",
     "088-canonical-repository-remote-identity-gate",
     "089-verified-code-review-intake-and-remediation-routing",
     "093-frontmatter-issue-schema-readiness-gate",
@@ -14,45 +15,34 @@
     "092-project-home-dashboard",
     "087-korean-github-pr-review-surface"
   ],
-  "active_issue_id": "089-verified-code-review-intake-and-remediation-routing",
-  "phase": "update",
+  "active_issue_id": "078-frontend-qa-template-pack",
+  "phase": "release",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:update 089-verified-code-review-intake-and-remediation-routing",
+  "next_command": "product:issue 078-frontend-qa-template-pack complete",
   "attempts": {
-    "command": "product:update 089-verified-code-review-intake-and-remediation-routing",
+    "command": "product:issue 078-frontend-qa-template-pack complete",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-07-16"
+    "last_changed_at": "2026-07-21"
   },
   "blocker": null,
-  "last_action": "prepared the approved v0.3.26 release handoff after PR #25, PR #26, and PR #29 merged",
-  "last_verification": "2026-07-16: release identity allowed; PR CI passed; issues #18 and #19 closed with done labels",
-  "updated_at": "2026-07-16",
+  "last_action": "reconciled merged Issue 077 to done with release evidence",
+  "last_verification": "2026-07-21: PR #14 merged with successful CI; clean origin/main baseline passed 582 tests",
+  "updated_at": "2026-07-21",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/089-verified-code-review-intake-and-remediation-routing-release",
+    "branch": "",
     "base_branch": "main",
-    "commits": [
-      "648bf70",
-      "e813347",
-      "f3804b9",
-      "962cae3",
-      "d539f22",
-      "c794028",
-      "e7f84c4",
-      "4bad53d",
-      "6dbf3ef",
-      "1c9d2ba"
-    ],
-    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/26",
-    "release": "https://github.com/dongwonlee222/moduflow/releases/tag/v0.3.26",
+    "commits": [],
+    "pull_request": null,
+    "release": null,
     "execution_backend": {
       "type": "manual",
       "status": "selected",
-      "reason": "Issue 089 is stacked on the approved Issue 088 identity-gate branch",
-      "session": "codex-2026-07-16"
+      "reason": "Sequential lifecycle reconciliation is advancing from Issue 077 to Issue 078",
+      "session": "codex-2026-07-21"
     }
   }
 }

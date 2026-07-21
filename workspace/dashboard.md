@@ -21,6 +21,7 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Recently Completed
 
+- `077-implementation-readiness-gate`: PR #14 merged with successful CI on 2026-07-09; lifecycle and release evidence were reconciled on 2026-07-21 after fresh 582-test verification.
 - `089-verified-code-review-intake-and-remediation-routing`: implementation and staged review passed; four important review findings were fixed by TDD, and Dongwon Lee approved PR #26 for merge on 2026-07-16.
 - `088-canonical-repository-remote-identity-gate`: implementation and staged review passed; Dongwon Lee approved PR #25 for merge on 2026-07-16 after CI and canonical identity checks passed.
 - `070-spec-consistency-analyze`: `scripts/spec_consistency.py` runs a deterministic pre-execution check over spec↔plan↔tasks — AC coverage (token-overlap "possibly uncovered" warns), vague-term lint (no-digit bullets), structural stream tracing — report-only JSON, recommended in `product:plan`/`product:execute`. Also fixed a pre-existing gate false positive (placeholder paths in issue prose treated as real links). Dogfood on specs/069: clean.

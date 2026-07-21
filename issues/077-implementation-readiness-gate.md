@@ -1,6 +1,6 @@
 # Issue 077: Implementation Readiness Gate
 
-**Status: in_progress** — created 2026-07-09, spec 2026-07-09, plan 2026-07-09.
+**Status: done** — created 2026-07-09, started 2026-07-09, merged 2026-07-09, lifecycle reconciled 2026-07-21.
 **Priority: p1**
 
 ## Summary
@@ -103,6 +103,7 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 - Spec: `specs/077-implementation-readiness-gate/spec.md`
 - Status: `specs/077-implementation-readiness-gate/status.md`
+- Release: `specs/077-implementation-readiness-gate/release.md`
 - Sessions: `sessions/077-implementation-readiness-gate/`
 - Roadmap: `workspace/roadmap.md`
 
@@ -110,7 +111,8 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 - Draft PR: https://github.com/dongwonlee222/moduflow/pull/14
 - Base: `codex/079-plan-discipline-skill-matrix`
+- Final state: merged into `main` as `090b65a` on 2026-07-09; CI passed.
 
 ## Next Command
 
-`product:pr 077-implementation-readiness-gate`
+`product:status`
