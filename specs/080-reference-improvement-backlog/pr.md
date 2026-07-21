@@ -38,6 +38,8 @@
 
 ## 승인
 
-- Draft PR: https://github.com/dongwonlee222/moduflow/pull/16
-- Human approval: 아직 없음.
-- Merge gate: PR diff, status checks, reviewer approval 확인 후 merge.
+- PR: https://github.com/dongwonlee222/moduflow/pull/16
+- Final state: 2026-07-09 `main`에 `ad6cdeb`로 병합됨.
+- CI: `test` 성공.
+- Human approval: Dongwon Lee가 2026-07-21 완료 및 수명주기 정합화를 명시적으로 승인함.
+- Historical note: 2026-07-09 원본 패킷에는 병합 전 사람 승인 기록이 없었으며, 이 누락은 현재 승인으로 정합화함.

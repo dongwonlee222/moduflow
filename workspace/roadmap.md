@@ -77,8 +77,8 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Reason: Reference repo insights appear during real work and currently risk disappearing or getting mixed into the wrong issue.
 - Confidence: medium
 - Dependency: 075 issue-less context capture.
-- Next command: `product:pr 080-reference-improvement-backlog`
-- Status: review
+- Next command: `product:status`
+- Status: done; PR #16 merged on 2026-07-09 and lifecycle/release evidence reconciled with Dongwon Lee approval on 2026-07-21.
 
 ### `085-project-production-records-and-playbooks`
 

@@ -3,8 +3,8 @@
   "phase": "select",
   "active_goal": "trustworthy-execution-and-project-knowledge",
   "active_issue": "",
-  "last_command": "product:pr 088-canonical-repository-remote-identity-gate",
+  "last_command": "product:issue 080-reference-improvement-backlog complete",
   "next_command": "product:status",
   "blockers": [],
-  "updated_at": "2026-07-16"
+  "updated_at": "2026-07-21"
 }
