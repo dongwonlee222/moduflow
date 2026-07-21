@@ -28,6 +28,51 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Next command: `product:pr 079-plan-discipline-skill-matrix`
 - Status: in_progress
 
+### `082-cross-host-model-capability-routing`
+
+- Outcome: The same `deep` / `balanced` / `fast` work request receives appropriate, source-backed guidance in Codex, Claude Code, and Gemini/Antigravity, with a generic fallback for unknown hosts.
+- Reason: Model names and capabilities differ by host, but users should not need to rewrite task intent or become experts in every provider.
+- Confidence: high
+- Dependency: 081 GPT-5.6 tier guidance (complete).
+- Next command: `product:spec 082-cross-host-model-capability-routing`
+- Status: backlog (next model-routing implementation).
+
+### `083-model-routing-evaluation-harness`
+
+- Outcome: Routing changes can be assessed with repeatable quality, latency, token, and cost evidence rather than provider intuition.
+- Reason: A lower-cost default only helps when it keeps representative work at an acceptable quality level.
+- Confidence: high
+- Dependency: 082 cross-host model capability routing.
+- Next command: `product:spec 083-model-routing-evaluation-harness`
+- Status: backlog.
+
+### `084-worker-prompt-context-budget`
+
+- Outcome: Worker prompts preserve required task context while removing repeated guidance, reducing everyday latency and token cost.
+- Reason: Model selection gains are diluted when prompts repeatedly carry the same policy and routing text.
+- Confidence: high
+- Dependency: 082 cross-host model capability routing.
+- Next command: `product:spec 084-worker-prompt-context-budget`
+- Status: backlog.
+
+### `085-project-production-records-and-playbooks`
+
+- Outcome: Each project preserves recurring production outputs, decisions, failures, reusable patterns, and approved playbooks without forcing existing asset folders into a central structure.
+- Reason: Issue completion records what happened, but recurring banner, PR, proposal, Alimtalk, SMS, and Push work must improve the next production cycle.
+- Confidence: high
+- Dependency: existing project memory and candidate-promotion foundations (`030`, `040`, `043`).
+- Next command: `product:pr 085-project-production-records-and-playbooks`
+- Status: active; implementation, dogfood, and independent review complete.
+
+### `086-project-aware-production-library-dashboard`
+
+- Outcome: One global project selector controls Issue DB, production records, playbooks, knowledge, decisions, roadmap, and status across the dashboard.
+- Reason: Projects have different folders and brand knowledge, so the dashboard must use registered project metadata without mixing project context or crawling arbitrary paths.
+- Confidence: high
+- Dependency: 085 production records and playbooks.
+- Next command: `product:design 086-project-aware-production-library-dashboard`
+- Status: spec complete; design can proceed while implementation remains blocked by `085`.
+
 ### `077-implementation-readiness-gate`
 
 - Outcome: `product:execute` checks implementation readiness before worker dispatch, including API contracts, test strategy, frontend fixtures, smoke checks, permissions, and release conditions.

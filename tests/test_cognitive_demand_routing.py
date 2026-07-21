@@ -94,14 +94,17 @@ class TestSubagentBlockContainsDemand(unittest.TestCase):
     def test_deep_prompt_says_most_capable(self):
         task = self._get_task(DEEP_TASK_TEXT)
         self.assertIn("most capable reasoning model", task["subagent"]["Prompt"])
+        self.assertIn("gpt-5.6-sol", task["subagent"]["Prompt"])
 
     def test_fast_prompt_says_lightest(self):
         task = self._get_task(FAST_TASK_TEXT)
         self.assertIn("lightest, fastest model", task["subagent"]["Prompt"])
+        self.assertIn("gpt-5.6-luna", task["subagent"]["Prompt"])
 
     def test_balanced_prompt_says_standard(self):
         task = self._get_task(BALANCED_TASK_TEXT)
         self.assertIn("standard production model", task["subagent"]["Prompt"])
+        self.assertIn("gpt-5.6-terra", task["subagent"]["Prompt"])
 
 
 class TestMixedPlanDemandDistribution(unittest.TestCase):
@@ -135,11 +138,15 @@ class TestWorkerMdFiles(unittest.TestCase):
         self.assertIn("deep", content)
         self.assertIn("balanced", content)
         self.assertIn("fast", content)
+        self.assertIn("gpt-5.6-sol", content)
+        self.assertIn("gpt-5.6-terra", content)
+        self.assertIn("gpt-5.6-luna", content)
 
     def test_product_execute_dispatch_card_has_demand(self):
         cmd_file = ROOT / "commands" / "product-execute.md"
         content = cmd_file.read_text(encoding="utf-8")
         self.assertIn("Cognitive Demand", content)
+        self.assertIn("GPT-5.6", content)
 
 
 if __name__ == "__main__":
