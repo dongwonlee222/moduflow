@@ -4,7 +4,7 @@
   "goal_id": "trustworthy-execution-and-project-knowledge",
   "objective": "Make ModuFlow repository-safe, evidence-backed in review, and reproducible across project knowledge, artifacts, analysis, and dashboard views.",
   "issue_ids": [
-    "079-plan-discipline-skill-matrix",
+    "080-reference-improvement-backlog",
     "088-canonical-repository-remote-identity-gate",
     "089-verified-code-review-intake-and-remediation-routing",
     "093-frontmatter-issue-schema-readiness-gate",
@@ -15,21 +15,21 @@
     "092-project-home-dashboard",
     "087-korean-github-pr-review-surface"
   ],
-  "active_issue_id": "079-plan-discipline-skill-matrix",
+  "active_issue_id": "080-reference-improvement-backlog",
   "phase": "release",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:issue 079-plan-discipline-skill-matrix complete",
+  "next_command": "product:issue 080-reference-improvement-backlog complete",
   "attempts": {
-    "command": "product:issue 079-plan-discipline-skill-matrix complete",
+    "command": "product:issue 080-reference-improvement-backlog complete",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-21"
   },
   "blocker": null,
-  "last_action": "reconciled merged Issues 077 and 078 to done with release evidence",
-  "last_verification": "2026-07-21: PR #15 merged with successful CI; release_check passed after Issue 077 reconciliation",
+  "last_action": "reconciled merged Issues 077, 078, and 079 to done with release evidence",
+  "last_verification": "2026-07-21: PR #13 merged with successful CI; release_check passed after Issues 077 and 078 reconciliation",
   "updated_at": "2026-07-21",
   "git_binding": {
     "mode": "git-files",
@@ -41,7 +41,7 @@
     "execution_backend": {
       "type": "manual",
       "status": "selected",
-      "reason": "Sequential lifecycle reconciliation is advancing from Issue 078 to Issue 079",
+      "reason": "Sequential lifecycle reconciliation is advancing from Issue 079 to Issue 080",
       "session": "codex-2026-07-21"
     }
   }

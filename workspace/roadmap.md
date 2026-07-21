@@ -50,8 +50,8 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Reason: ModuFlow already contains Superpowers, but users should not have to know when each discipline should be activated.
 - Confidence: high
 - Dependency: 067 upstream adapter absorption, 073 constitution steering.
-- Next command: `product:pr 079-plan-discipline-skill-matrix`
-- Status: in_progress
+- Next command: `product:status`
+- Status: done; PR #13 merged on 2026-07-09 and lifecycle/release evidence reconciled on 2026-07-21.
 
 ### `077-implementation-readiness-gate`
 

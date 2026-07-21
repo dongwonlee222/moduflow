@@ -1,9 +1,9 @@
 # Status: 079-plan-discipline-skill-matrix
 
 Issue: `079-plan-discipline-skill-matrix`
-Phase: review
+Phase: done
 Branch: `codex/079-plan-discipline-skill-matrix`
-Updated: 2026-07-09
+Updated: 2026-07-21
 
 ## Done
 
@@ -15,6 +15,8 @@ Updated: 2026-07-09
 - Self-review written with no blocking findings.
 - PR handoff and Korean review packet written for human-first review.
 - Draft PR created: https://github.com/dongwonlee222/moduflow/pull/13
+- PR #13 merged into `main` as `4e2475b` on 2026-07-09 with successful CI.
+- Release reconciliation recorded in `specs/079-plan-discipline-skill-matrix/release.md` after Dongwon Lee approval on 2026-07-21.
 
 ## Verification
 
@@ -25,4 +27,4 @@ Updated: 2026-07-09
 
 ## Next
 
-`product:review 079-plan-discipline-skill-matrix`
+`product:status`

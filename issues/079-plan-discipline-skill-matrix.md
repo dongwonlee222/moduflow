@@ -1,6 +1,6 @@
 # Issue 079: Plan Discipline and Skill Matrix
 
-**Status: in_progress** — created 2026-07-09, started 2026-07-09.
+**Status: done** — created 2026-07-09, started 2026-07-09, merged 2026-07-09, lifecycle reconciled 2026-07-21.
 **Priority: p1**
 
 ## Summary
@@ -104,13 +104,15 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 - Spec: `specs/079-plan-discipline-skill-matrix/spec.md`
 - Status: `specs/079-plan-discipline-skill-matrix/status.md`
+- Release: `specs/079-plan-discipline-skill-matrix/release.md`
 - Sessions: `sessions/079-plan-discipline-skill-matrix/`
 - Roadmap: `workspace/roadmap.md`
 
 ## PR
 
 - Draft PR: https://github.com/dongwonlee222/moduflow/pull/13
+- Final state: merged into `main` as `4e2475b` on 2026-07-09; CI passed.
 
 ## Next Command
 
-`product:review 079-plan-discipline-skill-matrix`
+`product:status`
