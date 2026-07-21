@@ -1,6 +1,6 @@
 # Issue 078: Frontend QA Template Pack
 
-**Status: in_progress** — created 2026-07-09, spec 2026-07-09, plan 2026-07-09.
+**Status: done** — created 2026-07-09, started 2026-07-09, merged 2026-07-09, lifecycle reconciled 2026-07-21.
 **Priority: p2**
 
 ## Summary
@@ -99,6 +99,7 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 - Spec: `specs/078-frontend-qa-template-pack/spec.md`
 - Status: `specs/078-frontend-qa-template-pack/status.md`
+- Release: `specs/078-frontend-qa-template-pack/release.md`
 - Sessions: `sessions/078-frontend-qa-template-pack/`
 - Roadmap: `workspace/roadmap.md`
 
@@ -106,7 +107,8 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 - Draft PR: https://github.com/dongwonlee222/moduflow/pull/15
 - Base: `codex/077-implementation-readiness-gate`
+- Final state: merged into `main` as `7d673c8` on 2026-07-09; CI passed.
 
 ## Next Command
 
-`product:pr 078-frontend-qa-template-pack`
+`product:status`
