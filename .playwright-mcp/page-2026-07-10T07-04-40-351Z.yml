@@ -1,0 +1,153 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading [level=1] [ref=e3]:
+      - link "Superpowers Brainstorming" [ref=e4] [cursor=pointer]:
+        - /url: https://github.com/obra/superpowers
+    - generic [ref=e5]: Connected
+  - generic [ref=e9]:
+    - banner [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]: MF
+        - generic [ref=e13]: ModuFlow
+      - combobox "프로젝트 선택" [ref=e14]:
+        - option "모두의충전" [selected]
+        - option "애드팝콘"
+        - option "전체 프로젝트"
+      - generic [ref=e15]: 2026-07-10 15:42 생성
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]: Goal
+        - generic [ref=e19]: 충전 사용자 성장
+      - generic [ref=e20]:
+        - generic [ref=e21]: Phase
+        - generic [ref=e22]: 실행
+      - generic [ref=e23]:
+        - generic [ref=e24]: Blocker
+        - generic [ref=e25]: 없음
+      - generic [ref=e26]:
+        - generic [ref=e27]: Next
+        - generic [ref=e28]: 배너 플레이북 검토
+    - navigation "대시보드 화면" [ref=e29]:
+      - button "이슈 DB" [ref=e30] [cursor=pointer]
+      - button "이슈 그래프" [ref=e31] [cursor=pointer]
+      - button "제작 기록" [ref=e32] [cursor=pointer]
+      - button "플레이북" [ref=e33] [cursor=pointer]
+      - button "지식" [ref=e34] [cursor=pointer]
+      - button "로드맵" [ref=e35] [cursor=pointer]
+    - generic [ref=e36]:
+      - generic [ref=e37]:
+        - searchbox "제작 기록 검색" [ref=e38]
+        - combobox "유형" [ref=e39]:
+          - option "모든 유형" [selected]
+          - option "배너"
+          - option "PR"
+          - option "알림톡"
+          - option "Push"
+        - combobox "채널" [ref=e40]:
+          - option "모든 채널" [selected]
+          - option "홈"
+          - option "언론"
+          - option "카카오"
+          - option "앱"
+        - combobox "대상" [ref=e41]:
+          - option "모든 대상" [selected]
+          - option "고객"
+          - option "기자"
+          - option "파트너"
+        - combobox "상태" [ref=e42]:
+          - option "모든 상태" [selected]
+          - option "승인"
+          - option "검토"
+          - option "완료"
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e45]:
+            - heading "Production Records" [level=2] [ref=e46]
+            - generic [ref=e47]: 4개 기록
+          - table "제작 기록 목록" [ref=e48]:
+            - rowgroup [ref=e49]:
+              - row [ref=e50]:
+                - columnheader "제작물" [ref=e51]
+                - columnheader "유형" [ref=e52]
+                - columnheader "채널" [ref=e53]
+                - columnheader "상태" [ref=e54]
+                - columnheader "플레이북" [ref=e55]
+            - rowgroup [ref=e56]:
+              - row [ref=e57] [cursor=pointer]:
+                - cell "여름 충전 혜택 배너 2026-07-09 · 고객" [ref=e58]:
+                  - text: 여름 충전 혜택 배너
+                  - generic [ref=e59]: 2026-07-09 · 고객
+                - cell "배너" [ref=e60]
+                - cell "홈" [ref=e61]
+                - cell "승인" [ref=e62]
+                - cell "반영" [ref=e64]
+              - row [ref=e65] [cursor=pointer]:
+                - cell "충전 혜택 제휴 보도자료 2026-07-08 · 기자" [ref=e66]:
+                  - text: 충전 혜택 제휴 보도자료
+                  - generic [ref=e67]: 2026-07-08 · 기자
+                - cell "PR" [ref=e68]
+                - cell "언론" [ref=e69]
+                - cell "검토" [ref=e70]
+                - cell "후보" [ref=e72]
+              - row [ref=e73] [cursor=pointer]:
+                - cell "7월 휴면 사용자 알림톡 2026-07-06 · 고객" [ref=e74]:
+                  - text: 7월 휴면 사용자 알림톡
+                  - generic [ref=e75]: 2026-07-06 · 고객
+                - cell "알림톡" [ref=e76]
+                - cell "카카오" [ref=e77]
+                - cell "완료" [ref=e78]
+                - cell "미반영" [ref=e80]
+              - row [ref=e81] [cursor=pointer]:
+                - cell "주말 충전 리워드 Push 2026-07-04 · 고객" [ref=e82]:
+                  - text: 주말 충전 리워드 Push
+                  - generic [ref=e83]: 2026-07-04 · 고객
+                - cell "Push" [ref=e84]
+                - cell "앱" [ref=e85]
+                - cell "완료" [ref=e86]
+                - cell "반영" [ref=e88]
+          - generic [ref=e90]:
+            - strong [ref=e91]: 등록된 제작 기록이 없습니다
+            - text: product:production 명령으로 현재 프로젝트에 기록을 등록합니다.
+        - complementary [ref=e92]:
+          - generic [ref=e93]:
+            - generic [ref=e94]: 배너 · 홈
+            - generic [ref=e95]:
+              - heading "여름 충전 혜택 배너" [level=3] [ref=e96]
+              - generic [ref=e97]: 승인
+            - generic [ref=e98]: 2026-07-09 · 고객 · Issue 085 연결
+          - generic [ref=e99]:
+            - generic [ref=e100]:
+              - heading "Artifacts" [level=4] [ref=e101]
+              - generic [ref=e102]:
+                - generic [ref=e103]: 최종 홈 배너 · Figma
+                - generic [ref=e104]: 열기 ↗
+            - generic [ref=e105]:
+              - heading "Decisions" [level=4] [ref=e106]
+              - list [ref=e107]:
+                - listitem [ref=e108]: 검정 카드형 UI가 작은 화면에서 가장 안정적이었다.
+            - generic [ref=e109]:
+              - heading "Failed Attempts" [level=4] [ref=e110]
+              - list [ref=e111]:
+                - listitem [ref=e112]: 휴대폰 화면 안의 작은 한글은 이미지 생성 시 깨졌다.
+            - generic [ref=e113]:
+              - heading "Reusable Patterns" [level=4] [ref=e114]
+              - list [ref=e115]:
+                - listitem [ref=e116]: 혜택 수치와 CTA는 생성 이미지가 아닌 HTML 텍스트로 분리한다.
+            - generic [ref=e117]:
+              - heading "Copy by Audience" [level=4] [ref=e118]
+              - generic [ref=e119]:
+                - generic [ref=e120]:
+                  - strong [ref=e121]: 외부 배포용
+                  - paragraph [ref=e122]: 충전하고 여름 혜택을 받아보세요.
+                - generic [ref=e123]:
+                  - strong [ref=e124]: 내부 보고용
+                  - paragraph [ref=e125]: 홈 배너는 검정 카드형 레이아웃으로 확정했으며 클릭률을 추적한다.
+            - generic [ref=e126]:
+              - heading "Playbook Updates" [level=4] [ref=e127]
+              - generic [ref=e128]:
+                - generic [ref=e129]: 승인된 플레이북에 반영됨
+                - strong [ref=e130]: 반영
+    - generic [ref=e132]:
+      - strong [ref=e133]: 이슈 DB
+      - text: 선택한 프로젝트의 동일한 문맥으로 전환됩니다.
+  - generic [ref=e134]: Click an option above, then return to the terminal

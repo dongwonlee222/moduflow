@@ -1,0 +1,78 @@
+- generic [ref=f3e2]:
+  - generic [ref=f3e3]:
+    - heading "ModuFlow 프로젝트 뷰" [level=1] [ref=f3e4]
+    - generic [ref=f3e5]:
+      - text: 프로젝트
+      - combobox "프로젝트" [ref=f3e6]:
+        - option "모두의충전" [selected]
+        - option "애드팝콘"
+        - option "전체 프로젝트"
+  - generic [ref=f3e7]:
+    - button "이슈 DB" [ref=f3e8] [cursor=pointer]
+    - button "이슈 그래프" [ref=f3e9] [cursor=pointer]
+    - button "지식 그래프" [ref=f3e10] [cursor=pointer]
+    - button "제작 기록" [ref=f3e11] [cursor=pointer]
+    - button "플레이북" [ref=f3e12] [cursor=pointer]
+    - generic [ref=f3e13]: 2026-07-10 15:42 생성
+  - generic [ref=f3e14]:
+    - generic [ref=f3e15]: active 4
+    - generic [ref=f3e18]: review 2
+    - generic [ref=f3e19]: 제작 기록 4
+    - generic [ref=f3e20]: 플레이북 2
+    - generic [ref=f3e21]: "다음: 배너 플레이북 검토"
+  - generic [ref=f3e23]:
+    - generic [ref=f3e24]:
+      - searchbox "Search title, decision, failure" [ref=f3e25]
+      - generic [ref=f3e26]:
+        - button "전체" [ref=f3e27] [cursor=pointer]
+        - button "승인" [ref=f3e28] [cursor=pointer]
+        - button "검토" [ref=f3e29] [cursor=pointer]
+        - button "완료" [ref=f3e30] [cursor=pointer]
+      - combobox [ref=f3e31]:
+        - option "모든 유형" [selected]
+        - option "배너"
+        - option "PR"
+        - option "알림톡"
+        - option "Push"
+    - table [ref=f3e34]:
+      - rowgroup [ref=f3e35]:
+        - row [ref=f3e36]:
+          - columnheader "Production Record" [ref=f3e37]
+          - columnheader "Type" [ref=f3e38]
+          - columnheader "Channel" [ref=f3e39]
+          - columnheader "Status" [ref=f3e40]
+          - columnheader "Playbook" [ref=f3e41]
+      - rowgroup [ref=f3e42]:
+        - row [ref=f3e43] [cursor=pointer]:
+          - cell "여름 충전 혜택 배너 2026-07-09" [ref=f3e44]:
+            - generic [ref=f3e45]: 여름 충전 혜택 배너
+            - text: 2026-07-09
+          - cell "배너" [ref=f3e46]
+          - cell "홈" [ref=f3e47]
+          - cell "승인" [ref=f3e48]
+          - cell "반영" [ref=f3e50]
+        - row [ref=f3e51] [cursor=pointer]:
+          - cell "충전 혜택 제휴 보도자료 2026-07-08" [ref=f3e52]:
+            - generic [ref=f3e53]: 충전 혜택 제휴 보도자료
+            - text: 2026-07-08
+          - cell "PR" [ref=f3e54]
+          - cell "언론" [ref=f3e55]
+          - cell "검토" [ref=f3e56]
+          - cell "후보" [ref=f3e58]
+        - row [ref=f3e59] [cursor=pointer]:
+          - cell "7월 휴면 사용자 알림톡 2026-07-06" [ref=f3e60]:
+            - generic [ref=f3e61]: 7월 휴면 사용자 알림톡
+            - text: 2026-07-06
+          - cell "알림톡" [ref=f3e62]
+          - cell "카카오" [ref=f3e63]
+          - cell "완료" [ref=f3e64]
+          - cell "미반영" [ref=f3e66]
+        - row [ref=f3e67] [cursor=pointer]:
+          - cell "주말 충전 리워드 Push 2026-07-04" [ref=f3e68]:
+            - generic [ref=f3e69]: 주말 충전 리워드 Push
+            - text: 2026-07-04
+          - cell "Push" [ref=f3e70]
+          - cell "앱" [ref=f3e71]
+          - cell "완료" [ref=f3e72]
+          - cell "반영" [ref=f3e74]
+  - generic [ref=f3e75]: 프로젝트를 선택하면 모든 탭의 이슈, 제작 기록, 플레이북과 지식 범위가 함께 바뀝니다.

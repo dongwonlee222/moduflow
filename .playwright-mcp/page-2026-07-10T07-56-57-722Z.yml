@@ -1,0 +1,20 @@
+- generic [active] [ref=f9e1]:
+  - heading "ModuFlow 프로젝트 뷰" [level=1] [ref=f9e2]
+  - generic [ref=f9e3]:
+    - generic [ref=f9e4] [cursor=pointer]: 이슈 DB
+    - generic [ref=f9e5] [cursor=pointer]: 이슈 그래프
+    - generic [ref=f9e6] [cursor=pointer]: 지식 그래프
+    - generic [ref=f9e7] [cursor=pointer]:
+      - checkbox "관계선 표시" [checked] [ref=f9e8]
+      - text: 관계선 표시
+    - generic [ref=f9e9] [cursor=pointer]:
+      - checkbox "🧠 지식 배지 표시" [checked] [ref=f9e10]
+      - text: 🧠 지식 배지 표시
+  - generic [ref=f9e11]:
+    - generic [ref=f9e12]: active
+    - generic [ref=f9e14]: done
+    - generic [ref=f9e16]: backlog
+    - generic [ref=f9e18]: superseded
+    - generic [ref=f9e20]: 현재 진행
+    - generic [ref=f9e22]: ── supersedes
+  - generic [ref=f9e28]: 이슈 DB에서 작업 상태를 훑거나, 그래프 탭에서 관계를 확인합니다.

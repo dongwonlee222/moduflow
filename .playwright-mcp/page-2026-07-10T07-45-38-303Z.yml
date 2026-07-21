@@ -1,0 +1,94 @@
+- generic [ref=f5e2]:
+  - generic [ref=f5e3]:
+    - heading "ModuFlow 프로젝트 뷰" [level=1] [ref=f5e4]
+    - generic [ref=f5e5]:
+      - text: 프로젝트
+      - combobox "프로젝트" [ref=f5e6]:
+        - option "모두의충전" [selected]
+        - option "애드팝콘"
+        - option "전체 프로젝트"
+  - generic [ref=f5e7]:
+    - button "이슈 DB" [ref=f5e8] [cursor=pointer]
+    - button "이슈 그래프" [ref=f5e9] [cursor=pointer]
+    - button "지식 그래프" [ref=f5e10] [cursor=pointer]
+    - button "제작 기록" [ref=f5e11] [cursor=pointer]
+    - button "플레이북" [ref=f5e12] [cursor=pointer]
+    - generic [ref=f5e13]: 2026-07-10 15:42 생성
+  - generic [ref=f5e14]:
+    - generic [ref=f5e15]: active 4
+    - generic [ref=f5e18]: review 2
+    - generic [ref=f5e19]: 제작 기록 4
+    - generic [ref=f5e20]: 플레이북 2
+    - generic [ref=f5e21]: "다음: 배너 플레이북 검토"
+  - generic [ref=f5e23]:
+    - generic [ref=f5e24]:
+      - searchbox "Search issue id, title, description" [ref=f5e25]
+      - generic [ref=f5e26]:
+        - button "전체" [ref=f5e27] [cursor=pointer]
+        - button "진행중" [ref=f5e28] [cursor=pointer]
+        - button "리뷰필요" [ref=f5e29] [cursor=pointer]
+        - button "막힘" [ref=f5e30] [cursor=pointer]
+        - button "완료" [ref=f5e31] [cursor=pointer]
+      - combobox [ref=f5e32]:
+        - option "등록 최신순" [selected]
+        - option "최근 업데이트"
+        - option "이슈 번호"
+        - option "상태"
+    - table [ref=f5e33]:
+      - rowgroup [ref=f5e34]:
+        - row [ref=f5e35]:
+          - columnheader "ID" [ref=f5e36]
+          - columnheader "Issue" [ref=f5e37]
+          - columnheader "Status" [ref=f5e38]
+          - columnheader "Phase" [ref=f5e39]
+          - columnheader "Description" [ref=f5e40]
+          - columnheader "Artifacts" [ref=f5e41]
+      - rowgroup [ref=f5e42]:
+        - row [ref=f5e43]:
+          - cell "086" [ref=f5e44]
+          - cell "Project-Aware Production Library Dashboard 086-project-aware-production-library-dashboard" [ref=f5e45]:
+            - generic [ref=f5e46]: Project-Aware Production Library Dashboard
+            - text: 086-project-aware-production-library-dashboard
+          - cell "backlog" [ref=f5e47]
+          - cell "design" [ref=f5e49]
+          - cell "상단 프로젝트 선택에 따라 이슈와 제작 기록, 플레이북, 지식 화면이 같은 프로젝트 범위로 전환됩니다." [ref=f5e50]
+          - cell "I S KO" [ref=f5e51]:
+            - generic [ref=f5e52]: I
+            - generic [ref=f5e53]: S
+            - generic [ref=f5e54]: KO
+        - row [ref=f5e55]:
+          - cell "085" [ref=f5e56]
+          - cell "Project Production Records and Playbooks 085-project-production-records-and-playbooks" [ref=f5e57]:
+            - generic [ref=f5e58]: Project Production Records and Playbooks
+            - text: 085-project-production-records-and-playbooks
+          - cell "done" [ref=f5e59]
+          - cell "release" [ref=f5e61]
+          - cell "반복 제작물의 결과물, 판단, 실패, 재사용 패턴을 프로젝트별로 축적합니다." [ref=f5e62]
+          - cell "I S Rel" [ref=f5e63]:
+            - generic [ref=f5e64]: I
+            - generic [ref=f5e65]: S
+            - generic [ref=f5e66]: Rel
+        - row [ref=f5e67]:
+          - cell "080" [ref=f5e68]
+          - cell "Reference Improvement Backlog 080-reference-improvement-backlog" [ref=f5e69]:
+            - generic [ref=f5e70]: Reference Improvement Backlog
+            - text: 080-reference-improvement-backlog
+          - cell "review" [ref=f5e71]
+          - cell "pr" [ref=f5e73]
+          - cell "외부 레퍼런스에서 발견한 개선 사항을 별도 백로그로 관리합니다." [ref=f5e74]
+          - cell "I PR" [ref=f5e75]:
+            - generic [ref=f5e76]: I
+            - generic [ref=f5e77]: PR
+        - row [ref=f5e78]:
+          - cell "079" [ref=f5e79]
+          - cell "Plan Discipline and Skill Matrix 079-plan-discipline-skill-matrix" [ref=f5e80]:
+            - generic [ref=f5e81]: Plan Discipline and Skill Matrix
+            - text: 079-plan-discipline-skill-matrix
+          - cell "review" [ref=f5e82]
+          - cell "pr" [ref=f5e84]
+          - cell "계획 작성과 스킬 선택 규칙을 표준화합니다." [ref=f5e85]
+          - cell "I P PR" [ref=f5e86]:
+            - generic [ref=f5e87]: I
+            - generic [ref=f5e88]: P
+            - generic [ref=f5e89]: PR
+  - generic [ref=f5e90]: 프로젝트를 선택하면 모든 탭의 이슈, 제작 기록, 플레이북과 지식 범위가 함께 바뀝니다.

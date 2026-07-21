@@ -1,0 +1,34 @@
+- generic [ref=f5e2]:
+  - generic [ref=f5e3]:
+    - heading "ModuFlow 프로젝트 뷰" [level=1] [ref=f5e4]
+    - generic [ref=f5e5]:
+      - text: 프로젝트
+      - combobox "프로젝트" [ref=f5e6]:
+        - option "모두의충전" [selected]
+        - option "애드팝콘"
+        - option "전체 프로젝트"
+  - generic [ref=f5e7]:
+    - button "이슈 DB" [ref=f5e8] [cursor=pointer]
+    - button "이슈 그래프" [ref=f5e9] [cursor=pointer]
+    - button "지식 그래프" [active] [ref=f5e10] [cursor=pointer]
+    - button "제작 기록" [ref=f5e11] [cursor=pointer]
+    - button "플레이북" [ref=f5e12] [cursor=pointer]
+    - generic [ref=f5e13]: 2026-07-10 15:42 생성
+  - generic [ref=f5e14]:
+    - generic [ref=f5e15]: active 4
+    - generic [ref=f5e18]: review 2
+    - generic [ref=f5e19]: 제작 기록 4
+    - generic [ref=f5e20]: 플레이북 2
+    - generic [ref=f5e21]: "다음: 배너 플레이북 검토"
+  - generic [ref=f5e110]:
+    - generic [ref=f5e111]:
+      - generic [ref=f5e112]: decision
+      - generic [ref=f5e114]: evidence
+      - generic [ref=f5e116]: deliverable
+    - generic [ref=f5e118]:
+      - generic [ref=f5e124]: Decision프로젝트 로컬 지식
+      - generic [ref=f5e125]: Evidence배너 제작 학습
+      - generic [ref=f5e126]: Production Record여름 혜택 배너
+      - generic [ref=f5e127]: Playbook모바일 배너
+      - generic [ref=f5e128]: Artifact최종 홈 배너
+  - generic [ref=f5e90]: 프로젝트를 선택하면 모든 탭의 이슈, 제작 기록, 플레이북과 지식 범위가 함께 바뀝니다.

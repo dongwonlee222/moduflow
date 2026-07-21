@@ -1,0 +1,2109 @@
+- generic [active] [ref=f8e1]:
+  - generic [ref=f8e2]:
+    - heading "ModuFlow 프로젝트 뷰" [level=1] [ref=f8e3]
+    - generic [ref=f8e4]:
+      - text: 프로젝트
+      - combobox "프로젝트" [disabled] [ref=f8e5]:
+        - option "ModuFlow" [selected]
+  - generic [ref=f8e6]:
+    - generic [ref=f8e7] [cursor=pointer]: 이슈 DB
+    - generic [ref=f8e8] [cursor=pointer]: 이슈 그래프
+    - generic [ref=f8e9] [cursor=pointer]: 지식 그래프
+    - generic [ref=f8e10] [cursor=pointer]: 제작 기록
+    - generic [ref=f8e11] [cursor=pointer]: 플레이북
+  - generic [ref=f8e12]:
+    - generic [ref=f8e13]:
+      - textbox "Search issue id, title, description" [ref=f8e14]
+      - generic [ref=f8e15]:
+        - button "전체" [ref=f8e16] [cursor=pointer]
+        - button "진행중" [ref=f8e17] [cursor=pointer]
+        - button "리뷰필요" [ref=f8e18] [cursor=pointer]
+        - button "막힘" [ref=f8e19] [cursor=pointer]
+        - button "누락있음" [ref=f8e20] [cursor=pointer]
+        - button "완료" [ref=f8e21] [cursor=pointer]
+      - combobox [ref=f8e22]:
+        - option "등록 최신순" [selected]
+        - option "등록 오래된순"
+        - option "최근 업데이트"
+        - option "이슈 번호"
+        - option "상태"
+        - option "메모리 수"
+      - combobox [ref=f8e23]:
+        - option "상태별" [selected]
+        - option "Goal별"
+        - option "없음"
+    - table [ref=f8e24]:
+      - rowgroup [ref=f8e25]:
+        - row [ref=f8e26]:
+          - columnheader "ID" [ref=f8e27]
+          - columnheader "Issue" [ref=f8e28]
+          - columnheader "Status" [ref=f8e29]
+          - columnheader "Phase" [ref=f8e30]
+          - columnheader "Created" [ref=f8e31]
+          - columnheader "Updated" [ref=f8e32]
+          - columnheader "Description" [ref=f8e33]
+          - columnheader "Artifacts" [ref=f8e34]
+          - columnheader "Flags" [ref=f8e35]
+          - columnheader "Memory" [ref=f8e36]
+      - rowgroup [ref=f8e37]:
+        - row [ref=f8e38]:
+          - columnheader "backlog · 3" [ref=f8e39]
+        - row [ref=f8e40] [cursor=pointer]:
+          - cell "87" [ref=f8e41]
+          - cell [ref=f8e42]:
+            - 'link "Issue 087: Korean GitHub PR Review Surface" [ref=f8e43]':
+              - /url: issue-087-korean-github-pr-review-surface.html
+            - code [ref=f8e44]: 087-korean-github-pr-review-surface
+          - cell "backlog" [ref=f8e45]
+          - cell "spec" [ref=f8e46]
+          - cell "2026-07-10" [ref=f8e47]
+          - cell "2026-07-10" [ref=f8e48]
+          - cell "KO 한글 검토 패킷이 있으면 GitHub PR 본문과 리뷰 코멘트, 승인 요청도 한글 우선으로 게시되게 합니다." [ref=f8e49]:
+            - generic [ref=f8e50]: KO
+            - text: 한글 검토 패킷이 있으면 GitHub PR 본문과 리뷰 코멘트, 승인 요청도 한글 우선으로 게시되게 합니다.
+          - cell "I - - - - - - -" [ref=f8e51]:
+            - generic [ref=f8e52]: I
+            - generic [ref=f8e53]: "-"
+            - generic [ref=f8e54]: "-"
+            - generic [ref=f8e55]: "-"
+            - generic [ref=f8e56]: "-"
+            - generic [ref=f8e57]: "-"
+            - generic [ref=f8e58]: "-"
+            - generic [ref=f8e59]: "-"
+          - cell "spec 없음 review 없음 PR 없음 한글 없음" [ref=f8e60]:
+            - generic [ref=f8e61]: spec 없음
+            - generic [ref=f8e62]: review 없음
+            - generic [ref=f8e63]: PR 없음
+            - generic [ref=f8e64]: 한글 없음
+          - cell "0" [ref=f8e65]
+        - row [ref=f8e66] [cursor=pointer]:
+          - cell "86" [ref=f8e67]
+          - cell [ref=f8e68]:
+            - 'link "Issue 086: Project-Aware Production Library Dashboard" [ref=f8e69]':
+              - /url: issue-086-project-aware-production-library-dashboard.html
+            - code [ref=f8e70]: 086-project-aware-production-library-dashboard
+          - cell "backlog" [ref=f8e71]
+          - cell "plan" [ref=f8e72]
+          - cell "2026-07-10" [ref=f8e73]
+          - cell "2026-07-10" [ref=f8e74]
+          - cell "KO 상단 프로젝트 선택에 따라 이슈와 제작 기록, 플레이북, 지식 화면이 같은 프로젝트 범위로 전환되게 합니다." [ref=f8e75]:
+            - generic [ref=f8e76]: KO
+            - text: 상단 프로젝트 선택에 따라 이슈와 제작 기록, 플레이북, 지식 화면이 같은 프로젝트 범위로 전환되게 합니다.
+          - cell "I S KO - - - - -" [ref=f8e77]:
+            - generic [ref=f8e78]: I
+            - generic [ref=f8e79]: S
+            - generic [ref=f8e80]: KO
+            - generic [ref=f8e81]: "-"
+            - generic [ref=f8e82]: "-"
+            - generic [ref=f8e83]: "-"
+            - generic [ref=f8e84]: "-"
+            - generic [ref=f8e85]: "-"
+          - cell "plan 없음 review 없음 PR 없음" [ref=f8e86]:
+            - generic [ref=f8e87]: plan 없음
+            - generic [ref=f8e88]: review 없음
+            - generic [ref=f8e89]: PR 없음
+          - cell "0" [ref=f8e90]
+        - row [ref=f8e91] [cursor=pointer]:
+          - cell "30" [ref=f8e92]
+          - cell [ref=f8e93]:
+            - 'link "Issue 030: Project Memory Layer" [ref=f8e94]':
+              - /url: issue-030-project-memory-layer.html
+            - code [ref=f8e95]: 030-project-memory-layer
+          - cell "backlog" [ref=f8e96]
+          - cell "spec" [ref=f8e97]
+          - cell "2026-06-24" [ref=f8e98]
+          - cell "2026-06-24" [ref=f8e99]
+          - cell "KO 이슈 중심 PM 추적을 넘어 산출물, 결정, 근거, 운영 맥락, 재사용 가능한 프로젝트 메모리를 관리하는 장기 기억 계층을 확장합니다." [ref=f8e100]:
+            - generic [ref=f8e101]: KO
+            - text: 이슈 중심 PM 추적을 넘어 산출물, 결정, 근거, 운영 맥락, 재사용 가능한 프로젝트 메모리를 관리하는 장기 기억 계층을 확장합니다.
+          - cell "I - - - - - - -" [ref=f8e102]:
+            - generic [ref=f8e103]: I
+            - generic [ref=f8e104]: "-"
+            - generic [ref=f8e105]: "-"
+            - generic [ref=f8e106]: "-"
+            - generic [ref=f8e107]: "-"
+            - generic [ref=f8e108]: "-"
+            - generic [ref=f8e109]: "-"
+            - generic [ref=f8e110]: "-"
+          - cell "spec 없음 review 없음 PR 없음 한글 없음" [ref=f8e111]:
+            - generic [ref=f8e112]: spec 없음
+            - generic [ref=f8e113]: review 없음
+            - generic [ref=f8e114]: PR 없음
+            - generic [ref=f8e115]: 한글 없음
+          - cell "1" [ref=f8e116]
+        - row [ref=f8e117]:
+          - columnheader "done · 71" [ref=f8e118]
+        - row [ref=f8e119] [cursor=pointer]:
+          - cell "85" [ref=f8e120]
+          - cell [ref=f8e121]:
+            - 'link "Issue 085: Project Production Records and Playbooks" [ref=f8e122]':
+              - /url: issue-085-project-production-records-and-playbooks.html
+            - code [ref=f8e123]: 085-project-production-records-and-playbooks
+          - cell "done" [ref=f8e124]
+          - cell "release" [ref=f8e125]
+          - cell "2026-07-10" [ref=f8e126]
+          - cell "2026-07-10" [ref=f8e127]
+          - cell "KO 반복 제작물의 결과물, 판단, 실패, 재사용 패턴을 프로젝트별로 축적하고 사람 승인 플레이북으로 관리합니다." [ref=f8e128]:
+            - generic [ref=f8e129]: KO
+            - text: 반복 제작물의 결과물, 판단, 실패, 재사용 패턴을 프로젝트별로 축적하고 사람 승인 플레이북으로 관리합니다.
+          - cell "I S KO P T R PR Rel" [ref=f8e130]:
+            - generic [ref=f8e131]: I
+            - generic [ref=f8e132]: S
+            - generic [ref=f8e133]: KO
+            - generic [ref=f8e134]: P
+            - generic [ref=f8e135]: T
+            - generic [ref=f8e136]: R
+            - generic [ref=f8e137]: PR
+            - generic [ref=f8e138]: Rel
+          - cell "-" [ref=f8e139]
+          - cell "0" [ref=f8e140]
+        - row [ref=f8e141] [cursor=pointer]:
+          - cell "76" [ref=f8e142]
+          - cell [ref=f8e143]:
+            - 'link "Issue 076: Fast Path Shaping Router" [ref=f8e144]':
+              - /url: issue-076-product-context-interview-and-readiness-loop.html
+            - code [ref=f8e145]: 076-product-context-interview-and-readiness-loop
+          - cell "done" [ref=f8e146]
+          - cell "release" [ref=f8e147]
+          - cell "2026-07-09" [ref=f8e148]
+          - cell "2026-07-08" [ref=f8e149]
+          - 'cell "KO 대시보드: `memory/dashboard.html#issue-db` 이슈 상세: `memory/issue-076-product-context-interview-and-readiness-loop.html` PR/로컬 마커: `https://github.com/dongwonlee222/moduflow/pull/12` 브랜…" [ref=f8e150]':
+            - generic [ref=f8e151]: KO
+            - text: "대시보드: `memory/dashboard.html#issue-db` 이슈 상세: `memory/issue-076-product-context-interview-and-readiness-loop.html` PR/로컬 마커: `https://github.com/dongwonlee222/moduflow/pull/12` 브랜…"
+          - cell "I S - P T R PR Rel" [ref=f8e152]:
+            - generic [ref=f8e153]: I
+            - generic [ref=f8e154]: S
+            - generic [ref=f8e155]: "-"
+            - generic [ref=f8e156]: P
+            - generic [ref=f8e157]: T
+            - generic [ref=f8e158]: R
+            - generic [ref=f8e159]: PR
+            - generic [ref=f8e160]: Rel
+          - cell "-" [ref=f8e161]
+          - cell "0" [ref=f8e162]
+        - row [ref=f8e163] [cursor=pointer]:
+          - cell "75" [ref=f8e164]
+          - cell [ref=f8e165]:
+            - 'link "Issue 075: Issue-Less Context Capture" [ref=f8e166]':
+              - /url: issue-075-issue-less-context-capture.html
+            - code [ref=f8e167]: 075-issue-less-context-capture
+          - cell "done" [ref=f8e168]
+          - cell "release" [ref=f8e169]
+          - cell "2026-07-06" [ref=f8e170]
+          - cell "2026-07-06" [ref=f8e171]
+          - cell "KO 이 저장소의 운영자는 AI 에이전트다(24일간 이슈 약 75개, 이슈+스펙+플랜 당일 작성). 이 운영자에게 이슈 생성 비용은 초 단위다 — \"이슈가 무겁다\"는 애초에 진짜 문제가 아니었다. 074가 실증한 진짜 실패는:" [ref=f8e172]:
+            - generic [ref=f8e173]: KO
+            - text: "이 저장소의 운영자는 AI 에이전트다(24일간 이슈 약 75개, 이슈+스펙+플랜 당일 작성). 이 운영자에게 이슈 생성 비용은 초 단위다 — \"이슈가 무겁다\"는 애초에 진짜 문제가 아니었다. 074가 실증한 진짜 실패는:"
+          - cell "I S KO P T R PR Rel" [ref=f8e174]:
+            - generic [ref=f8e175]: I
+            - generic [ref=f8e176]: S
+            - generic [ref=f8e177]: KO
+            - generic [ref=f8e178]: P
+            - generic [ref=f8e179]: T
+            - generic [ref=f8e180]: R
+            - generic [ref=f8e181]: PR
+            - generic [ref=f8e182]: Rel
+          - cell "-" [ref=f8e183]
+          - cell "5" [ref=f8e184]
+        - row [ref=f8e185] [cursor=pointer]:
+          - cell "74" [ref=f8e186]
+          - cell [ref=f8e187]:
+            - 'link "Issue 074: Sync Fetch Sandbox Handling" [ref=f8e188]':
+              - /url: issue-074-sync-fetch-sandbox-handling.html
+            - code [ref=f8e189]: 074-sync-fetch-sandbox-handling
+          - cell "done" [ref=f8e190]
+          - cell "release" [ref=f8e191]
+          - cell "2026-07-06" [ref=f8e192]
+          - cell "2026-07-06" [ref=f8e193]
+          - 'cell "KO 대시보드: `memory/dashboard.html#issue-db` 이슈 상세: `memory/issue-074-sync-fetch-sandbox-handling.html` PR/로컬 마커: `local:074-sync-fetch-sandbox-handling:draft-pr-ready` 브랜치: `codex/074-…" [ref=f8e194]':
+            - generic [ref=f8e195]: KO
+            - text: "대시보드: `memory/dashboard.html#issue-db` 이슈 상세: `memory/issue-074-sync-fetch-sandbox-handling.html` PR/로컬 마커: `local:074-sync-fetch-sandbox-handling:draft-pr-ready` 브랜치: `codex/074-…"
+          - cell "I - - - - R PR Rel" [ref=f8e196]:
+            - generic [ref=f8e197]: I
+            - generic [ref=f8e198]: "-"
+            - generic [ref=f8e199]: "-"
+            - generic [ref=f8e200]: "-"
+            - generic [ref=f8e201]: "-"
+            - generic [ref=f8e202]: R
+            - generic [ref=f8e203]: PR
+            - generic [ref=f8e204]: Rel
+          - cell "-" [ref=f8e205]
+          - cell "0" [ref=f8e206]
+        - row [ref=f8e207] [cursor=pointer]:
+          - cell "11" [ref=f8e208]
+          - cell [ref=f8e209]:
+            - 'link "Issue 011: Workflow Task Tracking (산출물=추적)" [ref=f8e210]':
+              - /url: issue-011-workflow-task-tracking.html
+            - code [ref=f8e211]: 011-workflow-task-tracking
+          - cell "done" [ref=f8e212]
+          - cell "plan" [ref=f8e213]
+          - cell "2026-07-06" [ref=f8e214]
+          - cell "2026-06-16" [ref=f8e215]
+          - cell "KO spec, plan, design, review처럼 산출물을 만드는 모든 단계가 소유 이슈의 추적 task로 남도록 합니다." [ref=f8e216]:
+            - generic [ref=f8e217]: KO
+            - text: spec, plan, design, review처럼 산출물을 만드는 모든 단계가 소유 이슈의 추적 task로 남도록 합니다.
+          - cell "I S - - - - - -" [ref=f8e218]:
+            - generic [ref=f8e219]: I
+            - generic [ref=f8e220]: S
+            - generic [ref=f8e221]: "-"
+            - generic [ref=f8e222]: "-"
+            - generic [ref=f8e223]: "-"
+            - generic [ref=f8e224]: "-"
+            - generic [ref=f8e225]: "-"
+            - generic [ref=f8e226]: "-"
+          - cell "-" [ref=f8e227]
+          - cell "0" [ref=f8e228]
+        - row [ref=f8e229] [cursor=pointer]:
+          - cell "9" [ref=f8e230]
+          - cell [ref=f8e231]:
+            - 'link "Issue 009: ModuFlow Hub Command And 0.2.4 Release" [ref=f8e232]':
+              - /url: issue-009-moduflow-hub-command.html
+            - code [ref=f8e233]: 009-moduflow-hub-command
+          - cell "done" [ref=f8e234]
+          - cell "spec" [ref=f8e235]
+          - cell "2026-07-06" [ref=f8e236]
+          - cell "2026-06-12" [ref=f8e237]
+          - 'cell "KO 사용자가 하나의 `/moduflow` 진입점만 기억해도 되도록 허브 명령을 추가하고 0.2.4 릴리즈에 반영합니다." [ref=f8e238]':
+            - generic [ref=f8e239]: KO
+            - text: "사용자가 하나의 `/moduflow` 진입점만 기억해도 되도록 허브 명령을 추가하고 0.2.4 릴리즈에 반영합니다."
+          - cell "I - - - - - - -" [ref=f8e240]:
+            - generic [ref=f8e241]: I
+            - generic [ref=f8e242]: "-"
+            - generic [ref=f8e243]: "-"
+            - generic [ref=f8e244]: "-"
+            - generic [ref=f8e245]: "-"
+            - generic [ref=f8e246]: "-"
+            - generic [ref=f8e247]: "-"
+            - generic [ref=f8e248]: "-"
+          - cell "-" [ref=f8e249]
+          - cell "0" [ref=f8e250]
+        - row [ref=f8e251] [cursor=pointer]:
+          - cell "8" [ref=f8e252]
+          - cell [ref=f8e253]:
+            - 'link "Issue 008: Daily Work Log And GBrain Pilot" [ref=f8e254]':
+              - /url: issue-008-daily-work-log-and-gbrain-pilot.html
+            - code [ref=f8e255]: 008-daily-work-log-and-gbrain-pilot
+          - cell "done" [ref=f8e256]
+          - cell "spec" [ref=f8e257]
+          - cell "2026-07-06" [ref=f8e258]
+          - cell "2026-06-11" [ref=f8e259]
+          - cell "KO 2026-06-11 릴리즈 후속 작업, 설치 부트스트랩 수정, 짧은 alias, GBrain 로컬 메모리 파일럿을 기록합니다." [ref=f8e260]:
+            - generic [ref=f8e261]: KO
+            - text: 2026-06-11 릴리즈 후속 작업, 설치 부트스트랩 수정, 짧은 alias, GBrain 로컬 메모리 파일럿을 기록합니다.
+          - cell "I - - - - - - -" [ref=f8e262]:
+            - generic [ref=f8e263]: I
+            - generic [ref=f8e264]: "-"
+            - generic [ref=f8e265]: "-"
+            - generic [ref=f8e266]: "-"
+            - generic [ref=f8e267]: "-"
+            - generic [ref=f8e268]: "-"
+            - generic [ref=f8e269]: "-"
+            - generic [ref=f8e270]: "-"
+          - cell "-" [ref=f8e271]
+          - cell "0" [ref=f8e272]
+        - row [ref=f8e273] [cursor=pointer]:
+          - cell "6" [ref=f8e274]
+          - cell [ref=f8e275]:
+            - 'link "Issue 006: Validation And Distribution" [ref=f8e276]':
+              - /url: issue-006-validation-and-distribution.html
+            - code [ref=f8e277]: 006-validation-and-distribution
+          - cell "done" [ref=f8e278]
+          - cell "execute" [ref=f8e279]
+          - cell "2026-07-06" [ref=f8e280]
+          - cell "2026-06-11" [ref=f8e281]
+          - cell "KO 여러 사람이 안전하게 사용할 수 있도록 검증, 설치, 마이그레이션, 릴리즈 도구를 강화합니다." [ref=f8e282]:
+            - generic [ref=f8e283]: KO
+            - text: 여러 사람이 안전하게 사용할 수 있도록 검증, 설치, 마이그레이션, 릴리즈 도구를 강화합니다.
+          - cell "I S - P T - - -" [ref=f8e284]:
+            - generic [ref=f8e285]: I
+            - generic [ref=f8e286]: S
+            - generic [ref=f8e287]: "-"
+            - generic [ref=f8e288]: P
+            - generic [ref=f8e289]: T
+            - generic [ref=f8e290]: "-"
+            - generic [ref=f8e291]: "-"
+            - generic [ref=f8e292]: "-"
+          - cell "-" [ref=f8e293]
+          - cell "0" [ref=f8e294]
+        - row [ref=f8e295] [cursor=pointer]:
+          - cell "5" [ref=f8e296]
+          - cell [ref=f8e297]:
+            - 'link "Issue 005: Team Workflow" [ref=f8e298]':
+              - /url: issue-005-team-workflow.html
+            - code [ref=f8e299]: 005-team-workflow
+          - cell "done" [ref=f8e300]
+          - cell "execute" [ref=f8e301]
+          - cell "2026-07-06" [ref=f8e302]
+          - cell "2026-06-11" [ref=f8e303]
+          - cell "KO 팀 협업에 필요한 상태, 리뷰 게이트, 역할, 승인, 핸드오프 산출물을 추가합니다." [ref=f8e304]:
+            - generic [ref=f8e305]: KO
+            - text: 팀 협업에 필요한 상태, 리뷰 게이트, 역할, 승인, 핸드오프 산출물을 추가합니다.
+          - cell "I S - P T - - -" [ref=f8e306]:
+            - generic [ref=f8e307]: I
+            - generic [ref=f8e308]: S
+            - generic [ref=f8e309]: "-"
+            - generic [ref=f8e310]: P
+            - generic [ref=f8e311]: T
+            - generic [ref=f8e312]: "-"
+            - generic [ref=f8e313]: "-"
+            - generic [ref=f8e314]: "-"
+          - cell "-" [ref=f8e315]
+          - cell "0" [ref=f8e316]
+        - row [ref=f8e317] [cursor=pointer]:
+          - cell "4" [ref=f8e318]
+          - cell [ref=f8e319]:
+            - 'link "Issue 004: Portfolio Workspace" [ref=f8e320]':
+              - /url: issue-004-portfolio-workspace.html
+            - code [ref=f8e321]: 004-portfolio-workspace
+          - cell "done" [ref=f8e322]
+          - cell "execute" [ref=f8e323]
+          - cell "2026-07-06" [ref=f8e324]
+          - cell "2026-06-11" [ref=f8e325]
+          - cell "KO 여러 ModuFlow 프로젝트를 한 곳에서 추적하고 포트폴리오 대시보드로 볼 수 있는 중앙 작업공간을 만듭니다." [ref=f8e326]:
+            - generic [ref=f8e327]: KO
+            - text: 여러 ModuFlow 프로젝트를 한 곳에서 추적하고 포트폴리오 대시보드로 볼 수 있는 중앙 작업공간을 만듭니다.
+          - cell "I S - P T - - -" [ref=f8e328]:
+            - generic [ref=f8e329]: I
+            - generic [ref=f8e330]: S
+            - generic [ref=f8e331]: "-"
+            - generic [ref=f8e332]: P
+            - generic [ref=f8e333]: T
+            - generic [ref=f8e334]: "-"
+            - generic [ref=f8e335]: "-"
+            - generic [ref=f8e336]: "-"
+          - cell "-" [ref=f8e337]
+          - cell "0" [ref=f8e338]
+        - row [ref=f8e339] [cursor=pointer]:
+          - cell "2" [ref=f8e340]
+          - cell [ref=f8e341]:
+            - 'link "Issue 002: Project Profile" [ref=f8e342]':
+              - /url: issue-002-project-profile.html
+            - code [ref=f8e343]: 002-project-profile
+          - cell "done" [ref=f8e344]
+          - cell "execute" [ref=f8e345]
+          - cell "2026-07-06" [ref=f8e346]
+          - cell "2026-06-11" [ref=f8e347]
+          - cell "KO 제품 맥락, 환경, 연동, 담당자, 운영 메모를 담는 표준 프로젝트 프로필 계층을 만듭니다." [ref=f8e348]:
+            - generic [ref=f8e349]: KO
+            - text: 제품 맥락, 환경, 연동, 담당자, 운영 메모를 담는 표준 프로젝트 프로필 계층을 만듭니다.
+          - cell "I S - P T - - -" [ref=f8e350]:
+            - generic [ref=f8e351]: I
+            - generic [ref=f8e352]: S
+            - generic [ref=f8e353]: "-"
+            - generic [ref=f8e354]: P
+            - generic [ref=f8e355]: T
+            - generic [ref=f8e356]: "-"
+            - generic [ref=f8e357]: "-"
+            - generic [ref=f8e358]: "-"
+          - cell "-" [ref=f8e359]
+          - cell "0" [ref=f8e360]
+        - row [ref=f8e361] [cursor=pointer]:
+          - cell "1" [ref=f8e362]
+          - cell [ref=f8e363]:
+            - 'link "Issue 001: Project Migration" [ref=f8e364]':
+              - /url: issue-001-project-migration.html
+            - code [ref=f8e365]: 001-project-migration
+          - cell "done" [ref=f8e366]
+          - cell "execute" [ref=f8e367]
+          - cell "2026-07-06" [ref=f8e368]
+          - cell "2026-06-11" [ref=f8e369]
+          - cell "KO 기존 폴더, 문서, 이슈, 리포트가 있는 프로젝트를 ModuFlow 구조로 안전하게 옮기는 마이그레이션 흐름을 정의합니다." [ref=f8e370]:
+            - generic [ref=f8e371]: KO
+            - text: 기존 폴더, 문서, 이슈, 리포트가 있는 프로젝트를 ModuFlow 구조로 안전하게 옮기는 마이그레이션 흐름을 정의합니다.
+          - cell "I S - P T - - -" [ref=f8e372]:
+            - generic [ref=f8e373]: I
+            - generic [ref=f8e374]: S
+            - generic [ref=f8e375]: "-"
+            - generic [ref=f8e376]: P
+            - generic [ref=f8e377]: T
+            - generic [ref=f8e378]: "-"
+            - generic [ref=f8e379]: "-"
+            - generic [ref=f8e380]: "-"
+          - cell "-" [ref=f8e381]
+          - cell "0" [ref=f8e382]
+        - row [ref=f8e383] [cursor=pointer]:
+          - cell "73" [ref=f8e384]
+          - cell [ref=f8e385]:
+            - link "073-project-constitution-steering" [ref=f8e386]:
+              - /url: issue-073-project-constitution-steering.html
+            - code [ref=f8e387]: 073-project-constitution-steering
+          - cell "done" [ref=f8e388]
+          - cell "release" [ref=f8e389]
+          - cell "2026-07-05" [ref=f8e390]
+          - cell "2026-07-05" [ref=f8e391]
+          - 'cell "KO 모든 플랜이 프로젝트의 상비 엔지니어링 규칙을 자기 Global Constraints로 재작성한다. 2026-07-06 세션이 측정된 증거다: 세 플랜(075/071/072)이 각각 8·10·9개의 GC를 실었고, 상당수가 같은 하우스 룰의 재진술이었다 — runner 주입 패턴, TDD 순서, fail-open 규율,…" [ref=f8e392]':
+            - generic [ref=f8e393]: KO
+            - text: "모든 플랜이 프로젝트의 상비 엔지니어링 규칙을 자기 Global Constraints로 재작성한다. 2026-07-06 세션이 측정된 증거다: 세 플랜(075/071/072)이 각각 8·10·9개의 GC를 실었고, 상당수가 같은 하우스 룰의 재진술이었다 — runner 주입 패턴, TDD 순서, fail-open 규율,…"
+          - cell "I S KO P T R PR Rel" [ref=f8e394]:
+            - generic [ref=f8e395]: I
+            - generic [ref=f8e396]: S
+            - generic [ref=f8e397]: KO
+            - generic [ref=f8e398]: P
+            - generic [ref=f8e399]: T
+            - generic [ref=f8e400]: R
+            - generic [ref=f8e401]: PR
+            - generic [ref=f8e402]: Rel
+          - cell "-" [ref=f8e403]
+          - cell "0" [ref=f8e404]
+        - row [ref=f8e405] [cursor=pointer]:
+          - cell "72" [ref=f8e406]
+          - cell [ref=f8e407]:
+            - link "072-lifecycle-hooks-automation" [ref=f8e408]:
+              - /url: issue-072-lifecycle-hooks-automation.html
+            - code [ref=f8e409]: 072-lifecycle-hooks-automation
+          - cell "done" [ref=f8e410]
+          - cell "release" [ref=f8e411]
+          - cell "2026-07-05" [ref=f8e412]
+          - cell "2026-07-05" [ref=f8e413]
+          - 'cell "KO 라이프사이클 전파가 \"기억해서 실행하기\" 규율이고, 같은 방식으로 계속 실패한다: 048의 대시보드는 이슈 5개 동안 조용히 낡아 있었고, 065는 활성화 드리프트를 기록했으며, 이 스펙을 쓴 당일(2026-07-06)에도 조율 에이전트 본인이 `lifecycle drift` 검증 에러를 두 번(071 활성화, 075…" [ref=f8e414]':
+            - generic [ref=f8e415]: KO
+            - text: "라이프사이클 전파가 \"기억해서 실행하기\" 규율이고, 같은 방식으로 계속 실패한다: 048의 대시보드는 이슈 5개 동안 조용히 낡아 있었고, 065는 활성화 드리프트를 기록했으며, 이 스펙을 쓴 당일(2026-07-06)에도 조율 에이전트 본인이 `lifecycle drift` 검증 에러를 두 번(071 활성화, 075…"
+          - cell "I S KO P T R PR Rel" [ref=f8e416]:
+            - generic [ref=f8e417]: I
+            - generic [ref=f8e418]: S
+            - generic [ref=f8e419]: KO
+            - generic [ref=f8e420]: P
+            - generic [ref=f8e421]: T
+            - generic [ref=f8e422]: R
+            - generic [ref=f8e423]: PR
+            - generic [ref=f8e424]: Rel
+          - cell "-" [ref=f8e425]
+          - cell "0" [ref=f8e426]
+        - row [ref=f8e427] [cursor=pointer]:
+          - cell "71" [ref=f8e428]
+          - cell [ref=f8e429]:
+            - link "071-spec-code-converge-check" [ref=f8e430]:
+              - /url: issue-071-spec-code-converge-check.html
+            - code [ref=f8e431]: 071-spec-code-converge-check
+          - cell "done" [ref=f8e432]
+          - cell "release" [ref=f8e433]
+          - cell "2026-07-05" [ref=f8e434]
+          - cell "2026-07-06" [ref=f8e435]
+          - 'cell "KO 출시된 코드가 스펙과 여전히 일치하는지 검사하는 것이 없다. `product:review`는 리뷰 시점에 변경을 한 번 게이트할 뿐, done 커밋 이후 스펙↔코드 정렬은 조용히 부식된다 — 구현되지 않은 AC, 스펙에 없는 동작, 원설계와 모순되는 후속 변경이 모두 미탐지. 라이프사이클 드리프트 게이트는 상태 파일만…" [ref=f8e436]':
+            - generic [ref=f8e437]: KO
+            - text: "출시된 코드가 스펙과 여전히 일치하는지 검사하는 것이 없다. `product:review`는 리뷰 시점에 변경을 한 번 게이트할 뿐, done 커밋 이후 스펙↔코드 정렬은 조용히 부식된다 — 구현되지 않은 AC, 스펙에 없는 동작, 원설계와 모순되는 후속 변경이 모두 미탐지. 라이프사이클 드리프트 게이트는 상태 파일만…"
+          - cell "I S KO P T R PR Rel" [ref=f8e438]:
+            - generic [ref=f8e439]: I
+            - generic [ref=f8e440]: S
+            - generic [ref=f8e441]: KO
+            - generic [ref=f8e442]: P
+            - generic [ref=f8e443]: T
+            - generic [ref=f8e444]: R
+            - generic [ref=f8e445]: PR
+            - generic [ref=f8e446]: Rel
+          - cell "-" [ref=f8e447]
+          - cell "1" [ref=f8e448]
+        - row [ref=f8e449] [cursor=pointer]:
+          - cell "70" [ref=f8e450]
+          - cell [ref=f8e451]:
+            - link "070-spec-consistency-analyze" [ref=f8e452]:
+              - /url: issue-070-spec-consistency-analyze.html
+            - code [ref=f8e453]: 070-spec-consistency-analyze
+          - cell "done" [ref=f8e454]
+          - cell "execute" [ref=f8e455]
+          - cell "2026-07-05" [ref=f8e456]
+          - cell "2026-07-05" [ref=f8e457]
+          - 'cell "EN A read-only `product:analyze`-style pass validates that an issue''s spec.md, plan.md, and tasks.md agree with each other BEFORE execution starts: requirement-to-task coverage, dupl…" [ref=f8e458]':
+            - generic [ref=f8e459]: EN
+            - text: "A read-only `product:analyze`-style pass validates that an issue's spec.md, plan.md, and tasks.md agree with each other BEFORE execution starts: requirement-to-task coverage, dupl…"
+          - cell "I S - P T - - -" [ref=f8e460]:
+            - generic [ref=f8e461]: I
+            - generic [ref=f8e462]: S
+            - generic [ref=f8e463]: "-"
+            - generic [ref=f8e464]: P
+            - generic [ref=f8e465]: T
+            - generic [ref=f8e466]: "-"
+            - generic [ref=f8e467]: "-"
+            - generic [ref=f8e468]: "-"
+          - cell "-" [ref=f8e469]
+          - cell "0" [ref=f8e470]
+        - row [ref=f8e471] [cursor=pointer]:
+          - cell "69" [ref=f8e472]
+          - cell [ref=f8e473]:
+            - link "069-issue-dependency-priority-model" [ref=f8e474]:
+              - /url: issue-069-issue-dependency-priority-model.html
+            - code [ref=f8e475]: 069-issue-dependency-priority-model
+          - cell "done" [ref=f8e476]
+          - cell "execute" [ref=f8e477]
+          - cell "2026-07-05" [ref=f8e478]
+          - cell "2026-07-05" [ref=f8e479]
+          - 'cell "EN Issue files carry structured `blocked_by`/`blocks` dependency edges and a `priority` field (additive Markdown metadata, not a database), and a \"ready work\" query answers \"what can…" [ref=f8e480]':
+            - generic [ref=f8e481]: EN
+            - text: "Issue files carry structured `blocked_by`/`blocks` dependency edges and a `priority` field (additive Markdown metadata, not a database), and a \"ready work\" query answers \"what can…"
+          - cell "I S - P T - - -" [ref=f8e482]:
+            - generic [ref=f8e483]: I
+            - generic [ref=f8e484]: S
+            - generic [ref=f8e485]: "-"
+            - generic [ref=f8e486]: P
+            - generic [ref=f8e487]: T
+            - generic [ref=f8e488]: "-"
+            - generic [ref=f8e489]: "-"
+            - generic [ref=f8e490]: "-"
+          - cell "-" [ref=f8e491]
+          - cell "0" [ref=f8e492]
+        - row [ref=f8e493] [cursor=pointer]:
+          - cell "68" [ref=f8e494]
+          - cell [ref=f8e495]:
+            - link "068-machine-query-surface" [ref=f8e496]:
+              - /url: issue-068-machine-query-surface.html
+            - code [ref=f8e497]: 068-machine-query-surface
+          - cell "done" [ref=f8e498]
+          - cell "execute" [ref=f8e499]
+          - cell "2026-07-05" [ref=f8e500]
+          - cell "2026-07-05" [ref=f8e501]
+          - cell "EN Agents (ModuFlow's own subagents and third-party tools) query and mutate ModuFlow state through a structured machine interface — a real MCP server (list/get/update-status/ready to…" [ref=f8e502]:
+            - generic [ref=f8e503]: EN
+            - text: Agents (ModuFlow's own subagents and third-party tools) query and mutate ModuFlow state through a structured machine interface — a real MCP server (list/get/update-status/ready to…
+          - cell "I S - P T - - -" [ref=f8e504]:
+            - generic [ref=f8e505]: I
+            - generic [ref=f8e506]: S
+            - generic [ref=f8e507]: "-"
+            - generic [ref=f8e508]: P
+            - generic [ref=f8e509]: T
+            - generic [ref=f8e510]: "-"
+            - generic [ref=f8e511]: "-"
+            - generic [ref=f8e512]: "-"
+          - cell "-" [ref=f8e513]
+          - cell "0" [ref=f8e514]
+        - row [ref=f8e515] [cursor=pointer]:
+          - cell "67" [ref=f8e516]
+          - cell [ref=f8e517]:
+            - link "067-upstream-adapter-absorption" [ref=f8e518]:
+              - /url: issue-067-upstream-adapter-absorption.html
+            - code [ref=f8e519]: 067-upstream-adapter-absorption
+          - cell "done" [ref=f8e520]
+          - cell "spec" [ref=f8e521]
+          - cell "2026-07-05" [ref=f8e522]
+          - cell "2026-06-12" [ref=f8e523]
+          - 'cell "EN The adapters in `adapters/*.yaml` reflect the *current* state of their upstream sources instead of a frozen 2026-06-12 snapshot, and `vendor.lock.json`''s `last_synced` stamp means…" [ref=f8e524]':
+            - generic [ref=f8e525]: EN
+            - text: "The adapters in `adapters/*.yaml` reflect the *current* state of their upstream sources instead of a frozen 2026-06-12 snapshot, and `vendor.lock.json`'s `last_synced` stamp means…"
+          - cell "I - - - - - - -" [ref=f8e526]:
+            - generic [ref=f8e527]: I
+            - generic [ref=f8e528]: "-"
+            - generic [ref=f8e529]: "-"
+            - generic [ref=f8e530]: "-"
+            - generic [ref=f8e531]: "-"
+            - generic [ref=f8e532]: "-"
+            - generic [ref=f8e533]: "-"
+            - generic [ref=f8e534]: "-"
+          - cell "-" [ref=f8e535]
+          - cell "0" [ref=f8e536]
+        - row [ref=f8e537] [cursor=pointer]:
+          - cell "66" [ref=f8e538]
+          - cell [ref=f8e539]:
+            - link "066-legacy-issue-status-migration" [ref=f8e540]:
+              - /url: issue-066-legacy-issue-status-migration.html
+            - code [ref=f8e541]: 066-legacy-issue-status-migration
+          - cell "done" [ref=f8e542]
+          - cell "spec" [ref=f8e543]
+          - cell "2026-07-05" [ref=f8e544]
+          - cell "2026-07-05" [ref=f8e545]
+          - 'cell "EN Every issue file in `issues/` carries the canonical `**Status: ...**` inline line (issue `048` schema), so `project_lifecycle.py` and issue listings report accurate states for the…" [ref=f8e546]':
+            - generic [ref=f8e547]: EN
+            - text: "Every issue file in `issues/` carries the canonical `**Status: ...**` inline line (issue `048` schema), so `project_lifecycle.py` and issue listings report accurate states for the…"
+          - cell "I - - - - - - -" [ref=f8e548]:
+            - generic [ref=f8e549]: I
+            - generic [ref=f8e550]: "-"
+            - generic [ref=f8e551]: "-"
+            - generic [ref=f8e552]: "-"
+            - generic [ref=f8e553]: "-"
+            - generic [ref=f8e554]: "-"
+            - generic [ref=f8e555]: "-"
+            - generic [ref=f8e556]: "-"
+          - cell "-" [ref=f8e557]
+          - cell "0" [ref=f8e558]
+        - row [ref=f8e559] [cursor=pointer]:
+          - cell "65" [ref=f8e560]
+          - cell [ref=f8e561]:
+            - link "065-installed-plugin-staleness-detection" [ref=f8e562]:
+              - /url: issue-065-installed-plugin-staleness-detection.html
+            - code [ref=f8e563]: 065-installed-plugin-staleness-detection
+          - cell "done" [ref=f8e564]
+          - cell "spec" [ref=f8e565]
+          - cell "2026-07-05" [ref=f8e566]
+          - cell "2026-07-05" [ref=f8e567]
+          - 'cell "EN ModuFlow detects when the *installed* plugin copy (Claude Code marketplace cache / Codex personal cache) has fallen behind the repo''s own `.claude-plugin/plugin.json` version, and…" [ref=f8e568]':
+            - generic [ref=f8e569]: EN
+            - text: "ModuFlow detects when the *installed* plugin copy (Claude Code marketplace cache / Codex personal cache) has fallen behind the repo's own `.claude-plugin/plugin.json` version, and…"
+          - cell "I - - - - - - -" [ref=f8e570]:
+            - generic [ref=f8e571]: I
+            - generic [ref=f8e572]: "-"
+            - generic [ref=f8e573]: "-"
+            - generic [ref=f8e574]: "-"
+            - generic [ref=f8e575]: "-"
+            - generic [ref=f8e576]: "-"
+            - generic [ref=f8e577]: "-"
+            - generic [ref=f8e578]: "-"
+          - cell "-" [ref=f8e579]
+          - cell "0" [ref=f8e580]
+        - row [ref=f8e581] [cursor=pointer]:
+          - cell "64" [ref=f8e582]
+          - cell [ref=f8e583]:
+            - link "064-version-bump-policy-and-enforcement" [ref=f8e584]:
+              - /url: issue-064-version-bump-policy-and-enforcement.html
+            - code [ref=f8e585]: 064-version-bump-policy-and-enforcement
+          - cell "done" [ref=f8e586]
+          - cell "spec" [ref=f8e587]
+          - cell "2026-07-05" [ref=f8e588]
+          - cell "2026-07-05" [ref=f8e589]
+          - 'cell "EN Two corrections to `063-version-bump-on-done`, both raised by an advisory review of that issue:" [ref=f8e590]':
+            - generic [ref=f8e591]: EN
+            - text: "Two corrections to `063-version-bump-on-done`, both raised by an advisory review of that issue:"
+          - cell "I - - - - - - -" [ref=f8e592]:
+            - generic [ref=f8e593]: I
+            - generic [ref=f8e594]: "-"
+            - generic [ref=f8e595]: "-"
+            - generic [ref=f8e596]: "-"
+            - generic [ref=f8e597]: "-"
+            - generic [ref=f8e598]: "-"
+            - generic [ref=f8e599]: "-"
+            - generic [ref=f8e600]: "-"
+          - cell "-" [ref=f8e601]
+          - cell "0" [ref=f8e602]
+        - row [ref=f8e603] [cursor=pointer]:
+          - cell "63" [ref=f8e604]
+          - cell [ref=f8e605]:
+            - link "063-version-bump-on-done" [ref=f8e606]:
+              - /url: issue-063-version-bump-on-done.html
+            - code [ref=f8e607]: 063-version-bump-on-done
+          - cell "done" [ref=f8e608]
+          - cell "execute" [ref=f8e609]
+          - cell "2026-07-05" [ref=f8e610]
+          - cell "2026-07-05" [ref=f8e611]
+          - 'cell "EN `.claude-plugin/plugin.json`''s version bumps automatically as part of the `061` auto-commit-push-on-done flow, classified from the completing commit''s Conventional-Commit-style pr…" [ref=f8e612]':
+            - generic [ref=f8e613]: EN
+            - text: "`.claude-plugin/plugin.json`'s version bumps automatically as part of the `061` auto-commit-push-on-done flow, classified from the completing commit's Conventional-Commit-style pr…"
+          - cell "I S - P - - - -" [ref=f8e614]:
+            - generic [ref=f8e615]: I
+            - generic [ref=f8e616]: S
+            - generic [ref=f8e617]: "-"
+            - generic [ref=f8e618]: P
+            - generic [ref=f8e619]: "-"
+            - generic [ref=f8e620]: "-"
+            - generic [ref=f8e621]: "-"
+            - generic [ref=f8e622]: "-"
+          - cell "-" [ref=f8e623]
+          - cell "0" [ref=f8e624]
+        - row [ref=f8e625] [cursor=pointer]:
+          - cell "62" [ref=f8e626]
+          - cell [ref=f8e627]:
+            - link "062-detect-unmerged-branch-work" [ref=f8e628]:
+              - /url: issue-062-detect-unmerged-branch-work.html
+            - code [ref=f8e629]: 062-detect-unmerged-branch-work
+          - cell "done" [ref=f8e630]
+          - cell "execute" [ref=f8e631]
+          - cell "2026-07-05" [ref=f8e632]
+          - cell "2026-07-05" [ref=f8e633]
+          - 'cell "EN `product:sync`/`product:status` also detect completed (or in-progress) issue work sitting on remote branches other than the current one, not just freshness of the current branch a…" [ref=f8e634]':
+            - generic [ref=f8e635]: EN
+            - text: "`product:sync`/`product:status` also detect completed (or in-progress) issue work sitting on remote branches other than the current one, not just freshness of the current branch a…"
+          - cell "I S - P - - - -" [ref=f8e636]:
+            - generic [ref=f8e637]: I
+            - generic [ref=f8e638]: S
+            - generic [ref=f8e639]: "-"
+            - generic [ref=f8e640]: P
+            - generic [ref=f8e641]: "-"
+            - generic [ref=f8e642]: "-"
+            - generic [ref=f8e643]: "-"
+            - generic [ref=f8e644]: "-"
+          - cell "-" [ref=f8e645]
+          - cell "0" [ref=f8e646]
+        - row [ref=f8e647] [cursor=pointer]:
+          - cell "61" [ref=f8e648]
+          - cell [ref=f8e649]:
+            - link "061-auto-commit-push-on-issue-done" [ref=f8e650]:
+              - /url: issue-061-auto-commit-push-on-issue-done.html
+            - code [ref=f8e651]: 061-auto-commit-push-on-issue-done
+          - cell "done" [ref=f8e652]
+          - cell "spec" [ref=f8e653]
+          - cell "2026-07-05" [ref=f8e654]
+          - cell "2026-07-05" [ref=f8e655]
+          - 'cell "EN When an agent (Antigravity, Claude Code, or Codex) marks a ModuFlow issue `Status: done` and `release_check.py` passes, it commits and pushes immediately without asking for separa…" [ref=f8e656]':
+            - generic [ref=f8e657]: EN
+            - text: "When an agent (Antigravity, Claude Code, or Codex) marks a ModuFlow issue `Status: done` and `release_check.py` passes, it commits and pushes immediately without asking for separa…"
+          - cell "I - - - - - - -" [ref=f8e658]:
+            - generic [ref=f8e659]: I
+            - generic [ref=f8e660]: "-"
+            - generic [ref=f8e661]: "-"
+            - generic [ref=f8e662]: "-"
+            - generic [ref=f8e663]: "-"
+            - generic [ref=f8e664]: "-"
+            - generic [ref=f8e665]: "-"
+            - generic [ref=f8e666]: "-"
+          - cell "-" [ref=f8e667]
+          - cell "0" [ref=f8e668]
+        - row [ref=f8e669] [cursor=pointer]:
+          - cell "60" [ref=f8e670]
+          - cell [ref=f8e671]:
+            - link "060-cross-agent-output-format-convention" [ref=f8e672]:
+              - /url: issue-060-cross-agent-output-format-convention.html
+            - code [ref=f8e673]: 060-cross-agent-output-format-convention
+          - cell "done" [ref=f8e674]
+          - cell "plan" [ref=f8e675]
+          - cell "2026-07-05" [ref=f8e676]
+          - cell "2026-07-05" [ref=f8e677]
+          - 'cell "EN A project-root `AGENTS.md` that Antigravity, Claude Code, and Codex all read natively (no connector needed as of 2026 — see benchmark) before writing ModuFlow artifacts (issues, s…" [ref=f8e678]':
+            - generic [ref=f8e679]: EN
+            - text: "A project-root `AGENTS.md` that Antigravity, Claude Code, and Codex all read natively (no connector needed as of 2026 — see benchmark) before writing ModuFlow artifacts (issues, s…"
+          - cell "I S - - - - - -" [ref=f8e680]:
+            - generic [ref=f8e681]: I
+            - generic [ref=f8e682]: S
+            - generic [ref=f8e683]: "-"
+            - generic [ref=f8e684]: "-"
+            - generic [ref=f8e685]: "-"
+            - generic [ref=f8e686]: "-"
+            - generic [ref=f8e687]: "-"
+            - generic [ref=f8e688]: "-"
+          - cell "-" [ref=f8e689]
+          - cell "0" [ref=f8e690]
+        - row [ref=f8e691] [cursor=pointer]:
+          - cell "59" [ref=f8e692]
+          - cell [ref=f8e693]:
+            - link "059-auto-fetch-in-repo-sync" [ref=f8e694]:
+              - /url: issue-059-auto-fetch-in-repo-sync.html
+            - code [ref=f8e695]: 059-auto-fetch-in-repo-sync
+          - cell "done" [ref=f8e696]
+          - cell "execute" [ref=f8e697]
+          - cell "2026-07-05" [ref=f8e698]
+          - cell "2026-07-05" [ref=f8e699]
+          - 'cell "EN ModuFlow automatically performs a safe `git fetch` in the background when running sync checks (`product:sync` and status preflights), ensuring that it compares local artifact stat…" [ref=f8e700]':
+            - generic [ref=f8e701]: EN
+            - text: "ModuFlow automatically performs a safe `git fetch` in the background when running sync checks (`product:sync` and status preflights), ensuring that it compares local artifact stat…"
+          - cell "I S - P T - - -" [ref=f8e702]:
+            - generic [ref=f8e703]: I
+            - generic [ref=f8e704]: S
+            - generic [ref=f8e705]: "-"
+            - generic [ref=f8e706]: P
+            - generic [ref=f8e707]: T
+            - generic [ref=f8e708]: "-"
+            - generic [ref=f8e709]: "-"
+            - generic [ref=f8e710]: "-"
+          - cell "-" [ref=f8e711]
+          - cell "0" [ref=f8e712]
+        - row [ref=f8e713] [cursor=pointer]:
+          - cell "40" [ref=f8e714]
+          - cell [ref=f8e715]:
+            - link "040-automatic-memory-candidate-capture" [ref=f8e716]:
+              - /url: issue-040-automatic-memory-candidate-capture.html
+            - code [ref=f8e717]: 040-automatic-memory-candidate-capture
+          - cell "done" [ref=f8e718]
+          - cell "plan" [ref=f8e719]
+          - cell "2026-07-05" [ref=f8e720]
+          - cell "2026-07-05" [ref=f8e721]
+          - cell "KO workflow 이벤트에서 장기 기억 후보를 자동으로 만들고 사람이 검토한 뒤 승인할 수 있게 합니다." [ref=f8e722]:
+            - generic [ref=f8e723]: KO
+            - text: workflow 이벤트에서 장기 기억 후보를 자동으로 만들고 사람이 검토한 뒤 승인할 수 있게 합니다.
+          - cell "I S - - - - - -" [ref=f8e724]:
+            - generic [ref=f8e725]: I
+            - generic [ref=f8e726]: S
+            - generic [ref=f8e727]: "-"
+            - generic [ref=f8e728]: "-"
+            - generic [ref=f8e729]: "-"
+            - generic [ref=f8e730]: "-"
+            - generic [ref=f8e731]: "-"
+            - generic [ref=f8e732]: "-"
+          - cell "-" [ref=f8e733]
+          - cell "0" [ref=f8e734]
+        - row [ref=f8e735] [cursor=pointer]:
+          - cell "13" [ref=f8e736]
+          - cell [ref=f8e737]:
+            - 'link "Issue 013: project_doctor 게이트화 + release_check 테스트 누락 보강" [ref=f8e738]':
+              - /url: issue-013-project-doctor-gate.html
+            - code [ref=f8e739]: 013-project-doctor-gate
+          - cell "done" [ref=f8e740]
+          - cell "spec" [ref=f8e741]
+          - cell "2026-07-05" [ref=f8e742]
+          - cell "2026-06-16" [ref=f8e743]
+          - cell "KO project_doctor가 실패 상태를 제대로 반환하게 하고 release_check의 누락 테스트를 보강해 검증 게이트로 만듭니다." [ref=f8e744]:
+            - generic [ref=f8e745]: KO
+            - text: project_doctor가 실패 상태를 제대로 반환하게 하고 release_check의 누락 테스트를 보강해 검증 게이트로 만듭니다.
+          - cell "I - - - - - - -" [ref=f8e746]:
+            - generic [ref=f8e747]: I
+            - generic [ref=f8e748]: "-"
+            - generic [ref=f8e749]: "-"
+            - generic [ref=f8e750]: "-"
+            - generic [ref=f8e751]: "-"
+            - generic [ref=f8e752]: "-"
+            - generic [ref=f8e753]: "-"
+            - generic [ref=f8e754]: "-"
+          - cell "-" [ref=f8e755]
+          - cell "0" [ref=f8e756]
+        - row [ref=f8e757] [cursor=pointer]:
+          - cell "12" [ref=f8e758]
+          - cell [ref=f8e759]:
+            - 'link "Issue 012: CI Pipeline (테스트·검증 자동화)" [ref=f8e760]':
+              - /url: issue-012-ci-pipeline.html
+            - code [ref=f8e761]: 012-ci-pipeline
+          - cell "done" [ref=f8e762]
+          - cell "spec" [ref=f8e763]
+          - cell "2026-07-05" [ref=f8e764]
+          - cell "2026-06-16" [ref=f8e765]
+          - cell "KO push와 PR마다 unit test, validate_moduflow, release_check를 자동 실행하는 GitHub Actions CI를 추가합니다." [ref=f8e766]:
+            - generic [ref=f8e767]: KO
+            - text: push와 PR마다 unit test, validate_moduflow, release_check를 자동 실행하는 GitHub Actions CI를 추가합니다.
+          - cell "I - - - - - - -" [ref=f8e768]:
+            - generic [ref=f8e769]: I
+            - generic [ref=f8e770]: "-"
+            - generic [ref=f8e771]: "-"
+            - generic [ref=f8e772]: "-"
+            - generic [ref=f8e773]: "-"
+            - generic [ref=f8e774]: "-"
+            - generic [ref=f8e775]: "-"
+            - generic [ref=f8e776]: "-"
+          - cell "-" [ref=f8e777]
+          - cell "0" [ref=f8e778]
+        - row [ref=f8e779] [cursor=pointer]:
+          - cell "58" [ref=f8e780]
+          - cell [ref=f8e781]:
+            - link "058-git-write-fallback-via-github-api" [ref=f8e782]:
+              - /url: issue-058-git-write-fallback-via-github-api.html
+            - code [ref=f8e783]: 058-git-write-fallback-via-github-api
+          - cell "done" [ref=f8e784]
+          - cell "execute" [ref=f8e785]
+          - cell "2026-07-03" [ref=f8e786]
+          - cell "2026-07-05" [ref=f8e787]
+          - cell "KO 로컬 Git 쓰기가 막혀도 사람이 터미널을 치지 않도록 GitHub API 커밋 대체 경로를 표준화합니다." [ref=f8e788]:
+            - generic [ref=f8e789]: KO
+            - text: 로컬 Git 쓰기가 막혀도 사람이 터미널을 치지 않도록 GitHub API 커밋 대체 경로를 표준화합니다.
+          - cell "I S KO P T - - -" [ref=f8e790]:
+            - generic [ref=f8e791]: I
+            - generic [ref=f8e792]: S
+            - generic [ref=f8e793]: KO
+            - generic [ref=f8e794]: P
+            - generic [ref=f8e795]: T
+            - generic [ref=f8e796]: "-"
+            - generic [ref=f8e797]: "-"
+            - generic [ref=f8e798]: "-"
+          - cell "-" [ref=f8e799]
+          - cell "0" [ref=f8e800]
+        - row [ref=f8e801] [cursor=pointer]:
+          - cell "57" [ref=f8e802]
+          - cell [ref=f8e803]:
+            - link "057-korean-human-review-packet" [ref=f8e804]:
+              - /url: issue-057-korean-human-review-packet.html
+            - code [ref=f8e805]: 057-korean-human-review-packet
+          - cell "done" [ref=f8e806]
+          - cell "release" [ref=f8e807]
+          - cell "2026-07-03" [ref=f8e808]
+          - cell "2026-07-03" [ref=f8e809]
+          - cell "KO PR, 리뷰, 릴리즈 게이트에서 한국어 검토자가 영어 산출물을 모두 읽지 않아도 승인 판단을 할 수 있는 한글 검토 패킷을 만듭니다." [ref=f8e810]:
+            - generic [ref=f8e811]: KO
+            - text: PR, 리뷰, 릴리즈 게이트에서 한국어 검토자가 영어 산출물을 모두 읽지 않아도 승인 판단을 할 수 있는 한글 검토 패킷을 만듭니다.
+          - cell "I S KO P T R PR Rel" [ref=f8e812]:
+            - generic [ref=f8e813]: I
+            - generic [ref=f8e814]: S
+            - generic [ref=f8e815]: KO
+            - generic [ref=f8e816]: P
+            - generic [ref=f8e817]: T
+            - generic [ref=f8e818]: R
+            - generic [ref=f8e819]: PR
+            - generic [ref=f8e820]: Rel
+          - cell "-" [ref=f8e821]
+          - cell "0" [ref=f8e822]
+        - row [ref=f8e823] [cursor=pointer]:
+          - cell "56" [ref=f8e824]
+          - cell [ref=f8e825]:
+            - link "056-dashboard-database-list-view" [ref=f8e826]:
+              - /url: issue-056-dashboard-database-list-view.html
+            - code [ref=f8e827]: 056-dashboard-database-list-view
+          - cell "done" [ref=f8e828]
+          - cell "release" [ref=f8e829]
+          - cell "2026-07-03" [ref=f8e830]
+          - cell "2026-07-03" [ref=f8e831]
+          - cell "KO 그래프만으로는 운영 스캔이 어려우므로 이슈를 검색, 필터, 정렬, 그룹화할 수 있는 DB/리스트 뷰를 추가합니다." [ref=f8e832]:
+            - generic [ref=f8e833]: KO
+            - text: 그래프만으로는 운영 스캔이 어려우므로 이슈를 검색, 필터, 정렬, 그룹화할 수 있는 DB/리스트 뷰를 추가합니다.
+          - cell "I S KO P T R PR Rel" [ref=f8e834]:
+            - generic [ref=f8e835]: I
+            - generic [ref=f8e836]: S
+            - generic [ref=f8e837]: KO
+            - generic [ref=f8e838]: P
+            - generic [ref=f8e839]: T
+            - generic [ref=f8e840]: R
+            - generic [ref=f8e841]: PR
+            - generic [ref=f8e842]: Rel
+          - cell "-" [ref=f8e843]
+          - cell "0" [ref=f8e844]
+        - row [ref=f8e845] [cursor=pointer]:
+          - cell "55" [ref=f8e846]
+          - cell [ref=f8e847]:
+            - link "055-command-surface-onboarding" [ref=f8e848]:
+              - /url: issue-055-command-surface-onboarding.html
+            - code [ref=f8e849]: 055-command-surface-onboarding
+          - cell "done" [ref=f8e850]
+          - cell "spec" [ref=f8e851]
+          - cell "2026-07-03" [ref=f8e852]
+          - cell "2026-07-05" [ref=f8e853]
+          - cell "KO 처음 쓰는 사용자가 수많은 명령 대신 product:start, product:status, dashboard 흐름으로 시작하게 합니다." [ref=f8e854]:
+            - generic [ref=f8e855]: KO
+            - text: 처음 쓰는 사용자가 수많은 명령 대신 product:start, product:status, dashboard 흐름으로 시작하게 합니다.
+          - cell "I - - - - - - -" [ref=f8e856]:
+            - generic [ref=f8e857]: I
+            - generic [ref=f8e858]: "-"
+            - generic [ref=f8e859]: "-"
+            - generic [ref=f8e860]: "-"
+            - generic [ref=f8e861]: "-"
+            - generic [ref=f8e862]: "-"
+            - generic [ref=f8e863]: "-"
+            - generic [ref=f8e864]: "-"
+          - cell "-" [ref=f8e865]
+          - cell "0" [ref=f8e866]
+        - row [ref=f8e867] [cursor=pointer]:
+          - cell "54" [ref=f8e868]
+          - cell [ref=f8e869]:
+            - link "054-github-issue-sync" [ref=f8e870]:
+              - /url: issue-054-github-issue-sync.html
+            - code [ref=f8e871]: 054-github-issue-sync
+          - cell "done" [ref=f8e872]
+          - cell "execute" [ref=f8e873]
+          - cell "2026-07-03" [ref=f8e874]
+          - cell "2026-07-05" [ref=f8e875]
+          - cell "KO Git 파일 이슈를 실제 GitHub Issues로 선택적으로 동기화해 외부 협업자도 GitHub UI에서 상태를 볼 수 있게 합니다." [ref=f8e876]:
+            - generic [ref=f8e877]: KO
+            - text: Git 파일 이슈를 실제 GitHub Issues로 선택적으로 동기화해 외부 협업자도 GitHub UI에서 상태를 볼 수 있게 합니다.
+          - cell "I S - P T - - -" [ref=f8e878]:
+            - generic [ref=f8e879]: I
+            - generic [ref=f8e880]: S
+            - generic [ref=f8e881]: "-"
+            - generic [ref=f8e882]: P
+            - generic [ref=f8e883]: T
+            - generic [ref=f8e884]: "-"
+            - generic [ref=f8e885]: "-"
+            - generic [ref=f8e886]: "-"
+          - cell "-" [ref=f8e887]
+          - cell "0" [ref=f8e888]
+        - row [ref=f8e889] [cursor=pointer]:
+          - cell "53" [ref=f8e890]
+          - cell [ref=f8e891]:
+            - link "053-vendor-freshness-gate" [ref=f8e892]:
+              - /url: issue-053-vendor-freshness-gate.html
+            - code [ref=f8e893]: 053-vendor-freshness-gate
+          - cell "done" [ref=f8e894]
+          - cell "execute" [ref=f8e895]
+          - cell "2026-07-03" [ref=f8e896]
+          - cell "2026-07-05" [ref=f8e897]
+          - cell "KO vendor.lock.json에 고정된 upstream 소스가 실제 upstream 활동과 얼마나 벌어졌는지 감지해 게이트로 표시합니다." [ref=f8e898]:
+            - generic [ref=f8e899]: KO
+            - text: vendor.lock.json에 고정된 upstream 소스가 실제 upstream 활동과 얼마나 벌어졌는지 감지해 게이트로 표시합니다.
+          - cell "I S - P - - - -" [ref=f8e900]:
+            - generic [ref=f8e901]: I
+            - generic [ref=f8e902]: S
+            - generic [ref=f8e903]: "-"
+            - generic [ref=f8e904]: P
+            - generic [ref=f8e905]: "-"
+            - generic [ref=f8e906]: "-"
+            - generic [ref=f8e907]: "-"
+            - generic [ref=f8e908]: "-"
+          - cell "-" [ref=f8e909]
+          - cell "0" [ref=f8e910]
+        - row [ref=f8e911] [cursor=pointer]:
+          - cell "52" [ref=f8e912]
+          - cell [ref=f8e913]:
+            - link "052-draft-pr-review-handoff" [ref=f8e914]:
+              - /url: issue-052-draft-pr-review-handoff.html
+            - code [ref=f8e915]: 052-draft-pr-review-handoff
+          - cell "done" [ref=f8e916]
+          - cell "pr" [ref=f8e917]
+          - cell "2026-07-01" [ref=f8e918]
+          - cell "2026-07-01" [ref=f8e919]
+          - cell "KO 리뷰 완료를 기다리지 않고 Draft PR 또는 local PR-ready marker를 먼저 만들어 리뷰 표면을 앞당깁니다." [ref=f8e920]:
+            - generic [ref=f8e921]: KO
+            - text: 리뷰 완료를 기다리지 않고 Draft PR 또는 local PR-ready marker를 먼저 만들어 리뷰 표면을 앞당깁니다.
+          - cell "I S - P - R PR -" [ref=f8e922]:
+            - generic [ref=f8e923]: I
+            - generic [ref=f8e924]: S
+            - generic [ref=f8e925]: "-"
+            - generic [ref=f8e926]: P
+            - generic [ref=f8e927]: "-"
+            - generic [ref=f8e928]: R
+            - generic [ref=f8e929]: PR
+            - generic [ref=f8e930]: "-"
+          - cell "-" [ref=f8e931]
+          - cell "0" [ref=f8e932]
+        - row [ref=f8e933] [cursor=pointer]:
+          - cell "51" [ref=f8e934]
+          - cell [ref=f8e935]:
+            - link "051-autonomous-execute-review-visual-handoff" [ref=f8e936]:
+              - /url: issue-051-autonomous-execute-review-visual-handoff.html
+            - code [ref=f8e937]: 051-autonomous-execute-review-visual-handoff
+          - cell "done" [ref=f8e938]
+          - cell "review" [ref=f8e939]
+          - cell "2026-07-01" [ref=f8e940]
+          - cell "2026-07-01" [ref=f8e941]
+          - cell "KO 구현 후 리뷰 핸드오프, 서브에이전트 지시, 검증 명령, 대시보드 링크를 자동으로 묶어 넘깁니다." [ref=f8e942]:
+            - generic [ref=f8e943]: KO
+            - text: 구현 후 리뷰 핸드오프, 서브에이전트 지시, 검증 명령, 대시보드 링크를 자동으로 묶어 넘깁니다.
+          - cell "I S - P T R - -" [ref=f8e944]:
+            - generic [ref=f8e945]: I
+            - generic [ref=f8e946]: S
+            - generic [ref=f8e947]: "-"
+            - generic [ref=f8e948]: P
+            - generic [ref=f8e949]: T
+            - generic [ref=f8e950]: R
+            - generic [ref=f8e951]: "-"
+            - generic [ref=f8e952]: "-"
+          - cell "-" [ref=f8e953]
+          - cell "0" [ref=f8e954]
+        - row [ref=f8e955] [cursor=pointer]:
+          - cell "50" [ref=f8e956]
+          - cell [ref=f8e957]:
+            - link "050-repo-sync-preflight" [ref=f8e958]:
+              - /url: issue-050-repo-sync-preflight.html
+            - code [ref=f8e959]: 050-repo-sync-preflight
+          - cell "done" [ref=f8e960]
+          - cell "review" [ref=f8e961]
+          - cell "2026-06-29" [ref=f8e962]
+          - cell "2026-06-29" [ref=f8e963]
+          - cell "KO Git 파일 산출물을 읽기 전에 로컬 Git 상태가 원격보다 오래됐는지 감지해 오래된 브랜치를 잘못 믿지 않게 합니다." [ref=f8e964]:
+            - generic [ref=f8e965]: KO
+            - text: Git 파일 산출물을 읽기 전에 로컬 Git 상태가 원격보다 오래됐는지 감지해 오래된 브랜치를 잘못 믿지 않게 합니다.
+          - cell "I S - P T R - -" [ref=f8e966]:
+            - generic [ref=f8e967]: I
+            - generic [ref=f8e968]: S
+            - generic [ref=f8e969]: "-"
+            - generic [ref=f8e970]: P
+            - generic [ref=f8e971]: T
+            - generic [ref=f8e972]: R
+            - generic [ref=f8e973]: "-"
+            - generic [ref=f8e974]: "-"
+          - cell "-" [ref=f8e975]
+          - cell "0" [ref=f8e976]
+        - row [ref=f8e977] [cursor=pointer]:
+          - cell "49" [ref=f8e978]
+          - cell [ref=f8e979]:
+            - link "049-bilingual-artifact-view" [ref=f8e980]:
+              - /url: issue-049-bilingual-artifact-view.html
+            - code [ref=f8e981]: 049-bilingual-artifact-view
+          - cell "done" [ref=f8e982]
+          - cell "execute" [ref=f8e983]
+          - cell "2026-06-28" [ref=f8e984]
+          - cell "2026-06-28" [ref=f8e985]
+          - cell "KO 영문 canonical은 유지하면서 사람이 보는 산출물 패널에서 한글 sidecar를 선택해 볼 수 있게 합니다." [ref=f8e986]:
+            - generic [ref=f8e987]: KO
+            - text: 영문 canonical은 유지하면서 사람이 보는 산출물 패널에서 한글 sidecar를 선택해 볼 수 있게 합니다.
+          - cell "I S KO P - - - -" [ref=f8e988]:
+            - generic [ref=f8e989]: I
+            - generic [ref=f8e990]: S
+            - generic [ref=f8e991]: KO
+            - generic [ref=f8e992]: P
+            - generic [ref=f8e993]: "-"
+            - generic [ref=f8e994]: "-"
+            - generic [ref=f8e995]: "-"
+            - generic [ref=f8e996]: "-"
+          - cell "-" [ref=f8e997]
+          - cell "0" [ref=f8e998]
+        - row [ref=f8e999] [cursor=pointer]:
+          - cell "48" [ref=f8e1000]
+          - cell [ref=f8e1001]:
+            - link "048-artifact-lifecycle-sync" [ref=f8e1002]:
+              - /url: issue-048-artifact-lifecycle-sync.html
+            - code [ref=f8e1003]: 048-artifact-lifecycle-sync
+          - cell "done" [ref=f8e1004]
+          - cell "execute" [ref=f8e1005]
+          - cell "2026-06-28" [ref=f8e1006]
+          - cell "2026-06-28" [ref=f8e1007]
+          - cell "KO 산출물 생명주기 상태가 여러 파일에서 어긋나는 문제를 감지하고 단일 canonical source에서 전파합니다." [ref=f8e1008]:
+            - generic [ref=f8e1009]: KO
+            - text: 산출물 생명주기 상태가 여러 파일에서 어긋나는 문제를 감지하고 단일 canonical source에서 전파합니다.
+          - cell "I S - P - - - -" [ref=f8e1010]:
+            - generic [ref=f8e1011]: I
+            - generic [ref=f8e1012]: S
+            - generic [ref=f8e1013]: "-"
+            - generic [ref=f8e1014]: P
+            - generic [ref=f8e1015]: "-"
+            - generic [ref=f8e1016]: "-"
+            - generic [ref=f8e1017]: "-"
+            - generic [ref=f8e1018]: "-"
+          - cell "-" [ref=f8e1019]
+          - cell "0" [ref=f8e1020]
+        - row [ref=f8e1021] [cursor=pointer]:
+          - cell "47" [ref=f8e1022]
+          - cell [ref=f8e1023]:
+            - link "047-issue-artifact-drilldown" [ref=f8e1024]:
+              - /url: issue-047-issue-artifact-drilldown.html
+            - code [ref=f8e1025]: 047-issue-artifact-drilldown
+          - cell "done" [ref=f8e1026]
+          - cell "execute" [ref=f8e1027]
+          - cell "2026-06-28" [ref=f8e1028]
+          - cell "2026-06-28" [ref=f8e1029]
+          - 'cell "KO 이슈별 산출물을 한 페이지에서 볼 수 있는 drill-down 패널과 `--issue` 생성 옵션을 추가합니다." [ref=f8e1030]':
+            - generic [ref=f8e1031]: KO
+            - text: "이슈별 산출물을 한 페이지에서 볼 수 있는 drill-down 패널과 `--issue` 생성 옵션을 추가합니다."
+          - cell "I S - P T - - -" [ref=f8e1032]:
+            - generic [ref=f8e1033]: I
+            - generic [ref=f8e1034]: S
+            - generic [ref=f8e1035]: "-"
+            - generic [ref=f8e1036]: P
+            - generic [ref=f8e1037]: T
+            - generic [ref=f8e1038]: "-"
+            - generic [ref=f8e1039]: "-"
+            - generic [ref=f8e1040]: "-"
+          - cell "-" [ref=f8e1041]
+          - cell "1" [ref=f8e1042]
+        - row [ref=f8e1043] [cursor=pointer]:
+          - cell "46" [ref=f8e1044]
+          - cell [ref=f8e1045]:
+            - link "046-planning-artifact-templates" [ref=f8e1046]:
+              - /url: issue-046-planning-artifact-templates.html
+            - code [ref=f8e1047]: 046-planning-artifact-templates
+          - cell "done" [ref=f8e1048]
+          - cell "plan" [ref=f8e1049]
+          - cell "2026-06-28" [ref=f8e1050]
+          - cell "2026-06-28" [ref=f8e1051]
+          - cell "KO spec 작성 명령에 명확화 질문, Non-Goals, Alternatives, Mermaid 다이어그램 같은 기획 템플릿 요소를 추가합니다." [ref=f8e1052]:
+            - generic [ref=f8e1053]: KO
+            - text: spec 작성 명령에 명확화 질문, Non-Goals, Alternatives, Mermaid 다이어그램 같은 기획 템플릿 요소를 추가합니다.
+          - cell "I S - - - - - -" [ref=f8e1054]:
+            - generic [ref=f8e1055]: I
+            - generic [ref=f8e1056]: S
+            - generic [ref=f8e1057]: "-"
+            - generic [ref=f8e1058]: "-"
+            - generic [ref=f8e1059]: "-"
+            - generic [ref=f8e1060]: "-"
+            - generic [ref=f8e1061]: "-"
+            - generic [ref=f8e1062]: "-"
+          - cell "-" [ref=f8e1063]
+          - cell "1" [ref=f8e1064]
+        - row [ref=f8e1065] [cursor=pointer]:
+          - cell "45" [ref=f8e1066]
+          - cell [ref=f8e1067]:
+            - link "045-issue-graph-visualization" [ref=f8e1068]:
+              - /url: issue-045-issue-graph-visualization.html
+            - code [ref=f8e1069]: 045-issue-graph-visualization
+          - cell "done" [ref=f8e1070]
+          - cell "execute" [ref=f8e1071]
+          - cell "2026-06-28" [ref=f8e1072]
+          - cell "2026-06-28" [ref=f8e1073]
+          - cell "KO 이슈 그래프와 지식 그래프가 포함된 프로젝트 뷰를 생성하고 이슈/메모리별 상세 HTML로 이동할 수 있게 합니다." [ref=f8e1074]:
+            - generic [ref=f8e1075]: KO
+            - text: 이슈 그래프와 지식 그래프가 포함된 프로젝트 뷰를 생성하고 이슈/메모리별 상세 HTML로 이동할 수 있게 합니다.
+          - cell "I S - P - - - -" [ref=f8e1076]:
+            - generic [ref=f8e1077]: I
+            - generic [ref=f8e1078]: S
+            - generic [ref=f8e1079]: "-"
+            - generic [ref=f8e1080]: P
+            - generic [ref=f8e1081]: "-"
+            - generic [ref=f8e1082]: "-"
+            - generic [ref=f8e1083]: "-"
+            - generic [ref=f8e1084]: "-"
+          - cell "-" [ref=f8e1085]
+          - cell "0" [ref=f8e1086]
+        - row [ref=f8e1087] [cursor=pointer]:
+          - cell "44" [ref=f8e1088]
+          - cell [ref=f8e1089]:
+            - link "044-product-dashboard-command" [ref=f8e1090]:
+              - /url: issue-044-product-dashboard-command.html
+            - code [ref=f8e1091]: 044-product-dashboard-command
+          - cell "done" [ref=f8e1092]
+          - cell "spec" [ref=f8e1093]
+          - cell "2026-06-28" [ref=f8e1094]
+          - cell "2026-06-28" [ref=f8e1095]
+          - 'cell "KO `product:dashboard` 명령을 ModuFlow 기본 명령으로 제공해 대시보드 생성과 열람을 쉽게 만듭니다." [ref=f8e1096]':
+            - generic [ref=f8e1097]: KO
+            - text: "`product:dashboard` 명령을 ModuFlow 기본 명령으로 제공해 대시보드 생성과 열람을 쉽게 만듭니다."
+          - cell "I - - - - - - -" [ref=f8e1098]:
+            - generic [ref=f8e1099]: I
+            - generic [ref=f8e1100]: "-"
+            - generic [ref=f8e1101]: "-"
+            - generic [ref=f8e1102]: "-"
+            - generic [ref=f8e1103]: "-"
+            - generic [ref=f8e1104]: "-"
+            - generic [ref=f8e1105]: "-"
+            - generic [ref=f8e1106]: "-"
+          - cell "-" [ref=f8e1107]
+          - cell "0" [ref=f8e1108]
+        - row [ref=f8e1109] [cursor=pointer]:
+          - cell "43" [ref=f8e1110]
+          - cell [ref=f8e1111]:
+            - link "043-memory-relationship-capture-prompts" [ref=f8e1112]:
+              - /url: issue-043-memory-relationship-capture-prompts.html
+            - code [ref=f8e1113]: 043-memory-relationship-capture-prompts
+          - cell "done" [ref=f8e1114]
+          - cell "execute" [ref=f8e1115]
+          - cell "2026-06-28" [ref=f8e1116]
+          - cell "2026-06-28" [ref=f8e1117]
+          - cell "KO 새 스키마를 늘리지 않고 기존 관계 필드를 잘 쓰도록 메모리 관계 입력 프롬프트를 안내형으로 개선합니다." [ref=f8e1118]:
+            - generic [ref=f8e1119]: KO
+            - text: 새 스키마를 늘리지 않고 기존 관계 필드를 잘 쓰도록 메모리 관계 입력 프롬프트를 안내형으로 개선합니다.
+          - cell "I S - P - - - -" [ref=f8e1120]:
+            - generic [ref=f8e1121]: I
+            - generic [ref=f8e1122]: S
+            - generic [ref=f8e1123]: "-"
+            - generic [ref=f8e1124]: P
+            - generic [ref=f8e1125]: "-"
+            - generic [ref=f8e1126]: "-"
+            - generic [ref=f8e1127]: "-"
+            - generic [ref=f8e1128]: "-"
+          - cell "-" [ref=f8e1129]
+          - cell "0" [ref=f8e1130]
+        - row [ref=f8e1131] [cursor=pointer]:
+          - cell "42" [ref=f8e1132]
+          - cell [ref=f8e1133]:
+            - link "042-decision-graph-dashboard" [ref=f8e1134]:
+              - /url: issue-042-decision-graph-dashboard.html
+            - code [ref=f8e1135]: 042-decision-graph-dashboard
+          - cell "done" [ref=f8e1136]
+          - cell "spec" [ref=f8e1137]
+          - cell "2026-06-28" [ref=f8e1138]
+          - cell "2026-06-28" [ref=f8e1139]
+          - cell "KO 결정 그래프를 대시보드에서 볼 수 있게 만들어 프로젝트 판단 흐름을 한 화면에서 추적합니다." [ref=f8e1140]:
+            - generic [ref=f8e1141]: KO
+            - text: 결정 그래프를 대시보드에서 볼 수 있게 만들어 프로젝트 판단 흐름을 한 화면에서 추적합니다.
+          - cell "I - - - - - - -" [ref=f8e1142]:
+            - generic [ref=f8e1143]: I
+            - generic [ref=f8e1144]: "-"
+            - generic [ref=f8e1145]: "-"
+            - generic [ref=f8e1146]: "-"
+            - generic [ref=f8e1147]: "-"
+            - generic [ref=f8e1148]: "-"
+            - generic [ref=f8e1149]: "-"
+            - generic [ref=f8e1150]: "-"
+          - cell "-" [ref=f8e1151]
+          - cell "0" [ref=f8e1152]
+        - row [ref=f8e1153] [cursor=pointer]:
+          - cell "39" [ref=f8e1154]
+          - cell [ref=f8e1155]:
+            - 'link "Issue 039: Automated Review Checklists And Safety Lint Gates" [ref=f8e1156]':
+              - /url: issue-039-automated-review-checklists-and-safety-lint-gates.html
+            - code [ref=f8e1157]: 039-automated-review-checklists-and-safety-lint-gates
+          - cell "done" [ref=f8e1158]
+          - cell "plan" [ref=f8e1159]
+          - cell "2026-06-27" [ref=f8e1160]
+          - cell "2026-06-27" [ref=f8e1161]
+          - cell "KO product:review에 자동 체크리스트 비교를 추가하고 release checker에 lint/security 게이트를 보강합니다." [ref=f8e1162]:
+            - generic [ref=f8e1163]: KO
+            - text: product:review에 자동 체크리스트 비교를 추가하고 release checker에 lint/security 게이트를 보강합니다.
+          - cell "I S - - - - - -" [ref=f8e1164]:
+            - generic [ref=f8e1165]: I
+            - generic [ref=f8e1166]: S
+            - generic [ref=f8e1167]: "-"
+            - generic [ref=f8e1168]: "-"
+            - generic [ref=f8e1169]: "-"
+            - generic [ref=f8e1170]: "-"
+            - generic [ref=f8e1171]: "-"
+            - generic [ref=f8e1172]: "-"
+          - cell "-" [ref=f8e1173]
+          - cell "0" [ref=f8e1174]
+        - row [ref=f8e1175] [cursor=pointer]:
+          - cell "38" [ref=f8e1176]
+          - cell [ref=f8e1177]:
+            - 'link "Issue 038: Worker Context Memory Path Injection" [ref=f8e1178]':
+              - /url: issue-038-worker-context-memory-path-injection.html
+            - code [ref=f8e1179]: 038-worker-context-memory-path-injection
+          - cell "done" [ref=f8e1180]
+          - cell "plan" [ref=f8e1181]
+          - cell "2026-06-27" [ref=f8e1182]
+          - cell "2026-06-27" [ref=f8e1183]
+          - cell "KO 작업 실행 중 관련 메모리 경로와 짧은 요약을 워커 프롬프트에 동적으로 주입합니다." [ref=f8e1184]:
+            - generic [ref=f8e1185]: KO
+            - text: 작업 실행 중 관련 메모리 경로와 짧은 요약을 워커 프롬프트에 동적으로 주입합니다.
+          - cell "I S - - - - - -" [ref=f8e1186]:
+            - generic [ref=f8e1187]: I
+            - generic [ref=f8e1188]: S
+            - generic [ref=f8e1189]: "-"
+            - generic [ref=f8e1190]: "-"
+            - generic [ref=f8e1191]: "-"
+            - generic [ref=f8e1192]: "-"
+            - generic [ref=f8e1193]: "-"
+            - generic [ref=f8e1194]: "-"
+          - cell "-" [ref=f8e1195]
+          - cell "0" [ref=f8e1196]
+        - row [ref=f8e1197] [cursor=pointer]:
+          - cell "37" [ref=f8e1198]
+          - cell [ref=f8e1199]:
+            - 'link "Issue 037: Delegation Level Gate And Memory Context Graph" [ref=f8e1200]':
+              - /url: issue-037-delegation-level-gate-and-memory-context-graph.html
+            - code [ref=f8e1201]: 037-delegation-level-gate-and-memory-context-graph
+          - cell "done" [ref=f8e1202]
+          - cell "spec" [ref=f8e1203]
+          - cell "2026-06-27" [ref=f8e1204]
+          - cell "2026-06-27" [ref=f8e1205]
+          - cell "KO 위임 수준 게이트를 loop-state에 추가하고 memory 관계 그래프에서 depends_on/references를 지원합니다." [ref=f8e1206]:
+            - generic [ref=f8e1207]: KO
+            - text: 위임 수준 게이트를 loop-state에 추가하고 memory 관계 그래프에서 depends_on/references를 지원합니다.
+          - cell "I - - - - - - -" [ref=f8e1208]:
+            - generic [ref=f8e1209]: I
+            - generic [ref=f8e1210]: "-"
+            - generic [ref=f8e1211]: "-"
+            - generic [ref=f8e1212]: "-"
+            - generic [ref=f8e1213]: "-"
+            - generic [ref=f8e1214]: "-"
+            - generic [ref=f8e1215]: "-"
+            - generic [ref=f8e1216]: "-"
+          - cell "-" [ref=f8e1217]
+          - cell "0" [ref=f8e1218]
+        - row [ref=f8e1219] [cursor=pointer]:
+          - cell "36" [ref=f8e1220]
+          - cell [ref=f8e1221]:
+            - 'link "Issue 036: Portfolio Team Dashboard" [ref=f8e1222]':
+              - /url: issue-036-portfolio-team-dashboard.html
+            - code [ref=f8e1223]: 036-portfolio-team-dashboard
+          - cell "done" [ref=f8e1224]
+          - cell "spec" [ref=f8e1225]
+          - cell "2026-06-26" [ref=f8e1226]
+          - cell "2026-06-26" [ref=f8e1227]
+          - cell "KO 프로젝트별 팀 workflow 상태를 포트폴리오 대시보드에 반영해 활성 작업, 리뷰 큐, 막힘, 다음 액션을 한눈에 봅니다." [ref=f8e1228]:
+            - generic [ref=f8e1229]: KO
+            - text: 프로젝트별 팀 workflow 상태를 포트폴리오 대시보드에 반영해 활성 작업, 리뷰 큐, 막힘, 다음 액션을 한눈에 봅니다.
+          - cell "I - - - - - - -" [ref=f8e1230]:
+            - generic [ref=f8e1231]: I
+            - generic [ref=f8e1232]: "-"
+            - generic [ref=f8e1233]: "-"
+            - generic [ref=f8e1234]: "-"
+            - generic [ref=f8e1235]: "-"
+            - generic [ref=f8e1236]: "-"
+            - generic [ref=f8e1237]: "-"
+            - generic [ref=f8e1238]: "-"
+          - cell "-" [ref=f8e1239]
+          - cell "0" [ref=f8e1240]
+        - row [ref=f8e1241] [cursor=pointer]:
+          - cell "35" [ref=f8e1242]
+          - cell [ref=f8e1243]:
+            - 'link "Issue 035: Team Issue Branch Pr Workflow" [ref=f8e1244]':
+              - /url: issue-035-team-issue-branch-pr-workflow.html
+            - code [ref=f8e1245]: 035-team-issue-branch-pr-workflow
+          - cell "done" [ref=f8e1246]
+          - cell "review" [ref=f8e1247]
+          - cell "2026-06-26" [ref=f8e1248]
+          - cell "2026-06-26" [ref=f8e1249]
+          - cell "KO 소규모 팀이 PM 주도로 이슈를 만들고 개발자가 branch와 PR로 실행하며 리뷰/완료 상태를 Git에서 추적하게 합니다." [ref=f8e1250]:
+            - generic [ref=f8e1251]: KO
+            - text: 소규모 팀이 PM 주도로 이슈를 만들고 개발자가 branch와 PR로 실행하며 리뷰/완료 상태를 Git에서 추적하게 합니다.
+          - cell "I S - P - R - -" [ref=f8e1252]:
+            - generic [ref=f8e1253]: I
+            - generic [ref=f8e1254]: S
+            - generic [ref=f8e1255]: "-"
+            - generic [ref=f8e1256]: P
+            - generic [ref=f8e1257]: "-"
+            - generic [ref=f8e1258]: R
+            - generic [ref=f8e1259]: "-"
+            - generic [ref=f8e1260]: "-"
+          - cell "-" [ref=f8e1261]
+          - cell "0" [ref=f8e1262]
+        - row [ref=f8e1263] [cursor=pointer]:
+          - cell "34" [ref=f8e1264]
+          - cell [ref=f8e1265]:
+            - 'link "Issue 034: Memory Capture And Sync Workflow" [ref=f8e1266]':
+              - /url: issue-034-memory-capture-and-sync-workflow.html
+            - code [ref=f8e1267]: 034-memory-capture-and-sync-workflow
+          - cell "done" [ref=f8e1268]
+          - cell "release" [ref=f8e1269]
+          - cell "2026-06-26" [ref=f8e1270]
+          - cell "2026-06-26" [ref=f8e1271]
+          - cell "KO 메모리 후보 생성, 승인, 저장, 검색, 외부 미러 정책을 정리해 장기 기억을 산출물과 분리해서 관리합니다." [ref=f8e1272]:
+            - generic [ref=f8e1273]: KO
+            - text: 메모리 후보 생성, 승인, 저장, 검색, 외부 미러 정책을 정리해 장기 기억을 산출물과 분리해서 관리합니다.
+          - cell "I S - P - R PR Rel" [ref=f8e1274]:
+            - generic [ref=f8e1275]: I
+            - generic [ref=f8e1276]: S
+            - generic [ref=f8e1277]: "-"
+            - generic [ref=f8e1278]: P
+            - generic [ref=f8e1279]: "-"
+            - generic [ref=f8e1280]: R
+            - generic [ref=f8e1281]: PR
+            - generic [ref=f8e1282]: Rel
+          - cell "-" [ref=f8e1283]
+          - cell "1" [ref=f8e1284]
+        - row [ref=f8e1285] [cursor=pointer]:
+          - cell "33" [ref=f8e1286]
+          - cell [ref=f8e1287]:
+            - 'link "Issue 033: Business Document Workflow" [ref=f8e1288]':
+              - /url: issue-033-business-document-workflow.html
+            - code [ref=f8e1289]: 033-business-document-workflow
+          - cell "done" [ref=f8e1290]
+          - cell "spec" [ref=f8e1291]
+          - cell "2026-06-24" [ref=f8e1292]
+          - cell "2026-06-24" [ref=f8e1293]
+          - cell "KO 시장진입 분석 같은 비즈니스 문서 산출물을 프로젝트 로컬에 만들고 결정, 가정, 근거, 계산, 검증을 보존합니다." [ref=f8e1294]:
+            - generic [ref=f8e1295]: KO
+            - text: 시장진입 분석 같은 비즈니스 문서 산출물을 프로젝트 로컬에 만들고 결정, 가정, 근거, 계산, 검증을 보존합니다.
+          - cell "I - - - - - - -" [ref=f8e1296]:
+            - generic [ref=f8e1297]: I
+            - generic [ref=f8e1298]: "-"
+            - generic [ref=f8e1299]: "-"
+            - generic [ref=f8e1300]: "-"
+            - generic [ref=f8e1301]: "-"
+            - generic [ref=f8e1302]: "-"
+            - generic [ref=f8e1303]: "-"
+            - generic [ref=f8e1304]: "-"
+          - cell "-" [ref=f8e1305]
+          - cell "1" [ref=f8e1306]
+        - row [ref=f8e1307] [cursor=pointer]:
+          - cell "32" [ref=f8e1308]
+          - cell [ref=f8e1309]:
+            - 'link "Issue 032: Multi-Language Goal Benchmarking and Core MCP Server Integration" [ref=f8e1310]':
+              - /url: issue-032-multi-language-goal-benchmarking-and-core-mcp-server-integration.html
+            - code [ref=f8e1311]: 032-multi-language-goal-benchmarking-and-core-mcp-server-integration
+          - cell "done" [ref=f8e1312]
+          - cell "execute" [ref=f8e1313]
+          - cell "2026-06-20" [ref=f8e1314]
+          - cell "2026-06-20" [ref=f8e1315]
+          - cell "KO 벤치마킹 결과의 다국어 로컬라이제이션과 core MCP 서버 연동을 강화해 플러그인 완성도를 높입니다." [ref=f8e1316]:
+            - generic [ref=f8e1317]: KO
+            - text: 벤치마킹 결과의 다국어 로컬라이제이션과 core MCP 서버 연동을 강화해 플러그인 완성도를 높입니다.
+          - cell "I S - - T - - -" [ref=f8e1318]:
+            - generic [ref=f8e1319]: I
+            - generic [ref=f8e1320]: S
+            - generic [ref=f8e1321]: "-"
+            - generic [ref=f8e1322]: "-"
+            - generic [ref=f8e1323]: T
+            - generic [ref=f8e1324]: "-"
+            - generic [ref=f8e1325]: "-"
+            - generic [ref=f8e1326]: "-"
+          - cell "-" [ref=f8e1327]
+          - cell "0" [ref=f8e1328]
+        - row [ref=f8e1329] [cursor=pointer]:
+          - cell "31" [ref=f8e1330]
+          - cell [ref=f8e1331]:
+            - 'link "Issue 031: Goal-driven Autonomous Benchmarking and Issue Generation" [ref=f8e1332]':
+              - /url: issue-031-goal-driven-autonomous-benchmarking-and-issue-generation.html
+            - code [ref=f8e1333]: 031-goal-driven-autonomous-benchmarking-and-issue-generation
+          - cell "done" [ref=f8e1334]
+          - cell "execute" [ref=f8e1335]
+          - cell "2026-06-20" [ref=f8e1336]
+          - cell "2026-06-20" [ref=f8e1337]
+          - cell "KO 상위 제품 목표가 주어지면 에이전트가 벤치마킹을 수행하고 필요한 하위 작업을 이슈로 자동 도출합니다." [ref=f8e1338]:
+            - generic [ref=f8e1339]: KO
+            - text: 상위 제품 목표가 주어지면 에이전트가 벤치마킹을 수행하고 필요한 하위 작업을 이슈로 자동 도출합니다.
+          - cell "I S - - T - - -" [ref=f8e1340]:
+            - generic [ref=f8e1341]: I
+            - generic [ref=f8e1342]: S
+            - generic [ref=f8e1343]: "-"
+            - generic [ref=f8e1344]: "-"
+            - generic [ref=f8e1345]: T
+            - generic [ref=f8e1346]: "-"
+            - generic [ref=f8e1347]: "-"
+            - generic [ref=f8e1348]: "-"
+          - cell "-" [ref=f8e1349]
+          - cell "0" [ref=f8e1350]
+        - row [ref=f8e1351] [cursor=pointer]:
+          - cell "30" [ref=f8e1352]
+          - cell [ref=f8e1353]:
+            - 'link "Issue 030: Worker Cognitive Demand Model Routing" [ref=f8e1354]':
+              - /url: issue-030-worker-cognitive-demand-model-routing.html
+            - code [ref=f8e1355]: 030-worker-cognitive-demand-model-routing
+          - cell "done" [ref=f8e1356]
+          - cell "execute" [ref=f8e1357]
+          - cell "2026-06-20" [ref=f8e1358]
+          - cell "2026-06-20" [ref=f8e1359]
+          - cell "KO 워커 역할별 인지 요구 수준을 deep, balanced, fast로 나누어 호스트 에이전트가 적절한 모델을 선택할 수 있게 합니다." [ref=f8e1360]:
+            - generic [ref=f8e1361]: KO
+            - text: 워커 역할별 인지 요구 수준을 deep, balanced, fast로 나누어 호스트 에이전트가 적절한 모델을 선택할 수 있게 합니다.
+          - cell "I S - - T - - -" [ref=f8e1362]:
+            - generic [ref=f8e1363]: I
+            - generic [ref=f8e1364]: S
+            - generic [ref=f8e1365]: "-"
+            - generic [ref=f8e1366]: "-"
+            - generic [ref=f8e1367]: T
+            - generic [ref=f8e1368]: "-"
+            - generic [ref=f8e1369]: "-"
+            - generic [ref=f8e1370]: "-"
+          - cell "-" [ref=f8e1371]
+          - cell "0" [ref=f8e1372]
+        - row [ref=f8e1373] [cursor=pointer]:
+          - cell "29" [ref=f8e1374]
+          - cell [ref=f8e1375]:
+            - 'link "Issue 029: Antigravity Artifact Sync Connector" [ref=f8e1376]':
+              - /url: issue-029-antigravity-artifact-sync-connector.html
+            - code [ref=f8e1377]: 029-antigravity-artifact-sync-connector
+          - cell "done" [ref=f8e1378]
+          - cell "execute" [ref=f8e1379]
+          - cell "2026-06-19" [ref=f8e1380]
+          - cell "2026-06-19" [ref=f8e1381]
+          - cell "KO Antigravity 네이티브 산출물과 ModuFlow의 Git-native issue/spec/status 파일을 동기화해 중복 기획/문서 작업을 줄입니다." [ref=f8e1382]:
+            - generic [ref=f8e1383]: KO
+            - text: Antigravity 네이티브 산출물과 ModuFlow의 Git-native issue/spec/status 파일을 동기화해 중복 기획/문서 작업을 줄입니다.
+          - cell "I S - P T - - -" [ref=f8e1384]:
+            - generic [ref=f8e1385]: I
+            - generic [ref=f8e1386]: S
+            - generic [ref=f8e1387]: "-"
+            - generic [ref=f8e1388]: P
+            - generic [ref=f8e1389]: T
+            - generic [ref=f8e1390]: "-"
+            - generic [ref=f8e1391]: "-"
+            - generic [ref=f8e1392]: "-"
+          - cell "-" [ref=f8e1393]
+          - cell "0" [ref=f8e1394]
+        - row [ref=f8e1395] [cursor=pointer]:
+          - cell "28" [ref=f8e1396]
+          - cell [ref=f8e1397]:
+            - 'link "Issue 028: Real Subagent Execution Backend" [ref=f8e1398]':
+              - /url: issue-028-real-subagent-execution-backend.html
+            - code [ref=f8e1399]: 028-real-subagent-execution-backend
+          - cell "done" [ref=f8e1400]
+          - cell "execute" [ref=f8e1401]
+          - cell "2026-06-19" [ref=f8e1402]
+          - cell "2026-06-19" [ref=f8e1403]
+          - cell "KO 정적 워커 플랜 시뮬레이션을 넘어 독립 작업을 실제 코딩 서브에이전트에 dispatch할 수 있는 선택적 실행 백엔드를 설계합니다." [ref=f8e1404]:
+            - generic [ref=f8e1405]: KO
+            - text: 정적 워커 플랜 시뮬레이션을 넘어 독립 작업을 실제 코딩 서브에이전트에 dispatch할 수 있는 선택적 실행 백엔드를 설계합니다.
+          - cell "I S - P T - - -" [ref=f8e1406]:
+            - generic [ref=f8e1407]: I
+            - generic [ref=f8e1408]: S
+            - generic [ref=f8e1409]: "-"
+            - generic [ref=f8e1410]: P
+            - generic [ref=f8e1411]: T
+            - generic [ref=f8e1412]: "-"
+            - generic [ref=f8e1413]: "-"
+            - generic [ref=f8e1414]: "-"
+          - cell "-" [ref=f8e1415]
+          - cell "0" [ref=f8e1416]
+        - row [ref=f8e1417] [cursor=pointer]:
+          - cell "27" [ref=f8e1418]
+          - cell [ref=f8e1419]:
+            - 'link "Issue 027: Reduce Approval Popup Friction" [ref=f8e1420]':
+              - /url: issue-027-reduce-approval-popup-friction.html
+            - code [ref=f8e1421]: 027-reduce-approval-popup-friction
+          - cell "done" [ref=f8e1422]
+          - cell "review" [ref=f8e1423]
+          - cell "2026-06-19" [ref=f8e1424]
+          - cell "2026-06-19" [ref=f8e1425]
+          - cell "KO 안전한 Git/GitHub 작업을 묶고 불필요한 shell/파일 접근을 줄여 반복 승인 팝업 피로를 낮춥니다." [ref=f8e1426]:
+            - generic [ref=f8e1427]: KO
+            - text: 안전한 Git/GitHub 작업을 묶고 불필요한 shell/파일 접근을 줄여 반복 승인 팝업 피로를 낮춥니다.
+          - cell "I S - P T R - -" [ref=f8e1428]:
+            - generic [ref=f8e1429]: I
+            - generic [ref=f8e1430]: S
+            - generic [ref=f8e1431]: "-"
+            - generic [ref=f8e1432]: P
+            - generic [ref=f8e1433]: T
+            - generic [ref=f8e1434]: R
+            - generic [ref=f8e1435]: "-"
+            - generic [ref=f8e1436]: "-"
+          - cell "-" [ref=f8e1437]
+          - cell "0" [ref=f8e1438]
+        - row [ref=f8e1439] [cursor=pointer]:
+          - cell "26" [ref=f8e1440]
+          - cell [ref=f8e1441]:
+            - 'link "Issue 026: Simplify Command And Folder Surface" [ref=f8e1442]':
+              - /url: issue-026-simplify-command-and-folder-surface.html
+            - code [ref=f8e1443]: 026-simplify-command-and-folder-surface
+          - cell "done" [ref=f8e1444]
+          - cell "review" [ref=f8e1445]
+          - cell "2026-06-19" [ref=f8e1446]
+          - cell "2026-06-19" [ref=f8e1447]
+          - cell "KO 전체 내부 워크플로우를 몰라도 쓸 수 있도록 보이는 명령과 폴더 표면을 줄이고 기본 멘탈 모델을 단순화합니다." [ref=f8e1448]:
+            - generic [ref=f8e1449]: KO
+            - text: 전체 내부 워크플로우를 몰라도 쓸 수 있도록 보이는 명령과 폴더 표면을 줄이고 기본 멘탈 모델을 단순화합니다.
+          - cell "I S - P T R - -" [ref=f8e1450]:
+            - generic [ref=f8e1451]: I
+            - generic [ref=f8e1452]: S
+            - generic [ref=f8e1453]: "-"
+            - generic [ref=f8e1454]: P
+            - generic [ref=f8e1455]: T
+            - generic [ref=f8e1456]: R
+            - generic [ref=f8e1457]: "-"
+            - generic [ref=f8e1458]: "-"
+          - cell "-" [ref=f8e1459]
+          - cell "0" [ref=f8e1460]
+        - row [ref=f8e1461] [cursor=pointer]:
+          - cell "25" [ref=f8e1462]
+          - cell [ref=f8e1463]:
+            - 'link "Issue 025: Lightweight Project Adoption" [ref=f8e1464]':
+              - /url: issue-025-lightweight-project-adoption.html
+            - code [ref=f8e1465]: 025-lightweight-project-adoption
+          - cell "done" [ref=f8e1466]
+          - cell "execute" [ref=f8e1467]
+          - cell "2026-06-19" [ref=f8e1468]
+          - cell "2026-06-19" [ref=f8e1469]
+          - cell "KO 대상 프로젝트에는 durable state와 PM 산출물만 남기고 명령, 스크립트, 스킬, 템플릿은 ModuFlow 쪽에 유지해 도입 부담을 줄입니다." [ref=f8e1470]:
+            - generic [ref=f8e1471]: KO
+            - text: 대상 프로젝트에는 durable state와 PM 산출물만 남기고 명령, 스크립트, 스킬, 템플릿은 ModuFlow 쪽에 유지해 도입 부담을 줄입니다.
+          - cell "I S - P T - - -" [ref=f8e1472]:
+            - generic [ref=f8e1473]: I
+            - generic [ref=f8e1474]: S
+            - generic [ref=f8e1475]: "-"
+            - generic [ref=f8e1476]: P
+            - generic [ref=f8e1477]: T
+            - generic [ref=f8e1478]: "-"
+            - generic [ref=f8e1479]: "-"
+            - generic [ref=f8e1480]: "-"
+          - cell "-" [ref=f8e1481]
+          - cell "0" [ref=f8e1482]
+        - row [ref=f8e1483] [cursor=pointer]:
+          - cell "24" [ref=f8e1484]
+          - cell [ref=f8e1485]:
+            - 'link "Issue 024: Artifact Schema And Doctor Gates" [ref=f8e1486]':
+              - /url: issue-024-artifact-schema-and-doctor-gates.html
+            - code [ref=f8e1487]: 024-artifact-schema-and-doctor-gates
+          - cell "done" [ref=f8e1488]
+          - cell "release" [ref=f8e1489]
+          - cell "2026-06-17" [ref=f8e1490]
+          - cell "2026-06-17" [ref=f8e1491]
+          - cell "KO 단순 파일 존재 확인을 넘어 goal, issue, spec, task, worker, Git, dashboard, roadmap 링크 무결성을 검증합니다." [ref=f8e1492]:
+            - generic [ref=f8e1493]: KO
+            - text: 단순 파일 존재 확인을 넘어 goal, issue, spec, task, worker, Git, dashboard, roadmap 링크 무결성을 검증합니다.
+          - cell "I S - P T - - Rel" [ref=f8e1494]:
+            - generic [ref=f8e1495]: I
+            - generic [ref=f8e1496]: S
+            - generic [ref=f8e1497]: "-"
+            - generic [ref=f8e1498]: P
+            - generic [ref=f8e1499]: T
+            - generic [ref=f8e1500]: "-"
+            - generic [ref=f8e1501]: "-"
+            - generic [ref=f8e1502]: Rel
+          - cell "-" [ref=f8e1503]
+          - cell "0" [ref=f8e1504]
+        - row [ref=f8e1505] [cursor=pointer]:
+          - cell "23" [ref=f8e1506]
+          - cell [ref=f8e1507]:
+            - 'link "Issue 023: Worker Routing And Isolation" [ref=f8e1508]':
+              - /url: issue-023-worker-routing-and-isolation.html
+            - code [ref=f8e1509]: 023-worker-routing-and-isolation
+          - cell "done" [ref=f8e1510]
+          - cell "release" [ref=f8e1511]
+          - cell "2026-06-17" [ref=f8e1512]
+          - cell "2026-06-17" [ref=f8e1513]
+          - cell "KO 워커 라우팅을 개선하고 병렬 실행 판단을 워커 도메인 수가 아닌 실제 파일/의존성 격리 기준으로 바꿉니다." [ref=f8e1514]:
+            - generic [ref=f8e1515]: KO
+            - text: 워커 라우팅을 개선하고 병렬 실행 판단을 워커 도메인 수가 아닌 실제 파일/의존성 격리 기준으로 바꿉니다.
+          - cell "I S - P T - - Rel" [ref=f8e1516]:
+            - generic [ref=f8e1517]: I
+            - generic [ref=f8e1518]: S
+            - generic [ref=f8e1519]: "-"
+            - generic [ref=f8e1520]: P
+            - generic [ref=f8e1521]: T
+            - generic [ref=f8e1522]: "-"
+            - generic [ref=f8e1523]: "-"
+            - generic [ref=f8e1524]: Rel
+          - cell "-" [ref=f8e1525]
+          - cell "0" [ref=f8e1526]
+        - row [ref=f8e1527] [cursor=pointer]:
+          - cell "22" [ref=f8e1528]
+          - cell [ref=f8e1529]:
+            - 'link "Issue 022: Intake To Goal Graph" [ref=f8e1530]':
+              - /url: issue-022-intake-to-goal-graph.html
+            - code [ref=f8e1531]: 022-intake-to-goal-graph
+          - cell "done" [ref=f8e1532]
+          - cell "release" [ref=f8e1533]
+          - cell "2026-06-17" [ref=f8e1534]
+          - cell "2026-06-18" [ref=f8e1535]
+          - cell "KO 느슨한 사용자 요청을 개발, 기획, 디자인, 데이터, 문서, 운영 전반의 goal-linked issue graph로 변환합니다." [ref=f8e1536]:
+            - generic [ref=f8e1537]: KO
+            - text: 느슨한 사용자 요청을 개발, 기획, 디자인, 데이터, 문서, 운영 전반의 goal-linked issue graph로 변환합니다.
+          - cell "I S - P T - - Rel" [ref=f8e1538]:
+            - generic [ref=f8e1539]: I
+            - generic [ref=f8e1540]: S
+            - generic [ref=f8e1541]: "-"
+            - generic [ref=f8e1542]: P
+            - generic [ref=f8e1543]: T
+            - generic [ref=f8e1544]: "-"
+            - generic [ref=f8e1545]: "-"
+            - generic [ref=f8e1546]: Rel
+          - cell "-" [ref=f8e1547]
+          - cell "0" [ref=f8e1548]
+        - row [ref=f8e1549] [cursor=pointer]:
+          - cell "21" [ref=f8e1550]
+          - cell [ref=f8e1551]:
+            - 'link "Issue 021: Git Binding And Execution Backend" [ref=f8e1552]':
+              - /url: issue-021-git-binding-and-execution-backend.html
+            - code [ref=f8e1553]: 021-git-binding-and-execution-backend
+          - cell "done" [ref=f8e1554]
+          - cell "release" [ref=f8e1555]
+          - cell "2026-06-17" [ref=f8e1556]
+          - cell "2026-06-18" [ref=f8e1557]
+          - cell "KO 이슈와 루프 단계를 Git branch, commit, PR, release, 선택적 외부 실행 백엔드에 연결하는 방식을 정의합니다." [ref=f8e1558]:
+            - generic [ref=f8e1559]: KO
+            - text: 이슈와 루프 단계를 Git branch, commit, PR, release, 선택적 외부 실행 백엔드에 연결하는 방식을 정의합니다.
+          - cell "I S - P T - - Rel" [ref=f8e1560]:
+            - generic [ref=f8e1561]: I
+            - generic [ref=f8e1562]: S
+            - generic [ref=f8e1563]: "-"
+            - generic [ref=f8e1564]: P
+            - generic [ref=f8e1565]: T
+            - generic [ref=f8e1566]: "-"
+            - generic [ref=f8e1567]: "-"
+            - generic [ref=f8e1568]: Rel
+          - cell "-" [ref=f8e1569]
+          - cell "0" [ref=f8e1570]
+        - row [ref=f8e1571] [cursor=pointer]:
+          - cell "20" [ref=f8e1572]
+          - cell [ref=f8e1573]:
+            - 'link "Issue 020: User-Facing Simple Loop UX" [ref=f8e1574]':
+              - /url: issue-020-user-facing-simple-loop-ux.html
+            - code [ref=f8e1575]: 020-user-facing-simple-loop-ux
+          - cell "done" [ref=f8e1576]
+          - cell "release" [ref=f8e1577]
+          - cell "2026-06-17" [ref=f8e1578]
+          - cell "2026-06-17" [ref=f8e1579]
+          - cell "KO 사용자에게는 작은 자연어 표면만 보여주고 goal, issue, spec, plan, worker, Git 구조는 내부에서 숨깁니다." [ref=f8e1580]:
+            - generic [ref=f8e1581]: KO
+            - text: 사용자에게는 작은 자연어 표면만 보여주고 goal, issue, spec, plan, worker, Git 구조는 내부에서 숨깁니다.
+          - cell "I S - P T - - Rel" [ref=f8e1582]:
+            - generic [ref=f8e1583]: I
+            - generic [ref=f8e1584]: S
+            - generic [ref=f8e1585]: "-"
+            - generic [ref=f8e1586]: P
+            - generic [ref=f8e1587]: T
+            - generic [ref=f8e1588]: "-"
+            - generic [ref=f8e1589]: "-"
+            - generic [ref=f8e1590]: Rel
+          - cell "-" [ref=f8e1591]
+          - cell "0" [ref=f8e1592]
+        - row [ref=f8e1593] [cursor=pointer]:
+          - cell "19" [ref=f8e1594]
+          - cell [ref=f8e1595]:
+            - 'link "Issue 019: Loop Kernel And State Model" [ref=f8e1596]':
+              - /url: issue-019-loop-kernel-and-state-model.html
+            - code [ref=f8e1597]: 019-loop-kernel-and-state-model
+          - cell "done" [ref=f8e1598]
+          - cell "release" [ref=f8e1599]
+          - cell "2026-06-17" [ref=f8e1600]
+          - cell "2026-06-17" [ref=f8e1601]
+          - cell "KO 플러그인 사용자가 요청에서 goal, issue graph, next action, completion state까지 자연스럽게 이동하는 핵심 루프 커널을 구현합니다." [ref=f8e1602]:
+            - generic [ref=f8e1603]: KO
+            - text: 플러그인 사용자가 요청에서 goal, issue graph, next action, completion state까지 자연스럽게 이동하는 핵심 루프 커널을 구현합니다.
+          - cell "I S - P T - - Rel" [ref=f8e1604]:
+            - generic [ref=f8e1605]: I
+            - generic [ref=f8e1606]: S
+            - generic [ref=f8e1607]: "-"
+            - generic [ref=f8e1608]: P
+            - generic [ref=f8e1609]: T
+            - generic [ref=f8e1610]: "-"
+            - generic [ref=f8e1611]: "-"
+            - generic [ref=f8e1612]: Rel
+          - cell "-" [ref=f8e1613]
+          - cell "0" [ref=f8e1614]
+        - row [ref=f8e1615] [cursor=pointer]:
+          - cell "3" [ref=f8e1616]
+          - cell [ref=f8e1617]:
+            - 'link "Issue 003: Knowledge Evidence Layer" [ref=f8e1618]':
+              - /url: issue-003-knowledge-evidence-layer.html
+            - code [ref=f8e1619]: 003-knowledge-evidence-layer
+          - cell "done" [ref=f8e1620]
+          - cell "execute" [ref=f8e1621]
+          - cell "2026-06-16" [ref=f8e1622]
+          - cell "2026-06-16" [ref=f8e1623]
+          - cell "KO 벤치마크, 조사, 리포트, 결정, 데이터 메모, 참고자료를 이슈와 스펙에 연결하는 지식/근거 계층을 추가합니다." [ref=f8e1624]:
+            - generic [ref=f8e1625]: KO
+            - text: 벤치마크, 조사, 리포트, 결정, 데이터 메모, 참고자료를 이슈와 스펙에 연결하는 지식/근거 계층을 추가합니다.
+          - cell "I S - P T - - -" [ref=f8e1626]:
+            - generic [ref=f8e1627]: I
+            - generic [ref=f8e1628]: S
+            - generic [ref=f8e1629]: "-"
+            - generic [ref=f8e1630]: P
+            - generic [ref=f8e1631]: T
+            - generic [ref=f8e1632]: "-"
+            - generic [ref=f8e1633]: "-"
+            - generic [ref=f8e1634]: "-"
+          - cell "-" [ref=f8e1635]
+          - cell "0" [ref=f8e1636]
+        - row [ref=f8e1637] [cursor=pointer]:
+          - cell "10" [ref=f8e1638]
+          - cell [ref=f8e1639]:
+            - 'link "Issue 010: Codex Manifest Version Sync Fix" [ref=f8e1640]':
+              - /url: issue-010-codex-version-sync-fix.html
+            - code [ref=f8e1641]: 010-codex-version-sync-fix
+          - cell "done" [ref=f8e1642]
+          - cell "spec" [ref=f8e1643]
+          - cell "2026-06-12" [ref=f8e1644]
+          - cell "2026-06-12" [ref=f8e1645]
+          - cell "KO Codex manifest 버전이 canonical 플러그인 버전과 어긋나지 않도록 개인 marketplace 등록 스크립트를 수정합니다." [ref=f8e1646]:
+            - generic [ref=f8e1647]: KO
+            - text: Codex manifest 버전이 canonical 플러그인 버전과 어긋나지 않도록 개인 marketplace 등록 스크립트를 수정합니다.
+          - cell "I - - - - - - -" [ref=f8e1648]:
+            - generic [ref=f8e1649]: I
+            - generic [ref=f8e1650]: "-"
+            - generic [ref=f8e1651]: "-"
+            - generic [ref=f8e1652]: "-"
+            - generic [ref=f8e1653]: "-"
+            - generic [ref=f8e1654]: "-"
+            - generic [ref=f8e1655]: "-"
+            - generic [ref=f8e1656]: "-"
+          - cell "-" [ref=f8e1657]
+          - cell "0" [ref=f8e1658]
+        - row [ref=f8e1659] [cursor=pointer]:
+          - cell "7" [ref=f8e1660]
+          - cell [ref=f8e1661]:
+            - 'link "Issue 007: Worker Orchestration" [ref=f8e1662]':
+              - /url: issue-007-worker-orchestration.html
+            - code [ref=f8e1663]: 007-worker-orchestration
+          - cell "done" [ref=f8e1664]
+          - cell "release" [ref=f8e1665]
+          - cell "2026-06-11" [ref=f8e1666]
+          - cell "2026-06-11" [ref=f8e1667]
+          - cell "KO PM, 디자인, 데이터, 구현, QA, 릴리즈 작업을 어떤 워커가 맡고 병렬 실행 가능한지 명확히 계획합니다." [ref=f8e1668]:
+            - generic [ref=f8e1669]: KO
+            - text: PM, 디자인, 데이터, 구현, QA, 릴리즈 작업을 어떤 워커가 맡고 병렬 실행 가능한지 명확히 계획합니다.
+          - cell "I S - P T - - Rel" [ref=f8e1670]:
+            - generic [ref=f8e1671]: I
+            - generic [ref=f8e1672]: S
+            - generic [ref=f8e1673]: "-"
+            - generic [ref=f8e1674]: P
+            - generic [ref=f8e1675]: T
+            - generic [ref=f8e1676]: "-"
+            - generic [ref=f8e1677]: "-"
+            - generic [ref=f8e1678]: Rel
+          - cell "-" [ref=f8e1679]
+          - cell "0" [ref=f8e1680]
+        - row [ref=f8e1681]:
+          - columnheader "review · 4" [ref=f8e1682]
+        - row [ref=f8e1683] [cursor=pointer]:
+          - cell "80" [ref=f8e1684]
+          - cell [ref=f8e1685]:
+            - 'link "Issue 080: Reference Improvement Backlog" [ref=f8e1686]':
+              - /url: issue-080-reference-improvement-backlog.html
+            - code [ref=f8e1687]: 080-reference-improvement-backlog
+          - cell "review" [ref=f8e1688]
+          - cell "pr" [ref=f8e1689]
+          - cell "2026-07-09" [ref=f8e1690]
+          - cell "2026-07-09" [ref=f8e1691]
+          - 'cell "KO 대시보드: `memory/dashboard.html#issue-db` 이슈 상세: `memory/issue-080-reference-improvement-backlog.html` PR: https://github.com/dongwonlee222/moduflow/pull/16 브랜치: `codex/080-reference…" [ref=f8e1692]':
+            - generic [ref=f8e1693]: KO
+            - text: "대시보드: `memory/dashboard.html#issue-db` 이슈 상세: `memory/issue-080-reference-improvement-backlog.html` PR: https://github.com/dongwonlee222/moduflow/pull/16 브랜치: `codex/080-reference…"
+          - cell "I S - P T R PR -" [ref=f8e1694]:
+            - generic [ref=f8e1695]: I
+            - generic [ref=f8e1696]: S
+            - generic [ref=f8e1697]: "-"
+            - generic [ref=f8e1698]: P
+            - generic [ref=f8e1699]: T
+            - generic [ref=f8e1700]: R
+            - generic [ref=f8e1701]: PR
+            - generic [ref=f8e1702]: "-"
+          - cell "-" [ref=f8e1703]
+          - cell "0" [ref=f8e1704]
+        - row [ref=f8e1705] [cursor=pointer]:
+          - cell "79" [ref=f8e1706]
+          - cell [ref=f8e1707]:
+            - 'link "Issue 079: Plan Discipline and Skill Matrix" [ref=f8e1708]':
+              - /url: issue-079-plan-discipline-skill-matrix.html
+            - code [ref=f8e1709]: 079-plan-discipline-skill-matrix
+          - cell "review" [ref=f8e1710]
+          - cell "pr" [ref=f8e1711]
+          - cell "2026-07-09" [ref=f8e1712]
+          - cell "2026-07-09" [ref=f8e1713]
+          - 'cell "KO 대시보드: `memory/dashboard.html#issue-db` 이슈 상세: `memory/issue-079-plan-discipline-skill-matrix.html` PR/로컬 마커: `local:079-plan-discipline-skill-matrix:draft-pr-ready` GitHub PR: htt…" [ref=f8e1714]':
+            - generic [ref=f8e1715]: KO
+            - text: "대시보드: `memory/dashboard.html#issue-db` 이슈 상세: `memory/issue-079-plan-discipline-skill-matrix.html` PR/로컬 마커: `local:079-plan-discipline-skill-matrix:draft-pr-ready` GitHub PR: htt…"
+          - cell "I S - P T R PR -" [ref=f8e1716]:
+            - generic [ref=f8e1717]: I
+            - generic [ref=f8e1718]: S
+            - generic [ref=f8e1719]: "-"
+            - generic [ref=f8e1720]: P
+            - generic [ref=f8e1721]: T
+            - generic [ref=f8e1722]: R
+            - generic [ref=f8e1723]: PR
+            - generic [ref=f8e1724]: "-"
+          - cell "-" [ref=f8e1725]
+          - cell "0" [ref=f8e1726]
+        - row [ref=f8e1727] [cursor=pointer]:
+          - cell "78" [ref=f8e1728]
+          - cell [ref=f8e1729]:
+            - 'link "Issue 078: Frontend QA Template Pack" [ref=f8e1730]':
+              - /url: issue-078-frontend-qa-template-pack.html
+            - code [ref=f8e1731]: 078-frontend-qa-template-pack
+          - cell "review" [ref=f8e1732]
+          - cell "pr" [ref=f8e1733]
+          - cell "2026-07-09" [ref=f8e1734]
+          - cell "2026-07-09" [ref=f8e1735]
+          - 'cell "KO 대시보드: `memory/dashboard.html#issue-db` 이슈 상세: `memory/issue-078-frontend-qa-template-pack.html` PR/로컬 마커: `local:078-frontend-qa-template-pack:draft-pr-ready` GitHub PR: https://g…" [ref=f8e1736]':
+            - generic [ref=f8e1737]: KO
+            - text: "대시보드: `memory/dashboard.html#issue-db` 이슈 상세: `memory/issue-078-frontend-qa-template-pack.html` PR/로컬 마커: `local:078-frontend-qa-template-pack:draft-pr-ready` GitHub PR: https://g…"
+          - cell "I S - P T R PR -" [ref=f8e1738]:
+            - generic [ref=f8e1739]: I
+            - generic [ref=f8e1740]: S
+            - generic [ref=f8e1741]: "-"
+            - generic [ref=f8e1742]: P
+            - generic [ref=f8e1743]: T
+            - generic [ref=f8e1744]: R
+            - generic [ref=f8e1745]: PR
+            - generic [ref=f8e1746]: "-"
+          - cell "-" [ref=f8e1747]
+          - cell "0" [ref=f8e1748]
+        - row [ref=f8e1749] [cursor=pointer]:
+          - cell "77" [ref=f8e1750]
+          - cell [ref=f8e1751]:
+            - 'link "Issue 077: Implementation Readiness Gate" [ref=f8e1752]':
+              - /url: issue-077-implementation-readiness-gate.html
+            - code [ref=f8e1753]: 077-implementation-readiness-gate
+          - cell "review" [ref=f8e1754]
+          - cell "pr" [ref=f8e1755]
+          - cell "2026-07-09" [ref=f8e1756]
+          - cell "2026-07-09" [ref=f8e1757]
+          - 'cell "KO 대시보드: `memory/dashboard.html#issue-db` 이슈 상세: `memory/issue-077-implementation-readiness-gate.html` PR/로컬 마커: `local:077-implementation-readiness-gate:draft-pr-ready` GitHub PR: h…" [ref=f8e1758]':
+            - generic [ref=f8e1759]: KO
+            - text: "대시보드: `memory/dashboard.html#issue-db` 이슈 상세: `memory/issue-077-implementation-readiness-gate.html` PR/로컬 마커: `local:077-implementation-readiness-gate:draft-pr-ready` GitHub PR: h…"
+          - cell "I S - P T R PR -" [ref=f8e1760]:
+            - generic [ref=f8e1761]: I
+            - generic [ref=f8e1762]: S
+            - generic [ref=f8e1763]: "-"
+            - generic [ref=f8e1764]: P
+            - generic [ref=f8e1765]: T
+            - generic [ref=f8e1766]: R
+            - generic [ref=f8e1767]: PR
+            - generic [ref=f8e1768]: "-"
+          - cell "-" [ref=f8e1769]
+          - cell "0" [ref=f8e1770]
+        - row [ref=f8e1771]:
+          - columnheader "superseded · 6" [ref=f8e1772]
+        - row [ref=f8e1773] [cursor=pointer]:
+          - cell "18" [ref=f8e1774]
+          - cell [ref=f8e1775]:
+            - 'link "Issue 018: 상태 단일 소스 + dashboard 드리프트 + 워크플로우 그림 통합" [ref=f8e1776]':
+              - /url: issue-018-state-single-source.html
+            - code [ref=f8e1777]: 018-state-single-source
+          - cell "superseded" [ref=f8e1778]
+          - cell "spec" [ref=f8e1779]
+          - cell "2026-07-05" [ref=f8e1780]
+          - cell "2026-06-16" [ref=f8e1781]
+          - cell "KO state.json, loop-state.json, goal.md, dashboard.md에 중복된 상태와 next_command를 단일 기준으로 정리합니다." [ref=f8e1782]:
+            - generic [ref=f8e1783]: KO
+            - text: state.json, loop-state.json, goal.md, dashboard.md에 중복된 상태와 next_command를 단일 기준으로 정리합니다.
+          - cell "I - - - - - - -" [ref=f8e1784]:
+            - generic [ref=f8e1785]: I
+            - generic [ref=f8e1786]: "-"
+            - generic [ref=f8e1787]: "-"
+            - generic [ref=f8e1788]: "-"
+            - generic [ref=f8e1789]: "-"
+            - generic [ref=f8e1790]: "-"
+            - generic [ref=f8e1791]: "-"
+            - generic [ref=f8e1792]: "-"
+          - cell "spec 없음 review 없음 PR 없음 한글 없음" [ref=f8e1793]:
+            - generic [ref=f8e1794]: spec 없음
+            - generic [ref=f8e1795]: review 없음
+            - generic [ref=f8e1796]: PR 없음
+            - generic [ref=f8e1797]: 한글 없음
+          - cell "0" [ref=f8e1798]
+        - row [ref=f8e1799] [cursor=pointer]:
+          - cell "17" [ref=f8e1800]
+          - cell [ref=f8e1801]:
+            - 'link "Issue 017: Goal multi-issue supervise 스키마/문서 정합" [ref=f8e1802]':
+              - /url: issue-017-goal-multi-issue.html
+            - code [ref=f8e1803]: 017-goal-multi-issue
+          - cell "superseded" [ref=f8e1804]
+          - cell "spec" [ref=f8e1805]
+          - cell "2026-07-05" [ref=f8e1806]
+          - cell "2026-06-16" [ref=f8e1807]
+          - cell "KO Goal이 여러 이슈를 관리한다는 문서와 단일 이슈만 표현하는 데이터 모델의 불일치를 해소합니다." [ref=f8e1808]:
+            - generic [ref=f8e1809]: KO
+            - text: Goal이 여러 이슈를 관리한다는 문서와 단일 이슈만 표현하는 데이터 모델의 불일치를 해소합니다.
+          - cell "I - - - - - - -" [ref=f8e1810]:
+            - generic [ref=f8e1811]: I
+            - generic [ref=f8e1812]: "-"
+            - generic [ref=f8e1813]: "-"
+            - generic [ref=f8e1814]: "-"
+            - generic [ref=f8e1815]: "-"
+            - generic [ref=f8e1816]: "-"
+            - generic [ref=f8e1817]: "-"
+            - generic [ref=f8e1818]: "-"
+          - cell "spec 없음 review 없음 PR 없음 한글 없음" [ref=f8e1819]:
+            - generic [ref=f8e1820]: spec 없음
+            - generic [ref=f8e1821]: review 없음
+            - generic [ref=f8e1822]: PR 없음
+            - generic [ref=f8e1823]: 한글 없음
+          - cell "0" [ref=f8e1824]
+        - row [ref=f8e1825] [cursor=pointer]:
+          - cell "16" [ref=f8e1826]
+          - cell [ref=f8e1827]:
+            - 'link "Issue 016: assign_worker 키워드 충돌 + dead worker 정의 동기화" [ref=f8e1828]':
+              - /url: issue-016-worker-keyword-and-dead.html
+            - code [ref=f8e1829]: 016-worker-keyword-and-dead
+          - cell "superseded" [ref=f8e1830]
+          - cell "spec" [ref=f8e1831]
+          - cell "2026-07-05" [ref=f8e1832]
+          - cell "2026-06-16" [ref=f8e1833]
+          - cell "KO 워커 키워드 매칭 충돌과 dead worker 정의 불일치를 정리해 작업 배정 정확도를 높입니다." [ref=f8e1834]:
+            - generic [ref=f8e1835]: KO
+            - text: 워커 키워드 매칭 충돌과 dead worker 정의 불일치를 정리해 작업 배정 정확도를 높입니다.
+          - cell "I - - - - - - -" [ref=f8e1836]:
+            - generic [ref=f8e1837]: I
+            - generic [ref=f8e1838]: "-"
+            - generic [ref=f8e1839]: "-"
+            - generic [ref=f8e1840]: "-"
+            - generic [ref=f8e1841]: "-"
+            - generic [ref=f8e1842]: "-"
+            - generic [ref=f8e1843]: "-"
+            - generic [ref=f8e1844]: "-"
+          - cell "spec 없음 review 없음 PR 없음 한글 없음" [ref=f8e1845]:
+            - generic [ref=f8e1846]: spec 없음
+            - generic [ref=f8e1847]: review 없음
+            - generic [ref=f8e1848]: PR 없음
+            - generic [ref=f8e1849]: 한글 없음
+          - cell "0" [ref=f8e1850]
+        - row [ref=f8e1851] [cursor=pointer]:
+          - cell "15" [ref=f8e1852]
+          - cell [ref=f8e1853]:
+            - 'link "Issue 015: 워커 병렬 판정 기준(파일 disjoint) + worktree 격리" [ref=f8e1854]':
+              - /url: issue-015-worker-disjoint-isolation.html
+            - code [ref=f8e1855]: 015-worker-disjoint-isolation
+          - cell "superseded" [ref=f8e1856]
+          - cell "spec" [ref=f8e1857]
+          - cell "2026-07-05" [ref=f8e1858]
+          - cell "2026-06-16" [ref=f8e1859]
+          - cell "KO 워커 병렬 판정을 실제 파일/의존성 분리 기준으로 바꾸고 worktree 격리와 병합 순서를 정의합니다." [ref=f8e1860]:
+            - generic [ref=f8e1861]: KO
+            - text: 워커 병렬 판정을 실제 파일/의존성 분리 기준으로 바꾸고 worktree 격리와 병합 순서를 정의합니다.
+          - cell "I - - - - - - -" [ref=f8e1862]:
+            - generic [ref=f8e1863]: I
+            - generic [ref=f8e1864]: "-"
+            - generic [ref=f8e1865]: "-"
+            - generic [ref=f8e1866]: "-"
+            - generic [ref=f8e1867]: "-"
+            - generic [ref=f8e1868]: "-"
+            - generic [ref=f8e1869]: "-"
+            - generic [ref=f8e1870]: "-"
+          - cell "spec 없음 review 없음 PR 없음 한글 없음" [ref=f8e1871]:
+            - generic [ref=f8e1872]: spec 없음
+            - generic [ref=f8e1873]: review 없음
+            - generic [ref=f8e1874]: PR 없음
+            - generic [ref=f8e1875]: 한글 없음
+          - cell "0" [ref=f8e1876]
+        - row [ref=f8e1877] [cursor=pointer]:
+          - cell "14" [ref=f8e1878]
+          - cell [ref=f8e1879]:
+            - 'link "Issue 014: Loop attempts 무한루프 가드" [ref=f8e1880]':
+              - /url: issue-014-loop-attempts-guard.html
+            - code [ref=f8e1881]: 014-loop-attempts-guard
+          - cell "superseded" [ref=f8e1882]
+          - cell "spec" [ref=f8e1883]
+          - cell "2026-07-05" [ref=f8e1884]
+          - cell "2026-06-16" [ref=f8e1885]
+          - cell "KO 같은 next_command가 반복 추천되며 무한 루프가 나는 문제를 막기 위해 loop attempts 증가와 임계 차단을 구현합니다." [ref=f8e1886]:
+            - generic [ref=f8e1887]: KO
+            - text: 같은 next_command가 반복 추천되며 무한 루프가 나는 문제를 막기 위해 loop attempts 증가와 임계 차단을 구현합니다.
+          - cell "I - - - - - - -" [ref=f8e1888]:
+            - generic [ref=f8e1889]: I
+            - generic [ref=f8e1890]: "-"
+            - generic [ref=f8e1891]: "-"
+            - generic [ref=f8e1892]: "-"
+            - generic [ref=f8e1893]: "-"
+            - generic [ref=f8e1894]: "-"
+            - generic [ref=f8e1895]: "-"
+            - generic [ref=f8e1896]: "-"
+          - cell "spec 없음 review 없음 PR 없음 한글 없음" [ref=f8e1897]:
+            - generic [ref=f8e1898]: spec 없음
+            - generic [ref=f8e1899]: review 없음
+            - generic [ref=f8e1900]: PR 없음
+            - generic [ref=f8e1901]: 한글 없음
+          - cell "0" [ref=f8e1902]
+        - row [ref=f8e1903] [cursor=pointer]:
+          - cell "41" [ref=f8e1904]
+          - cell [ref=f8e1905]:
+            - link "041-decision-graph-native-mermaid-rendering" [ref=f8e1906]:
+              - /url: issue-041-decision-graph-native-mermaid-rendering.html
+            - code [ref=f8e1907]: 041-decision-graph-native-mermaid-rendering
+          - cell "superseded" [ref=f8e1908]
+          - cell "spec" [ref=f8e1909]
+          - cell "2026-06-27" [ref=f8e1910]
+          - cell "2026-06-28" [ref=f8e1911]
+          - cell "KO 결정 그래프를 네이티브 Mermaid로 렌더링해 의존성과 참조 관계를 더 읽기 쉽게 보여줍니다." [ref=f8e1912]:
+            - generic [ref=f8e1913]: KO
+            - text: 결정 그래프를 네이티브 Mermaid로 렌더링해 의존성과 참조 관계를 더 읽기 쉽게 보여줍니다.
+          - cell "I - - - - - - -" [ref=f8e1914]:
+            - generic [ref=f8e1915]: I
+            - generic [ref=f8e1916]: "-"
+            - generic [ref=f8e1917]: "-"
+            - generic [ref=f8e1918]: "-"
+            - generic [ref=f8e1919]: "-"
+            - generic [ref=f8e1920]: "-"
+            - generic [ref=f8e1921]: "-"
+            - generic [ref=f8e1922]: "-"
+          - cell "spec 없음 다음 없음 review 없음 PR 없음 한글 없음" [ref=f8e1923]:
+            - generic [ref=f8e1924]: spec 없음
+            - generic [ref=f8e1925]: 다음 없음
+            - generic [ref=f8e1926]: review 없음
+            - generic [ref=f8e1927]: PR 없음
+            - generic [ref=f8e1928]: 한글 없음
+          - cell "0" [ref=f8e1929]
+  - generic [ref=f8e1930]: 이슈 DB에서 작업 상태를 훑거나, 그래프 탭에서 관계를 확인합니다.

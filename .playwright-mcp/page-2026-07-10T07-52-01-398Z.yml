@@ -1,0 +1,19 @@
+- generic [active] [ref=f8e1]:
+  - generic [ref=f8e2]:
+    - heading "ModuFlow 프로젝트 뷰" [level=1] [ref=f8e3]
+    - generic [ref=f8e4]:
+      - text: 프로젝트
+      - combobox "프로젝트" [disabled] [ref=f8e5]:
+        - option "ModuFlow" [selected]
+  - generic [ref=f8e6]:
+    - generic [ref=f8e7] [cursor=pointer]: 이슈 DB
+    - generic [ref=f8e8] [cursor=pointer]: 이슈 그래프
+    - generic [ref=f8e9] [cursor=pointer]: 지식 그래프
+    - generic [ref=f8e10] [cursor=pointer]: 제작 기록
+    - generic [ref=f8e11] [cursor=pointer]: 플레이북
+  - generic [ref=f8e1952]:
+    - generic [ref=f8e1953]: decision
+    - generic [ref=f8e1955]: evidence
+    - generic [ref=f8e1957]: deliverable
+    - generic [ref=f8e1959]: note
+  - generic [ref=f8e1930]: 이슈 DB에서 작업 상태를 훑거나, 그래프 탭에서 관계를 확인합니다.

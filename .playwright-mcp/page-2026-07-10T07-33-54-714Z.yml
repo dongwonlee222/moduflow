@@ -1,0 +1,108 @@
+- generic [ref=f4e2]:
+  - generic [ref=f4e3]:
+    - heading "ModuFlow 프로젝트 뷰" [level=1] [ref=f4e4]
+    - generic [ref=f4e5]:
+      - text: 프로젝트
+      - combobox "프로젝트" [ref=f4e6]:
+        - option "모두의충전" [selected]
+        - option "애드팝콘"
+        - option "전체 프로젝트"
+  - generic [ref=f4e7]:
+    - button "이슈 DB" [ref=f4e8] [cursor=pointer]
+    - button "이슈 그래프" [ref=f4e9] [cursor=pointer]
+    - button "지식 그래프" [ref=f4e10] [cursor=pointer]
+    - button "제작 기록" [ref=f4e11] [cursor=pointer]
+    - button "플레이북" [ref=f4e12] [cursor=pointer]
+    - generic [ref=f4e13]: 2026-07-10 15:42 생성
+  - generic [ref=f4e14]:
+    - generic [ref=f4e15]: active 4
+    - generic [ref=f4e18]: review 2
+    - generic [ref=f4e19]: 제작 기록 4
+    - generic [ref=f4e20]: 플레이북 2
+    - generic [ref=f4e21]: "다음: 배너 플레이북 검토"
+  - generic [ref=f4e23]:
+    - generic [ref=f4e24]:
+      - searchbox "Search title, decision, failure" [ref=f4e25]
+      - generic [ref=f4e26]:
+        - button "전체" [ref=f4e27] [cursor=pointer]
+        - button "승인" [ref=f4e28] [cursor=pointer]
+        - button "검토" [ref=f4e29] [cursor=pointer]
+        - button "완료" [ref=f4e30] [cursor=pointer]
+      - combobox [ref=f4e31]:
+        - option "모든 유형" [selected]
+        - option "배너"
+        - option "PR"
+        - option "알림톡"
+        - option "Push"
+    - table [ref=f4e34]:
+      - rowgroup [ref=f4e35]:
+        - row [ref=f4e36]:
+          - columnheader "Production Record" [ref=f4e37]
+          - columnheader "Type" [ref=f4e38]
+          - columnheader "Channel" [ref=f4e39]
+          - columnheader "Status" [ref=f4e40]
+          - columnheader "Playbook" [ref=f4e41]
+      - rowgroup [ref=f4e42]:
+        - row [ref=f4e76] [cursor=pointer]:
+          - cell "여름 충전 혜택 배너 2026-07-09" [ref=f4e77]:
+            - generic [ref=f4e78]: 여름 충전 혜택 배너
+            - text: 2026-07-09
+          - cell "배너" [ref=f4e79]
+          - cell "홈" [ref=f4e80]
+          - cell "승인" [ref=f4e81]
+          - cell "반영" [ref=f4e83]
+        - row [ref=f4e84] [cursor=pointer]:
+          - cell "충전 혜택 제휴 보도자료 2026-07-08" [ref=f4e85]:
+            - generic [ref=f4e86]: 충전 혜택 제휴 보도자료
+            - text: 2026-07-08
+          - cell "PR" [ref=f4e87]
+          - cell "언론" [ref=f4e88]
+          - cell "검토" [ref=f4e89]
+          - cell "후보" [ref=f4e91]
+        - row [ref=f4e92] [cursor=pointer]:
+          - cell "7월 휴면 사용자 알림톡 2026-07-06" [ref=f4e93]:
+            - generic [ref=f4e94]: 7월 휴면 사용자 알림톡
+            - text: 2026-07-06
+          - cell "알림톡" [ref=f4e95]
+          - cell "카카오" [ref=f4e96]
+          - cell "완료" [ref=f4e97]
+          - cell "미반영" [ref=f4e99]
+        - row [ref=f4e100] [cursor=pointer]:
+          - cell "주말 충전 리워드 Push 2026-07-04" [ref=f4e101]:
+            - generic [ref=f4e102]: 주말 충전 리워드 Push
+            - text: 2026-07-04
+          - cell "Push" [ref=f4e103]
+          - cell "앱" [ref=f4e104]
+          - cell "완료" [ref=f4e105]
+          - cell "반영" [ref=f4e107]
+  - generic [ref=f4e75]: 프로젝트를 선택하면 모든 탭의 이슈, 제작 기록, 플레이북과 지식 범위가 함께 바뀝니다.
+  - dialog [ref=f4e108]:
+    - generic [ref=f4e109]:
+      - button "상세 닫기" [ref=f4e110] [cursor=pointer]: ×
+      - complementary [ref=f4e111]:
+        - heading "여름 충전 혜택 배너" [level=2] [ref=f4e112]
+        - generic [ref=f4e113]:
+          - text: 2026-07-09 · 배너 · 홈 ·
+          - generic [ref=f4e114]: 승인
+        - generic [ref=f4e115]:
+          - heading "Artifacts" [level=3] [ref=f4e116]
+          - link "최종 홈 배너 · Figma ↗" [ref=f4e117] [cursor=pointer]:
+            - /url: "#"
+        - generic [ref=f4e118]:
+          - heading "Decisions" [level=3] [ref=f4e119]
+          - paragraph [ref=f4e120]: 검정 카드형 UI가 작은 화면에서 가장 안정적이었다.
+        - generic [ref=f4e121]:
+          - heading "Failed Attempts" [level=3] [ref=f4e122]
+          - paragraph [ref=f4e123]: 휴대폰 화면 안의 작은 한글은 이미지 생성 시 깨졌다.
+        - generic [ref=f4e124]:
+          - heading "Reusable Patterns" [level=3] [ref=f4e125]
+          - paragraph [ref=f4e126]: 혜택 수치와 CTA는 HTML 텍스트로 분리한다.
+        - generic [ref=f4e127]:
+          - heading "Copy" [level=3] [ref=f4e128]
+          - generic [ref=f4e129]:
+            - generic [ref=f4e130]:
+              - strong [ref=f4e131]: 외부 배포용
+              - paragraph [ref=f4e132]: 충전하고 여름 혜택을 받아보세요.
+            - generic [ref=f4e133]:
+              - strong [ref=f4e134]: 내부 보고용
+              - paragraph [ref=f4e135]: 검정 카드형 레이아웃으로 확정했으며 클릭률을 추적한다.

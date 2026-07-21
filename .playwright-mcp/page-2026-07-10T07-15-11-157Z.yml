@@ -1,0 +1,115 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading [level=1] [ref=e3]:
+      - link "Superpowers Brainstorming" [ref=e4] [cursor=pointer]:
+        - /url: https://github.com/obra/superpowers
+    - generic [ref=e5]: Connected
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - heading "ModuFlow 프로젝트 뷰" [level=1] [ref=e10]
+      - generic [ref=e11]:
+        - text: 프로젝트
+        - combobox "프로젝트" [ref=e12]:
+          - option "모두의충전" [selected]
+          - option "애드팝콘"
+          - option "전체 프로젝트"
+    - generic [ref=e13]:
+      - button "이슈 DB" [ref=e14] [cursor=pointer]
+      - button "이슈 그래프" [ref=e15] [cursor=pointer]
+      - button "지식 그래프" [ref=e16] [cursor=pointer]
+      - button "제작 기록" [ref=e17] [cursor=pointer]
+      - button "플레이북" [ref=e18] [cursor=pointer]
+      - generic [ref=e19]: 2026-07-10 15:42 생성
+    - generic [ref=e20]:
+      - generic [ref=e21]: active 4
+      - generic [ref=e24]: review 2
+      - generic [ref=e25]: 제작 기록 4
+      - generic [ref=e26]: 플레이북 2
+      - generic [ref=e27]: "다음: 배너 플레이북 검토"
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - searchbox "Search title, decision, failure" [ref=e31]
+        - generic [ref=e32]:
+          - button "전체" [ref=e33] [cursor=pointer]
+          - button "승인" [ref=e34] [cursor=pointer]
+          - button "검토" [ref=e35] [cursor=pointer]
+          - button "완료" [ref=e36] [cursor=pointer]
+        - combobox [ref=e37]:
+          - option "모든 유형" [selected]
+          - option "배너"
+          - option "PR"
+          - option "알림톡"
+          - option "Push"
+      - table [ref=e40]:
+        - rowgroup [ref=e41]:
+          - row [ref=e42]:
+            - columnheader "Production Record" [ref=e43]
+            - columnheader "Type" [ref=e44]
+            - columnheader "Channel" [ref=e45]
+            - columnheader "Status" [ref=e46]
+            - columnheader "Playbook" [ref=e47]
+        - rowgroup [ref=e48]:
+          - row [ref=e83] [cursor=pointer]:
+            - cell "여름 충전 혜택 배너 2026-07-09" [ref=e84]:
+              - generic [ref=e85]: 여름 충전 혜택 배너
+              - text: 2026-07-09
+            - cell "배너" [ref=e86]
+            - cell "홈" [ref=e87]
+            - cell "승인" [ref=e88]
+            - cell "반영" [ref=e90]
+          - row [ref=e91] [cursor=pointer]:
+            - cell "충전 혜택 제휴 보도자료 2026-07-08" [ref=e92]:
+              - generic [ref=e93]: 충전 혜택 제휴 보도자료
+              - text: 2026-07-08
+            - cell "PR" [ref=e94]
+            - cell "언론" [ref=e95]
+            - cell "검토" [ref=e96]
+            - cell "후보" [ref=e98]
+          - row [ref=e99] [cursor=pointer]:
+            - cell "7월 휴면 사용자 알림톡 2026-07-06" [ref=e100]:
+              - generic [ref=e101]: 7월 휴면 사용자 알림톡
+              - text: 2026-07-06
+            - cell "알림톡" [ref=e102]
+            - cell "카카오" [ref=e103]
+            - cell "완료" [ref=e104]
+            - cell "미반영" [ref=e106]
+          - row [ref=e107] [cursor=pointer]:
+            - cell "주말 충전 리워드 Push 2026-07-04" [ref=e108]:
+              - generic [ref=e109]: 주말 충전 리워드 Push
+              - text: 2026-07-04
+            - cell "Push" [ref=e110]
+            - cell "앱" [ref=e111]
+            - cell "완료" [ref=e112]
+            - cell "반영" [ref=e114]
+    - generic [ref=e81]: 프로젝트를 선택하면 모든 탭의 이슈, 제작 기록, 플레이북과 지식 범위가 함께 바뀝니다.
+    - dialog [ref=e115]:
+      - generic [ref=e116]:
+        - button "상세 닫기" [ref=e117] [cursor=pointer]: ×
+        - complementary [ref=e118]:
+          - heading "여름 충전 혜택 배너" [level=2] [ref=e119]
+          - generic [ref=e120]:
+            - text: 2026-07-09 · 배너 · 홈 ·
+            - generic [ref=e121]: 승인
+          - generic [ref=e122]:
+            - heading "Artifacts" [level=3] [ref=e123]
+            - link "최종 홈 배너 · Figma ↗" [ref=e124] [cursor=pointer]:
+              - /url: "#"
+          - generic [ref=e125]:
+            - heading "Decisions" [level=3] [ref=e126]
+            - paragraph [ref=e127]: 검정 카드형 UI가 작은 화면에서 가장 안정적이었다.
+          - generic [ref=e128]:
+            - heading "Failed Attempts" [level=3] [ref=e129]
+            - paragraph [ref=e130]: 휴대폰 화면 안의 작은 한글은 이미지 생성 시 깨졌다.
+          - generic [ref=e131]:
+            - heading "Reusable Patterns" [level=3] [ref=e132]
+            - paragraph [ref=e133]: 혜택 수치와 CTA는 HTML 텍스트로 분리한다.
+          - generic [ref=e134]:
+            - heading "Copy" [level=3] [ref=e135]
+            - generic [ref=e136]:
+              - generic [ref=e137]:
+                - strong [ref=e138]: 외부 배포용
+                - paragraph [ref=e139]: 충전하고 여름 혜택을 받아보세요.
+              - generic [ref=e140]:
+                - strong [ref=e141]: 내부 보고용
+                - paragraph [ref=e142]: 검정 카드형 레이아웃으로 확정했으며 클릭률을 추적한다.
+  - generic [ref=e82]: Click an option above, then return to the terminal

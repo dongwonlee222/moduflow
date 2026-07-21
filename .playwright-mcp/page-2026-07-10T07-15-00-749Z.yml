@@ -1,0 +1,85 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading [level=1] [ref=e3]:
+      - link "Superpowers Brainstorming" [ref=e4] [cursor=pointer]:
+        - /url: https://github.com/obra/superpowers
+    - generic [ref=e5]: Connected
+  - generic [ref=e8]:
+    - generic [ref=e9]:
+      - heading "ModuFlow 프로젝트 뷰" [level=1] [ref=e10]
+      - generic [ref=e11]:
+        - text: 프로젝트
+        - combobox "프로젝트" [ref=e12]:
+          - option "모두의충전" [selected]
+          - option "애드팝콘"
+          - option "전체 프로젝트"
+    - generic [ref=e13]:
+      - button "이슈 DB" [ref=e14] [cursor=pointer]
+      - button "이슈 그래프" [ref=e15] [cursor=pointer]
+      - button "지식 그래프" [ref=e16] [cursor=pointer]
+      - button "제작 기록" [ref=e17] [cursor=pointer]
+      - button "플레이북" [ref=e18] [cursor=pointer]
+      - generic [ref=e19]: 2026-07-10 15:42 생성
+    - generic [ref=e20]:
+      - generic [ref=e21]: active 4
+      - generic [ref=e24]: review 2
+      - generic [ref=e25]: 제작 기록 4
+      - generic [ref=e26]: 플레이북 2
+      - generic [ref=e27]: "다음: 배너 플레이북 검토"
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - searchbox "Search title, decision, failure" [ref=e31]
+        - generic [ref=e32]:
+          - button "전체" [ref=e33] [cursor=pointer]
+          - button "승인" [ref=e34] [cursor=pointer]
+          - button "검토" [ref=e35] [cursor=pointer]
+          - button "완료" [ref=e36] [cursor=pointer]
+        - combobox [ref=e37]:
+          - option "모든 유형" [selected]
+          - option "배너"
+          - option "PR"
+          - option "알림톡"
+          - option "Push"
+      - table [ref=e40]:
+        - rowgroup [ref=e41]:
+          - row [ref=e42]:
+            - columnheader "Production Record" [ref=e43]
+            - columnheader "Type" [ref=e44]
+            - columnheader "Channel" [ref=e45]
+            - columnheader "Status" [ref=e46]
+            - columnheader "Playbook" [ref=e47]
+        - rowgroup [ref=e48]:
+          - row [ref=e49] [cursor=pointer]:
+            - cell "여름 충전 혜택 배너 2026-07-09" [ref=e50]:
+              - generic [ref=e51]: 여름 충전 혜택 배너
+              - text: 2026-07-09
+            - cell "배너" [ref=e52]
+            - cell "홈" [ref=e53]
+            - cell "승인" [ref=e54]
+            - cell "반영" [ref=e56]
+          - row [ref=e57] [cursor=pointer]:
+            - cell "충전 혜택 제휴 보도자료 2026-07-08" [ref=e58]:
+              - generic [ref=e59]: 충전 혜택 제휴 보도자료
+              - text: 2026-07-08
+            - cell "PR" [ref=e60]
+            - cell "언론" [ref=e61]
+            - cell "검토" [ref=e62]
+            - cell "후보" [ref=e64]
+          - row [ref=e65] [cursor=pointer]:
+            - cell "7월 휴면 사용자 알림톡 2026-07-06" [ref=e66]:
+              - generic [ref=e67]: 7월 휴면 사용자 알림톡
+              - text: 2026-07-06
+            - cell "알림톡" [ref=e68]
+            - cell "카카오" [ref=e69]
+            - cell "완료" [ref=e70]
+            - cell "미반영" [ref=e72]
+          - row [ref=e73] [cursor=pointer]:
+            - cell "주말 충전 리워드 Push 2026-07-04" [ref=e74]:
+              - generic [ref=e75]: 주말 충전 리워드 Push
+              - text: 2026-07-04
+            - cell "Push" [ref=e76]
+            - cell "앱" [ref=e77]
+            - cell "완료" [ref=e78]
+            - cell "반영" [ref=e80]
+    - generic [ref=e81]: 프로젝트를 선택하면 모든 탭의 이슈, 제작 기록, 플레이북과 지식 범위가 함께 바뀝니다.
+  - generic [ref=e82]: Click an option above, then return to the terminal
