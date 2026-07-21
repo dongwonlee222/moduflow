@@ -4,7 +4,6 @@
   "goal_id": "trustworthy-execution-and-project-knowledge",
   "objective": "Make ModuFlow repository-safe, evidence-backed in review, and reproducible across project knowledge, artifacts, analysis, and dashboard views.",
   "issue_ids": [
-    "030-project-memory-layer",
     "080-reference-improvement-backlog",
     "088-canonical-repository-remote-identity-gate",
     "089-verified-code-review-intake-and-remediation-routing",
@@ -16,21 +15,21 @@
     "092-project-home-dashboard",
     "087-korean-github-pr-review-surface"
   ],
-  "active_issue_id": "030-project-memory-layer",
-  "phase": "review",
+  "active_issue_id": "093-frontmatter-issue-schema-readiness-gate",
+  "phase": "spec",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:review 030-project-memory-layer",
+  "next_command": "product:spec 093-frontmatter-issue-schema-readiness-gate",
   "attempts": {
-    "command": "product:review 030-project-memory-layer",
+    "command": "product:spec 093-frontmatter-issue-schema-readiness-gate",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-21"
   },
   "blocker": null,
-  "last_action": "reconciled merged Issues 077, 078, 079, and 080 to done with release and approval evidence",
-  "last_verification": "2026-07-21: PR #16 merged with successful CI; Dongwon Lee approved completion; release_check passed after lifecycle reconciliation",
+  "last_action": "audited legacy Issue 030 and superseded its unfinished scope through Issue 090 while preserving the shipped memory foundation",
+  "last_verification": "2026-07-21: 48 project-memory and migration tests passed; project search retrieved Issue 030 evidence; Dongwon Lee approved supersession",
   "updated_at": "2026-07-21",
   "git_binding": {
     "mode": "git-files",
@@ -42,7 +41,7 @@
     "execution_backend": {
       "type": "manual",
       "status": "selected",
-      "reason": "Sequential lifecycle reconciliation finished through Issue 080; legacy Issue 030 is next for status audit",
+      "reason": "Legacy lifecycle reconciliation is complete; Issue 093 is the authoritative roadmap priority",
       "session": "codex-2026-07-21"
     }
   }

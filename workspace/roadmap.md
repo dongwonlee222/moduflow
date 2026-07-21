@@ -13,6 +13,7 @@
 ### Recently Shipped
 
 - `088-canonical-repository-remote-identity-gate` and `089-verified-code-review-intake-and-remediation-routing` — merged, reviewed, approved, and packaged in v0.3.26.
+- Legacy `030-project-memory-layer` audit — prototype foundation retained; delivered extensions mapped to 034/040/043/085 and remaining registry/migration scope transferred to 090 on 2026-07-21.
 
 ### Then
 

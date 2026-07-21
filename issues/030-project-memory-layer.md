@@ -1,6 +1,6 @@
 # Issue 030: Project Memory Layer
 
-**Status: backlog** — half-implemented prototype (`Phase: prototype`, 5 of 10 workflow tasks unchecked); much of the memory scope later landed via 034/040/043, so re-scope before picking up. Status line added 2026-07-06 (issue 066 follow-up: files whose specs-link line matched the migration's `Status:` grep were skipped).
+**Status: superseded-by-090** — prototype foundation shipped in `5929502`; delivered extensions landed through 034/040/043/085, and remaining registry/migration scope moved to 090 after Dongwon Lee approval on 2026-07-21.
 
 ## Summary
 
@@ -14,12 +14,12 @@ Expand ModuFlow from issue-centric PM tracking into project-level long-term memo
 
 ## Lifecycle
 
-- Phase: prototype
+- Phase: superseded
 - Created: 2026-06-24
 - Started: 2026-06-24
 - Target End:
-- Completed:
-- Last Updated: 2026-06-24
+- Completed: 2026-07-21
+- Last Updated: 2026-07-21
 
 ## Opportunity
 
@@ -68,16 +68,16 @@ Each project needs a durable memory layer that starts from generated deliverable
 
 Every artifact-producing step is a tracked task here - never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
 
-- [ ] spec -> `specs/030-project-memory-layer/spec.md`
-- [ ] plan -> `specs/030-project-memory-layer/plan.md`
-- [ ] execute -> PR / commits
-- [ ] review -> review notes
+- [ ] spec -> not created for the legacy prototype; remaining definition transferred to `090-project-knowledge-and-artifact-registry`
+- [ ] plan -> not created for the legacy prototype; remaining execution planning transferred to `090-project-knowledge-and-artifact-registry`
+- [x] execute -> prototype foundation commit `5929502`
+- [x] review -> `specs/030-project-memory-layer/review.md`
 - [x] compare ModuFlow `knowledge/` with `personal-memory` contracts
 - [x] define project memory entry schema and registry/index format
 - [x] define project portability and external-index cache rules
 - [x] define commands for write/search/get-style project memory flows
 - [x] add doctor and validation gates for memory links
-- [ ] add migration path from existing knowledge artifacts
+- [ ] add migration path from existing knowledge artifacts -> transferred to `090-project-knowledge-and-artifact-registry`
 
 ## Prototype Shipped
 
@@ -105,7 +105,8 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 - duplicates:
 - follows_up: `003-knowledge-evidence-layer`, `011-workflow-task-tracking`, `024-artifact-schema-and-doctor-gates`
 - supersedes:
-- related: `029-antigravity-artifact-sync-connector`
+- superseded_by: `090-project-knowledge-and-artifact-registry`
+- related: `029-antigravity-artifact-sync-connector`, `034-memory-capture-and-sync-workflow`, `040-automatic-memory-candidate-capture`, `043-memory-relationship-capture-prompts`, `085-project-production-records-and-playbooks`
 
 ## Sessions
 
@@ -114,11 +115,12 @@ Every artifact-producing step is a tracked task here - never produce a spec/plan
 ## Links
 
 - Personal memory reference: `/Users/dongwon.lee/workhub/projects/personal-memory`
-- Spec: `specs/030-project-memory-layer/spec.md`
+- Spec: not created for the legacy prototype; successor spec belongs to Issue 090
 - Status: `specs/030-project-memory-layer/status.md`
+- Review: `specs/030-project-memory-layer/review.md`
 - Sessions: `sessions/030-project-memory-layer/`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:spec 030-project-memory-layer`
+`product:status`

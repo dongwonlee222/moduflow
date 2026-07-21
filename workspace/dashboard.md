@@ -21,6 +21,7 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Recently Completed
 
+- `030-project-memory-layer`: legacy prototype audit completed on 2026-07-21; foundation commit `5929502` retained and remaining registry/migration scope superseded by Issue 090.
 - `080-reference-improvement-backlog`: PR #16 merged with successful CI on 2026-07-09; missing human-approval and release evidence were reconciled with Dongwon Lee approval on 2026-07-21.
 - `079-plan-discipline-skill-matrix`: PR #13 merged with successful CI on 2026-07-09; lifecycle and release evidence were reconciled on 2026-07-21.
 - `078-frontend-qa-template-pack`: PR #15 merged with successful CI on 2026-07-09; lifecycle and release evidence were reconciled on 2026-07-21.

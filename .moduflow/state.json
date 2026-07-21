@@ -3,8 +3,8 @@
   "phase": "select",
   "active_goal": "trustworthy-execution-and-project-knowledge",
   "active_issue": "",
-  "last_command": "product:issue 080-reference-improvement-backlog complete",
-  "next_command": "product:status",
+  "last_command": "product:issue 030-project-memory-layer supersede",
+  "next_command": "product:spec 093-frontmatter-issue-schema-readiness-gate",
   "blockers": [],
   "updated_at": "2026-07-21"
 }
