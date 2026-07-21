@@ -22,6 +22,9 @@ The existing dashboard exposes issues, graphs, and production records, but users
 ## Product Decision
 
 - Extend the existing project-aware dashboard rather than creating a separate application.
+- Preserve the current Issue DB visual shell and density; do not implement the card-heavy `moduflow-dashboard-v1.png` concept.
+- Keep Issue DB as the default view and add project-home information with the same compact tab/table vocabulary.
+- Keep English artifacts canonical, require Korean issue summaries for human-facing rows, and make missing Korean a validation error.
 - The home view is derived from canonical issue/state, knowledge, artifact, analysis-run, and decision records.
 - Project selection from Issue 086 scopes every home element; no cross-project mixing is allowed.
 - The home view summarizes decisions but does not replace `product:decision` records.
@@ -77,8 +80,8 @@ Do not add dashboard-only source data or browser-side writes. The home view is a
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/092-project-home-dashboard/spec.md`
-- [ ] design → `specs/092-project-home-dashboard/design.md`
+- [x] spec → `specs/092-project-home-dashboard/spec.md` + `spec.ko.md`
+- [x] design → `specs/092-project-home-dashboard/design.md` + `design.ko.md`
 - [ ] prototype → `specs/092-project-home-dashboard/prototype.md`
 - [ ] plan → `specs/092-project-home-dashboard/plan.md`
 - [ ] execute → home read model, UI, links, empty/stale states, and tests
@@ -99,6 +102,7 @@ Do not add dashboard-only source data or browser-side writes. The home view is a
 ## Sessions
 
 - 2026-07-16: User approved the project-home dashboard after repository safety and project knowledge foundations.
+- 2026-07-21: User rejected the card-heavy visual concept, approved incremental improvement of the current dashboard, and approved mandatory Korean summaries for new issues.
 
 ## Links
 
@@ -108,4 +112,4 @@ Do not add dashboard-only source data or browser-side writes. The home view is a
 
 ## Next Command
 
-`product:spec 092-project-home-dashboard`
+`product:plan 092-project-home-dashboard`
