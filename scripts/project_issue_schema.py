@@ -536,8 +536,10 @@ def normalize_frontmatter_0_1_0(
         )
 
     markdown_projection = markdown_status_projection(body)
-    markdown_lifecycle = markdown_status(body) if markdown_projection else None
-    if markdown_lifecycle != canonical_state:
+    if (
+        markdown_projection not in LIFECYCLE_STATES
+        or markdown_projection != canonical_state
+    ):
         issue["diagnostics"].append(
             _adapter_diagnostic(
                 issue,
@@ -650,7 +652,7 @@ def normalize_unsupported_frontmatter(
     issue = _base_issue(path, project_root, body)
     issue["source_format"] = "frontmatter-unsupported"
     issue["schema_version"] = fields.get("schema_version")
-    issue["lifecycle_state"] = "backlog"
+    issue["lifecycle_state"] = None
     issue["projection_status"] = None
     issue["blocked_by"] = []
     issue["readiness"] = "blocked"

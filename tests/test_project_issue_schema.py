@@ -427,7 +427,12 @@ next_command: product:execute BIZ-203
         self.assertIn("ISSUE_FRONTMATTER_UNVERSIONED", codes(unversioned))
 
         self.assertEqual(unsupported["source_format"], "frontmatter-unsupported")
-        self.assertEqual(unsupported["lifecycle_state"], "backlog")
+        self.assertIsNone(unsupported["lifecycle_state"])
+        self.assertIsNone(unsupported["projection_status"])
+        self.assertEqual(unsupported["blocked_by"], [])
+        self.assertEqual(unsupported["advisory_blocked_by"], [])
+        self.assertIsNone(unsupported["definition_readiness"])
+        self.assertIsNone(unsupported["gate_state"])
         self.assertEqual(unsupported["readiness"], "blocked")
         self.assertIsNone(unsupported["declared_next_command"])
         self.assertIn("ISSUE_SCHEMA_UNSUPPORTED", codes(unsupported))
@@ -474,6 +479,45 @@ depends_on: []
 
         self.assertEqual(issue["lifecycle_state"], "active")
         self.assertIn("ISSUE_STATE_PROJECTION_MISMATCH", codes(issue))
+
+    def test_versioned_markdown_status_requires_explicit_lifecycle_word(self):
+        cases = {
+            "missing": ("", None),
+            "unknown": ("**Status: nonsense**\n", "nonsense"),
+            "auxiliary": ("**Status: in_progress**\n", "in_progress"),
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for label, (markdown_line, expected_current) in cases.items():
+                with self.subTest(case=label):
+                    issue = self.write_issue(
+                        root,
+                        f"BIZ-204-{label}.md",
+                        f"""---
+schema_version: 0.1.0
+issue_id: BIZ-204-{label}
+canonical_state: backlog
+status: backlog
+depends_on: []
+---
+# Issue: `BIZ-204-{label}` Raw status projection
+
+{markdown_line}""",
+                    )
+
+                    diagnostic = next(
+                        (
+                            item
+                            for item in issue["diagnostics"]
+                            if item["code"] == "ISSUE_STATE_PROJECTION_MISMATCH"
+                            and item["field"] == "markdown_status"
+                        ),
+                        None,
+                    )
+                    self.assertIsNotNone(diagnostic, issue["diagnostics"])
+                    self.assertEqual(diagnostic["current"], expected_current)
+                    self.assertEqual(diagnostic["expected"], "backlog")
 
     def test_versioned_ready_auxiliary_status_is_invalid(self):
         with tempfile.TemporaryDirectory() as tmp:
