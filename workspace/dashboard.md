@@ -10,11 +10,11 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `093-frontmatter-issue-schema-readiness-gate` (phase: spec) — define one trustworthy issue model and block contradictory dependency/readiness/execute routing. Branch: `codex/093-frontmatter-issue-schema-readiness-gate`.
 
 ## Priority Queue — 2026-07-16
 
-- Now: `093` frontmatter issue schema/readiness spec.
+- Now: `093` frontmatter issue schema/readiness spec written; next step is implementation planning.
 - Next: `094` risk-based security/quality review gate.
 - Then: `086` project-aware production/playbook dashboard.
 - Later: `090` → `091` → `092`; `087` is independent and does not block 086.
@@ -83,4 +83,4 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Next Command
 
-`product:status`
+`product:plan 093-frontmatter-issue-schema-readiness-gate`

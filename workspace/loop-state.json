@@ -14,45 +14,34 @@
     "092-project-home-dashboard",
     "087-korean-github-pr-review-surface"
   ],
-  "active_issue_id": "089-verified-code-review-intake-and-remediation-routing",
-  "phase": "update",
+  "active_issue_id": "093-frontmatter-issue-schema-readiness-gate",
+  "phase": "plan",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:update 089-verified-code-review-intake-and-remediation-routing",
+  "next_command": "product:plan 093-frontmatter-issue-schema-readiness-gate",
   "attempts": {
-    "command": "product:update 089-verified-code-review-intake-and-remediation-routing",
+    "command": "product:plan 093-frontmatter-issue-schema-readiness-gate",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-07-16"
+    "last_changed_at": "2026-07-22"
   },
   "blocker": null,
-  "last_action": "prepared the approved v0.3.26 release handoff after PR #25, PR #26, and PR #29 merged",
-  "last_verification": "2026-07-16: release identity allowed; PR CI passed; issues #18 and #19 closed with done labels",
-  "updated_at": "2026-07-16",
+  "last_action": "wrote the approved English canonical and Korean Issue 093 schema/readiness gate specs",
+  "last_verification": "2026-07-22: isolated origin/main baseline release_check passed before spec authoring",
+  "updated_at": "2026-07-22",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/089-verified-code-review-intake-and-remediation-routing-release",
+    "branch": "codex/093-frontmatter-issue-schema-readiness-gate",
     "base_branch": "main",
-    "commits": [
-      "648bf70",
-      "e813347",
-      "f3804b9",
-      "962cae3",
-      "d539f22",
-      "c794028",
-      "e7f84c4",
-      "4bad53d",
-      "6dbf3ef",
-      "1c9d2ba"
-    ],
-    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/26",
-    "release": "https://github.com/dongwonlee222/moduflow/releases/tag/v0.3.26",
+    "commits": [],
+    "pull_request": null,
+    "release": null,
     "execution_backend": {
-      "type": "manual",
+      "type": "codex",
       "status": "selected",
-      "reason": "Issue 089 is stacked on the approved Issue 088 identity-gate branch",
-      "session": "codex-2026-07-16"
+      "reason": "Issue 093 is approved Git-native spec work in an isolated branch",
+      "session": "codex-2026-07-22"
     }
   }
 }

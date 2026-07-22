@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "select",
+  "phase": "spec",
   "active_goal": "trustworthy-execution-and-project-knowledge",
-  "active_issue": "",
-  "last_command": "product:pr 088-canonical-repository-remote-identity-gate",
-  "next_command": "product:status",
+  "active_issue": "093-frontmatter-issue-schema-readiness-gate",
+  "last_command": "product:spec 093-frontmatter-issue-schema-readiness-gate",
+  "next_command": "product:plan 093-frontmatter-issue-schema-readiness-gate",
   "blockers": [],
-  "updated_at": "2026-07-16"
+  "updated_at": "2026-07-22"
 }

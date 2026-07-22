@@ -4,7 +4,7 @@
 
 ### Now
 
-- `093-frontmatter-issue-schema-readiness-gate` — normalize frontmatter and Markdown issue state before execution routing.
+- `093-frontmatter-issue-schema-readiness-gate` — active; English/Korean spec defines the shared normalizer and structural execution gate. Next: `product:plan 093-frontmatter-issue-schema-readiness-gate`.
 
 ### Next
 

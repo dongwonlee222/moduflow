@@ -1,6 +1,6 @@
 # Issue 093: Frontmatter Issue Schema and Readiness/Dependency Gate
 
-**Status: backlog** — created 2026-07-16.
+**Status: active** — created 2026-07-16, started 2026-07-22.
 **Priority: p1**
 
 ## Summary
@@ -22,6 +22,7 @@ ModuFlow’s current lifecycle parser recognizes canonical Markdown `Status`, `P
 
 - A single issue parser supports canonical Markdown and versioned frontmatter adapters.
 - When `schema_version` frontmatter exists, `canonical_state` is lifecycle truth; the Markdown status line is its human projection and must agree.
+- When frontmatter has no `schema_version`, Markdown remains canonical; known frontmatter fields produce migration warnings and may conservatively block execution, but cannot advance readiness.
 - `depends_on` normalizes to the same dependency graph as `Blocked-by`.
 - `definition_readiness`, `gate_state`, lifecycle state, dependencies, and artifact phase are separate fields with explicit allowed transitions.
 - `next_command` is derived and validated; it cannot skip unmet dependencies, required spec/plan work, or a blocked gate.
@@ -78,10 +79,10 @@ Do not introduce separate parsers in lifecycle, dashboard, or MCP consumers. Sch
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/093-frontmatter-issue-schema-readiness-gate/spec.md`
-- [ ] plan → `specs/093-frontmatter-issue-schema-readiness-gate/plan.md`
+- [x] spec → `specs/093-frontmatter-issue-schema-readiness-gate/spec.md` + `spec.ko.md`
+- [ ] plan → `specs/<issue-id>/plan.md` (replace with the concrete link when created)
 - [ ] execute → schema adapters, normalized parser, gates, migration report, and tests
-- [ ] review → `specs/093-frontmatter-issue-schema-readiness-gate/review.md`
+- [ ] review → `specs/<issue-id>/review.md` (replace with the concrete link when created)
 
 ## Related Issues
 
@@ -93,13 +94,16 @@ Do not introduce separate parsers in lifecycle, dashboard, or MCP consumers. Sch
 ## Sessions
 
 - 2026-07-16: ModuPay Biz review dogfood proved that the current validator ignores frontmatter dependencies/readiness and can report contradictory issues as valid.
+- 2026-07-22: Dongwon Lee approved a shared-normalizer design. Unversioned frontmatter keeps Markdown canonical, emits migration guidance, and cannot advance an issue to ready/execute.
 
 ## Links
 
 - Goal: `workspace/goal.md`
 - Roadmap: `workspace/roadmap.md`
+- Spec: `specs/093-frontmatter-issue-schema-readiness-gate/spec.md`
+- Korean Spec: `specs/093-frontmatter-issue-schema-readiness-gate/spec.ko.md`
 - GitHub: https://github.com/dongwonlee222/moduflow/issues/23
 
 ## Next Command
 
-`product:spec 093-frontmatter-issue-schema-readiness-gate`
+`product:plan 093-frontmatter-issue-schema-readiness-gate`
