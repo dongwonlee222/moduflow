@@ -847,6 +847,7 @@ class ProjectIssueSchemaEvaluationTests(unittest.TestCase):
         next_command=None,
         status=None,
         markdown_status=None,
+        phase=None,
     ):
         status = status or {
             "backlog": "backlog",
@@ -856,6 +857,11 @@ class ProjectIssueSchemaEvaluationTests(unittest.TestCase):
         markdown_status = markdown_status or lifecycle
         next_command = next_command or f"product:execute {issue_id}"
         dependency_text = ", ".join(dependencies)
+        definition_line = (
+            f"definition_readiness: {definition}\n" if definition is not None else ""
+        )
+        gate_line = f"gate_state: {gate}\n" if gate is not None else ""
+        phase_line = f"phase: {phase}\n" if phase is not None else ""
         path = self.root / "issues" / f"{issue_id}.md"
         path.write_text(
             f"""---
@@ -864,9 +870,7 @@ issue_id: {issue_id}
 canonical_state: {lifecycle}
 status: {status}
 priority: p2
-definition_readiness: {definition}
-gate_state: {gate}
-depends_on: [{dependency_text}]
+{definition_line}{gate_line}{phase_line}depends_on: [{dependency_text}]
 next_command: {next_command}
 ---
 # Issue: `{issue_id}` Evaluator fixture
@@ -1114,6 +1118,150 @@ next_command: product:execute BIZ-ADVISORY
         self.assertIn("ISSUE_DEFINITION_NOT_READY", codes(by_id["BIZ-DRAFT"]))
         for issue_id in ("BIZ-PENDING", "BIZ-BLOCKED"):
             self.assertIn("ISSUE_GATE_BLOCKED", codes(by_id[issue_id]))
+
+    def test_recognized_definition_state_fails_closed_but_legacy_none_does_not(self):
+        self.write_versioned("BIZ-DEF-MISSING", definition=None)
+        self.write_versioned("BIZ-DEF-UNKNOWN", definition="nonsense")
+        for issue_id in ("BIZ-DEF-MISSING", "BIZ-DEF-UNKNOWN"):
+            self.add_artifacts(issue_id, "spec", "plan", "tasks")
+        self.write_markdown("legacy-definition-none")
+        self.add_artifacts("legacy-definition-none", "spec", "plan", "tasks")
+
+        by_id = self.evaluated_by_id()
+
+        for issue_id, current in (
+            ("BIZ-DEF-MISSING", None),
+            ("BIZ-DEF-UNKNOWN", "nonsense"),
+        ):
+            with self.subTest(issue_id=issue_id):
+                issue = by_id[issue_id]
+                self.assertEqual(issue["readiness"], "blocked")
+                self.assertEqual(
+                    issue["recommended_next_command"], f"product:spec {issue_id}"
+                )
+                diagnostic = next(
+                    item
+                    for item in issue["diagnostics"]
+                    if item["code"] == "ISSUE_DEFINITION_NOT_READY"
+                )
+                self.assertEqual(diagnostic["current"], current)
+                self.assertEqual(diagnostic["expected"], "draft or ready")
+                self.assertEqual(set(diagnostic), REQUIRED_DIAGNOSTIC_KEYS)
+
+        legacy = by_id["legacy-definition-none"]
+        self.assertEqual(legacy["readiness"], "ready")
+        self.assertEqual(
+            legacy["recommended_next_command"],
+            "product:execute legacy-definition-none",
+        )
+
+    def test_recognized_gate_state_fails_closed_after_artifact_gates(self):
+        for issue_id, gate in (
+            ("BIZ-GATE-MISSING", None),
+            ("BIZ-GATE-UNKNOWN", "nonsense"),
+            ("BIZ-GATE-IN-PROGRESS", "in_progress"),
+        ):
+            self.write_versioned(issue_id, gate=gate)
+            self.add_artifacts(issue_id, "spec", "plan", "tasks")
+
+        by_id = self.evaluated_by_id()
+
+        for issue_id, current, expected in (
+            (
+                "BIZ-GATE-MISSING",
+                None,
+                "pending, in_progress, blocked, or passed",
+            ),
+            (
+                "BIZ-GATE-UNKNOWN",
+                "nonsense",
+                "pending, in_progress, blocked, or passed",
+            ),
+            ("BIZ-GATE-IN-PROGRESS", "in_progress", "passed"),
+        ):
+            with self.subTest(issue_id=issue_id):
+                issue = by_id[issue_id]
+                self.assertEqual(issue["readiness"], "blocked")
+                self.assertEqual(
+                    issue["recommended_next_command"], f"product:review {issue_id}"
+                )
+                diagnostic = next(
+                    item
+                    for item in issue["diagnostics"]
+                    if item["code"] == "ISSUE_GATE_BLOCKED"
+                )
+                self.assertEqual(diagnostic["current"], current)
+                self.assertEqual(diagnostic["expected"], expected)
+                self.assertEqual(set(diagnostic), REQUIRED_DIAGNOSTIC_KEYS)
+
+    def test_declared_phase_mapping_accepts_only_actual_artifact_phase(self):
+        cases = {
+            "BIZ-PHASE-ISSUE": ("issue", ()),
+            "BIZ-PHASE-SPEC": ("spec", ("spec",)),
+            "BIZ-PHASE-PLAN": ("plan", ("spec", "plan")),
+            "BIZ-PHASE-IMPLEMENTATION": (
+                "implementation",
+                ("spec", "plan", "tasks"),
+            ),
+            "BIZ-PHASE-EXECUTE": ("execute", ("spec", "plan", "tasks")),
+            "BIZ-PHASE-REVIEW": (
+                "review",
+                ("spec", "plan", "tasks", "review"),
+            ),
+            "BIZ-PHASE-RELEASE": (
+                "release",
+                ("spec", "plan", "tasks", "review", "release"),
+            ),
+        }
+        for issue_id, (phase, artifacts) in cases.items():
+            self.write_versioned(issue_id, phase=phase)
+            self.add_artifacts(issue_id, *artifacts)
+
+        by_id = self.evaluated_by_id()
+
+        for issue_id in cases:
+            with self.subTest(issue_id=issue_id):
+                self.assertNotIn(
+                    "ISSUE_STATE_PROJECTION_MISMATCH", codes(by_id[issue_id])
+                )
+                phase_errors = [
+                    item
+                    for item in by_id[issue_id]["diagnostics"]
+                    if item["field"] == "phase"
+                ]
+                self.assertEqual(phase_errors, [])
+
+    def test_declared_phase_drift_and_unsupported_value_route_doctor(self):
+        self.write_versioned("BIZ-PHASE-DRIFT", phase="release")
+        self.add_artifacts("BIZ-PHASE-DRIFT", "spec", "plan", "tasks")
+        self.write_versioned("BIZ-PHASE-UNKNOWN", phase="design")
+        self.add_artifacts("BIZ-PHASE-UNKNOWN", "spec", "plan", "tasks")
+
+        by_id = self.evaluated_by_id()
+
+        drift = by_id["BIZ-PHASE-DRIFT"]
+        self.assertEqual(drift["recommended_next_command"], "product:doctor")
+        drift_diagnostic = next(
+            item
+            for item in drift["diagnostics"]
+            if item["code"] == "ISSUE_STATE_PROJECTION_MISMATCH"
+            and item["field"] == "phase"
+        )
+        self.assertEqual(drift_diagnostic["current"], "release")
+        self.assertEqual(drift_diagnostic["expected"], "tasks")
+        self.assertEqual(set(drift_diagnostic), REQUIRED_DIAGNOSTIC_KEYS)
+
+        unsupported = by_id["BIZ-PHASE-UNKNOWN"]
+        self.assertEqual(unsupported["recommended_next_command"], "product:doctor")
+        unsupported_diagnostic = next(
+            item
+            for item in unsupported["diagnostics"]
+            if item["code"] == "ISSUE_SCHEMA_MALFORMED"
+            and item["field"] == "phase"
+        )
+        self.assertEqual(unsupported_diagnostic["current"], "design")
+        self.assertIn("implementation", unsupported_diagnostic["expected"])
+        self.assertEqual(set(unsupported_diagnostic), REQUIRED_DIAGNOSTIC_KEYS)
 
     def test_declared_command_skip_is_diagnosed_without_overwriting_route(self):
         self.write_versioned(

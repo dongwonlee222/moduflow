@@ -21,6 +21,17 @@ PROJECTION_TO_LIFECYCLE = {
     "done": "done",
 }
 DEFINITION_READINESS_EXCEPTIONS = frozenset()
+DEFINITION_READINESS_VALUES = frozenset(("draft", "ready"))
+GATE_STATE_VALUES = frozenset(("pending", "in_progress", "blocked", "passed"))
+DECLARED_PHASE_TO_ARTIFACT_PHASE = {
+    "issue": "issue",
+    "spec": "spec",
+    "plan": "plan",
+    "implementation": "tasks",
+    "execute": "tasks",
+    "review": "review",
+    "release": "release",
+}
 
 _ARTIFACT_PHASES = ("spec", "plan", "tasks", "review", "release")
 _SCHEMA_ERROR_CODES = {"ISSUE_SCHEMA_MALFORMED", "ISSUE_SCHEMA_UNSUPPORTED"}
@@ -1051,6 +1062,87 @@ def _append_unique_diagnostic(issue, diagnostic):
         issue["diagnostics"].append(diagnostic)
 
 
+def _is_recognized_versioned(issue):
+    return issue.get("source_format") == "frontmatter-0.1.0"
+
+
+def _append_structural_state_diagnostics(issue):
+    if not _is_recognized_versioned(issue):
+        return
+
+    issue_id = issue["issue_id"]
+    definition = issue.get("definition_readiness")
+    if definition != "ready":
+        expected = (
+            "ready" if definition == "draft" else "draft or ready"
+        )
+        _append_unique_diagnostic(
+            issue,
+            _adapter_diagnostic(
+                issue,
+                "ISSUE_DEFINITION_NOT_READY",
+                "definition_readiness",
+                definition,
+                expected,
+                "The recognized issue definition is not ready for execution.",
+                f"Set definition_readiness to ready after running product:spec {issue_id}.",
+            ),
+        )
+
+    gate = issue.get("gate_state")
+    if gate != "passed":
+        expected = (
+            "passed"
+            if gate in GATE_STATE_VALUES
+            else "pending, in_progress, blocked, or passed"
+        )
+        _append_unique_diagnostic(
+            issue,
+            _adapter_diagnostic(
+                issue,
+                "ISSUE_GATE_BLOCKED",
+                "gate_state",
+                gate,
+                expected,
+                "The recognized issue gate is unresolved or invalid.",
+                f"Set a supported gate_state and run product:review {issue_id} until it passes.",
+            ),
+        )
+
+    declared_phase = issue.get("declared_phase")
+    if declared_phase is None:
+        return
+    actual_phase = issue["artifact_phase"]
+    mapped_phase = DECLARED_PHASE_TO_ARTIFACT_PHASE.get(declared_phase)
+    if mapped_phase is None:
+        expected = ", ".join(DECLARED_PHASE_TO_ARTIFACT_PHASE)
+        _append_unique_diagnostic(
+            issue,
+            _adapter_diagnostic(
+                issue,
+                "ISSUE_SCHEMA_MALFORMED",
+                "phase",
+                declared_phase,
+                expected,
+                "The declared phase is unsupported by the structural evaluator.",
+                f"Set phase to one of {expected}.",
+            ),
+        )
+    elif mapped_phase != actual_phase:
+        _append_unique_diagnostic(
+            issue,
+            _adapter_diagnostic(
+                issue,
+                "ISSUE_STATE_PROJECTION_MISMATCH",
+                "phase",
+                declared_phase,
+                actual_phase,
+                "The declared phase does not match actual artifact coverage.",
+                f"Align the artifacts to {declared_phase} or declare the actual {actual_phase} phase.",
+            ),
+        )
+
+
 def derive_structural_route(issue, issue_index, artifact_index):
     """Derive structural readiness and command using first-blocker precedence."""
     issue_id = issue["issue_id"]
@@ -1062,7 +1154,10 @@ def derive_structural_route(issue, issue_index, artifact_index):
         return "blocked", "product:status"
     if issue.get("lifecycle_state") in ("done", "superseded"):
         return "not_ready", "product:status"
-    if issue.get("definition_readiness") == "draft":
+    if issue.get("definition_readiness") == "draft" or (
+        _is_recognized_versioned(issue)
+        and issue.get("definition_readiness") not in DEFINITION_READINESS_VALUES
+    ):
         return "blocked", f"product:spec {issue_id}"
 
     coverage = artifact_index.get(issue_id, {})
@@ -1072,7 +1167,10 @@ def derive_structural_route(issue, issue_index, artifact_index):
         return "not_ready", f"product:plan {issue_id}"
     if not coverage.get("tasks", False):
         return "not_ready", f"product:plan {issue_id}"
-    if issue.get("gate_state") in ("blocked", "pending"):
+    if issue.get("gate_state") in ("blocked", "pending", "in_progress") or (
+        _is_recognized_versioned(issue)
+        and issue.get("gate_state") not in GATE_STATE_VALUES
+    ):
         return "blocked", f"product:review {issue_id}"
     return "ready", f"product:execute {issue_id}"
 
@@ -1082,40 +1180,13 @@ def _evaluate_issue_after_dependency(issue, issue_index, artifact_index):
     evaluated["diagnostics"] = list(issue.get("diagnostics", []))
     coverage = artifact_index.get(issue["issue_id"], {})
     evaluated["artifact_phase"] = coverage.get("artifact_phase", "issue")
+    _append_structural_state_diagnostics(evaluated)
 
     readiness, command = derive_structural_route(
         evaluated, issue_index, artifact_index
     )
     evaluated["readiness"] = readiness
     evaluated["recommended_next_command"] = command
-
-    issue_id = evaluated["issue_id"]
-    if evaluated.get("definition_readiness") == "draft":
-        _append_unique_diagnostic(
-            evaluated,
-            _adapter_diagnostic(
-                evaluated,
-                "ISSUE_DEFINITION_NOT_READY",
-                "definition_readiness",
-                "draft",
-                "ready",
-                "The issue definition is draft and cannot advance to execution.",
-                f"Run product:spec {issue_id} and complete the issue definition.",
-            ),
-        )
-    if evaluated.get("gate_state") in ("blocked", "pending"):
-        _append_unique_diagnostic(
-            evaluated,
-            _adapter_diagnostic(
-                evaluated,
-                "ISSUE_GATE_BLOCKED",
-                "gate_state",
-                evaluated["gate_state"],
-                "passed",
-                "The structural gate is unresolved and prevents execution.",
-                f"Run product:review {issue_id} and resolve the gate.",
-            ),
-        )
 
     declared = evaluated.get("declared_next_command")
     if declared is not None and declared != command:
