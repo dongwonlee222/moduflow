@@ -8,6 +8,10 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "fixtures" / "issue-schema"
 
 
+def codes(issue):
+    return {diagnostic["code"] for diagnostic in issue["diagnostics"]}
+
+
 def load_module(name, relative_path):
     spec = importlib.util.spec_from_file_location(name, ROOT / relative_path)
     module = importlib.util.module_from_spec(spec)
@@ -96,10 +100,28 @@ next_command: product:status
 
     def test_versioned_contract_fixtures_are_sanitized_and_project_status(self):
         expected = {
-            "BIZ-033": ("active", "in_progress", "ready", []),
-            "BIZ-038": ("backlog", "ready", "ready", ["BIZ-033"]),
-            "BIZ-039": ("backlog", "ready", "ready", ["BIZ-033"]),
-            "BIZ-040": ("backlog", "ready", "draft", []),
+            "BIZ-033": ("active", "in_progress", "ready", [], set()),
+            "BIZ-038": (
+                "backlog",
+                "ready",
+                "ready",
+                ["BIZ-033"],
+                {"ISSUE_AUX_STATUS_INVALID"},
+            ),
+            "BIZ-039": (
+                "backlog",
+                "ready",
+                "ready",
+                ["BIZ-033"],
+                {"ISSUE_AUX_STATUS_INVALID"},
+            ),
+            "BIZ-040": (
+                "backlog",
+                "ready",
+                "draft",
+                [],
+                {"ISSUE_AUX_STATUS_INVALID"},
+            ),
         }
 
         for issue_id, contract in expected.items():
@@ -113,10 +135,10 @@ next_command: product:status
                         issue["projection_status"],
                         issue["definition_readiness"],
                         issue["blocked_by"],
+                        codes(issue),
                     ),
                     contract,
                 )
-                self.assertEqual(issue["diagnostics"], [])
 
     def test_frontmatter_subset_parses_supported_scalar_types_and_lists(self):
         fields, diagnostics = self.schema.parse_frontmatter_subset(
@@ -303,6 +325,197 @@ custom_flag: true
                 "custom_flag": True,
             },
         )
+
+
+class ProjectIssueSchemaAdapterTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.schema = load_module(
+            "project_issue_schema_adapters", "scripts/project_issue_schema.py"
+        )
+
+    def write_issue(self, root, name, content):
+        path = root / name
+        path.write_text(content, encoding="utf-8")
+        return self.schema.parse_issue(path, root)
+
+    def test_dispatches_all_compatibility_rows_conservatively(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            markdown = self.write_issue(
+                root,
+                "markdown.md",
+                "# Issue: `markdown` Markdown\n\n**Status: backlog**\n",
+            )
+            versioned = self.write_issue(
+                root,
+                "BIZ-201.md",
+                """---
+schema_version: 0.1.0
+issue_id: BIZ-201
+canonical_state: active
+status: in_progress
+priority: p1
+definition_readiness: ready
+gate_state: pending
+phase: implementation
+depends_on: []
+next_command: product:status
+custom_flag: true
+---
+# Issue: `BIZ-201` Versioned
+
+**Status: active**
+""",
+            )
+            unversioned = self.write_issue(
+                root,
+                "BIZ-202.md",
+                """---
+issue_id: BIZ-202-OVERRIDE
+canonical_state: active
+status: in_progress
+priority: p0
+definition_readiness: ready
+gate_state: passed
+phase: implementation
+depends_on: [BIZ-200]
+next_command: product:execute BIZ-202
+custom_flag: true
+---
+# Issue: `BIZ-202` Unversioned
+
+**Status: backlog**
+**Priority: p3**
+**Blocked-by: `BIZ-199`**
+""",
+            )
+            unsupported = self.write_issue(
+                root,
+                "BIZ-203.md",
+                """---
+schema_version: 9.9.9
+issue_id: BIZ-203
+canonical_state: done
+status: done
+priority: p0
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:execute BIZ-203
+---
+# Issue: `BIZ-203` Unsupported
+
+**Status: done**
+""",
+            )
+
+        self.assertEqual(markdown["source_format"], "markdown")
+        self.assertEqual(versioned["source_format"], "frontmatter-0.1.0")
+        self.assertEqual(versioned["lifecycle_state"], "active")
+        self.assertEqual(versioned["declared_phase"], "implementation")
+        self.assertEqual(versioned["extensions"], {"custom_flag": True})
+
+        self.assertEqual(unversioned["source_format"], "frontmatter-unversioned")
+        self.assertEqual(unversioned["lifecycle_state"], "backlog")
+        self.assertEqual(unversioned["priority"], "p3")
+        self.assertEqual(unversioned["blocked_by"], ["BIZ-199"])
+        self.assertEqual(unversioned["advisory_blocked_by"], ["BIZ-200"])
+        self.assertIsNone(unversioned["definition_readiness"])
+        self.assertIsNone(unversioned["declared_next_command"])
+        self.assertEqual(unversioned["extensions"], {"custom_flag": True})
+        self.assertIn("ISSUE_FRONTMATTER_UNVERSIONED", codes(unversioned))
+
+        self.assertEqual(unsupported["source_format"], "frontmatter-unsupported")
+        self.assertEqual(unsupported["lifecycle_state"], "backlog")
+        self.assertEqual(unsupported["readiness"], "blocked")
+        self.assertIsNone(unsupported["declared_next_command"])
+        self.assertIn("ISSUE_SCHEMA_UNSUPPORTED", codes(unsupported))
+
+        for issue, code in (
+            (unversioned, "ISSUE_FRONTMATTER_UNVERSIONED"),
+            (unsupported, "ISSUE_SCHEMA_UNSUPPORTED"),
+        ):
+            diagnostic = next(
+                item for item in issue["diagnostics"] if item["code"] == code
+            )
+            self.assertGreaterEqual(
+                diagnostic.keys(),
+                {
+                    "code",
+                    "severity",
+                    "issue_id",
+                    "source_path",
+                    "field",
+                    "current",
+                    "expected",
+                    "message",
+                    "recommendation",
+                },
+            )
+
+    def test_versioned_markdown_status_must_match_canonical_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            issue = self.write_issue(
+                Path(tmp),
+                "BIZ-204.md",
+                """---
+schema_version: 0.1.0
+issue_id: BIZ-204
+canonical_state: active
+status: in_progress
+depends_on: []
+---
+# Issue: `BIZ-204` State drift
+
+**Status: backlog**
+""",
+            )
+
+        self.assertEqual(issue["lifecycle_state"], "active")
+        self.assertIn("ISSUE_STATE_PROJECTION_MISMATCH", codes(issue))
+
+    def test_versioned_ready_auxiliary_status_is_invalid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            issue = self.write_issue(
+                Path(tmp),
+                "BIZ-205.md",
+                """---
+schema_version: 0.1.0
+issue_id: BIZ-205
+canonical_state: backlog
+status: ready
+depends_on: []
+---
+# Issue: `BIZ-205` Invalid auxiliary status
+
+**Status: backlog**
+""",
+            )
+
+        self.assertIn("ISSUE_AUX_STATUS_INVALID", codes(issue))
+
+    def test_versioned_dependency_projection_must_match_frontmatter(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            issue = self.write_issue(
+                Path(tmp),
+                "BIZ-206.md",
+                """---
+schema_version: 0.1.0
+issue_id: BIZ-206
+canonical_state: backlog
+status: backlog
+depends_on: [BIZ-200, BIZ-201]
+---
+# Issue: `BIZ-206` Dependency drift
+
+**Status: backlog**
+**Blocked-by: `BIZ-200`, `BIZ-202`**
+""",
+            )
+
+        self.assertEqual(issue["blocked_by"], ["BIZ-200", "BIZ-201"])
+        self.assertIn("ISSUE_DEPENDENCY_PROJECTION_MISMATCH", codes(issue))
 
 
 if __name__ == "__main__":

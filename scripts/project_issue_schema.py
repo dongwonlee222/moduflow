@@ -30,6 +30,8 @@ _CONTRACT_FIELDS = {
     "definition_readiness",
     "gate_state",
     "depends_on",
+    "phase",
+    "declared_phase",
     "next_command",
 }
 _KEY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):(?:[ \t]*(.*))?$")
@@ -47,10 +49,10 @@ def split_frontmatter(text):
     return None, text
 
 
-def _diagnostic(code, issue_id, source_path, message, **details):
+def _diagnostic(code, issue_id, source_path, message, severity="error", **details):
     diagnostic = {
         "code": code,
-        "severity": "error",
+        "severity": severity,
         "issue_id": issue_id,
         "source_path": str(source_path),
         "message": message,
@@ -366,15 +368,21 @@ def metadata_region(text):
 
 
 def markdown_status(text):
+    status = markdown_status_projection(text)
+    if status is None:
+        return "backlog"
+    if status.startswith("superseded"):
+        return "superseded"
+    return status if status in LIFECYCLE_STATES else "backlog"
+
+
+def markdown_status_projection(text):
     match = re.search(
         r"^\*\*Status:\s*([A-Za-z0-9_-]+)",
         metadata_region(text),
         re.IGNORECASE | re.MULTILINE,
     )
-    status = match.group(1).lower() if match else "backlog"
-    if status.startswith("superseded"):
-        return "superseded"
-    return status if status in LIFECYCLE_STATES else "backlog"
+    return match.group(1).lower() if match else None
 
 
 def markdown_priority(text):
@@ -400,6 +408,12 @@ def markdown_blocked_by(text):
     return blocked_by
 
 
+def has_markdown_blocked_by(text):
+    return bool(
+        re.search(r"^\*\*Blocked-by:\s*", metadata_region(text), re.MULTILINE)
+    )
+
+
 def markdown_title(text):
     _, body = split_frontmatter(text)
     for line in body.splitlines():
@@ -422,6 +436,7 @@ def _base_issue(path, project_root, text):
     source_path = _relative_source_path(path, project_root)
     return {
         "schema": NORMALIZED_SCHEMA,
+        "schema_version": None,
         "issue_id": path.stem,
         "source_path": source_path,
         "source_format": "markdown",
@@ -430,12 +445,229 @@ def _base_issue(path, project_root, text):
         "projection_status": markdown_status(text),
         "priority": markdown_priority(text),
         "blocked_by": markdown_blocked_by(text),
+        "advisory_blocked_by": [],
         "definition_readiness": None,
         "gate_state": None,
+        "declared_phase": None,
+        "artifact_phase": None,
         "declared_next_command": None,
+        "recommended_next_command": None,
+        "readiness": None,
         "extensions": {},
         "diagnostics": [],
     }
+
+
+def _adapter_diagnostic(
+    issue,
+    code,
+    field,
+    current,
+    expected,
+    message,
+    recommendation,
+    severity="error",
+):
+    return _diagnostic(
+        code,
+        issue["issue_id"],
+        issue["source_path"],
+        message,
+        severity=severity,
+        field=field,
+        current=current,
+        expected=expected,
+        recommendation=recommendation,
+    )
+
+
+def _normalized_dependency_list(value):
+    if not isinstance(value, list) or not all(
+        isinstance(dependency, str) for dependency in value
+    ):
+        return []
+    normalized = []
+    for dependency in value:
+        dependency = dependency.strip().strip("`").strip()
+        if dependency and dependency not in normalized:
+            normalized.append(dependency)
+    return normalized
+
+
+def _extensions(fields):
+    return {
+        key: value for key, value in fields.items() if key not in _CONTRACT_FIELDS
+    }
+
+
+def normalize_markdown_issue(path, project_root, body, parse_diagnostics=None):
+    issue = _base_issue(path, project_root, body)
+    issue["diagnostics"].extend(parse_diagnostics or [])
+    return issue
+
+
+def normalize_frontmatter_0_1_0(
+    path, project_root, fields, body, parse_diagnostics=None
+):
+    issue = _base_issue(path, project_root, body)
+    issue["source_format"] = "frontmatter-0.1.0"
+    issue["schema_version"] = "0.1.0"
+    issue["diagnostics"].extend(parse_diagnostics or [])
+
+    declared_issue_id = fields.get("issue_id")
+    if isinstance(declared_issue_id, str) and declared_issue_id:
+        issue["issue_id"] = declared_issue_id
+
+    canonical_state = fields.get("canonical_state")
+    if canonical_state in LIFECYCLE_STATES:
+        issue["lifecycle_state"] = canonical_state
+    else:
+        issue["lifecycle_state"] = "backlog"
+        issue["diagnostics"].append(
+            _adapter_diagnostic(
+                issue,
+                "ISSUE_STATE_PROJECTION_MISMATCH",
+                "canonical_state",
+                canonical_state,
+                "backlog, active, or done",
+                "Versioned issues require a supported canonical lifecycle state.",
+                "Set canonical_state to backlog, active, or done.",
+            )
+        )
+
+    markdown_projection = markdown_status_projection(body)
+    markdown_lifecycle = markdown_status(body) if markdown_projection else None
+    if markdown_lifecycle != canonical_state:
+        issue["diagnostics"].append(
+            _adapter_diagnostic(
+                issue,
+                "ISSUE_STATE_PROJECTION_MISMATCH",
+                "markdown_status",
+                markdown_projection,
+                canonical_state,
+                "Markdown Status must project the canonical lifecycle state.",
+                f"Set Markdown Status to {canonical_state or 'a valid canonical state'}.",
+            )
+        )
+
+    auxiliary_status = fields.get("status")
+    issue["projection_status"] = (
+        auxiliary_status if isinstance(auxiliary_status, str) else None
+    )
+    if auxiliary_status in ("ready", "blocked"):
+        issue["diagnostics"].append(
+            _adapter_diagnostic(
+                issue,
+                "ISSUE_AUX_STATUS_INVALID",
+                "status",
+                auxiliary_status,
+                f"a lifecycle projection for canonical_state {canonical_state}",
+                f"{auxiliary_status.capitalize()} is derived and cannot be declared as the lifecycle projection.",
+                f"Set status to the lifecycle projection for {canonical_state} and let the readiness gate calculate {auxiliary_status}.",
+            )
+        )
+    elif auxiliary_status not in PROJECTION_TO_LIFECYCLE:
+        issue["diagnostics"].append(
+            _adapter_diagnostic(
+                issue,
+                "ISSUE_AUX_STATUS_INVALID",
+                "status",
+                auxiliary_status,
+                "backlog, in_progress, or done",
+                "Versioned issue status must be a supported lifecycle projection.",
+                "Set status to backlog, in_progress, or done.",
+            )
+        )
+    elif PROJECTION_TO_LIFECYCLE[auxiliary_status] != canonical_state:
+        issue["diagnostics"].append(
+            _adapter_diagnostic(
+                issue,
+                "ISSUE_STATE_PROJECTION_MISMATCH",
+                "status",
+                auxiliary_status,
+                f"the projection for canonical_state {canonical_state}",
+                "Auxiliary status must agree with canonical_state.",
+                f"Set status to the lifecycle projection for {canonical_state}.",
+            )
+        )
+
+    priority = fields.get("priority")
+    if isinstance(priority, str):
+        issue["priority"] = priority.lower()
+    dependencies = _normalized_dependency_list(fields.get("depends_on"))
+    issue["blocked_by"] = dependencies
+    if has_markdown_blocked_by(body):
+        markdown_dependencies = _normalized_dependency_list(markdown_blocked_by(body))
+        if set(markdown_dependencies) != set(dependencies):
+            issue["diagnostics"].append(
+                _adapter_diagnostic(
+                    issue,
+                    "ISSUE_DEPENDENCY_PROJECTION_MISMATCH",
+                    "blocked_by",
+                    markdown_dependencies,
+                    dependencies,
+                    "Markdown Blocked-by must agree with canonical frontmatter depends_on.",
+                    "Update Markdown Blocked-by to contain the same issue IDs as depends_on.",
+                )
+            )
+
+    issue["definition_readiness"] = fields.get("definition_readiness")
+    issue["gate_state"] = fields.get("gate_state")
+    issue["declared_phase"] = fields.get("phase", fields.get("declared_phase"))
+    issue["declared_next_command"] = fields.get("next_command")
+    issue["extensions"] = _extensions(fields)
+    return issue
+
+
+def normalize_unversioned_frontmatter(
+    path, project_root, fields, body, parse_diagnostics=None
+):
+    issue = _base_issue(path, project_root, body)
+    issue["source_format"] = "frontmatter-unversioned"
+    issue["diagnostics"].extend(parse_diagnostics or [])
+    issue["advisory_blocked_by"] = _normalized_dependency_list(
+        fields.get("depends_on")
+    )
+    issue["extensions"] = _extensions(fields)
+    issue["diagnostics"].append(
+        _adapter_diagnostic(
+            issue,
+            "ISSUE_FRONTMATTER_UNVERSIONED",
+            "schema_version",
+            None,
+            "0.1.0",
+            "Frontmatter without schema_version is advisory and cannot advance issue state.",
+            "Migrate the frontmatter to schema_version 0.1.0 and reconcile its projections.",
+            severity="warning",
+        )
+    )
+    return issue
+
+
+def normalize_unsupported_frontmatter(
+    path, project_root, fields, body, parse_diagnostics=None
+):
+    issue = _base_issue(path, project_root, body)
+    issue["source_format"] = "frontmatter-unsupported"
+    issue["schema_version"] = fields.get("schema_version")
+    issue["lifecycle_state"] = "backlog"
+    issue["projection_status"] = None
+    issue["blocked_by"] = []
+    issue["readiness"] = "blocked"
+    issue["extensions"] = _extensions(fields)
+    issue["diagnostics"].extend(parse_diagnostics or [])
+    issue["diagnostics"].append(
+        _adapter_diagnostic(
+            issue,
+            "ISSUE_SCHEMA_UNSUPPORTED",
+            "schema_version",
+            fields.get("schema_version"),
+            "0.1.0",
+            "The issue schema version is unsupported and cannot be routed safely.",
+            "Migrate the issue frontmatter to schema_version 0.1.0 before execution.",
+        )
+    )
+    return issue
 
 
 def parse_issue(path, project_root):
@@ -451,9 +683,9 @@ def parse_issue(path, project_root):
         )
         return issue
 
-    issue = _base_issue(path, project_root, text)
-    frontmatter, _ = split_frontmatter(text)
+    frontmatter, body = split_frontmatter(text)
     if frontmatter is None:
+        issue = normalize_markdown_issue(path, project_root, text)
         if text.lstrip("\ufeff").startswith("---"):
             issue["diagnostics"].append(
                 _malformed(
@@ -467,35 +699,15 @@ def parse_issue(path, project_root):
     fields, diagnostics = parse_frontmatter_subset(
         frontmatter, path.stem, source_path
     )
-    issue["diagnostics"].extend(diagnostics)
     version = fields.get("schema_version")
-    if version not in SUPPORTED_SCHEMA_VERSIONS:
-        return issue
-
-    issue["source_format"] = f"frontmatter-{version}"
-    declared_issue_id = fields.get("issue_id")
-    if isinstance(declared_issue_id, str) and declared_issue_id:
-        issue["issue_id"] = declared_issue_id
-    canonical_state = fields.get("canonical_state")
-    issue["lifecycle_state"] = (
-        canonical_state if canonical_state in LIFECYCLE_STATES else "backlog"
+    if version == "0.1.0":
+        return normalize_frontmatter_0_1_0(
+            path, project_root, fields, body, diagnostics
+        )
+    if version is None:
+        return normalize_unversioned_frontmatter(
+            path, project_root, fields, body, diagnostics
+        )
+    return normalize_unsupported_frontmatter(
+        path, project_root, fields, body, diagnostics
     )
-    projection_status = fields.get("status")
-    if isinstance(projection_status, str):
-        issue["projection_status"] = projection_status
-    priority = fields.get("priority")
-    if isinstance(priority, str):
-        issue["priority"] = priority.lower()
-    depends_on = fields.get("depends_on")
-    if isinstance(depends_on, list) and all(
-        isinstance(dependency, str) for dependency in depends_on
-    ):
-        issue["blocked_by"] = list(depends_on)
-    issue["definition_readiness"] = fields.get("definition_readiness")
-    issue["gate_state"] = fields.get("gate_state")
-    issue["declared_next_command"] = fields.get("next_command")
-    issue["extensions"] = {
-        key: value for key, value in fields.items() if key not in _CONTRACT_FIELDS
-    }
-
-    return issue
