@@ -4,7 +4,7 @@
 
 ### Now
 
-- `093-frontmatter-issue-schema-readiness-gate` — active; English/Korean spec defines the shared normalizer and structural execution gate. Next: `product:plan 093-frontmatter-issue-schema-readiness-gate`.
+- `093-frontmatter-issue-schema-readiness-gate` — active; approved plan sequences the shared normalizer, structural gate/report, consumer convergence, and verification. Next: `product:execute 093-frontmatter-issue-schema-readiness-gate`.
 
 ### Next
 

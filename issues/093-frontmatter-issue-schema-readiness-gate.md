@@ -1,6 +1,6 @@
 # Issue 093: Frontmatter Issue Schema and Readiness/Dependency Gate
 
-**Status: active** — created 2026-07-16, started 2026-07-22.
+**Status: active** — created 2026-07-16, started 2026-07-22, planned 2026-07-22.
 **Priority: p1**
 
 ## Summary
@@ -12,7 +12,7 @@ Normalize YAML-frontmatter and Markdown issue formats through one parser, then b
 - Type: verified external-review workflow dogfood
 - Link: ModuPay Biz BIZ-038–040 audit, local Codex session 2026-07-16
 - Owner / decision maker: Dongwon Lee
-- Current phase: backlog
+- Current phase: execute
 
 ## Problem
 
@@ -80,7 +80,7 @@ Do not introduce separate parsers in lifecycle, dashboard, or MCP consumers. Sch
 ## Workflow Tasks
 
 - [x] spec → `specs/093-frontmatter-issue-schema-readiness-gate/spec.md` + `spec.ko.md`
-- [ ] plan → `specs/<issue-id>/plan.md` (replace with the concrete link when created)
+- [x] plan → `specs/093-frontmatter-issue-schema-readiness-gate/plan.md` + `tasks.md`
 - [ ] execute → schema adapters, normalized parser, gates, migration report, and tests
 - [ ] review → `specs/<issue-id>/review.md` (replace with the concrete link when created)
 
@@ -95,6 +95,7 @@ Do not introduce separate parsers in lifecycle, dashboard, or MCP consumers. Sch
 
 - 2026-07-16: ModuPay Biz review dogfood proved that the current validator ignores frontmatter dependencies/readiness and can report contradictory issues as valid.
 - 2026-07-22: Dongwon Lee approved a shared-normalizer design. Unversioned frontmatter keeps Markdown canonical, emits migration guidance, and cannot advance an issue to ready/execute.
+- 2026-07-22: Implementation plan split the work into parser/model, structural gate/report, consumer convergence, authoring compatibility, and full verification streams.
 
 ## Links
 
@@ -102,8 +103,10 @@ Do not introduce separate parsers in lifecycle, dashboard, or MCP consumers. Sch
 - Roadmap: `workspace/roadmap.md`
 - Spec: `specs/093-frontmatter-issue-schema-readiness-gate/spec.md`
 - Korean Spec: `specs/093-frontmatter-issue-schema-readiness-gate/spec.ko.md`
+- Plan: `specs/093-frontmatter-issue-schema-readiness-gate/plan.md`
+- Tasks: `specs/093-frontmatter-issue-schema-readiness-gate/tasks.md`
 - GitHub: https://github.com/dongwonlee222/moduflow/issues/23
 
 ## Next Command
 
-`product:plan 093-frontmatter-issue-schema-readiness-gate`
+`product:execute 093-frontmatter-issue-schema-readiness-gate`

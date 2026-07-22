@@ -15,20 +15,20 @@
     "087-korean-github-pr-review-surface"
   ],
   "active_issue_id": "093-frontmatter-issue-schema-readiness-gate",
-  "phase": "plan",
+  "phase": "execute",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:plan 093-frontmatter-issue-schema-readiness-gate",
+  "next_command": "product:execute 093-frontmatter-issue-schema-readiness-gate",
   "attempts": {
-    "command": "product:plan 093-frontmatter-issue-schema-readiness-gate",
+    "command": "product:execute 093-frontmatter-issue-schema-readiness-gate",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-22"
   },
   "blocker": null,
-  "last_action": "wrote the approved English canonical and Korean Issue 093 schema/readiness gate specs",
-  "last_verification": "2026-07-22: isolated origin/main baseline release_check passed before spec authoring",
+  "last_action": "wrote the approved Issue 093 implementation plan and executable task checklist",
+  "last_verification": "2026-07-22: plan has spec-consistency 0/0/0, implementation-readiness ready, lifecycle drift [], and release_check valid",
   "updated_at": "2026-07-22",
   "git_binding": {
     "mode": "git-files",
