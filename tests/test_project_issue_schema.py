@@ -672,6 +672,77 @@ depends_on: []
                     [("ISSUE_SCHEMA_MALFORMED", field)],
                 )
 
+    def test_invalid_auxiliary_status_is_independent_of_canonical_validity(self):
+        cases = {
+            "list-ready": (
+                "[backlog]",
+                "ready",
+                "ISSUE_SCHEMA_MALFORMED",
+            ),
+            "null-blocked": (
+                "null",
+                "blocked",
+                "ISSUE_SCHEMA_MALFORMED",
+            ),
+            "unknown-nonsense": (
+                "nonsense",
+                "nonsense",
+                "ISSUE_STATE_PROJECTION_MISMATCH",
+            ),
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for label, (canonical_state, status, primary_code) in cases.items():
+                with self.subTest(case=label):
+                    issue = self.write_issue(
+                        root,
+                        f"BIZ-211-{label}.md",
+                        f"""---
+schema_version: 0.1.0
+issue_id: BIZ-211-{label}
+canonical_state: {canonical_state}
+status: {status}
+depends_on: []
+---
+# Issue: `BIZ-211-{label}` Independent auxiliary validation
+
+**Status: backlog**
+""",
+                    )
+
+                    self.assertTrue(
+                        any(
+                            item["code"] == primary_code
+                            and item["field"] == "canonical_state"
+                            for item in issue["diagnostics"]
+                        ),
+                        issue["diagnostics"],
+                    )
+                    auxiliary = next(
+                        (
+                            item
+                            for item in issue["diagnostics"]
+                            if item["code"] == "ISSUE_AUX_STATUS_INVALID"
+                        ),
+                        None,
+                    )
+                    self.assertIsNotNone(auxiliary, issue["diagnostics"])
+                    self.assertEqual(auxiliary["field"], "status")
+                    self.assertEqual(auxiliary["current"], status)
+                    self.assertEqual(
+                        auxiliary["expected"],
+                        "backlog, in_progress, or done",
+                    )
+                    self.assertFalse(
+                        any(
+                            item["code"] == "ISSUE_STATE_PROJECTION_MISMATCH"
+                            and item["field"] == "status"
+                            for item in issue["diagnostics"]
+                        ),
+                        issue["diagnostics"],
+                    )
+
     def test_other_scalar_contract_fields_reject_list_values(self):
         scalar_fields = (
             "schema_version",

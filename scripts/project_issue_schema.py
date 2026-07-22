@@ -642,7 +642,7 @@ def normalize_frontmatter_0_1_0(
     issue["projection_status"] = (
         auxiliary_status if isinstance(auxiliary_status, str) else None
     )
-    if "status" in invalid_fields or not canonical_state_is_valid:
+    if "status" in invalid_fields:
         pass
     elif isinstance(auxiliary_status, str) and auxiliary_status in (
         "ready",
@@ -654,9 +654,9 @@ def normalize_frontmatter_0_1_0(
                 "ISSUE_AUX_STATUS_INVALID",
                 "status",
                 auxiliary_status,
-                f"a lifecycle projection for canonical_state {canonical_state}",
+                "backlog, in_progress, or done",
                 f"{auxiliary_status.capitalize()} is derived and cannot be declared as the lifecycle projection.",
-                f"Set status to the lifecycle projection for {canonical_state} and let the readiness gate calculate {auxiliary_status}.",
+                f"Set status to backlog, in_progress, or done and let the readiness gate calculate {auxiliary_status}.",
             )
         )
     elif not isinstance(auxiliary_status, str) or (
@@ -673,7 +673,9 @@ def normalize_frontmatter_0_1_0(
                 "Set status to backlog, in_progress, or done.",
             )
         )
-    elif PROJECTION_TO_LIFECYCLE[auxiliary_status] != canonical_state:
+    elif canonical_state_is_valid and (
+        PROJECTION_TO_LIFECYCLE[auxiliary_status] != canonical_state
+    ):
         issue["diagnostics"].append(
             _adapter_diagnostic(
                 issue,
