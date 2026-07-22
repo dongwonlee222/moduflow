@@ -1263,6 +1263,77 @@ next_command: product:execute BIZ-ADVISORY
         self.assertIn("implementation", unsupported_diagnostic["expected"])
         self.assertEqual(set(unsupported_diagnostic), REQUIRED_DIAGNOSTIC_KEYS)
 
+    def test_phase_drift_does_not_override_earlier_structural_gates(self):
+        self.write_versioned("BIZ-PHASE-BLOCKER")
+        self.write_versioned(
+            "BIZ-PHASE-DEPENDENCY",
+            dependencies=("BIZ-PHASE-BLOCKER",),
+            phase="release",
+        )
+        self.add_artifacts("BIZ-PHASE-DEPENDENCY", "spec", "plan", "tasks")
+        self.write_versioned(
+            "BIZ-PHASE-DEFINITION",
+            definition="draft",
+            phase="release",
+        )
+        self.add_artifacts("BIZ-PHASE-DEFINITION", "spec", "plan", "tasks")
+        self.write_versioned("BIZ-PHASE-MISSING-SPEC", phase="release")
+        self.write_versioned("BIZ-PHASE-COMPLETE", phase="release")
+        self.add_artifacts("BIZ-PHASE-COMPLETE", "spec", "plan", "tasks")
+
+        by_id = self.evaluated_by_id()
+
+        expected = {
+            "BIZ-PHASE-DEPENDENCY": "product:status",
+            "BIZ-PHASE-DEFINITION": "product:spec BIZ-PHASE-DEFINITION",
+            "BIZ-PHASE-MISSING-SPEC": "product:spec BIZ-PHASE-MISSING-SPEC",
+            "BIZ-PHASE-COMPLETE": "product:doctor",
+        }
+        for issue_id, command in expected.items():
+            with self.subTest(issue_id=issue_id):
+                issue = by_id[issue_id]
+                self.assertEqual(issue["recommended_next_command"], command)
+                self.assertTrue(
+                    any(
+                        diagnostic["code"] == "ISSUE_STATE_PROJECTION_MISMATCH"
+                        and diagnostic["field"] == "phase"
+                        for diagnostic in issue["diagnostics"]
+                    )
+                )
+
+    def test_aligned_phase_continues_to_gate_and_execute_idempotently(self):
+        self.write_versioned(
+            "BIZ-PHASE-GATE", phase="implementation", gate="pending"
+        )
+        self.add_artifacts("BIZ-PHASE-GATE", "spec", "plan", "tasks")
+        self.write_versioned(
+            "BIZ-PHASE-EXECUTE", phase="execute", gate="passed"
+        )
+        self.add_artifacts("BIZ-PHASE-EXECUTE", "spec", "plan", "tasks")
+
+        by_id = self.evaluated_by_id()
+
+        self.assertEqual(
+            by_id["BIZ-PHASE-GATE"]["recommended_next_command"],
+            "product:review BIZ-PHASE-GATE",
+        )
+        self.assertEqual(
+            by_id["BIZ-PHASE-EXECUTE"]["recommended_next_command"],
+            "product:execute BIZ-PHASE-EXECUTE",
+        )
+
+        first = by_id["BIZ-PHASE-EXECUTE"]
+        artifact_index = self.schema.build_artifact_index(
+            self.root, ["BIZ-PHASE-EXECUTE"]
+        )
+        second = self.schema.evaluate_issue(
+            first, {"BIZ-PHASE-EXECUTE": first}, artifact_index
+        )
+        self.assertEqual(
+            second["recommended_next_command"], first["recommended_next_command"]
+        )
+        self.assertEqual(second["diagnostics"], first["diagnostics"])
+
     def test_declared_command_skip_is_diagnosed_without_overwriting_route(self):
         self.write_versioned(
             "BIZ-SKIP",

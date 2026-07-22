@@ -1044,6 +1044,25 @@ def _has_diagnostic(issue, codes):
     return any(diagnostic["code"] in codes for diagnostic in issue["diagnostics"])
 
 
+def _has_early_projection_error(issue):
+    return any(
+        diagnostic["code"] in _PROJECTION_ERROR_CODES
+        and not (
+            diagnostic["code"] == "ISSUE_STATE_PROJECTION_MISMATCH"
+            and diagnostic["field"] == "phase"
+        )
+        for diagnostic in issue["diagnostics"]
+    )
+
+
+def _has_artifact_phase_drift(issue):
+    return any(
+        diagnostic["code"] == "ISSUE_STATE_PROJECTION_MISMATCH"
+        and diagnostic["field"] == "phase"
+        for diagnostic in issue["diagnostics"]
+    )
+
+
 def _append_unique_diagnostic(issue, diagnostic):
     identity = (
         diagnostic["code"],
@@ -1148,7 +1167,7 @@ def derive_structural_route(issue, issue_index, artifact_index):
     issue_id = issue["issue_id"]
     if _has_diagnostic(issue, _SCHEMA_ERROR_CODES):
         return "blocked", "product:doctor"
-    if _has_diagnostic(issue, _PROJECTION_ERROR_CODES):
+    if _has_early_projection_error(issue):
         return "blocked", "product:doctor"
     if _has_diagnostic(issue, _DEPENDENCY_ERROR_CODES):
         return "blocked", "product:status"
@@ -1167,6 +1186,8 @@ def derive_structural_route(issue, issue_index, artifact_index):
         return "not_ready", f"product:plan {issue_id}"
     if not coverage.get("tasks", False):
         return "not_ready", f"product:plan {issue_id}"
+    if _has_artifact_phase_drift(issue):
+        return "blocked", "product:doctor"
     if issue.get("gate_state") in ("blocked", "pending", "in_progress") or (
         _is_recognized_versioned(issue)
         and issue.get("gate_state") not in GATE_STATE_VALUES
