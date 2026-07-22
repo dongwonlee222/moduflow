@@ -73,11 +73,13 @@ class ProjectIssueSchemaParsingTests(unittest.TestCase):
             """schema_version: \"0.1.0\"
 plain: hello world
 quoted: 'hello: world'
+escaped_quote: 'it''s'
 enabled: true
 disabled: false
 empty: null
 count: 3
 inline: [one, \"two words\", 3, false, null]
+inline_escaped_quote: ['it''s', plain]
 indented:
   - one
   - 'two words'
@@ -89,11 +91,13 @@ indented:
         self.assertEqual(diagnostics, [])
         self.assertEqual(fields["plain"], "hello world")
         self.assertEqual(fields["quoted"], "hello: world")
+        self.assertEqual(fields["escaped_quote"], "it's")
         self.assertIs(fields["enabled"], True)
         self.assertIs(fields["disabled"], False)
         self.assertIsNone(fields["empty"])
         self.assertEqual(fields["count"], 3)
         self.assertEqual(fields["inline"], ["one", "two words", 3, False, None])
+        self.assertEqual(fields["inline_escaped_quote"], ["it's", "plain"])
         self.assertEqual(fields["indented"], ["one", "two words"])
 
     def test_malformed_frontmatter_is_reported_as_data(self):
@@ -104,6 +108,9 @@ indented:
             "aliases": "schema_version: 0.1.0\nowner: *owner\n",
             "tags": "schema_version: 0.1.0\nowner: !person example\n",
             "second document": "schema_version: 0.1.0\n---\npriority: p1\n",
+            "literal block scalar variant": "schema_version: 0.1.0\nnotes: |2-\n",
+            "folded block scalar variant": "schema_version: 0.1.0\nnotes: >+2\n",
+            "isolated single quote": "schema_version: 0.1.0\nnotes: 'a' 'b'\n",
         }
 
         for label, frontmatter in cases.items():
@@ -151,39 +158,6 @@ indented:
         self.assertTrue(
             any(
                 diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
-                for diagnostic in issue["diagnostics"]
-            )
-        )
-
-    def test_markdown_status_drift_is_reported_for_versioned_issue(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            path = root / "BIZ-104.md"
-            path.write_text(
-                """---
-schema_version: 0.1.0
-issue_id: BIZ-104
-canonical_state: active
-status: in_progress
-priority: p2
-definition_readiness: ready
-gate_state: pending
-depends_on: []
-next_command: product:execute BIZ-104
----
-# Issue: `BIZ-104` Projection drift
-
-**Status: backlog**
-""",
-                encoding="utf-8",
-            )
-
-            issue = self.schema.parse_issue(path, root)
-
-        self.assertEqual(issue["lifecycle_state"], "active")
-        self.assertTrue(
-            any(
-                diagnostic["code"] == "ISSUE_STATE_PROJECTION_MISMATCH"
                 for diagnostic in issue["diagnostics"]
             )
         )

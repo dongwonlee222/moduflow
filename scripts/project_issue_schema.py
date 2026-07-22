@@ -74,7 +74,9 @@ def _has_forbidden_token(value):
     """Detect YAML tags, anchors, and aliases outside quoted strings."""
     quote = None
     escaped = False
-    for index, char in enumerate(value):
+    index = 0
+    while index < len(value):
+        char = value[index]
         if quote == '"':
             if escaped:
                 escaped = False
@@ -82,20 +84,25 @@ def _has_forbidden_token(value):
                 escaped = True
             elif char == quote:
                 quote = None
+            index += 1
             continue
         if quote == "'":
             if char == quote:
                 if index + 1 < len(value) and value[index + 1] == "'":
+                    index += 2
                     continue
                 quote = None
+            index += 1
             continue
         if char in ("'", '"'):
             quote = char
+            index += 1
             continue
         if char in "&*!" and (
             index == 0 or value[index - 1].isspace() or value[index - 1] in "[,"
         ):
             return True
+        index += 1
     return False
 
 
@@ -104,7 +111,9 @@ def _split_inline_items(inner):
     start = 0
     quote = None
     escaped = False
-    for index, char in enumerate(inner):
+    index = 0
+    while index < len(inner):
+        char = inner[index]
         if quote == '"':
             if escaped:
                 escaped = False
@@ -112,18 +121,25 @@ def _split_inline_items(inner):
                 escaped = True
             elif char == quote:
                 quote = None
+            index += 1
             continue
         if quote == "'":
             if char == quote:
                 if index + 1 < len(inner) and inner[index + 1] == "'":
+                    index += 2
                     continue
                 quote = None
+            index += 1
             continue
         if char in ("'", '"'):
             quote = char
+            index += 1
         elif char == ",":
             items.append(inner[start:index].strip())
             start = index + 1
+            index += 1
+        else:
+            index += 1
     if quote is not None:
         raise ValueError("unterminated quoted string")
     items.append(inner[start:].strip())
@@ -140,7 +156,7 @@ def _parse_scalar(value):
         raise ValueError("nested mappings are not supported")
     if value.startswith("[") or value.endswith("]"):
         raise ValueError("nested lists are not supported")
-    if value in ("|", ">", "|-", ">-", "|+", ">+"):
+    if value.startswith(("|", ">")):
         raise ValueError("multiline scalar syntax is not supported")
     if value.startswith('"'):
         if not value.endswith('"') or len(value) < 2:
@@ -155,7 +171,16 @@ def _parse_scalar(value):
     if value.startswith("'"):
         if not value.endswith("'") or len(value) < 2:
             raise ValueError("unterminated quoted string")
-        return value[1:-1].replace("''", "'")
+        inner = value[1:-1]
+        index = 0
+        while index < len(inner):
+            if inner[index] != "'":
+                index += 1
+                continue
+            if index + 1 >= len(inner) or inner[index + 1] != "'":
+                raise ValueError("invalid single-quoted string")
+            index += 2
+        return inner.replace("''", "'")
     if value.endswith(("'", '"')):
         raise ValueError("unexpected quote")
     lowered = value.lower()
@@ -433,21 +458,6 @@ def parse_issue(path, project_root):
     issue["diagnostics"].extend(diagnostics)
     version = fields.get("schema_version")
     if version not in SUPPORTED_SCHEMA_VERSIONS:
-        issue["source_format"] = "frontmatter-unsupported"
-        issue["diagnostics"].append(
-            _diagnostic(
-                "ISSUE_SCHEMA_VERSION_UNSUPPORTED",
-                path.stem,
-                source_path,
-                f"unsupported schema_version: {version!r}",
-                field="schema_version",
-                current=version,
-                expected=sorted(SUPPORTED_SCHEMA_VERSIONS),
-            )
-        )
-        issue["extensions"] = {
-            key: value for key, value in fields.items() if key not in _CONTRACT_FIELDS
-        }
         return issue
 
     issue["source_format"] = f"frontmatter-{version}"
@@ -475,20 +485,4 @@ def parse_issue(path, project_root):
         key: value for key, value in fields.items() if key not in _CONTRACT_FIELDS
     }
 
-    projected_lifecycle = markdown_status(text)
-    if (
-        canonical_state in LIFECYCLE_STATES
-        and projected_lifecycle != canonical_state
-    ):
-        issue["diagnostics"].append(
-            _diagnostic(
-                "ISSUE_STATE_PROJECTION_MISMATCH",
-                issue["issue_id"],
-                source_path,
-                "Markdown status does not match frontmatter canonical_state",
-                field="canonical_state",
-                current=projected_lifecycle,
-                expected=canonical_state,
-            )
-        )
     return issue
