@@ -33,6 +33,56 @@ class ProjectIssueSchemaParsingTests(unittest.TestCase):
         self.assertEqual(issue["priority"], "p1")
         self.assertEqual(issue["blocked_by"], ["001-dependency"])
 
+    def test_legacy_markdown_statuses_preserve_lifecycle_parity(self):
+        cases = {
+            "backlog": "backlog",
+            "active": "active",
+            "done": "done",
+            "superseded-by-001-replacement": "superseded",
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "legacy-status.md"
+            for status, expected in cases.items():
+                with self.subTest(status=status):
+                    path.write_text(
+                        f"# Issue: `legacy-status` Status parity\n\n"
+                        f"**Status: {status}** — created 2026-07-22.\n",
+                        encoding="utf-8",
+                    )
+                    issue = self.schema.parse_issue(path, root)
+                    self.assertEqual(issue["source_format"], "markdown")
+                    self.assertEqual(issue["lifecycle_state"], expected)
+
+    def test_versioned_canonical_state_does_not_inherit_legacy_superseded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "BIZ-106.md"
+            path.write_text(
+                """---
+schema_version: 0.1.0
+issue_id: BIZ-106
+canonical_state: superseded
+status: done
+priority: p2
+definition_readiness: ready
+gate_state: pending
+depends_on: []
+next_command: product:status
+---
+# Issue: `BIZ-106` Versioned state boundary
+
+**Status: superseded-by-BIZ-107**
+""",
+                encoding="utf-8",
+            )
+
+            issue = self.schema.parse_issue(path, root)
+
+        self.assertEqual(issue["source_format"], "frontmatter-0.1.0")
+        self.assertEqual(issue["lifecycle_state"], "backlog")
+
     def test_supported_frontmatter_fixture_parses_into_normalized_fields(self):
         issue = self.schema.parse_issue(FIXTURES / "BIZ-033.md", FIXTURES)
 
@@ -142,6 +192,57 @@ indented:
                 for diagnostic in diagnostics
             )
         )
+
+    def test_nested_list_structures_are_rejected_without_populating_field(self):
+        cases = {
+            "nested sequence": "  - - child\n",
+            "terminal mapping colon": "  - name:\n",
+            "child indentation": "  - parent\n    - child\n",
+            "explicit mapping indicator": "  - ? name\n",
+        }
+        contract_prefix = """schema_version: 0.1.0
+issue_id: BIZ-105
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: pending
+depends_on:
+"""
+        contract_suffix = "next_command: product:execute BIZ-105\n"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "BIZ-105.md"
+            for label, nested_value in cases.items():
+                with self.subTest(case=label):
+                    frontmatter = contract_prefix + nested_value + contract_suffix
+                    fields, diagnostics = self.schema.parse_frontmatter_subset(
+                        frontmatter, "BIZ-105", "BIZ-105.md"
+                    )
+                    self.assertNotIn("depends_on", fields)
+                    self.assertTrue(
+                        any(
+                            diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
+                            for diagnostic in diagnostics
+                        ),
+                        diagnostics,
+                    )
+
+                    path.write_text(
+                        f"---\n{frontmatter}---\n"
+                        "# Issue: `BIZ-105` Nested YAML\n\n**Status: backlog**\n",
+                        encoding="utf-8",
+                    )
+                    issue = self.schema.parse_issue(path, root)
+                    self.assertEqual(issue["blocked_by"], [])
+                    self.assertTrue(
+                        any(
+                            diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
+                            for diagnostic in issue["diagnostics"]
+                        ),
+                        issue["diagnostics"],
+                    )
 
     def test_malformed_issue_file_does_not_raise(self):
         with tempfile.TemporaryDirectory() as tmp:

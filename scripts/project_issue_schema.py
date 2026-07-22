@@ -183,6 +183,8 @@ def _parse_scalar(value):
         return inner.replace("''", "'")
     if value.endswith(("'", '"')):
         raise ValueError("unexpected quote")
+    if re.match(r"[-?](?:\s|$)", value):
+        raise ValueError("nested sequences and mappings are not supported")
     lowered = value.lower()
     if lowered in ("true", "false"):
         return lowered == "true"
@@ -190,7 +192,7 @@ def _parse_scalar(value):
         return None
     if _INTEGER_RE.fullmatch(value):
         return int(value)
-    if re.search(r":\s", value):
+    if re.search(r":(?:\s|$)", value):
         raise ValueError("nested mappings are not supported")
     return value
 
@@ -307,19 +309,27 @@ def parse_frontmatter_subset(frontmatter_text, issue_id, source_path):
         values = []
         nested_error = False
         cursor = lookahead
+        list_indent = len(lines[lookahead]) - len(lines[lookahead].lstrip(" \t"))
         while cursor < len(lines) and lines[cursor].startswith((" ", "\t")):
             item_raw = lines[cursor]
             item_stripped = item_raw.strip()
             if not item_stripped:
                 cursor += 1
                 continue
+            indent_end = len(item_raw) - len(item_raw.lstrip(" \t"))
+            item_indent_text = item_raw[:indent_end]
+            item_indent = len(item_indent_text)
             item_match = re.fullmatch(r"-\s+(.+)", item_stripped)
-            if not item_match or item_raw.startswith("\t"):
+            if (
+                not item_match
+                or "\t" in item_indent_text
+                or item_indent != list_indent
+            ):
                 diagnostics.append(
                     _malformed(
                         issue_id,
                         source_path,
-                        "nested mappings are not supported",
+                        "nested YAML structures are not supported",
                         line=cursor + 1,
                         field=key,
                     )
@@ -362,6 +372,8 @@ def markdown_status(text):
         re.IGNORECASE | re.MULTILINE,
     )
     status = match.group(1).lower() if match else "backlog"
+    if status.startswith("superseded"):
+        return "superseded"
     return status if status in LIFECYCLE_STATES else "backlog"
 
 
@@ -465,8 +477,9 @@ def parse_issue(path, project_root):
     if isinstance(declared_issue_id, str) and declared_issue_id:
         issue["issue_id"] = declared_issue_id
     canonical_state = fields.get("canonical_state")
-    if canonical_state in LIFECYCLE_STATES:
-        issue["lifecycle_state"] = canonical_state
+    issue["lifecycle_state"] = (
+        canonical_state if canonical_state in LIFECYCLE_STATES else "backlog"
+    )
     projection_status = fields.get("status")
     if isinstance(projection_status, str):
         issue["projection_status"] = projection_status
