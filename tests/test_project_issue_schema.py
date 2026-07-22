@@ -1,4 +1,5 @@
 import importlib.util
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -820,6 +821,330 @@ depends_on: [BIZ-201, BIZ-200, BIZ-201]
 
         self.assertEqual(issue["blocked_by"], ["BIZ-201", "BIZ-200"])
         self.assertNotIn("ISSUE_DEPENDENCY_PROJECTION_MISMATCH", codes(issue))
+
+
+class ProjectIssueSchemaEvaluationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.schema = load_module(
+            "project_issue_schema_evaluation", "scripts/project_issue_schema.py"
+        )
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        (self.root / "issues").mkdir()
+
+    def write_versioned(
+        self,
+        issue_id,
+        *,
+        lifecycle="backlog",
+        definition="ready",
+        gate="passed",
+        dependencies=(),
+        next_command=None,
+        status=None,
+        markdown_status=None,
+    ):
+        status = status or {
+            "backlog": "backlog",
+            "active": "in_progress",
+            "done": "done",
+        }[lifecycle]
+        markdown_status = markdown_status or lifecycle
+        next_command = next_command or f"product:execute {issue_id}"
+        dependency_text = ", ".join(dependencies)
+        path = self.root / "issues" / f"{issue_id}.md"
+        path.write_text(
+            f"""---
+schema_version: 0.1.0
+issue_id: {issue_id}
+canonical_state: {lifecycle}
+status: {status}
+priority: p2
+definition_readiness: {definition}
+gate_state: {gate}
+depends_on: [{dependency_text}]
+next_command: {next_command}
+---
+# Issue: `{issue_id}` Evaluator fixture
+
+**Status: {markdown_status}** — created 2026-07-22.
+""",
+            encoding="utf-8",
+        )
+        return path
+
+    def write_markdown(self, issue_id, status="backlog", dependencies=()):
+        blocked = (
+            f"\n**Blocked-by: {', '.join(dependencies)}**" if dependencies else ""
+        )
+        path = self.root / "issues" / f"{issue_id}.md"
+        path.write_text(
+            f"# Issue: `{issue_id}` Markdown fixture\n\n"
+            f"**Status: {status}** — created 2026-07-22.{blocked}\n",
+            encoding="utf-8",
+        )
+        return path
+
+    def add_artifacts(self, issue_id, *names):
+        artifact_root = self.root / "specs" / issue_id
+        artifact_root.mkdir(parents=True, exist_ok=True)
+        for name in names:
+            (artifact_root / f"{name}.md").write_text(
+                f"# {name.title()}\n", encoding="utf-8"
+            )
+
+    def evaluated_by_id(self):
+        return {
+            issue["issue_id"]: issue
+            for issue in self.schema.evaluate_project(self.root)["issues"]
+        }
+
+    def test_sanitized_biz_fixtures_apply_project_level_routing(self):
+        for issue_id in ("BIZ-033", "BIZ-038", "BIZ-039", "BIZ-040"):
+            shutil.copy2(
+                FIXTURES / f"{issue_id}.md",
+                self.root / "issues" / f"{issue_id}.md",
+            )
+
+        by_id = self.evaluated_by_id()
+
+        self.assertEqual(by_id["BIZ-033"]["lifecycle_state"], "active")
+        self.assertEqual(by_id["BIZ-038"]["readiness"], "blocked")
+        self.assertIn("ISSUE_AUX_STATUS_INVALID", codes(by_id["BIZ-038"]))
+        self.assertIn("ISSUE_DEPENDENCY_UNMET", codes(by_id["BIZ-038"]))
+        self.assertEqual(
+            by_id["BIZ-039"]["recommended_next_command"], "product:status"
+        )
+        self.assertEqual(
+            by_id["BIZ-040"]["recommended_next_command"],
+            "product:spec BIZ-040",
+        )
+
+    def test_dangling_self_and_cycle_dependencies_are_hard_errors(self):
+        self.write_versioned("BIZ-DANGLING", dependencies=("BIZ-MISSING",))
+        self.write_versioned("BIZ-SELF", dependencies=("BIZ-SELF",))
+        self.write_versioned("BIZ-CYCLE-A", dependencies=("BIZ-CYCLE-B",))
+        self.write_versioned("BIZ-CYCLE-B", dependencies=("BIZ-CYCLE-C",))
+        self.write_versioned("BIZ-CYCLE-C", dependencies=("BIZ-CYCLE-A",))
+
+        by_id = self.evaluated_by_id()
+
+        self.assertIn("ISSUE_DEPENDENCY_DANGLING", codes(by_id["BIZ-DANGLING"]))
+        self.assertIn("ISSUE_DEPENDENCY_CYCLE", codes(by_id["BIZ-SELF"]))
+        for issue_id in ("BIZ-CYCLE-A", "BIZ-CYCLE-B", "BIZ-CYCLE-C"):
+            self.assertIn("ISSUE_DEPENDENCY_CYCLE", codes(by_id[issue_id]))
+            self.assertEqual(by_id[issue_id]["readiness"], "blocked")
+            self.assertEqual(
+                by_id[issue_id]["recommended_next_command"], "product:status"
+            )
+
+    def test_independent_cycles_report_only_their_own_members(self):
+        self.write_versioned("BIZ-A1", dependencies=("BIZ-A2",))
+        self.write_versioned("BIZ-A2", dependencies=("BIZ-A1",))
+        self.write_versioned("BIZ-B1", dependencies=("BIZ-B2",))
+        self.write_versioned("BIZ-B2", dependencies=("BIZ-B1",))
+
+        by_id = self.evaluated_by_id()
+        current = {
+            issue_id: next(
+                diagnostic["current"]
+                for diagnostic in by_id[issue_id]["diagnostics"]
+                if diagnostic["code"] == "ISSUE_DEPENDENCY_CYCLE"
+            )
+            for issue_id in by_id
+        }
+
+        self.assertEqual(current["BIZ-A1"], "BIZ-A1, BIZ-A2")
+        self.assertEqual(current["BIZ-A2"], "BIZ-A1, BIZ-A2")
+        self.assertEqual(current["BIZ-B1"], "BIZ-B1, BIZ-B2")
+        self.assertEqual(current["BIZ-B2"], "BIZ-B1, BIZ-B2")
+
+    def test_unfinished_dependency_blocks_active_issue(self):
+        self.write_versioned("BIZ-BLOCKER")
+        self.write_versioned(
+            "BIZ-ACTIVE", lifecycle="active", dependencies=("BIZ-BLOCKER",)
+        )
+
+        issue = self.evaluated_by_id()["BIZ-ACTIVE"]
+
+        self.assertEqual(issue["readiness"], "blocked")
+        self.assertEqual(issue["recommended_next_command"], "product:status")
+        self.assertIn("ISSUE_DEPENDENCY_UNMET", codes(issue))
+
+    def test_done_and_superseded_dependencies_are_satisfied(self):
+        self.write_versioned("BIZ-DONE", lifecycle="done", next_command="product:status")
+        self.write_markdown("BIZ-SUPERSEDED", status="superseded")
+        self.write_versioned(
+            "BIZ-WORK",
+            dependencies=("BIZ-DONE", "BIZ-SUPERSEDED"),
+        )
+        self.add_artifacts("BIZ-WORK", "spec", "plan", "tasks")
+
+        issue = self.evaluated_by_id()["BIZ-WORK"]
+
+        self.assertNotIn("ISSUE_DEPENDENCY_UNMET", codes(issue))
+        self.assertEqual(issue["readiness"], "ready")
+        self.assertEqual(
+            issue["recommended_next_command"], "product:execute BIZ-WORK"
+        )
+
+    def test_unversioned_advisory_dependency_only_blocks_conservatively(self):
+        self.write_versioned("BIZ-BLOCKER")
+        path = self.root / "issues" / "BIZ-ADVISORY.md"
+        path.write_text(
+            """---
+depends_on: [BIZ-BLOCKER]
+definition_readiness: ready
+gate_state: passed
+next_command: product:execute BIZ-ADVISORY
+---
+# Issue: `BIZ-ADVISORY` Advisory fixture
+
+**Status: backlog** — created 2026-07-22.
+""",
+            encoding="utf-8",
+        )
+        self.add_artifacts("BIZ-ADVISORY", "spec", "plan", "tasks")
+
+        issue = self.evaluated_by_id()["BIZ-ADVISORY"]
+
+        self.assertEqual(issue["definition_readiness"], None)
+        self.assertEqual(issue["readiness"], "blocked")
+        self.assertIn("ISSUE_DEPENDENCY_UNMET", codes(issue))
+        self.assertEqual(issue["recommended_next_command"], "product:status")
+
+    def test_dependency_analysis_is_iterative_for_deep_chain(self):
+        count = 2000
+        issue_index = {}
+        for index in range(count):
+            issue_id = f"BIZ-{index:04d}"
+            dependency = [f"BIZ-{index + 1:04d}"] if index + 1 < count else []
+            issue_index[issue_id] = {
+                "issue_id": issue_id,
+                "source_path": f"issues/{issue_id}.md",
+                "lifecycle_state": "done",
+                "blocked_by": dependency,
+                "advisory_blocked_by": [],
+            }
+
+        diagnostics = self.schema.dependency_diagnostics(issue_index)
+
+        self.assertEqual(diagnostics, {})
+
+    def test_artifact_index_exposes_coverage_and_ordered_phase(self):
+        issue_ids = [f"BIZ-{name.upper()}" for name in (
+            "issue", "spec", "plan", "tasks", "review", "release"
+        )]
+        phases = ("spec", "plan", "tasks", "review", "release")
+        for index, issue_id in enumerate(issue_ids):
+            self.add_artifacts(issue_id, *phases[:index])
+
+        artifact_index = self.schema.build_artifact_index(self.root, issue_ids)
+
+        for index, issue_id in enumerate(issue_ids):
+            self.assertEqual(artifact_index[issue_id]["artifact_phase"], (
+                "issue", "spec", "plan", "tasks", "review", "release"
+            )[index])
+            for phase_index, phase in enumerate(phases):
+                self.assertEqual(artifact_index[issue_id][phase], phase_index < index)
+
+    def test_route_precedence_schema_projection_and_dependency(self):
+        malformed = self.root / "issues" / "BIZ-MALFORMED.md"
+        malformed.write_text(
+            "---\nschema_version: [0.1.0]\n---\n# Issue: `BIZ-MALFORMED` Bad\n",
+            encoding="utf-8",
+        )
+        unsupported = self.root / "issues" / "BIZ-UNSUPPORTED.md"
+        unsupported.write_text(
+            "---\nschema_version: 9.9.9\n---\n# Issue: `BIZ-UNSUPPORTED` Bad\n",
+            encoding="utf-8",
+        )
+        self.write_versioned("BIZ-PROJECTION", markdown_status="done")
+        self.write_versioned("BIZ-DEPENDENCY", dependencies=("BIZ-GHOST",))
+        for issue_id in (
+            "BIZ-MALFORMED", "BIZ-UNSUPPORTED", "BIZ-PROJECTION", "BIZ-DEPENDENCY"
+        ):
+            self.add_artifacts(issue_id, "spec", "plan", "tasks")
+
+        by_id = self.evaluated_by_id()
+
+        for issue_id in ("BIZ-MALFORMED", "BIZ-UNSUPPORTED", "BIZ-PROJECTION"):
+            self.assertEqual(by_id[issue_id]["readiness"], "blocked")
+            self.assertEqual(
+                by_id[issue_id]["recommended_next_command"], "product:doctor"
+            )
+        self.assertEqual(
+            by_id["BIZ-DEPENDENCY"]["recommended_next_command"], "product:status"
+        )
+
+    def test_definition_artifact_and_gate_routes_are_ordered(self):
+        self.write_versioned("BIZ-DRAFT", definition="draft")
+        self.write_versioned("BIZ-NO-SPEC")
+        self.write_versioned("BIZ-NO-PLAN")
+        self.add_artifacts("BIZ-NO-PLAN", "spec")
+        self.write_versioned("BIZ-NO-TASKS")
+        self.add_artifacts("BIZ-NO-TASKS", "spec", "plan")
+        self.write_versioned("BIZ-PENDING", gate="pending")
+        self.add_artifacts("BIZ-PENDING", "spec", "plan", "tasks")
+        self.write_versioned("BIZ-BLOCKED", gate="blocked")
+        self.add_artifacts("BIZ-BLOCKED", "spec", "plan", "tasks")
+        self.write_versioned("BIZ-READY")
+        self.add_artifacts("BIZ-READY", "spec", "plan", "tasks")
+
+        by_id = self.evaluated_by_id()
+
+        expected = {
+            "BIZ-DRAFT": ("blocked", "product:spec BIZ-DRAFT"),
+            "BIZ-NO-SPEC": ("not_ready", "product:spec BIZ-NO-SPEC"),
+            "BIZ-NO-PLAN": ("not_ready", "product:plan BIZ-NO-PLAN"),
+            "BIZ-NO-TASKS": ("not_ready", "product:plan BIZ-NO-TASKS"),
+            "BIZ-PENDING": ("blocked", "product:review BIZ-PENDING"),
+            "BIZ-BLOCKED": ("blocked", "product:review BIZ-BLOCKED"),
+            "BIZ-READY": ("ready", "product:execute BIZ-READY"),
+        }
+        for issue_id, (readiness, command) in expected.items():
+            with self.subTest(issue_id=issue_id):
+                self.assertEqual(by_id[issue_id]["readiness"], readiness)
+                self.assertEqual(by_id[issue_id]["recommended_next_command"], command)
+
+        self.assertIn("ISSUE_DEFINITION_NOT_READY", codes(by_id["BIZ-DRAFT"]))
+        for issue_id in ("BIZ-PENDING", "BIZ-BLOCKED"):
+            self.assertIn("ISSUE_GATE_BLOCKED", codes(by_id[issue_id]))
+
+    def test_declared_command_skip_is_diagnosed_without_overwriting_route(self):
+        self.write_versioned(
+            "BIZ-SKIP",
+            definition="draft",
+            next_command="product:execute BIZ-SKIP",
+        )
+
+        issue = self.evaluated_by_id()["BIZ-SKIP"]
+        diagnostic = next(
+            item
+            for item in issue["diagnostics"]
+            if item["code"] == "ISSUE_NEXT_COMMAND_INVALID"
+        )
+
+        self.assertEqual(issue["recommended_next_command"], "product:spec BIZ-SKIP")
+        self.assertEqual(diagnostic["current"], "product:execute BIZ-SKIP")
+        self.assertEqual(diagnostic["expected"], "product:spec BIZ-SKIP")
+        self.assertEqual(set(diagnostic), REQUIRED_DIAGNOSTIC_KEYS)
+
+    def test_completed_lifecycle_routes_status_and_exception_allowlist_is_empty(self):
+        self.write_versioned("BIZ-DONE", lifecycle="done", next_command="product:status")
+        self.add_artifacts("BIZ-DONE", "spec", "plan", "tasks", "review", "release")
+        self.write_markdown("BIZ-SUPERSEDED", status="superseded")
+
+        by_id = self.evaluated_by_id()
+
+        for issue_id in ("BIZ-DONE", "BIZ-SUPERSEDED"):
+            self.assertEqual(by_id[issue_id]["recommended_next_command"], "product:status")
+            self.assertNotEqual(by_id[issue_id]["readiness"], "ready")
+        self.assertEqual(self.schema.DEFINITION_READINESS_EXCEPTIONS, frozenset())
 
 
 if __name__ == "__main__":

@@ -20,6 +20,19 @@ PROJECTION_TO_LIFECYCLE = {
     "in_progress": "active",
     "done": "done",
 }
+DEFINITION_READINESS_EXCEPTIONS = frozenset()
+
+_ARTIFACT_PHASES = ("spec", "plan", "tasks", "review", "release")
+_SCHEMA_ERROR_CODES = {"ISSUE_SCHEMA_MALFORMED", "ISSUE_SCHEMA_UNSUPPORTED"}
+_PROJECTION_ERROR_CODES = {
+    "ISSUE_STATE_PROJECTION_MISMATCH",
+    "ISSUE_DEPENDENCY_PROJECTION_MISMATCH",
+}
+_DEPENDENCY_ERROR_CODES = {
+    "ISSUE_DEPENDENCY_UNMET",
+    "ISSUE_DEPENDENCY_DANGLING",
+    "ISSUE_DEPENDENCY_CYCLE",
+}
 
 _SCALAR_CONTRACT_FIELDS = (
     "schema_version",
@@ -864,3 +877,294 @@ def parse_issue(path, project_root):
         diagnostics,
         declared_version,
     )
+
+
+def list_normalized_issues(project_root):
+    """Return normalized issue records sorted by their canonical issue id."""
+    project_root = Path(project_root)
+    issues_dir = project_root / "issues"
+    if not issues_dir.is_dir():
+        return []
+    issues = [
+        parse_issue(path, project_root)
+        for path in sorted(issues_dir.glob("*.md"))
+        if path.is_file()
+    ]
+    return sorted(issues, key=lambda issue: issue["issue_id"])
+
+
+def build_artifact_index(project_root, issue_ids):
+    """Return actual workflow-artifact coverage for each supplied issue id."""
+    project_root = Path(project_root)
+    artifact_index = {}
+    for issue_id in sorted(set(issue_ids)):
+        artifact_root = project_root / "specs" / issue_id
+        coverage = {
+            phase: (artifact_root / f"{phase}.md").is_file()
+            for phase in _ARTIFACT_PHASES
+        }
+        present_phases = [phase for phase in _ARTIFACT_PHASES if coverage[phase]]
+        coverage["artifact_phase"] = (
+            present_phases[-1] if present_phases else "issue"
+        )
+        artifact_index[issue_id] = coverage
+    return artifact_index
+
+
+def _issue_dependencies(issue):
+    dependencies = []
+    for field in ("blocked_by", "advisory_blocked_by"):
+        for dependency in issue.get(field) or []:
+            if dependency not in dependencies:
+                dependencies.append(dependency)
+    return dependencies
+
+
+def _dependency_diagnostic(issue, code, current, expected, message, recommendation):
+    return _adapter_diagnostic(
+        issue,
+        code,
+        "depends_on",
+        current,
+        expected,
+        message,
+        recommendation,
+    )
+
+
+def dependency_diagnostics(issue_index):
+    """Return dependency errors by issue id using iterative graph traversal."""
+    diagnostics = {}
+
+    def add(issue_id, diagnostic):
+        diagnostics.setdefault(issue_id, []).append(diagnostic)
+
+    graph = {}
+    for issue_id in sorted(issue_index):
+        issue = issue_index[issue_id]
+        dependencies = _issue_dependencies(issue)
+        graph[issue_id] = [
+            dependency for dependency in dependencies if dependency in issue_index
+        ]
+        for dependency in dependencies:
+            blocker = issue_index.get(dependency)
+            if blocker is None:
+                add(
+                    issue_id,
+                    _dependency_diagnostic(
+                        issue,
+                        "ISSUE_DEPENDENCY_DANGLING",
+                        dependency,
+                        "an existing issue id",
+                        f"Dependency {dependency} does not exist in the project issue index.",
+                        f"Create {dependency} or remove it from depends_on before routing {issue_id}.",
+                    ),
+                )
+                continue
+            blocker_state = blocker.get("lifecycle_state")
+            if blocker_state not in ("done", "superseded"):
+                add(
+                    issue_id,
+                    _dependency_diagnostic(
+                        issue,
+                        "ISSUE_DEPENDENCY_UNMET",
+                        f"{dependency}: {blocker_state or 'unknown'}",
+                        "done or superseded",
+                        f"Dependency {dependency} is unfinished and blocks {issue_id}.",
+                        f"Complete or supersede {dependency}, then run product:status.",
+                    ),
+                )
+
+    colors = {issue_id: 0 for issue_id in graph}
+    cycle_groups = []
+    for start in sorted(graph):
+        if colors[start] != 0:
+            continue
+        colors[start] = 1
+        path = [start]
+        positions = {start: 0}
+        stack = [(start, 0)]
+        while stack:
+            node, dependency_index = stack[-1]
+            dependencies = graph[node]
+            if dependency_index >= len(dependencies):
+                stack.pop()
+                colors[node] = 2
+                positions.pop(node, None)
+                path.pop()
+                continue
+            dependency = dependencies[dependency_index]
+            stack[-1] = (node, dependency_index + 1)
+            dependency_color = colors[dependency]
+            if dependency_color == 0:
+                colors[dependency] = 1
+                positions[dependency] = len(path)
+                path.append(dependency)
+                stack.append((dependency, 0))
+            elif dependency_color == 1:
+                found = set(path[positions[dependency] :])
+                overlapping = [group for group in cycle_groups if group & found]
+                if overlapping:
+                    for group in overlapping:
+                        found.update(group)
+                        cycle_groups.remove(group)
+                cycle_groups.append(found)
+
+    for cycle_members in sorted(cycle_groups, key=lambda group: sorted(group)):
+        current = ", ".join(sorted(cycle_members))
+        for issue_id in sorted(cycle_members):
+            issue = issue_index[issue_id]
+            add(
+                issue_id,
+                _dependency_diagnostic(
+                    issue,
+                    "ISSUE_DEPENDENCY_CYCLE",
+                    current,
+                    "an acyclic dependency graph",
+                    f"Issue {issue_id} participates in a dependency cycle.",
+                    "Remove or redirect a depends_on edge in the cycle, then run product:status.",
+                ),
+            )
+
+    return diagnostics
+
+
+def _has_diagnostic(issue, codes):
+    return any(diagnostic["code"] in codes for diagnostic in issue["diagnostics"])
+
+
+def _append_unique_diagnostic(issue, diagnostic):
+    identity = (
+        diagnostic["code"],
+        diagnostic["field"],
+        repr(diagnostic["current"]),
+    )
+    if not any(
+        (
+            existing["code"],
+            existing["field"],
+            repr(existing["current"]),
+        )
+        == identity
+        for existing in issue["diagnostics"]
+    ):
+        issue["diagnostics"].append(diagnostic)
+
+
+def derive_structural_route(issue, issue_index, artifact_index):
+    """Derive structural readiness and command using first-blocker precedence."""
+    issue_id = issue["issue_id"]
+    if _has_diagnostic(issue, _SCHEMA_ERROR_CODES):
+        return "blocked", "product:doctor"
+    if _has_diagnostic(issue, _PROJECTION_ERROR_CODES):
+        return "blocked", "product:doctor"
+    if _has_diagnostic(issue, _DEPENDENCY_ERROR_CODES):
+        return "blocked", "product:status"
+    if issue.get("lifecycle_state") in ("done", "superseded"):
+        return "not_ready", "product:status"
+    if issue.get("definition_readiness") == "draft":
+        return "blocked", f"product:spec {issue_id}"
+
+    coverage = artifact_index.get(issue_id, {})
+    if not coverage.get("spec", False):
+        return "not_ready", f"product:spec {issue_id}"
+    if not coverage.get("plan", False):
+        return "not_ready", f"product:plan {issue_id}"
+    if not coverage.get("tasks", False):
+        return "not_ready", f"product:plan {issue_id}"
+    if issue.get("gate_state") in ("blocked", "pending"):
+        return "blocked", f"product:review {issue_id}"
+    return "ready", f"product:execute {issue_id}"
+
+
+def _evaluate_issue_after_dependency(issue, issue_index, artifact_index):
+    evaluated = dict(issue)
+    evaluated["diagnostics"] = list(issue.get("diagnostics", []))
+    coverage = artifact_index.get(issue["issue_id"], {})
+    evaluated["artifact_phase"] = coverage.get("artifact_phase", "issue")
+
+    readiness, command = derive_structural_route(
+        evaluated, issue_index, artifact_index
+    )
+    evaluated["readiness"] = readiness
+    evaluated["recommended_next_command"] = command
+
+    issue_id = evaluated["issue_id"]
+    if evaluated.get("definition_readiness") == "draft":
+        _append_unique_diagnostic(
+            evaluated,
+            _adapter_diagnostic(
+                evaluated,
+                "ISSUE_DEFINITION_NOT_READY",
+                "definition_readiness",
+                "draft",
+                "ready",
+                "The issue definition is draft and cannot advance to execution.",
+                f"Run product:spec {issue_id} and complete the issue definition.",
+            ),
+        )
+    if evaluated.get("gate_state") in ("blocked", "pending"):
+        _append_unique_diagnostic(
+            evaluated,
+            _adapter_diagnostic(
+                evaluated,
+                "ISSUE_GATE_BLOCKED",
+                "gate_state",
+                evaluated["gate_state"],
+                "passed",
+                "The structural gate is unresolved and prevents execution.",
+                f"Run product:review {issue_id} and resolve the gate.",
+            ),
+        )
+
+    declared = evaluated.get("declared_next_command")
+    if declared is not None and declared != command:
+        _append_unique_diagnostic(
+            evaluated,
+            _adapter_diagnostic(
+                evaluated,
+                "ISSUE_NEXT_COMMAND_INVALID",
+                "next_command",
+                declared,
+                command,
+                "The declared next command skips or disagrees with the structural route.",
+                f"Set next_command to {command} or complete the earlier gate first.",
+            ),
+        )
+    return evaluated
+
+
+def evaluate_issue(issue, issue_index, artifact_index):
+    """Evaluate one issue against project dependencies and actual artifacts."""
+    prepared = dict(issue)
+    prepared["diagnostics"] = list(issue.get("diagnostics", []))
+    for diagnostic in dependency_diagnostics(issue_index).get(
+        issue["issue_id"], []
+    ):
+        _append_unique_diagnostic(prepared, diagnostic)
+    return _evaluate_issue_after_dependency(prepared, issue_index, artifact_index)
+
+
+def evaluate_project(project_root):
+    """Return evaluated issues and project-level dependency diagnostics."""
+    project_root = Path(project_root)
+    issues = list_normalized_issues(project_root)
+    issue_index = {issue["issue_id"]: issue for issue in issues}
+    artifact_index = build_artifact_index(project_root, issue_index)
+    project_dependency_diagnostics = dependency_diagnostics(issue_index)
+    evaluated = []
+    for issue in issues:
+        prepared = dict(issue)
+        prepared["diagnostics"] = list(issue["diagnostics"])
+        for diagnostic in project_dependency_diagnostics.get(
+            issue["issue_id"], []
+        ):
+            _append_unique_diagnostic(prepared, diagnostic)
+        evaluated.append(
+            _evaluate_issue_after_dependency(prepared, issue_index, artifact_index)
+        )
+    return {
+        "project_root": str(project_root.resolve()),
+        "issues": evaluated,
+        "dependency_diagnostics": project_dependency_diagnostics,
+    }
