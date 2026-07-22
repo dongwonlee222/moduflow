@@ -268,7 +268,7 @@ depends_on:
                         encoding="utf-8",
                     )
                     issue = self.schema.parse_issue(path, root)
-                    self.assertNotIn("blocked_by", issue)
+                    self.assertEqual(issue["blocked_by"], [])
                     self.assertTrue(
                         any(
                             diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
@@ -625,10 +625,10 @@ depends_on: {declared_value}
                         )
 
                         if source_format == "versioned":
-                            self.assertNotIn("blocked_by", issue)
+                            self.assertEqual(issue["blocked_by"], [])
                         else:
                             self.assertEqual(issue["blocked_by"], ["BIZ-099"])
-                            self.assertNotIn("advisory_blocked_by", issue)
+                            self.assertEqual(issue["advisory_blocked_by"], [])
 
     def test_list_typed_state_fields_are_diagnostics_not_exceptions(self):
         for field in ("canonical_state", "status"):
@@ -664,6 +664,13 @@ depends_on: []
                 self.assertEqual(diagnostic["severity"], "error")
                 self.assertEqual(diagnostic["current"], ["backlog"])
                 self.assertEqual(diagnostic["expected"], "string")
+                self.assertEqual(
+                    [
+                        (item["code"], item["field"])
+                        for item in issue["diagnostics"]
+                    ],
+                    [("ISSUE_SCHEMA_MALFORMED", field)],
+                )
 
     def test_other_scalar_contract_fields_reject_list_values(self):
         scalar_fields = (

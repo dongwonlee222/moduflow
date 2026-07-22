@@ -600,9 +600,12 @@ def normalize_frontmatter_0_1_0(
         issue["issue_id"] = declared_issue_id
 
     canonical_state = fields.get("canonical_state")
+    canonical_state_is_valid = (
+        isinstance(canonical_state, str) and canonical_state in LIFECYCLE_STATES
+    )
     if "canonical_state" in invalid_fields:
         issue["lifecycle_state"] = None
-    elif isinstance(canonical_state, str) and canonical_state in LIFECYCLE_STATES:
+    elif canonical_state_is_valid:
         issue["lifecycle_state"] = canonical_state
     else:
         issue["lifecycle_state"] = "backlog"
@@ -619,7 +622,7 @@ def normalize_frontmatter_0_1_0(
         )
 
     markdown_projection = markdown_status_projection(body)
-    if "canonical_state" not in invalid_fields and (
+    if canonical_state_is_valid and (
         markdown_projection not in LIFECYCLE_STATES
         or markdown_projection != canonical_state
     ):
@@ -639,7 +642,7 @@ def normalize_frontmatter_0_1_0(
     issue["projection_status"] = (
         auxiliary_status if isinstance(auxiliary_status, str) else None
     )
-    if "status" in invalid_fields:
+    if "status" in invalid_fields or not canonical_state_is_valid:
         pass
     elif isinstance(auxiliary_status, str) and auxiliary_status in (
         "ready",
@@ -690,7 +693,7 @@ def normalize_frontmatter_0_1_0(
         issue["priority"] = priority.lower()
     if "depends_on" in invalid_fields:
         dependencies = None
-        issue.pop("blocked_by", None)
+        issue["blocked_by"] = []
     else:
         dependencies = _normalized_dependency_list(fields.get("depends_on"))
         issue["blocked_by"] = dependencies
@@ -735,7 +738,7 @@ def normalize_unversioned_frontmatter(
     issue["source_format"] = "frontmatter-unversioned"
     issue["diagnostics"].extend(parse_diagnostics or [])
     if "depends_on" in invalid_fields:
-        issue.pop("advisory_blocked_by", None)
+        issue["advisory_blocked_by"] = []
     else:
         issue["advisory_blocked_by"] = _normalized_dependency_list(
             fields.get("depends_on")
