@@ -6,6 +6,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "fixtures" / "issue-schema"
+REQUIRED_DIAGNOSTIC_KEYS = {
+    "code",
+    "severity",
+    "issue_id",
+    "source_path",
+    "field",
+    "current",
+    "expected",
+    "message",
+    "recommendation",
+}
 
 
 def codes(issue):
@@ -257,7 +268,7 @@ depends_on:
                         encoding="utf-8",
                     )
                     issue = self.schema.parse_issue(path, root)
-                    self.assertEqual(issue["blocked_by"], [])
+                    self.assertNotIn("blocked_by", issue)
                     self.assertTrue(
                         any(
                             diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
@@ -560,6 +571,177 @@ depends_on: [BIZ-200, BIZ-201]
 
         self.assertEqual(issue["blocked_by"], ["BIZ-200", "BIZ-201"])
         self.assertIn("ISSUE_DEPENDENCY_PROJECTION_MISMATCH", codes(issue))
+
+    def test_invalid_depends_on_types_fail_closed_for_frontmatter_adapters(self):
+        cases = {
+            "scalar": ("BIZ-033", "BIZ-033"),
+            "integer": ("2", 2),
+            "mapping-like": ("{issue: BIZ-033}", "{issue: BIZ-033}"),
+            "mixed-list": ("[BIZ-033, 2]", ["BIZ-033", 2]),
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for source_format in ("versioned", "unversioned"):
+                for label, (declared_value, expected_current) in cases.items():
+                    with self.subTest(source_format=source_format, case=label):
+                        schema_line = (
+                            "schema_version: 0.1.0\n"
+                            if source_format == "versioned"
+                            else ""
+                        )
+                        issue = self.write_issue(
+                            root,
+                            f"BIZ-207-{source_format}-{label}.md",
+                            f"""---
+{schema_line}issue_id: BIZ-207-{source_format}-{label}
+canonical_state: backlog
+status: backlog
+depends_on: {declared_value}
+---
+# Issue: `BIZ-207-{source_format}-{label}` Invalid dependency type
+
+**Status: backlog**
+**Blocked-by: `BIZ-099`**
+""",
+                        )
+
+                        diagnostic = next(
+                            (
+                                item
+                                for item in issue["diagnostics"]
+                                if item["code"] == "ISSUE_SCHEMA_MALFORMED"
+                                and item["field"] == "depends_on"
+                            ),
+                            None,
+                        )
+                        self.assertIsNotNone(diagnostic, issue["diagnostics"])
+                        self.assertEqual(diagnostic["severity"], "error")
+                        self.assertEqual(diagnostic["current"], expected_current)
+                        self.assertTrue(diagnostic["expected"])
+                        self.assertIn("top-level", diagnostic["recommendation"])
+                        self.assertGreaterEqual(
+                            diagnostic.keys(), REQUIRED_DIAGNOSTIC_KEYS
+                        )
+
+                        if source_format == "versioned":
+                            self.assertNotIn("blocked_by", issue)
+                        else:
+                            self.assertEqual(issue["blocked_by"], ["BIZ-099"])
+                            self.assertNotIn("advisory_blocked_by", issue)
+
+    def test_list_typed_state_fields_are_diagnostics_not_exceptions(self):
+        for field in ("canonical_state", "status"):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp:
+                values = {
+                    "canonical_state": "backlog",
+                    "status": "backlog",
+                }
+                values[field] = "[backlog]"
+                issue = self.write_issue(
+                    Path(tmp),
+                    f"BIZ-208-{field}.md",
+                    f"""---
+schema_version: 0.1.0
+issue_id: BIZ-208-{field}
+canonical_state: {values['canonical_state']}
+status: {values['status']}
+depends_on: []
+---
+# Issue: `BIZ-208-{field}` Invalid state type
+
+**Status: backlog**
+""",
+                )
+
+                diagnostic = next(
+                    item
+                    for item in issue["diagnostics"]
+                    if item["code"] == "ISSUE_SCHEMA_MALFORMED"
+                    and item["field"] == field
+                )
+                self.assertEqual(set(diagnostic), REQUIRED_DIAGNOSTIC_KEYS)
+                self.assertEqual(diagnostic["severity"], "error")
+                self.assertEqual(diagnostic["current"], ["backlog"])
+                self.assertEqual(diagnostic["expected"], "string")
+
+    def test_other_scalar_contract_fields_reject_list_values(self):
+        scalar_fields = (
+            "schema_version",
+            "issue_id",
+            "priority",
+            "definition_readiness",
+            "gate_state",
+            "phase",
+            "declared_phase",
+            "next_command",
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for field in scalar_fields:
+                with self.subTest(field=field):
+                    values = {
+                        "schema_version": "0.1.0",
+                        "issue_id": f"BIZ-209-{field}",
+                        "priority": "p2",
+                        "definition_readiness": "ready",
+                        "gate_state": "pending",
+                        "phase": "implementation",
+                        "next_command": "product:status",
+                    }
+                    if field == "declared_phase":
+                        values.pop("phase")
+                    values[field] = "[invalid]"
+                    frontmatter = "\n".join(
+                        f"{key}: {value}" for key, value in values.items()
+                    )
+                    issue = self.write_issue(
+                        root,
+                        f"BIZ-209-{field}.md",
+                        f"""---
+{frontmatter}
+canonical_state: backlog
+status: backlog
+depends_on: []
+---
+# Issue: `BIZ-209-{field}` Invalid scalar contract field
+
+**Status: backlog**
+""",
+                    )
+
+                    diagnostic = next(
+                        item
+                        for item in issue["diagnostics"]
+                        if item["code"] == "ISSUE_SCHEMA_MALFORMED"
+                        and item["field"] == field
+                    )
+                    self.assertEqual(diagnostic["current"], ["invalid"])
+                    self.assertEqual(diagnostic["expected"], "string")
+                    self.assertEqual(diagnostic["severity"], "error")
+
+    def test_equivalent_dependency_projection_ignores_order_and_duplicates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            issue = self.write_issue(
+                Path(tmp),
+                "BIZ-210.md",
+                """---
+schema_version: 0.1.0
+issue_id: BIZ-210
+canonical_state: backlog
+status: backlog
+depends_on: [BIZ-201, BIZ-200, BIZ-201]
+---
+# Issue: `BIZ-210` Equivalent dependencies
+
+**Status: backlog**
+**Blocked-by: `BIZ-200`, `BIZ-201`, `BIZ-200`**
+""",
+            )
+
+        self.assertEqual(issue["blocked_by"], ["BIZ-201", "BIZ-200"])
+        self.assertNotIn("ISSUE_DEPENDENCY_PROJECTION_MISMATCH", codes(issue))
 
 
 if __name__ == "__main__":

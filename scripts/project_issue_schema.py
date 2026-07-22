@@ -21,7 +21,7 @@ PROJECTION_TO_LIFECYCLE = {
     "done": "done",
 }
 
-_CONTRACT_FIELDS = {
+_SCALAR_CONTRACT_FIELDS = (
     "schema_version",
     "issue_id",
     "canonical_state",
@@ -29,11 +29,11 @@ _CONTRACT_FIELDS = {
     "priority",
     "definition_readiness",
     "gate_state",
-    "depends_on",
     "phase",
     "declared_phase",
     "next_command",
-}
+)
+_CONTRACT_FIELDS = set(_SCALAR_CONTRACT_FIELDS) | {"depends_on"}
 _KEY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):(?:[ \t]*(.*))?$")
 _INTEGER_RE = re.compile(r"^-?(?:0|[1-9][0-9]*)$")
 
@@ -55,20 +55,44 @@ def _diagnostic(code, issue_id, source_path, message, severity="error", **detail
         "severity": severity,
         "issue_id": issue_id,
         "source_path": str(source_path),
+        "field": details.pop("field", None),
+        "current": details.pop("current", None),
+        "expected": details.pop("expected", None),
         "message": message,
+        "recommendation": details.pop(
+            "recommendation",
+            "Use supported top-level scalar or list syntax in issue frontmatter.",
+        ),
     }
     diagnostic.update(details)
     return diagnostic
 
 
-def _malformed(issue_id, source_path, message, line=None, field=None):
+def _malformed(
+    issue_id,
+    source_path,
+    message,
+    line=None,
+    field=None,
+    current=None,
+    expected="supported top-level scalar or list of scalars",
+    recommendation=(
+        "Use supported top-level scalar or list syntax in issue frontmatter."
+    ),
+):
     details = {}
     if line is not None:
         details["line"] = line
-    if field is not None:
-        details["field"] = field
     return _diagnostic(
-        "ISSUE_SCHEMA_MALFORMED", issue_id, source_path, message, **details
+        "ISSUE_SCHEMA_MALFORMED",
+        issue_id,
+        source_path,
+        message,
+        field=field,
+        current=current,
+        expected=expected,
+        recommendation=recommendation,
+        **details,
     )
 
 
@@ -294,6 +318,7 @@ def parse_frontmatter_subset(frontmatter_text, issue_id, source_path):
                         str(exc),
                         line=line_number,
                         field=key,
+                        current=raw_value.strip(),
                     )
                 )
             index += 1
@@ -349,6 +374,7 @@ def parse_frontmatter_subset(frontmatter_text, issue_id, source_path):
                         str(exc),
                         line=cursor + 1,
                         field=key,
+                        current=item_match.group(1),
                     )
                 )
                 nested_error = True
@@ -358,6 +384,54 @@ def parse_frontmatter_subset(frontmatter_text, issue_id, source_path):
         index = cursor
 
     return fields, diagnostics
+
+
+def validate_contract_field_types(fields, issue_id, source_path):
+    """Return contract fields safe for adapters plus hard type diagnostics."""
+    sanitized = dict(fields)
+    diagnostics = []
+    invalid_fields = set()
+
+    for field in _SCALAR_CONTRACT_FIELDS:
+        if field not in fields or isinstance(fields[field], str):
+            continue
+        invalid_fields.add(field)
+        sanitized.pop(field, None)
+        diagnostics.append(
+            _malformed(
+                issue_id,
+                source_path,
+                f"Contract field '{field}' must be a string.",
+                field=field,
+                current=fields[field],
+                expected="string",
+                recommendation=(
+                    f"Set {field} to a supported top-level scalar string."
+                ),
+            )
+        )
+
+    if "depends_on" in fields and (
+        not isinstance(fields["depends_on"], list)
+        or not all(isinstance(value, str) for value in fields["depends_on"])
+    ):
+        invalid_fields.add("depends_on")
+        sanitized.pop("depends_on", None)
+        diagnostics.append(
+            _malformed(
+                issue_id,
+                source_path,
+                "Contract field 'depends_on' must be a list of issue ID strings.",
+                field="depends_on",
+                current=fields["depends_on"],
+                expected="list of strings",
+                recommendation=(
+                    "Set depends_on to a supported top-level list of issue ID strings."
+                ),
+            )
+        )
+
+    return sanitized, diagnostics, invalid_fields
 
 
 def metadata_region(text):
@@ -507,11 +581,18 @@ def normalize_markdown_issue(path, project_root, body, parse_diagnostics=None):
 
 
 def normalize_frontmatter_0_1_0(
-    path, project_root, fields, body, parse_diagnostics=None
+    path,
+    project_root,
+    fields,
+    body,
+    parse_diagnostics=None,
+    invalid_fields=None,
 ):
+    invalid_fields = invalid_fields or set()
     issue = _base_issue(path, project_root, body)
-    issue["source_format"] = "frontmatter-0.1.0"
-    issue["schema_version"] = "0.1.0"
+    version = fields["schema_version"]
+    issue["source_format"] = f"frontmatter-{version}"
+    issue["schema_version"] = version
     issue["diagnostics"].extend(parse_diagnostics or [])
 
     declared_issue_id = fields.get("issue_id")
@@ -519,7 +600,9 @@ def normalize_frontmatter_0_1_0(
         issue["issue_id"] = declared_issue_id
 
     canonical_state = fields.get("canonical_state")
-    if canonical_state in LIFECYCLE_STATES:
+    if "canonical_state" in invalid_fields:
+        issue["lifecycle_state"] = None
+    elif isinstance(canonical_state, str) and canonical_state in LIFECYCLE_STATES:
         issue["lifecycle_state"] = canonical_state
     else:
         issue["lifecycle_state"] = "backlog"
@@ -536,7 +619,7 @@ def normalize_frontmatter_0_1_0(
         )
 
     markdown_projection = markdown_status_projection(body)
-    if (
+    if "canonical_state" not in invalid_fields and (
         markdown_projection not in LIFECYCLE_STATES
         or markdown_projection != canonical_state
     ):
@@ -556,7 +639,12 @@ def normalize_frontmatter_0_1_0(
     issue["projection_status"] = (
         auxiliary_status if isinstance(auxiliary_status, str) else None
     )
-    if auxiliary_status in ("ready", "blocked"):
+    if "status" in invalid_fields:
+        pass
+    elif isinstance(auxiliary_status, str) and auxiliary_status in (
+        "ready",
+        "blocked",
+    ):
         issue["diagnostics"].append(
             _adapter_diagnostic(
                 issue,
@@ -568,7 +656,9 @@ def normalize_frontmatter_0_1_0(
                 f"Set status to the lifecycle projection for {canonical_state} and let the readiness gate calculate {auxiliary_status}.",
             )
         )
-    elif auxiliary_status not in PROJECTION_TO_LIFECYCLE:
+    elif not isinstance(auxiliary_status, str) or (
+        auxiliary_status not in PROJECTION_TO_LIFECYCLE
+    ):
         issue["diagnostics"].append(
             _adapter_diagnostic(
                 issue,
@@ -594,11 +684,17 @@ def normalize_frontmatter_0_1_0(
         )
 
     priority = fields.get("priority")
-    if isinstance(priority, str):
+    if "priority" in invalid_fields:
+        issue["priority"] = None
+    elif isinstance(priority, str):
         issue["priority"] = priority.lower()
-    dependencies = _normalized_dependency_list(fields.get("depends_on"))
-    issue["blocked_by"] = dependencies
-    if has_markdown_blocked_by(body):
+    if "depends_on" in invalid_fields:
+        dependencies = None
+        issue.pop("blocked_by", None)
+    else:
+        dependencies = _normalized_dependency_list(fields.get("depends_on"))
+        issue["blocked_by"] = dependencies
+    if dependencies is not None and has_markdown_blocked_by(body):
         markdown_dependencies = _normalized_dependency_list(markdown_blocked_by(body))
         if set(markdown_dependencies) != set(dependencies):
             issue["diagnostics"].append(
@@ -615,21 +711,35 @@ def normalize_frontmatter_0_1_0(
 
     issue["definition_readiness"] = fields.get("definition_readiness")
     issue["gate_state"] = fields.get("gate_state")
-    issue["declared_phase"] = fields.get("phase", fields.get("declared_phase"))
+    if invalid_fields.intersection(("phase", "declared_phase")):
+        issue["declared_phase"] = None
+    else:
+        issue["declared_phase"] = fields.get(
+            "phase", fields.get("declared_phase")
+        )
     issue["declared_next_command"] = fields.get("next_command")
     issue["extensions"] = _extensions(fields)
     return issue
 
 
 def normalize_unversioned_frontmatter(
-    path, project_root, fields, body, parse_diagnostics=None
+    path,
+    project_root,
+    fields,
+    body,
+    parse_diagnostics=None,
+    invalid_fields=None,
 ):
+    invalid_fields = invalid_fields or set()
     issue = _base_issue(path, project_root, body)
     issue["source_format"] = "frontmatter-unversioned"
     issue["diagnostics"].extend(parse_diagnostics or [])
-    issue["advisory_blocked_by"] = _normalized_dependency_list(
-        fields.get("depends_on")
-    )
+    if "depends_on" in invalid_fields:
+        issue.pop("advisory_blocked_by", None)
+    else:
+        issue["advisory_blocked_by"] = _normalized_dependency_list(
+            fields.get("depends_on")
+        )
     issue["extensions"] = _extensions(fields)
     issue["diagnostics"].append(
         _adapter_diagnostic(
@@ -647,7 +757,12 @@ def normalize_unversioned_frontmatter(
 
 
 def normalize_unsupported_frontmatter(
-    path, project_root, fields, body, parse_diagnostics=None
+    path,
+    project_root,
+    fields,
+    body,
+    parse_diagnostics=None,
+    declared_version=None,
 ):
     issue = _base_issue(path, project_root, body)
     issue["source_format"] = "frontmatter-unsupported"
@@ -663,10 +778,10 @@ def normalize_unsupported_frontmatter(
             issue,
             "ISSUE_SCHEMA_UNSUPPORTED",
             "schema_version",
-            fields.get("schema_version"),
-            "0.1.0",
+            declared_version,
+            ", ".join(sorted(SUPPORTED_SCHEMA_VERSIONS)),
             "The issue schema version is unsupported and cannot be routed safely.",
-            "Migrate the issue frontmatter to schema_version 0.1.0 before execution.",
+            "Migrate the issue frontmatter to a supported schema_version before execution.",
         )
     )
     return issue
@@ -698,18 +813,49 @@ def parse_issue(path, project_root):
             )
         return issue
 
-    fields, diagnostics = parse_frontmatter_subset(
+    parsed_fields, diagnostics = parse_frontmatter_subset(
         frontmatter, path.stem, source_path
     )
+    invalid_fields = {
+        diagnostic["field"]
+        for diagnostic in diagnostics
+        if diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
+        and diagnostic["field"] in _CONTRACT_FIELDS
+    }
+    fields, type_diagnostics, type_invalid_fields = validate_contract_field_types(
+        parsed_fields, path.stem, source_path
+    )
+    diagnostics.extend(type_diagnostics)
+    invalid_fields.update(type_invalid_fields)
+
+    declared_version = parsed_fields.get("schema_version")
+    has_declared_version = (
+        "schema_version" in parsed_fields or "schema_version" in invalid_fields
+    )
     version = fields.get("schema_version")
-    if version == "0.1.0":
+    if version in SUPPORTED_SCHEMA_VERSIONS:
         return normalize_frontmatter_0_1_0(
-            path, project_root, fields, body, diagnostics
+            path,
+            project_root,
+            fields,
+            body,
+            diagnostics,
+            invalid_fields,
         )
-    if version is None:
+    if not has_declared_version:
         return normalize_unversioned_frontmatter(
-            path, project_root, fields, body, diagnostics
+            path,
+            project_root,
+            fields,
+            body,
+            diagnostics,
+            invalid_fields,
         )
     return normalize_unsupported_frontmatter(
-        path, project_root, fields, body, diagnostics
+        path,
+        project_root,
+        fields,
+        body,
+        diagnostics,
+        declared_version,
     )
