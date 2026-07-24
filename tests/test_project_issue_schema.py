@@ -1875,19 +1875,20 @@ custom_mode: future
         path.write_text(content, encoding="utf-8")
         return path
 
-    def issue_hashes(self):
+    def project_file_manifest(self):
         return {
             path.relative_to(self.root).as_posix(): hashlib.sha256(
                 path.read_bytes()
             ).hexdigest()
-            for path in sorted((self.root / "issues").glob("*.md"))
+            for path in sorted(self.root.rglob("*"))
+            if path.is_file()
         }
 
     def by_id(self, report):
         return {issue["issue_id"]: issue for issue in report["issues"]}
 
     def test_build_report_has_deterministic_contract_and_is_read_only(self):
-        before_hashes = self.issue_hashes()
+        before_hashes = self.project_file_manifest()
 
         report = self.schema.build_migration_report(self.root)
         repeated = self.schema.build_migration_report(self.root)
@@ -1913,7 +1914,7 @@ custom_mode: future
             sorted(issue["source_path"] for issue in report["issues"]),
         )
         self.assertEqual(report, repeated)
-        self.assertEqual(before_hashes, self.issue_hashes())
+        self.assertEqual(before_hashes, self.project_file_manifest())
 
     def test_compatibility_policy_classifies_proposals_conservatively(self):
         report = self.schema.build_migration_report(self.root)
@@ -2046,7 +2047,7 @@ next_command: product:spec DUP
 """
         (self.root / duplicate_paths[1]).write_text(content, encoding="utf-8")
         self.write_issue("BIZ-UNVERSIONED-2.md", content)
-        before_hashes = self.issue_hashes()
+        before_hashes = self.project_file_manifest()
 
         report = self.schema.build_migration_report(self.root)
 
@@ -2080,7 +2081,7 @@ next_command: product:spec DUP
                     issue["routing_after"]["recommended_next_command"],
                     "product:doctor",
                 )
-        self.assertEqual(before_hashes, self.issue_hashes())
+        self.assertEqual(before_hashes, self.project_file_manifest())
 
     def test_unversioned_identity_collision_with_versioned_record_is_ambiguous(self):
         versioned_path = self.root / "issues" / "BIZ-VERSIONED.md"
@@ -2199,10 +2200,201 @@ depends_on: []
                     "product:doctor",
                 )
 
+    def test_blank_dependency_ids_fail_closed_for_versioned_and_unversioned(self):
+        self.write_issue(
+            "BIZ-BLANK-VERSIONED.md",
+            """---
+schema_version: 0.1.0
+issue_id: BIZ-BLANK-VERSIONED
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: [""]
+next_command: product:spec BIZ-BLANK-VERSIONED
+---
+# Issue: `BIZ-BLANK-VERSIONED` Blank dependency
+
+**Status: backlog**
+""",
+        )
+        self.write_issue(
+            "BIZ-BLANK-UNVERSIONED.md",
+            """---
+issue_id: BIZ-BLANK-UNVERSIONED
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: ["   "]
+next_command: product:spec BIZ-BLANK-UNVERSIONED
+---
+# Issue: `BIZ-BLANK-UNVERSIONED` Whitespace dependency
+
+**Status: backlog**
+""",
+        )
+
+        report = self.schema.build_migration_report(self.root)
+        by_path = {
+            issue["source_path"]: issue for issue in report["issues"]
+        }
+        cases = {
+            "issues/BIZ-BLANK-VERSIONED.md": [""],
+            "issues/BIZ-BLANK-UNVERSIONED.md": ["   "],
+        }
+        for source_path, current in cases.items():
+            with self.subTest(source_path=source_path):
+                normalized = self.schema.parse_issue(
+                    self.root / source_path, self.root
+                )
+                issue = by_path[source_path]
+                malformed = next(
+                    diagnostic
+                    for diagnostic in issue["diagnostics"]
+                    if diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
+                    and diagnostic["field"] == "depends_on"
+                )
+                decision = next(
+                    item
+                    for item in issue["human_decisions"]
+                    if item["field"] == "depends_on"
+                )
+
+                self.assertEqual(normalized["blocked_by"], [])
+                self.assertEqual(normalized["advisory_blocked_by"], [])
+                self.assertEqual(malformed["current"], current)
+                self.assertEqual(
+                    malformed["expected"],
+                    "list of non-empty issue ID strings",
+                )
+                self.assertEqual(decision["current"], current)
+                self.assertEqual(decision["expected"], malformed["expected"])
+                self.assertIn("blank", decision["recommendation"].lower())
+                self.assertNotIn(
+                    "depends_on",
+                    {mapping["field"] for mapping in issue["safe_mappings"]},
+                )
+                self.assertNotIn(
+                    "set_schema_version", issue["proposed_changes"]
+                )
+                self.assertEqual(issue["routing_after"]["readiness"], "blocked")
+                self.assertEqual(
+                    issue["routing_after"]["recommended_next_command"],
+                    "product:doctor",
+                )
+
+    def test_unsupported_tentative_identity_collides_with_versioned_canonical(self):
+        versioned = self.root / "issues" / "BIZ-VERSIONED.md"
+        versioned.write_text(
+            versioned.read_text(encoding="utf-8").replace(
+                "issue_id: BIZ-VERSIONED", "issue_id: FUTURE-ID"
+            ),
+            encoding="utf-8",
+        )
+        unsupported = self.root / "issues" / "BIZ-UNSUPPORTED.md"
+        unsupported.write_text(
+            unsupported.read_text(encoding="utf-8").replace(
+                "issue_id: BIZ-UNSUPPORTED", "issue_id: FUTURE-ID"
+            ),
+            encoding="utf-8",
+        )
+
+        report = self.schema.build_migration_report(self.root)
+        issue = next(
+            item
+            for item in report["issues"]
+            if item["source_path"] == "issues/BIZ-UNSUPPORTED.md"
+        )
+        identity = next(
+            decision
+            for decision in issue["human_decisions"]
+            if decision["field"] == "issue_id"
+        )
+
+        self.assertEqual(issue["issue_id"], "BIZ-UNSUPPORTED")
+        self.assertEqual(issue["tentative_issue_id"], "FUTURE-ID")
+        self.assertEqual(
+            identity["current"],
+            {
+                "issue_id": "FUTURE-ID",
+                "source_paths": [
+                    "issues/BIZ-UNSUPPORTED.md",
+                    "issues/BIZ-VERSIONED.md",
+                ],
+            },
+        )
+        self.assertEqual(issue["routing_after"]["readiness"], "blocked")
+        self.assertEqual(
+            issue["routing_after"]["recommended_next_command"],
+            "product:doctor",
+        )
+
+    def test_unsupported_tentative_identity_collides_with_unversioned_proposal(self):
+        unsupported = self.root / "issues" / "BIZ-UNSUPPORTED.md"
+        unsupported.write_text(
+            unsupported.read_text(encoding="utf-8").replace(
+                "issue_id: BIZ-UNSUPPORTED", "issue_id: TENTATIVE-ID"
+            ),
+            encoding="utf-8",
+        )
+        unversioned = self.root / "issues" / "BIZ-UNVERSIONED.md"
+        unversioned.write_text(
+            """---
+issue_id: TENTATIVE-ID
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:spec TENTATIVE-ID
+---
+# Issue: `TENTATIVE-ID` Colliding proposal
+
+**Status: backlog**
+""",
+            encoding="utf-8",
+        )
+        source_paths = [
+            "issues/BIZ-UNSUPPORTED.md",
+            "issues/BIZ-UNVERSIONED.md",
+        ]
+
+        report = self.schema.build_migration_report(self.root)
+        by_path = {
+            issue["source_path"]: issue for issue in report["issues"]
+        }
+        for source_path in source_paths:
+            with self.subTest(source_path=source_path):
+                issue = by_path[source_path]
+                identity = next(
+                    decision
+                    for decision in issue["human_decisions"]
+                    if decision["field"] == "issue_id"
+                )
+                self.assertEqual(
+                    identity["current"],
+                    {
+                        "issue_id": "TENTATIVE-ID",
+                        "source_paths": source_paths,
+                    },
+                )
+                self.assertNotIn(
+                    "set_schema_version", issue["proposed_changes"]
+                )
+                self.assertEqual(issue["routing_after"]["readiness"], "blocked")
+                self.assertEqual(
+                    issue["routing_after"]["recommended_next_command"],
+                    "product:doctor",
+                )
+
     def test_malformed_input_preserves_hard_diagnostics_and_blocked_projection(self):
         self.write_issue(
             "BIZ-MALFORMED.md",
-            "---\nschema_version: [0.1.0]\n---\n"
+            "---\nschema_version: [9]\n---\n"
             "# Issue: `BIZ-MALFORMED` Malformed\n\n**Status: backlog**\n",
         )
 
@@ -2214,14 +2406,21 @@ depends_on: []
             "ISSUE_SCHEMA_MALFORMED",
             {diagnostic["code"] for diagnostic in issue["diagnostics"]},
         )
-        self.assertTrue(issue["human_decisions"])
+        decision = next(
+            item
+            for item in issue["human_decisions"]
+            if item["field"] == "schema_version"
+        )
+        self.assertEqual(decision["current"], [9])
+        self.assertEqual(decision["expected"], "string")
+        self.assertIn("schema_version", decision["recommendation"])
         self.assertEqual(issue["routing_after"]["readiness"], "blocked")
         self.assertEqual(
             issue["routing_after"]["recommended_next_command"], "product:doctor"
         )
 
     def test_cli_prints_json_only_returns_zero_and_does_not_write(self):
-        before_hashes = self.issue_hashes()
+        before_hashes = self.project_file_manifest()
         stdout = io.StringIO()
 
         with contextlib.redirect_stdout(stdout):
@@ -2230,7 +2429,43 @@ depends_on: []
         payload = json.loads(stdout.getvalue())
         self.assertEqual(exit_code, 0)
         self.assertEqual(payload["schema"], "moduflow.issue-migration-report.v1")
-        self.assertEqual(before_hashes, self.issue_hashes())
+        self.assertEqual(before_hashes, self.project_file_manifest())
+
+    def test_file_creation_order_does_not_change_report(self):
+        logical_files = {
+            "issues/A.md": (
+                "# Issue: `A` Stable ordering\n\n"
+                "**Status: backlog** — created 2026-07-24.\n"
+            ),
+            "issues/B.md": """---
+schema_version: 9.9.9
+issue_id: FUTURE-B
+---
+# Issue: `B` Unsupported
+
+**Status: backlog**
+""",
+            "specs/A/spec.md": "# Spec\n",
+        }
+
+        reports = []
+        roots = []
+        for reverse in (False, True):
+            temporary = tempfile.TemporaryDirectory()
+            self.addCleanup(temporary.cleanup)
+            root = Path(temporary.name)
+            roots.append(root)
+            items = sorted(logical_files.items(), reverse=reverse)
+            for relative_path, content in items:
+                path = root / relative_path
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
+            report = self.schema.build_migration_report(root)
+            report["project_root"] = "<project-root>"
+            reports.append(report)
+
+        self.assertNotEqual(str(roots[0]), str(roots[1]))
+        self.assertEqual(reports[0], reports[1])
 
     def test_cli_rejects_write_and_returns_stable_json_for_invalid_root(self):
         with contextlib.redirect_stderr(io.StringIO()):

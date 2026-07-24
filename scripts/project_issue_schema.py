@@ -450,6 +450,11 @@ def validate_contract_field_types(fields, issue_id, source_path):
     if "depends_on" in fields and (
         not isinstance(fields["depends_on"], list)
         or not all(isinstance(value, str) for value in fields["depends_on"])
+        or any(
+            not value.strip()
+            for value in fields["depends_on"]
+            if isinstance(value, str)
+        )
     ):
         invalid_fields.add("depends_on")
         sanitized.pop("depends_on", None)
@@ -457,12 +462,14 @@ def validate_contract_field_types(fields, issue_id, source_path):
             _malformed(
                 issue_id,
                 source_path,
-                "Contract field 'depends_on' must be a list of issue ID strings.",
+                "Contract field 'depends_on' must be a list of non-empty issue ID strings.",
                 field="depends_on",
                 current=fields["depends_on"],
-                expected="list of strings",
+                expected="list of non-empty issue ID strings",
                 recommendation=(
-                    "Set depends_on to a supported top-level list of issue ID strings."
+                    "Set depends_on to a supported top-level list of non-empty "
+                    "issue ID strings; remove blank entries or replace them "
+                    "with valid issue IDs."
                 ),
             )
         )
@@ -812,6 +819,12 @@ def normalize_unsupported_frontmatter(
     issue = _base_issue(path, project_root, body)
     issue["source_format"] = "frontmatter-unsupported"
     issue["schema_version"] = fields.get("schema_version")
+    declared_issue_id = fields.get("issue_id")
+    issue["tentative_issue_id"] = (
+        declared_issue_id
+        if isinstance(declared_issue_id, str) and declared_issue_id.strip()
+        else None
+    )
     issue["lifecycle_state"] = None
     issue["projection_status"] = None
     issue["blocked_by"] = []
@@ -1474,12 +1487,14 @@ def _human_decision(field, current, reason, recommendation):
 
 
 def _decision_from_diagnostic(diagnostic):
-    return _human_decision(
+    decision = _human_decision(
         diagnostic.get("field") or "frontmatter",
         diagnostic.get("current"),
         diagnostic.get("message"),
         diagnostic.get("recommendation"),
     )
+    decision["expected"] = copy.deepcopy(diagnostic.get("expected"))
+    return decision
 
 
 def _unversioned_field_decisions(fields, body, invalid_fields):
@@ -1568,7 +1583,11 @@ def _classify_migration_issue(project_root, issue):
     path, fields, body, invalid_fields = _source_contract(project_root, issue)
     source_format = issue["source_format"]
     safe_mappings = []
-    human_decisions = []
+    human_decisions = [
+        _decision_from_diagnostic(diagnostic)
+        for diagnostic in issue["diagnostics"]
+        if diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
+    ]
     proposed_changes = {}
     proposed_issue_id = None
     projected = copy.deepcopy(issue)
@@ -1678,14 +1697,6 @@ def _classify_migration_issue(project_root, issue):
                         "The advisory value is syntactically valid but remains a proposal until the full contract is unambiguous.",
                     )
                 )
-        malformed = [
-            diagnostic
-            for diagnostic in issue["diagnostics"]
-            if diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
-        ]
-        human_decisions.extend(
-            _decision_from_diagnostic(diagnostic) for diagnostic in malformed
-        )
         if not human_decisions:
             proposed_changes["set_schema_version"] = "0.1.0"
             safe_mappings.append(
@@ -1707,6 +1718,7 @@ def _classify_migration_issue(project_root, issue):
             projected["diagnostics"] = _parser_diagnostics(projected)
 
     elif source_format == "frontmatter-unsupported":
+        proposed_issue_id = issue.get("tentative_issue_id")
         human_decisions.append(
             _human_decision(
                 "schema_version",
@@ -1738,7 +1750,11 @@ def _classify_migration_issue(project_root, issue):
         projected["diagnostics"] = _parser_diagnostics(projected)
 
     safe_mappings.sort(key=lambda mapping: mapping["field"])
-    human_decisions.sort(
+    unique_decisions = {}
+    for decision in human_decisions:
+        unique_decisions.setdefault(decision["field"], decision)
+    human_decisions = sorted(
+        unique_decisions.values(),
         key=lambda decision: (
             decision["field"],
             repr(decision.get("current")),
@@ -1760,6 +1776,8 @@ def _classify_migration_issue(project_root, issue):
 def _apply_migration_identity_collisions(evaluated_issues, classifications):
     identity_sources = {}
     for issue in evaluated_issues:
+        if issue["source_format"] == "frontmatter-unsupported":
+            continue
         identity_sources.setdefault(issue["issue_id"], set()).add(
             issue["source_path"]
         )
@@ -1875,6 +1893,7 @@ def build_migration_report(project_root):
                 "source_path": issue["source_path"],
                 "source_format": issue["source_format"],
                 "schema_version": issue.get("schema_version"),
+                "tentative_issue_id": issue.get("tentative_issue_id"),
                 "lifecycle_state": issue.get("lifecycle_state"),
                 "readiness": issue.get("readiness"),
                 "diagnostic_summary": _diagnostic_summary(diagnostics),
