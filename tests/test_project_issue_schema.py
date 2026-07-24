@@ -2025,6 +2025,180 @@ next_command: product:spec BIZ-UNVERSIONED
             issue["routing_after"]["recommended_next_command"],
         )
 
+    def test_duplicate_unversioned_identity_proposals_require_human_decision(self):
+        duplicate_paths = [
+            "issues/BIZ-UNVERSIONED-2.md",
+            "issues/BIZ-UNVERSIONED.md",
+        ]
+        content = """---
+issue_id: DUP
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:spec DUP
+---
+# Issue: `DUP` Ambiguous advisory identity
+
+**Status: backlog**
+"""
+        (self.root / duplicate_paths[1]).write_text(content, encoding="utf-8")
+        self.write_issue("BIZ-UNVERSIONED-2.md", content)
+        before_hashes = self.issue_hashes()
+
+        report = self.schema.build_migration_report(self.root)
+
+        duplicates = [
+            issue
+            for issue in report["issues"]
+            if issue["source_path"] in duplicate_paths
+        ]
+        self.assertEqual(len(duplicates), 2)
+        for issue in duplicates:
+            with self.subTest(source_path=issue["source_path"]):
+                self.assertNotIn(
+                    "set_schema_version", issue["proposed_changes"]
+                )
+                identity = next(
+                    decision
+                    for decision in issue["human_decisions"]
+                    if decision["field"] == "issue_id"
+                )
+                self.assertEqual(
+                    identity["current"],
+                    {
+                        "issue_id": "DUP",
+                        "source_paths": duplicate_paths,
+                    },
+                )
+                self.assertIn("duplicate", identity["reason"].lower())
+                self.assertIn("unique", identity["recommendation"].lower())
+                self.assertEqual(issue["routing_after"]["readiness"], "blocked")
+                self.assertEqual(
+                    issue["routing_after"]["recommended_next_command"],
+                    "product:doctor",
+                )
+        self.assertEqual(before_hashes, self.issue_hashes())
+
+    def test_unversioned_identity_collision_with_versioned_record_is_ambiguous(self):
+        versioned_path = self.root / "issues" / "BIZ-VERSIONED.md"
+        versioned_path.write_text(
+            versioned_path.read_text(encoding="utf-8").replace(
+                "issue_id: BIZ-VERSIONED", "issue_id: SHARED"
+            ),
+            encoding="utf-8",
+        )
+        unversioned_path = self.root / "issues" / "BIZ-UNVERSIONED.md"
+        unversioned_path.write_text(
+            """---
+issue_id: SHARED
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:spec SHARED
+---
+# Issue: `SHARED` Colliding advisory identity
+
+**Status: backlog**
+""",
+            encoding="utf-8",
+        )
+
+        issue = next(
+            item
+            for item in self.schema.build_migration_report(self.root)["issues"]
+            if item["source_path"] == "issues/BIZ-UNVERSIONED.md"
+        )
+
+        self.assertNotIn("set_schema_version", issue["proposed_changes"])
+        identity = next(
+            decision
+            for decision in issue["human_decisions"]
+            if decision["field"] == "issue_id"
+        )
+        self.assertEqual(
+            identity["current"],
+            {
+                "issue_id": "SHARED",
+                "source_paths": [
+                    "issues/BIZ-UNVERSIONED.md",
+                    "issues/BIZ-VERSIONED.md",
+                ],
+            },
+        )
+        self.assertEqual(issue["routing_after"]["readiness"], "blocked")
+        self.assertEqual(
+            issue["routing_after"]["recommended_next_command"],
+            "product:doctor",
+        )
+
+    def test_complete_identity_collides_with_incomplete_advisory_proposal(self):
+        complete = """---
+issue_id: ADVISORY-DUP
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:spec ADVISORY-DUP
+---
+# Issue: `ADVISORY-DUP` Complete proposal
+
+**Status: backlog**
+"""
+        incomplete = """---
+issue_id: ADVISORY-DUP
+depends_on: []
+---
+# Issue: `ADVISORY-DUP` Incomplete proposal
+
+**Status: backlog**
+"""
+        (self.root / "issues" / "BIZ-UNVERSIONED.md").write_text(
+            complete, encoding="utf-8"
+        )
+        self.write_issue("BIZ-UNVERSIONED-2.md", incomplete)
+        source_paths = [
+            "issues/BIZ-UNVERSIONED-2.md",
+            "issues/BIZ-UNVERSIONED.md",
+        ]
+
+        report = self.schema.build_migration_report(self.root)
+        by_path = {
+            issue["source_path"]: issue for issue in report["issues"]
+        }
+
+        for source_path in source_paths:
+            with self.subTest(source_path=source_path):
+                issue = by_path[source_path]
+                self.assertNotIn(
+                    "set_schema_version", issue["proposed_changes"]
+                )
+                identity = next(
+                    decision
+                    for decision in issue["human_decisions"]
+                    if decision["field"] == "issue_id"
+                    and isinstance(decision["current"], dict)
+                )
+                self.assertEqual(
+                    identity["current"],
+                    {
+                        "issue_id": "ADVISORY-DUP",
+                        "source_paths": source_paths,
+                    },
+                )
+                self.assertEqual(issue["routing_after"]["readiness"], "blocked")
+                self.assertEqual(
+                    issue["routing_after"]["recommended_next_command"],
+                    "product:doctor",
+                )
+
     def test_malformed_input_preserves_hard_diagnostics_and_blocked_projection(self):
         self.write_issue(
             "BIZ-MALFORMED.md",

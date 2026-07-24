@@ -1570,6 +1570,7 @@ def _classify_migration_issue(project_root, issue):
     safe_mappings = []
     human_decisions = []
     proposed_changes = {}
+    proposed_issue_id = None
     projected = copy.deepcopy(issue)
     addressed = set()
 
@@ -1647,6 +1648,13 @@ def _classify_migration_issue(project_root, issue):
         ]
 
     elif source_format == "frontmatter-unversioned":
+        candidate_issue_id = fields.get("issue_id")
+        if (
+            isinstance(candidate_issue_id, str)
+            and candidate_issue_id.strip()
+            and "issue_id" not in invalid_fields
+        ):
+            proposed_issue_id = candidate_issue_id
         human_decisions.extend(
             _unversioned_field_decisions(fields, body, invalid_fields)
         )
@@ -1744,8 +1752,60 @@ def _classify_migration_issue(project_root, issue):
         "safe_mappings": safe_mappings,
         "human_decisions": human_decisions,
         "proposed_changes": proposed_changes,
+        "proposed_issue_id": proposed_issue_id,
         "projected": projected,
     }
+
+
+def _apply_migration_identity_collisions(evaluated_issues, classifications):
+    identity_sources = {}
+    for issue in evaluated_issues:
+        identity_sources.setdefault(issue["issue_id"], set()).add(
+            issue["source_path"]
+        )
+    for issue in evaluated_issues:
+        classification = classifications[issue["source_path"]]
+        proposed_id = classification["proposed_issue_id"]
+        if proposed_id is None:
+            continue
+        identity_sources.setdefault(proposed_id, set()).add(issue["source_path"])
+
+    for issue in evaluated_issues:
+        classification = classifications[issue["source_path"]]
+        proposed_id = classification["proposed_issue_id"]
+        if proposed_id is None:
+            continue
+        source_paths = sorted(identity_sources[proposed_id])
+        if len(source_paths) < 2:
+            continue
+
+        classification["proposed_changes"].pop("set_schema_version", None)
+        classification["safe_mappings"] = [
+            mapping
+            for mapping in classification["safe_mappings"]
+            if mapping["field"] not in {"issue_id", "schema_version"}
+        ]
+        classification["human_decisions"].append(
+            _human_decision(
+                "issue_id",
+                {
+                    "issue_id": proposed_id,
+                    "source_paths": source_paths,
+                },
+                f"Proposed canonical issue ID {proposed_id} is duplicated across source files.",
+                "Choose unique canonical issue IDs for all listed source paths before setting schema_version 0.1.0.",
+            )
+        )
+        classification["human_decisions"].sort(
+            key=lambda decision: (
+                decision["field"],
+                repr(decision.get("current")),
+                decision["reason"],
+            )
+        )
+        projected = copy.deepcopy(issue)
+        projected["diagnostics"] = _parser_diagnostics(projected)
+        classification["projected"] = projected
 
 
 def build_migration_report(project_root):
@@ -1760,6 +1820,7 @@ def build_migration_report(project_root):
         issue["source_path"]: _classify_migration_issue(project_root, issue)
         for issue in evaluated_issues
     }
+    _apply_migration_identity_collisions(evaluated_issues, classifications)
     projected_records = [
         classifications[issue["source_path"]]["projected"]
         for issue in evaluated_issues
@@ -1775,13 +1836,7 @@ def build_migration_report(project_root):
         before = _routing_summary(issue)
         projected_issue = projected_by_path[issue["source_path"]]
         after = _routing_summary(projected_issue)
-        if classification["human_decisions"] and (
-            after["readiness"] == "ready"
-            or str(after["recommended_next_command"]).startswith(
-                "product:execute"
-            )
-        ):
-            after = copy.deepcopy(before)
+        if classification["human_decisions"]:
             after["readiness"] = "blocked"
             after["recommended_next_command"] = "product:doctor"
 
