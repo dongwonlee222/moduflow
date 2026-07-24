@@ -22,6 +22,44 @@ def write_issue(root, issue_id, status, extra_lines=None, created="2026-07-05"):
     (root / "issues" / f"{issue_id}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def write_frontmatter_issue(
+    root,
+    issue_id,
+    canonical_state,
+    status,
+    depends_on=None,
+    markdown_status=None,
+    extra_fields=None,
+    markdown_blocked_by=None,
+    definition_readiness="ready",
+):
+    fields = [
+        "schema_version: 0.1.0",
+        f"issue_id: {issue_id}",
+        f"canonical_state: {canonical_state}",
+        f"status: {status}",
+        "priority: p2",
+        f"definition_readiness: {definition_readiness}",
+        "gate_state: pending",
+        "depends_on: [" + ", ".join(depends_on or []) + "]",
+    ]
+    fields.extend(extra_fields or [])
+    lines = [
+        "---",
+        *fields,
+        "---",
+        f"# Issue: `{issue_id}` Frontmatter fixture",
+        "",
+        f"**Status: {markdown_status or canonical_state}** — created 2026-07-22.",
+    ]
+    if markdown_blocked_by is not None:
+        lines.append(f"**Blocked-by: {', '.join(markdown_blocked_by)}**")
+    lines.extend(["", "## Outcome", "", "Test fixture issue.", ""])
+    (root / "issues" / f"{issue_id}.md").write_text(
+        "\n".join(lines), encoding="utf-8"
+    )
+
+
 class IssueDependenciesTests(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -80,7 +118,10 @@ class IssueDependenciesTests(unittest.TestCase):
         self.assertNotIn("001-a", ready_ids)
 
         drift = project_lifecycle.lifecycle_drift(self.root)
-        self.assertTrue(any("999-ghost" in d and "001-a" in d for d in drift))
+        self.assertIn(
+            "blocked_by references unknown issue '999-ghost' in 001-a",
+            drift,
+        )
 
     # 6. priority ordering p0 < p1 < (absent=p2) < p3, tie by id
     def test_priority_ordering_and_tie_break_by_id(self):
@@ -165,13 +206,192 @@ class IssueDependenciesTests(unittest.TestCase):
         write_issue(self.root, "001-blocker", "backlog")
         write_issue(self.root, "002-worker", "active", extra_lines=["**Blocked-by: 001-blocker**"])
         drift = project_lifecycle._dependency_drift(self.root)
-        self.assertTrue(any("unmet blocker" in d and "002-worker" in d for d in drift))
+        self.assertIn(
+            "active issue 002-worker has unmet blocker '001-blocker' (status: backlog)",
+            drift,
+        )
 
     def test_active_issue_with_done_blocker_is_clean(self):
         write_issue(self.root, "001-blocker", "done")
         write_issue(self.root, "002-worker", "active", extra_lines=["**Blocked-by: 001-blocker**"])
         drift = project_lifecycle._dependency_drift(self.root)
         self.assertEqual([d for d in drift if "unmet blocker" in d], [])
+
+    def test_frontmatter_biz_dependents_are_not_ready_while_prerequisite_active(self):
+        fixture_root = Path(__file__).parent / "fixtures" / "issue-schema"
+        for issue_id in ("BIZ-033", "BIZ-038", "BIZ-039"):
+            (self.root / "issues" / f"{issue_id}.md").write_text(
+                (fixture_root / f"{issue_id}.md").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+
+        ready_ids = [item["id"] for item in project_lifecycle.ready_issues(self.root)]
+        self.assertNotIn("BIZ-038", ready_ids)
+        self.assertNotIn("BIZ-039", ready_ids)
+
+    def test_frontmatter_dangling_dependency_reaches_drift(self):
+        write_frontmatter_issue(
+            self.root,
+            "BIZ-038",
+            "backlog",
+            "backlog",
+            depends_on=["BIZ-999"],
+        )
+
+        drift = project_lifecycle.lifecycle_drift(self.root)
+        self.assertTrue(
+            any("BIZ-999" in message and "BIZ-038" in message for message in drift)
+        )
+
+    def test_active_frontmatter_issue_with_unmet_dependency_reaches_drift(self):
+        write_frontmatter_issue(
+            self.root, "BIZ-033", "backlog", "backlog"
+        )
+        write_frontmatter_issue(
+            self.root,
+            "BIZ-038",
+            "active",
+            "in_progress",
+            depends_on=["BIZ-033"],
+        )
+
+        drift = project_lifecycle.lifecycle_drift(self.root)
+        self.assertTrue(
+            any("unmet blocker" in message and "BIZ-038" in message for message in drift)
+        )
+
+    def test_frontmatter_lifecycle_projection_mismatch_is_hard_drift(self):
+        write_frontmatter_issue(
+            self.root,
+            "BIZ-038",
+            "backlog",
+            "backlog",
+            markdown_status="active",
+        )
+
+        drift = project_lifecycle.lifecycle_drift(self.root)
+        mismatch = [
+            message
+            for message in drift
+            if "ISSUE_STATE_PROJECTION_MISMATCH" in message
+        ]
+        self.assertTrue(mismatch)
+        self.assertIn("issues/BIZ-038.md", mismatch[0])
+        self.assertIn("Recommendation:", mismatch[0])
+        self.assertNotIn(
+            "BIZ-038",
+            [item["id"] for item in project_lifecycle.ready_issues(self.root)],
+        )
+
+    def test_frontmatter_dependency_projection_mismatch_reaches_drift(self):
+        write_frontmatter_issue(
+            self.root, "BIZ-033", "done", "done"
+        )
+        write_frontmatter_issue(
+            self.root,
+            "BIZ-038",
+            "backlog",
+            "backlog",
+            depends_on=["BIZ-033"],
+            markdown_blocked_by=["BIZ-040"],
+        )
+
+        drift = project_lifecycle.lifecycle_drift(self.root)
+        self.assertTrue(
+            any(
+                "ISSUE_DEPENDENCY_PROJECTION_MISMATCH" in message
+                and "issues/BIZ-038.md" in message
+                and "Recommendation:" in message
+                for message in drift
+            )
+        )
+
+    def test_satisfied_frontmatter_dependency_allows_startable_backlog(self):
+        write_frontmatter_issue(
+            self.root, "BIZ-033", "done", "done"
+        )
+        write_frontmatter_issue(
+            self.root,
+            "BIZ-038",
+            "backlog",
+            "backlog",
+            depends_on=["BIZ-033"],
+            definition_readiness="draft",
+        )
+
+        ready = project_lifecycle.ready_issues(self.root)
+        by_id = {item["id"]: item for item in ready}
+        self.assertIn("BIZ-038", by_id)
+        self.assertEqual(by_id["BIZ-038"]["blocked_by"], ["BIZ-033"])
+        self.assertEqual(
+            set(by_id["BIZ-038"]),
+            {"id", "status", "title", "priority", "blocked_by"},
+        )
+
+    def test_unsupported_and_malformed_schema_are_not_ready_and_reach_drift(self):
+        (self.root / "issues" / "BIZ-038.md").write_text(
+            "---\n"
+            "schema_version: 9.9.9\n"
+            "issue_id: BIZ-038\n"
+            "canonical_state: backlog\n"
+            "status: backlog\n"
+            "---\n"
+            "# Issue: `BIZ-038` Unsupported\n\n"
+            "**Status: backlog** — created 2026-07-22.\n",
+            encoding="utf-8",
+        )
+        (self.root / "issues" / "BIZ-039.md").write_text(
+            "---\n"
+            "schema_version: 0.1.0\n"
+            "issue_id: BIZ-039\n"
+            "canonical_state: backlog\n"
+            "status: backlog\n"
+            "depends_on: BIZ-038\n"
+            "---\n"
+            "# Issue: `BIZ-039` Malformed\n\n"
+            "**Status: backlog** — created 2026-07-22.\n",
+            encoding="utf-8",
+        )
+
+        ready_ids = [item["id"] for item in project_lifecycle.ready_issues(self.root)]
+        self.assertNotIn("BIZ-038", ready_ids)
+        self.assertNotIn("BIZ-039", ready_ids)
+        drift = project_lifecycle.lifecycle_drift(self.root)
+        self.assertTrue(
+            any(
+                "ISSUE_SCHEMA_UNSUPPORTED" in message
+                and "Recommendation:" in message
+                for message in drift
+            )
+        )
+        self.assertTrue(
+            any(
+                "ISSUE_SCHEMA_MALFORMED" in message
+                and "Recommendation:" in message
+                for message in drift
+            )
+        )
+
+    def test_unversioned_frontmatter_is_advisory_and_cannot_advance_readiness(self):
+        write_issue(self.root, "BIZ-033", "active")
+        (self.root / "issues" / "BIZ-038.md").write_text(
+            "---\n"
+            "canonical_state: done\n"
+            "status: done\n"
+            "depends_on: [BIZ-033]\n"
+            "---\n"
+            "# Issue: `BIZ-038` Advisory metadata\n\n"
+            "**Status: backlog** — created 2026-07-22.\n",
+            encoding="utf-8",
+        )
+
+        items = {
+            item["id"]: item for item in project_lifecycle.list_issues(self.root)
+        }
+        self.assertEqual(items["BIZ-038"]["status"], "backlog")
+        self.assertEqual(items["BIZ-038"]["blocked_by"], [])
+        ready_ids = [item["id"] for item in project_lifecycle.ready_issues(self.root)]
+        self.assertNotIn("BIZ-038", ready_ids)
 
 
 if __name__ == "__main__":

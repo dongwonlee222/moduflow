@@ -34,6 +34,52 @@ def scaffold(root, issues, active_in_dashboard="048-x", state_active="048-x"):
 
 
 class ProjectLifecycleTests(unittest.TestCase):
+    def test_legacy_markdown_public_shapes_remain_compatible(self):
+        lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scaffold(root, {"048-x": "active", "045-y": "done", "050-z": "backlog"})
+            issue = root / "issues" / "050-z.md"
+            issue.write_text(
+                "# Issue: `050-z` Backlog title\n\n"
+                "**Status: backlog** — created.\n"
+                "**Priority: p1**\n"
+                "**Blocked-by: 045-y**\n",
+                encoding="utf-8",
+            )
+
+            state = lc.lifecycle_state(root)
+            self.assertEqual(
+                set(state),
+                {"issues", "active", "done", "backlog", "superseded"},
+            )
+            self.assertEqual(state["issues"]["050-z"], "backlog")
+
+            items = lc.list_issues(root)
+            self.assertTrue(items)
+            self.assertTrue(
+                all(
+                    set(item)
+                    == {"id", "status", "title", "priority", "blocked_by"}
+                    for item in items
+                )
+            )
+            self.assertEqual([item["id"] for item in items], sorted(state["issues"]))
+            backlog = next(item for item in items if item["id"] == "050-z")
+            self.assertEqual(
+                backlog,
+                {
+                    "id": "050-z",
+                    "status": "backlog",
+                    "title": "050-z` Backlog title",
+                    "priority": "p1",
+                    "blocked_by": ["045-y"],
+                },
+            )
+
+            ready = lc.ready_issues(root)
+            self.assertEqual(ready, [backlog])
+
     def test_lifecycle_state_parses_canonical_statuses(self):
         lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
         with tempfile.TemporaryDirectory() as tmp:

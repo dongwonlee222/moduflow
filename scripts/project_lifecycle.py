@@ -1,16 +1,57 @@
 #!/usr/bin/env python3
 """Artifact lifecycle sync (048).
 
-Canonical lifecycle source = each issue file's `**Status:**` line. This module
-reads that canonical state, propagates it to the derived views (.moduflow/state.json
-+ the dashboard's Active Issue section), and detects drift by consensus across
-sources. It does NOT write back to issue files (canonical is human-authored).
+Canonical lifecycle and dependencies come from the shared issue schema model,
+which preserves Markdown `**Status:**` / `**Blocked-by:**` compatibility. This
+module projects that model into lifecycle views (.moduflow/state.json + the
+dashboard's Active Issue section) and detects drift by consensus. It does NOT
+write back to issue files (canonical source is human-authored).
 """
 import argparse
 import json
 import re
 from datetime import date
 from pathlib import Path
+
+try:
+    from scripts.project_issue_schema import (
+        evaluate_project,
+        markdown_blocked_by,
+        markdown_priority,
+        markdown_status,
+        markdown_title,
+        metadata_region,
+    )
+except ModuleNotFoundError:
+    from project_issue_schema import (
+        evaluate_project,
+        markdown_blocked_by,
+        markdown_priority,
+        markdown_status,
+        markdown_title,
+        metadata_region,
+    )
+
+
+_READY_BLOCKING_DIAGNOSTICS = {
+    "ISSUE_SCHEMA_MALFORMED",
+    "ISSUE_SCHEMA_UNSUPPORTED",
+    "ISSUE_DUPLICATE_FIELD",
+    "ISSUE_STATE_PROJECTION_MISMATCH",
+    "ISSUE_DEPENDENCY_PROJECTION_MISMATCH",
+    "ISSUE_AUX_STATUS_INVALID",
+    "ISSUE_DEPENDENCY_UNMET",
+    "ISSUE_DEPENDENCY_DANGLING",
+    "ISSUE_DEPENDENCY_CYCLE",
+}
+_LIFECYCLE_SCHEMA_DIAGNOSTICS = {
+    "ISSUE_SCHEMA_MALFORMED",
+    "ISSUE_SCHEMA_UNSUPPORTED",
+    "ISSUE_DUPLICATE_FIELD",
+    "ISSUE_STATE_PROJECTION_MISMATCH",
+    "ISSUE_DEPENDENCY_PROJECTION_MISMATCH",
+    "ISSUE_AUX_STATUS_INVALID",
+}
 
 
 def read_json(path):
@@ -21,13 +62,7 @@ def read_json(path):
 
 
 def _issue_status(text):
-    m = re.search(r"\*\*Status:\s*([A-Za-z0-9-]+)", text)
-    word = (m.group(1).lower() if m else "backlog")
-    if word.startswith("superseded"):
-        return "superseded"
-    if word in ("done", "active", "backlog"):
-        return word
-    return "backlog"
+    return markdown_status(text)
 
 
 def _metadata_region(text):
@@ -35,39 +70,25 @@ def _metadata_region(text):
     there by convention (048/069). Restricting parsing here keeps body prose
     that QUOTES the syntax (e.g. a session note explaining the convention)
     from being misread as metadata."""
-    m = re.search(r"^##\s", text, re.M)
-    return text[:m.start()] if m else text
+    return metadata_region(text)
 
 
 def _issue_priority(text):
-    m = re.search(r"^\*\*Priority:\s*(p[0-3])\b", _metadata_region(text), re.I | re.M)
-    if not m:
-        return "p2"
-    return m.group(1).lower()
+    return markdown_priority(text)
 
 
 def _issue_blocked_by(text):
-    m = re.search(r"^\*\*Blocked-by:\s*([^*\n]+)\*\*", _metadata_region(text), re.M)
-    if not m:
-        return []
-    parts = m.group(1).split(",")
-    result = []
-    for part in parts:
-        cleaned = part.strip().strip("`").strip()
-        if cleaned:
-            result.append(cleaned)
-    return result
+    return markdown_blocked_by(text)
 
 
-def lifecycle_state(root):
-    """Canonical lifecycle map from issues/*.md Status lines."""
-    root = Path(root).resolve()
-    issues_dir = root / "issues"
-    issues = {}
-    if issues_dir.is_dir():
-        for f in sorted(issues_dir.glob("*.md")):
-            issues[f.stem] = _issue_status(f.read_text(encoding="utf-8"))
-    pick = lambda s: [i for i, st in issues.items() if st == s]
+def _lifecycle_state_from_evaluation(evaluation):
+    issues = {
+        issue["issue_id"]: issue.get("lifecycle_state")
+        for issue in evaluation["issues"]
+    }
+    pick = lambda state: [
+        issue_id for issue_id, lifecycle in issues.items() if lifecycle == state
+    ]
     return {
         "issues": issues,
         "active": pick("active"),
@@ -77,47 +98,61 @@ def lifecycle_state(root):
     }
 
 
+def lifecycle_state(root):
+    """Canonical lifecycle map projected from the shared issue model."""
+    root = Path(root).resolve()
+    return _lifecycle_state_from_evaluation(evaluate_project(root))
+
+
 def _issue_title(text):
-    for line in text.splitlines():
-        if line.startswith("# "):
-            heading = line[2:].strip()
-            if ":" in heading:
-                heading = heading.split(":", 1)[1].strip()
-            return heading.strip("`").strip()
-    return ""
+    return markdown_title(text)
+
+
+def _compatibility_items(evaluation):
+    return sorted(
+        [
+            {
+                "id": issue["issue_id"],
+                "status": issue.get("lifecycle_state"),
+                "title": issue.get("title") or "",
+                "priority": issue.get("priority"),
+                "blocked_by": list(issue.get("blocked_by") or []),
+            }
+            for issue in evaluation["issues"]
+        ],
+        key=lambda item: item["id"],
+    )
 
 
 def list_issues(root):
-    """[{id, status, title}] for every issues/*.md, sorted by id."""
+    """Compatibility records for every issues/*.md file, sorted by id."""
     root = Path(root).resolve()
-    issues_dir = root / "issues"
-    items = []
-    if issues_dir.is_dir():
-        for f in sorted(issues_dir.glob("*.md")):
-            if not f.is_file():
-                continue
-            text = f.read_text(encoding="utf-8")
-            items.append({
-                "id": f.stem,
-                "status": _issue_status(text),
-                "title": _issue_title(text),
-                "priority": _issue_priority(text),
-                "blocked_by": _issue_blocked_by(text),
-            })
-    return items
+    return _compatibility_items(evaluate_project(root))
 
 
 def ready_issues(root):
-    """Backlog issues whose blockers are all done/superseded, priority-sorted
-    (p0 first, then id). An unknown blocked_by id excludes the issue (its
-    status is unresolvable) — the drift gate separately reports the dangling
-    reference."""
-    items = list_issues(root)
-    status_map = {i["id"]: i["status"] for i in items}
+    """Startable backlog issues, priority-sorted (p0 first, then id).
+
+    Structural spec/plan/review readiness is deliberately not required here.
+    Shared schema, lifecycle projection, and dependency hard errors exclude an
+    issue; satisfied dependencies allow it into this backward-compatible queue.
+    """
+    root = Path(root).resolve()
+    evaluation = evaluate_project(root)
+    items = _compatibility_items(evaluation)
+    blocked_ids = {
+        issue["issue_id"]
+        for issue in evaluation["issues"]
+        if any(
+            diagnostic.get("severity") == "error"
+            and diagnostic.get("code") in _READY_BLOCKING_DIAGNOSTICS
+            for diagnostic in issue.get("diagnostics", [])
+        )
+    }
     ready = [
         i for i in items
         if i["status"] == "backlog"
-        and all(status_map.get(b) in ("done", "superseded") for b in i["blocked_by"])
+        and i["id"] not in blocked_ids
     ]
     return sorted(ready, key=lambda i: (i["priority"], i["id"]))
 
@@ -145,83 +180,100 @@ def _section_body(text, header):
     return rest[:nxt.start()] if nxt else rest
 
 
-def _dependency_drift(root):
-    """Dangling blocked_by references and dependency cycles. Scope: only
-    issues whose status is not done/superseded participate in the cycle
-    graph (historical done<->done references must never flag — spec Risk)."""
+def _format_schema_diagnostic(diagnostic):
+    return (
+        f"{diagnostic['code']} [{diagnostic.get('source_path') or 'unknown source'}]: "
+        f"{diagnostic.get('message') or 'Issue schema drift.'} "
+        f"Recommendation: {diagnostic.get('recommendation') or 'Run product:doctor.'}"
+    )
+
+
+def _dependency_drift_from_evaluation(evaluation):
+    """Translate shared diagnostics to the lifecycle drift compatibility form."""
     drift = []
-    items = list_issues(root)
-    by_id = {i["id"]: i for i in items}
-
-    for item in items:
-        if item["status"] in ("done", "superseded"):
-            continue
-        for b in item["blocked_by"]:
-            if b not in by_id:
-                drift.append(f"blocked_by references unknown issue '{b}' in {item['id']}")
-
-    # An active issue whose blocker is not yet satisfied means work is being
-    # executed on top of an unfinished dependency — surface it (069 review
-    # finding: this state previously produced zero signal anywhere).
-    for item in items:
-        if item["status"] != "active":
-            continue
-        for b in item["blocked_by"]:
-            blocker_status = by_id.get(b, {}).get("status")
-            if blocker_status in ("done", "superseded") or blocker_status is None:
-                continue  # satisfied, or dangling (already reported above)
-            drift.append(
-                f"active issue {item['id']} has unmet blocker '{b}' (status: {blocker_status})"
-            )
-
-    # Cycle detection over open-issue -> open-blocked_by edges only.
-    # Iterative DFS with an explicit stack — the recursive version crashed
-    # with RecursionError on ~2000-node dependency chains (069 review finding).
-    open_ids = {i["id"] for i in items if i["status"] not in ("done", "superseded")}
-    graph = {i: [b for b in by_id[i]["blocked_by"] if b in open_ids] for i in open_ids}
-
-    WHITE, GRAY, BLACK = 0, 1, 2
-    color = {i: WHITE for i in open_ids}
+    issues = evaluation["issues"]
+    status_by_id = {
+        issue["issue_id"]: issue.get("lifecycle_state") for issue in issues
+    }
+    reported_schema = set()
     reported_cycles = set()
 
-    for start in sorted(open_ids):
-        if color[start] != WHITE:
-            continue
-        color[start] = GRAY
-        path = [start]
-        stack = [(start, iter(graph.get(start, [])))]
-        while stack:
-            node, edges = stack[-1]
-            descended = False
-            for nxt in edges:
-                if color.get(nxt) == GRAY:
-                    cycle_start = path.index(nxt)
-                    cycle_path = path[cycle_start:] + [nxt]
-                    key = tuple(sorted(set(cycle_path)))
-                    if key not in reported_cycles:
-                        reported_cycles.add(key)
-                        drift.append(f"dependency cycle: {' -> '.join(cycle_path)}")
-                elif color.get(nxt) == WHITE:
-                    color[nxt] = GRAY
-                    path.append(nxt)
-                    stack.append((nxt, iter(graph.get(nxt, []))))
-                    descended = True
-                    break
-            if not descended:
-                stack.pop()
-                path.pop()
-                color[node] = BLACK
+    for issue in issues:
+        issue_id = issue["issue_id"]
+        lifecycle = issue.get("lifecycle_state")
+        for diagnostic in issue.get("diagnostics", []):
+            code = diagnostic.get("code")
+            if (
+                diagnostic.get("severity") == "error"
+                and code in _LIFECYCLE_SCHEMA_DIAGNOSTICS
+            ):
+                key = (
+                    code,
+                    diagnostic.get("source_path"),
+                    diagnostic.get("message"),
+                )
+                if key not in reported_schema:
+                    reported_schema.add(key)
+                    drift.append(_format_schema_diagnostic(diagnostic))
+                continue
+
+            if code == "ISSUE_DEPENDENCY_DANGLING":
+                if lifecycle not in ("done", "superseded"):
+                    drift.append(
+                        "blocked_by references unknown issue "
+                        f"'{diagnostic.get('current')}' in {issue_id}"
+                    )
+                continue
+
+            if code == "ISSUE_DEPENDENCY_UNMET" and lifecycle == "active":
+                dependency, _, blocker_status = str(
+                    diagnostic.get("current") or ""
+                ).partition(": ")
+                drift.append(
+                    f"active issue {issue_id} has unmet blocker '{dependency}' "
+                    f"(status: {blocker_status or 'unknown'})"
+                )
+                continue
+
+            if code != "ISSUE_DEPENDENCY_CYCLE":
+                continue
+            members = tuple(
+                sorted(
+                    member.strip()
+                    for member in str(diagnostic.get("current") or "").split(",")
+                    if member.strip()
+                )
+            )
+            if (
+                members
+                and members not in reported_cycles
+                and all(
+                    status_by_id.get(member) not in ("done", "superseded")
+                    for member in members
+                )
+            ):
+                reported_cycles.add(members)
+                drift.append(
+                    f"dependency cycle: {' -> '.join((*members, members[0]))}"
+                )
 
     return drift
+
+
+def _dependency_drift(root):
+    return _dependency_drift_from_evaluation(
+        evaluate_project(Path(root).resolve())
+    )
 
 
 def lifecycle_drift(root):
     """Consensus drift: disagreements among issue files, state.json, dashboard.md.
     Returns [] when sources agree. Pure read."""
     root = Path(root).resolve()
-    ls = lifecycle_state(root)
+    evaluation = evaluate_project(root)
+    ls = _lifecycle_state_from_evaluation(evaluation)
     drift = []
-    drift.extend(_dependency_drift(root))
+    drift.extend(_dependency_drift_from_evaluation(evaluation))
     active = ls["active"]
     if len(active) > 1:
         drift.append(f"multiple active issues in issue files: {active}")
