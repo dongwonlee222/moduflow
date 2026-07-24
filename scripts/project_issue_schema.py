@@ -981,7 +981,15 @@ def _issue_dependencies(issue):
     return dependencies
 
 
-def _dependency_diagnostic(issue, code, current, expected, message, recommendation):
+def _dependency_diagnostic(
+    issue,
+    code,
+    current,
+    expected,
+    message,
+    recommendation,
+    severity="error",
+):
     return _adapter_diagnostic(
         issue,
         code,
@@ -990,7 +998,19 @@ def _dependency_diagnostic(issue, code, current, expected, message, recommendati
         expected,
         message,
         recommendation,
+        severity=severity,
     )
+
+
+def _unmet_dependency_severity(issue):
+    declared_command = issue.get("declared_next_command")
+    claims_execute = (
+        isinstance(declared_command, str)
+        and declared_command.startswith("product:execute")
+    )
+    if issue.get("lifecycle_state") == "active" or claims_execute:
+        return "error"
+    return "warning"
 
 
 def _strongly_connected_components(graph):
@@ -1172,6 +1192,7 @@ def dependency_diagnostics(issue_index, ambiguous_targets=None):
                         "done or superseded",
                         f"Dependency {dependency} is unfinished and blocks {issue_id}.",
                         f"Complete or supersede {dependency}, then run product:status.",
+                        severity=_unmet_dependency_severity(issue),
                     ),
                 )
 

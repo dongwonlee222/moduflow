@@ -37,6 +37,29 @@ def scaffold(root, issues, active_in_dashboard="048-x", state_active="048-x"):
 
 
 class ProjectLifecycleTests(unittest.TestCase):
+    def test_warning_dependency_wait_is_still_excluded_from_ready_queue(self):
+        lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scaffold(
+                root,
+                {"BIZ-BLOCKER": "backlog", "BIZ-WAITING": "backlog"},
+                active_in_dashboard="",
+                state_active="",
+            )
+            waiting = root / "issues" / "BIZ-WAITING.md"
+            waiting.write_text(
+                "# Issue: `BIZ-WAITING`\n\n"
+                "**Status: backlog** — created.\n"
+                "**Blocked-by: BIZ-BLOCKER**\n",
+                encoding="utf-8",
+            )
+
+            ready_ids = [item["id"] for item in lc.ready_issues(root)]
+
+        self.assertIn("BIZ-BLOCKER", ready_ids)
+        self.assertNotIn("BIZ-WAITING", ready_ids)
+
     def test_legacy_markdown_public_shapes_remain_compatible(self):
         lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
         with tempfile.TemporaryDirectory() as tmp:

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import importlib.util
 import json
 from datetime import date
 from pathlib import Path
@@ -12,6 +13,14 @@ VALID_DELEGATION_LEVELS = {"full", "review_required", "manual"}
 PHASE_ORDER = ["issue", "spec", "plan", "execute", "review", "release", "status"]
 GIT_BINDING_MODES = {"git-files", "github-sync"}
 EXECUTION_BACKENDS = {"codex", "claude-code", "copilot-cloud-agent", "openhands", "manual", "host-subagent"}
+
+
+def load_project_issue_schema():
+    path = Path(__file__).resolve().parent / "project_issue_schema.py"
+    spec = importlib.util.spec_from_file_location("project_issue_schema", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def read_json(path):
@@ -217,6 +226,99 @@ def recommend_next_command(issue_id, phase):
     return "product:status"
 
 
+def phase_from_command(command):
+    command_name = (command or "").split(maxsplit=1)[0]
+    phase = command_name.removeprefix("product:")
+    if phase in {"doctor", "status"}:
+        return "status"
+    if phase in PHASE_ORDER:
+        return phase
+    return "status"
+
+
+def primary_structural_diagnostic(issue):
+    command_name = (
+        issue.get("recommended_next_command") or ""
+    ).split(maxsplit=1)[0]
+    codes_by_command = {
+        "product:spec": (
+            "ISSUE_DEFINITION_NOT_READY",
+            "ISSUE_SCHEMA_MALFORMED",
+        ),
+        "product:review": ("ISSUE_GATE_BLOCKED",),
+        "product:status": (
+            "ISSUE_DEPENDENCY_UNMET",
+            "ISSUE_DEPENDENCY_DANGLING",
+            "ISSUE_DEPENDENCY_CYCLE",
+        ),
+        "product:doctor": (
+            "ISSUE_SOURCE_UNREADABLE",
+            "ISSUE_SCHEMA_MALFORMED",
+            "ISSUE_SCHEMA_UNSUPPORTED",
+            "ISSUE_DUPLICATE_FIELD",
+            "ISSUE_STATE_PROJECTION_MISMATCH",
+            "ISSUE_DEPENDENCY_PROJECTION_MISMATCH",
+            "ISSUE_AUX_STATUS_INVALID",
+        ),
+    }
+    diagnostics = issue.get("diagnostics") or []
+    for code in codes_by_command.get(command_name, ()):
+        for diagnostic in diagnostics:
+            if diagnostic.get("code") == code:
+                return diagnostic
+    return None
+
+
+def missing_structural_artifact(root, issue):
+    issue_id = issue["issue_id"]
+    artifact_root = Path(root).resolve() / "specs" / issue_id
+    command_name = (
+        issue.get("recommended_next_command") or ""
+    ).split(maxsplit=1)[0]
+    if command_name == "product:spec":
+        candidates = ("spec.md",)
+    elif command_name == "product:plan":
+        candidates = ("plan.md", "tasks.md")
+    else:
+        candidates = ()
+    for filename in candidates:
+        if not (artifact_root / filename).is_file():
+            return f"specs/{issue_id}/{filename}"
+    return None
+
+
+def structural_blocker(root, issue):
+    diagnostic = primary_structural_diagnostic(issue)
+    if diagnostic:
+        return (
+            f"{diagnostic['code']} [{diagnostic.get('source_path') or 'unknown source'}]: "
+            f"{diagnostic.get('message') or 'Issue structural readiness is blocked.'} "
+            f"Recommendation: {diagnostic.get('recommendation') or 'Run product:doctor.'}"
+        )
+    missing = missing_structural_artifact(root, issue)
+    if missing:
+        return (
+            f"Missing structural artifact: {missing}. "
+            f"Recommendation: run {issue['recommended_next_command']}."
+        )
+    return (
+        f"Structural readiness is {issue.get('readiness') or 'not_ready'}; "
+        f"follow {issue.get('recommended_next_command') or 'product:status'}."
+    )
+
+
+def evaluated_active_issue(root, active_issue_id):
+    evaluation = load_project_issue_schema().evaluate_project(root)
+    return next(
+        (
+            issue
+            for issue in evaluation.get("issues", [])
+            if issue.get("issue_id") == active_issue_id
+        ),
+        None,
+    )
+
+
 def apply_attempts_guard(state, recommended_command):
     updated = dict(state)
     attempts = normalize_attempts(
@@ -266,9 +368,24 @@ def recommend_loop(root):
         state["blocker"] = "No active issue selected"
         state["next_command"] = "product:goal"
         return state
-    phase = infer_issue_phase(root, active_issue_id)
-    command = recommend_next_command(active_issue_id, phase)
-    state["phase"] = phase
+
+    structural_issue = evaluated_active_issue(root, active_issue_id)
+    if structural_issue:
+        command = structural_issue.get("recommended_next_command") or "product:status"
+        phase = phase_from_command(command)
+        state["phase"] = phase
+        if (
+            command.split(maxsplit=1)[0] != "product:execute"
+            or structural_issue.get("readiness") != "ready"
+        ):
+            state["status"] = "needs_decision"
+            state["blocker"] = structural_blocker(root, structural_issue)
+            state["next_command"] = command
+            return state
+    else:
+        phase = infer_issue_phase(root, active_issue_id)
+        command = recommend_next_command(active_issue_id, phase)
+        state["phase"] = phase
 
     if phase == "execute":
         readiness = load_implementation_readiness(root, active_issue_id)

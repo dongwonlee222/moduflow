@@ -152,8 +152,11 @@ def ready_issues(root):
         issue["issue_id"]
         for issue in evaluation["issues"]
         if any(
-            diagnostic.get("severity") == "error"
-            and diagnostic.get("code") in _READY_BLOCKING_DIAGNOSTICS
+            diagnostic.get("code") in _READY_BLOCKING_DIAGNOSTICS
+            and (
+                diagnostic.get("severity") == "error"
+                or diagnostic.get("code") == "ISSUE_DEPENDENCY_UNMET"
+            )
             for diagnostic in issue.get("diagnostics", [])
         )
     }
@@ -301,14 +304,12 @@ def _dependency_drift(root):
     )
 
 
-def lifecycle_drift(root):
-    """Consensus drift: disagreements among issue files, state.json, dashboard.md.
-    Returns [] when sources agree. Pure read."""
+def consensus_drift(root, evaluation=None):
+    """Return only issue/state/dashboard consensus drift from one evaluation."""
     root = Path(root).resolve()
-    evaluation = evaluate_project(root)
+    evaluation = evaluation or evaluate_project(root)
     ls = _lifecycle_state_from_evaluation(evaluation)
     drift = []
-    drift.extend(_dependency_drift_from_evaluation(evaluation))
     active = ls["active"]
     if len(active) > 1:
         drift.append(f"multiple active issues in issue files: {active}")
@@ -336,6 +337,16 @@ def lifecycle_drift(root):
         elif re.search(r"`0\d\d-[a-z0-9-]+`\s*\(phase", active_body):
             drift.append("dashboard Active Issue names an active issue but issue files have none")
     return drift
+
+
+def lifecycle_drift(root):
+    """Consensus and issue diagnostic drift. Returns [] when sources agree."""
+    root = Path(root).resolve()
+    evaluation = evaluate_project(root)
+    return (
+        _dependency_drift_from_evaluation(evaluation)
+        + consensus_drift(root, evaluation)
+    )
 
 
 def sync_lifecycle(root):

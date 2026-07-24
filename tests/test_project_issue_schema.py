@@ -945,6 +945,13 @@ next_command: {next_command}
         self.assertEqual(by_id["BIZ-038"]["readiness"], "blocked")
         self.assertIn("ISSUE_AUX_STATUS_INVALID", codes(by_id["BIZ-038"]))
         self.assertIn("ISSUE_DEPENDENCY_UNMET", codes(by_id["BIZ-038"]))
+        for issue_id in ("BIZ-038", "BIZ-039"):
+            unmet = next(
+                diagnostic
+                for diagnostic in by_id[issue_id]["diagnostics"]
+                if diagnostic["code"] == "ISSUE_DEPENDENCY_UNMET"
+            )
+            self.assertEqual(unmet["severity"], "error")
         self.assertEqual(
             by_id["BIZ-039"]["recommended_next_command"], "product:status"
         )
@@ -1389,6 +1396,43 @@ next_command: {next_command}
         self.assertEqual(issue["readiness"], "blocked")
         self.assertEqual(issue["recommended_next_command"], "product:status")
         self.assertIn("ISSUE_DEPENDENCY_UNMET", codes(issue))
+        diagnostic = next(
+            item
+            for item in issue["diagnostics"]
+            if item["code"] == "ISSUE_DEPENDENCY_UNMET"
+        )
+        self.assertEqual(diagnostic["severity"], "error")
+
+    def test_backlog_dependency_wait_is_warning_unless_execute_is_claimed(self):
+        self.write_versioned("BIZ-BLOCKER")
+        self.write_versioned(
+            "BIZ-WAITING",
+            dependencies=("BIZ-BLOCKER",),
+            next_command="product:status",
+        )
+        self.write_versioned(
+            "BIZ-EXECUTE-CLAIM",
+            dependencies=("BIZ-BLOCKER",),
+        )
+
+        by_id = self.evaluated_by_id()
+
+        waiting = next(
+            item
+            for item in by_id["BIZ-WAITING"]["diagnostics"]
+            if item["code"] == "ISSUE_DEPENDENCY_UNMET"
+        )
+        execute_claim = next(
+            item
+            for item in by_id["BIZ-EXECUTE-CLAIM"]["diagnostics"]
+            if item["code"] == "ISSUE_DEPENDENCY_UNMET"
+        )
+        self.assertEqual(waiting["severity"], "warning")
+        self.assertEqual(execute_claim["severity"], "error")
+        self.assertEqual(
+            by_id["BIZ-WAITING"]["recommended_next_command"],
+            "product:status",
+        )
 
     def test_done_and_superseded_dependencies_are_satisfied(self):
         self.write_versioned("BIZ-DONE", lifecycle="done", next_command="product:status")
@@ -1532,6 +1576,12 @@ next_command: product:execute BIZ-ADVISORY
         self.assertEqual(issue["readiness"], "blocked")
         self.assertIn("ISSUE_DEPENDENCY_UNMET", codes(issue))
         self.assertEqual(issue["recommended_next_command"], "product:status")
+        unmet = next(
+            item
+            for item in issue["diagnostics"]
+            if item["code"] == "ISSUE_DEPENDENCY_UNMET"
+        )
+        self.assertEqual(unmet["severity"], "warning")
 
     def test_dependency_analysis_is_iterative_for_deep_chain(self):
         count = 2000

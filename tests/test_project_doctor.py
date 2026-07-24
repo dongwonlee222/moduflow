@@ -330,5 +330,73 @@ class RepositoryIdentityDoctorTests(unittest.TestCase):
         self.assertIn("repository_identity", result["preflight"]["skipped"])
 
 
+class IssueSchemaDoctorTests(unittest.TestCase):
+    def test_doctor_reuses_validator_issue_schema_summary_and_recommends_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps({"schema": "moduflow.config.v1", "paths": {}}) + "\n",
+                encoding="utf-8",
+            )
+            (root / ".moduflow" / "state.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.state.v1",
+                        "phase": "ready",
+                        "next_command": "product:status",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (root / "issues").mkdir()
+            (root / "issues" / "BIZ-ADVISORY.md").write_text(
+                """---
+issue_id: BIZ-ADVISORY
+definition_readiness: ready
+gate_state: passed
+---
+# Advisory issue
+
+**Status: backlog** — created 2026-07-24.
+""",
+                encoding="utf-8",
+            )
+            (root / "specs").mkdir()
+            (root / "workspace").mkdir()
+            for filename in ("inbox.md", "opportunities.md", "roadmap.md", "dashboard.md"):
+                (root / "workspace" / filename).write_text(
+                    "# Workspace\n", encoding="utf-8"
+                )
+
+            original_lifecycle_loader = project_doctor.load_project_lifecycle
+
+            def fail_if_lifecycle_reparses():
+                self.fail("doctor must reuse validator output instead of reparsing issues")
+
+            project_doctor.load_project_lifecycle = fail_if_lifecycle_reparses
+            try:
+                result = project_doctor.inspect_project(
+                    root, include_preflight=False
+                )
+            finally:
+                project_doctor.load_project_lifecycle = original_lifecycle_loader
+
+        self.assertEqual(result["issue_schema"]["errors"], 0)
+        self.assertEqual(result["issue_schema"]["warnings"], 1)
+        self.assertEqual(
+            result["issue_schema"]["codes"],
+            ["ISSUE_FRONTMATTER_UNVERSIONED"],
+        )
+        self.assertTrue(
+            any(
+                recommendation
+                == "python3 scripts/project_issue_schema.py . --report"
+                for recommendation in result["recommendation"]
+            )
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

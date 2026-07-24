@@ -71,6 +71,164 @@ class ValidationDistributionTests(unittest.TestCase):
             self.assertEqual(len(matching), 1)
             self.assertFalse(any("001-with-status.md" in w for w in result["warnings"]))
 
+    def test_validate_project_surfaces_sorted_actionable_issue_schema_diagnostics_once(self):
+        validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+            (root / "issues" / "BIZ-PROJECTION.md").write_text(
+                """---
+schema_version: 0.1.0
+issue_id: BIZ-PROJECTION
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:doctor
+---
+# Projection mismatch
+
+**Status: done** — created 2026-07-24.
+""",
+                encoding="utf-8",
+            )
+            (root / "issues" / "BIZ-ADVISORY.md").write_text(
+                """---
+issue_id: BIZ-ADVISORY
+definition_readiness: ready
+gate_state: passed
+---
+# Advisory issue
+
+**Status: backlog** — created 2026-07-24.
+""",
+                encoding="utf-8",
+            )
+
+            result = validator.validate_project(root)
+
+            self.assertFalse(result["valid"])
+            projection_errors = [
+                error
+                for error in result["errors"]
+                if "ISSUE_STATE_PROJECTION_MISMATCH" in error
+            ]
+            self.assertEqual(len(projection_errors), 1)
+            self.assertIn("issues/BIZ-PROJECTION.md", projection_errors[0])
+            self.assertIn("Markdown Status must project", projection_errors[0])
+            self.assertIn("Recommendation:", projection_errors[0])
+            self.assertTrue(
+                any(
+                    "ISSUE_FRONTMATTER_UNVERSIONED" in warning
+                    and "issues/BIZ-ADVISORY.md" in warning
+                    and "Recommendation:" in warning
+                    for warning in result["warnings"]
+                )
+            )
+            self.assertEqual(len(result["errors"]), len(set(result["errors"])))
+            self.assertEqual(len(result["warnings"]), len(set(result["warnings"])))
+            self.assertGreaterEqual(result["issue_schema"]["errors"], 1)
+            self.assertGreaterEqual(result["issue_schema"]["warnings"], 1)
+            self.assertEqual(
+                result["issue_schema"]["codes"],
+                sorted(result["issue_schema"]["codes"]),
+            )
+
+    def test_validate_project_evaluates_issue_schema_once(self):
+        validator = load_module("validate_project_artifacts_once", "scripts/validate_project_artifacts.py")
+        schema = validator.load_project_issue_schema()
+        original_evaluate = schema.evaluate_project
+        calls = []
+
+        def counting_evaluate(root):
+            calls.append(Path(root))
+            return original_evaluate(root)
+
+        schema.evaluate_project = counting_evaluate
+        validator.load_project_issue_schema = lambda: schema
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+
+            validator.validate_project(root)
+
+        self.assertEqual(calls, [root.resolve()])
+
+    def test_validate_project_preserves_context_aware_dependency_severity(self):
+        validator = load_module("validate_project_dependency_severity", "scripts/validate_project_artifacts.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+
+            def write_issue(issue_id, lifecycle, dependencies, next_command):
+                status = "in_progress" if lifecycle == "active" else "backlog"
+                (root / "issues" / f"{issue_id}.md").write_text(
+                    f"""---
+schema_version: 0.1.0
+issue_id: {issue_id}
+canonical_state: {lifecycle}
+status: {status}
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: [{", ".join(dependencies)}]
+next_command: {next_command}
+---
+# Dependency severity fixture
+
+**Status: {lifecycle}** — created 2026-07-24.
+""",
+                    encoding="utf-8",
+                )
+
+            write_issue("BIZ-BLOCKER", "backlog", (), "product:status")
+            write_issue(
+                "BIZ-WAITING",
+                "backlog",
+                ("BIZ-BLOCKER",),
+                "product:status",
+            )
+            write_issue(
+                "BIZ-ACTIVE",
+                "active",
+                ("BIZ-BLOCKER",),
+                "product:status",
+            )
+            state_path = root / ".moduflow" / "state.json"
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            state["active_issue"] = "BIZ-ACTIVE"
+            state_path.write_text(json.dumps(state) + "\n", encoding="utf-8")
+            (root / "workspace" / "dashboard.md").write_text(
+                "# Dashboard\n\n## Active Issue\n\n- `BIZ-ACTIVE`\n",
+                encoding="utf-8",
+            )
+
+            result = validator.validate_project(root)
+
+        warning_matches = [
+            message
+            for message in result["warnings"]
+            if "ISSUE_DEPENDENCY_UNMET" in message
+            and "BIZ-WAITING.md" in message
+        ]
+        error_matches = [
+            message
+            for message in result["errors"]
+            if "ISSUE_DEPENDENCY_UNMET" in message
+            and "BIZ-ACTIVE.md" in message
+        ]
+        self.assertEqual(len(warning_matches), 1)
+        self.assertEqual(len(error_matches), 1)
+        self.assertFalse(
+            any(
+                "ISSUE_DEPENDENCY_UNMET" in message
+                and "BIZ-WAITING.md" in message
+                for message in result["errors"]
+            )
+        )
+
     def test_validate_project_artifacts_reports_invalid_state_json(self):
         validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
         with tempfile.TemporaryDirectory() as tmp:
