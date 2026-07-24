@@ -524,7 +524,7 @@ def markdown_blocked_by(text):
     blocked_by = []
     for value in match.group(1).split(","):
         value = value.strip().strip("`").strip()
-        if value:
+        if value and value not in blocked_by:
             blocked_by.append(value)
     return blocked_by
 
@@ -1022,51 +1022,67 @@ def _strongly_connected_components(graph):
     return components
 
 
-def _representative_cycle_path(graph, component):
-    """Return one deterministic closed path made only from component edges."""
-    start = min(component)
-    if len(component) == 1:
-        return [start, start]
+def _ordered_back_edge_cycle_paths(graph):
+    """Return the real cycles reported by legacy ordered iterative DFS."""
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color = {issue_id: WHITE for issue_id in graph}
+    reported_cycles = set()
+    cycle_paths = []
 
+    for start in sorted(graph):
+        if color[start] != WHITE:
+            continue
+        color[start] = GRAY
+        path = [start]
+        stack = [(start, 0)]
+        while stack:
+            node, dependency_index = stack[-1]
+            dependencies = graph[node]
+            if dependency_index < len(dependencies):
+                dependency = dependencies[dependency_index]
+                stack[-1] = (node, dependency_index + 1)
+                if color[dependency] == GRAY:
+                    cycle_start = path.index(dependency)
+                    cycle_path = path[cycle_start:] + [dependency]
+                    cycle_key = tuple(sorted(set(cycle_path)))
+                    if cycle_key not in reported_cycles:
+                        reported_cycles.add(cycle_key)
+                        cycle_paths.append(cycle_path)
+                elif color[dependency] == WHITE:
+                    color[dependency] = GRAY
+                    path.append(dependency)
+                    stack.append((dependency, 0))
+                continue
+            stack.pop()
+            path.pop()
+            color[node] = BLACK
+
+    return cycle_paths
+
+
+def _cycle_path_through_member(graph, component, start):
+    """Return a deterministic real-edge cycle containing ``start``."""
     visited = {start}
     path = [start]
-    stack = [
-        (
-            start,
-            iter(
-                sorted(
-                    dependency
-                    for dependency in graph[start]
-                    if dependency in component
-                )
-            ),
-        )
-    ]
+    stack = [(start, 0)]
     while stack:
-        _node, dependencies = stack[-1]
-        for dependency in dependencies:
+        node, dependency_index = stack[-1]
+        dependencies = graph[node]
+        if dependency_index < len(dependencies):
+            dependency = dependencies[dependency_index]
+            stack[-1] = (node, dependency_index + 1)
+            if dependency not in component:
+                continue
             if dependency == start and len(path) > 1:
                 return path + [start]
             if dependency in visited:
                 continue
             visited.add(dependency)
             path.append(dependency)
-            stack.append(
-                (
-                    dependency,
-                    iter(
-                        sorted(
-                            candidate
-                            for candidate in graph[dependency]
-                            if candidate in component
-                        )
-                    ),
-                )
-            )
-            break
-        else:
-            stack.pop()
-            path.pop()
+            stack.append((dependency, 0))
+            continue
+        stack.pop()
+        path.pop()
 
     raise RuntimeError("strongly connected component has no representative cycle")
 
@@ -1143,9 +1159,35 @@ def dependency_diagnostics(issue_index, ambiguous_targets=None):
         if issue_id in graph[issue_id]:
             cycle_groups.append(component)
 
-    for cycle_members in sorted(cycle_groups, key=lambda group: sorted(group)):
+    ordered_cycle_paths = _ordered_back_edge_cycle_paths(graph)
+    cycle_groups = sorted(cycle_groups, key=lambda group: sorted(group))
+    cycle_group_by_member = {
+        member: frozenset(cycle_members)
+        for cycle_members in cycle_groups
+        for member in cycle_members
+    }
+    paths_by_group = {
+        frozenset(cycle_members): [] for cycle_members in cycle_groups
+    }
+    for cycle_path in ordered_cycle_paths:
+        cycle_group = cycle_group_by_member[cycle_path[0]]
+        paths_by_group[cycle_group].append(list(cycle_path))
+
+    for cycle_members in cycle_groups:
         current = ", ".join(sorted(cycle_members))
-        cycle_path = _representative_cycle_path(graph, cycle_members)
+        cycle_paths = paths_by_group[frozenset(cycle_members)]
+        covered_members = {
+            member for cycle_path in cycle_paths for member in cycle_path[:-1]
+        }
+        for uncovered_member in sorted(cycle_members - covered_members):
+            if uncovered_member in covered_members:
+                continue
+            cycle_path = _cycle_path_through_member(
+                graph, cycle_members, uncovered_member
+            )
+            cycle_paths.append(cycle_path)
+            covered_members.update(cycle_path[:-1])
+        cycle_path = cycle_paths[0]
         for issue_id in sorted(cycle_members):
             issue = issue_index[issue_id]
             diagnostic = _dependency_diagnostic(
@@ -1157,6 +1199,9 @@ def dependency_diagnostics(issue_index, ambiguous_targets=None):
                 "Remove or redirect a depends_on edge in the cycle, then run product:status.",
             )
             diagnostic["cycle_path"] = list(cycle_path)
+            diagnostic["cycle_paths"] = [
+                list(path) for path in cycle_paths
+            ]
             add(
                 issue_id,
                 diagnostic,

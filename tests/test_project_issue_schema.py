@@ -1202,8 +1202,12 @@ next_command: {next_command}
                     ["001-a", "003-c", "002-b", "001-a"],
                 )
                 self.assertEqual(
+                    diagnostic["cycle_paths"],
+                    [["001-a", "003-c", "002-b", "001-a"]],
+                )
+                self.assertEqual(
                     set(diagnostic),
-                    REQUIRED_DIAGNOSTIC_KEYS | {"cycle_path"},
+                    REQUIRED_DIAGNOSTIC_KEYS | {"cycle_path", "cycle_paths"},
                 )
                 self.assertTrue(
                     all(
@@ -1229,11 +1233,15 @@ next_command: {next_command}
             self_cycle["004-self"][-1]["cycle_path"],
             ["004-self", "004-self"],
         )
+        self.assertEqual(
+            self_cycle["004-self"][-1]["cycle_paths"],
+            [["004-self", "004-self"]],
+        )
 
         non_hamiltonian_graph = {
             "005-a": ["006-b", "007-c"],
             "006-b": ["005-a"],
-            "007-c": ["005-a"],
+            "007-c": ["006-b"],
         }
         non_hamiltonian_index = {
             issue_id: {
@@ -1248,16 +1256,75 @@ next_command: {next_command}
         non_hamiltonian = self.schema.dependency_diagnostics(
             non_hamiltonian_index
         )
-        representative = non_hamiltonian["005-a"][-1]["cycle_path"]
-        self.assertEqual(representative, ["005-a", "006-b", "005-a"])
-        self.assertTrue(
-            all(
-                target in non_hamiltonian_graph[source]
-                for source, target in zip(
-                    representative, representative[1:]
+        cycle_paths = non_hamiltonian["005-a"][-1]["cycle_paths"]
+        self.assertEqual(
+            cycle_paths,
+            [
+                ["005-a", "006-b", "005-a"],
+                ["007-c", "006-b", "005-a", "007-c"],
+            ],
+        )
+        self.assertEqual(
+            {node for path in cycle_paths for node in path},
+            set(non_hamiltonian_graph),
+        )
+        for cycle_path in cycle_paths:
+            self.assertTrue(
+                all(
+                    target in non_hamiltonian_graph[source]
+                    for source, target in zip(
+                        cycle_path, cycle_path[1:]
+                    )
                 )
             )
+
+    def test_cycle_paths_preserve_all_back_edges_and_dependency_order(self):
+        cases = (
+            (
+                ["002-b", "003-c"],
+                [
+                    ["001-a", "002-b", "001-a"],
+                    ["001-a", "003-c", "001-a"],
+                ],
+            ),
+            (
+                ["003-c", "002-b"],
+                [
+                    ["001-a", "003-c", "001-a"],
+                    ["001-a", "002-b", "001-a"],
+                ],
+            ),
         )
+        for dependencies, expected_paths in cases:
+            with self.subTest(dependencies=dependencies):
+                graph = {
+                    "001-a": dependencies,
+                    "002-b": ["001-a"],
+                    "003-c": ["001-a"],
+                }
+                issue_index = {
+                    issue_id: {
+                        "issue_id": issue_id,
+                        "source_path": f"issues/{issue_id}.md",
+                        "lifecycle_state": "backlog",
+                        "blocked_by": blocked_by,
+                        "advisory_blocked_by": [],
+                    }
+                    for issue_id, blocked_by in graph.items()
+                }
+
+                diagnostics = self.schema.dependency_diagnostics(issue_index)
+                cycle = diagnostics["001-a"][-1]
+
+                self.assertEqual(cycle["cycle_path"], expected_paths[0])
+                self.assertEqual(cycle["cycle_paths"], expected_paths)
+                for path in cycle["cycle_paths"]:
+                    self.assertTrue(
+                        all(
+                            target in graph[source]
+                            for source, target in zip(path, path[1:])
+                        )
+                    )
 
     def test_unfinished_dependency_blocks_active_issue(self):
         self.write_versioned("BIZ-BLOCKER")

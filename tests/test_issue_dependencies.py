@@ -92,6 +92,15 @@ class IssueDependenciesTests(unittest.TestCase):
         spaced = "**Status: backlog** — created 2026-07-05.\n**Blocked-by: 003-c ,  004-d**\n"
         self.assertEqual(project_lifecycle._issue_blocked_by(spaced), ["003-c", "004-d"])
 
+        repeated = (
+            "**Status: backlog** — created 2026-07-05.\n"
+            "**Blocked-by: 003-c, 004-d, 003-c**\n"
+        )
+        self.assertEqual(
+            project_lifecycle._issue_blocked_by(repeated),
+            ["003-c", "004-d"],
+        )
+
     # 3. ready excludes issue blocked by an active issue
     def test_ready_excludes_issue_blocked_by_active(self):
         write_issue(self.root, "001-a", "active")
@@ -169,6 +178,70 @@ class IssueDependenciesTests(unittest.TestCase):
         self.assertEqual(
             drift,
             ["dependency cycle: 001-a -> 003-c -> 002-b -> 001-a"],
+        )
+
+    def test_cycle_drift_preserves_all_legacy_back_edges_in_declared_order(self):
+        write_issue(
+            self.root,
+            "001-a",
+            "backlog",
+            extra_lines=["**Blocked-by: 002-b, 003-c**"],
+        )
+        write_issue(
+            self.root,
+            "002-b",
+            "backlog",
+            extra_lines=["**Blocked-by: 001-a**"],
+        )
+        write_issue(
+            self.root,
+            "003-c",
+            "backlog",
+            extra_lines=["**Blocked-by: 001-a**"],
+        )
+
+        drift = project_lifecycle._dependency_drift(self.root)
+
+        self.assertEqual(
+            drift,
+            [
+                "dependency cycle: 001-a -> 002-b -> 001-a",
+                "dependency cycle: 001-a -> 003-c -> 001-a",
+            ],
+        )
+
+    def test_cycle_drift_respects_reversed_dependency_declaration_order(self):
+        write_issue(
+            self.root,
+            "001-a",
+            "backlog",
+            extra_lines=["**Blocked-by: 003-c, 002-b, 003-c**"],
+        )
+        write_issue(
+            self.root,
+            "002-b",
+            "backlog",
+            extra_lines=["**Blocked-by: 001-a**"],
+        )
+        write_issue(
+            self.root,
+            "003-c",
+            "backlog",
+            extra_lines=["**Blocked-by: 001-a**"],
+        )
+
+        items = {
+            item["id"]: item for item in project_lifecycle.list_issues(self.root)
+        }
+        drift = project_lifecycle._dependency_drift(self.root)
+
+        self.assertEqual(items["001-a"]["blocked_by"], ["003-c", "002-b"])
+        self.assertEqual(
+            drift,
+            [
+                "dependency cycle: 001-a -> 003-c -> 001-a",
+                "dependency cycle: 001-a -> 002-b -> 001-a",
+            ],
         )
 
     def test_cycle_drift_without_shared_path_reports_members_not_false_edges(self):
