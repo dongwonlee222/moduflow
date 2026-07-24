@@ -2286,6 +2286,101 @@ next_command: product:spec BIZ-BLANK-UNVERSIONED
                     "product:doctor",
                 )
 
+    def test_canonically_empty_backtick_dependencies_fail_closed(self):
+        self.write_issue(
+            "BIZ-BACKTICK-VERSIONED.md",
+            """---
+schema_version: 0.1.0
+issue_id: BIZ-BACKTICK-VERSIONED
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: ["``"]
+next_command: product:spec BIZ-BACKTICK-VERSIONED
+---
+# Issue: `BIZ-BACKTICK-VERSIONED` Empty backtick dependency
+
+**Status: backlog**
+""",
+        )
+        self.write_issue(
+            "BIZ-BACKTICK-UNVERSIONED.md",
+            """---
+issue_id: BIZ-BACKTICK-UNVERSIONED
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: ["`   `"]
+next_command: product:spec BIZ-BACKTICK-UNVERSIONED
+---
+# Issue: `BIZ-BACKTICK-UNVERSIONED` Whitespace backtick dependency
+
+**Status: backlog**
+""",
+        )
+        legitimate_path = self.write_issue(
+            "BIZ-BACKTICK-VALID.md",
+            """---
+schema_version: 0.1.0
+issue_id: BIZ-BACKTICK-VALID
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: ["`BIZ-DEPENDENCY`"]
+next_command: product:status
+---
+# Issue: `BIZ-BACKTICK-VALID` Valid backtick dependency
+
+**Status: backlog**
+""",
+        )
+
+        report = self.schema.build_migration_report(self.root)
+        by_path = {
+            issue["source_path"]: issue for issue in report["issues"]
+        }
+        cases = {
+            "issues/BIZ-BACKTICK-VERSIONED.md": ["``"],
+            "issues/BIZ-BACKTICK-UNVERSIONED.md": ["`   `"],
+        }
+        for source_path, current in cases.items():
+            with self.subTest(source_path=source_path):
+                issue = by_path[source_path]
+                decision = next(
+                    item
+                    for item in issue["human_decisions"]
+                    if item["field"] == "depends_on"
+                )
+                self.assertEqual(decision["current"], current)
+                self.assertNotIn(
+                    "depends_on",
+                    {mapping["field"] for mapping in issue["safe_mappings"]},
+                )
+                self.assertNotIn(
+                    "set_schema_version", issue["proposed_changes"]
+                )
+                self.assertEqual(issue["routing_after"]["readiness"], "blocked")
+                self.assertEqual(
+                    issue["routing_after"]["recommended_next_command"],
+                    "product:doctor",
+                )
+
+        legitimate = self.schema.parse_issue(legitimate_path, self.root)
+        self.assertEqual(legitimate["blocked_by"], ["BIZ-DEPENDENCY"])
+        self.assertFalse(
+            any(
+                diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
+                and diagnostic["field"] == "depends_on"
+                for diagnostic in legitimate["diagnostics"]
+            )
+        )
+
     def test_unsupported_tentative_identity_collides_with_versioned_canonical(self):
         versioned = self.root / "issues" / "BIZ-VERSIONED.md"
         versioned.write_text(
@@ -2417,6 +2512,51 @@ next_command: product:spec TENTATIVE-ID
         self.assertEqual(issue["routing_after"]["readiness"], "blocked")
         self.assertEqual(
             issue["routing_after"]["recommended_next_command"], "product:doctor"
+        )
+
+    def test_distinct_same_field_malformed_decisions_are_preserved(self):
+        self.write_issue(
+            "BIZ-MULTI-MALFORMED.md",
+            """---
+schema_version: [9]
+schema_version: 9.9.9
+---
+# Issue: `BIZ-MULTI-MALFORMED` Multiple schema failures
+
+**Status: backlog**
+""",
+        )
+
+        issue = next(
+            item
+            for item in self.schema.build_migration_report(self.root)["issues"]
+            if item["source_path"] == "issues/BIZ-MULTI-MALFORMED.md"
+        )
+        malformed_decisions = [
+            decision
+            for decision in issue["human_decisions"]
+            if decision["field"] == "schema_version"
+            and "expected" in decision
+        ]
+
+        self.assertEqual(len(malformed_decisions), 2)
+        self.assertEqual(
+            {repr(decision["current"]) for decision in malformed_decisions},
+            {"None", "[9]"},
+        )
+        self.assertEqual(
+            len(
+                {
+                    (
+                        decision["field"],
+                        repr(decision["current"]),
+                        decision["reason"],
+                        decision["recommendation"],
+                    )
+                    for decision in malformed_decisions
+                }
+            ),
+            2,
         )
 
     def test_cli_prints_json_only_returns_zero_and_does_not_write(self):

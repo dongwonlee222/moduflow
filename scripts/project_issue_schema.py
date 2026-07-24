@@ -422,6 +422,10 @@ def parse_frontmatter_subset(frontmatter_text, issue_id, source_path):
     return fields, diagnostics
 
 
+def _normalized_dependency_id(value):
+    return value.strip().strip("`").strip()
+
+
 def validate_contract_field_types(fields, issue_id, source_path):
     """Return contract fields safe for adapters plus hard type diagnostics."""
     sanitized = dict(fields)
@@ -451,7 +455,7 @@ def validate_contract_field_types(fields, issue_id, source_path):
         not isinstance(fields["depends_on"], list)
         or not all(isinstance(value, str) for value in fields["depends_on"])
         or any(
-            not value.strip()
+            not _normalized_dependency_id(value)
             for value in fields["depends_on"]
             if isinstance(value, str)
         )
@@ -609,7 +613,7 @@ def _normalized_dependency_list(value):
         return []
     normalized = []
     for dependency in value:
-        dependency = dependency.strip().strip("`").strip()
+        dependency = _normalized_dependency_id(dependency)
         if dependency and dependency not in normalized:
             normalized.append(dependency)
     return normalized
@@ -1674,8 +1678,17 @@ def _classify_migration_issue(project_root, issue):
             and "issue_id" not in invalid_fields
         ):
             proposed_issue_id = candidate_issue_id
+        malformed_fields = {
+            decision["field"]
+            for decision in human_decisions
+            if "expected" in decision
+        }
         human_decisions.extend(
-            _unversioned_field_decisions(fields, body, invalid_fields)
+            decision
+            for decision in _unversioned_field_decisions(
+                fields, body, invalid_fields
+            )
+            if decision["field"] not in malformed_fields
         )
         for field in (
             "issue_id",
@@ -1719,14 +1732,19 @@ def _classify_migration_issue(project_root, issue):
 
     elif source_format == "frontmatter-unsupported":
         proposed_issue_id = issue.get("tentative_issue_id")
-        human_decisions.append(
-            _human_decision(
-                "schema_version",
-                issue.get("schema_version"),
-                "The declared schema version is unsupported.",
-                "Choose a supported schema and map its fields explicitly.",
+        if not any(
+            decision["field"] == "schema_version"
+            and "expected" in decision
+            for decision in human_decisions
+        ):
+            human_decisions.append(
+                _human_decision(
+                    "schema_version",
+                    issue.get("schema_version"),
+                    "The declared schema version is unsupported.",
+                    "Choose a supported schema and map its fields explicitly.",
+                )
             )
-        )
         for field in sorted(issue.get("extensions", {})):
             human_decisions.append(
                 _human_decision(
@@ -1752,13 +1770,22 @@ def _classify_migration_issue(project_root, issue):
     safe_mappings.sort(key=lambda mapping: mapping["field"])
     unique_decisions = {}
     for decision in human_decisions:
-        unique_decisions.setdefault(decision["field"], decision)
+        identity = (
+            decision["field"],
+            repr(decision.get("current")),
+            decision["reason"],
+            decision["recommendation"],
+            repr(decision.get("expected")),
+        )
+        unique_decisions.setdefault(identity, decision)
     human_decisions = sorted(
         unique_decisions.values(),
         key=lambda decision: (
             decision["field"],
             repr(decision.get("current")),
             decision["reason"],
+            decision["recommendation"],
+            repr(decision.get("expected")),
         )
     )
     proposed_changes = {
