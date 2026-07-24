@@ -275,6 +275,79 @@ class IssueDependenciesTests(unittest.TestCase):
         drift = project_lifecycle.lifecycle_drift(self.root)
         self.assertEqual(drift, [])
 
+    def test_open_issue_with_completed_back_reference_is_ready_not_cyclic(self):
+        write_issue(
+            self.root,
+            "BIZ-OPEN",
+            "backlog",
+            extra_lines=["**Blocked-by: BIZ-DONE**"],
+        )
+        write_issue(
+            self.root,
+            "BIZ-DONE",
+            "done",
+            extra_lines=["**Blocked-by: BIZ-OPEN**"],
+        )
+
+        ready_ids = [
+            item["id"] for item in project_lifecycle.ready_issues(self.root)
+        ]
+        drift = project_lifecycle._dependency_drift(self.root)
+
+        self.assertIn("BIZ-OPEN", ready_ids)
+        self.assertFalse(any("cycle" in message for message in drift))
+
+    def test_versioned_open_issue_with_completed_back_reference_is_ready(self):
+        write_frontmatter_issue(
+            self.root,
+            "BIZ-OPEN",
+            "backlog",
+            "backlog",
+            depends_on=["BIZ-DONE"],
+        )
+        write_frontmatter_issue(
+            self.root,
+            "BIZ-DONE",
+            "done",
+            "done",
+            depends_on=["BIZ-OPEN"],
+        )
+
+        ready_ids = [
+            item["id"] for item in project_lifecycle.ready_issues(self.root)
+        ]
+        drift = project_lifecycle._dependency_drift(self.root)
+
+        self.assertIn("BIZ-OPEN", ready_ids)
+        self.assertFalse(any("cycle" in message for message in drift))
+
+    def test_open_cycle_is_not_hidden_by_completed_cross_edges(self):
+        write_issue(
+            self.root,
+            "001-a",
+            "backlog",
+            extra_lines=["**Blocked-by: 002-b**"],
+        )
+        write_issue(
+            self.root,
+            "002-b",
+            "backlog",
+            extra_lines=["**Blocked-by: 001-a, 003-done**"],
+        )
+        write_issue(
+            self.root,
+            "003-done",
+            "done",
+            extra_lines=["**Blocked-by: 001-a**"],
+        )
+
+        drift = project_lifecycle._dependency_drift(self.root)
+
+        self.assertEqual(
+            [message for message in drift if "cycle" in message],
+            ["dependency cycle: 001-a -> 002-b -> 001-a"],
+        )
+
     # 9. ready_issues returns JSON-serializable list (json.dumps round-trip)
     def test_ready_issues_json_serializable(self):
         write_issue(self.root, "001-a", "backlog")

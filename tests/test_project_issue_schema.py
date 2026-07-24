@@ -1132,21 +1132,21 @@ next_command: {next_command}
             "BIZ-A": {
                 "issue_id": "BIZ-A",
                 "source_path": "issues/BIZ-A.md",
-                "lifecycle_state": "done",
+                "lifecycle_state": "backlog",
                 "blocked_by": ["BIZ-B", "BIZ-C"],
                 "advisory_blocked_by": [],
             },
             "BIZ-B": {
                 "issue_id": "BIZ-B",
                 "source_path": "issues/BIZ-B.md",
-                "lifecycle_state": "done",
+                "lifecycle_state": "backlog",
                 "blocked_by": ["BIZ-A"],
                 "advisory_blocked_by": [],
             },
             "BIZ-C": {
                 "issue_id": "BIZ-C",
                 "source_path": "issues/BIZ-C.md",
-                "lifecycle_state": "done",
+                "lifecycle_state": "backlog",
                 "blocked_by": ["BIZ-B"],
                 "advisory_blocked_by": [],
             },
@@ -1163,6 +1163,7 @@ next_command: {next_command}
             issue_id: [
                 (diagnostic["code"], diagnostic["current"])
                 for diagnostic in issue_diagnostics
+                if diagnostic["code"] == "ISSUE_DEPENDENCY_CYCLE"
             ]
             for issue_id, issue_diagnostics in diagnostics.items()
         }
@@ -1354,6 +1355,63 @@ next_command: {next_command}
         self.assertEqual(
             issue["recommended_next_command"], "product:execute BIZ-WORK"
         )
+
+    def test_completed_issues_are_excluded_from_dependency_cycle_gates(self):
+        self.write_versioned(
+            "BIZ-OPEN",
+            dependencies=("BIZ-DONE",),
+        )
+        self.write_versioned(
+            "BIZ-DONE",
+            lifecycle="done",
+            dependencies=("BIZ-OPEN",),
+            next_command="product:status",
+        )
+
+        project = self.schema.evaluate_project(self.root)
+        by_id = {issue["issue_id"]: issue for issue in project["issues"]}
+
+        self.assertNotIn("ISSUE_DEPENDENCY_UNMET", codes(by_id["BIZ-OPEN"]))
+        self.assertNotIn("ISSUE_DEPENDENCY_CYCLE", codes(by_id["BIZ-OPEN"]))
+        self.assertNotIn("ISSUE_DEPENDENCY_CYCLE", codes(by_id["BIZ-DONE"]))
+        self.assertNotIn("BIZ-DONE", project["dependency_diagnostics"])
+
+    def test_completed_cross_edges_do_not_suppress_real_open_cycle(self):
+        issue_index = {
+            "001-a": {
+                "issue_id": "001-a",
+                "source_path": "issues/001-a.md",
+                "lifecycle_state": "backlog",
+                "blocked_by": ["002-b"],
+                "advisory_blocked_by": [],
+            },
+            "002-b": {
+                "issue_id": "002-b",
+                "source_path": "issues/002-b.md",
+                "lifecycle_state": "backlog",
+                "blocked_by": ["001-a", "003-done"],
+                "advisory_blocked_by": [],
+            },
+            "003-done": {
+                "issue_id": "003-done",
+                "source_path": "issues/003-done.md",
+                "lifecycle_state": "done",
+                "blocked_by": ["001-a"],
+                "advisory_blocked_by": [],
+            },
+        }
+
+        diagnostics = self.schema.dependency_diagnostics(issue_index)
+
+        self.assertEqual(
+            diagnostics["001-a"][-1]["cycle_paths"],
+            [["001-a", "002-b", "001-a"]],
+        )
+        self.assertEqual(
+            diagnostics["002-b"][-1]["cycle_paths"],
+            [["001-a", "002-b", "001-a"]],
+        )
+        self.assertNotIn("003-done", diagnostics)
 
     def test_unversioned_advisory_dependency_only_blocks_conservatively(self):
         self.write_versioned("BIZ-BLOCKER")

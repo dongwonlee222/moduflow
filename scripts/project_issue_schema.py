@@ -1095,14 +1095,22 @@ def dependency_diagnostics(issue_index, ambiguous_targets=None):
     def add(issue_id, diagnostic):
         diagnostics.setdefault(issue_id, []).append(diagnostic)
 
+    open_issue_ids = {
+        issue_id
+        for issue_id, issue in issue_index.items()
+        if issue.get("lifecycle_state") not in ("done", "superseded")
+    }
     graph = {}
     for issue_id in sorted(issue_index):
         issue = issue_index[issue_id]
+        if issue_id not in open_issue_ids:
+            continue
         dependencies = _issue_dependencies(issue)
         graph[issue_id] = [
             dependency
             for dependency in dependencies
-            if dependency in issue_index and dependency not in ambiguous_targets
+            if dependency in open_issue_ids
+            and dependency not in ambiguous_targets
         ]
         for dependency in dependencies:
             if dependency in ambiguous_targets:

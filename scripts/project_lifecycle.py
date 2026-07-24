@@ -192,9 +192,6 @@ def _dependency_drift_from_evaluation(evaluation):
     """Translate shared diagnostics to the lifecycle drift compatibility form."""
     drift = []
     issues = evaluation["issues"]
-    status_by_id = {
-        issue["issue_id"]: issue.get("lifecycle_state") for issue in issues
-    }
     reported_schema = set()
     reported_cycles = set()
 
@@ -248,13 +245,7 @@ def _dependency_drift_from_evaluation(evaluation):
             if not cycle_paths:
                 cycle_path = diagnostic.get("cycle_path")
                 cycle_paths = [cycle_path] if cycle_path else []
-            if (
-                members
-                and all(
-                    status_by_id.get(member) not in ("done", "superseded")
-                    for member in members
-                )
-            ):
+            if members:
                 if cycle_paths:
                     for cycle_path in cycle_paths:
                         cycle_key = tuple(cycle_path)
