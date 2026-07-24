@@ -1022,6 +1022,55 @@ def _strongly_connected_components(graph):
     return components
 
 
+def _representative_cycle_path(graph, component):
+    """Return one deterministic closed path made only from component edges."""
+    start = min(component)
+    if len(component) == 1:
+        return [start, start]
+
+    visited = {start}
+    path = [start]
+    stack = [
+        (
+            start,
+            iter(
+                sorted(
+                    dependency
+                    for dependency in graph[start]
+                    if dependency in component
+                )
+            ),
+        )
+    ]
+    while stack:
+        _node, dependencies = stack[-1]
+        for dependency in dependencies:
+            if dependency == start and len(path) > 1:
+                return path + [start]
+            if dependency in visited:
+                continue
+            visited.add(dependency)
+            path.append(dependency)
+            stack.append(
+                (
+                    dependency,
+                    iter(
+                        sorted(
+                            candidate
+                            for candidate in graph[dependency]
+                            if candidate in component
+                        )
+                    ),
+                )
+            )
+            break
+        else:
+            stack.pop()
+            path.pop()
+
+    raise RuntimeError("strongly connected component has no representative cycle")
+
+
 def dependency_diagnostics(issue_index, ambiguous_targets=None):
     """Return dependency errors by issue id using iterative graph traversal."""
     diagnostics = {}
@@ -1096,18 +1145,21 @@ def dependency_diagnostics(issue_index, ambiguous_targets=None):
 
     for cycle_members in sorted(cycle_groups, key=lambda group: sorted(group)):
         current = ", ".join(sorted(cycle_members))
+        cycle_path = _representative_cycle_path(graph, cycle_members)
         for issue_id in sorted(cycle_members):
             issue = issue_index[issue_id]
+            diagnostic = _dependency_diagnostic(
+                issue,
+                "ISSUE_DEPENDENCY_CYCLE",
+                current,
+                "an acyclic dependency graph",
+                f"Issue {issue_id} participates in a dependency cycle.",
+                "Remove or redirect a depends_on edge in the cycle, then run product:status.",
+            )
+            diagnostic["cycle_path"] = list(cycle_path)
             add(
                 issue_id,
-                _dependency_diagnostic(
-                    issue,
-                    "ISSUE_DEPENDENCY_CYCLE",
-                    current,
-                    "an acyclic dependency graph",
-                    f"Issue {issue_id} participates in a dependency cycle.",
-                    "Remove or redirect a depends_on edge in the cycle, then run product:status.",
-                ),
+                diagnostic,
             )
 
     return diagnostics

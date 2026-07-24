@@ -144,6 +144,57 @@ class IssueDependenciesTests(unittest.TestCase):
         drift = project_lifecycle.lifecycle_drift(self.root)
         self.assertTrue(any("cycle" in d.lower() for d in drift))
 
+    def test_cycle_drift_uses_real_dependency_edges_in_path_order(self):
+        write_issue(
+            self.root,
+            "001-a",
+            "backlog",
+            extra_lines=["**Blocked-by: 003-c**"],
+        )
+        write_issue(
+            self.root,
+            "003-c",
+            "backlog",
+            extra_lines=["**Blocked-by: 002-b**"],
+        )
+        write_issue(
+            self.root,
+            "002-b",
+            "backlog",
+            extra_lines=["**Blocked-by: 001-a**"],
+        )
+
+        drift = project_lifecycle._dependency_drift(self.root)
+
+        self.assertEqual(
+            drift,
+            ["dependency cycle: 001-a -> 003-c -> 002-b -> 001-a"],
+        )
+
+    def test_cycle_drift_without_shared_path_reports_members_not_false_edges(self):
+        diagnostic = {
+            "code": "ISSUE_DEPENDENCY_CYCLE",
+            "current": "001-a, 002-b, 003-c",
+        }
+        evaluation = {
+            "issues": [
+                {
+                    "issue_id": issue_id,
+                    "lifecycle_state": "backlog",
+                    "diagnostics": [diagnostic],
+                }
+                for issue_id in ("001-a", "002-b", "003-c")
+            ]
+        }
+
+        drift = project_lifecycle._dependency_drift_from_evaluation(evaluation)
+
+        self.assertEqual(
+            drift,
+            ["dependency cycle members: 001-a, 002-b, 003-c"],
+        )
+        self.assertFalse(any("->" in message for message in drift))
+
     # 8. done issue referencing another done issue -> NO cycle/dangling drift
     def test_done_referencing_done_no_drift(self):
         write_issue(self.root, "001-a", "done")

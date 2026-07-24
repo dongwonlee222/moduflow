@@ -1169,6 +1169,96 @@ next_command: {next_command}
         self.assertEqual(actual, expected)
         self.assertEqual(repeated, diagnostics)
 
+    def test_cycle_path_is_deterministic_and_contains_only_real_graph_edges(self):
+        graph = {
+            "001-a": ["003-c"],
+            "002-b": ["001-a"],
+            "003-c": ["002-b"],
+        }
+        issue_index = {
+            issue_id: {
+                "issue_id": issue_id,
+                "source_path": f"issues/{issue_id}.md",
+                "lifecycle_state": "backlog",
+                "blocked_by": dependencies,
+                "advisory_blocked_by": [],
+            }
+            for issue_id, dependencies in graph.items()
+        }
+
+        diagnostics = self.schema.dependency_diagnostics(issue_index)
+        cycle_diagnostics = [
+            diagnostic
+            for issue_diagnostics in diagnostics.values()
+            for diagnostic in issue_diagnostics
+            if diagnostic["code"] == "ISSUE_DEPENDENCY_CYCLE"
+        ]
+
+        self.assertEqual(len(cycle_diagnostics), 3)
+        for diagnostic in cycle_diagnostics:
+            with self.subTest(issue_id=diagnostic["issue_id"]):
+                self.assertEqual(
+                    diagnostic["cycle_path"],
+                    ["001-a", "003-c", "002-b", "001-a"],
+                )
+                self.assertEqual(
+                    set(diagnostic),
+                    REQUIRED_DIAGNOSTIC_KEYS | {"cycle_path"},
+                )
+                self.assertTrue(
+                    all(
+                        target in graph[source]
+                        for source, target in zip(
+                            diagnostic["cycle_path"],
+                            diagnostic["cycle_path"][1:],
+                        )
+                    )
+                )
+
+        self_cycle_index = {
+            "004-self": {
+                "issue_id": "004-self",
+                "source_path": "issues/004-self.md",
+                "lifecycle_state": "backlog",
+                "blocked_by": ["004-self"],
+                "advisory_blocked_by": [],
+            }
+        }
+        self_cycle = self.schema.dependency_diagnostics(self_cycle_index)
+        self.assertEqual(
+            self_cycle["004-self"][-1]["cycle_path"],
+            ["004-self", "004-self"],
+        )
+
+        non_hamiltonian_graph = {
+            "005-a": ["006-b", "007-c"],
+            "006-b": ["005-a"],
+            "007-c": ["005-a"],
+        }
+        non_hamiltonian_index = {
+            issue_id: {
+                "issue_id": issue_id,
+                "source_path": f"issues/{issue_id}.md",
+                "lifecycle_state": "backlog",
+                "blocked_by": dependencies,
+                "advisory_blocked_by": [],
+            }
+            for issue_id, dependencies in non_hamiltonian_graph.items()
+        }
+        non_hamiltonian = self.schema.dependency_diagnostics(
+            non_hamiltonian_index
+        )
+        representative = non_hamiltonian["005-a"][-1]["cycle_path"]
+        self.assertEqual(representative, ["005-a", "006-b", "005-a"])
+        self.assertTrue(
+            all(
+                target in non_hamiltonian_graph[source]
+                for source, target in zip(
+                    representative, representative[1:]
+                )
+            )
+        )
+
     def test_unfinished_dependency_blocks_active_issue(self):
         self.write_versioned("BIZ-BLOCKER")
         self.write_versioned(

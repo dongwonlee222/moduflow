@@ -244,18 +244,24 @@ def _dependency_drift_from_evaluation(evaluation):
                     if member.strip()
                 )
             )
+            cycle_path = tuple(diagnostic.get("cycle_path") or ())
+            cycle_key = cycle_path or ("members", *members)
             if (
                 members
-                and members not in reported_cycles
+                and cycle_key not in reported_cycles
                 and all(
                     status_by_id.get(member) not in ("done", "superseded")
                     for member in members
                 )
             ):
-                reported_cycles.add(members)
-                drift.append(
-                    f"dependency cycle: {' -> '.join((*members, members[0]))}"
-                )
+                reported_cycles.add(cycle_key)
+                if cycle_path:
+                    drift.append(f"dependency cycle: {' -> '.join(cycle_path)}")
+                else:
+                    drift.append(
+                        "dependency cycle members: "
+                        f"{diagnostic.get('current') or ', '.join(members)}"
+                    )
 
     return drift
 
