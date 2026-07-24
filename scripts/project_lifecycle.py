@@ -34,6 +34,7 @@ except ModuleNotFoundError:
 
 
 _READY_BLOCKING_DIAGNOSTICS = {
+    "ISSUE_SOURCE_UNREADABLE",
     "ISSUE_SCHEMA_MALFORMED",
     "ISSUE_SCHEMA_UNSUPPORTED",
     "ISSUE_DUPLICATE_FIELD",
@@ -45,12 +46,19 @@ _READY_BLOCKING_DIAGNOSTICS = {
     "ISSUE_DEPENDENCY_CYCLE",
 }
 _LIFECYCLE_SCHEMA_DIAGNOSTICS = {
+    "ISSUE_SOURCE_UNREADABLE",
     "ISSUE_SCHEMA_MALFORMED",
     "ISSUE_SCHEMA_UNSUPPORTED",
     "ISSUE_DUPLICATE_FIELD",
     "ISSUE_STATE_PROJECTION_MISMATCH",
     "ISSUE_DEPENDENCY_PROJECTION_MISMATCH",
     "ISSUE_AUX_STATUS_INVALID",
+}
+_SYNC_FATAL_DIAGNOSTICS = {
+    "ISSUE_SOURCE_UNREADABLE",
+    "ISSUE_SCHEMA_MALFORMED",
+    "ISSUE_SCHEMA_UNSUPPORTED",
+    "ISSUE_DUPLICATE_FIELD",
 }
 
 
@@ -194,6 +202,9 @@ def _dependency_drift_from_evaluation(evaluation):
     issues = evaluation["issues"]
     reported_schema = set()
     reported_cycles = set()
+    reported_cycle_groups = set()
+    pending_cycle_fallbacks = []
+    pending_cycle_groups = set()
 
     for issue in issues:
         issue_id = issue["issue_id"]
@@ -234,33 +245,52 @@ def _dependency_drift_from_evaluation(evaluation):
 
             if code != "ISSUE_DEPENDENCY_CYCLE":
                 continue
-            members = tuple(
-                sorted(
-                    member.strip()
-                    for member in str(diagnostic.get("current") or "").split(",")
-                    if member.strip()
+            current = diagnostic.get("current")
+            if isinstance(current, dict):
+                representative = current.get("representative_issue_id")
+                component_size = current.get("component_size")
+                cycle_group = ("group", representative, component_size)
+                fallback = (
+                    f"dependency cycle group: {representative} "
+                    f"(component size: {component_size})"
                 )
-            )
+            else:
+                members = tuple(
+                    sorted(
+                        member.strip()
+                        for member in str(current or "").split(",")
+                        if member.strip()
+                    )
+                )
+                cycle_group = ("members", *members)
+                fallback = (
+                    "dependency cycle members: "
+                    f"{current or ', '.join(members)}"
+                )
             cycle_paths = diagnostic.get("cycle_paths")
             if not cycle_paths:
                 cycle_path = diagnostic.get("cycle_path")
                 cycle_paths = [cycle_path] if cycle_path else []
-            if members:
-                if cycle_paths:
-                    for cycle_path in cycle_paths:
-                        cycle_key = tuple(cycle_path)
-                        if cycle_key in reported_cycles:
-                            continue
-                        reported_cycles.add(cycle_key)
-                        drift.append(
-                            f"dependency cycle: {' -> '.join(cycle_path)}"
-                        )
-                elif ("members", *members) not in reported_cycles:
-                    reported_cycles.add(("members", *members))
+            if cycle_paths:
+                reported_cycle_groups.add(cycle_group)
+                for cycle_path in cycle_paths:
+                    cycle_key = tuple(cycle_path)
+                    if cycle_key in reported_cycles:
+                        continue
+                    reported_cycles.add(cycle_key)
                     drift.append(
-                        "dependency cycle members: "
-                        f"{diagnostic.get('current') or ', '.join(members)}"
+                        f"dependency cycle: {' -> '.join(cycle_path)}"
                     )
+            elif (
+                cycle_group not in reported_cycle_groups
+                and cycle_group not in pending_cycle_groups
+            ):
+                pending_cycle_groups.add(cycle_group)
+                pending_cycle_fallbacks.append((cycle_group, fallback))
+
+    for cycle_group, fallback in pending_cycle_fallbacks:
+        if cycle_group not in reported_cycle_groups:
+            drift.append(fallback)
 
     return drift
 
@@ -312,7 +342,33 @@ def sync_lifecycle(root):
     """Single propagation point: issue Status -> .moduflow/state.json + dashboard
     Active Issue section. Idempotent. Touches only structured fields/sections."""
     root = Path(root).resolve()
-    ls = lifecycle_state(root)
+    evaluation = evaluate_project(root)
+    ls = _lifecycle_state_from_evaluation(evaluation)
+    errors = []
+    for issue in evaluation["issues"]:
+        issue_errors = [
+            _format_schema_diagnostic(diagnostic)
+            for diagnostic in issue.get("diagnostics", [])
+            if (
+                diagnostic.get("severity") == "error"
+                and diagnostic.get("code") in _SYNC_FATAL_DIAGNOSTICS
+            )
+        ]
+        errors.extend(issue_errors)
+        if issue.get("lifecycle_state") is None and not issue_errors:
+            errors.append(
+                f"ISSUE_LIFECYCLE_UNRESOLVED [{issue['source_path']}]: "
+                "Canonical lifecycle state is unavailable. Recommendation: "
+                "Restore a supported, readable issue source and run product:doctor."
+            )
+    if errors:
+        return {
+            "status": "blocked",
+            "active": "",
+            "phase": "unresolved",
+            "dashboard_updated": False,
+            "errors": errors,
+        }
     active = ls["active"][0] if len(ls["active"]) == 1 else ""
     phase = infer_phase(root, active)
 
@@ -375,8 +431,9 @@ def main():
         print(json.dumps(ready_issues(args.project_path), ensure_ascii=False, indent=2))
         return 0
     if args.sync:
-        print(json.dumps(sync_lifecycle(args.project_path), ensure_ascii=False, indent=2))
-        return 0
+        result = sync_lifecycle(args.project_path)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 1 if result.get("status") == "blocked" else 0
     if args.drift:
         print(json.dumps(lifecycle_drift(args.project_path), ensure_ascii=False, indent=2))
         return 0

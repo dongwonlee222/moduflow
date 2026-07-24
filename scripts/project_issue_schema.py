@@ -43,6 +43,7 @@ DECLARED_PHASE_TO_ARTIFACT_PHASE = {
 
 _ARTIFACT_PHASES = ("spec", "plan", "tasks", "review", "release")
 _SCHEMA_ERROR_CODES = {
+    "ISSUE_SOURCE_UNREADABLE",
     "ISSUE_SCHEMA_MALFORMED",
     "ISSUE_SCHEMA_UNSUPPORTED",
     "ISSUE_DUPLICATE_FIELD",
@@ -857,8 +858,24 @@ def parse_issue(path, project_root):
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         issue = _base_issue(path, project_root, "")
+        issue["source_format"] = "unreadable"
+        issue["lifecycle_state"] = None
+        issue["projection_status"] = None
+        issue["readiness"] = "blocked"
         issue["diagnostics"].append(
-            _malformed(path.stem, source_path, f"issue file could not be read: {exc}")
+            _diagnostic(
+                "ISSUE_SOURCE_UNREADABLE",
+                path.stem,
+                source_path,
+                f"Issue source could not be read as UTF-8: {exc}",
+                field="source",
+                current=type(exc).__name__,
+                expected="a readable UTF-8 issue file",
+                recommendation=(
+                    "Restore file readability and permissions, ensure the issue "
+                    "is valid UTF-8, then run product:doctor."
+                ),
+            )
         )
         return issue
 
@@ -1182,7 +1199,7 @@ def dependency_diagnostics(issue_index, ambiguous_targets=None):
         paths_by_group[cycle_group].append(list(cycle_path))
 
     for cycle_members in cycle_groups:
-        current = ", ".join(sorted(cycle_members))
+        representative_issue_id = min(cycle_members)
         cycle_paths = paths_by_group[frozenset(cycle_members)]
         covered_members = {
             member for cycle_path in cycle_paths for member in cycle_path[:-1]
@@ -1198,6 +1215,11 @@ def dependency_diagnostics(issue_index, ambiguous_targets=None):
         cycle_path = cycle_paths[0]
         for issue_id in sorted(cycle_members):
             issue = issue_index[issue_id]
+            current = {
+                "issue_id": issue_id,
+                "representative_issue_id": representative_issue_id,
+                "component_size": len(cycle_members),
+            }
             diagnostic = _dependency_diagnostic(
                 issue,
                 "ISSUE_DEPENDENCY_CYCLE",
@@ -1206,10 +1228,11 @@ def dependency_diagnostics(issue_index, ambiguous_targets=None):
                 f"Issue {issue_id} participates in a dependency cycle.",
                 "Remove or redirect a depends_on edge in the cycle, then run product:status.",
             )
-            diagnostic["cycle_path"] = list(cycle_path)
-            diagnostic["cycle_paths"] = [
-                list(path) for path in cycle_paths
-            ]
+            if issue_id == representative_issue_id:
+                diagnostic["cycle_path"] = list(cycle_path)
+                diagnostic["cycle_paths"] = [
+                    list(path) for path in cycle_paths
+                ]
             add(
                 issue_id,
                 diagnostic,
@@ -1866,6 +1889,7 @@ def _classify_migration_issue(project_root, issue):
             _decision_from_diagnostic(diagnostic)
             for diagnostic in issue["diagnostics"]
             if diagnostic["code"] in {
+                "ISSUE_SOURCE_UNREADABLE",
                 "ISSUE_SCHEMA_MALFORMED",
                 "ISSUE_DUPLICATE_FIELD",
             }

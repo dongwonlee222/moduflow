@@ -301,6 +301,27 @@ depends_on:
             )
         )
 
+    def test_unreadable_issue_fails_closed_with_actionable_source_diagnostic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / "BIZ-UNREADABLE.md"
+            path.write_bytes(b"\xff\xfe\x00\x80")
+
+            issue = self.schema.parse_issue(path, root)
+
+        self.assertIsNone(issue["lifecycle_state"])
+        self.assertEqual(issue["readiness"], "blocked")
+        diagnostic = next(
+            item
+            for item in issue["diagnostics"]
+            if item["code"] == "ISSUE_SOURCE_UNREADABLE"
+        )
+        self.assertEqual(diagnostic["severity"], "error")
+        self.assertIn("read", diagnostic["recommendation"].lower())
+        self.assertIn("permission", diagnostic["recommendation"].lower())
+        self.assertIn("UTF-8", diagnostic["recommendation"])
+        self.assertNotIn("frontmatter", diagnostic["recommendation"].lower())
+
     def test_unknown_scalar_fields_are_isolated_in_extensions(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1122,10 +1143,24 @@ next_command: {next_command}
             for issue_id in by_id
         }
 
-        self.assertEqual(current["BIZ-A1"], "BIZ-A1, BIZ-A2")
-        self.assertEqual(current["BIZ-A2"], "BIZ-A1, BIZ-A2")
-        self.assertEqual(current["BIZ-B1"], "BIZ-B1, BIZ-B2")
-        self.assertEqual(current["BIZ-B2"], "BIZ-B1, BIZ-B2")
+        self.assertEqual(
+            current["BIZ-A1"],
+            {
+                "issue_id": "BIZ-A1",
+                "representative_issue_id": "BIZ-A1",
+                "component_size": 2,
+            },
+        )
+        self.assertEqual(
+            current["BIZ-A2"],
+            {
+                "issue_id": "BIZ-A2",
+                "representative_issue_id": "BIZ-A1",
+                "component_size": 2,
+            },
+        )
+        self.assertEqual(current["BIZ-B1"]["representative_issue_id"], "BIZ-B1")
+        self.assertEqual(current["BIZ-B2"]["representative_issue_id"], "BIZ-B1")
 
     def test_cycle_diagnostics_include_complete_strongly_connected_component(self):
         issue_index = {
@@ -1156,7 +1191,16 @@ next_command: {next_command}
         repeated = self.schema.dependency_diagnostics(issue_index)
 
         expected = {
-            issue_id: [("ISSUE_DEPENDENCY_CYCLE", "BIZ-A, BIZ-B, BIZ-C")]
+            issue_id: [
+                (
+                    "ISSUE_DEPENDENCY_CYCLE",
+                    {
+                        "issue_id": issue_id,
+                        "representative_issue_id": "BIZ-A",
+                        "component_size": 3,
+                    },
+                )
+            ]
             for issue_id in ("BIZ-A", "BIZ-B", "BIZ-C")
         }
         actual = {
@@ -1198,27 +1242,34 @@ next_command: {next_command}
         self.assertEqual(len(cycle_diagnostics), 3)
         for diagnostic in cycle_diagnostics:
             with self.subTest(issue_id=diagnostic["issue_id"]):
-                self.assertEqual(
-                    diagnostic["cycle_path"],
-                    ["001-a", "003-c", "002-b", "001-a"],
-                )
-                self.assertEqual(
-                    diagnostic["cycle_paths"],
-                    [["001-a", "003-c", "002-b", "001-a"]],
-                )
-                self.assertEqual(
-                    set(diagnostic),
-                    REQUIRED_DIAGNOSTIC_KEYS | {"cycle_path", "cycle_paths"},
-                )
-                self.assertTrue(
-                    all(
-                        target in graph[source]
-                        for source, target in zip(
-                            diagnostic["cycle_path"],
-                            diagnostic["cycle_path"][1:],
+                self.assertEqual(diagnostic["current"]["component_size"], 3)
+                if diagnostic["issue_id"] == "001-a":
+                    self.assertEqual(
+                        diagnostic["cycle_path"],
+                        ["001-a", "003-c", "002-b", "001-a"],
+                    )
+                    self.assertEqual(
+                        diagnostic["cycle_paths"],
+                        [["001-a", "003-c", "002-b", "001-a"]],
+                    )
+                    self.assertEqual(
+                        set(diagnostic),
+                        REQUIRED_DIAGNOSTIC_KEYS
+                        | {"cycle_path", "cycle_paths"},
+                    )
+                    self.assertTrue(
+                        all(
+                            target in graph[source]
+                            for source, target in zip(
+                                diagnostic["cycle_path"],
+                                diagnostic["cycle_path"][1:],
+                            )
                         )
                     )
-                )
+                else:
+                    self.assertNotIn("cycle_path", diagnostic)
+                    self.assertNotIn("cycle_paths", diagnostic)
+                    self.assertEqual(set(diagnostic), REQUIRED_DIAGNOSTIC_KEYS)
 
         self_cycle_index = {
             "004-self": {
@@ -1407,11 +1458,55 @@ next_command: {next_command}
             diagnostics["001-a"][-1]["cycle_paths"],
             [["001-a", "002-b", "001-a"]],
         )
-        self.assertEqual(
-            diagnostics["002-b"][-1]["cycle_paths"],
-            [["001-a", "002-b", "001-a"]],
-        )
+        self.assertNotIn("cycle_paths", diagnostics["002-b"][-1])
         self.assertNotIn("003-done", diagnostics)
+
+    def test_high_fanout_cycle_payload_is_stored_once_and_memory_is_bounded(self):
+        count = 600
+        representative = "BIZ-0000"
+        issue_index = {}
+        member_ids = [f"BIZ-{index:04d}" for index in range(count)]
+        for issue_id in member_ids:
+            dependencies = (
+                member_ids[1:]
+                if issue_id == representative
+                else [representative]
+            )
+            issue_index[issue_id] = {
+                "issue_id": issue_id,
+                "source_path": f"issues/{issue_id}.md",
+                "lifecycle_state": "backlog",
+                "blocked_by": dependencies,
+                "advisory_blocked_by": [],
+            }
+
+        diagnostics = self.schema.dependency_diagnostics(issue_index)
+        cycle_diagnostics = [
+            diagnostic
+            for issue_diagnostics in diagnostics.values()
+            for diagnostic in issue_diagnostics
+            if diagnostic["code"] == "ISSUE_DEPENDENCY_CYCLE"
+        ]
+        payload_owners = [
+            diagnostic
+            for diagnostic in cycle_diagnostics
+            if "cycle_paths" in diagnostic
+        ]
+        serialized_size = len(
+            json.dumps(diagnostics, separators=(",", ":")).encode("utf-8")
+        )
+
+        self.assertEqual(len(cycle_diagnostics), count)
+        self.assertEqual(len(payload_owners), 1)
+        self.assertEqual(payload_owners[0]["issue_id"], representative)
+        self.assertEqual(len(payload_owners[0]["cycle_paths"]), count - 1)
+        self.assertTrue(
+            all(
+                diagnostic["current"]["component_size"] == count
+                for diagnostic in cycle_diagnostics
+            )
+        )
+        self.assertLess(serialized_size, 2_000_000)
 
     def test_unversioned_advisory_dependency_only_blocks_conservatively(self):
         self.write_versioned("BIZ-BLOCKER")

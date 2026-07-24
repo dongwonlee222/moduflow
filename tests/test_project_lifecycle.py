@@ -1,8 +1,11 @@
+import contextlib
 import importlib.util
+import io
 import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -118,7 +121,11 @@ class ProjectLifecycleTests(unittest.TestCase):
             (root / "specs" / "048-x").mkdir(parents=True)
             (root / "specs" / "048-x" / "spec.md").write_text("# s\n", encoding="utf-8")
 
-            first = lc.sync_lifecycle(root)
+            with mock.patch.object(
+                lc, "evaluate_project", wraps=lc.evaluate_project
+            ) as evaluate:
+                first = lc.sync_lifecycle(root)
+            self.assertEqual(evaluate.call_count, 1)
             self.assertEqual(first["active"], "048-x")
             self.assertEqual(first["phase"], "spec")
             self.assertTrue(first["dashboard_updated"])
@@ -132,6 +139,42 @@ class ProjectLifecycleTests(unittest.TestCase):
 
             second = lc.sync_lifecycle(root)               # idempotent
             self.assertFalse(second["dashboard_updated"])
+
+    def test_sync_fails_closed_without_writing_for_unreadable_active_issue(self):
+        lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scaffold(root, {"048-x": "active"})
+            unreadable = root / "issues" / "048-x.md"
+            unreadable.write_bytes(b"\xff\xfe\x00\x80")
+            state_path = root / ".moduflow" / "state.json"
+            dashboard_path = root / "workspace" / "dashboard.md"
+            state_before = state_path.read_bytes()
+            dashboard_before = dashboard_path.read_bytes()
+
+            with mock.patch.object(
+                lc, "evaluate_project", wraps=lc.evaluate_project
+            ) as evaluate:
+                result = lc.sync_lifecycle(root)
+
+            self.assertEqual(evaluate.call_count, 1)
+            self.assertEqual(result["status"], "blocked")
+            self.assertFalse(result["dashboard_updated"])
+            self.assertTrue(result["errors"])
+            self.assertIn("ISSUE_SOURCE_UNREADABLE", result["errors"][0])
+            self.assertIn("UTF-8", result["errors"][0])
+            self.assertEqual(state_path.read_bytes(), state_before)
+            self.assertEqual(dashboard_path.read_bytes(), dashboard_before)
+
+            output = io.StringIO()
+            with mock.patch(
+                "sys.argv",
+                ["project_lifecycle.py", str(root), "--sync"],
+            ), contextlib.redirect_stdout(output):
+                exit_code = lc.main()
+            self.assertNotEqual(exit_code, 0)
+            self.assertEqual(state_path.read_bytes(), state_before)
+            self.assertEqual(dashboard_path.read_bytes(), dashboard_before)
 
     def test_infer_phase_from_spec_artifacts(self):
         lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
