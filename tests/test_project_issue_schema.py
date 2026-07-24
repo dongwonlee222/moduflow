@@ -967,6 +967,48 @@ next_command: {next_command}
         self.assertEqual(current["BIZ-B1"], "BIZ-B1, BIZ-B2")
         self.assertEqual(current["BIZ-B2"], "BIZ-B1, BIZ-B2")
 
+    def test_cycle_diagnostics_include_complete_strongly_connected_component(self):
+        issue_index = {
+            "BIZ-A": {
+                "issue_id": "BIZ-A",
+                "source_path": "issues/BIZ-A.md",
+                "lifecycle_state": "done",
+                "blocked_by": ["BIZ-B", "BIZ-C"],
+                "advisory_blocked_by": [],
+            },
+            "BIZ-B": {
+                "issue_id": "BIZ-B",
+                "source_path": "issues/BIZ-B.md",
+                "lifecycle_state": "done",
+                "blocked_by": ["BIZ-A"],
+                "advisory_blocked_by": [],
+            },
+            "BIZ-C": {
+                "issue_id": "BIZ-C",
+                "source_path": "issues/BIZ-C.md",
+                "lifecycle_state": "done",
+                "blocked_by": ["BIZ-B"],
+                "advisory_blocked_by": [],
+            },
+        }
+
+        diagnostics = self.schema.dependency_diagnostics(issue_index)
+        repeated = self.schema.dependency_diagnostics(issue_index)
+
+        expected = {
+            issue_id: [("ISSUE_DEPENDENCY_CYCLE", "BIZ-A, BIZ-B, BIZ-C")]
+            for issue_id in ("BIZ-A", "BIZ-B", "BIZ-C")
+        }
+        actual = {
+            issue_id: [
+                (diagnostic["code"], diagnostic["current"])
+                for diagnostic in issue_diagnostics
+            ]
+            for issue_id, issue_diagnostics in diagnostics.items()
+        }
+        self.assertEqual(actual, expected)
+        self.assertEqual(repeated, diagnostics)
+
     def test_unfinished_dependency_blocks_active_issue(self):
         self.write_versioned("BIZ-BLOCKER")
         self.write_versioned(

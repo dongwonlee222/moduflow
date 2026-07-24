@@ -943,6 +943,52 @@ def _dependency_diagnostic(issue, code, current, expected, message, recommendati
     )
 
 
+def _strongly_connected_components(graph):
+    """Return graph components using iterative Kosaraju traversal."""
+    visited = set()
+    finish_order = []
+    for start in sorted(graph):
+        if start in visited:
+            continue
+        visited.add(start)
+        stack = [(start, 0)]
+        while stack:
+            node, dependency_index = stack[-1]
+            dependencies = graph[node]
+            if dependency_index < len(dependencies):
+                dependency = dependencies[dependency_index]
+                stack[-1] = (node, dependency_index + 1)
+                if dependency not in visited:
+                    visited.add(dependency)
+                    stack.append((dependency, 0))
+                continue
+            stack.pop()
+            finish_order.append(node)
+
+    reverse_graph = {issue_id: [] for issue_id in graph}
+    for issue_id in sorted(graph):
+        for dependency in graph[issue_id]:
+            reverse_graph[dependency].append(issue_id)
+
+    assigned = set()
+    components = []
+    for start in reversed(finish_order):
+        if start in assigned:
+            continue
+        assigned.add(start)
+        component = set()
+        stack = [start]
+        while stack:
+            node = stack.pop()
+            component.add(node)
+            for predecessor in reversed(reverse_graph[node]):
+                if predecessor not in assigned:
+                    assigned.add(predecessor)
+                    stack.append(predecessor)
+        components.append(component)
+    return components
+
+
 def dependency_diagnostics(issue_index):
     """Return dependency errors by issue id using iterative graph traversal."""
     diagnostics = {}
@@ -986,40 +1032,14 @@ def dependency_diagnostics(issue_index):
                     ),
                 )
 
-    colors = {issue_id: 0 for issue_id in graph}
     cycle_groups = []
-    for start in sorted(graph):
-        if colors[start] != 0:
+    for component in _strongly_connected_components(graph):
+        if len(component) > 1:
+            cycle_groups.append(component)
             continue
-        colors[start] = 1
-        path = [start]
-        positions = {start: 0}
-        stack = [(start, 0)]
-        while stack:
-            node, dependency_index = stack[-1]
-            dependencies = graph[node]
-            if dependency_index >= len(dependencies):
-                stack.pop()
-                colors[node] = 2
-                positions.pop(node, None)
-                path.pop()
-                continue
-            dependency = dependencies[dependency_index]
-            stack[-1] = (node, dependency_index + 1)
-            dependency_color = colors[dependency]
-            if dependency_color == 0:
-                colors[dependency] = 1
-                positions[dependency] = len(path)
-                path.append(dependency)
-                stack.append((dependency, 0))
-            elif dependency_color == 1:
-                found = set(path[positions[dependency] :])
-                overlapping = [group for group in cycle_groups if group & found]
-                if overlapping:
-                    for group in overlapping:
-                        found.update(group)
-                        cycle_groups.remove(group)
-                cycle_groups.append(found)
+        issue_id = next(iter(component))
+        if issue_id in graph[issue_id]:
+            cycle_groups.append(component)
 
     for cycle_members in sorted(cycle_groups, key=lambda group: sorted(group)):
         current = ", ".join(sorted(cycle_members))
