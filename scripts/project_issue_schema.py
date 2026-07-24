@@ -7,9 +7,12 @@ as diagnostic data so reading a user-authored issue never invokes constructors
 or executes tags.
 """
 
+import argparse
 import copy
 import json
+import os
 import re
+import sys
 from pathlib import Path
 
 
@@ -20,6 +23,10 @@ PROJECTION_TO_LIFECYCLE = {
     "backlog": "backlog",
     "in_progress": "active",
     "done": "done",
+}
+LIFECYCLE_TO_PROJECTION = {
+    lifecycle: projection
+    for projection, lifecycle in PROJECTION_TO_LIFECYCLE.items()
 }
 DEFINITION_READINESS_EXCEPTIONS = frozenset()
 DEFINITION_READINESS_VALUES = frozenset(("draft", "ready"))
@@ -1349,6 +1356,12 @@ def evaluate_project(project_root):
     """Return evaluated issues and project-level dependency diagnostics."""
     project_root = Path(project_root)
     issues = list_normalized_issues(project_root)
+    return _evaluate_issue_records(project_root, issues)
+
+
+def _evaluate_issue_records(project_root, issues):
+    """Evaluate already-normalized records using the shared project evaluator."""
+    project_root = Path(project_root)
     issues_by_id = {}
     for issue in issues:
         issues_by_id.setdefault(issue["issue_id"], []).append(issue)
@@ -1390,3 +1403,531 @@ def evaluate_project(project_root):
         "issues": evaluated,
         "dependency_diagnostics": project_dependency_diagnostics,
     }
+
+
+def _routing_summary(issue):
+    return {
+        "lifecycle_state": issue.get("lifecycle_state"),
+        "readiness": issue.get("readiness"),
+        "recommended_next_command": issue.get("recommended_next_command"),
+    }
+
+
+def _diagnostic_summary(diagnostics):
+    return {
+        "errors": sum(
+            diagnostic.get("severity") == "error"
+            for diagnostic in diagnostics
+        ),
+        "warnings": sum(
+            diagnostic.get("severity") == "warning"
+            for diagnostic in diagnostics
+        ),
+        "codes": sorted(
+            {diagnostic.get("code") for diagnostic in diagnostics}
+        ),
+    }
+
+
+def _source_contract(project_root, issue):
+    """Return already-supported parsed fields and body for report projection."""
+    path = Path(project_root) / issue["source_path"]
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return path, {}, "", set()
+    frontmatter, body = split_frontmatter(text)
+    if frontmatter is None:
+        return path, {}, text, set()
+
+    parsed_fields, parse_diagnostics = parse_frontmatter_subset(
+        frontmatter, path.stem, issue["source_path"]
+    )
+    fields, type_diagnostics, type_invalid_fields = validate_contract_field_types(
+        parsed_fields, path.stem, issue["source_path"]
+    )
+    invalid_fields = {
+        diagnostic.get("field")
+        for diagnostic in parse_diagnostics
+        if diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
+        and diagnostic.get("field") in _CONTRACT_FIELDS
+    }
+    invalid_fields.update(type_invalid_fields)
+    return path, fields, body, invalid_fields
+
+
+def _safe_mapping(field, value, reason):
+    return {
+        "field": field,
+        "value": copy.deepcopy(value),
+        "reason": reason,
+    }
+
+
+def _human_decision(field, current, reason, recommendation):
+    return {
+        "field": field,
+        "current": copy.deepcopy(current),
+        "reason": reason,
+        "recommendation": recommendation,
+    }
+
+
+def _decision_from_diagnostic(diagnostic):
+    return _human_decision(
+        diagnostic.get("field") or "frontmatter",
+        diagnostic.get("current"),
+        diagnostic.get("message"),
+        diagnostic.get("recommendation"),
+    )
+
+
+def _unversioned_field_decisions(fields, body, invalid_fields):
+    validators = {
+        "issue_id": lambda value: isinstance(value, str) and bool(value.strip()),
+        "canonical_state": lambda value: value in LIFECYCLE_STATES,
+        "status": lambda value: value in PROJECTION_TO_LIFECYCLE,
+        "priority": lambda value: isinstance(value, str) and bool(value.strip()),
+        "definition_readiness": lambda value: value in DEFINITION_READINESS_VALUES,
+        "gate_state": lambda value: value in GATE_STATE_VALUES,
+        "depends_on": lambda value: isinstance(value, list)
+        and all(isinstance(item, str) for item in value),
+        "next_command": lambda value: isinstance(value, str) and bool(value.strip()),
+    }
+    decisions = []
+    for field in validators:
+        value = fields.get(field)
+        if field in invalid_fields:
+            reason = "The advisory field is malformed and cannot become canonical truth."
+        elif field not in fields:
+            reason = "The required canonical field is missing."
+        elif not validators[field](value):
+            reason = "The advisory value is not a supported canonical value."
+        else:
+            continue
+        decisions.append(
+            _human_decision(
+                field,
+                value,
+                reason,
+                f"Choose a valid {field} value before adding schema_version 0.1.0.",
+            )
+        )
+
+    canonical = fields.get("canonical_state")
+    status = fields.get("status")
+    if (
+        canonical in LIFECYCLE_STATES
+        and status in PROJECTION_TO_LIFECYCLE
+        and PROJECTION_TO_LIFECYCLE[status] != canonical
+    ):
+        decisions.append(
+            _human_decision(
+                "status",
+                status,
+                "The advisory status conflicts with advisory canonical_state.",
+                f"Choose status {LIFECYCLE_TO_PROJECTION[canonical]} or revise canonical_state.",
+            )
+        )
+    markdown_projection = markdown_status_projection(body)
+    if (
+        canonical in LIFECYCLE_STATES
+        and markdown_projection != canonical
+    ):
+        decisions.append(
+            _human_decision(
+                "markdown_status",
+                markdown_projection,
+                "Markdown Status conflicts with advisory canonical_state.",
+                "Choose the canonical lifecycle state before versioning the frontmatter.",
+            )
+        )
+    if "depends_on" in fields and has_markdown_blocked_by(body):
+        frontmatter_dependencies = _normalized_dependency_list(
+            fields.get("depends_on")
+        )
+        markdown_dependencies = _normalized_dependency_list(
+            markdown_blocked_by(body)
+        )
+        if set(frontmatter_dependencies) != set(markdown_dependencies):
+            decisions.append(
+                _human_decision(
+                    "depends_on",
+                    fields.get("depends_on"),
+                    "Frontmatter dependencies conflict with Markdown Blocked-by.",
+                    "Choose one dependency set before versioning the frontmatter.",
+                )
+            )
+    unique = {}
+    for decision in decisions:
+        unique.setdefault(decision["field"], decision)
+    return [unique[field] for field in sorted(unique)]
+
+
+def _classify_migration_issue(project_root, issue):
+    path, fields, body, invalid_fields = _source_contract(project_root, issue)
+    source_format = issue["source_format"]
+    safe_mappings = []
+    human_decisions = []
+    proposed_changes = {}
+    projected = copy.deepcopy(issue)
+    addressed = set()
+
+    if source_format == "frontmatter-0.1.0":
+        declared_canonical = fields.get("canonical_state")
+        canonical = (
+            declared_canonical
+            if declared_canonical in LIFECYCLE_STATES
+            else None
+        )
+        desired_status = LIFECYCLE_TO_PROJECTION.get(canonical)
+        for diagnostic in issue["diagnostics"]:
+            code = diagnostic["code"]
+            field = diagnostic.get("field")
+            if (
+                code == "ISSUE_STATE_PROJECTION_MISMATCH"
+                and field == "markdown_status"
+                and canonical in LIFECYCLE_STATES
+            ):
+                proposed_changes["align_markdown_status"] = canonical
+                safe_mappings.append(
+                    _safe_mapping(
+                        "markdown_status",
+                        canonical,
+                        "Markdown Status deterministically projects canonical_state.",
+                    )
+                )
+                addressed.add((code, field))
+            elif (
+                code in {
+                    "ISSUE_STATE_PROJECTION_MISMATCH",
+                    "ISSUE_AUX_STATUS_INVALID",
+                }
+                and field == "status"
+                and desired_status is not None
+            ):
+                proposed_changes["align_frontmatter_status"] = desired_status
+                safe_mappings.append(
+                    _safe_mapping(
+                        "status",
+                        desired_status,
+                        "Frontmatter status deterministically projects canonical_state.",
+                    )
+                )
+                addressed.add((code, field))
+                projected["projection_status"] = desired_status
+            elif (
+                code == "ISSUE_DEPENDENCY_PROJECTION_MISMATCH"
+                and field == "blocked_by"
+            ):
+                dependencies = list(issue.get("blocked_by") or [])
+                proposed_changes["align_dependency_projection"] = dependencies
+                safe_mappings.append(
+                    _safe_mapping(
+                        "markdown_blocked_by",
+                        dependencies,
+                        "Markdown Blocked-by deterministically projects depends_on.",
+                    )
+                )
+                addressed.add((code, field))
+            elif code in {
+                "ISSUE_SCHEMA_MALFORMED",
+                "ISSUE_DUPLICATE_FIELD",
+                "ISSUE_SCHEMA_UNSUPPORTED",
+            } or (
+                code == "ISSUE_STATE_PROJECTION_MISMATCH"
+                and field in {"canonical_state", "phase"}
+            ):
+                human_decisions.append(_decision_from_diagnostic(diagnostic))
+
+        projected["diagnostics"] = [
+            copy.deepcopy(diagnostic)
+            for diagnostic in _parser_diagnostics(projected)
+            if (diagnostic["code"], diagnostic.get("field")) not in addressed
+        ]
+
+    elif source_format == "frontmatter-unversioned":
+        human_decisions.extend(
+            _unversioned_field_decisions(fields, body, invalid_fields)
+        )
+        for field in (
+            "issue_id",
+            "canonical_state",
+            "status",
+            "priority",
+            "definition_readiness",
+            "gate_state",
+            "depends_on",
+            "next_command",
+        ):
+            if field in fields and field not in {
+                decision["field"] for decision in human_decisions
+            }:
+                safe_mappings.append(
+                    _safe_mapping(
+                        field,
+                        fields[field],
+                        "The advisory value is syntactically valid but remains a proposal until the full contract is unambiguous.",
+                    )
+                )
+        malformed = [
+            diagnostic
+            for diagnostic in issue["diagnostics"]
+            if diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
+        ]
+        human_decisions.extend(
+            _decision_from_diagnostic(diagnostic) for diagnostic in malformed
+        )
+        if not human_decisions:
+            proposed_changes["set_schema_version"] = "0.1.0"
+            safe_mappings.append(
+                _safe_mapping(
+                    "schema_version",
+                    "0.1.0",
+                    "Every required canonical field maps unambiguously.",
+                )
+            )
+            projected_fields = dict(fields)
+            projected_fields["schema_version"] = "0.1.0"
+            projected = normalize_frontmatter_0_1_0(
+                path,
+                project_root,
+                projected_fields,
+                body,
+            )
+        else:
+            projected["diagnostics"] = _parser_diagnostics(projected)
+
+    elif source_format == "frontmatter-unsupported":
+        human_decisions.append(
+            _human_decision(
+                "schema_version",
+                issue.get("schema_version"),
+                "The declared schema version is unsupported.",
+                "Choose a supported schema and map its fields explicitly.",
+            )
+        )
+        for field in sorted(issue.get("extensions", {})):
+            human_decisions.append(
+                _human_decision(
+                    field,
+                    issue["extensions"][field],
+                    "The field is unknown to the supported schema.",
+                    "Decide whether to preserve, rename, or remove this field.",
+                )
+            )
+        projected["diagnostics"] = _parser_diagnostics(projected)
+
+    else:
+        human_decisions.extend(
+            _decision_from_diagnostic(diagnostic)
+            for diagnostic in issue["diagnostics"]
+            if diagnostic["code"] in {
+                "ISSUE_SCHEMA_MALFORMED",
+                "ISSUE_DUPLICATE_FIELD",
+            }
+        )
+        projected["diagnostics"] = _parser_diagnostics(projected)
+
+    safe_mappings.sort(key=lambda mapping: mapping["field"])
+    human_decisions.sort(
+        key=lambda decision: (
+            decision["field"],
+            repr(decision.get("current")),
+            decision["reason"],
+        )
+    )
+    proposed_changes = {
+        key: proposed_changes[key] for key in sorted(proposed_changes)
+    }
+    return {
+        "safe_mappings": safe_mappings,
+        "human_decisions": human_decisions,
+        "proposed_changes": proposed_changes,
+        "projected": projected,
+    }
+
+
+def build_migration_report(project_root):
+    """Return deterministic migration proposals without modifying source files."""
+    project_root = Path(project_root)
+    evaluated_project = evaluate_project(project_root)
+    evaluated_issues = sorted(
+        evaluated_project["issues"],
+        key=lambda issue: (issue["source_path"], issue["issue_id"]),
+    )
+    classifications = {
+        issue["source_path"]: _classify_migration_issue(project_root, issue)
+        for issue in evaluated_issues
+    }
+    projected_records = [
+        classifications[issue["source_path"]]["projected"]
+        for issue in evaluated_issues
+    ]
+    projected_project = _evaluate_issue_records(project_root, projected_records)
+    projected_by_path = {
+        issue["source_path"]: issue for issue in projected_project["issues"]
+    }
+
+    entries = []
+    for issue in evaluated_issues:
+        classification = classifications[issue["source_path"]]
+        before = _routing_summary(issue)
+        projected_issue = projected_by_path[issue["source_path"]]
+        after = _routing_summary(projected_issue)
+        if classification["human_decisions"] and (
+            after["readiness"] == "ready"
+            or str(after["recommended_next_command"]).startswith(
+                "product:execute"
+            )
+        ):
+            after = copy.deepcopy(before)
+            after["readiness"] = "blocked"
+            after["recommended_next_command"] = "product:doctor"
+
+        declared = issue.get("declared_next_command")
+        after_command = after["recommended_next_command"]
+        if (
+            not classification["human_decisions"]
+            and declared is not None
+            and declared != after_command
+        ):
+            classification["proposed_changes"]["align_next_command"] = after_command
+            classification["proposed_changes"] = {
+                key: classification["proposed_changes"][key]
+                for key in sorted(classification["proposed_changes"])
+            }
+            classification["safe_mappings"].append(
+                _safe_mapping(
+                    "next_command",
+                    after_command,
+                    "The shared evaluator deterministically derives the post-migration route.",
+                )
+            )
+            classification["safe_mappings"].sort(
+                key=lambda mapping: mapping["field"]
+            )
+
+        diagnostics = copy.deepcopy(issue["diagnostics"])
+        migration_required = bool(
+            diagnostics
+            or classification["proposed_changes"]
+            or classification["human_decisions"]
+        )
+        entries.append(
+            {
+                "issue_id": issue["issue_id"],
+                "source_path": issue["source_path"],
+                "source_format": issue["source_format"],
+                "schema_version": issue.get("schema_version"),
+                "lifecycle_state": issue.get("lifecycle_state"),
+                "readiness": issue.get("readiness"),
+                "diagnostic_summary": _diagnostic_summary(diagnostics),
+                "diagnostics": diagnostics,
+                "safe_mappings": classification["safe_mappings"],
+                "human_decisions": classification["human_decisions"],
+                "proposed_changes": classification["proposed_changes"],
+                "routing_before": before,
+                "routing_after": after,
+                "migration_required": migration_required,
+            }
+        )
+
+    source_formats = {}
+    for entry in entries:
+        source_format = entry["source_format"]
+        source_formats[source_format] = source_formats.get(source_format, 0) + 1
+    source_formats = {
+        key: source_formats[key] for key in sorted(source_formats)
+    }
+    diagnostics = [
+        diagnostic
+        for entry in entries
+        for diagnostic in entry["diagnostics"]
+    ]
+    return {
+        "schema": "moduflow.issue-migration-report.v1",
+        "project_root": str(project_root.resolve()),
+        "summary": {
+            "issues_scanned": len(entries),
+            "source_formats": source_formats,
+            "errors": sum(
+                diagnostic.get("severity") == "error"
+                for diagnostic in diagnostics
+            ),
+            "warnings": sum(
+                diagnostic.get("severity") == "warning"
+                for diagnostic in diagnostics
+            ),
+            "migration_required": sum(
+                entry["migration_required"] for entry in entries
+            ),
+        },
+        "issues": entries,
+    }
+
+
+def _error_report(code, project_root, message):
+    return {
+        "schema": "moduflow.issue-migration-report.error.v1",
+        "project_root": str(Path(project_root).resolve()),
+        "error": {
+            "code": code,
+            "message": message,
+        },
+    }
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Inspect ModuFlow issue schema migrations without writing files."
+    )
+    parser.add_argument("project_path")
+    parser.add_argument("--report", action="store_true", required=True)
+    args = parser.parse_args(argv)
+
+    project_root = Path(args.project_path)
+    if not project_root.is_dir() or not os.access(
+        project_root, os.R_OK | os.X_OK
+    ):
+        print(
+            json.dumps(
+                _error_report(
+                    "PROJECT_ROOT_INVALID",
+                    project_root,
+                    "Project root must be a readable directory.",
+                ),
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+        return 2
+
+    try:
+        report = build_migration_report(project_root)
+        if (
+            report.get("schema") != "moduflow.issue-migration-report.v1"
+            or not isinstance(report.get("issues"), list)
+            or not isinstance(report.get("summary"), dict)
+        ):
+            raise ValueError("migration report contract validation failed")
+    except Exception as exc:
+        print(
+            json.dumps(
+                _error_report(
+                    "REPORT_INTERNAL_ERROR",
+                    project_root,
+                    f"Migration report failed: {exc}",
+                ),
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+        return 1
+
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

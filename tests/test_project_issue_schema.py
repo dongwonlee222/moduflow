@@ -1,4 +1,8 @@
+import contextlib
+import hashlib
 import importlib.util
+import io
+import json
 import shutil
 import tempfile
 import unittest
@@ -1795,6 +1799,281 @@ next_command: product:execute BIZ-ADVISORY
             self.assertEqual(by_id[issue_id]["recommended_next_command"], "product:status")
             self.assertNotEqual(by_id[issue_id]["readiness"], "ready")
         self.assertEqual(self.schema.DEFINITION_READINESS_EXCEPTIONS, frozenset())
+
+
+class ProjectIssueMigrationReportTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.schema = load_module(
+            "project_issue_schema_migration", "scripts/project_issue_schema.py"
+        )
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        (self.root / "issues").mkdir()
+        (self.root / "specs" / "BIZ-VERSIONED").mkdir(parents=True)
+        for artifact in ("spec", "plan", "tasks"):
+            (
+                self.root
+                / "specs"
+                / "BIZ-VERSIONED"
+                / f"{artifact}.md"
+            ).write_text(f"# {artifact}\n", encoding="utf-8")
+
+        self.write_issue(
+            "BIZ-MARKDOWN.md",
+            "# Issue: `BIZ-MARKDOWN` Compatible\n\n"
+            "**Status: backlog** — created 2026-07-24.\n",
+        )
+        self.write_issue(
+            "BIZ-VERSIONED.md",
+            """---
+schema_version: 0.1.0
+issue_id: BIZ-VERSIONED
+canonical_state: backlog
+status: ready
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:execute BIZ-VERSIONED
+---
+# Issue: `BIZ-VERSIONED` Deterministic projection fixes
+
+**Status: done**
+**Blocked-by: `BIZ-OLD`**
+""",
+        )
+        self.write_issue(
+            "BIZ-UNVERSIONED.md",
+            """---
+depends_on: []
+definition_readiness: ready
+---
+# Issue: `BIZ-UNVERSIONED` Missing canonical fields
+
+**Status: backlog**
+""",
+        )
+        self.write_issue(
+            "BIZ-UNSUPPORTED.md",
+            """---
+schema_version: 9.9.9
+issue_id: BIZ-UNSUPPORTED
+custom_mode: future
+---
+# Issue: `BIZ-UNSUPPORTED` Unsupported
+
+**Status: backlog**
+""",
+        )
+
+    def write_issue(self, name, content):
+        path = self.root / "issues" / name
+        path.write_text(content, encoding="utf-8")
+        return path
+
+    def issue_hashes(self):
+        return {
+            path.relative_to(self.root).as_posix(): hashlib.sha256(
+                path.read_bytes()
+            ).hexdigest()
+            for path in sorted((self.root / "issues").glob("*.md"))
+        }
+
+    def by_id(self, report):
+        return {issue["issue_id"]: issue for issue in report["issues"]}
+
+    def test_build_report_has_deterministic_contract_and_is_read_only(self):
+        before_hashes = self.issue_hashes()
+
+        report = self.schema.build_migration_report(self.root)
+        repeated = self.schema.build_migration_report(self.root)
+
+        self.assertEqual(report["schema"], "moduflow.issue-migration-report.v1")
+        self.assertEqual(report["project_root"], str(self.root.resolve()))
+        self.assertEqual(report["summary"]["issues_scanned"], 4)
+        self.assertEqual(
+            report["summary"]["source_formats"],
+            {
+                "frontmatter-0.1.0": 1,
+                "frontmatter-unsupported": 1,
+                "frontmatter-unversioned": 1,
+                "markdown": 1,
+            },
+        )
+        self.assertIn("safe_mappings", report["issues"][0])
+        self.assertIn("human_decisions", report["issues"][0])
+        self.assertIn("routing_before", report["issues"][0])
+        self.assertIn("routing_after", report["issues"][0])
+        self.assertEqual(
+            [issue["source_path"] for issue in report["issues"]],
+            sorted(issue["source_path"] for issue in report["issues"]),
+        )
+        self.assertEqual(report, repeated)
+        self.assertEqual(before_hashes, self.issue_hashes())
+
+    def test_compatibility_policy_classifies_proposals_conservatively(self):
+        report = self.schema.build_migration_report(self.root)
+        by_id = self.by_id(report)
+
+        markdown = by_id["BIZ-MARKDOWN"]
+        self.assertFalse(markdown["migration_required"])
+        self.assertEqual(markdown["proposed_changes"], {})
+        self.assertEqual(markdown["human_decisions"], [])
+
+        versioned = by_id["BIZ-VERSIONED"]
+        self.assertEqual(
+            versioned["proposed_changes"],
+            {
+                "align_dependency_projection": [],
+                "align_frontmatter_status": "backlog",
+                "align_markdown_status": "backlog",
+            },
+        )
+        self.assertEqual(versioned["human_decisions"], [])
+        self.assertEqual(
+            versioned["routing_before"]["recommended_next_command"],
+            "product:doctor",
+        )
+        self.assertEqual(
+            versioned["routing_after"]["recommended_next_command"],
+            "product:execute BIZ-VERSIONED",
+        )
+
+        unversioned = by_id["BIZ-UNVERSIONED"]
+        self.assertNotIn("set_schema_version", unversioned["proposed_changes"])
+        self.assertTrue(
+            {"issue_id", "canonical_state", "status", "priority",
+             "gate_state", "next_command"}
+            <= {decision["field"] for decision in unversioned["human_decisions"]}
+        )
+        self.assertNotIn(
+            "product:execute",
+            unversioned["routing_after"]["recommended_next_command"],
+        )
+
+        unsupported = by_id["BIZ-UNSUPPORTED"]
+        self.assertTrue(unsupported["migration_required"])
+        self.assertIn(
+            "schema_version",
+            {decision["field"] for decision in unsupported["human_decisions"]},
+        )
+        self.assertEqual(unsupported["routing_after"]["readiness"], "blocked")
+        self.assertEqual(
+            unsupported["routing_after"]["recommended_next_command"],
+            "product:doctor",
+        )
+
+    def test_complete_unversioned_contract_only_proposes_schema_when_unambiguous(self):
+        path = self.root / "issues" / "BIZ-UNVERSIONED.md"
+        path.write_text(
+            """---
+issue_id: BIZ-UNVERSIONED
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:spec BIZ-UNVERSIONED
+---
+# Issue: `BIZ-UNVERSIONED` Complete advisory contract
+
+**Status: backlog**
+""",
+            encoding="utf-8",
+        )
+
+        issue = self.by_id(
+            self.schema.build_migration_report(self.root)
+        )["BIZ-UNVERSIONED"]
+
+        self.assertEqual(
+            issue["proposed_changes"]["set_schema_version"], "0.1.0"
+        )
+        self.assertEqual(issue["human_decisions"], [])
+        self.assertNotEqual(
+            issue["routing_after"]["recommended_next_command"],
+            "product:execute BIZ-UNVERSIONED",
+        )
+
+    def test_invalid_canonical_state_is_not_used_as_safe_projection_truth(self):
+        path = self.root / "issues" / "BIZ-VERSIONED.md"
+        path.write_text(
+            path.read_text(encoding="utf-8").replace(
+                "canonical_state: backlog", "canonical_state: unknown"
+            ),
+            encoding="utf-8",
+        )
+
+        issue = self.by_id(
+            self.schema.build_migration_report(self.root)
+        )["BIZ-VERSIONED"]
+
+        self.assertNotIn(
+            "align_frontmatter_status", issue["proposed_changes"]
+        )
+        self.assertIn(
+            "canonical_state",
+            {decision["field"] for decision in issue["human_decisions"]},
+        )
+        self.assertNotIn(
+            "product:execute",
+            issue["routing_after"]["recommended_next_command"],
+        )
+
+    def test_malformed_input_preserves_hard_diagnostics_and_blocked_projection(self):
+        self.write_issue(
+            "BIZ-MALFORMED.md",
+            "---\nschema_version: [0.1.0]\n---\n"
+            "# Issue: `BIZ-MALFORMED` Malformed\n\n**Status: backlog**\n",
+        )
+
+        issue = self.by_id(
+            self.schema.build_migration_report(self.root)
+        )["BIZ-MALFORMED"]
+
+        self.assertIn(
+            "ISSUE_SCHEMA_MALFORMED",
+            {diagnostic["code"] for diagnostic in issue["diagnostics"]},
+        )
+        self.assertTrue(issue["human_decisions"])
+        self.assertEqual(issue["routing_after"]["readiness"], "blocked")
+        self.assertEqual(
+            issue["routing_after"]["recommended_next_command"], "product:doctor"
+        )
+
+    def test_cli_prints_json_only_returns_zero_and_does_not_write(self):
+        before_hashes = self.issue_hashes()
+        stdout = io.StringIO()
+
+        with contextlib.redirect_stdout(stdout):
+            exit_code = self.schema.main([str(self.root), "--report"])
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(payload["schema"], "moduflow.issue-migration-report.v1")
+        self.assertEqual(before_hashes, self.issue_hashes())
+
+    def test_cli_rejects_write_and_returns_stable_json_for_invalid_root(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                self.schema.main([str(self.root), "--report", "--write"])
+
+        stdout = io.StringIO()
+        missing = self.root / "missing"
+        with contextlib.redirect_stdout(stdout):
+            exit_code = self.schema.main([str(missing), "--report"])
+
+        payload = json.loads(stdout.getvalue())
+        self.assertNotEqual(exit_code, 0)
+        self.assertEqual(
+            payload["schema"], "moduflow.issue-migration-report.error.v1"
+        )
+        self.assertEqual(payload["error"]["code"], "PROJECT_ROOT_INVALID")
 
 
 if __name__ == "__main__":
