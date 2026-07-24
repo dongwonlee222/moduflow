@@ -928,6 +928,114 @@ next_command: {next_command}
             "product:spec BIZ-040",
         )
 
+    def test_invalid_auxiliary_status_routes_doctor_instead_of_execute(self):
+        for label, status in (
+            ("READY", "ready"),
+            ("BLOCKED", "blocked"),
+            ("UNKNOWN", "nonsense"),
+        ):
+            issue_id = f"BIZ-AUX-{label}"
+            self.write_versioned(issue_id, status=status)
+            self.add_artifacts(issue_id, "spec", "plan", "tasks")
+
+        by_id = self.evaluated_by_id()
+
+        for issue_id in ("BIZ-AUX-READY", "BIZ-AUX-BLOCKED", "BIZ-AUX-UNKNOWN"):
+            with self.subTest(issue_id=issue_id):
+                issue = by_id[issue_id]
+                self.assertIn("ISSUE_AUX_STATUS_INVALID", codes(issue))
+                self.assertEqual(issue["readiness"], "blocked")
+                self.assertEqual(
+                    issue["recommended_next_command"], "product:doctor"
+                )
+
+    def test_dependency_route_precedes_invalid_auxiliary_status(self):
+        self.write_versioned("BIZ-AUX-BLOCKER")
+        self.write_versioned(
+            "BIZ-AUX-DEPENDENCY",
+            status="ready",
+            dependencies=("BIZ-AUX-BLOCKER",),
+        )
+        self.add_artifacts("BIZ-AUX-DEPENDENCY", "spec", "plan", "tasks")
+
+        issue = self.evaluated_by_id()["BIZ-AUX-DEPENDENCY"]
+
+        self.assertIn("ISSUE_AUX_STATUS_INVALID", codes(issue))
+        self.assertIn("ISSUE_DEPENDENCY_UNMET", codes(issue))
+        self.assertEqual(issue["readiness"], "blocked")
+        self.assertEqual(issue["recommended_next_command"], "product:status")
+
+    def test_structural_recovery_routes_precede_invalid_auxiliary_status(self):
+        self.write_versioned(
+            "BIZ-AUX-DEFINITION", status="ready", definition="draft"
+        )
+        self.write_versioned("BIZ-AUX-ARTIFACT", status="ready")
+        self.write_versioned(
+            "BIZ-AUX-PHASE", status="ready", phase="release"
+        )
+        self.add_artifacts("BIZ-AUX-PHASE", "spec", "plan", "tasks")
+        self.write_versioned(
+            "BIZ-AUX-GATE", status="ready", gate="pending"
+        )
+        self.add_artifacts("BIZ-AUX-GATE", "spec", "plan", "tasks")
+
+        by_id = self.evaluated_by_id()
+
+        expected = {
+            "BIZ-AUX-DEFINITION": "product:spec BIZ-AUX-DEFINITION",
+            "BIZ-AUX-ARTIFACT": "product:spec BIZ-AUX-ARTIFACT",
+            "BIZ-AUX-PHASE": "product:doctor",
+            "BIZ-AUX-GATE": "product:review BIZ-AUX-GATE",
+        }
+        for issue_id, command in expected.items():
+            with self.subTest(issue_id=issue_id):
+                self.assertIn("ISSUE_AUX_STATUS_INVALID", codes(by_id[issue_id]))
+                self.assertEqual(
+                    by_id[issue_id]["recommended_next_command"], command
+                )
+
+    def test_duplicate_issue_ids_are_isolated_and_route_doctor(self):
+        first = self.write_versioned("BIZ-DUPLICATE")
+        first.rename(self.root / "issues" / "first.md")
+        second = self.write_versioned("BIZ-DUPLICATE")
+        second.rename(self.root / "issues" / "second.md")
+        self.add_artifacts("BIZ-DUPLICATE", "spec", "plan", "tasks")
+
+        project = self.schema.evaluate_project(self.root)
+        duplicates = [
+            issue
+            for issue in project["issues"]
+            if issue["issue_id"] == "BIZ-DUPLICATE"
+        ]
+
+        self.assertEqual(len(duplicates), 2)
+        self.assertEqual(project["dependency_diagnostics"], {})
+        expected_paths = ["issues/first.md", "issues/second.md"]
+        self.assertEqual(
+            sorted(issue["source_path"] for issue in duplicates), expected_paths
+        )
+        for issue in duplicates:
+            with self.subTest(source_path=issue["source_path"]):
+                duplicate = next(
+                    diagnostic
+                    for diagnostic in issue["diagnostics"]
+                    if diagnostic["code"] == "ISSUE_DUPLICATE_FIELD"
+                )
+                self.assertEqual(duplicate["field"], "issue_id")
+                self.assertEqual(duplicate["current"], expected_paths)
+                self.assertEqual(duplicate["expected"], "a unique issue id")
+                self.assertEqual(duplicate["source_path"], issue["source_path"])
+                self.assertTrue(
+                    all(
+                        diagnostic["source_path"] == issue["source_path"]
+                        for diagnostic in issue["diagnostics"]
+                    )
+                )
+                self.assertEqual(issue["readiness"], "blocked")
+                self.assertEqual(
+                    issue["recommended_next_command"], "product:doctor"
+                )
+
     def test_dangling_self_and_cycle_dependencies_are_hard_errors(self):
         self.write_versioned("BIZ-DANGLING", dependencies=("BIZ-MISSING",))
         self.write_versioned("BIZ-SELF", dependencies=("BIZ-SELF",))
@@ -1080,6 +1188,33 @@ next_command: product:execute BIZ-ADVISORY
         diagnostics = self.schema.dependency_diagnostics(issue_index)
 
         self.assertEqual(diagnostics, {})
+
+    def test_project_dependency_diagnostics_do_not_alias_issue_diagnostics(self):
+        self.write_versioned("BIZ-ALIAS-BLOCKER")
+        self.write_versioned(
+            "BIZ-ALIAS-WORK", dependencies=("BIZ-ALIAS-BLOCKER",)
+        )
+
+        project = self.schema.evaluate_project(self.root)
+        issue = next(
+            item for item in project["issues"] if item["issue_id"] == "BIZ-ALIAS-WORK"
+        )
+        project_diagnostic = next(
+            item
+            for item in project["dependency_diagnostics"]["BIZ-ALIAS-WORK"]
+            if item["code"] == "ISSUE_DEPENDENCY_UNMET"
+        )
+        issue_diagnostic = next(
+            item
+            for item in issue["diagnostics"]
+            if item["code"] == "ISSUE_DEPENDENCY_UNMET"
+        )
+        original = issue_diagnostic["current"]
+
+        project_diagnostic["current"] = "mutated"
+
+        self.assertIsNot(project_diagnostic, issue_diagnostic)
+        self.assertEqual(issue_diagnostic["current"], original)
 
     def test_artifact_index_exposes_coverage_and_ordered_phase(self):
         issue_ids = [f"BIZ-{name.upper()}" for name in (
@@ -1236,6 +1371,30 @@ next_command: product:execute BIZ-ADVISORY
                 self.assertEqual(diagnostic["expected"], expected)
                 self.assertEqual(set(diagnostic), REQUIRED_DIAGNOSTIC_KEYS)
 
+    def test_malformed_structural_fields_do_not_add_derived_diagnostics(self):
+        self.write_versioned("BIZ-DEF-TYPE", definition=["ready"])
+        self.write_versioned("BIZ-GATE-TYPE", gate=["passed"])
+        for issue_id in ("BIZ-DEF-TYPE", "BIZ-GATE-TYPE"):
+            self.add_artifacts(issue_id, "spec", "plan", "tasks")
+
+        by_id = self.evaluated_by_id()
+
+        for issue_id, field, derived_code in (
+            ("BIZ-DEF-TYPE", "definition_readiness", "ISSUE_DEFINITION_NOT_READY"),
+            ("BIZ-GATE-TYPE", "gate_state", "ISSUE_GATE_BLOCKED"),
+        ):
+            with self.subTest(issue_id=issue_id):
+                field_diagnostics = [
+                    diagnostic
+                    for diagnostic in by_id[issue_id]["diagnostics"]
+                    if diagnostic["field"] == field
+                ]
+                self.assertEqual(
+                    [diagnostic["code"] for diagnostic in field_diagnostics],
+                    ["ISSUE_SCHEMA_MALFORMED"],
+                )
+                self.assertNotIn(derived_code, codes(by_id[issue_id]))
+
     def test_declared_phase_mapping_accepts_only_actual_artifact_phase(self):
         cases = {
             "BIZ-PHASE-ISSUE": ("issue", ()),
@@ -1375,6 +1534,110 @@ next_command: product:execute BIZ-ADVISORY
             second["recommended_next_command"], first["recommended_next_command"]
         )
         self.assertEqual(second["diagnostics"], first["diagnostics"])
+
+    def test_re_evaluation_removes_resolved_dependency_diagnostics(self):
+        self.write_versioned("BIZ-REEVAL-BLOCKER")
+        self.write_versioned(
+            "BIZ-REEVAL-WORK", dependencies=("BIZ-REEVAL-BLOCKER",)
+        )
+        self.add_artifacts("BIZ-REEVAL-WORK", "spec", "plan", "tasks")
+        project = self.schema.evaluate_project(self.root)
+        by_id = {issue["issue_id"]: issue for issue in project["issues"]}
+        first = by_id["BIZ-REEVAL-WORK"]
+        by_id["BIZ-REEVAL-BLOCKER"] = dict(by_id["BIZ-REEVAL-BLOCKER"])
+        by_id["BIZ-REEVAL-BLOCKER"]["lifecycle_state"] = "done"
+
+        second = self.schema.evaluate_issue(
+            first,
+            by_id,
+            self.schema.build_artifact_index(self.root, by_id),
+        )
+
+        self.assertNotIn("ISSUE_DEPENDENCY_UNMET", codes(second))
+        self.assertNotIn("ISSUE_NEXT_COMMAND_INVALID", codes(second))
+        self.assertEqual(second["readiness"], "ready")
+        self.assertEqual(
+            second["recommended_next_command"],
+            "product:execute BIZ-REEVAL-WORK",
+        )
+
+    def test_re_evaluation_removes_aligned_phase_diagnostic(self):
+        self.write_versioned("BIZ-REEVAL-PHASE", phase="release")
+        self.add_artifacts("BIZ-REEVAL-PHASE", "spec", "plan", "tasks")
+        first = self.evaluated_by_id()["BIZ-REEVAL-PHASE"]
+        self.assertTrue(
+            any(
+                diagnostic["code"] == "ISSUE_STATE_PROJECTION_MISMATCH"
+                and diagnostic["field"] == "phase"
+                for diagnostic in first["diagnostics"]
+            )
+        )
+        self.add_artifacts("BIZ-REEVAL-PHASE", "review", "release")
+
+        second = self.schema.evaluate_issue(
+            first,
+            {"BIZ-REEVAL-PHASE": first},
+            self.schema.build_artifact_index(self.root, ["BIZ-REEVAL-PHASE"]),
+        )
+
+        self.assertFalse(
+            any(
+                diagnostic["code"] == "ISSUE_STATE_PROJECTION_MISMATCH"
+                and diagnostic["field"] == "phase"
+                for diagnostic in second["diagnostics"]
+            )
+        )
+        self.assertNotIn("ISSUE_NEXT_COMMAND_INVALID", codes(second))
+        self.assertEqual(second["readiness"], "ready")
+        self.assertEqual(
+            second["recommended_next_command"],
+            "product:execute BIZ-REEVAL-PHASE",
+        )
+
+    def test_re_evaluation_preserves_parser_projection_diagnostics(self):
+        self.write_versioned("BIZ-REEVAL-PARSER", markdown_status="done")
+        self.add_artifacts("BIZ-REEVAL-PARSER", "spec", "plan", "tasks")
+        first = self.evaluated_by_id()["BIZ-REEVAL-PARSER"]
+        parser_diagnostic = next(
+            diagnostic
+            for diagnostic in first["diagnostics"]
+            if diagnostic["code"] == "ISSUE_STATE_PROJECTION_MISMATCH"
+            and diagnostic["field"] == "markdown_status"
+        )
+
+        second = self.schema.evaluate_issue(
+            first,
+            {"BIZ-REEVAL-PARSER": first},
+            self.schema.build_artifact_index(self.root, ["BIZ-REEVAL-PARSER"]),
+        )
+
+        self.assertIn(parser_diagnostic, second["diagnostics"])
+        self.assertEqual(
+            second["recommended_next_command"], "product:doctor"
+        )
+
+    def test_re_evaluation_removes_resolved_duplicate_id_diagnostic(self):
+        first_path = self.write_versioned("BIZ-REEVAL-DUP")
+        first_path.rename(self.root / "issues" / "first.md")
+        second_path = self.write_versioned("BIZ-REEVAL-DUP")
+        second_path.rename(self.root / "issues" / "second.md")
+        self.add_artifacts("BIZ-REEVAL-DUP", "spec", "plan", "tasks")
+        duplicate = self.schema.evaluate_project(self.root)["issues"][0]
+        self.assertIn("ISSUE_DUPLICATE_FIELD", codes(duplicate))
+
+        reevaluated = self.schema.evaluate_issue(
+            duplicate,
+            {"BIZ-REEVAL-DUP": duplicate},
+            self.schema.build_artifact_index(self.root, ["BIZ-REEVAL-DUP"]),
+        )
+
+        self.assertNotIn("ISSUE_DUPLICATE_FIELD", codes(reevaluated))
+        self.assertNotIn("ISSUE_NEXT_COMMAND_INVALID", codes(reevaluated))
+        self.assertEqual(reevaluated["readiness"], "ready")
+        self.assertEqual(
+            reevaluated["recommended_next_command"],
+            "product:execute BIZ-REEVAL-DUP",
+        )
 
     def test_declared_command_skip_is_diagnosed_without_overwriting_route(self):
         self.write_versioned(

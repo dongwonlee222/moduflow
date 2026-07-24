@@ -7,6 +7,7 @@ as diagnostic data so reading a user-authored issue never invokes constructors
 or executes tags.
 """
 
+import copy
 import json
 import re
 from pathlib import Path
@@ -34,7 +35,11 @@ DECLARED_PHASE_TO_ARTIFACT_PHASE = {
 }
 
 _ARTIFACT_PHASES = ("spec", "plan", "tasks", "review", "release")
-_SCHEMA_ERROR_CODES = {"ISSUE_SCHEMA_MALFORMED", "ISSUE_SCHEMA_UNSUPPORTED"}
+_SCHEMA_ERROR_CODES = {
+    "ISSUE_SCHEMA_MALFORMED",
+    "ISSUE_SCHEMA_UNSUPPORTED",
+    "ISSUE_DUPLICATE_FIELD",
+}
 _PROJECTION_ERROR_CODES = {
     "ISSUE_STATE_PROJECTION_MISMATCH",
     "ISSUE_DEPENDENCY_PROJECTION_MISMATCH",
@@ -1098,7 +1103,34 @@ def _append_unique_diagnostic(issue, diagnostic):
         == identity
         for existing in issue["diagnostics"]
     ):
-        issue["diagnostics"].append(diagnostic)
+        issue["diagnostics"].append(copy.deepcopy(diagnostic))
+
+
+def _is_evaluator_diagnostic(diagnostic):
+    code = diagnostic["code"]
+    if code in _DEPENDENCY_ERROR_CODES or code in {
+        "ISSUE_DEFINITION_NOT_READY",
+        "ISSUE_GATE_BLOCKED",
+        "ISSUE_NEXT_COMMAND_INVALID",
+    }:
+        return True
+    if (
+        code == "ISSUE_STATE_PROJECTION_MISMATCH"
+        and diagnostic["field"] == "phase"
+    ):
+        return True
+    return (
+        code == "ISSUE_DUPLICATE_FIELD"
+        and diagnostic["field"] == "issue_id"
+    )
+
+
+def _parser_diagnostics(issue):
+    return [
+        copy.deepcopy(diagnostic)
+        for diagnostic in issue.get("diagnostics", [])
+        if not _is_evaluator_diagnostic(diagnostic)
+    ]
 
 
 def _is_recognized_versioned(issue):
@@ -1111,7 +1143,12 @@ def _append_structural_state_diagnostics(issue):
 
     issue_id = issue["issue_id"]
     definition = issue.get("definition_readiness")
-    if definition != "ready":
+    definition_is_malformed = any(
+        diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
+        and diagnostic["field"] == "definition_readiness"
+        for diagnostic in issue["diagnostics"]
+    )
+    if definition != "ready" and not definition_is_malformed:
         expected = (
             "ready" if definition == "draft" else "draft or ready"
         )
@@ -1129,7 +1166,12 @@ def _append_structural_state_diagnostics(issue):
         )
 
     gate = issue.get("gate_state")
-    if gate != "passed":
+    gate_is_malformed = any(
+        diagnostic["code"] == "ISSUE_SCHEMA_MALFORMED"
+        and diagnostic["field"] == "gate_state"
+        for diagnostic in issue["diagnostics"]
+    )
+    if gate != "passed" and not gate_is_malformed:
         expected = (
             "passed"
             if gate in GATE_STATE_VALUES
@@ -1213,12 +1255,14 @@ def derive_structural_route(issue, issue_index, artifact_index):
         and issue.get("gate_state") not in GATE_STATE_VALUES
     ):
         return "blocked", f"product:review {issue_id}"
+    if _has_diagnostic(issue, {"ISSUE_AUX_STATUS_INVALID"}):
+        return "blocked", "product:doctor"
     return "ready", f"product:execute {issue_id}"
 
 
 def _evaluate_issue_after_dependency(issue, issue_index, artifact_index):
     evaluated = dict(issue)
-    evaluated["diagnostics"] = list(issue.get("diagnostics", []))
+    evaluated["diagnostics"] = copy.deepcopy(issue.get("diagnostics", []))
     coverage = artifact_index.get(issue["issue_id"], {})
     evaluated["artifact_phase"] = coverage.get("artifact_phase", "issue")
     _append_structural_state_diagnostics(evaluated)
@@ -1249,7 +1293,7 @@ def _evaluate_issue_after_dependency(issue, issue_index, artifact_index):
 def evaluate_issue(issue, issue_index, artifact_index):
     """Evaluate one issue against project dependencies and actual artifacts."""
     prepared = dict(issue)
-    prepared["diagnostics"] = list(issue.get("diagnostics", []))
+    prepared["diagnostics"] = _parser_diagnostics(issue)
     for diagnostic in dependency_diagnostics(issue_index).get(
         issue["issue_id"], []
     ):
@@ -1257,21 +1301,53 @@ def evaluate_issue(issue, issue_index, artifact_index):
     return _evaluate_issue_after_dependency(prepared, issue_index, artifact_index)
 
 
+def _duplicate_issue_diagnostic(issue, source_paths):
+    return _adapter_diagnostic(
+        issue,
+        "ISSUE_DUPLICATE_FIELD",
+        "issue_id",
+        source_paths,
+        "a unique issue id",
+        f"Issue ID {issue['issue_id']} is declared by multiple issue files.",
+        "Assign a unique issue_id to every colliding source file, then run product:doctor.",
+    )
+
+
 def evaluate_project(project_root):
     """Return evaluated issues and project-level dependency diagnostics."""
     project_root = Path(project_root)
     issues = list_normalized_issues(project_root)
-    issue_index = {issue["issue_id"]: issue for issue in issues}
-    artifact_index = build_artifact_index(project_root, issue_index)
+    issues_by_id = {}
+    for issue in issues:
+        issues_by_id.setdefault(issue["issue_id"], []).append(issue)
+    duplicate_paths = {
+        issue_id: sorted(issue["source_path"] for issue in matching)
+        for issue_id, matching in issues_by_id.items()
+        if len(matching) > 1
+    }
+    issue_index = {
+        issue_id: matching[0]
+        for issue_id, matching in issues_by_id.items()
+        if issue_id not in duplicate_paths
+    }
+    artifact_index = build_artifact_index(project_root, issues_by_id)
     project_dependency_diagnostics = dependency_diagnostics(issue_index)
     evaluated = []
     for issue in issues:
         prepared = dict(issue)
-        prepared["diagnostics"] = list(issue["diagnostics"])
-        for diagnostic in project_dependency_diagnostics.get(
-            issue["issue_id"], []
-        ):
-            _append_unique_diagnostic(prepared, diagnostic)
+        prepared["diagnostics"] = copy.deepcopy(issue["diagnostics"])
+        if issue["issue_id"] in duplicate_paths:
+            _append_unique_diagnostic(
+                prepared,
+                _duplicate_issue_diagnostic(
+                    issue, duplicate_paths[issue["issue_id"]]
+                ),
+            )
+        else:
+            for diagnostic in project_dependency_diagnostics.get(
+                issue["issue_id"], []
+            ):
+                _append_unique_diagnostic(prepared, diagnostic)
         evaluated.append(
             _evaluate_issue_after_dependency(prepared, issue_index, artifact_index)
         )
