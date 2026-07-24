@@ -570,8 +570,9 @@ def _adapter_diagnostic(
     message,
     recommendation,
     severity="error",
+    origin=None,
 ):
-    return _diagnostic(
+    diagnostic = _diagnostic(
         code,
         issue["issue_id"],
         issue["source_path"],
@@ -582,6 +583,9 @@ def _adapter_diagnostic(
         expected=expected,
         recommendation=recommendation,
     )
+    if origin is not None:
+        diagnostic["origin"] = origin
+    return diagnostic
 
 
 def _normalized_dependency_list(value):
@@ -994,9 +998,10 @@ def _strongly_connected_components(graph):
     return components
 
 
-def dependency_diagnostics(issue_index):
+def dependency_diagnostics(issue_index, ambiguous_targets=None):
     """Return dependency errors by issue id using iterative graph traversal."""
     diagnostics = {}
+    ambiguous_targets = ambiguous_targets or {}
 
     def add(issue_id, diagnostic):
         diagnostics.setdefault(issue_id, []).append(diagnostic)
@@ -1006,9 +1011,28 @@ def dependency_diagnostics(issue_index):
         issue = issue_index[issue_id]
         dependencies = _issue_dependencies(issue)
         graph[issue_id] = [
-            dependency for dependency in dependencies if dependency in issue_index
+            dependency
+            for dependency in dependencies
+            if dependency in issue_index and dependency not in ambiguous_targets
         ]
         for dependency in dependencies:
+            if dependency in ambiguous_targets:
+                source_paths = sorted(ambiguous_targets[dependency])
+                add(
+                    issue_id,
+                    _dependency_diagnostic(
+                        issue,
+                        "ISSUE_DUPLICATE_FIELD",
+                        {
+                            "issue_id": dependency,
+                            "source_paths": source_paths,
+                        },
+                        "one unique dependency target",
+                        f"Dependency target {dependency} has multiple issue definitions: {', '.join(source_paths)}.",
+                        f"Assign a unique issue_id to all but one definition of {dependency}, then run product:doctor.",
+                    ),
+                )
+                continue
             blocker = issue_index.get(dependency)
             if blocker is None:
                 add(
@@ -1119,10 +1143,17 @@ def _is_evaluator_diagnostic(diagnostic):
         and diagnostic["field"] == "phase"
     ):
         return True
-    return (
-        code == "ISSUE_DUPLICATE_FIELD"
-        and diagnostic["field"] == "issue_id"
-    )
+    if (
+        code == "ISSUE_SCHEMA_MALFORMED"
+        and diagnostic["field"] == "phase"
+        and diagnostic.get("origin") == "evaluator"
+    ):
+        return True
+    return code == "ISSUE_DUPLICATE_FIELD" and diagnostic["field"] in {
+        "issue_id",
+        "depends_on",
+        "blocked_by",
+    }
 
 
 def _parser_diagnostics(issue):
@@ -1207,6 +1238,7 @@ def _append_structural_state_diagnostics(issue):
                 expected,
                 "The declared phase is unsupported by the structural evaluator.",
                 f"Set phase to one of {expected}.",
+                origin="evaluator",
             ),
         )
     elif mapped_phase != actual_phase:
@@ -1331,7 +1363,9 @@ def evaluate_project(project_root):
         if issue_id not in duplicate_paths
     }
     artifact_index = build_artifact_index(project_root, issues_by_id)
-    project_dependency_diagnostics = dependency_diagnostics(issue_index)
+    project_dependency_diagnostics = dependency_diagnostics(
+        issue_index, duplicate_paths
+    )
     evaluated = []
     for issue in issues:
         prepared = dict(issue)
