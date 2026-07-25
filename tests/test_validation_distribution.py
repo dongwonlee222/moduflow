@@ -1,3 +1,4 @@
+import ast
 import importlib.util
 import json
 import subprocess
@@ -500,6 +501,58 @@ next_command: {next_command}
             "templates/production/playbook.md",
         }
         self.assertTrue(expected.issubset(set(validator.REQUIRED_FILES)))
+
+    def test_validate_moduflow_ships_issue_schema_and_local_fixtures(self):
+        validator = load_module(
+            "validate_moduflow_issue_schema", "scripts/validate_moduflow.py"
+        )
+        expected = {
+            "scripts/project_issue_schema.py",
+            "tests/fixtures/issue-schema/BIZ-033.md",
+            "tests/fixtures/issue-schema/BIZ-038.md",
+            "tests/fixtures/issue-schema/BIZ-039.md",
+            "tests/fixtures/issue-schema/BIZ-040.md",
+            "tests/fixtures/issue-schema/legacy-markdown.md",
+        }
+
+        self.assertTrue(expected.issubset(set(validator.REQUIRED_FILES)))
+        self.assertTrue(all((ROOT / path).is_file() for path in expected))
+
+    def test_issue_consumers_import_shared_schema_without_duplicate_parsers(self):
+        forbidden_definitions = {
+            "parse_issue_frontmatter",
+            "issue_status",
+            "issue_blocked_by",
+        }
+        for relative_path in [
+            "scripts/project_lifecycle.py",
+            "scripts/mcp_server.py",
+            "scripts/project_memory.py",
+        ]:
+            with self.subTest(consumer=relative_path):
+                tree = ast.parse(
+                    (ROOT / relative_path).read_text(encoding="utf-8"),
+                    filename=relative_path,
+                )
+                imported_modules = {
+                    node.module
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.ImportFrom)
+                }
+                definitions = {
+                    node.name
+                    for node in ast.walk(tree)
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                }
+
+                self.assertTrue(
+                    {
+                        "scripts.project_issue_schema",
+                        "project_issue_schema",
+                    }
+                    & imported_modules
+                )
+                self.assertTrue(forbidden_definitions.isdisjoint(definitions))
 
     def test_validate_moduflow_requires_review_intake_surface(self):
         validator = load_module(

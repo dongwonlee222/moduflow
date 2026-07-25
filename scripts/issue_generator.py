@@ -24,6 +24,14 @@ def format_issue_filename(num, title):
     slug = re.sub(r"[\s-]+", "-", slug).strip("-")
     return f"{num:03d}-{slug}.md"
 
+
+def workflow_artifact_link(root_dir, issue_slug, filename):
+    relative = Path("specs") / issue_slug / filename
+    if (Path(root_dir) / relative).is_file():
+        return relative.as_posix()
+    return f"specs/<issue-id>/{filename}"
+
+
 def generate_issues_from_goal(goal, search_mock_data=None):
     # This simulates/implements a benchmarking engine that breaks a Goal into 3 granular issues.
     # In a real environment, it can query search_web or read mock benchmarking patterns.
@@ -109,18 +117,21 @@ def write_issue_file(root_dir, num, issue_data):
     issues_dir = Path(root_dir) / "issues"
     issues_dir.mkdir(parents=True, exist_ok=True)
     filename = format_issue_filename(num, issue_data["title"])
+    issue_slug = filename[:-3]
     file_path = issues_dir / filename
     
     tasks_block = "\n".join([f"- [ ] {task}" for task in issue_data["tasks"]])
     scope_in_block = "\n".join([f"- {item}" for item in issue_data["scope_in"]])
     scope_out_block = "\n".join([f"- {item}" for item in issue_data["scope_out"]])
     ac_block = "\n".join([f"- {item}" for item in issue_data["acceptance_criteria"]])
+    spec_link = workflow_artifact_link(root_dir, issue_slug, "spec.md")
+    plan_link = workflow_artifact_link(root_dir, issue_slug, "plan.md")
     
     content = f"""# Issue {num:03d}: {issue_data["title"]}
 
 **Status: backlog** — created {date.today().isoformat()}.
-
 **Priority: p2**
+**Blocked-by:**
 
 ## Summary
 
@@ -152,8 +163,8 @@ def write_issue_file(root_dir, num, issue_data):
 
 ## Workflow Tasks
 
-- [ ] spec -> specs/{format_issue_filename(num, issue_data["title"])[:-3]}/spec.md
-- [ ] plan -> specs/{format_issue_filename(num, issue_data["title"])[:-3]}/plan.md
+- [ ] spec -> `{spec_link}`
+- [ ] plan -> `{plan_link}`
 - [ ] execute -> PR / commits
 - [ ] review -> review notes
 {tasks_block}
