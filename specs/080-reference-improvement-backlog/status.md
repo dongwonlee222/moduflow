@@ -2,16 +2,16 @@
 
 Issue: `080-reference-improvement-backlog`
 
-**Status: reviewed** — created 2026-07-09, started 2026-07-09, reviewed 2026-07-09.
+**Status: done** — created 2026-07-09, started 2026-07-09, merged 2026-07-09, lifecycle reconciled 2026-07-21.
 
 ## Snapshot
 
 | Field | Value |
 | --- | --- |
-| Phase | review |
+| Phase | done |
 | Branch | `codex/080-reference-improvement-backlog` |
-| Current command | `product:pr 080-reference-improvement-backlog` |
-| Next command | `product:pr 080-reference-improvement-backlog` |
+| Current command | `product:status` |
+| Next command | `product:status` |
 
 ## Evidence
 
@@ -29,10 +29,13 @@ Issue: `080-reference-improvement-backlog`
 - Issue drill-down: `memory/issue-080-reference-improvement-backlog.html`.
 - Converge: `specs/080-reference-improvement-backlog/converge.md` recorded low-severity unverifiable findings because the branch had no commit yet.
 - Review: `specs/080-reference-improvement-backlog/review.md`.
-- Draft PR: https://github.com/dongwonlee222/moduflow/pull/16.
+- PR #16 merged into `main` as `ad6cdeb` on 2026-07-09 with successful CI.
+- Dongwon Lee explicitly approved completion and lifecycle reconciliation on 2026-07-21.
+- Release: `specs/080-reference-improvement-backlog/release.md`.
 
 ## Notes
 
 - 2026-07-09: Started stacked work on top of `codex/078-frontend-qa-template-pack`.
 - 2026-07-09: Added reference backlog CLI, template, validation coverage, and command guidance.
 - 2026-07-09: Inline review completed; no blocking findings.
+- 2026-07-21: Historical missing human-approval evidence reconciled; merged release marked done.

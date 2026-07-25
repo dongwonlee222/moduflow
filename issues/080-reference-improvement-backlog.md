@@ -1,6 +1,6 @@
 # Issue 080: Reference Improvement Backlog
 
-**Status: reviewed** — created 2026-07-09, started 2026-07-09, reviewed 2026-07-09.
+**Status: done** — created 2026-07-09, started 2026-07-09, merged 2026-07-09, lifecycle reconciled 2026-07-21.
 **Priority: p2**
 
 ## Summary
@@ -79,6 +79,7 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 - [x] plan → `specs/080-reference-improvement-backlog/plan.md`
 - [x] execute → PR / commits
 - [x] review → `specs/080-reference-improvement-backlog/review.md`
+- [x] pr → `specs/080-reference-improvement-backlog/pr.md`
 
 ## Related Issues
 
@@ -97,10 +98,15 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 - Spec: `specs/080-reference-improvement-backlog/spec.md`
 - Status: `specs/080-reference-improvement-backlog/status.md`
+- Release: `specs/080-reference-improvement-backlog/release.md`
 - Sessions: `sessions/080-reference-improvement-backlog/`
 - Roadmap: `workspace/roadmap.md`
+
+## PR
+
 - PR: https://github.com/dongwonlee222/moduflow/pull/16
+- Final state: merged into `main` as `ad6cdeb` on 2026-07-09; CI passed.
 
 ## Next Command
 
-`product:pr 080-reference-improvement-backlog`
+`product:status`

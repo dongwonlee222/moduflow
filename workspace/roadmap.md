@@ -13,6 +13,7 @@
 ### Recently Shipped
 
 - `088-canonical-repository-remote-identity-gate` and `089-verified-code-review-intake-and-remediation-routing` — merged, reviewed, approved, and packaged in v0.3.26.
+- Legacy `030-project-memory-layer` audit — prototype foundation retained; delivered extensions mapped to 034/040/043/085 and remaining registry/migration scope transferred to 090 on 2026-07-21.
 
 ### Then
 
@@ -50,8 +51,8 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Reason: ModuFlow already contains Superpowers, but users should not have to know when each discipline should be activated.
 - Confidence: high
 - Dependency: 067 upstream adapter absorption, 073 constitution steering.
-- Next command: `product:pr 079-plan-discipline-skill-matrix`
-- Status: in_progress
+- Next command: `product:status`
+- Status: done; PR #13 merged on 2026-07-09 and lifecycle/release evidence reconciled on 2026-07-21.
 
 ### `077-implementation-readiness-gate`
 
@@ -59,8 +60,8 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Reason: Agent execution fails most often when the plan lacks concrete contracts, not when the agent lacks coding ability.
 - Confidence: high
 - Dependency: 079 plan discipline matrix, 070 spec consistency analyzer.
-- Next command: `product:pr 077-implementation-readiness-gate`
-- Status: pr
+- Next command: `product:status`
+- Status: done; PR #14 merged on 2026-07-09 and lifecycle/release evidence reconciled on 2026-07-21.
 
 ### `078-frontend-qa-template-pack`
 
@@ -68,8 +69,8 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Reason: Frontend work needs state/fixture/test evidence before implementation and review can be trusted.
 - Confidence: medium
 - Dependency: 077 implementation readiness gate, 046 planning templates.
-- Next command: `product:pr 078-frontend-qa-template-pack`
-- Status: pr
+- Next command: `product:status`
+- Status: done; PR #15 merged on 2026-07-09 and lifecycle/release evidence reconciled on 2026-07-21.
 
 ### `080-reference-improvement-backlog`
 
@@ -77,8 +78,8 @@ Previous goal `visual-workbench` closed 2026-07-05 — all three axes (View / Da
 - Reason: Reference repo insights appear during real work and currently risk disappearing or getting mixed into the wrong issue.
 - Confidence: medium
 - Dependency: 075 issue-less context capture.
-- Next command: `product:pr 080-reference-improvement-backlog`
-- Status: review
+- Next command: `product:status`
+- Status: done; PR #16 merged on 2026-07-09 and lifecycle/release evidence reconciled with Dongwon Lee approval on 2026-07-21.
 
 ### `085-project-production-records-and-playbooks`
 

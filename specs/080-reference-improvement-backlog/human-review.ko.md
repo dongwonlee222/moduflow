@@ -73,7 +73,12 @@
 - [ ] release 대상이면 rollback/post-release check와 승인 기록을 확인했습니다.
 - [ ] 보류 조건에 해당하지 않습니다.
 
+## 승인 기록
+
+- 2026-07-21: Dongwon Lee가 PR #16의 병합 상태, CI 성공, 기존 리뷰 결과와 converge 제한사항을 확인한 뒤 `080` 완료 및 수명주기 정합화를 명시적으로 승인했습니다.
+- 위 체크리스트는 2026-07-09 당시 검토 행위를 소급해 추정하지 않기 위해 원래 상태로 보존합니다.
+
 ## 다음 액션
 
-- 승인 가능하면 PR에서 approve 또는 로컬에 승인 기록을 남깁니다.
-- 보류하면 `product:review 080-reference-improvement-backlog`로 되돌려 수정합니다.
+- 승인 및 병합 정합화가 완료되었습니다. 릴리스 근거는 `specs/080-reference-improvement-backlog/release.md`에서 확인합니다.
+- 후속 상태 확인은 `product:status`를 실행합니다.

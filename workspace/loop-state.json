@@ -4,10 +4,12 @@
   "goal_id": "trustworthy-execution-and-project-knowledge",
   "objective": "Make ModuFlow repository-safe, evidence-backed in review, and reproducible across project knowledge, artifacts, analysis, and dashboard views.",
   "issue_ids": [
+    "080-reference-improvement-backlog",
     "088-canonical-repository-remote-identity-gate",
     "089-verified-code-review-intake-and-remediation-routing",
     "093-frontmatter-issue-schema-readiness-gate",
     "094-risk-based-security-and-quality-review-gate",
+    "095-commit-issue-resolution-parity",
     "086-project-aware-production-library-dashboard",
     "090-project-knowledge-and-artifact-registry",
     "091-reproducible-analysis-runs-and-template-pack",
@@ -19,16 +21,16 @@
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:review 093-frontmatter-issue-schema-readiness-gate",
+  "next_command": "product:pr 093-frontmatter-issue-schema-readiness-gate",
   "attempts": {
-    "command": "product:review 093-frontmatter-issue-schema-readiness-gate",
+    "command": "product:pr 093-frontmatter-issue-schema-readiness-gate",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-25"
   },
   "blocker": null,
-  "last_action": "completed Issue 093 implementation and fresh E2 release/lifecycle verification",
-  "last_verification": "2026-07-25 at ab682e3: spec consistency 0/0/0 with 12/12 coverage, full unittest 732/732, project validation valid, lifecycle drift [], release_check valid, and diff check clean",
+  "last_action": "completed independent review of Issue 093, refuted the fail-open reading of the loop phase default, fixed the non-file issue source crash it exposed, and merged main into the branch",
+  "last_verification": "2026-07-25 at 1eb8c13: full unittest 741/741 OK, release_check valid, lifecycle drift [], working tree clean",
   "updated_at": "2026-07-25",
   "git_binding": {
     "mode": "git-files",
@@ -44,14 +46,17 @@
       "4c9b46a",
       "7d76100",
       "34be14b",
-      "ab682e3"
+      "ab682e3",
+      "9a7b879",
+      "fa015b6",
+      "1eb8c13"
     ],
     "pull_request": null,
     "release": null,
     "execution_backend": {
       "type": "codex",
       "status": "selected",
-      "reason": "Issue 093 is approved Git-native spec work in an isolated branch",
+      "reason": "Issue 093 is approved Git-native spec work in an isolated branch; review is complete and PR is next",
       "session": "codex-2026-07-22"
     }
   }
