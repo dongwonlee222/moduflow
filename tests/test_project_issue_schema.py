@@ -932,6 +932,104 @@ next_command: {next_command}
             for issue in self.schema.evaluate_project(self.root)["issues"]
         }
 
+    def test_evaluate_project_respects_configured_issue_and_spec_paths(self):
+        (self.root / ".moduflow").mkdir()
+        (self.root / ".moduflow" / "config.json").write_text(
+            json.dumps(
+                {
+                    "schema": "moduflow.config.v1",
+                    "paths": {
+                        "issues": "projects/billing/issues",
+                        "specs": "projects/billing/specs",
+                    },
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        custom_issues = self.root / "projects" / "billing" / "issues"
+        custom_issues.mkdir(parents=True)
+        (custom_issues / "BIZ-CUSTOM.md").write_text(
+            """---
+schema_version: 0.1.0
+issue_id: BIZ-CUSTOM
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:execute BIZ-CUSTOM
+---
+# Custom issue
+
+**Status: backlog** — created 2026-07-25.
+""",
+            encoding="utf-8",
+        )
+        artifact_root = (
+            self.root / "projects" / "billing" / "specs" / "BIZ-CUSTOM"
+        )
+        artifact_root.mkdir(parents=True)
+        for name in ("spec", "plan", "tasks"):
+            (artifact_root / f"{name}.md").write_text(
+                f"# {name}\n", encoding="utf-8"
+            )
+
+        project = self.schema.evaluate_project(self.root)
+
+        self.assertEqual(len(project["issues"]), 1)
+        issue = project["issues"][0]
+        self.assertEqual(issue["issue_id"], "BIZ-CUSTOM")
+        self.assertEqual(
+            issue["source_path"],
+            "projects/billing/issues/BIZ-CUSTOM.md",
+        )
+        self.assertEqual(issue["artifact_phase"], "tasks")
+        self.assertEqual(issue["readiness"], "ready")
+        self.assertEqual(
+            issue["recommended_next_command"],
+            "product:execute BIZ-CUSTOM",
+        )
+
+    def test_evaluate_project_ignores_configured_paths_outside_root(self):
+        base = self.root.parent
+        outside_issues = base / f"{self.root.name}-outside-issues"
+        outside_issues.mkdir(exist_ok=True)
+        self.addCleanup(
+            lambda: outside_issues.rmdir()
+            if outside_issues.exists() and not any(outside_issues.iterdir())
+            else None
+        )
+        (outside_issues / "BIZ-OUTSIDE.md").write_text(
+            "# Outside\n\n**Status: backlog** — created.\n",
+            encoding="utf-8",
+        )
+        self.addCleanup(
+            lambda: (outside_issues / "BIZ-OUTSIDE.md").unlink(missing_ok=True)
+        )
+        (self.root / ".moduflow").mkdir()
+        (self.root / ".moduflow" / "config.json").write_text(
+            json.dumps(
+                {
+                    "schema": "moduflow.config.v1",
+                    "paths": {
+                        "issues": f"../{outside_issues.name}",
+                        "specs": "/tmp/outside-specs",
+                    },
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        configured_paths = self.schema.configured_project_paths(self.root)
+        project = self.schema.evaluate_project(self.root)
+
+        self.assertEqual(configured_paths["issues"], "issues")
+        self.assertEqual(configured_paths["specs"], "specs")
+        self.assertEqual(project["issues"], [])
+
     def test_sanitized_biz_fixtures_apply_project_level_routing(self):
         for issue_id in ("BIZ-033", "BIZ-038", "BIZ-039", "BIZ-040"):
             shutil.copy2(

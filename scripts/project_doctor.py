@@ -652,10 +652,19 @@ def main():
     result = inspect_project(args.project_path, include_preflight=not args.no_preflight)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     moduflow = result.get("moduflow", {})
+    schema_gates = result.get("schema_gates", {})
     # Gate: a project is healthy only when ModuFlow is initialized with no missing
     # required artifacts. Returning a real exit code makes project_doctor an
     # actual gate inside release_check instead of an always-pass no-op.
-    return 0 if moduflow.get("initialized") and not moduflow.get("missing") else 1
+    return (
+        0
+        if (
+            moduflow.get("initialized")
+            and not moduflow.get("missing")
+            and schema_gates.get("valid", False)
+        )
+        else 1
+    )
 
 
 if __name__ == "__main__":

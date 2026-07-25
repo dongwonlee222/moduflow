@@ -73,6 +73,45 @@ _SCALAR_CONTRACT_FIELDS = (
 _CONTRACT_FIELDS = set(_SCALAR_CONTRACT_FIELDS) | {"depends_on"}
 _KEY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):(?:[ \t]*(.*))?$")
 _INTEGER_RE = re.compile(r"^-?(?:0|[1-9][0-9]*)$")
+DEFAULT_PROJECT_PATHS = {
+    "issues": "issues",
+    "specs": "specs",
+    "workspace": "workspace",
+}
+
+
+def _safe_project_relative_path(project_root, value, default):
+    if not isinstance(value, str) or not value.strip():
+        return default
+    relative = Path(value)
+    if relative.is_absolute():
+        return default
+    root = Path(project_root).resolve()
+    try:
+        resolved = (root / relative).resolve()
+        normalized = resolved.relative_to(root)
+    except (OSError, RuntimeError, ValueError):
+        return default
+    return normalized.as_posix() or "."
+
+
+def configured_project_paths(project_root):
+    """Return safe configured artifact paths rooted inside the project."""
+    root = Path(project_root).resolve()
+    config_path = root / ".moduflow" / "config.json"
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        config = {}
+    raw_paths = config.get("paths", {}) if isinstance(config, dict) else {}
+    if not isinstance(raw_paths, dict):
+        raw_paths = {}
+    return {
+        key: _safe_project_relative_path(
+            root, raw_paths.get(key), default
+        )
+        for key, default in DEFAULT_PROJECT_PATHS.items()
+    }
 
 
 def split_frontmatter(text):
@@ -940,10 +979,11 @@ def parse_issue(path, project_root):
     )
 
 
-def list_normalized_issues(project_root):
+def list_normalized_issues(project_root, project_paths=None):
     """Return normalized issue records sorted by their canonical issue id."""
     project_root = Path(project_root)
-    issues_dir = project_root / "issues"
+    project_paths = project_paths or configured_project_paths(project_root)
+    issues_dir = project_root / project_paths["issues"]
     if not issues_dir.is_dir():
         return []
     issues = [
@@ -954,12 +994,13 @@ def list_normalized_issues(project_root):
     return sorted(issues, key=lambda issue: issue["issue_id"])
 
 
-def build_artifact_index(project_root, issue_ids):
+def build_artifact_index(project_root, issue_ids, project_paths=None):
     """Return actual workflow-artifact coverage for each supplied issue id."""
     project_root = Path(project_root)
+    project_paths = project_paths or configured_project_paths(project_root)
     artifact_index = {}
     for issue_id in sorted(set(issue_ids)):
-        artifact_root = project_root / "specs" / issue_id
+        artifact_root = project_root / project_paths["specs"] / issue_id
         coverage = {
             phase: (artifact_root / f"{phase}.md").is_file()
             for phase in _ARTIFACT_PHASES
@@ -1521,13 +1562,15 @@ def _duplicate_issue_diagnostic(issue, source_paths):
 def evaluate_project(project_root):
     """Return evaluated issues and project-level dependency diagnostics."""
     project_root = Path(project_root)
-    issues = list_normalized_issues(project_root)
-    return _evaluate_issue_records(project_root, issues)
+    project_paths = configured_project_paths(project_root)
+    issues = list_normalized_issues(project_root, project_paths)
+    return _evaluate_issue_records(project_root, issues, project_paths)
 
 
-def _evaluate_issue_records(project_root, issues):
+def _evaluate_issue_records(project_root, issues, project_paths=None):
     """Evaluate already-normalized records using the shared project evaluator."""
     project_root = Path(project_root)
+    project_paths = project_paths or configured_project_paths(project_root)
     issues_by_id = {}
     for issue in issues:
         issues_by_id.setdefault(issue["issue_id"], []).append(issue)
@@ -1541,7 +1584,9 @@ def _evaluate_issue_records(project_root, issues):
         for issue_id, matching in issues_by_id.items()
         if issue_id not in duplicate_paths
     }
-    artifact_index = build_artifact_index(project_root, issues_by_id)
+    artifact_index = build_artifact_index(
+        project_root, issues_by_id, project_paths
+    )
     project_dependency_diagnostics = dependency_diagnostics(
         issue_index, duplicate_paths
     )

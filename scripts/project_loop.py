@@ -182,11 +182,22 @@ def load_loop_state(root):
 
 
 def issue_path(root, issue_id):
-    return Path(root).resolve() / "issues" / f"{issue_id}.md"
+    paths = load_project_issue_schema().configured_project_paths(root)
+    return (
+        Path(root).resolve()
+        / paths["issues"]
+        / f"{issue_id}.md"
+    )
 
 
 def implementation_readiness_path(root, issue_id):
-    return Path(root).resolve() / "specs" / issue_id / "implementation-readiness.json"
+    paths = load_project_issue_schema().configured_project_paths(root)
+    return (
+        Path(root).resolve()
+        / paths["specs"]
+        / issue_id
+        / "implementation-readiness.json"
+    )
 
 
 def load_implementation_readiness(root, issue_id):
@@ -271,7 +282,8 @@ def primary_structural_diagnostic(issue):
 
 def missing_structural_artifact(root, issue):
     issue_id = issue["issue_id"]
-    artifact_root = Path(root).resolve() / "specs" / issue_id
+    paths = load_project_issue_schema().configured_project_paths(root)
+    artifact_root = Path(root).resolve() / paths["specs"] / issue_id
     command_name = (
         issue.get("recommended_next_command") or ""
     ).split(maxsplit=1)[0]
@@ -283,7 +295,7 @@ def missing_structural_artifact(root, issue):
         candidates = ()
     for filename in candidates:
         if not (artifact_root / filename).is_file():
-            return f"specs/{issue_id}/{filename}"
+            return f"{paths['specs']}/{issue_id}/{filename}"
     return None
 
 

@@ -452,6 +452,42 @@ gate_state: passed
             self.assertEqual(result["phase"], "issue")
             self.assertEqual(result["next_command"], "product:status")
 
+    def test_recommend_loop_uses_configured_issue_and_spec_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "BIZ-CUSTOM"
+            self.write_versioned_issue(root, issue_id)
+            self.add_artifacts(root, issue_id, "spec", "plan", "tasks")
+            custom_root = root / "projects" / "billing"
+            custom_root.mkdir(parents=True)
+            (root / "issues").rename(custom_root / "issues")
+            (root / "specs").rename(custom_root / "specs")
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.config.v1",
+                        "paths": {
+                            "issues": "projects/billing/issues",
+                            "specs": "projects/billing/specs",
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            self.write_loop_state(root, issue_id)
+
+            result = project_loop.recommend_loop(root)
+            loop_errors = project_loop.validate_loop_state(root)
+
+        self.assertEqual(result["phase"], "execute")
+        self.assertEqual(
+            result["next_command"], f"product:execute {issue_id}"
+        )
+        self.assertEqual(result["status"], "active")
+        self.assertEqual(loop_errors, [])
+
     def test_write_loop_state_persists_v2_state(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
