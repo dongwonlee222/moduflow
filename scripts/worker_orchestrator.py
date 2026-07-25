@@ -20,11 +20,16 @@ WORKER_RULES = [
 DEFAULT_WORKER = "implementation-worker"
 SHARED_STATE_KEYWORDS = ["shared", "state", "migration", "schema", "config", "lock", "registry"]
 
-# Cognitive demand levels — no model names hardcoded.
-# The host agent reads this and picks the best available model on its platform.
-# deep    → most capable reasoning model (complex trade-offs, architecture)
-# balanced→ standard production model (coding, review, UX)
-# fast    → lightest/fastest model (checklists, summaries, sorting)
+# Cognitive demand levels. Keep these semantic first: the host agent reads this
+# and picks the best available model on its platform.
+# deep     -> most capable reasoning model (complex trade-offs, architecture)
+# balanced -> standard production model (coding, review, UX)
+# fast     -> lightest/fastest model (checklists, summaries, sorting)
+#
+# Current OpenAI example, if the GPT-5.6 family is available:
+# deep     -> gpt-5.6-sol; use high/xhigh, or max/pro only for quality-first gates
+# balanced -> gpt-5.6-terra; start at medium reasoning and tune with evals
+# fast     -> gpt-5.6-luna; use low/none for latency or high-volume work
 WORKER_COGNITIVE_DEMAND = {
     "spec-architect":        "deep",
     "pm-strategist":         "deep",
@@ -34,6 +39,24 @@ WORKER_COGNITIVE_DEMAND = {
     "release-manager":       "fast",
     "roadmap-planner":       "fast",
     "data-reviewer":         "fast",
+}
+
+COGNITIVE_DEMAND_GUIDANCE = {
+    "deep": (
+        "use your most capable reasoning model. If using OpenAI GPT-5.6, "
+        "prefer gpt-5.6-sol; reserve max reasoning or pro mode for the "
+        "hardest quality-first gates after comparison against xhigh/high."
+    ),
+    "balanced": (
+        "use your standard production model. If using OpenAI GPT-5.6, "
+        "prefer gpt-5.6-terra with medium reasoning as the starting point, "
+        "then compare one level lower on representative tasks."
+    ),
+    "fast": (
+        "use your lightest, fastest model. If using OpenAI GPT-5.6, "
+        "prefer gpt-5.6-luna with low or no reasoning for latency-sensitive "
+        "or high-volume work."
+    ),
 }
 CHECKBOX_RE = re.compile(r"^\s*-\s+\[(?P<status>[ xX])\]\s+(?P<text>.+?)\s*$")
 METADATA_RE = re.compile(r"\s*\[(?P<key>files|globs|depends|shared_state):\s*(?P<value>[^\]]*)\]")
@@ -267,15 +290,12 @@ def build_worker_plan(root, issue_id):
         expected_files_str = ", ".join(task["expected_files"]) if task["expected_files"] else "none"
         related_mems = find_related_memories(project_root, task["expected_files"], issue_id)
         context_block = assemble_prompt_context(project_root, related_mems)
+        demand = WORKER_COGNITIVE_DEMAND.get(worker, "balanced")
         prompt = (
             f"Implement task: {task['text']}\n"
             f"Expected files: {expected_files_str}\n"
-            f"Cognitive demand: {WORKER_COGNITIVE_DEMAND.get(worker, 'balanced')} — "
-            + {
-                "deep":     "use your most capable reasoning model.",
-                "balanced": "use your standard production model.",
-                "fast":     "use your lightest, fastest model.",
-            }.get(WORKER_COGNITIVE_DEMAND.get(worker, "balanced"), "")
+            f"Cognitive demand: {demand} — "
+            + COGNITIVE_DEMAND_GUIDANCE.get(demand, COGNITIVE_DEMAND_GUIDANCE["balanced"])
         )
         if context_block:
             prompt += context_block
