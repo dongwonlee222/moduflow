@@ -345,6 +345,72 @@ next_command: {next_command}
             self.assertNotIn("delegation_level", result["blocker"])
             self.assertEqual(result["attempts"]["count"], 2)
 
+    def test_structural_ready_advances_to_review_without_execution_approval_blocker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "BIZ-REVIEW"
+            self.write_versioned_issue(root, issue_id)
+            issue_path = root / "issues" / f"{issue_id}.md"
+            issue_path.write_text(
+                issue_path.read_text(encoding="utf-8")
+                + """
+## Workflow Tasks
+
+- [x] spec
+- [x] plan
+- [x] execute
+- [ ] review
+""",
+                encoding="utf-8",
+            )
+            self.add_artifacts(root, issue_id, "spec", "plan", "tasks")
+            self.write_loop_state(
+                root,
+                issue_id,
+                delegation_level="review_required",
+                backend_status="not_selected",
+            )
+
+            result = project_loop.recommend_loop(root)
+
+            self.assertEqual(result["phase"], "review")
+            self.assertEqual(result["status"], "active")
+            self.assertEqual(result["next_command"], f"product:review {issue_id}")
+            self.assertIsNone(result["blocker"])
+
+    def test_structural_ready_execute_pending_still_requires_execution_approval(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "BIZ-EXECUTE"
+            self.write_versioned_issue(root, issue_id)
+            issue_path = root / "issues" / f"{issue_id}.md"
+            issue_path.write_text(
+                issue_path.read_text(encoding="utf-8")
+                + """
+## Workflow Tasks
+
+- [x] spec
+- [x] plan
+- [ ] execute
+- [ ] review
+""",
+                encoding="utf-8",
+            )
+            self.add_artifacts(root, issue_id, "spec", "plan", "tasks")
+            self.write_loop_state(
+                root,
+                issue_id,
+                delegation_level="review_required",
+                backend_status="not_selected",
+            )
+
+            result = project_loop.recommend_loop(root)
+
+            self.assertEqual(result["phase"], "execute")
+            self.assertEqual(result["status"], "needs_decision")
+            self.assertEqual(result["next_command"], f"product:execute {issue_id}")
+            self.assertIn("Execution blocked", result["blocker"])
+
     def test_structural_routes_derive_phase_from_shared_command(self):
         cases = (
             ("BIZ-DRAFT", {"definition": "draft"}, (), "spec", "product:spec BIZ-DRAFT"),
@@ -429,6 +495,13 @@ gate_state: passed
 # Advisory issue
 
 **Status: backlog** — created 2026-07-24.
+
+## Workflow Tasks
+
+- [x] spec
+- [x] plan
+- [ ] execute
+- [ ] review
 """,
                 encoding="utf-8",
             )
@@ -457,6 +530,19 @@ gate_state: passed
             root = Path(tmp)
             issue_id = "BIZ-CUSTOM"
             self.write_versioned_issue(root, issue_id)
+            issue_path = root / "issues" / f"{issue_id}.md"
+            issue_path.write_text(
+                issue_path.read_text(encoding="utf-8")
+                + """
+## Workflow Tasks
+
+- [x] spec
+- [x] plan
+- [ ] execute
+- [ ] review
+""",
+                encoding="utf-8",
+            )
             self.add_artifacts(root, issue_id, "spec", "plan", "tasks")
             custom_root = root / "projects" / "billing"
             custom_root.mkdir(parents=True)

@@ -258,10 +258,14 @@ def infer_issue_phase(root, issue_id):
     if not path.exists():
         return "issue"
     issue_text = path.read_text(encoding="utf-8")
+    has_workflow_checkbox = False
     for phase in ["spec", "plan", "execute", "review", "release"]:
-        if workflow_checkbox_state(issue_text, phase) == "pending":
+        checkbox_state = workflow_checkbox_state(issue_text, phase)
+        if checkbox_state != "missing":
+            has_workflow_checkbox = True
+        if checkbox_state == "pending":
             return phase
-    return "status"
+    return "status" if has_workflow_checkbox else "execute"
 
 
 def recommend_next_command(issue_id, phase):
@@ -444,21 +448,22 @@ def recommend_loop(root):
 
     structural_issue = evaluated_active_issue(root, active_issue_id)
     if structural_issue:
-        command = structural_issue.get("recommended_next_command") or "product:status"
-        phase = phase_from_command(command)
-        state["phase"] = phase
+        structural_command = (
+            structural_issue.get("recommended_next_command") or "product:status"
+        )
+        state["phase"] = phase_from_command(structural_command)
         if (
-            command.split(maxsplit=1)[0] != "product:execute"
+            structural_command.split(maxsplit=1)[0] != "product:execute"
             or structural_issue.get("readiness") != "ready"
         ):
             state["status"] = "needs_decision"
             state["blocker"] = structural_blocker(root, structural_issue)
-            state["next_command"] = command
+            state["next_command"] = structural_command
             return state
-    else:
-        phase = infer_issue_phase(root, active_issue_id)
-        command = recommend_next_command(active_issue_id, phase)
-        state["phase"] = phase
+
+    phase = infer_issue_phase(root, active_issue_id)
+    command = recommend_next_command(active_issue_id, phase)
+    state["phase"] = phase
 
     if phase == "execute":
         readiness = load_implementation_readiness(root, active_issue_id)
