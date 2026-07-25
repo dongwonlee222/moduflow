@@ -2,9 +2,11 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
+ISSUE_SCHEMA_FIXTURES = ROOT / "tests" / "fixtures" / "issue-schema"
 
 
 def load_module(name, relative_path):
@@ -539,6 +541,32 @@ More detail contents here.
             # both the prose and the superseded-by line resolve to ONE deduped edge
             self.assertEqual(edges, [("042-new", "041-old", "supersedes")])
 
+    def test_issue_graph_and_table_use_normalized_frontmatter_routing(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            for issue_id in ("BIZ-033", "BIZ-038"):
+                (root / "issues" / f"{issue_id}.md").write_text(
+                    (ISSUE_SCHEMA_FIXTURES / f"{issue_id}.md").read_text(encoding="utf-8"),
+                    encoding="utf-8",
+                )
+
+            nodes, _ = project_memory._collect_issue_graph(root)
+            rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
+            node = nodes["BIZ-038"]
+            row = rows["BIZ-038"]
+
+            for item in (node, row):
+                self.assertEqual(item["status"], "backlog")
+                self.assertEqual(item["blocked_by"], ["BIZ-033"])
+                self.assertEqual(item["normalized_schema"], "moduflow.issue.v2")
+                self.assertEqual(item["readiness"], "blocked")
+                self.assertEqual(item["recommended_next_command"], "product:status")
+                self.assertIn("ISSUE_DEPENDENCY_UNMET", item["diagnostic_codes"])
+                self.assertFalse(item["recommended_next_command"].startswith("product:execute"))
+            self.assertIn("blocked", row["attention_flags"])
+
     def test_issue_linked_memory_maps_and_tolerates_empty(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:
@@ -610,12 +638,22 @@ More detail contents here.
             self.assertEqual([row["id"] for row in rows], ["056-dashboard", "057-review"])
             self.assertEqual(by_id["056-dashboard"]["number"], 56)
             self.assertEqual(by_id["056-dashboard"]["status"], "active")
+            self.assertEqual(by_id["056-dashboard"]["normalized_schema"], "moduflow.issue.v2")
+            self.assertEqual(by_id["056-dashboard"]["blocked_by"], [])
+            self.assertEqual(by_id["056-dashboard"]["readiness"], "not_ready")
             self.assertEqual(by_id["056-dashboard"]["goal"], "visual-workbench")
             self.assertEqual(by_id["056-dashboard"]["summary"], "Show issues as a scannable database list.")
             self.assertEqual(by_id["056-dashboard"]["summary_ko"], "그래프만으로는 운영 스캔이 어렵습니다.")
             self.assertEqual(by_id["056-dashboard"]["description"], "그래프만으로는 운영 스캔이 어렵습니다.")
             self.assertEqual(by_id["056-dashboard"]["description_language"], "ko")
-            self.assertEqual(by_id["056-dashboard"]["next_command"], "/product:execute 056-dashboard")
+            self.assertEqual(
+                by_id["056-dashboard"]["next_command"],
+                "product:plan 056-dashboard",
+            )
+            self.assertEqual(
+                by_id["056-dashboard"]["recommended_next_command"],
+                "product:plan 056-dashboard",
+            )
             self.assertEqual(by_id["056-dashboard"]["href"], "issue-056-dashboard.html")
             self.assertEqual(by_id["056-dashboard"]["created"], "2026-07-01")
             self.assertEqual(by_id["056-dashboard"]["updated"], "2026-07-03")
@@ -625,9 +663,13 @@ More detail contents here.
             self.assertEqual(by_id["056-dashboard"]["linked_memory_count"], 1)
             self.assertIn("no_review", by_id["056-dashboard"]["attention_flags"])
             self.assertIn("missing_spec", by_id["057-review"]["attention_flags"])
-            self.assertIn("no_next", by_id["057-review"]["attention_flags"])
+            self.assertNotIn("no_next", by_id["057-review"]["attention_flags"])
+            self.assertEqual(
+                by_id["057-review"]["recommended_next_command"],
+                "product:spec 057-review",
+            )
 
-    def test_collect_issue_table_promotes_artifact_complete_status(self):
+    def test_collect_issue_table_keeps_normalized_status_and_actual_artifact_phase(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -647,9 +689,10 @@ More detail contents here.
 
             rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
 
-            self.assertEqual(rows["034-done"]["status"], "done")
+            self.assertEqual(rows["034-done"]["status"], "backlog")
             self.assertEqual(rows["034-done"]["phase"], "release")
-            self.assertEqual(rows["035-review"]["status"], "review")
+            self.assertEqual(rows["035-review"]["status"], "backlog")
+            self.assertEqual(rows["035-review"]["phase"], "review")
 
     def test_collect_issue_table_uses_outcome_as_description_fallback(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
@@ -725,6 +768,24 @@ More detail contents here.
             self.assertIn("<th>Description</th>", html)
             self.assertNotIn("<th>Next</th>", html)
             self.assertIn("issue-042-new.html", html)
+
+    def test_render_project_view_reuses_one_issue_evaluation_for_graph_and_table(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "042-new.md").write_text(
+                "# Issue: `042-new`\n\n**Status: backlog** — created.\n",
+                encoding="utf-8",
+            )
+            original = project_memory.evaluate_project
+
+            with mock.patch.object(
+                project_memory, "evaluate_project", wraps=original
+            ) as evaluate:
+                project_memory.render_project_view(root)
+
+            evaluate.assert_called_once_with(root.resolve())
 
     def test_issue_panel_includes_linked_memory_section_only_when_present(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")

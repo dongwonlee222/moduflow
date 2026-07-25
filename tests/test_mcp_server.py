@@ -4,8 +4,10 @@ import tempfile
 import unittest
 from collections import Counter
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
+ISSUE_SCHEMA_FIXTURES = ROOT / "tests" / "fixtures" / "issue-schema"
 
 
 def load_module(name, relative_path):
@@ -56,6 +58,14 @@ def scaffold(root):
         + "\n",
         encoding="utf-8",
     )
+
+
+def add_biz_dependency_fixtures(root):
+    for issue_id in ("BIZ-033", "BIZ-038"):
+        (root / "issues" / f"{issue_id}.md").write_text(
+            (ISSUE_SCHEMA_FIXTURES / f"{issue_id}.md").read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
 
 
 class MCPServerTests(unittest.TestCase):
@@ -305,6 +315,82 @@ class MCPServerTests(unittest.TestCase):
         for item in payload["issues"]:
             self.assertIn("priority", item)
             self.assertIn("blocked_by", item)
+
+    def test_frontmatter_issue_payloads_add_normalized_routing_fields(self):
+        add_biz_dependency_fixtures(self.root)
+        req = {
+            "jsonrpc": "2.0",
+            "id": 16,
+            "method": "tools/call",
+            "params": {"name": "moduflow_issues", "arguments": {}},
+        }
+
+        resp = mcp_server.handle_request(req, self.root)
+        payload = json.loads(resp["result"]["content"][0]["text"])
+        item = next(issue for issue in payload["issues"] if issue["id"] == "BIZ-038")
+
+        self.assertEqual(item["status"], "backlog")
+        self.assertEqual(item["priority"], "p2")
+        self.assertEqual(item["blocked_by"], ["BIZ-033"])
+        self.assertEqual(item["normalized_schema"], "moduflow.issue.v2")
+        self.assertEqual(item["readiness"], "blocked")
+        self.assertEqual(item["recommended_next_command"], "product:status")
+        self.assertIn("ISSUE_DEPENDENCY_UNMET", item["diagnostic_codes"])
+        self.assertFalse(item["recommended_next_command"].startswith("product:execute"))
+
+    def test_frontmatter_issue_get_and_ready_share_normalized_blocking(self):
+        add_biz_dependency_fixtures(self.root)
+        get_req = {
+            "jsonrpc": "2.0",
+            "id": 17,
+            "method": "tools/call",
+            "params": {"name": "moduflow_issue_get", "arguments": {"id": "BIZ-038"}},
+        }
+        ready_req = {
+            "jsonrpc": "2.0",
+            "id": 18,
+            "method": "tools/call",
+            "params": {"name": "moduflow_ready", "arguments": {}},
+        }
+
+        get_payload = json.loads(
+            mcp_server.handle_request(get_req, self.root)["result"]["content"][0]["text"]
+        )
+        ready_payload = json.loads(
+            mcp_server.handle_request(ready_req, self.root)["result"]["content"][0]["text"]
+        )
+
+        self.assertEqual(get_payload["status"], "backlog")
+        self.assertEqual(get_payload["blocked_by"], ["BIZ-033"])
+        self.assertEqual(get_payload["normalized_schema"], "moduflow.issue.v2")
+        self.assertEqual(get_payload["readiness"], "blocked")
+        self.assertEqual(get_payload["recommended_next_command"], "product:status")
+        self.assertIn("ISSUE_DEPENDENCY_UNMET", get_payload["diagnostic_codes"])
+        self.assertNotIn("BIZ-038", [item["id"] for item in ready_payload["ready"]])
+
+    def test_issue_tools_evaluate_the_project_once_per_request(self):
+        requests = [
+            {"name": "moduflow_status", "arguments": {}},
+            {"name": "moduflow_issues", "arguments": {}},
+            {"name": "moduflow_issue_get", "arguments": {"id": "002-beta"}},
+            {"name": "moduflow_ready", "arguments": {}},
+        ]
+        original = mcp_server.evaluate_project
+        for request_id, params in enumerate(requests, start=20):
+            with self.subTest(tool=params["name"]):
+                with mock.patch.object(
+                    mcp_server, "evaluate_project", wraps=original
+                ) as evaluate:
+                    mcp_server.handle_request(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "method": "tools/call",
+                            "params": params,
+                        },
+                        self.root,
+                    )
+                evaluate.assert_called_once_with(self.root.resolve())
 
     def test_doctor_tool_is_exception_safe(self):
         req = {

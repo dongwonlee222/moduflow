@@ -5,6 +5,11 @@ import re
 from datetime import date
 from pathlib import Path
 
+try:
+    from scripts.project_issue_schema import evaluate_project
+except ModuleNotFoundError:
+    from project_issue_schema import evaluate_project
+
 
 MEMORY_DIRS = [
     "memory/.candidates",
@@ -884,13 +889,6 @@ def _issue_status_bucket(status_word):
     return "backlog"
 
 
-def _resolve_num_to_issue(num, valid_ids):
-    for vid in valid_ids:
-        if vid == num or vid.startswith(num + "-"):
-            return vid
-    return None
-
-
 def _issue_linked_memory(root):
     """Map issue_id -> [{id,title,kind,file}] from memory frontmatter. Sparse by design."""
     project_root = Path(root).resolve()
@@ -930,40 +928,69 @@ def _related_refs(text, self_id, valid_ids):
     return refs
 
 
-def _collect_issue_graph(root):
-    """Nodes = issues (status-colored). Edges: `supersedes` (solid) from status
-    lines + prose, and `related` (dashed, toggleable) from the `## Related` section.
+def _evaluated_issue_context(root):
+    """Evaluate issues once and retain safe prose sources for display helpers."""
+    project_root = Path(root).resolve()
+    evaluation = evaluate_project(project_root)
+    issues = {
+        issue["issue_id"]: issue
+        for issue in evaluation["issues"]
+    }
+    texts = {}
+    for issue_id, issue in issues.items():
+        source = project_root / (issue.get("source_path") or "")
+        try:
+            resolved = source.resolve()
+            resolved.relative_to(project_root)
+            if resolved.is_file():
+                texts[issue_id] = resolved.read_text(encoding="utf-8")
+        except (OSError, UnicodeError, ValueError):
+            continue
+    return {
+        "evaluation": evaluation,
+        "issues": issues,
+        "texts": texts,
+    }
+
+
+def _normalized_issue_fields(issue):
+    return {
+        "normalized_schema": issue.get("schema"),
+        "blocked_by": list(issue.get("blocked_by") or []),
+        "readiness": issue.get("readiness"),
+        "recommended_next_command": issue.get("recommended_next_command"),
+        "diagnostic_codes": sorted({
+            diagnostic.get("code")
+            for diagnostic in issue.get("diagnostics", [])
+            if diagnostic.get("code")
+        }),
+    }
+
+
+def _collect_issue_graph(root, issue_context=None):
+    """Nodes = evaluated issues (status-colored). Edges: `supersedes` (solid)
+    from prose and `related` (dashed, toggleable) from the `## Related` section.
     Related edges are undirected-deduped and exclude pairs already joined by supersedes."""
     project_root = Path(root).resolve()
-    issues_dir = project_root / "issues"
+    issue_context = issue_context or _evaluated_issue_context(project_root)
+    evaluated = issue_context["issues"]
+    raw = issue_context["texts"]
     nodes = {}
     edges = []
-    if not issues_dir.is_dir():
-        return nodes, edges
-    raw = {}
-    for issue_file in sorted(issues_dir.glob("*.md")):
-        raw[issue_file.stem] = issue_file.read_text(encoding="utf-8")
-    valid_ids = set(raw)
-    for issue_id, text in raw.items():
-        title = issue_id
-        m_title = re.search(r"^#\s+(.+)$", text, re.M)
-        if m_title:
-            title = re.sub(r"^Issue:\s*", "", m_title.group(1).strip())
-            title = title.replace("`", "").strip()
-        m_status = re.search(r"\*\*Status:\s*([A-Za-z0-9-]+)", text)
-        status_word = m_status.group(1) if m_status else "backlog"
+    valid_ids = set(evaluated)
+    for issue_id, issue in evaluated.items():
+        text = raw.get(issue_id, "")
         m_goal = re.search(r"goal `([^`]+)`", text)
         goal = m_goal.group(1) if m_goal else "(기타)"
-        nodes[issue_id] = {"title": title, "status": _issue_status_bucket(status_word), "goal": goal}
+        nodes[issue_id] = {
+            "title": issue.get("title") or issue_id,
+            "status": _issue_status_bucket(issue.get("lifecycle_state")),
+            "goal": goal,
+            **_normalized_issue_fields(issue),
+        }
         # supersedes prose: "Supersedes `NNN-...`"
         for m in re.finditer(r"[Ss]upersedes\s+`([0-9]{3}-[a-z0-9-]+)`", text):
             edges.append((issue_id, m.group(1), "supersedes"))
-        # status "superseded-by-NNN" → reversed: NNN supersedes this issue
-        mb = re.match(r"superseded-by-(\d+)", status_word.lower())
-        if mb:
-            tgt = _resolve_num_to_issue(mb.group(1), valid_ids)
-            if tgt:
-                edges.append((tgt, issue_id, "supersedes"))
     edges = list(dict.fromkeys(
         (s, t, r) for (s, t, r) in edges if s in valid_ids and t in valid_ids
     ))
@@ -985,24 +1012,6 @@ def _collect_issue_graph(root):
 def _issue_number(issue_id):
     m = re.match(r"^(\d+)", issue_id or "")
     return int(m.group(1)) if m else None
-
-
-def _parse_next_command(text):
-    m = re.search(r"^##\s+Next Command\s*$", text, re.M)
-    if not m:
-        return ""
-    section = text[m.end():]
-    nxt = re.search(r"^##\s+", section, re.M)
-    if nxt:
-        section = section[:nxt.start()]
-    m_cmd = re.search(r"`([^`]+)`", section)
-    if m_cmd:
-        return m_cmd.group(1).strip()
-    for line in section.splitlines():
-        stripped = line.strip()
-        if stripped:
-            return stripped.lstrip("- ").strip()
-    return ""
 
 
 def _markdown_section(text, headings):
@@ -1132,18 +1141,7 @@ def _issue_phase_from_coverage(coverage):
     return "spec"
 
 
-def _issue_table_status(status, coverage):
-    raw_status = status or "backlog"
-    if raw_status in {"active", "blocked", "superseded"}:
-        return raw_status
-    if raw_status == "done" or coverage.get("release"):
-        return "done"
-    if raw_status == "review" or coverage.get("pr") or coverage.get("review"):
-        return "review"
-    return raw_status
-
-
-def _issue_attention_flags(status, next_command, coverage):
+def _issue_attention_flags(status, next_command, coverage, readiness=None):
     if status == "done":
         return []
     flags = []
@@ -1159,7 +1157,7 @@ def _issue_attention_flags(status, next_command, coverage):
         flags.append("no_pr")
     if not (coverage.get("spec_ko") or coverage.get("plan_ko") or coverage.get("tasks_ko") or coverage.get("human_review_ko")):
         flags.append("no_ko")
-    if status == "blocked":
+    if status == "blocked" or readiness == "blocked":
         flags.append("blocked")
     return flags
 
@@ -1177,12 +1175,12 @@ def _issue_created(text):
     return dates[0] if dates else ""
 
 
-def _collect_issue_table(root):
+def _collect_issue_table(root, issue_context=None):
     project_root = Path(root).resolve()
-    issues_dir = project_root / "issues"
-    if not issues_dir.is_dir():
-        return []
-    graph_nodes, graph_edges = _collect_issue_graph(project_root)
+    issue_context = issue_context or _evaluated_issue_context(project_root)
+    evaluated = issue_context["issues"]
+    raw = issue_context["texts"]
+    graph_nodes, graph_edges = _collect_issue_graph(project_root, issue_context)
     linked = _issue_linked_memory(project_root)
     description_overrides = _issue_description_overrides(project_root)
     relation_counts = {}
@@ -1190,13 +1188,12 @@ def _collect_issue_table(root):
         relation_counts[src] = relation_counts.get(src, 0) + 1
         relation_counts[tgt] = relation_counts.get(tgt, 0) + 1
     rows = []
-    for issue_file in sorted(issues_dir.glob("*.md")):
-        issue_id = issue_file.stem
-        text = issue_file.read_text(encoding="utf-8")
+    for issue_id, issue in sorted(evaluated.items()):
+        text = raw.get(issue_id, "")
         info = graph_nodes.get(issue_id, {})
         coverage = _issue_artifact_coverage(project_root, issue_id)
-        status = _issue_table_status(info.get("status", "backlog"), coverage)
-        next_command = _parse_next_command(text)
+        status = info.get("status", "backlog")
+        next_command = issue.get("recommended_next_command") or ""
         title = info.get("title", issue_id)
         description = _issue_description(project_root, issue_id, title, text)
         if issue_id in description_overrides:
@@ -1211,13 +1208,16 @@ def _collect_issue_table(root):
             "title": title,
             "status": status,
             "goal": info.get("goal", "(기타)"),
-            "phase": _issue_phase_from_coverage(coverage),
+            "phase": issue.get("artifact_phase") or _issue_phase_from_coverage(coverage),
             "next_command": next_command,
+            **_normalized_issue_fields(issue),
             "href": f"issue-{issue_id}.html",
             "artifact_coverage": coverage,
             "linked_memory_count": len(linked.get(issue_id, [])),
             "relationship_count": relation_counts.get(issue_id, 0),
-            "attention_flags": _issue_attention_flags(status, next_command, coverage),
+            "attention_flags": _issue_attention_flags(
+                status, next_command, coverage, issue.get("readiness")
+            ),
             "created": _issue_created(text),
             "updated": _issue_updated(text),
             **description,
@@ -1225,8 +1225,8 @@ def _collect_issue_table(root):
     return rows
 
 
-def _issue_elements(root):
-    nodes, edges = _collect_issue_graph(root)
+def _issue_elements(root, issue_context=None):
+    nodes, edges = _collect_issue_graph(root, issue_context)
     linked = _issue_linked_memory(root)
     # Group issues by goal → compound "goal box" parents, children placed in
     # number order inside each box (preset layout). This is the "flow" the user
@@ -1257,6 +1257,11 @@ def _issue_elements(root):
                     "label": display,
                     "labelbase": display,
                     "status": info["status"],
+                    "blocked_by": info["blocked_by"],
+                    "readiness": info["readiness"],
+                    "recommended_next_command": info["recommended_next_command"],
+                    "diagnostic_codes": info["diagnostic_codes"],
+                    "normalized_schema": info["normalized_schema"],
                     "memcount": len(mem),
                     "href": f"issue-{iid}.html",
                     "memory": [{"id": e["id"], "title": e["title"], "kind": e["kind"], "file": e["file"]} for e in mem],
@@ -1625,9 +1630,10 @@ showTab(location.hash === '#memory' ? 'memory' : (location.hash === '#issues' ? 
 
 
 def render_project_view(root):
-    issue_elements, _i_n, _i_e = _issue_elements(root)
+    issue_context = _evaluated_issue_context(root)
+    issue_elements, _i_n, _i_e = _issue_elements(root, issue_context)
     memory_elements, _m_n, _m_e = _memory_elements(root)
-    issue_rows = _collect_issue_table(root)
+    issue_rows = _collect_issue_table(root, issue_context)
     return (
         PROJECT_VIEW_TEMPLATE
         .replace("__ISSUE_ROWS__", json.dumps(issue_rows, ensure_ascii=False, indent=2))
