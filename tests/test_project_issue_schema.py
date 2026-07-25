@@ -2335,6 +2335,243 @@ next_command: product:execute BIZ-ADVISORY
         self.assertEqual(self.schema.DEFINITION_READINESS_EXCEPTIONS, frozenset())
 
 
+class ProjectIssueSchemaCrossConsumerParityTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.schema = load_module(
+            "project_issue_schema_cross_consumer",
+            "scripts/project_issue_schema.py",
+        )
+        cls.lifecycle = load_module(
+            "project_lifecycle_cross_consumer",
+            "scripts/project_lifecycle.py",
+        )
+        cls.loop = load_module(
+            "project_loop_cross_consumer",
+            "scripts/project_loop.py",
+        )
+        cls.mcp = load_module(
+            "mcp_server_cross_consumer",
+            "scripts/mcp_server.py",
+        )
+        cls.memory = load_module(
+            "project_memory_cross_consumer",
+            "scripts/project_memory.py",
+        )
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        (self.root / "issues").mkdir()
+        for issue_id in ("BIZ-033", "BIZ-038", "BIZ-039", "BIZ-040"):
+            shutil.copy2(
+                FIXTURES / f"{issue_id}.md",
+                self.root / "issues" / f"{issue_id}.md",
+            )
+        shutil.copy2(
+            FIXTURES / "legacy-markdown.md",
+            self.root / "issues" / "legacy-markdown.md",
+        )
+        (self.root / "issues" / "001-dependency.md").write_text(
+            "# Issue: `001-dependency` Completed dependency\n\n"
+            "**Status: done** — created 2026-07-22, done 2026-07-22.\n",
+            encoding="utf-8",
+        )
+        artifact_root = self.root / "specs" / "legacy-markdown"
+        artifact_root.mkdir(parents=True)
+        for name in ("spec", "plan", "tasks"):
+            (artifact_root / f"{name}.md").write_text(
+                f"# {name.title()}\n",
+                encoding="utf-8",
+            )
+        (self.root / "workspace").mkdir()
+
+    def loop_recommendation(self, issue_id):
+        (self.root / "workspace" / "loop-state.json").write_text(
+            json.dumps(
+                {
+                    "schema": "moduflow.loop-state.v2",
+                    "loop_id": "issue-schema-parity",
+                    "goal_id": "issue-schema-parity",
+                    "issue_ids": [issue_id],
+                    "active_issue_id": issue_id,
+                    "phase": "execute",
+                    "mode": "recommend",
+                    "delegation_level": "full",
+                    "status": "active",
+                    "next_command": "product:loop",
+                    "attempts": {
+                        "command": "product:loop",
+                        "count": 0,
+                        "max": 10,
+                        "last_changed_at": "2026-07-25",
+                    },
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return self.loop.recommend_loop(self.root)
+
+    def test_legacy_and_biz_fixtures_have_cross_consumer_semantic_parity(self):
+        expected = {
+            "legacy-markdown": {
+                "lifecycle_state": "backlog",
+                "blocked_by": ["001-dependency"],
+                "readiness": "ready",
+                "recommended_next_command": "product:execute legacy-markdown",
+                "diagnostic_codes": set(),
+            },
+            "BIZ-033": {
+                "lifecycle_state": "active",
+                "blocked_by": [],
+                "readiness": "not_ready",
+                "recommended_next_command": "product:spec BIZ-033",
+                "diagnostic_codes": {
+                    "ISSUE_GATE_BLOCKED",
+                    "ISSUE_NEXT_COMMAND_INVALID",
+                },
+            },
+            "BIZ-038": {
+                "lifecycle_state": "backlog",
+                "blocked_by": ["BIZ-033"],
+                "readiness": "blocked",
+                "recommended_next_command": "product:status",
+                "diagnostic_codes": {
+                    "ISSUE_AUX_STATUS_INVALID",
+                    "ISSUE_DEPENDENCY_UNMET",
+                    "ISSUE_GATE_BLOCKED",
+                    "ISSUE_NEXT_COMMAND_INVALID",
+                },
+            },
+            "BIZ-039": {
+                "lifecycle_state": "backlog",
+                "blocked_by": ["BIZ-033"],
+                "readiness": "blocked",
+                "recommended_next_command": "product:status",
+                "diagnostic_codes": {
+                    "ISSUE_AUX_STATUS_INVALID",
+                    "ISSUE_DEPENDENCY_UNMET",
+                    "ISSUE_GATE_BLOCKED",
+                    "ISSUE_NEXT_COMMAND_INVALID",
+                },
+            },
+            "BIZ-040": {
+                "lifecycle_state": "backlog",
+                "blocked_by": [],
+                "readiness": "blocked",
+                "recommended_next_command": "product:spec BIZ-040",
+                "diagnostic_codes": {
+                    "ISSUE_AUX_STATUS_INVALID",
+                    "ISSUE_DEFINITION_NOT_READY",
+                    "ISSUE_GATE_BLOCKED",
+                    "ISSUE_NEXT_COMMAND_INVALID",
+                },
+            },
+        }
+
+        normalized = {
+            issue["issue_id"]: issue
+            for issue in self.schema.evaluate_project(self.root)["issues"]
+        }
+        lifecycle_items = {
+            issue["id"]: issue for issue in self.lifecycle.list_issues(self.root)
+        }
+        ready_ids = {
+            issue["id"] for issue in self.lifecycle.ready_issues(self.root)
+        }
+        mcp_request = {
+            "jsonrpc": "2.0",
+            "id": 93,
+            "method": "tools/call",
+            "params": {"name": "moduflow_issues", "arguments": {}},
+        }
+        mcp_payload = json.loads(
+            self.mcp.handle_request(mcp_request, self.root)["result"]["content"][0][
+                "text"
+            ]
+        )
+        mcp_items = {issue["id"]: issue for issue in mcp_payload["issues"]}
+        issue_context = self.memory._evaluated_issue_context(self.root)
+        graph_nodes, _edges = self.memory._collect_issue_graph(
+            self.root,
+            issue_context,
+        )
+        dashboard_rows = {
+            row["id"]: row
+            for row in self.memory._collect_issue_table(
+                self.root,
+                issue_context,
+            )
+        }
+
+        self.assertIn("legacy-markdown", ready_ids)
+        self.assertTrue(
+            {"BIZ-033", "BIZ-038", "BIZ-039", "BIZ-040"}.isdisjoint(ready_ids)
+        )
+        for issue_id, contract in expected.items():
+            with self.subTest(issue_id=issue_id):
+                canonical = normalized[issue_id]
+                lifecycle = lifecycle_items[issue_id]
+                mcp = mcp_items[issue_id]
+                graph = graph_nodes[issue_id]
+                dashboard = dashboard_rows[issue_id]
+                loop = self.loop_recommendation(issue_id)
+
+                self.assertEqual(
+                    canonical["lifecycle_state"],
+                    contract["lifecycle_state"],
+                )
+                self.assertEqual(canonical["blocked_by"], contract["blocked_by"])
+                self.assertEqual(canonical["readiness"], contract["readiness"])
+                self.assertEqual(
+                    canonical["recommended_next_command"],
+                    contract["recommended_next_command"],
+                )
+                self.assertEqual(
+                    codes(canonical),
+                    contract["diagnostic_codes"],
+                )
+
+                for consumer in (lifecycle, mcp, graph, dashboard):
+                    self.assertEqual(
+                        consumer["status"],
+                        canonical["lifecycle_state"],
+                    )
+                    self.assertEqual(
+                        consumer["blocked_by"],
+                        canonical["blocked_by"],
+                    )
+                for consumer in (mcp, graph, dashboard):
+                    self.assertEqual(
+                        consumer["readiness"],
+                        canonical["readiness"],
+                    )
+                    self.assertEqual(
+                        consumer["recommended_next_command"],
+                        canonical["recommended_next_command"],
+                    )
+                    self.assertEqual(
+                        set(consumer["diagnostic_codes"]),
+                        codes(canonical),
+                    )
+                self.assertEqual(
+                    dashboard["next_command"],
+                    canonical["recommended_next_command"],
+                )
+                self.assertEqual(
+                    loop["next_command"],
+                    canonical["recommended_next_command"],
+                )
+                if canonical["readiness"] == "ready":
+                    self.assertEqual(loop["status"], "active")
+                    self.assertIsNone(loop["blocker"])
+                else:
+                    self.assertEqual(loop["status"], "needs_decision")
+                    self.assertTrue(loop["blocker"])
+
+
 class ProjectIssueMigrationReportTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
