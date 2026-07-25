@@ -1190,7 +1190,12 @@ def list_normalized_issues(project_root, project_paths=None):
         except ValueError:
             issues.append(_blocked_issue_source(path, project_root))
             continue
-        if resolved.is_file():
+        # An existing non-file (a directory named *.md, a device node) must
+        # still produce a record — parse_issue's OSError path fails it closed.
+        # Skipping it drops the issue from evaluation, and consumers that fall
+        # back to their own file read then raise instead of failing closed.
+        # Paths resolving to nothing (dangling symlinks) stay skipped.
+        if resolved.exists():
             issues.append(parse_issue(path, project_root))
     return sorted(issues, key=lambda issue: issue["issue_id"])
 

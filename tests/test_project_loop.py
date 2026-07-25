@@ -906,6 +906,79 @@ gate_state: passed
                 )
                 self.assertIn("Replace the external symlink.", blocker)
 
+    def test_checkbox_less_issue_reaches_execute_phase_but_stays_gated(self):
+        """Pin the a50947b default flip so it cannot become fail-open.
+
+        infer_issue_phase now returns "execute" instead of "status" for an
+        issue carrying no workflow checkboxes. That is only safe because a
+        gate still stands between the phase and actually executing: a missing
+        implementation-readiness.json must never read as approval.
+        """
+        issue_id = "019-loop-kernel-and-state-model"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "workspace").mkdir()
+            (root / "workspace" / "loop-state.json").write_text(
+                json.dumps({
+                    "schema": "moduflow.loop-state.v2",
+                    "goal_id": "goal-a",
+                    "issue_ids": [issue_id],
+                    "active_issue_id": issue_id,
+                    "status": "active",
+                    "next_command": f"product:spec {issue_id}",
+                    "attempts": {"command": "x", "count": 1, "max": 3},
+                }) + "\n",
+                encoding="utf-8",
+            )
+            (root / "issues").mkdir()
+            (root / "issues" / f"{issue_id}.md").write_text(
+                "# Issue 019\n\n**Status: active**\n\n## Summary\n\nNo workflow checkboxes.\n",
+                encoding="utf-8",
+            )
+            self.add_artifacts(root, issue_id, "spec", "plan", "tasks")
+            self.assertFalse(
+                (root / "specs" / issue_id / "implementation-readiness.json").exists()
+            )
+
+            result = project_loop.recommend_loop(root)
+
+            self.assertEqual(result["phase"], "execute")
+            self.assertEqual(result["status"], "needs_decision")
+            self.assertTrue(result["blocker"])
+
+    def test_directory_shaped_issue_file_fails_closed_instead_of_raising(self):
+        """A `*.md` directory must route to doctor, not raise out of the loop.
+
+        The schema layer used to skip non-file sources silently, which left
+        infer_issue_phase to call read_text() on a directory and raise
+        IsADirectoryError out of recommend_loop.
+        """
+        issue_id = "019-loop-kernel-and-state-model"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "workspace").mkdir()
+            (root / "workspace" / "loop-state.json").write_text(
+                json.dumps({
+                    "schema": "moduflow.loop-state.v2",
+                    "goal_id": "goal-a",
+                    "issue_ids": [issue_id],
+                    "active_issue_id": issue_id,
+                    "status": "active",
+                    "next_command": f"product:spec {issue_id}",
+                    "attempts": {"command": "x", "count": 1, "max": 3},
+                }) + "\n",
+                encoding="utf-8",
+            )
+            (root / "issues").mkdir()
+            (root / "issues" / f"{issue_id}.md").mkdir()
+            self.add_artifacts(root, issue_id, "spec", "plan", "tasks")
+
+            result = project_loop.recommend_loop(root)
+
+            self.assertEqual(result["status"], "needs_decision")
+            self.assertEqual(result["next_command"], "product:doctor")
+            self.assertIn("ISSUE_SOURCE_UNREADABLE", result["blocker"])
+
 
 if __name__ == "__main__":
     unittest.main()

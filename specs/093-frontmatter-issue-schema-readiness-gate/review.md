@@ -72,7 +72,48 @@ Suggested fix direction: give `resolve_commits()` the same branch fallback
 that function outright. Either way, an unmatched-commit count belongs in the
 payload so under-collection can never again be silent.
 
-### 2. `infer_issue_phase` default flipped from inert to actionable — PLAUSIBLE, medium
+### 2. `infer_issue_phase` default flip — REFUTED as a fail-open, but exposed a real crash
+
+**Resolution (2026-07-25, after the initial pass).** The fail-open reading below
+was tested and does not hold. Probing `recommend_loop` directly:
+
+| Case | Result |
+| --- | --- |
+| Checkbox-less issue, artifacts present, no readiness file | `phase=execute` but `status=needs_decision`, blocked by the delegation gate |
+| Checkbox-less issue, no artifacts | Routed to `product:spec` by the structural gate |
+| Issue file unreadable (`chmod 000`) | `ISSUE_SOURCE_UNREADABLE`, routed to `product:doctor` |
+| Issue file a dangling symlink | `phase=issue`, inert |
+
+Every route reaches a gate. The `status` to `execute` flip changes which phase
+is *named*, not whether execution is authorized — approval still comes from the
+delegation and structural gates. The hypothesised divergence between
+`evaluate_project` and `infer_issue_phase` also does not exist for path
+resolution: `issue_path()` and `list_normalized_issues()` both go through
+`configured_project_paths()` with containment guards.
+
+**What the probe did find** is a different, confirmed defect in the same seam.
+`list_normalized_issues()` skipped any `*.md` path that existed but was not a
+file, with no record and no diagnostic. A directory named `<issue-id>.md` was
+therefore absent from evaluation, `evaluated_active_issue()` returned `None`,
+and `infer_issue_phase()` reached `read_text()` on a directory — raising
+`IsADirectoryError` out of `recommend_loop` instead of failing closed. This is
+the same silent-skip class as finding 1, and it sits inside 093's own new
+module.
+
+Fixed in this review: the guard now admits any *existing* non-file path so
+`parse_issue()`'s `OSError` handler produces a proper blocked record, matching
+the permission case exactly. Dangling symlinks still resolve to nothing and stay
+skipped. Four regression tests were added — two at the schema layer, two at the
+loop layer, the latter also pinning the checkbox-less routing so it cannot
+become fail-open later. Suite: 741 passing, `release_check` `valid: true`.
+
+The original analysis is kept below for the record.
+
+---
+
+*Original reading (superseded by the resolution above):*
+
+### 2-original. `infer_issue_phase` default flipped from inert to actionable — PLAUSIBLE, medium
 
 `a50947b` ("advance loop after structural execution gate") changed
 `scripts/project_loop.py:258`:
@@ -147,12 +188,18 @@ The implementation is sound on the evidence available: 737 tests pass, all
 release gates are green, the shared-parser boundary holds, and the
 read-only migration dogfood is proven non-mutating by a before/after digest.
 
-Conditions before merge:
+Conditions before merge — **both cleared during this review**:
 
-1. Resolve finding 2 — either a reachability argument recorded in `status.md`
-   or a regression test.
-2. Register finding 1 as a new issue. It is pre-existing and must not block
-   093, but it should not merge unrecorded, because it silently weakens the
-   review step for every future issue.
+1. ~~Resolve finding 2.~~ Done. The fail-open reading was refuted by direct
+   probing of `recommend_loop`; the crash it exposed instead was fixed inside
+   093's own module with four regression tests. Suite 741 passing.
+2. ~~Register finding 1 as a new issue.~~ Done — issue
+   `095-commit-issue-resolution-parity`.
 
 Finding 3 is advisory.
+
+093 is ready for PR. Note that `main` has since moved ahead by 5 commits
+(the 077–080 reconciliation), so this branch needs a merge or rebase first;
+the overlap is four state files — `.moduflow/state.json`,
+`workspace/dashboard.md`, `workspace/loop-state.json`, `workspace/roadmap.md`
+— with no source conflict.

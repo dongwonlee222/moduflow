@@ -2334,6 +2334,56 @@ next_command: product:execute BIZ-ADVISORY
             self.assertNotEqual(by_id[issue_id]["readiness"], "ready")
         self.assertEqual(self.schema.DEFINITION_READINESS_EXCEPTIONS, frozenset())
 
+    def test_non_file_issue_source_fails_closed_instead_of_being_skipped(self):
+        """A `*.md` path that exists but is not a file must produce a record.
+
+        Silently skipping it drops the issue from evaluation entirely, which
+        leaves consumers to fall back to their own file reads. project_loop's
+        infer_issue_phase then reaches read_text() on a directory and raises
+        IsADirectoryError out of recommend_loop instead of failing closed.
+        """
+        (self.root / "issues" / "042-directory-shaped-issue.md").mkdir()
+
+        issues = self.schema.list_normalized_issues(self.root)
+
+        record = next(
+            (
+                issue
+                for issue in issues
+                if issue["issue_id"] == "042-directory-shaped-issue"
+            ),
+            None,
+        )
+        self.assertIsNotNone(
+            record, "non-file issue source was silently dropped from evaluation"
+        )
+        self.assertEqual(record["readiness"], "blocked")
+        self.assertIsNone(record["lifecycle_state"])
+        self.assertTrue(
+            any(
+                diagnostic["code"] == "ISSUE_SOURCE_UNREADABLE"
+                and diagnostic["severity"] == "error"
+                for diagnostic in record["diagnostics"]
+            ),
+            f"expected an error-severity source diagnostic, got {record['diagnostics']}",
+        )
+
+    def test_broken_symlink_issue_source_stays_skipped(self):
+        """Guard the fix above: only *existing* non-file paths gain a record.
+
+        A dangling symlink resolves to nothing, so it stays out of evaluation
+        and the loop treats the issue as absent rather than blocked.
+        """
+        link = self.root / "issues" / "043-dangling-issue.md"
+        link.symlink_to(self.root / "issues" / "no-such-target.md")
+
+        issues = self.schema.list_normalized_issues(self.root)
+
+        self.assertNotIn(
+            "043-dangling-issue",
+            {issue["issue_id"] for issue in issues},
+        )
+
 
 class ProjectIssueSchemaCrossConsumerParityTests(unittest.TestCase):
     @classmethod

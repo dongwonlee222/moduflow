@@ -158,13 +158,41 @@ Verdict: **approve with conditions**. Full notes:
 | # | Finding | Verdict | Severity |
 | --- | --- | --- | --- |
 | 1 | Converge collects 1 of 44 commits, silently; no implementation file reaches the judge | Confirmed | Important (pre-existing, not 093) |
-| 2 | `infer_issue_phase` checkbox-less default flipped `status` to `execute`, reachable with no gate passed | Plausible | Medium |
+| 2 | `infer_issue_phase` checkbox-less default flip read as fail-open | **Refuted** — every route reaches a gate | — |
+| 2b | `list_normalized_issues` silently skipped existing non-file `*.md` sources, so a directory-shaped issue file crashed `recommend_loop` with `IsADirectoryError` | Confirmed | Medium — **fixed in this review** |
 | 3 | 43 of 44 commits carry no `Issue:` trailer; linkage passes only via branch fallback | Confirmed | Low (process) |
 
-Conditions before merge:
+Conditions before merge — both cleared:
 
-1. Finding 2 — record a reachability argument here, or add a regression test.
-2. Finding 1 — register as a new issue. Pre-existing, so it does not block 093.
+1. Finding 2 — refuted by direct probing of `recommend_loop`. Checkbox-less
+   issues reach `phase=execute` but remain `needs_decision` behind the
+   delegation gate; missing artifacts route to `product:spec`; unreadable
+   sources route to `product:doctor`. `issue_path()` and
+   `list_normalized_issues()` share `configured_project_paths()`, so the
+   hypothesised path divergence does not exist. The crash found instead
+   (2b) is fixed with four regression tests.
+2. Finding 1 — registered as `095-commit-issue-resolution-parity`.
+
+Post-review verification: `unittest discover` **741 passed** `OK` (737 before,
+plus four regression tests); `release_check.py` `valid: true`.
+
+### Fix applied for 2b
+
+`scripts/project_issue_schema.py` — `list_normalized_issues()` admitted only
+`resolved.is_file()`. Any existing non-file `*.md` path was dropped from
+evaluation with no record and no diagnostic, so `evaluated_active_issue()`
+returned `None` and `infer_issue_phase()` reached `read_text()` on a directory.
+The guard now admits any existing path, letting `parse_issue()`'s `OSError`
+handler produce the same blocked `ISSUE_SOURCE_UNREADABLE` record the
+permission case already produced. Dangling symlinks resolve to nothing and stay
+skipped, pinned by its own test.
+
+Tests added:
+
+- `ProjectIssueSchemaEvaluationTests.test_non_file_issue_source_fails_closed_instead_of_being_skipped`
+- `ProjectIssueSchemaEvaluationTests.test_broken_symlink_issue_source_stays_skipped`
+- `ProjectLoopTests.test_checkbox_less_issue_reaches_execute_phase_but_stays_gated`
+- `ProjectLoopTests.test_directory_shaped_issue_file_fails_closed_instead_of_raising`
 
 ## Evidence
 
