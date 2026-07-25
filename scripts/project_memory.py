@@ -6,9 +6,9 @@ from datetime import date
 from pathlib import Path
 
 try:
-    from scripts.project_issue_schema import evaluate_project
+    from scripts.project_issue_schema import evaluate_project, validate_issue_id
 except ModuleNotFoundError:
-    from project_issue_schema import evaluate_project
+    from project_issue_schema import evaluate_project, validate_issue_id
 
 
 MEMORY_DIRS = [
@@ -889,6 +889,16 @@ def _issue_status_bucket(status_word):
     return "backlog"
 
 
+def _issue_source_is_safe(issue):
+    return (
+        issue.get("source_format") not in {"blocked", "unreadable"}
+        and not any(
+            str(diagnostic.get("code") or "").startswith("ISSUE_SOURCE_")
+            for diagnostic in issue.get("diagnostics", [])
+        )
+    )
+
+
 def _resolve_evaluated_issue_reference(reference, valid_ids):
     if reference in valid_ids:
         return reference
@@ -951,10 +961,7 @@ def _evaluated_issue_context(root):
     }
     texts = {}
     for issue_id, issue in issues.items():
-        if issue.get("source_format") in {"blocked", "unreadable"} or any(
-            str(diagnostic.get("code") or "").startswith("ISSUE_SOURCE_")
-            for diagnostic in issue.get("diagnostics", [])
-        ):
+        if not _issue_source_is_safe(issue):
             continue
         source = project_root / (issue.get("source_path") or "")
         try:
@@ -1085,7 +1092,9 @@ def _issue_summary_ko(root, issue_id, text):
     summary = _plain_summary(_markdown_section(text, ["요약", "한글 요약", "Summary (KO)", "Korean Summary", "문제"]))
     if summary:
         return _short_description(summary)
-    spec_dir = Path(root).resolve() / "specs" / issue_id
+    project_root = Path(root).resolve()
+    specs_root = project_root / "specs"
+    spec_dir = specs_root / issue_id
     for ko_path in (
         spec_dir / "spec.ko.md",
         spec_dir / "plan.ko.md",
@@ -1093,9 +1102,9 @@ def _issue_summary_ko(root, issue_id, text):
         spec_dir / "review.ko.md",
         spec_dir / "human-review.ko.md",
     ):
-        if not ko_path.is_file():
+        spec_text = _read_contained_text(ko_path, specs_root, project_root)
+        if spec_text is None:
             continue
-        spec_text = ko_path.read_text(encoding="utf-8")
         for heading in ("요약", "문제", "먼저 정리된 질문", "목표"):
             summary = _plain_summary(_markdown_section(spec_text, [heading]))
             if summary:
@@ -1812,6 +1821,8 @@ if (LINKED.length) {
 def _resolve_issue_slug(root, issue_id):
     root = Path(root).resolve()
     issue_id = issue_id.strip()
+    if not validate_issue_id(issue_id):
+        return "invalid-issue"
     if (root / "specs" / issue_id).is_dir():
         return issue_id
     if (root / "issues" / f"{issue_id}.md").is_file():
@@ -1830,12 +1841,34 @@ def _resolve_issue_slug(root, issue_id):
     return issue_id
 
 
-def _ko_sidecar(path):
+def _contained_resolved_path(path, boundary, project_root):
+    try:
+        project_root = Path(project_root).resolve()
+        boundary = Path(boundary).resolve()
+        boundary.relative_to(project_root)
+        resolved = Path(path).resolve()
+        resolved.relative_to(boundary)
+        return resolved
+    except (OSError, RuntimeError, ValueError):
+        return None
+
+
+def _read_contained_text(path, boundary, project_root):
+    resolved = _contained_resolved_path(path, boundary, project_root)
+    if resolved is None or not resolved.is_file():
+        return None
+    try:
+        return resolved.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return None
+
+
+def _ko_sidecar(path, boundary, project_root):
     """Korean reading sidecar `<name>.ko.md` next to `<name>.md` (049). None if absent."""
     if not path.name.endswith(".md"):
         return None
     ko = path.parent / (path.name[:-3] + ".ko.md")
-    return ko.read_text(encoding="utf-8") if ko.is_file() else None
+    return _read_contained_text(ko, boundary, project_root)
 
 
 def _issue_title_from_text(text, fallback):
@@ -1860,24 +1893,52 @@ def _korean_overview_artifact(root, issue_id, issue_text):
 def _collect_issue_artifacts(root, issue_id):
     root = Path(root).resolve()
     slug = _resolve_issue_slug(root, issue_id)
+    evaluation = evaluate_project(root)
+    evaluated = next(
+        (
+            item for item in evaluation["issues"]
+            if item.get("issue_id") == slug
+            or Path(item.get("source_path") or "").stem == slug
+        ),
+        None,
+    )
     artifacts = []
-    issue_file = root / "issues" / f"{slug}.md"
-    issue_text = issue_file.read_text(encoding="utf-8") if issue_file.is_file() else ""
-    ko_overview = _korean_overview_artifact(root, slug, issue_text)
+    issues_root = root / "issues"
+    issue_file = (
+        root / evaluated["source_path"]
+        if evaluated and _issue_source_is_safe(evaluated)
+        else None
+    )
+    issue_content = (
+        _read_contained_text(issue_file, issues_root, root)
+        if issue_file is not None
+        else None
+    )
+    issue_text = issue_content or ""
+    ko_overview = (
+        _korean_overview_artifact(root, slug, issue_text)
+        if issue_text
+        else None
+    )
     if ko_overview:
         artifacts.append(ko_overview)
-    if issue_file.is_file():
+    if issue_content is not None:
         artifacts.append({"name": "issue", "label": "Issue",
-                          "md": issue_text, "ko": _ko_sidecar(issue_file)})
+                          "md": issue_text,
+                          "ko": _ko_sidecar(issue_file, issues_root, root)})
+    specs_root = root / "specs"
     spec_dir = root / "specs" / slug
-    if spec_dir.is_dir():
+    resolved_spec_dir = _contained_resolved_path(spec_dir, specs_root, root)
+    if resolved_spec_dir is not None and resolved_spec_dir.is_dir():
         seen = set()
         for fname in SPEC_ARTIFACT_ORDER:
             f = spec_dir / fname
-            if f.is_file():
+            content = _read_contained_text(f, specs_root, root)
+            if content is not None:
                 seen.add(fname)
                 artifacts.append({"name": fname, "label": ARTIFACT_LABELS.get(fname, fname),
-                                  "md": f.read_text(encoding="utf-8"), "ko": _ko_sidecar(f)})
+                                  "md": content,
+                                  "ko": _ko_sidecar(f, specs_root, root)})
         for f in sorted(spec_dir.glob("*.md")):
             if f.name in seen:
                 continue
@@ -1885,11 +1946,16 @@ def _collect_issue_artifacts(root, issue_id):
                 base_name = f.name[:-6] + ".md"
                 if base_name in seen or (spec_dir / base_name).is_file():
                     continue
-                artifacts.append({"name": f.name, "label": f.name[:-6].replace("-", " ").title(),
-                                  "md": "", "ko": f.read_text(encoding="utf-8"), "ko_only": True})
+                content = _read_contained_text(f, specs_root, root)
+                if content is not None:
+                    artifacts.append({"name": f.name, "label": f.name[:-6].replace("-", " ").title(),
+                                      "md": "", "ko": content, "ko_only": True})
                 continue
-            artifacts.append({"name": f.name, "label": f.stem.replace("-", " ").title(),
-                              "md": f.read_text(encoding="utf-8"), "ko": _ko_sidecar(f)})
+            content = _read_contained_text(f, specs_root, root)
+            if content is not None:
+                artifacts.append({"name": f.name, "label": f.stem.replace("-", " ").title(),
+                                  "md": content,
+                                  "ko": _ko_sidecar(f, specs_root, root)})
     return slug, artifacts
 
 

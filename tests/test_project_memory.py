@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -521,6 +523,101 @@ More detail contents here.
 
             self.assertIn("No artifacts yet", html)
             self.assertIn("099-nope", html)
+
+    def test_issue_panel_blocks_unsafe_issue_source_but_keeps_safe_spec(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "specs" / "BIZ-LINK").mkdir(parents=True)
+            secret = root / "private-issue.md"
+            secret.write_text(
+                "# DO-NOT-EXPOSE-PANEL-TITLE\n\n"
+                "## Summary\n\nDO-NOT-EXPOSE-PANEL-SUMMARY\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "BIZ-LINK.md").symlink_to(secret)
+            (root / "specs" / "BIZ-LINK" / "spec.md").write_text(
+                "# Safe spec remains visible\n",
+                encoding="utf-8",
+            )
+            original = project_memory.evaluate_project
+
+            with mock.patch.object(
+                project_memory, "evaluate_project", wraps=original
+            ) as evaluate:
+                html = project_memory.render_issue_panel(root, "BIZ-LINK")
+            _slug, artifacts = project_memory._collect_issue_artifacts(
+                root, "BIZ-LINK"
+            )
+            serialized = json.dumps(artifacts, ensure_ascii=False)
+
+            evaluate.assert_called_once_with(root.resolve())
+            self.assertNotIn("DO-NOT-EXPOSE", html)
+            self.assertNotIn("DO-NOT-EXPOSE", serialized)
+            self.assertFalse(any(item["name"] == "issue" for item in artifacts))
+            self.assertIn("Safe spec remains visible", html)
+
+    def test_issue_panel_skips_external_spec_file_symlink(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            outside = root / "outside-spec-secret.md"
+            outside_ko = root / "outside-spec-ko-secret.md"
+            (root / "issues").mkdir()
+            (root / "specs" / "046-safe").mkdir(parents=True)
+            (root / "issues" / "046-safe.md").write_text(
+                "# Issue: `046-safe`\n\n**Status: backlog**\n",
+                encoding="utf-8",
+            )
+            outside.write_text("# DO-NOT-EXPOSE-SPEC-SYMLINK\n", encoding="utf-8")
+            outside_ko.write_text(
+                "# Spec\n\n## 요약\n\nDO-NOT-EXPOSE-SPEC-KO-SYMLINK\n",
+                encoding="utf-8",
+            )
+            (root / "specs" / "046-safe" / "spec.md").symlink_to(outside)
+            (root / "specs" / "046-safe" / "spec.ko.md").symlink_to(outside_ko)
+            (root / "specs" / "046-safe" / "plan.md").write_text(
+                "# Safe plan remains visible\n",
+                encoding="utf-8",
+            )
+
+            html = project_memory.render_issue_panel(root, "046-safe")
+
+            self.assertNotIn("DO-NOT-EXPOSE", html)
+            self.assertNotIn('"name": "spec.md"', html)
+            self.assertIn("Safe plan remains visible", html)
+
+    def test_issue_panel_cli_does_not_write_blocked_symlink_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            secret = root / "private-cli-issue.md"
+            secret.write_text(
+                "# DO-NOT-EXPOSE-CLI-TITLE\n\nDO-NOT-EXPOSE-CLI-BODY\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "BIZ-CLI.md").symlink_to(secret)
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "project_memory.py"),
+                    str(root),
+                    "--issue",
+                    "BIZ-CLI",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            panel = root / "memory" / "issue-BIZ-CLI.html"
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue(panel.is_file())
+            self.assertNotIn("DO-NOT-EXPOSE", completed.stdout)
+            self.assertNotIn("DO-NOT-EXPOSE", completed.stderr)
+            self.assertNotIn("DO-NOT-EXPOSE", panel.read_text(encoding="utf-8"))
 
     def test_collect_issue_graph_parses_status_and_supersedes(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
