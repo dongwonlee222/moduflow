@@ -37,12 +37,16 @@ Result: `92/92` passed.
 python3 -m unittest tests.test_issue_dependencies tests.test_project_lifecycle tests.test_project_loop tests.test_validation_distribution tests.test_project_doctor tests.test_mcp_server tests.test_project_memory tests.test_issue_generator -v
 ```
 
-Result: `213` tests ran; `211` passed and the two current-repository
-release-check assertions failed only because `.claude-plugin/plugin.json`
-remains at `0.3.26`. The release check reports that the patch version must be
-bumped. E1 intentionally does not modify versions; that is the explicit E2
-gate. Its validation, artifact, linkage, lint, security, unittest, doctor, and
-documentation sub-checks were otherwise all `ok`.
+Result: a fresh rerun at commit `34be14b` completed `213/213` tests with
+`OK` and exit `0`.
+
+```bash
+python3 scripts/release_check.py .
+```
+
+Result: `valid: true`, no errors, and every reported check is `ok`, including
+`validate_moduflow`, project-artifact validation, linkage, lint, security,
+version-bump gate, unittest, doctor, and release documentation.
 
 ## Read-only migration dogfood
 
