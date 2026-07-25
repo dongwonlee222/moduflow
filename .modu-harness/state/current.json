@@ -2,7 +2,7 @@
   "project": "moduflow",
   "project_root": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
   "updated_at": "2026-07-25",
-  "current_goal": "Issue 093 is reviewed, pushed, and open as Draft PR #31 awaiting Dongwon Lee's human review. Issue 081 is pushed but unreviewed.",
+  "current_goal": "Issues 093 and 081 are both reviewed and open as Draft PRs (#31, #32) awaiting Dongwon Lee's human review.",
   "latest_decisions": [
     "Issue 081 was recovered from an uncommitted working tree onto branch codex/081-gpt-5-6-model-tier-guidance. Its version bump is deliberately deferred because issue 093 already claims 0.3.27-0.3.29; it must bump when it merges.",
     "The local 077-080 reconciliation edits were discarded in favor of branch codex/reconcile-077-080, verified file-by-file as the newer and richer version, then fast-forwarded into main.",
@@ -14,6 +14,7 @@
     "093 opened as a Draft PR rather than ready-for-review, so merge stays gated by human approval."
   ],
   "last_done": [
+    "Prepared issue 081 for PR: PR-time review addendum, refreshed status.md, version bump 0.3.26 to 0.3.27, PR handoff and Korean packet, pushed, and opened Draft PR #32.",
     "Recovered issue 081 onto codex/081-gpt-5-6-model-tier-guidance (2 commits) with backlog issues 082, 083, 084.",
     "Fast-forwarded main with codex/reconcile-077-080 (5 commits).",
     "Ran the independent review of issue 093 inline and wrote review.md plus a refreshed status.md.",
@@ -27,11 +28,12 @@
     "Final verification on the 093 branch: 741 tests OK, release_check valid, lifecycle drift [], working tree clean."
   ],
   "next_todo": [
-    "Dongwon Lee reviews Draft PR #31 using human-review.ko.md, memory/dashboard.html, and the issue drill-down. On approval, mark ready and merge, then run product:release 093-frontmatter-issue-schema-readiness-gate.",
-    "Issue 081 is pushed but has no PR and no review. Open one when ready, and bump the plugin version in that merge — the bump was deliberately skipped on its branch.",
+    "Dongwon Lee reviews Draft PR #31 (issue 093) and Draft PR #32 (issue 081) using each branch's human-review.ko.md. On approval, mark ready and merge.",
+    "Whichever PR merges second resolves the .claude-plugin/plugin.json version conflict: 081 sets 0.3.27, 093 sets 0.3.29.",
     "Pick up issue 095 (commit-to-issue resolution parity) — it weakens the review evidence step for every future issue until fixed.",
-    "Decide whether .playwright-mcp/ and the two dashboard PNGs at the repo root should be gitignored or removed; they are untracked and were left alone.",
-    "Issue 092 stays parked: it is blocked by 086, 090, and 091, all unfinished."
+    "Sequence issue 082 ahead of 083: 081's review found that worker prompts carry OpenAI guidance on every host, and 082 is the host-aware fix.",
+    "Decide whether .playwright-mcp/ and the two dashboard PNGs should be gitignored or removed; still untracked and deliberately left alone.",
+    "Issue 092 stays parked: blocked by 086, 090, and 091, all unfinished."
   ],
   "key_files": [
     "scripts/project_issue_schema.py",
@@ -47,7 +49,7 @@
   ],
   "branches": {
     "main": "pushed, equals origin/main",
-    "codex/081-gpt-5-6-model-tier-guidance": "pushed, no PR, unreviewed, version bump deferred",
+    "codex/081-gpt-5-6-model-tier-guidance": "pushed, Draft PR #32 open, version 0.3.27",
     "codex/093-frontmatter-issue-schema-readiness-gate": "pushed, Draft PR #31 open",
     "codex/092-current-dashboard-korean": "1 commit, local only, parked behind 086/090/091",
     "codex/reconcile-077-080": "merged into main"
@@ -59,7 +61,8 @@
   "github": {
     "main_status": "local main equals origin/main",
     "open_prs": [
-      "https://github.com/dongwonlee222/moduflow/pull/31"
+      "https://github.com/dongwonlee222/moduflow/pull/31",
+      "https://github.com/dongwonlee222/moduflow/pull/32"
     ]
   },
   "verification": {
@@ -68,5 +71,5 @@
     "lifecycle_drift": "[]",
     "working_tree": "clean except untracked .playwright-mcp/ and two dashboard PNGs"
   },
-  "next_start_keyword": "moduflow 093 pr review"
+  "next_start_keyword": "moduflow pr review 31 32"
 }
