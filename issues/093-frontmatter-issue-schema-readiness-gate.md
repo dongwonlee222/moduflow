@@ -1,6 +1,6 @@
 # Issue 093: Frontmatter Issue Schema and Readiness/Dependency Gate
 
-**Status: active** — created 2026-07-16, started 2026-07-22, planned 2026-07-22, implementation verified 2026-07-25.
+**Status: done** — created 2026-07-16, started 2026-07-22, planned 2026-07-22, implementation verified 2026-07-25, reviewed 2026-07-25, merged into `main` as `11190b4` via PR #31 on 2026-07-25.
 **Priority: p1**
 
 ## Summary

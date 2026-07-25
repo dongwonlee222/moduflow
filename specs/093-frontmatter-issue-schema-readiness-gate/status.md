@@ -1,6 +1,6 @@
 # Issue 093 Execution Status
 
-**Status: execute and E2 verification complete; independent review remains pending.**
+**Status: done** — reviewed 2026-07-25, merged into `main` as `11190b4` via PR #31.
 
 ## E2 full verification
 

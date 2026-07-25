@@ -2,38 +2,32 @@
   "project": "moduflow",
   "project_root": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
   "updated_at": "2026-07-25",
-  "current_goal": "Issues 093 and 081 are both reviewed and open as Draft PRs (#31, #32) awaiting Dongwon Lee's human review.",
+  "current_goal": "Issues 093 and 081 are merged to main (0.3.29). Nothing is active; issue 095 is the recommended next pick.",
   "latest_decisions": [
-    "Issue 081 was recovered from an uncommitted working tree onto branch codex/081-gpt-5-6-model-tier-guidance. Its version bump is deliberately deferred because issue 093 already claims 0.3.27-0.3.29; it must bump when it merges.",
-    "The local 077-080 reconciliation edits were discarded in favor of branch codex/reconcile-077-080, verified file-by-file as the newer and richer version, then fast-forwarded into main.",
-    "Issue 093 review verdict is approve with conditions; both conditions were cleared during the review.",
-    "Review finding 2 (loop phase default read as fail-open) was refuted by direct probing of recommend_loop. Every route reaches a gate.",
-    "The probe instead found a real crash: list_normalized_issues silently skipped existing non-file *.md paths, so a directory-shaped issue file raised IsADirectoryError out of recommend_loop. Fixed inside 093 with four regression tests.",
-    "Review finding 1 (project_converge collects only trailer-linked commits, 1 of 44 on this branch) is pre-existing and does not block 093. Registered as issue 095.",
-    "Review was coordinator-judged inline; subagent dispatch was withheld. Recorded as a limitation in review.md, status.md, and the PR body.",
-    "093 opened as a Draft PR rather than ready-for-review, so merge stays gated by human approval."
+    "Issue 081 was recovered from an uncommitted working tree where it had been marked done since 2026-07-10 and was silently absent from the 0.3.26 release. Merged as 1e5144a via PR #32.",
+    "Issue 093 reviewed with verdict approve-with-conditions; both conditions cleared. Merged as 11190b4 via PR #31.",
+    "Review finding 2 (loop phase default read as fail-open) was refuted by probing recommend_loop; every route reaches a gate. The probe instead found a real crash — non-file *.md sources were silently skipped, so a directory-shaped issue file raised IsADirectoryError out of the loop. Fixed with four regression tests.",
+    "Review finding 1 (project_converge collects only trailer-linked commits: 1 of 44 on that branch) is pre-existing and did not block 093. Registered as issue 095 and is now the top priority.",
+    "Both reviews were coordinator-judged inline; subagent dispatch was withheld. Recorded in review.md, review.ko.md, and both PR bodies.",
+    "Korean review sidecars (review.ko.md) were added because the generated human-review.ko.md only has Korean headings over verbatim English body text.",
+    "Version conflict between the two PRs resolved by the later-merging branch: 081 set 0.3.27, 093 set 0.3.29."
   ],
   "last_done": [
-    "Prepared issue 081 for PR: PR-time review addendum, refreshed status.md, version bump 0.3.26 to 0.3.27, PR handoff and Korean packet, pushed, and opened Draft PR #32.",
-    "Recovered issue 081 onto codex/081-gpt-5-6-model-tier-guidance (2 commits) with backlog issues 082, 083, 084.",
-    "Fast-forwarded main with codex/reconcile-077-080 (5 commits).",
-    "Ran the independent review of issue 093 inline and wrote review.md plus a refreshed status.md.",
+    "Merged PR #32 (issue 081) and PR #31 (issue 093) into main; main is now 0.3.29 with 741 tests passing.",
+    "Reconciled 093 to done across the issue file, spec status.md, workspace/dashboard.md, and .moduflow/state.json; lifecycle drift is [].",
+    "Fixed the non-file issue source crash in scripts/project_issue_schema.py with four regression tests.",
     "Registered issue 095-commit-issue-resolution-parity.",
-    "Fixed the non-file issue source crash in scripts/project_issue_schema.py; bumped plugin version to 0.3.29 after the version gate caught the omission.",
-    "Merged main into codex/093-... and resolved .moduflow/state.json and workspace/loop-state.json.",
-    "Added a consolidated '## Verification' section to status.md — the PR generator reads that exact heading and was emitting 'not recorded yet' despite a green run.",
-    "Generated pr.md and human-review.ko.md; recorded PR state in workflow/team-state.json.",
-    "Pushed main, codex/081-..., and codex/093-... to origin.",
-    "Opened Draft PR #31 for issue 093 and stored its URL back into the issue Links, pr.md, human-review.ko.md, and team-state.json.",
-    "Final verification on the 093 branch: 741 tests OK, release_check valid, lifecycle drift [], working tree clean."
+    "Added Korean review sidecars for both issues and posted Korean review summaries as PR comments.",
+    "Pushed codex/092-current-dashboard-korean, which had existed only locally."
   ],
   "next_todo": [
-    "Dongwon Lee reviews Draft PR #31 (issue 093) and Draft PR #32 (issue 081) using each branch's human-review.ko.md. On approval, mark ready and merge.",
-    "Whichever PR merges second resolves the .claude-plugin/plugin.json version conflict: 081 sets 0.3.27, 093 sets 0.3.29.",
-    "Pick up issue 095 (commit-to-issue resolution parity) — it weakens the review evidence step for every future issue until fixed.",
-    "Sequence issue 082 ahead of 083: 081's review found that worker prompts carry OpenAI guidance on every host, and 082 is the host-aware fix.",
-    "Decide whether .playwright-mcp/ and the two dashboard PNGs should be gitignored or removed; still untracked and deliberately left alone.",
-    "Issue 092 stays parked: blocked by 086, 090, and 091, all unfinished."
+    "Start issue 095 (commit-to-issue resolution parity). Until it lands, converge collects only trailer-linked commits, so the review evidence step is unreliable for every future issue.",
+    "Then 094 risk-based security/quality review gate — its blocker 089 is done, so it is ready despite the Blocked-by line.",
+    "Sequence 082 ahead of 083 and 084: issue 081's review found worker prompts carry OpenAI guidance on every host regardless of provider.",
+    "Also ready and independent: 087 Korean GitHub PR review surface, 090 project knowledge and artifact registry, 086 project-aware production library dashboard.",
+    "092 stays parked behind 086, 090, and 091.",
+    "Delete merged remote branches codex/081-... and codex/093-... when convenient; both are merged but not deleted.",
+    "Decide whether .playwright-mcp/ and the two dashboard PNGs at the repo root should be gitignored or removed; still untracked and deliberately left alone. They do NOT transfer to another machine."
   ],
   "key_files": [
     "scripts/project_issue_schema.py",
@@ -48,11 +42,10 @@
     "tests/test_project_loop.py"
   ],
   "branches": {
-    "main": "pushed, equals origin/main",
-    "codex/081-gpt-5-6-model-tier-guidance": "pushed, Draft PR #32 open, version 0.3.27",
-    "codex/093-frontmatter-issue-schema-readiness-gate": "pushed, Draft PR #31 open",
-    "codex/092-current-dashboard-korean": "1 commit, local only, parked behind 086/090/091",
-    "codex/reconcile-077-080": "merged into main"
+    "main": "0.3.29, pushed, equals origin/main",
+    "codex/081-gpt-5-6-model-tier-guidance": "merged via PR #32, remote branch not deleted",
+    "codex/093-frontmatter-issue-schema-readiness-gate": "merged via PR #31, remote branch not deleted",
+    "codex/092-current-dashboard-korean": "1 commit, pushed 2026-07-25, parked behind 086/090/091"
   },
   "worktrees": {
     "093": "/Users/dongwon.lee/.config/superpowers/worktrees/moduflow/093-frontmatter-readiness-spec",
@@ -60,16 +53,25 @@
   },
   "github": {
     "main_status": "local main equals origin/main",
-    "open_prs": [
+    "merged_prs": [
       "https://github.com/dongwonlee222/moduflow/pull/31",
       "https://github.com/dongwonlee222/moduflow/pull/32"
-    ]
+    ],
+    "open_prs": []
   },
   "verification": {
-    "tests": "741 pass on the 093 branch, 582 on main",
-    "release_check": "pass on both main and the 093 branch",
+    "tests": "741 pass on main",
+    "release_check": "pass",
     "lifecycle_drift": "[]",
     "working_tree": "clean except untracked .playwright-mcp/ and two dashboard PNGs"
   },
-  "next_start_keyword": "moduflow pr review 31 32"
+  "next_start_keyword": "moduflow 095",
+  "machine_handoff": {
+    "note": "Work continues on another machine. Everything needed is on origin.",
+    "not_transferred": [
+      ".claude/settings.local.json — gitignored; recreate if gh pr merge/ready/list should run without the auto-mode classifier blocking them",
+      ".playwright-mcp/ and moduflow-*.png at repo root — untracked local artifacts",
+      "superpowers worktrees under ~/.config/superpowers/worktrees/moduflow/ — recreate as needed"
+    ]
+  }
 }

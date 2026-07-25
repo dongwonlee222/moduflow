@@ -10,16 +10,20 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Active Issue
 
-- `093-frontmatter-issue-schema-readiness-gate` (phase: review) — shared issue normalization and every consumer gate are implemented; fresh E2 verification passed. Canonical: `issues/093-frontmatter-issue-schema-readiness-gate.md`. Branch: `codex/093-frontmatter-issue-schema-readiness-gate`.
+- None active. Run `product:status` to pick the next issue.
 
-## Priority Queue — 2026-07-16
+## Priority Queue — 2026-07-25
 
-- Now: `093` implementation and full E2 verification complete; independent review is next.
-- Next: `094` risk-based security/quality review gate.
+- Now: `095` commit-to-issue resolution parity. Until it lands, converge collects only trailer-linked commits, so the review evidence step is unreliable for every issue.
+- Next: `094` risk-based security/quality review gate (its blocker `089` is done).
 - Then: `086` project-aware production/playbook dashboard.
-- Later: `090` → `091` → `092`; `087` is independent and does not block 086.
+- Also ready: `087` Korean GitHub PR review surface, `090` project knowledge registry — both independent.
+- Later: `090` → `091` → `092`; `082` before `083`/`084` (081's review found worker prompts carry OpenAI guidance on every host).
 
 ## Recently Completed
+
+- `093-frontmatter-issue-schema-readiness-gate`: one shared issue parser (`scripts/project_issue_schema.py`, 2,545 lines) now feeds lifecycle, loop, doctor, validation, MCP, and dashboard; `ready` became a computed result instead of a field an issue can assert. Reviewed 2026-07-25 with verdict approve-with-conditions (both cleared) and merged as `11190b4` via PR #31. The review refuted its own fail-open hypothesis but found and fixed a real crash: non-file `*.md` sources were silently skipped, so a directory-shaped issue file raised `IsADirectoryError` out of the loop. Spun off `095`.
+- `081-gpt-5-6-model-tier-guidance`: GPT-5.6 tier examples documented against the durable `deep`/`balanced`/`fast` schema; merged as `1e5144a` via PR #32. Recovered from an uncommitted working tree where it had been marked done since 2026-07-10 and was silently absent from the 0.3.26 release. Spun off `082`, `083`, `084`.
 
 - `030-project-memory-layer`: legacy prototype audit completed on 2026-07-21; foundation commit `5929502` retained and remaining registry/migration scope superseded by Issue 090.
 - `080-reference-improvement-backlog`: PR #16 merged with successful CI on 2026-07-09; missing human-approval and release evidence were reconciled with Dongwon Lee approval on 2026-07-21.
