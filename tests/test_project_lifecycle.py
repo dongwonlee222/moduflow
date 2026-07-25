@@ -163,6 +163,121 @@ class ProjectLifecycleTests(unittest.TestCase):
             second = lc.sync_lifecycle(root)               # idempotent
             self.assertFalse(second["dashboard_updated"])
 
+    def test_sync_replaces_stale_execute_command_for_dependency_blocked_active_issue(self):
+        lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scaffold(
+                root,
+                {"BIZ-ACTIVE": "active", "BIZ-BLOCKER": "backlog"},
+                active_in_dashboard="BIZ-ACTIVE",
+                state_active="BIZ-ACTIVE",
+            )
+            active_issue = root / "issues" / "BIZ-ACTIVE.md"
+            active_issue.write_text(
+                "# Issue: `BIZ-ACTIVE`\n\n"
+                "**Status: active** — created.\n"
+                "**Blocked-by: BIZ-BLOCKER**\n",
+                encoding="utf-8",
+            )
+            spec_dir = root / "specs" / "BIZ-ACTIVE"
+            spec_dir.mkdir(parents=True)
+            for artifact in ("spec.md", "plan.md", "tasks.md"):
+                (spec_dir / artifact).write_text("# artifact\n", encoding="utf-8")
+            state_path = root / ".moduflow" / "state.json"
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            state["next_command"] = "product:execute BIZ-ACTIVE"
+            state_path.write_text(
+                json.dumps(state) + "\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                lc, "evaluate_project", wraps=lc.evaluate_project
+            ) as evaluate:
+                result = lc.sync_lifecycle(root)
+
+            synced = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(evaluate.call_count, 1)
+            self.assertEqual(result["phase"], "execute")
+            self.assertEqual(synced["phase"], "execute")
+            self.assertEqual(synced["next_command"], "product:status")
+
+    def test_sync_uses_normalized_custom_paths_for_phase_and_dashboard_link(self):
+        lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issues_dir = root / "records" / "issues"
+            specs_dir = root / "records" / "specs" / "BIZ-CUSTOM"
+            issues_dir.mkdir(parents=True)
+            specs_dir.mkdir(parents=True)
+            (issues_dir / "BIZ-CUSTOM.md").write_text(
+                "# Issue: `BIZ-CUSTOM`\n\n"
+                "**Status: active** — created.\n",
+                encoding="utf-8",
+            )
+            for artifact in (
+                "spec.md",
+                "plan.md",
+                "tasks.md",
+                "review.md",
+                "release.md",
+            ):
+                (specs_dir / artifact).write_text("# artifact\n", encoding="utf-8")
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.config.v1",
+                        "paths": {
+                            "issues": "records/issues",
+                            "specs": "records/specs",
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            state_path = root / ".moduflow" / "state.json"
+            state_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.state.v1",
+                        "phase": "select",
+                        "active_goal": "g",
+                        "active_issue": "BIZ-CUSTOM",
+                        "next_command": "product:status",
+                        "blockers": [],
+                        "updated_at": "2026-06-28",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (root / "workspace").mkdir()
+            dashboard_path = root / "workspace" / "dashboard.md"
+            dashboard_path.write_text(
+                "# Dashboard\n\n"
+                "## Active Issue\n\n- None active.\n\n"
+                "## Recently Completed\n\n- Preserve me.\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                lc, "evaluate_project", wraps=lc.evaluate_project
+            ) as evaluate:
+                result = lc.sync_lifecycle(root)
+
+            synced = json.loads(state_path.read_text(encoding="utf-8"))
+            dashboard = dashboard_path.read_text(encoding="utf-8")
+            self.assertEqual(evaluate.call_count, 1)
+            self.assertEqual(result["phase"], "release")
+            self.assertEqual(synced["phase"], "release")
+            self.assertEqual(synced["next_command"], "product:execute BIZ-CUSTOM")
+            self.assertIn("Canonical: `records/issues/BIZ-CUSTOM.md`.", dashboard)
+            self.assertNotIn("Canonical: `issues/BIZ-CUSTOM.md`.", dashboard)
+            self.assertIn("Preserve me.", dashboard)
+
     def test_sync_fails_closed_without_writing_for_unreadable_active_issue(self):
         lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
         with tempfile.TemporaryDirectory() as tmp:

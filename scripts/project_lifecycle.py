@@ -15,6 +15,7 @@ from pathlib import Path
 
 try:
     from scripts.project_issue_schema import (
+        build_artifact_index,
         evaluate_project,
         markdown_blocked_by,
         markdown_priority,
@@ -24,6 +25,7 @@ try:
     )
 except ModuleNotFoundError:
     from project_issue_schema import (
+        build_artifact_index,
         evaluate_project,
         markdown_blocked_by,
         markdown_priority,
@@ -168,17 +170,34 @@ def ready_issues(root):
     return sorted(ready, key=lambda i: (i["priority"], i["id"]))
 
 
-def infer_phase(root, issue_id):
+def _phase_from_evaluated_issue(issue):
+    artifact_phase = issue.get("artifact_phase") if issue else None
+    return {
+        "issue": "select",
+        "spec": "spec",
+        "plan": "plan",
+        "tasks": "execute",
+        "review": "review",
+        "release": "release",
+    }.get(artifact_phase, "select")
+
+
+def infer_phase(root, issue_id, evaluation=None):
     if not issue_id:
         return "select"
-    d = Path(root).resolve() / "specs" / issue_id
-    if (d / "tasks.md").exists():
-        return "execute"
-    if (d / "plan.md").exists():
-        return "plan"
-    if (d / "spec.md").exists():
-        return "spec"
-    return "select"
+    root = Path(root).resolve()
+    evaluation = evaluation or evaluate_project(root)
+    issue = next(
+        (
+            item
+            for item in evaluation["issues"]
+            if item["issue_id"] == issue_id
+        ),
+        None,
+    )
+    if issue is None:
+        issue = build_artifact_index(root, [issue_id]).get(issue_id)
+    return _phase_from_evaluated_issue(issue)
 
 
 def _section_body(text, header):
@@ -381,7 +400,20 @@ def sync_lifecycle(root):
             "errors": errors,
         }
     active = ls["active"][0] if len(ls["active"]) == 1 else ""
-    phase = infer_phase(root, active)
+    active_issue = next(
+        (
+            issue
+            for issue in evaluation["issues"]
+            if issue["issue_id"] == active
+        ),
+        None,
+    )
+    phase = infer_phase(root, active, evaluation)
+    next_command = "product:status"
+    if active_issue:
+        next_command = (
+            active_issue.get("recommended_next_command") or next_command
+        )
 
     # state.json — no prose; safe to set lifecycle fields, preserve the rest.
     sp = root / ".moduflow" / "state.json"
@@ -390,10 +422,7 @@ def sync_lifecycle(root):
     state["active_issue"] = active
     state["phase"] = phase
     state.setdefault("active_goal", "")
-    if not active:
-        state["next_command"] = "product:status"
-    else:
-        state.setdefault("next_command", "product:status")
+    state["next_command"] = next_command
     state.setdefault("blockers", [])
     state["updated_at"] = date.today().isoformat()
     if sp.parent.exists():
@@ -405,9 +434,10 @@ def sync_lifecycle(root):
     if dash.exists():
         dtext = dash.read_text(encoding="utf-8")
         if active:
+            source_path = active_issue["source_path"]
             new_section = (
                 f"## Active Issue\n\n- `{active}` (phase: {phase}). "
-                f"Canonical: `issues/{active}.md`.\n\n"
+                f"Canonical: `{source_path}`.\n\n"
             )
         else:
             new_section = (
