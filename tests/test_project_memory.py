@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -731,6 +732,115 @@ More detail contents here.
                 self.assertIn("ISSUE_DEPENDENCY_UNMET", item["diagnostic_codes"])
                 self.assertFalse(item["recommended_next_command"].startswith("product:execute"))
             self.assertIn("blocked", row["attention_flags"])
+
+    def test_dashboard_and_panel_honor_configured_issue_and_spec_paths(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issues = root / "product" / "issues"
+            specs = root / "product" / "specs"
+            workspace = root / "product" / "workspace"
+            issues.mkdir(parents=True)
+            (specs / "BIZ-CUSTOM").mkdir(parents=True)
+            workspace.mkdir(parents=True)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps({
+                    "schema": "moduflow.config.v1",
+                    "paths": {
+                        "issues": "product/issues",
+                        "specs": "product/specs",
+                        "workspace": "product/workspace",
+                    },
+                }),
+                encoding="utf-8",
+            )
+            (issues / "BIZ-CUSTOM.md").write_text(
+                "# Issue: `BIZ-CUSTOM`\n\n"
+                "**Status: backlog**\n\n"
+                "## Summary\n\nConfigured dashboard summary.\n",
+                encoding="utf-8",
+            )
+            (specs / "BIZ-CUSTOM" / "spec.md").write_text(
+                "# Configured safe spec\n",
+                encoding="utf-8",
+            )
+
+            nodes, _edges = project_memory._collect_issue_graph(root)
+            rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
+            panel = project_memory.render_issue_panel(root, "BIZ-CUSTOM")
+
+            self.assertEqual(nodes["BIZ-CUSTOM"]["status"], "backlog")
+            self.assertEqual(
+                rows["BIZ-CUSTOM"]["description"],
+                "Configured dashboard summary.",
+            )
+            self.assertTrue(rows["BIZ-CUSTOM"]["artifact_coverage"]["issue"])
+            self.assertTrue(rows["BIZ-CUSTOM"]["artifact_coverage"]["spec"])
+            self.assertIn("Configured dashboard summary.", panel)
+            self.assertIn("Configured safe spec", panel)
+
+    def test_project_view_escapes_issue_json_script_terminators(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            attack = "</script><script>globalThis.PWN=1</script>"
+            (root / "issues" / "059-injection.md").write_text(
+                f"# Issue: `059-injection` {attack}\n\n"
+                f"**Status: backlog**\n\n## Summary\n\n{attack}\n",
+                encoding="utf-8",
+            )
+
+            html = project_memory.render_project_view(root)
+            rows_blob = re.search(
+                r"const ISSUE_ROWS = (.*?);\nconst ISSUE_ELEMENTS",
+                html,
+                re.S,
+            ).group(1)
+            issue_elements_blob = re.search(
+                r"const ISSUE_ELEMENTS = (.*?);\nconst MEMORY_ELEMENTS",
+                html,
+                re.S,
+            ).group(1)
+            memory_elements_blob = re.search(
+                r"const MEMORY_ELEMENTS = (.*?);\nconst KIND_ICON",
+                html,
+                re.S,
+            ).group(1)
+            rows = json.loads(rows_blob)
+            issue_elements = json.loads(issue_elements_blob)
+            memory_elements = json.loads(memory_elements_blob)
+
+            self.assertNotIn(attack, html)
+            self.assertEqual(html.count("globalThis.PWN=1</script>"), 0)
+            self.assertIn("<\\/script>", html)
+            self.assertEqual(rows[0]["id"], "059-injection")
+            self.assertIn("globalThis.PWN=1", rows[0]["description"])
+            self.assertIsInstance(issue_elements, list)
+            self.assertIsInstance(memory_elements, list)
+
+    def test_blocked_normalized_issue_displays_unknown_not_backlog(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "BIZ-UNKNOWN.md").write_text(
+                "---\n"
+                "schema_version: 9.9.9\n"
+                "issue_id: BIZ-UNKNOWN\n"
+                "---\n"
+                "# Issue: `BIZ-UNKNOWN`\n\n**Status: backlog**\n",
+                encoding="utf-8",
+            )
+
+            nodes, _edges = project_memory._collect_issue_graph(root)
+            rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
+
+            self.assertEqual(nodes["BIZ-UNKNOWN"]["status"], "unknown")
+            self.assertEqual(rows["BIZ-UNKNOWN"]["status"], "unknown")
+            self.assertEqual(rows["BIZ-UNKNOWN"]["readiness"], "blocked")
+            self.assertIn("blocked", rows["BIZ-UNKNOWN"]["attention_flags"])
 
     def test_issue_linked_memory_maps_and_tolerates_empty(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")

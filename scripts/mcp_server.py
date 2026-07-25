@@ -15,7 +15,11 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.project_issue_schema import evaluate_project
+from scripts.project_issue_schema import (
+    configured_project_paths,
+    evaluate_project,
+    validate_issue_id,
+)
 from scripts.project_lifecycle import _READY_BLOCKING_DIAGNOSTICS
 
 SCHEMA = "moduflow.mcp.v1"
@@ -136,7 +140,7 @@ def _issue_payload(issue):
     """Project one evaluated issue without changing the MCP v1 envelope."""
     return {
         "id": issue["issue_id"],
-        "status": issue.get("lifecycle_state"),
+        "status": issue.get("lifecycle_state") or "unknown",
         "title": issue.get("title") or "",
         "priority": issue.get("priority"),
         "blocked_by": list(issue.get("blocked_by") or []),
@@ -222,29 +226,51 @@ def _tool_moduflow_issue_get(root, arguments):
     issue_id = arguments.get("id")
     if not issue_id:
         return None  # signals caller to raise a JSON-RPC -32602
-    issues_dir = (Path(root) / "issues").resolve()
-    path = (issues_dir / f"{issue_id}.md").resolve()
-    # Containment: the id must name a file directly inside issues/ — absolute
-    # paths and ../ traversal must not read arbitrary files through this tool.
-    if path.parent != issues_dir or path.suffix != ".md":
+    if not validate_issue_id(issue_id):
         return _text_result({"error": "invalid issue id", "id": issue_id})
-    if not path.is_file():
-        return _text_result({"error": "issue not found", "id": issue_id})
-    text = path.read_text(encoding="utf-8")
     evaluation, _items = _evaluated_items(root)
-    source_path = str(path.relative_to(Path(root).resolve()))
+    project_root = Path(root).resolve()
+    project_paths = configured_project_paths(project_root)
+    lexical_source = (
+        Path(project_paths["issues"]) / f"{issue_id}.md"
+    ).as_posix()
     evaluated = next(
         (
             issue for issue in evaluation["issues"]
-            if issue.get("source_path") == source_path
+            if issue.get("issue_id") == issue_id
         ),
         None,
     )
     if evaluated is None:
+        evaluated = next(
+            (
+                issue for issue in evaluation["issues"]
+                if issue.get("source_path") == lexical_source
+            ),
+            None,
+        )
+    if evaluated is None:
         return _text_result({"error": "issue not found", "id": issue_id})
+    text = ""
+    source_is_safe = (
+        evaluated.get("source_format") not in {"blocked", "unreadable"}
+        and not any(
+            str(diagnostic.get("code") or "").startswith("ISSUE_SOURCE_")
+            for diagnostic in evaluated.get("diagnostics", [])
+        )
+    )
+    if source_is_safe:
+        try:
+            issues_dir = (project_root / project_paths["issues"]).resolve()
+            issues_dir.relative_to(project_root)
+            source = (project_root / evaluated["source_path"]).resolve()
+            source.relative_to(issues_dir)
+            if source.is_file():
+                text = source.read_text(encoding="utf-8")
+        except (OSError, UnicodeError, ValueError):
+            text = ""
     return _text_result({
         **_issue_payload(evaluated),
-        "id": issue_id,
         "outcome": _outcome(text),
         "github": _github_link(text),
     })

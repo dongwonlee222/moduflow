@@ -138,6 +138,83 @@ class MCPServerTests(unittest.TestCase):
         self.assertEqual(payload["github"], "https://github.com/o/r/issues/5")
         self.assertIn("Beta does the thing.", payload["outcome"])
 
+    def test_issue_list_and_get_honor_configured_issues_path(self):
+        custom_issues = self.root / "product" / "issues"
+        custom_specs = self.root / "product" / "specs"
+        custom_issues.mkdir(parents=True)
+        custom_specs.mkdir(parents=True)
+        (self.root / ".moduflow" / "config.json").write_text(
+            json.dumps({
+                "schema": "moduflow.config.v1",
+                "paths": {
+                    "issues": "product/issues",
+                    "specs": "product/specs",
+                },
+            }),
+            encoding="utf-8",
+        )
+        (custom_issues / "BIZ-CUSTOM.md").write_text(
+            "# Issue: `BIZ-CUSTOM`\n\n"
+            "**Status: backlog**\n\n"
+            "## Outcome\n\nConfigured issue outcome.\n",
+            encoding="utf-8",
+        )
+
+        list_req = {
+            "jsonrpc": "2.0",
+            "id": 41,
+            "method": "tools/call",
+            "params": {"name": "moduflow_issues", "arguments": {}},
+        }
+        get_req = {
+            "jsonrpc": "2.0",
+            "id": 42,
+            "method": "tools/call",
+            "params": {
+                "name": "moduflow_issue_get",
+                "arguments": {"id": "BIZ-CUSTOM"},
+            },
+        }
+
+        listed = json.loads(
+            mcp_server.handle_request(list_req, self.root)["result"]["content"][0]["text"]
+        )
+        fetched = json.loads(
+            mcp_server.handle_request(get_req, self.root)["result"]["content"][0]["text"]
+        )
+
+        self.assertEqual([item["id"] for item in listed["issues"]], ["BIZ-CUSTOM"])
+        self.assertEqual(fetched["id"], "BIZ-CUSTOM")
+        self.assertIn("Configured issue outcome.", fetched["outcome"])
+
+    def test_issue_get_internal_symlink_keeps_record_identity_consistent(self):
+        target = self.root / "issues" / "BIZ-CANON.md"
+        target.write_text(
+            "# Issue: `BIZ-CANON`\n\n**Status: backlog**\n",
+            encoding="utf-8",
+        )
+        (self.root / "issues" / "BIZ-ALIAS.md").symlink_to(target)
+        req = {
+            "jsonrpc": "2.0",
+            "id": 43,
+            "method": "tools/call",
+            "params": {
+                "name": "moduflow_issue_get",
+                "arguments": {"id": "BIZ-ALIAS"},
+            },
+        }
+
+        payload = json.loads(
+            mcp_server.handle_request(req, self.root)["result"]["content"][0]["text"]
+        )
+
+        self.assertNotIn("error", payload)
+        self.assertEqual(payload["id"], "BIZ-ALIAS")
+        self.assertEqual(
+            payload["recommended_next_command"],
+            "product:spec BIZ-ALIAS",
+        )
+
     def test_moduflow_issue_get_unknown_id_returns_error_payload_not_exception(self):
         req = {
             "jsonrpc": "2.0",

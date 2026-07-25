@@ -6,9 +6,17 @@ from datetime import date
 from pathlib import Path
 
 try:
-    from scripts.project_issue_schema import evaluate_project, validate_issue_id
+    from scripts.project_issue_schema import (
+        configured_project_paths,
+        evaluate_project,
+        validate_issue_id,
+    )
 except ModuleNotFoundError:
-    from project_issue_schema import evaluate_project, validate_issue_id
+    from project_issue_schema import (
+        configured_project_paths,
+        evaluate_project,
+        validate_issue_id,
+    )
 
 
 MEMORY_DIRS = [
@@ -881,6 +889,8 @@ MEMORY_KIND_ICON = {
 
 
 def _issue_status_bucket(status_word):
+    if status_word is None:
+        return "unknown"
     w = (status_word or "").lower()
     if w.startswith("superseded"):
         return "superseded"
@@ -959,18 +969,16 @@ def _evaluated_issue_context(root):
         issue["issue_id"]: issue
         for issue in evaluation["issues"]
     }
+    project_paths = configured_project_paths(project_root)
+    issues_root = project_root / project_paths["issues"]
     texts = {}
     for issue_id, issue in issues.items():
         if not _issue_source_is_safe(issue):
             continue
         source = project_root / (issue.get("source_path") or "")
-        try:
-            resolved = source.resolve()
-            resolved.relative_to(project_root)
-            if resolved.is_file():
-                texts[issue_id] = resolved.read_text(encoding="utf-8")
-        except (OSError, UnicodeError, ValueError):
-            continue
+        text = _read_contained_text(source, issues_root, project_root)
+        if text is not None:
+            texts[issue_id] = text
     return {
         "evaluation": evaluation,
         "issues": issues,
@@ -1093,7 +1101,8 @@ def _issue_summary_ko(root, issue_id, text):
     if summary:
         return _short_description(summary)
     project_root = Path(root).resolve()
-    specs_root = project_root / "specs"
+    project_paths = configured_project_paths(project_root)
+    specs_root = project_root / project_paths["specs"]
     spec_dir = specs_root / issue_id
     for ko_path in (
         spec_dir / "spec.ko.md",
@@ -1128,11 +1137,15 @@ def _issue_description(root, issue_id, title, text):
 
 
 def _issue_description_overrides(root):
-    path = Path(root).resolve() / "workspace" / "issue-descriptions.ko.json"
-    if not path.is_file():
+    project_root = Path(root).resolve()
+    project_paths = configured_project_paths(project_root)
+    workspace_root = project_root / project_paths["workspace"]
+    path = workspace_root / "issue-descriptions.ko.json"
+    content = _read_contained_text(path, workspace_root, project_root)
+    if content is None:
         return {}
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(content)
     except json.JSONDecodeError:
         return {}
     if not isinstance(data, dict):
@@ -1140,23 +1153,34 @@ def _issue_description_overrides(root):
     return {str(k): str(v).strip() for k, v in data.items() if str(v).strip()}
 
 
-def _issue_artifact_coverage(root, issue_id):
+def _issue_artifact_coverage(root, issue_id, issue=None):
     root = Path(root).resolve()
-    spec_dir = root / "specs" / issue_id
-    issue_file = root / "issues" / f"{issue_id}.md"
+    project_paths = configured_project_paths(root)
+    issues_root = root / project_paths["issues"]
+    specs_root = root / project_paths["specs"]
+    spec_dir = specs_root / issue_id
+    issue_file = (
+        root / issue["source_path"]
+        if issue and _issue_source_is_safe(issue)
+        else issues_root / f"{issue_id}.md"
+    )
+    present = lambda path, boundary: (
+        (resolved := _contained_resolved_path(path, boundary, root)) is not None
+        and resolved.is_file()
+    )
     return {
-        "issue": issue_file.is_file(),
-        "spec": (spec_dir / "spec.md").is_file(),
-        "spec_ko": (spec_dir / "spec.ko.md").is_file(),
-        "plan": (spec_dir / "plan.md").is_file(),
-        "plan_ko": (spec_dir / "plan.ko.md").is_file(),
-        "tasks": (spec_dir / "tasks.md").is_file(),
-        "tasks_ko": (spec_dir / "tasks.ko.md").is_file(),
-        "status": (spec_dir / "status.md").is_file(),
-        "review": (spec_dir / "review.md").is_file(),
-        "pr": (spec_dir / "pr.md").is_file(),
-        "release": (spec_dir / "release.md").is_file(),
-        "human_review_ko": (spec_dir / "human-review.ko.md").is_file(),
+        "issue": present(issue_file, issues_root),
+        "spec": present(spec_dir / "spec.md", specs_root),
+        "spec_ko": present(spec_dir / "spec.ko.md", specs_root),
+        "plan": present(spec_dir / "plan.md", specs_root),
+        "plan_ko": present(spec_dir / "plan.ko.md", specs_root),
+        "tasks": present(spec_dir / "tasks.md", specs_root),
+        "tasks_ko": present(spec_dir / "tasks.ko.md", specs_root),
+        "status": present(spec_dir / "status.md", specs_root),
+        "review": present(spec_dir / "review.md", specs_root),
+        "pr": present(spec_dir / "pr.md", specs_root),
+        "release": present(spec_dir / "release.md", specs_root),
+        "human_review_ko": present(spec_dir / "human-review.ko.md", specs_root),
     }
 
 
@@ -1224,7 +1248,7 @@ def _collect_issue_table(root, issue_context=None):
     for issue_id, issue in sorted(evaluated.items()):
         text = raw.get(issue_id, "")
         info = graph_nodes.get(issue_id, {})
-        coverage = _issue_artifact_coverage(project_root, issue_id)
+        coverage = _issue_artifact_coverage(project_root, issue_id, issue)
         status = info.get("status", "backlog")
         next_command = issue.get("recommended_next_command") or ""
         title = info.get("title", issue_id)
@@ -1663,6 +1687,15 @@ showTab(location.hash === '#memory' ? 'memory' : (location.hash === '#issues' ? 
 """
 
 
+def _json_for_script(value, indent=None):
+    """Serialize JSON without allowing embedded data to terminate a script."""
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        indent=indent,
+    ).replace("</", "<\\/")
+
+
 def render_project_view(root):
     issue_context = _evaluated_issue_context(root)
     issue_elements, _i_n, _i_e = _issue_elements(root, issue_context)
@@ -1670,9 +1703,9 @@ def render_project_view(root):
     issue_rows = _collect_issue_table(root, issue_context)
     return (
         PROJECT_VIEW_TEMPLATE
-        .replace("__ISSUE_ROWS__", json.dumps(issue_rows, ensure_ascii=False, indent=2))
-        .replace("__ISSUE_ELEMENTS__", json.dumps(issue_elements, ensure_ascii=False, indent=2))
-        .replace("__MEMORY_ELEMENTS__", json.dumps(memory_elements, ensure_ascii=False, indent=2))
+        .replace("__ISSUE_ROWS__", _json_for_script(issue_rows, indent=2))
+        .replace("__ISSUE_ELEMENTS__", _json_for_script(issue_elements, indent=2))
+        .replace("__MEMORY_ELEMENTS__", _json_for_script(memory_elements, indent=2))
     )
 
 
@@ -1823,17 +1856,18 @@ def _resolve_issue_slug(root, issue_id):
     issue_id = issue_id.strip()
     if not validate_issue_id(issue_id):
         return "invalid-issue"
-    if (root / "specs" / issue_id).is_dir():
+    project_paths = configured_project_paths(root)
+    specs_dir = root / project_paths["specs"]
+    issues_dir = root / project_paths["issues"]
+    if (specs_dir / issue_id).is_dir():
         return issue_id
-    if (root / "issues" / f"{issue_id}.md").is_file():
+    if (issues_dir / f"{issue_id}.md").is_file():
         return issue_id
     num = issue_id.split("-")[0]
-    specs_dir = root / "specs"
     if specs_dir.is_dir():
         for d in sorted(specs_dir.iterdir()):
             if d.is_dir() and (d.name == num or d.name.startswith(num + "-")):
                 return d.name
-    issues_dir = root / "issues"
     if issues_dir.is_dir():
         for f in sorted(issues_dir.glob("*.md")):
             if f.stem == num or f.stem.startswith(num + "-"):
@@ -1893,6 +1927,7 @@ def _korean_overview_artifact(root, issue_id, issue_text):
 def _collect_issue_artifacts(root, issue_id):
     root = Path(root).resolve()
     slug = _resolve_issue_slug(root, issue_id)
+    project_paths = configured_project_paths(root)
     evaluation = evaluate_project(root)
     evaluated = next(
         (
@@ -1903,7 +1938,7 @@ def _collect_issue_artifacts(root, issue_id):
         None,
     )
     artifacts = []
-    issues_root = root / "issues"
+    issues_root = root / project_paths["issues"]
     issue_file = (
         root / evaluated["source_path"]
         if evaluated and _issue_source_is_safe(evaluated)
@@ -1926,8 +1961,8 @@ def _collect_issue_artifacts(root, issue_id):
         artifacts.append({"name": "issue", "label": "Issue",
                           "md": issue_text,
                           "ko": _ko_sidecar(issue_file, issues_root, root)})
-    specs_root = root / "specs"
-    spec_dir = root / "specs" / slug
+    specs_root = root / project_paths["specs"]
+    spec_dir = specs_root / slug
     resolved_spec_dir = _contained_resolved_path(spec_dir, specs_root, root)
     if resolved_spec_dir is not None and resolved_spec_dir.is_dir():
         seen = set()
@@ -1963,13 +1998,20 @@ def render_issue_panel(root, issue_id):
     slug, artifacts = _collect_issue_artifacts(root, issue_id)
     linked = _issue_linked_memory(root).get(slug, [])
     lang_toggle_attr = "" if any(a.get("ko") for a in artifacts) else " hidden"
-    # Escape "</" so a literal </script> inside Markdown can't end the module script.
-    artifacts_json = json.dumps(artifacts, ensure_ascii=False).replace("</", "<\\/")
-    linked_json = json.dumps(linked, ensure_ascii=False).replace("</", "<\\/")
+    artifacts_json = _json_for_script(artifacts)
+    linked_json = _json_for_script(linked)
+    project_paths = configured_project_paths(root)
     return (
         ISSUE_PANEL_TEMPLATE
         .replace("__PANEL_TITLE__", f"Issue {slug}")
-        .replace("__PANEL_SUB__", f"{len(artifacts)} artifact(s) · issues/ + specs/{slug}/ · derived view")
+        .replace(
+            "__PANEL_SUB__",
+            (
+                f"{len(artifacts)} artifact(s) · "
+                f"{project_paths['issues']}/ + "
+                f"{project_paths['specs']}/{slug}/ · derived view"
+            ),
+        )
         .replace("__ISSUE_ID__", slug)
         .replace("__LANG_TOGGLE_ATTR__", lang_toggle_attr)
         .replace("__ARTIFACTS_JSON__", artifacts_json)
@@ -1989,14 +2031,14 @@ def render_memory_panel(root, mem_id):
         artifacts = [{"name": "memory", "label": label, "md": entry["content"]}]
         title = entry.get("title") or mem_id
         sub = f"{kind} · {entry['path']} · derived view"
-    artifacts_json = json.dumps(artifacts, ensure_ascii=False).replace("</", "<\\/")
+    artifacts_json = _json_for_script(artifacts)
     return (
         ISSUE_PANEL_TEMPLATE
         .replace("__PANEL_TITLE__", title)
         .replace("__PANEL_SUB__", sub)
         .replace("__ISSUE_ID__", mem_id)
         .replace("__ARTIFACTS_JSON__", artifacts_json)
-        .replace("__LINKED_JSON__", "[]")
+        .replace("__LINKED_JSON__", _json_for_script([]))
     )
 
 
