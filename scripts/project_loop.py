@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import importlib.util
 import json
 from datetime import date
 from pathlib import Path
@@ -12,6 +13,39 @@ VALID_DELEGATION_LEVELS = {"full", "review_required", "manual"}
 PHASE_ORDER = ["issue", "spec", "plan", "execute", "review", "release", "status"]
 GIT_BINDING_MODES = {"git-files", "github-sync"}
 EXECUTION_BACKENDS = {"codex", "claude-code", "copilot-cloud-agent", "openhands", "manual", "host-subagent"}
+
+
+def load_project_issue_schema():
+    path = Path(__file__).resolve().parent / "project_issue_schema.py"
+    spec = importlib.util.spec_from_file_location("project_issue_schema", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def validate_issue_id(value):
+    """Delegate issue ID validation to the shared issue-schema boundary."""
+    return load_project_issue_schema().validate_issue_id(value)
+
+
+def _contained_issue_location(root, path_key, issue_id, *suffix):
+    if not validate_issue_id(issue_id):
+        raise ValueError(f"invalid issue ID: {issue_id!r}")
+    project_root = Path(root).resolve()
+    paths = load_project_issue_schema().configured_project_paths(project_root)
+    location_root = (project_root / paths[path_key]).resolve()
+    try:
+        location_root.relative_to(project_root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(
+            f"configured {path_key} path escapes project root"
+        ) from exc
+    candidate = location_root.joinpath(issue_id, *suffix).resolve()
+    try:
+        candidate.relative_to(location_root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(f"issue path escapes configured {path_key} root") from exc
+    return candidate
 
 
 def read_json(path):
@@ -173,11 +207,30 @@ def load_loop_state(root):
 
 
 def issue_path(root, issue_id):
-    return Path(root).resolve() / "issues" / f"{issue_id}.md"
+    if not validate_issue_id(issue_id):
+        raise ValueError(f"invalid issue ID: {issue_id!r}")
+    project_root = Path(root).resolve()
+    paths = load_project_issue_schema().configured_project_paths(project_root)
+    issues_root = (project_root / paths["issues"]).resolve()
+    try:
+        issues_root.relative_to(project_root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError("configured issues path escapes project root") from exc
+    candidate = (issues_root / f"{issue_id}.md").resolve()
+    try:
+        candidate.relative_to(issues_root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError("issue path escapes configured issues root") from exc
+    return candidate
 
 
 def implementation_readiness_path(root, issue_id):
-    return Path(root).resolve() / "specs" / issue_id / "implementation-readiness.json"
+    return _contained_issue_location(
+        root,
+        "specs",
+        issue_id,
+        "implementation-readiness.json",
+    )
 
 
 def load_implementation_readiness(root, issue_id):
@@ -205,16 +258,135 @@ def infer_issue_phase(root, issue_id):
     if not path.exists():
         return "issue"
     issue_text = path.read_text(encoding="utf-8")
+    has_workflow_checkbox = False
     for phase in ["spec", "plan", "execute", "review", "release"]:
-        if workflow_checkbox_state(issue_text, phase) == "pending":
+        checkbox_state = workflow_checkbox_state(issue_text, phase)
+        if checkbox_state != "missing":
+            has_workflow_checkbox = True
+        if checkbox_state == "pending":
             return phase
-    return "status"
+    return "status" if has_workflow_checkbox else "execute"
 
 
 def recommend_next_command(issue_id, phase):
     if phase in {"spec", "plan", "execute", "review", "release"}:
         return f"product:{phase} {issue_id}"
     return "product:status"
+
+
+def phase_from_command(command):
+    command_name = (command or "").split(maxsplit=1)[0]
+    phase = command_name.removeprefix("product:")
+    if phase in {"doctor", "status"}:
+        return "status"
+    if phase in PHASE_ORDER:
+        return phase
+    return "status"
+
+
+def primary_structural_diagnostic(issue):
+    command_name = (
+        issue.get("recommended_next_command") or ""
+    ).split(maxsplit=1)[0]
+    codes_by_command = {
+        "product:spec": (
+            "ISSUE_DEFINITION_NOT_READY",
+            "ISSUE_SCHEMA_MALFORMED",
+        ),
+        "product:review": ("ISSUE_GATE_BLOCKED",),
+        "product:status": (
+            "ISSUE_DEPENDENCY_UNMET",
+            "ISSUE_DEPENDENCY_DANGLING",
+            "ISSUE_DEPENDENCY_CYCLE",
+        ),
+        "product:doctor": (
+            "ISSUE_SOURCE_OUTSIDE_ROOT",
+            "ISSUE_ARTIFACT_OUTSIDE_ROOT",
+            "ISSUE_SOURCE_UNREADABLE",
+            "ISSUE_SCHEMA_MALFORMED",
+            "ISSUE_SCHEMA_UNSUPPORTED",
+            "ISSUE_DUPLICATE_FIELD",
+            "ISSUE_STATE_PROJECTION_MISMATCH",
+            "ISSUE_DEPENDENCY_PROJECTION_MISMATCH",
+            "ISSUE_AUX_STATUS_INVALID",
+        ),
+    }
+    diagnostics = issue.get("diagnostics") or []
+    for code in codes_by_command.get(command_name, ()):
+        for diagnostic in diagnostics:
+            if diagnostic.get("code") == code:
+                return diagnostic
+    return None
+
+
+def missing_structural_artifact(root, issue):
+    issue_id = issue["issue_id"]
+    paths = load_project_issue_schema().configured_project_paths(root)
+    try:
+        artifact_root = _contained_issue_location(root, "specs", issue_id)
+    except ValueError:
+        return None
+    command_name = (
+        issue.get("recommended_next_command") or ""
+    ).split(maxsplit=1)[0]
+    if command_name == "product:spec":
+        candidates = ("spec.md",)
+    elif command_name == "product:plan":
+        candidates = ("plan.md", "tasks.md")
+    else:
+        candidates = ()
+    for filename in candidates:
+        if not (artifact_root / filename).is_file():
+            return f"{paths['specs']}/{issue_id}/{filename}"
+    return None
+
+
+def structural_blocker(root, issue):
+    diagnostic = primary_structural_diagnostic(issue)
+    if diagnostic:
+        return (
+            f"{diagnostic['code']} [{diagnostic.get('source_path') or 'unknown source'}]: "
+            f"{diagnostic.get('message') or 'Issue structural readiness is blocked.'} "
+            f"Recommendation: {diagnostic.get('recommendation') or 'Run product:doctor.'}"
+        )
+    missing = missing_structural_artifact(root, issue)
+    if missing:
+        return (
+            f"Missing structural artifact: {missing}. "
+            f"Recommendation: run {issue['recommended_next_command']}."
+        )
+    return (
+        f"Structural readiness is {issue.get('readiness') or 'not_ready'}; "
+        f"follow {issue.get('recommended_next_command') or 'product:status'}."
+    )
+
+
+def evaluated_active_issue(root, active_issue_id):
+    evaluation = load_project_issue_schema().evaluate_project(root)
+    issues = evaluation.get("issues", [])
+    active_issue = next(
+        (
+            issue
+            for issue in issues
+            if issue.get("issue_id") == active_issue_id
+        ),
+        None,
+    )
+    if active_issue:
+        return active_issue
+    return next(
+        (
+            issue
+            for issue in issues
+            if issue.get("issue_id") == "project-issues-root"
+            and any(
+                diagnostic.get("code") == "ISSUE_SOURCE_OUTSIDE_ROOT"
+                and diagnostic.get("field") == "issues_root"
+                for diagnostic in issue.get("diagnostics", [])
+            )
+        ),
+        None,
+    )
 
 
 def apply_attempts_guard(state, recommended_command):
@@ -266,6 +438,45 @@ def recommend_loop(root):
         state["blocker"] = "No active issue selected"
         state["next_command"] = "product:goal"
         return state
+    if not validate_issue_id(active_issue_id):
+        state["phase"] = "status"
+        state["status"] = "needs_decision"
+        state["blocker"] = (
+            f"Invalid active_issue_id {active_issue_id!r}; "
+            "use a safe issue filename-stem token."
+        )
+        state["next_command"] = "product:doctor"
+        return state
+    invalid_issue_ids = [
+        issue_id
+        for issue_id in state.get("issue_ids", [])
+        if not validate_issue_id(issue_id)
+    ]
+    if invalid_issue_ids:
+        state["phase"] = "status"
+        state["status"] = "needs_decision"
+        state["blocker"] = (
+            f"Invalid issue_ids {invalid_issue_ids!r}; "
+            "use safe issue filename-stem tokens."
+        )
+        state["next_command"] = "product:doctor"
+        return state
+
+    structural_issue = evaluated_active_issue(root, active_issue_id)
+    if structural_issue:
+        structural_command = (
+            structural_issue.get("recommended_next_command") or "product:status"
+        )
+        state["phase"] = phase_from_command(structural_command)
+        if (
+            structural_command.split(maxsplit=1)[0] != "product:execute"
+            or structural_issue.get("readiness") != "ready"
+        ):
+            state["status"] = "needs_decision"
+            state["blocker"] = structural_blocker(root, structural_issue)
+            state["next_command"] = structural_command
+            return state
+
     phase = infer_issue_phase(root, active_issue_id)
     command = recommend_next_command(active_issue_id, phase)
     state["phase"] = phase
@@ -318,16 +529,32 @@ def validate_loop_state(root):
         errors.append(f"workspace/loop-state.json: unsupported status {status}")
     state = normalize_loop_state(raw)
     active_issue_id = state.get("active_issue_id")
-    if active_issue_id and not issue_path(root, active_issue_id).exists():
+    active_issue_id_is_valid = (
+        active_issue_id is None or validate_issue_id(active_issue_id)
+    )
+    if active_issue_id is not None and not active_issue_id_is_valid:
+        errors.append(
+            f"workspace/loop-state.json: invalid active_issue_id {active_issue_id!r}"
+        )
+    elif active_issue_id and not issue_path(root, active_issue_id).exists():
         errors.append(
             f"workspace/loop-state.json: active_issue_id {active_issue_id} has no matching issue file"
         )
     for issue_id in state.get("issue_ids", []):
-        if not issue_path(root, issue_id).exists():
+        if not validate_issue_id(issue_id):
+            errors.append(
+                f"workspace/loop-state.json: invalid issue_id {issue_id!r}"
+            )
+        elif not issue_path(root, issue_id).exists():
             errors.append(
                 f"workspace/loop-state.json: issue_id {issue_id} has no matching issue file"
             )
-    errors.extend(validate_git_binding_for_issue(state.get("git_binding"), active_issue_id))
+    if active_issue_id_is_valid:
+        errors.extend(
+            validate_git_binding_for_issue(
+                state.get("git_binding"), active_issue_id
+            )
+        )
     return errors
 
 

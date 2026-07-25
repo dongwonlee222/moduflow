@@ -4,7 +4,7 @@
 
 ### Now
 
-- `093-frontmatter-issue-schema-readiness-gate` — normalize frontmatter and Markdown issue state before execution routing.
+- `093-frontmatter-issue-schema-readiness-gate` — active; implementation and E2 release/lifecycle verification passed on 2026-07-25. Next: `product:review 093-frontmatter-issue-schema-readiness-gate`.
 
 ### Next
 

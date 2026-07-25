@@ -1,10 +1,16 @@
 import importlib.util
+import json
+import re
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
+ISSUE_SCHEMA_FIXTURES = ROOT / "tests" / "fixtures" / "issue-schema"
 
 
 def load_module(name, relative_path):
@@ -519,6 +525,101 @@ More detail contents here.
             self.assertIn("No artifacts yet", html)
             self.assertIn("099-nope", html)
 
+    def test_issue_panel_blocks_unsafe_issue_source_but_keeps_safe_spec(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "specs" / "BIZ-LINK").mkdir(parents=True)
+            secret = root / "private-issue.md"
+            secret.write_text(
+                "# DO-NOT-EXPOSE-PANEL-TITLE\n\n"
+                "## Summary\n\nDO-NOT-EXPOSE-PANEL-SUMMARY\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "BIZ-LINK.md").symlink_to(secret)
+            (root / "specs" / "BIZ-LINK" / "spec.md").write_text(
+                "# Safe spec remains visible\n",
+                encoding="utf-8",
+            )
+            original = project_memory.evaluate_project
+
+            with mock.patch.object(
+                project_memory, "evaluate_project", wraps=original
+            ) as evaluate:
+                html = project_memory.render_issue_panel(root, "BIZ-LINK")
+            _slug, artifacts = project_memory._collect_issue_artifacts(
+                root, "BIZ-LINK"
+            )
+            serialized = json.dumps(artifacts, ensure_ascii=False)
+
+            evaluate.assert_called_once_with(root.resolve())
+            self.assertNotIn("DO-NOT-EXPOSE", html)
+            self.assertNotIn("DO-NOT-EXPOSE", serialized)
+            self.assertFalse(any(item["name"] == "issue" for item in artifacts))
+            self.assertIn("Safe spec remains visible", html)
+
+    def test_issue_panel_skips_external_spec_file_symlink(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            outside = root / "outside-spec-secret.md"
+            outside_ko = root / "outside-spec-ko-secret.md"
+            (root / "issues").mkdir()
+            (root / "specs" / "046-safe").mkdir(parents=True)
+            (root / "issues" / "046-safe.md").write_text(
+                "# Issue: `046-safe`\n\n**Status: backlog**\n",
+                encoding="utf-8",
+            )
+            outside.write_text("# DO-NOT-EXPOSE-SPEC-SYMLINK\n", encoding="utf-8")
+            outside_ko.write_text(
+                "# Spec\n\n## 요약\n\nDO-NOT-EXPOSE-SPEC-KO-SYMLINK\n",
+                encoding="utf-8",
+            )
+            (root / "specs" / "046-safe" / "spec.md").symlink_to(outside)
+            (root / "specs" / "046-safe" / "spec.ko.md").symlink_to(outside_ko)
+            (root / "specs" / "046-safe" / "plan.md").write_text(
+                "# Safe plan remains visible\n",
+                encoding="utf-8",
+            )
+
+            html = project_memory.render_issue_panel(root, "046-safe")
+
+            self.assertNotIn("DO-NOT-EXPOSE", html)
+            self.assertNotIn('"name": "spec.md"', html)
+            self.assertIn("Safe plan remains visible", html)
+
+    def test_issue_panel_cli_does_not_write_blocked_symlink_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            secret = root / "private-cli-issue.md"
+            secret.write_text(
+                "# DO-NOT-EXPOSE-CLI-TITLE\n\nDO-NOT-EXPOSE-CLI-BODY\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "BIZ-CLI.md").symlink_to(secret)
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "project_memory.py"),
+                    str(root),
+                    "--issue",
+                    "BIZ-CLI",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            panel = root / "memory" / "issue-BIZ-CLI.html"
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue(panel.is_file())
+            self.assertNotIn("DO-NOT-EXPOSE", completed.stdout)
+            self.assertNotIn("DO-NOT-EXPOSE", completed.stderr)
+            self.assertNotIn("DO-NOT-EXPOSE", panel.read_text(encoding="utf-8"))
+
     def test_collect_issue_graph_parses_status_and_supersedes(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:
@@ -538,6 +639,208 @@ More detail contents here.
             self.assertEqual(nodes["043-todo"]["status"], "backlog")
             # both the prose and the superseded-by line resolve to ONE deduped edge
             self.assertEqual(edges, [("042-new", "041-old", "supersedes")])
+
+    def test_collect_issue_graph_preserves_status_only_supersedes_edge(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "044-old.md").write_text(
+                "# Issue: `044-old`\n\n"
+                "**Status: superseded-by-045-replacement** — created.\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "045-replacement.md").write_text(
+                "# Issue: `045-replacement`\n\n**Status: done** — created.\n",
+                encoding="utf-8",
+            )
+
+            _nodes, edges = project_memory._collect_issue_graph(root)
+
+            self.assertEqual(
+                edges,
+                [("045-replacement", "044-old", "supersedes")],
+            )
+
+    def test_real_legacy_status_supersedes_edges_remain_in_issue_graph(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+
+        _nodes, edges = project_memory._collect_issue_graph(ROOT)
+        supersedes = {
+            (source, target)
+            for source, target, relation in edges
+            if relation == "supersedes"
+        }
+
+        self.assertTrue({
+            ("019-loop-kernel-and-state-model", "014-loop-attempts-guard"),
+            ("023-worker-routing-and-isolation", "015-worker-disjoint-isolation"),
+            ("023-worker-routing-and-isolation", "016-worker-keyword-and-dead"),
+            ("019-loop-kernel-and-state-model", "017-goal-multi-issue"),
+            ("019-loop-kernel-and-state-model", "018-state-single-source"),
+            ("042-decision-graph-dashboard", "041-decision-graph-native-mermaid-rendering"),
+        }.issubset(supersedes))
+
+    def test_dashboard_does_not_reread_evaluator_blocked_issue_symlink(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            secret = root / "private-issue.md"
+            secret.write_text(
+                "# Issue: `BIZ-LINK` DO-NOT-EXPOSE-TITLE\n\n"
+                "**Status: active** — Part of goal `DO-NOT-EXPOSE-GOAL`.\n\n"
+                "## Summary\n\nDO-NOT-EXPOSE-SUMMARY\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "BIZ-LINK.md").symlink_to(secret)
+
+            nodes, _edges = project_memory._collect_issue_graph(root)
+            rows = project_memory._collect_issue_table(root)
+            html = project_memory.render_project_view(root)
+            serialized = json.dumps(
+                {"nodes": nodes, "rows": rows, "html": html},
+                ensure_ascii=False,
+            )
+
+            self.assertNotIn("DO-NOT-EXPOSE", serialized)
+            self.assertEqual(nodes["BIZ-LINK"]["title"], "BIZ-LINK")
+            self.assertEqual(nodes["BIZ-LINK"]["goal"], "(기타)")
+
+    def test_issue_graph_and_table_use_normalized_frontmatter_routing(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            for issue_id in ("BIZ-033", "BIZ-038"):
+                (root / "issues" / f"{issue_id}.md").write_text(
+                    (ISSUE_SCHEMA_FIXTURES / f"{issue_id}.md").read_text(encoding="utf-8"),
+                    encoding="utf-8",
+                )
+
+            nodes, _ = project_memory._collect_issue_graph(root)
+            rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
+            node = nodes["BIZ-038"]
+            row = rows["BIZ-038"]
+
+            for item in (node, row):
+                self.assertEqual(item["status"], "backlog")
+                self.assertEqual(item["blocked_by"], ["BIZ-033"])
+                self.assertEqual(item["normalized_schema"], "moduflow.issue.v2")
+                self.assertEqual(item["readiness"], "blocked")
+                self.assertEqual(item["recommended_next_command"], "product:status")
+                self.assertIn("ISSUE_DEPENDENCY_UNMET", item["diagnostic_codes"])
+                self.assertFalse(item["recommended_next_command"].startswith("product:execute"))
+            self.assertIn("blocked", row["attention_flags"])
+
+    def test_dashboard_and_panel_honor_configured_issue_and_spec_paths(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issues = root / "product" / "issues"
+            specs = root / "product" / "specs"
+            workspace = root / "product" / "workspace"
+            issues.mkdir(parents=True)
+            (specs / "BIZ-CUSTOM").mkdir(parents=True)
+            workspace.mkdir(parents=True)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps({
+                    "schema": "moduflow.config.v1",
+                    "paths": {
+                        "issues": "product/issues",
+                        "specs": "product/specs",
+                        "workspace": "product/workspace",
+                    },
+                }),
+                encoding="utf-8",
+            )
+            (issues / "BIZ-CUSTOM.md").write_text(
+                "# Issue: `BIZ-CUSTOM`\n\n"
+                "**Status: backlog**\n\n"
+                "## Summary\n\nConfigured dashboard summary.\n",
+                encoding="utf-8",
+            )
+            (specs / "BIZ-CUSTOM" / "spec.md").write_text(
+                "# Configured safe spec\n",
+                encoding="utf-8",
+            )
+
+            nodes, _edges = project_memory._collect_issue_graph(root)
+            rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
+            panel = project_memory.render_issue_panel(root, "BIZ-CUSTOM")
+
+            self.assertEqual(nodes["BIZ-CUSTOM"]["status"], "backlog")
+            self.assertEqual(
+                rows["BIZ-CUSTOM"]["description"],
+                "Configured dashboard summary.",
+            )
+            self.assertTrue(rows["BIZ-CUSTOM"]["artifact_coverage"]["issue"])
+            self.assertTrue(rows["BIZ-CUSTOM"]["artifact_coverage"]["spec"])
+            self.assertIn("Configured dashboard summary.", panel)
+            self.assertIn("Configured safe spec", panel)
+
+    def test_project_view_escapes_issue_json_script_terminators(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            attack = "</script><script>globalThis.PWN=1</script>"
+            (root / "issues" / "059-injection.md").write_text(
+                f"# Issue: `059-injection` {attack}\n\n"
+                f"**Status: backlog**\n\n## Summary\n\n{attack}\n",
+                encoding="utf-8",
+            )
+
+            html = project_memory.render_project_view(root)
+            rows_blob = re.search(
+                r"const ISSUE_ROWS = (.*?);\nconst ISSUE_ELEMENTS",
+                html,
+                re.S,
+            ).group(1)
+            issue_elements_blob = re.search(
+                r"const ISSUE_ELEMENTS = (.*?);\nconst MEMORY_ELEMENTS",
+                html,
+                re.S,
+            ).group(1)
+            memory_elements_blob = re.search(
+                r"const MEMORY_ELEMENTS = (.*?);\nconst KIND_ICON",
+                html,
+                re.S,
+            ).group(1)
+            rows = json.loads(rows_blob)
+            issue_elements = json.loads(issue_elements_blob)
+            memory_elements = json.loads(memory_elements_blob)
+
+            self.assertNotIn(attack, html)
+            self.assertEqual(html.count("globalThis.PWN=1</script>"), 0)
+            self.assertIn("<\\/script>", html)
+            self.assertEqual(rows[0]["id"], "059-injection")
+            self.assertIn("globalThis.PWN=1", rows[0]["description"])
+            self.assertIsInstance(issue_elements, list)
+            self.assertIsInstance(memory_elements, list)
+
+    def test_blocked_normalized_issue_displays_unknown_not_backlog(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "BIZ-UNKNOWN.md").write_text(
+                "---\n"
+                "schema_version: 9.9.9\n"
+                "issue_id: BIZ-UNKNOWN\n"
+                "---\n"
+                "# Issue: `BIZ-UNKNOWN`\n\n**Status: backlog**\n",
+                encoding="utf-8",
+            )
+
+            nodes, _edges = project_memory._collect_issue_graph(root)
+            rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
+
+            self.assertEqual(nodes["BIZ-UNKNOWN"]["status"], "unknown")
+            self.assertEqual(rows["BIZ-UNKNOWN"]["status"], "unknown")
+            self.assertEqual(rows["BIZ-UNKNOWN"]["readiness"], "blocked")
+            self.assertIn("blocked", rows["BIZ-UNKNOWN"]["attention_flags"])
 
     def test_issue_linked_memory_maps_and_tolerates_empty(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
@@ -610,12 +913,22 @@ More detail contents here.
             self.assertEqual([row["id"] for row in rows], ["056-dashboard", "057-review"])
             self.assertEqual(by_id["056-dashboard"]["number"], 56)
             self.assertEqual(by_id["056-dashboard"]["status"], "active")
+            self.assertEqual(by_id["056-dashboard"]["normalized_schema"], "moduflow.issue.v2")
+            self.assertEqual(by_id["056-dashboard"]["blocked_by"], [])
+            self.assertEqual(by_id["056-dashboard"]["readiness"], "not_ready")
             self.assertEqual(by_id["056-dashboard"]["goal"], "visual-workbench")
             self.assertEqual(by_id["056-dashboard"]["summary"], "Show issues as a scannable database list.")
             self.assertEqual(by_id["056-dashboard"]["summary_ko"], "그래프만으로는 운영 스캔이 어렵습니다.")
             self.assertEqual(by_id["056-dashboard"]["description"], "그래프만으로는 운영 스캔이 어렵습니다.")
             self.assertEqual(by_id["056-dashboard"]["description_language"], "ko")
-            self.assertEqual(by_id["056-dashboard"]["next_command"], "/product:execute 056-dashboard")
+            self.assertEqual(
+                by_id["056-dashboard"]["next_command"],
+                "product:plan 056-dashboard",
+            )
+            self.assertEqual(
+                by_id["056-dashboard"]["recommended_next_command"],
+                "product:plan 056-dashboard",
+            )
             self.assertEqual(by_id["056-dashboard"]["href"], "issue-056-dashboard.html")
             self.assertEqual(by_id["056-dashboard"]["created"], "2026-07-01")
             self.assertEqual(by_id["056-dashboard"]["updated"], "2026-07-03")
@@ -625,9 +938,13 @@ More detail contents here.
             self.assertEqual(by_id["056-dashboard"]["linked_memory_count"], 1)
             self.assertIn("no_review", by_id["056-dashboard"]["attention_flags"])
             self.assertIn("missing_spec", by_id["057-review"]["attention_flags"])
-            self.assertIn("no_next", by_id["057-review"]["attention_flags"])
+            self.assertNotIn("no_next", by_id["057-review"]["attention_flags"])
+            self.assertEqual(
+                by_id["057-review"]["recommended_next_command"],
+                "product:spec 057-review",
+            )
 
-    def test_collect_issue_table_promotes_artifact_complete_status(self):
+    def test_collect_issue_table_keeps_normalized_status_and_actual_artifact_phase(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -647,9 +964,10 @@ More detail contents here.
 
             rows = {row["id"]: row for row in project_memory._collect_issue_table(root)}
 
-            self.assertEqual(rows["034-done"]["status"], "done")
+            self.assertEqual(rows["034-done"]["status"], "backlog")
             self.assertEqual(rows["034-done"]["phase"], "release")
-            self.assertEqual(rows["035-review"]["status"], "review")
+            self.assertEqual(rows["035-review"]["status"], "backlog")
+            self.assertEqual(rows["035-review"]["phase"], "review")
 
     def test_collect_issue_table_uses_outcome_as_description_fallback(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
@@ -725,6 +1043,24 @@ More detail contents here.
             self.assertIn("<th>Description</th>", html)
             self.assertNotIn("<th>Next</th>", html)
             self.assertIn("issue-042-new.html", html)
+
+    def test_render_project_view_reuses_one_issue_evaluation_for_graph_and_table(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "042-new.md").write_text(
+                "# Issue: `042-new`\n\n**Status: backlog** — created.\n",
+                encoding="utf-8",
+            )
+            original = project_memory.evaluate_project
+
+            with mock.patch.object(
+                project_memory, "evaluate_project", wraps=original
+            ) as evaluate:
+                project_memory.render_project_view(root)
+
+            evaluate.assert_called_once_with(root.resolve())
 
     def test_issue_panel_includes_linked_memory_section_only_when_present(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")

@@ -2,6 +2,7 @@
 
 **Status: backlog** — created {{created_date}}.
 **Priority: p2**
+**Blocked-by:**
 
 ## Summary
 
@@ -53,8 +54,8 @@ Do NOT touch (files, behaviors, or decisions out of bounds for this issue).
 
 Every artifact-producing step is a tracked task here — never produce a spec/plan/design/review off the books. Check the box and link the artifact when done.
 
-- [ ] spec → `specs/{{issue_slug}}/spec.md`
-- [ ] plan → `specs/{{issue_slug}}/plan.md`
+- [ ] spec → `specs/<issue-id>/spec.md`
+- [ ] plan → `specs/<issue-id>/plan.md`
 - [ ] execute → PR / commits
 - [ ] review → review notes
 - [ ] (add issue-specific implementation tasks below)
@@ -74,8 +75,8 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 ## Links
 
-- Spec: `specs/{{issue_slug}}/spec.md`
-- Status: `specs/{{issue_slug}}/status.md`
+- Spec: `specs/<issue-id>/spec.md`
+- Status: `specs/<issue-id>/status.md`
 - Sessions: `sessions/{{issue_slug}}/`
 - Roadmap: `workspace/roadmap.md`
 

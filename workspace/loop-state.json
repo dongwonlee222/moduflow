@@ -9,6 +9,7 @@
     "089-verified-code-review-intake-and-remediation-routing",
     "093-frontmatter-issue-schema-readiness-gate",
     "094-risk-based-security-and-quality-review-gate",
+    "095-commit-issue-resolution-parity",
     "086-project-aware-production-library-dashboard",
     "090-project-knowledge-and-artifact-registry",
     "091-reproducible-analysis-runs-and-template-pack",
@@ -16,33 +17,47 @@
     "087-korean-github-pr-review-surface"
   ],
   "active_issue_id": "093-frontmatter-issue-schema-readiness-gate",
-  "phase": "spec",
+  "phase": "review",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:spec 093-frontmatter-issue-schema-readiness-gate",
+  "next_command": "product:pr 093-frontmatter-issue-schema-readiness-gate",
   "attempts": {
-    "command": "product:spec 093-frontmatter-issue-schema-readiness-gate",
+    "command": "product:pr 093-frontmatter-issue-schema-readiness-gate",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-07-21"
+    "last_changed_at": "2026-07-25"
   },
   "blocker": null,
-  "last_action": "audited legacy Issue 030 and superseded its unfinished scope through Issue 090 while preserving the shipped memory foundation",
-  "last_verification": "2026-07-21: 48 project-memory and migration tests passed; project search retrieved Issue 030 evidence; Dongwon Lee approved supersession",
-  "updated_at": "2026-07-21",
+  "last_action": "completed independent review of Issue 093, refuted the fail-open reading of the loop phase default, fixed the non-file issue source crash it exposed, and merged main into the branch",
+  "last_verification": "2026-07-25 at 1eb8c13: full unittest 741/741 OK, release_check valid, lifecycle drift [], working tree clean",
+  "updated_at": "2026-07-25",
   "git_binding": {
     "mode": "git-files",
-    "branch": "",
+    "branch": "codex/093-frontmatter-issue-schema-readiness-gate",
     "base_branch": "main",
-    "commits": [],
+    "commits": [
+      "7207a0f",
+      "2b786d5",
+      "e220e4a",
+      "96485a2",
+      "28ac7ff",
+      "26659dd",
+      "4c9b46a",
+      "7d76100",
+      "34be14b",
+      "ab682e3",
+      "9a7b879",
+      "fa015b6",
+      "1eb8c13"
+    ],
     "pull_request": null,
     "release": null,
     "execution_backend": {
-      "type": "manual",
+      "type": "codex",
       "status": "selected",
-      "reason": "Legacy lifecycle reconciliation is complete; Issue 093 is the authoritative roadmap priority",
-      "session": "codex-2026-07-21"
+      "reason": "Issue 093 is approved Git-native spec work in an isolated branch; review is complete and PR is next",
+      "session": "codex-2026-07-22"
     }
   }
 }

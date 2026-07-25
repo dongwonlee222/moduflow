@@ -78,6 +78,14 @@ def load_project_lifecycle():
     return module
 
 
+def load_project_issue_schema():
+    path = Path(__file__).resolve().parent / "project_issue_schema.py"
+    spec = importlib.util.spec_from_file_location("project_issue_schema", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def load_project_production():
     path = Path(__file__).resolve().parent / "project_production.py"
     spec = importlib.util.spec_from_file_location("project_production_validation", path)
@@ -196,17 +204,23 @@ def validate_team_workflow_state(root, errors):
             errors.append(f"workflow/team-state.json: review state requires reviewer and pr for {issue_id}")
 
 
-def validate_active_issue_links(root, issue_id, errors):
-    issue_file = root / "issues" / f"{issue_id}.md"
+def validate_active_issue_links(root, issue_id, errors, project_paths):
+    issue_file = root / project_paths["issues"] / f"{issue_id}.md"
     if not issue_file.exists():
         return
-    issue_text = issue_file.read_text(encoding="utf-8")
+    try:
+        issue_text = issue_file.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return
     for relative in linked_artifacts(issue_text):
         if not (root / relative).exists():
-            errors.append(f"issues/{issue_id}.md: linked artifact missing: {relative}")
+            source = issue_file.relative_to(root).as_posix()
+            errors.append(f"{source}: linked artifact missing: {relative}")
 
 
-def validate_active_state_views(root, active_issue_id, next_command, errors):
+def validate_active_state_views(
+    root, active_issue_id, next_command, errors, project_paths
+):
     # 048: lifecycle canonical is the issue file Status; .moduflow/state.json is the
     # live summary. The dashboard must mention the active issue. (next_command is NOT
     # checked here — the dashboard's "## Next Command" is fixed to product:status by a
@@ -214,10 +228,11 @@ def validate_active_state_views(root, active_issue_id, next_command, errors):
     # roadmap.md is a narrative roadmap, not an active-issue tracker — not gated.)
     if not active_issue_id:
         return
-    dashboard = root / "workspace" / "dashboard.md"
+    dashboard = root / project_paths["workspace"] / "dashboard.md"
     dashboard_text = read_text_if_exists(dashboard)
     if dashboard.exists() and active_issue_id not in dashboard_text:
-        errors.append(f"workspace/dashboard.md: missing active_issue_id {active_issue_id}")
+        source = dashboard.relative_to(root).as_posix()
+        errors.append(f"{source}: missing active_issue_id {active_issue_id}")
 
 
 def validate_next_command_matches_phase(root, loop_state, project_loop, errors):
@@ -233,38 +248,57 @@ def validate_next_command_matches_phase(root, loop_state, project_loop, errors):
         errors.append(f"workspace/loop-state.json: next_command {actual} should be {expected}")
 
 
-def validate_schema_gates(root, project_loop, errors):
+def validate_schema_gates(
+    root, issue_evaluation, errors, project_paths
+):
     # 048: gate keys off .moduflow/state.json (live summary), not loop-state.json
     # (retired/dormant — frozen at issue 040, a prior goal). loop-state's
     # next_command/phase coupling is no longer a lifecycle gate.
     state = read_json(root / ".moduflow" / "state.json", errors)
     if not state:
-        return
+        return []
     active_issue_id = (state.get("active_issue") or "").strip()
     if active_issue_id:
-        validate_active_issue_links(root, active_issue_id, errors)
-    validate_active_state_views(root, active_issue_id, state.get("next_command"), errors)
-    # 048: lifecycle drift gate — issue files (canonical) must agree with the
-    # derived views. Run `python3 scripts/project_lifecycle.py <root> --sync` to fix.
+        validate_active_issue_links(
+            root, active_issue_id, errors, project_paths
+        )
+    validate_active_state_views(
+        root,
+        active_issue_id,
+        state.get("next_command"),
+        errors,
+        project_paths,
+    )
+    # 048: retain only consensus drift here. Shared issue diagnostics are emitted
+    # once from issue_evaluation below, so lifecycle translation must not duplicate
+    # schema, projection, or dependency diagnostics.
     try:
-        for d in load_project_lifecycle().lifecycle_drift(root):
+        lifecycle_drift = load_project_lifecycle().consensus_drift(
+            root, issue_evaluation
+        )
+        for d in lifecycle_drift:
             errors.append(f"lifecycle drift: {d} (run project_lifecycle.py --sync)")
     except Exception:
-        pass
+        lifecycle_drift = []
+    return lifecycle_drift
 
 
-def validate_issue_status_lines(root, warnings):
+def validate_issue_status_lines(root, warnings, project_paths):
     # 066 follow-up: every issue file must carry the canonical `**Status: ...**`
     # line or project_lifecycle.py silently defaults it to backlog. Warning, not
     # error — target projects mid-adoption may still carry legacy files.
-    paths = read_config_paths(root, [])
-    issues_dir = root / paths.get("issues", "issues")
+    issues_dir = root / project_paths["issues"]
     if not issues_dir.is_dir():
         return
     for issue_file in sorted(issues_dir.glob("*.md")):
-        if not re.search(r"\*\*Status:", issue_file.read_text(encoding="utf-8")):
+        try:
+            issue_text = issue_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            continue
+        if not re.search(r"\*\*Status:", issue_text):
+            source = issue_file.relative_to(root).as_posix()
             warnings.append(
-                f"issues/{issue_file.name}: missing canonical `**Status: ...**` line "
+                f"{source}: missing canonical `**Status: ...**` line "
                 "(lifecycle parser will report it as backlog)"
             )
 
@@ -306,8 +340,8 @@ def read_config_paths(root, errors):
     return paths if isinstance(paths, dict) else {}
 
 
-def required_paths(root, errors):
-    paths = read_config_paths(root, errors)
+def required_paths(root, errors, project_paths=None):
+    paths = project_paths or read_config_paths(root, errors)
     issues = paths.get("issues", "issues")
     specs = paths.get("specs", "specs")
     workspace = paths.get("workspace", "workspace")
@@ -321,12 +355,101 @@ def required_paths(root, errors):
     ]
 
 
+def issue_schema_summary(evaluation):
+    unique = {}
+    for issue in evaluation.get("issues", []):
+        for diagnostic in issue.get("diagnostics", []):
+            normalized = dict(diagnostic)
+            identity = (
+                normalized.get("severity"),
+                normalized.get("code"),
+                normalized.get("source_path"),
+                normalized.get("field"),
+                repr(normalized.get("current")),
+                repr(normalized.get("expected")),
+                normalized.get("message"),
+                normalized.get("recommendation"),
+            )
+            unique.setdefault(identity, normalized)
+    diagnostics = sorted(
+        unique.values(),
+        key=lambda diagnostic: (
+            0 if diagnostic.get("severity") == "error" else 1,
+            diagnostic.get("source_path") or "",
+            diagnostic.get("issue_id") or "",
+            diagnostic.get("code") or "",
+            diagnostic.get("field") or "",
+            diagnostic.get("message") or "",
+            diagnostic.get("recommendation") or "",
+        ),
+    )
+    return {
+        "errors": sum(
+            diagnostic.get("severity") == "error"
+            for diagnostic in diagnostics
+        ),
+        "warnings": sum(
+            diagnostic.get("severity") == "warning"
+            for diagnostic in diagnostics
+        ),
+        "codes": sorted(
+            {
+                diagnostic.get("code")
+                for diagnostic in diagnostics
+                if diagnostic.get("code")
+            }
+        ),
+        "diagnostics": diagnostics,
+    }
+
+
+def format_issue_diagnostic(diagnostic):
+    details = []
+    if diagnostic.get("field") is not None:
+        details.append(f"Field: {diagnostic['field']}.")
+    if diagnostic.get("current") is not None:
+        details.append(
+            "Current: "
+            + json.dumps(
+                diagnostic["current"],
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+            + "."
+        )
+    if diagnostic.get("expected") is not None:
+        details.append(
+            "Expected: "
+            + json.dumps(
+                diagnostic["expected"],
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+            + "."
+        )
+    detail_text = (" " + " ".join(details)) if details else ""
+    return (
+        f"{diagnostic.get('code') or 'ISSUE_DIAGNOSTIC'} "
+        f"[{diagnostic.get('source_path') or 'unknown source'}]: "
+        f"{diagnostic.get('message') or 'Issue schema diagnostic.'}"
+        f"{detail_text} "
+        f"Recommendation: "
+        f"{diagnostic.get('recommendation') or 'Run product:doctor.'}"
+    )
+
+
+def deduplicate_messages(messages):
+    return list(dict.fromkeys(messages))
+
+
 def validate_project(path):
     root = Path(path).resolve()
     errors = []
     warnings = []
+    issue_schema_module = load_project_issue_schema()
+    project_paths = issue_schema_module.configured_project_paths(root)
 
-    for relative in required_paths(root, errors):
+    for relative in required_paths(root, errors, project_paths):
         if not (root / relative).exists():
             errors.append(f"Missing required project artifact: {relative}")
 
@@ -356,16 +479,29 @@ def validate_project(path):
         if "next_command" not in state:
             errors.append(".moduflow/state.json: missing next_command")
 
+    issue_evaluation = issue_schema_module.evaluate_project(root)
+    issue_schema = issue_schema_summary(issue_evaluation)
+    for diagnostic in issue_schema["diagnostics"]:
+        rendered = format_issue_diagnostic(diagnostic)
+        if diagnostic.get("severity") == "warning":
+            warnings.append(rendered)
+        else:
+            errors.append(rendered)
+
     project_loop = load_project_loop()
     errors.extend(project_loop.validate_loop_state(root))
-    validate_schema_gates(root, project_loop, errors)
+    lifecycle_drift = validate_schema_gates(
+        root, issue_evaluation, errors, project_paths
+    )
     validate_memory_links(root, errors)
     production = load_project_production().validate_production_project(root)
     errors.extend(production["errors"])
     warnings.extend(production["warnings"])
     validate_team_workflow_state(root, errors)
-    validate_issue_status_lines(root, warnings)
+    validate_issue_status_lines(root, warnings, project_paths)
     validate_repository_links(root, errors, warnings)
+    errors = deduplicate_messages(errors)
+    warnings = deduplicate_messages(warnings)
 
     return {
         "schema": "moduflow.project-validation.v1",
@@ -373,6 +509,8 @@ def validate_project(path):
         "valid": not errors,
         "errors": errors,
         "warnings": warnings,
+        "issue_schema": issue_schema,
+        "lifecycle_drift": lifecycle_drift,
     }
 
 

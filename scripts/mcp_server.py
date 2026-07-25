@@ -15,7 +15,12 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.project_lifecycle import list_issues, _issue_status, _issue_title, ready_issues
+from scripts.project_issue_schema import (
+    configured_project_paths,
+    evaluate_project,
+    validate_issue_id,
+)
+from scripts.project_lifecycle import _READY_BLOCKING_DIAGNOSTICS
 
 SCHEMA = "moduflow.mcp.v1"
 PROTOCOL_VERSION = "2024-11-05"
@@ -131,6 +136,58 @@ def _outcome(text):
     return "\n".join(collected).strip()
 
 
+def _issue_payload(issue):
+    """Project one evaluated issue without changing the MCP v1 envelope."""
+    return {
+        "id": issue["issue_id"],
+        "status": issue.get("lifecycle_state") or "unknown",
+        "title": issue.get("title") or "",
+        "priority": issue.get("priority"),
+        "blocked_by": list(issue.get("blocked_by") or []),
+        "normalized_schema": issue.get("schema"),
+        "readiness": issue.get("readiness"),
+        "recommended_next_command": issue.get("recommended_next_command"),
+        "diagnostic_codes": sorted({
+            diagnostic.get("code")
+            for diagnostic in issue.get("diagnostics", [])
+            if diagnostic.get("code")
+        }),
+    }
+
+
+def _evaluated_items(root):
+    evaluation = evaluate_project(Path(root).resolve())
+    return evaluation, sorted(
+        (_issue_payload(issue) for issue in evaluation["issues"]),
+        key=lambda item: item["id"],
+    )
+
+
+def _ready_items(evaluation):
+    blocked_ids = {
+        issue["issue_id"]
+        for issue in evaluation["issues"]
+        if any(
+            diagnostic.get("code") in _READY_BLOCKING_DIAGNOSTICS
+            and (
+                diagnostic.get("severity") == "error"
+                or diagnostic.get("code") == "ISSUE_DEPENDENCY_UNMET"
+            )
+            for diagnostic in issue.get("diagnostics", [])
+        )
+    }
+    items = [
+        _issue_payload(issue)
+        for issue in evaluation["issues"]
+        if issue.get("lifecycle_state") == "backlog"
+        and issue["issue_id"] not in blocked_ids
+    ]
+    return sorted(
+        items,
+        key=lambda item: (item.get("priority") or "p9", item["id"]),
+    )
+
+
 def _rpc_error(req_id, code, message):
     return {"jsonrpc": "2.0", "id": req_id, "error": {"code": code, "message": message}}
 
@@ -148,7 +205,8 @@ def _tool_moduflow_status(root):
     except Exception as exc:
         return _text_result({"error": f"could not read .moduflow/state.json: {exc}"})
 
-    counts = Counter(item["status"] for item in list_issues(root))
+    _evaluation, items = _evaluated_items(root)
+    counts = Counter(item["status"] for item in items)
     payload = dict(state)
     if "schema" in payload:
         payload["state_schema"] = payload.pop("schema")
@@ -158,7 +216,7 @@ def _tool_moduflow_status(root):
 
 def _tool_moduflow_issues(root, arguments):
     status = arguments.get("status")
-    items = list_issues(root)
+    _evaluation, items = _evaluated_items(root)
     if status:
         items = [item for item in items if item["status"] == status]
     return _text_result({"issues": items})
@@ -168,26 +226,59 @@ def _tool_moduflow_issue_get(root, arguments):
     issue_id = arguments.get("id")
     if not issue_id:
         return None  # signals caller to raise a JSON-RPC -32602
-    issues_dir = (Path(root) / "issues").resolve()
-    path = (issues_dir / f"{issue_id}.md").resolve()
-    # Containment: the id must name a file directly inside issues/ — absolute
-    # paths and ../ traversal must not read arbitrary files through this tool.
-    if path.parent != issues_dir or path.suffix != ".md":
+    if not validate_issue_id(issue_id):
         return _text_result({"error": "invalid issue id", "id": issue_id})
-    if not path.is_file():
+    evaluation, _items = _evaluated_items(root)
+    project_root = Path(root).resolve()
+    project_paths = configured_project_paths(project_root)
+    lexical_source = (
+        Path(project_paths["issues"]) / f"{issue_id}.md"
+    ).as_posix()
+    evaluated = next(
+        (
+            issue for issue in evaluation["issues"]
+            if issue.get("issue_id") == issue_id
+        ),
+        None,
+    )
+    if evaluated is None:
+        evaluated = next(
+            (
+                issue for issue in evaluation["issues"]
+                if issue.get("source_path") == lexical_source
+            ),
+            None,
+        )
+    if evaluated is None:
         return _text_result({"error": "issue not found", "id": issue_id})
-    text = path.read_text(encoding="utf-8")
+    text = ""
+    source_is_safe = (
+        evaluated.get("source_format") not in {"blocked", "unreadable"}
+        and not any(
+            str(diagnostic.get("code") or "").startswith("ISSUE_SOURCE_")
+            for diagnostic in evaluated.get("diagnostics", [])
+        )
+    )
+    if source_is_safe:
+        try:
+            issues_dir = (project_root / project_paths["issues"]).resolve()
+            issues_dir.relative_to(project_root)
+            source = (project_root / evaluated["source_path"]).resolve()
+            source.relative_to(issues_dir)
+            if source.is_file():
+                text = source.read_text(encoding="utf-8")
+        except (OSError, UnicodeError, ValueError):
+            text = ""
     return _text_result({
-        "id": issue_id,
-        "status": _issue_status(text),
-        "title": _issue_title(text),
+        **_issue_payload(evaluated),
         "outcome": _outcome(text),
         "github": _github_link(text),
     })
 
 
 def _tool_moduflow_ready(root):
-    return _text_result({"ready": ready_issues(root)})
+    evaluation, _items = _evaluated_items(root)
+    return _text_result({"ready": _ready_items(evaluation)})
 
 
 def _tool_moduflow_doctor(root):

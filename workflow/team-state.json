@@ -276,14 +276,29 @@
       "owner": "",
       "assignee": "",
       "reviewer": "Dongwon Lee",
-      "status": "review",
+      "status": "done",
       "branch": "",
       "pr": "https://github.com/dongwonlee222/moduflow/pull/32",
       "lock_state": "active",
       "locked_by": "",
       "blocker": "",
-      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/32",
-      "next_command": "product:review 081-gpt-5-6-model-tier-guidance",
+      "last_handoff": "PR #32 merged into main on 2026-07-26.",
+      "next_command": "product:status",
+      "updated_at": "2026-07-26"
+    },
+    {
+      "issue_id": "093-frontmatter-issue-schema-readiness-gate",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Dongwon Lee",
+      "status": "review",
+      "branch": "",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/31",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/31",
+      "next_command": "product:review 093-frontmatter-issue-schema-readiness-gate",
       "updated_at": "2026-07-26"
     }
   ]

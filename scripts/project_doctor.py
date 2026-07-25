@@ -476,10 +476,6 @@ def inspect_project(path, include_preflight=True):
     except Exception:
         isolated_memory = []
     try:
-        lifecycle_drift = load_project_lifecycle().lifecycle_drift(project_root)
-    except Exception:
-        lifecycle_drift = []
-    try:
         plugin_staleness = installed_plugin_staleness(project_root)
     except Exception:
         plugin_staleness = {"checked": False, "stale": [], "recommendations": []}
@@ -493,6 +489,11 @@ def inspect_project(path, include_preflight=True):
     project_loop = load_project_loop()
     project_validator = load_project_validator()
     schema_gates = project_validator.validate_project(project_root)
+    lifecycle_drift = schema_gates.get("lifecycle_drift", [])
+    issue_schema = schema_gates.get(
+        "issue_schema",
+        {"errors": 0, "warnings": 0, "codes": [], "diagnostics": []},
+    )
     loop_errors = project_loop.validate_loop_state(project_root)
     loop_state_exists = (project_root / "workspace" / "loop-state.json").exists()
     loop_state = project_loop.load_loop_state(project_root) if loop_state_exists else None
@@ -558,7 +559,9 @@ def inspect_project(path, include_preflight=True):
             "valid": schema_gates.get("valid", False),
             "errors": schema_gates.get("errors", []),
             "warnings": schema_gates.get("warnings", []),
+            "issue_schema": issue_schema,
         },
+        "issue_schema": issue_schema,
         "hooks": {
             "warnings": hook_log_warnings,
         },
@@ -621,6 +624,11 @@ def inspect_project(path, include_preflight=True):
     if schema_gates.get("errors"):
         result["recommendation"].append("schema gate failed; fix linked artifacts, state drift, or next_command before release.")
 
+    if issue_schema.get("diagnostics"):
+        result["recommendation"].append(
+            "python3 scripts/project_issue_schema.py . --report"
+        )
+
     if hook_log_warnings:
         result["recommendation"].append(
             f"hook health: {len(hook_log_warnings)} lifecycle hook event(s) logged in last 7 days (warnings/errors) — "
@@ -644,10 +652,19 @@ def main():
     result = inspect_project(args.project_path, include_preflight=not args.no_preflight)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     moduflow = result.get("moduflow", {})
+    schema_gates = result.get("schema_gates", {})
     # Gate: a project is healthy only when ModuFlow is initialized with no missing
     # required artifacts. Returning a real exit code makes project_doctor an
     # actual gate inside release_check instead of an always-pass no-op.
-    return 0 if moduflow.get("initialized") and not moduflow.get("missing") else 1
+    return (
+        0
+        if (
+            moduflow.get("initialized")
+            and not moduflow.get("missing")
+            and schema_gates.get("valid", False)
+        )
+        else 1
+    )
 
 
 if __name__ == "__main__":

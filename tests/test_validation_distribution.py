@@ -1,3 +1,4 @@
+import ast
 import importlib.util
 import json
 import subprocess
@@ -71,6 +72,380 @@ class ValidationDistributionTests(unittest.TestCase):
             self.assertEqual(len(matching), 1)
             self.assertFalse(any("001-with-status.md" in w for w in result["warnings"]))
 
+    def test_unreadable_issue_fails_closed_without_validator_or_doctor_traceback(self):
+        validator = load_module("validate_project_unreadable", "scripts/validate_project_artifacts.py")
+        project_doctor = load_module("project_doctor_unreadable", "scripts/project_doctor.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+            (root / "issues" / "BIZ-UNREADABLE.md").write_bytes(
+                b"\xff\xfe\x00\x80"
+            )
+
+            validation = validator.validate_project(root)
+            doctor = project_doctor.inspect_project(
+                root, include_preflight=False
+            )
+            validator_proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "validate_project_artifacts.py"),
+                    str(root),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            validator_payload = json.loads(validator_proc.stdout)
+
+        self.assertFalse(validation["valid"])
+        self.assertEqual(validator_proc.returncode, 1)
+        self.assertFalse(validator_payload["valid"])
+        self.assertTrue(
+            any(
+                "ISSUE_SOURCE_UNREADABLE" in error
+                for error in validation["errors"]
+            )
+        )
+        self.assertIn(
+            "ISSUE_SOURCE_UNREADABLE",
+            validation["issue_schema"]["codes"],
+        )
+        self.assertGreaterEqual(doctor["issue_schema"]["errors"], 1)
+        self.assertIn(
+            "ISSUE_SOURCE_UNREADABLE",
+            doctor["issue_schema"]["codes"],
+        )
+
+    def test_external_issue_and_artifact_symlinks_keep_validator_and_doctor_json(self):
+        validator = load_module(
+            "validate_project_external_symlink",
+            "scripts/validate_project_artifacts.py",
+        )
+        project_doctor = load_module(
+            "project_doctor_external_symlink",
+            "scripts/project_doctor.py",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            root = base / "project"
+            root.mkdir()
+            self.create_minimal_project(root)
+            outside_issue = base / "DO-NOT-EXPOSE-ISSUE-SECRET.md"
+            outside_issue.write_text(
+                "# DO-NOT-EXPOSE-ISSUE-CONTENT\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "BIZ-SOURCE-LINK.md").symlink_to(outside_issue)
+            (root / "issues" / "BIZ-ARTIFACT-LINK.md").write_text(
+                """---
+schema_version: 0.1.0
+issue_id: BIZ-ARTIFACT-LINK
+canonical_state: active
+status: in_progress
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:execute BIZ-ARTIFACT-LINK
+---
+# Artifact link
+
+**Status: active**
+""",
+                encoding="utf-8",
+            )
+            outside_specs = base / "DO-NOT-EXPOSE-SPECS-SECRET"
+            outside_specs.mkdir()
+            (outside_specs / "spec.md").write_text(
+                "# DO-NOT-EXPOSE-SPEC-CONTENT\n",
+                encoding="utf-8",
+            )
+            (root / "specs" / "BIZ-ARTIFACT-LINK").symlink_to(
+                outside_specs,
+                target_is_directory=True,
+            )
+
+            validation = validator.validate_project(root)
+            doctor = project_doctor.inspect_project(
+                root,
+                include_preflight=False,
+            )
+            validator_proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "validate_project_artifacts.py"),
+                    str(root),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            doctor_proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "project_doctor.py"),
+                    str(root),
+                    "--no-preflight",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            validator_payload = json.loads(validator_proc.stdout)
+            doctor_payload = json.loads(doctor_proc.stdout)
+            serialized = json.dumps(
+                {
+                    "validation": validation,
+                    "doctor": doctor,
+                    "validator_cli": validator_payload,
+                    "doctor_cli": doctor_payload,
+                },
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(validator_proc.returncode, 1)
+        self.assertEqual(doctor_proc.returncode, 1)
+        self.assertFalse(validation["valid"])
+        self.assertIn(
+            "ISSUE_SOURCE_OUTSIDE_ROOT",
+            validation["issue_schema"]["codes"],
+        )
+        self.assertIn(
+            "ISSUE_ARTIFACT_OUTSIDE_ROOT",
+            validation["issue_schema"]["codes"],
+        )
+        self.assertEqual(
+            validation["issue_schema"],
+            doctor["issue_schema"],
+        )
+        self.assertNotIn("DO-NOT-EXPOSE-ISSUE-CONTENT", serialized)
+        self.assertNotIn("DO-NOT-EXPOSE-SPEC-CONTENT", serialized)
+
+    def test_external_issues_root_symlink_fails_validator_and_doctor_closed(self):
+        validator = load_module(
+            "validate_project_external_issues_root",
+            "scripts/validate_project_artifacts.py",
+        )
+        project_doctor = load_module(
+            "project_doctor_external_issues_root",
+            "scripts/project_doctor.py",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            root = base / "project"
+            root.mkdir()
+            self.create_minimal_project(root)
+            outside_issues = base / "DO-NOT-EXPOSE-ISSUES-ROOT"
+            outside_issues.mkdir()
+            (outside_issues / "BIZ-SECRET.md").write_text(
+                "# DO-NOT-EXPOSE-ROOT-CONTENT\n",
+                encoding="utf-8",
+            )
+            (root / "issues").rmdir()
+            (root / "issues").symlink_to(
+                outside_issues,
+                target_is_directory=True,
+            )
+
+            validation = validator.validate_project(root)
+            doctor = project_doctor.inspect_project(
+                root,
+                include_preflight=False,
+            )
+            validator_proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "validate_project_artifacts.py"),
+                    str(root),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            doctor_proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "project_doctor.py"),
+                    str(root),
+                    "--no-preflight",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            serialized = json.dumps(
+                {
+                    "validation": validation,
+                    "doctor": doctor,
+                    "validator_cli": json.loads(validator_proc.stdout),
+                    "doctor_cli": json.loads(doctor_proc.stdout),
+                },
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(validator_proc.returncode, 1)
+        self.assertEqual(doctor_proc.returncode, 1)
+        self.assertIn(
+            "ISSUE_SOURCE_OUTSIDE_ROOT",
+            validation["issue_schema"]["codes"],
+        )
+        self.assertEqual(validation["issue_schema"], doctor["issue_schema"])
+        self.assertNotIn("DO-NOT-EXPOSE-ROOT-CONTENT", serialized)
+
+    def test_validate_project_surfaces_sorted_actionable_issue_schema_diagnostics_once(self):
+        validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+            (root / "issues" / "BIZ-PROJECTION.md").write_text(
+                """---
+schema_version: 0.1.0
+issue_id: BIZ-PROJECTION
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:doctor
+---
+# Projection mismatch
+
+**Status: done** — created 2026-07-24.
+""",
+                encoding="utf-8",
+            )
+            (root / "issues" / "BIZ-ADVISORY.md").write_text(
+                """---
+issue_id: BIZ-ADVISORY
+definition_readiness: ready
+gate_state: passed
+---
+# Advisory issue
+
+**Status: backlog** — created 2026-07-24.
+""",
+                encoding="utf-8",
+            )
+
+            result = validator.validate_project(root)
+
+            self.assertFalse(result["valid"])
+            projection_errors = [
+                error
+                for error in result["errors"]
+                if "ISSUE_STATE_PROJECTION_MISMATCH" in error
+            ]
+            self.assertEqual(len(projection_errors), 1)
+            self.assertIn("issues/BIZ-PROJECTION.md", projection_errors[0])
+            self.assertIn("Markdown Status must project", projection_errors[0])
+            self.assertIn("Recommendation:", projection_errors[0])
+            self.assertTrue(
+                any(
+                    "ISSUE_FRONTMATTER_UNVERSIONED" in warning
+                    and "issues/BIZ-ADVISORY.md" in warning
+                    and "Recommendation:" in warning
+                    for warning in result["warnings"]
+                )
+            )
+            self.assertEqual(len(result["errors"]), len(set(result["errors"])))
+            self.assertEqual(len(result["warnings"]), len(set(result["warnings"])))
+            self.assertGreaterEqual(result["issue_schema"]["errors"], 1)
+            self.assertGreaterEqual(result["issue_schema"]["warnings"], 1)
+            self.assertEqual(
+                result["issue_schema"]["codes"],
+                sorted(result["issue_schema"]["codes"]),
+            )
+
+    def test_validate_project_evaluates_issue_schema_once(self):
+        validator = load_module("validate_project_artifacts_once", "scripts/validate_project_artifacts.py")
+        schema = validator.load_project_issue_schema()
+        original_evaluate = schema.evaluate_project
+        calls = []
+
+        def counting_evaluate(root):
+            calls.append(Path(root))
+            return original_evaluate(root)
+
+        schema.evaluate_project = counting_evaluate
+        validator.load_project_issue_schema = lambda: schema
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+
+            validator.validate_project(root)
+
+        self.assertEqual(calls, [root.resolve()])
+
+    def test_validate_project_preserves_context_aware_dependency_severity(self):
+        validator = load_module("validate_project_dependency_severity", "scripts/validate_project_artifacts.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+
+            def write_issue(issue_id, lifecycle, dependencies, next_command):
+                status = "in_progress" if lifecycle == "active" else "backlog"
+                (root / "issues" / f"{issue_id}.md").write_text(
+                    f"""---
+schema_version: 0.1.0
+issue_id: {issue_id}
+canonical_state: {lifecycle}
+status: {status}
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: [{", ".join(dependencies)}]
+next_command: {next_command}
+---
+# Dependency severity fixture
+
+**Status: {lifecycle}** — created 2026-07-24.
+""",
+                    encoding="utf-8",
+                )
+
+            write_issue("BIZ-BLOCKER", "backlog", (), "product:status")
+            write_issue(
+                "BIZ-WAITING",
+                "backlog",
+                ("BIZ-BLOCKER",),
+                "product:status",
+            )
+            write_issue(
+                "BIZ-ACTIVE",
+                "active",
+                ("BIZ-BLOCKER",),
+                "product:status",
+            )
+            state_path = root / ".moduflow" / "state.json"
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            state["active_issue"] = "BIZ-ACTIVE"
+            state_path.write_text(json.dumps(state) + "\n", encoding="utf-8")
+            (root / "workspace" / "dashboard.md").write_text(
+                "# Dashboard\n\n## Active Issue\n\n- `BIZ-ACTIVE`\n",
+                encoding="utf-8",
+            )
+
+            result = validator.validate_project(root)
+
+        warning_matches = [
+            message
+            for message in result["warnings"]
+            if "ISSUE_DEPENDENCY_UNMET" in message
+            and "BIZ-WAITING.md" in message
+        ]
+        error_matches = [
+            message
+            for message in result["errors"]
+            if "ISSUE_DEPENDENCY_UNMET" in message
+            and "BIZ-ACTIVE.md" in message
+        ]
+        self.assertEqual(len(warning_matches), 1)
+        self.assertEqual(len(error_matches), 1)
+        self.assertFalse(
+            any(
+                "ISSUE_DEPENDENCY_UNMET" in message
+                and "BIZ-WAITING.md" in message
+                for message in result["errors"]
+            )
+        )
+
     def test_validate_project_artifacts_reports_invalid_state_json(self):
         validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
         with tempfile.TemporaryDirectory() as tmp:
@@ -126,6 +501,58 @@ class ValidationDistributionTests(unittest.TestCase):
             "templates/production/playbook.md",
         }
         self.assertTrue(expected.issubset(set(validator.REQUIRED_FILES)))
+
+    def test_validate_moduflow_ships_issue_schema_and_local_fixtures(self):
+        validator = load_module(
+            "validate_moduflow_issue_schema", "scripts/validate_moduflow.py"
+        )
+        expected = {
+            "scripts/project_issue_schema.py",
+            "tests/fixtures/issue-schema/BIZ-033.md",
+            "tests/fixtures/issue-schema/BIZ-038.md",
+            "tests/fixtures/issue-schema/BIZ-039.md",
+            "tests/fixtures/issue-schema/BIZ-040.md",
+            "tests/fixtures/issue-schema/legacy-markdown.md",
+        }
+
+        self.assertTrue(expected.issubset(set(validator.REQUIRED_FILES)))
+        self.assertTrue(all((ROOT / path).is_file() for path in expected))
+
+    def test_issue_consumers_import_shared_schema_without_duplicate_parsers(self):
+        forbidden_definitions = {
+            "parse_issue_frontmatter",
+            "issue_status",
+            "issue_blocked_by",
+        }
+        for relative_path in [
+            "scripts/project_lifecycle.py",
+            "scripts/mcp_server.py",
+            "scripts/project_memory.py",
+        ]:
+            with self.subTest(consumer=relative_path):
+                tree = ast.parse(
+                    (ROOT / relative_path).read_text(encoding="utf-8"),
+                    filename=relative_path,
+                )
+                imported_modules = {
+                    node.module
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.ImportFrom)
+                }
+                definitions = {
+                    node.name
+                    for node in ast.walk(tree)
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                }
+
+                self.assertTrue(
+                    {
+                        "scripts.project_issue_schema",
+                        "project_issue_schema",
+                    }
+                    & imported_modules
+                )
+                self.assertTrue(forbidden_definitions.isdisjoint(definitions))
 
     def test_validate_moduflow_requires_review_intake_surface(self):
         validator = load_module(
@@ -258,6 +685,89 @@ class ValidationDistributionTests(unittest.TestCase):
 
             self.assertTrue(result["valid"])
             self.assertEqual(result["errors"], [])
+
+    def test_validator_evaluates_issues_from_configured_safe_paths(self):
+        validator = load_module("validate_project_custom_issue_path", "scripts/validate_project_artifacts.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+            custom_issues = root / "projects" / "billing" / "issues"
+            custom_specs = root / "projects" / "billing" / "specs"
+            custom_issues.mkdir(parents=True)
+            custom_specs.mkdir(parents=True)
+            config_path = root / ".moduflow" / "config.json"
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            config["paths"].update(
+                {
+                    "issues": "projects/billing/issues",
+                    "specs": "projects/billing/specs",
+                }
+            )
+            config_path.write_text(json.dumps(config) + "\n", encoding="utf-8")
+            (custom_issues / "BIZ-CUSTOM.md").write_text(
+                """---
+schema_version: 9.9.9
+issue_id: BIZ-CUSTOM
+---
+# Unsupported custom issue
+
+**Status: backlog** — created 2026-07-25.
+""",
+                encoding="utf-8",
+            )
+
+            result = validator.validate_project(root)
+
+        self.assertFalse(result["valid"])
+        self.assertIn("ISSUE_SCHEMA_UNSUPPORTED", result["issue_schema"]["codes"])
+        diagnostic = next(
+            item
+            for item in result["issue_schema"]["diagnostics"]
+            if item["code"] == "ISSUE_SCHEMA_UNSUPPORTED"
+        )
+        self.assertEqual(
+            diagnostic["source_path"],
+            "projects/billing/issues/BIZ-CUSTOM.md",
+        )
+
+    def test_validator_rejects_configured_issue_path_outside_project(self):
+        validator = load_module("validate_project_traversal", "scripts/validate_project_artifacts.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            root = base / "project"
+            root.mkdir()
+            self.create_minimal_project(root)
+            (root / "issues").rmdir()
+            outside_issues = base / "outside" / "issues"
+            outside_issues.mkdir(parents=True)
+            (outside_issues / "BIZ-OUTSIDE.md").write_text(
+                "# Outside\n\n**Status: backlog** — created.\n",
+                encoding="utf-8",
+            )
+            config_path = root / ".moduflow" / "config.json"
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            config["paths"]["issues"] = "../../outside/issues"
+            config_path.write_text(json.dumps(config) + "\n", encoding="utf-8")
+
+            result = validator.validate_project(root)
+
+        self.assertFalse(result["valid"])
+        self.assertTrue(
+            any(
+                "Missing required project artifact: issues" in error
+                for error in result["errors"]
+            )
+        )
+        self.assertIn(
+            "ISSUE_SOURCE_OUTSIDE_ROOT",
+            result["issue_schema"]["codes"],
+        )
+        self.assertTrue(
+            any(
+                diagnostic["field"] == "issues_root"
+                for diagnostic in result["issue_schema"]["diagnostics"]
+            )
+        )
 
     def test_validate_project_artifacts_reports_loop_state_missing_active_issue(self):
         validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
@@ -497,6 +1007,70 @@ class ValidationDistributionTests(unittest.TestCase):
                 capture_output=True,
             )
             self.assertEqual(proc.returncode, 1)
+
+    def test_project_doctor_cli_exits_nonzero_for_hard_issue_schema_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+            (root / "issues" / "BIZ-HARD.md").write_text(
+                """---
+schema_version: 9.9.9
+issue_id: BIZ-HARD
+---
+# Unsupported
+
+**Status: backlog** — created 2026-07-25.
+""",
+                encoding="utf-8",
+            )
+
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "project_doctor.py"),
+                    str(root),
+                    "--no-preflight",
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+        payload = json.loads(proc.stdout)
+        self.assertEqual(proc.returncode, 1)
+        self.assertFalse(payload["schema_gates"]["valid"])
+        self.assertIn("ISSUE_SCHEMA_UNSUPPORTED", payload["issue_schema"]["codes"])
+
+    def test_project_doctor_cli_keeps_warning_only_issue_schema_at_zero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+            (root / "issues" / "BIZ-ADVISORY.md").write_text(
+                """---
+issue_id: BIZ-ADVISORY
+---
+# Advisory
+
+**Status: backlog** — created 2026-07-25.
+""",
+                encoding="utf-8",
+            )
+
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "project_doctor.py"),
+                    str(root),
+                    "--no-preflight",
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+        payload = json.loads(proc.stdout)
+        self.assertEqual(proc.returncode, 0)
+        self.assertTrue(payload["schema_gates"]["valid"])
+        self.assertEqual(payload["issue_schema"]["errors"], 0)
+        self.assertGreaterEqual(payload["issue_schema"]["warnings"], 1)
 
     def test_release_check_succeeds_for_current_repo(self):
         release_check = load_module("release_check", "scripts/release_check.py")

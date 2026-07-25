@@ -1,6 +1,6 @@
 # Issue 093: Frontmatter Issue Schema and Readiness/Dependency Gate
 
-**Status: backlog** — created 2026-07-16.
+**Status: active** — created 2026-07-16, started 2026-07-22, planned 2026-07-22, implementation verified 2026-07-25.
 **Priority: p1**
 
 ## Summary
@@ -12,7 +12,7 @@ Normalize YAML-frontmatter and Markdown issue formats through one parser, then b
 - Type: verified external-review workflow dogfood
 - Link: ModuPay Biz BIZ-038–040 audit, local Codex session 2026-07-16
 - Owner / decision maker: Dongwon Lee
-- Current phase: backlog
+- Current phase: execute verified; review next
 
 ## Problem
 
@@ -22,6 +22,7 @@ ModuFlow’s current lifecycle parser recognizes canonical Markdown `Status`, `P
 
 - A single issue parser supports canonical Markdown and versioned frontmatter adapters.
 - When `schema_version` frontmatter exists, `canonical_state` is lifecycle truth; the Markdown status line is its human projection and must agree.
+- When frontmatter has no `schema_version`, Markdown remains canonical; known frontmatter fields produce migration warnings and may conservatively block execution, but cannot advance readiness.
 - `depends_on` normalizes to the same dependency graph as `Blocked-by`.
 - `definition_readiness`, `gate_state`, lifecycle state, dependencies, and artifact phase are separate fields with explicit allowed transitions.
 - `next_command` is derived and validated; it cannot skip unmet dependencies, required spec/plan work, or a blocked gate.
@@ -78,10 +79,11 @@ Do not introduce separate parsers in lifecycle, dashboard, or MCP consumers. Sch
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/093-frontmatter-issue-schema-readiness-gate/spec.md`
-- [ ] plan → `specs/093-frontmatter-issue-schema-readiness-gate/plan.md`
-- [ ] execute → schema adapters, normalized parser, gates, migration report, and tests
-- [ ] review → `specs/093-frontmatter-issue-schema-readiness-gate/review.md`
+- [x] spec → `specs/093-frontmatter-issue-schema-readiness-gate/spec.md` + `spec.ko.md`
+- [x] plan → `specs/093-frontmatter-issue-schema-readiness-gate/plan.md` + `tasks.md`
+- [x] execute → implementation/evidence commits `0354c7b`–`ab682e3`; verification in `specs/093-frontmatter-issue-schema-readiness-gate/status.md`
+- [x] review → `specs/093-frontmatter-issue-schema-readiness-gate/review.md` + `review.ko.md`; verdict approve-with-conditions, both conditions cleared
+- [x] pr → Draft PR https://github.com/dongwonlee222/moduflow/pull/31
 
 ## Related Issues
 
@@ -93,13 +95,28 @@ Do not introduce separate parsers in lifecycle, dashboard, or MCP consumers. Sch
 ## Sessions
 
 - 2026-07-16: ModuPay Biz review dogfood proved that the current validator ignores frontmatter dependencies/readiness and can report contradictory issues as valid.
+- 2026-07-22: Dongwon Lee approved a shared-normalizer design. Unversioned frontmatter keeps Markdown canonical, emits migration guidance, and cannot advance an issue to ready/execute.
+- 2026-07-22: Implementation plan split the work into parser/model, structural gate/report, consumer convergence, authoring compatibility, and full verification streams.
+- 2026-07-25: E2 passed spec consistency, 732 full tests, project validation, lifecycle drift, release check, and diff hygiene; implementation remains active for independent review.
 
 ## Links
 
 - Goal: `workspace/goal.md`
 - Roadmap: `workspace/roadmap.md`
+- Spec: `specs/093-frontmatter-issue-schema-readiness-gate/spec.md`
+- Korean Spec: `specs/093-frontmatter-issue-schema-readiness-gate/spec.ko.md`
+- Plan: `specs/093-frontmatter-issue-schema-readiness-gate/plan.md`
+- Tasks: `specs/093-frontmatter-issue-schema-readiness-gate/tasks.md`
+- Status: `specs/093-frontmatter-issue-schema-readiness-gate/status.md`
+- Review: `specs/093-frontmatter-issue-schema-readiness-gate/review.md`
+- Korean review: `specs/093-frontmatter-issue-schema-readiness-gate/review.ko.md`
+- PR handoff: `specs/093-frontmatter-issue-schema-readiness-gate/pr.md`
+- Korean review packet: `specs/093-frontmatter-issue-schema-readiness-gate/human-review.ko.md`
 - GitHub: https://github.com/dongwonlee222/moduflow/issues/23
+- Draft PR: https://github.com/dongwonlee222/moduflow/pull/31
 
 ## Next Command
 
-`product:spec 093-frontmatter-issue-schema-readiness-gate`
+Draft PR #31 is open and awaiting human review. On approval, mark ready, merge, then:
+
+`product:release 093-frontmatter-issue-schema-readiness-gate`
