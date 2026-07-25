@@ -225,6 +225,7 @@ Tests added:
 ## Evidence
 
 - Review notes: `specs/093-frontmatter-issue-schema-readiness-gate/review.md`
+- Korean review: `specs/093-frontmatter-issue-schema-readiness-gate/review.ko.md`
 - Review handoff: `specs/093-frontmatter-issue-schema-readiness-gate/review-handoff.md`
 - Dashboard: `memory/dashboard.html`
 - Issue drill-down: `memory/issue-093-frontmatter-issue-schema-readiness-gate.html`

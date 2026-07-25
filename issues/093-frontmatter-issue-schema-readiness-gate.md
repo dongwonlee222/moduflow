@@ -82,7 +82,8 @@ Do not introduce separate parsers in lifecycle, dashboard, or MCP consumers. Sch
 - [x] spec → `specs/093-frontmatter-issue-schema-readiness-gate/spec.md` + `spec.ko.md`
 - [x] plan → `specs/093-frontmatter-issue-schema-readiness-gate/plan.md` + `tasks.md`
 - [x] execute → implementation/evidence commits `0354c7b`–`ab682e3`; verification in `specs/093-frontmatter-issue-schema-readiness-gate/status.md`
-- [ ] review → `specs/<issue-id>/review.md` (replace with the concrete link when created)
+- [x] review → `specs/093-frontmatter-issue-schema-readiness-gate/review.md` + `review.ko.md`; verdict approve-with-conditions, both conditions cleared
+- [x] pr → Draft PR https://github.com/dongwonlee222/moduflow/pull/31
 
 ## Related Issues
 
@@ -108,6 +109,7 @@ Do not introduce separate parsers in lifecycle, dashboard, or MCP consumers. Sch
 - Tasks: `specs/093-frontmatter-issue-schema-readiness-gate/tasks.md`
 - Status: `specs/093-frontmatter-issue-schema-readiness-gate/status.md`
 - Review: `specs/093-frontmatter-issue-schema-readiness-gate/review.md`
+- Korean review: `specs/093-frontmatter-issue-schema-readiness-gate/review.ko.md`
 - PR handoff: `specs/093-frontmatter-issue-schema-readiness-gate/pr.md`
 - Korean review packet: `specs/093-frontmatter-issue-schema-readiness-gate/human-review.ko.md`
 - GitHub: https://github.com/dongwonlee222/moduflow/issues/23
@@ -115,4 +117,6 @@ Do not introduce separate parsers in lifecycle, dashboard, or MCP consumers. Sch
 
 ## Next Command
 
-`product:review 093-frontmatter-issue-schema-readiness-gate`
+Draft PR #31 is open and awaiting human review. On approval, mark ready, merge, then:
+
+`product:release 093-frontmatter-issue-schema-readiness-gate`
