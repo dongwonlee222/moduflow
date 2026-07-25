@@ -1,49 +1,67 @@
 {
   "project": "moduflow",
   "project_root": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
-  "updated_at": "2026-07-09",
-  "current_goal": "ModuFlow improvement stack merged and verified on GitHub main.",
+  "updated_at": "2026-07-25",
+  "current_goal": "Issue 093 frontmatter issue schema and readiness gate is reviewed and PR-ready; nothing is pushed to GitHub yet.",
   "latest_decisions": [
-    "Issues 079, 077, 078, and 080 were implemented as stacked PRs, then retargeted and merged into main in order.",
-    "Reference repo/template improvement ideas should be captured in workspace/reference-improvements.md and promoted later only when actionable.",
-    ".codex-plugin/plugin.json local cache timestamp change was reverted; repository ended clean."
+    "Issue 081 was recovered from an uncommitted working tree onto branch codex/081-gpt-5-6-model-tier-guidance. Its version bump is deliberately deferred because issue 093 already claims 0.3.27-0.3.29; it must bump when it merges.",
+    "The local 077-080 reconciliation edits were discarded in favor of branch codex/reconcile-077-080, which was verified file-by-file as the newer and richer version, then fast-forwarded into local main.",
+    "Issue 093 review verdict is approve with conditions; both conditions were cleared during the review.",
+    "Review finding 2 (loop phase default read as fail-open) was refuted by direct probing of recommend_loop. Every route reaches a gate.",
+    "The probe instead found a real crash: list_normalized_issues silently skipped existing non-file *.md paths, so a directory-shaped issue file raised IsADirectoryError out of recommend_loop. Fixed inside 093 with four regression tests.",
+    "Review finding 1 (project_converge collects only trailer-linked commits, 1 of 44 on this branch) is pre-existing and does not block 093. Registered as issue 095.",
+    "main was merged into the 093 branch so it is PR-ready; two state files conflicted and were resolved to the branch's newer values."
   ],
   "last_done": [
-    "Merged PR #13 for issue 079 plan discipline matrix.",
-    "Merged PR #14 for issue 077 implementation readiness gate.",
-    "Merged PR #15 for issue 078 frontend QA template pack.",
-    "Merged PR #16 for issue 080 reference improvement backlog.",
-    "Fast-forwarded local main to origin/main.",
-    "Ran python3 scripts/release_check.py . successfully after merge.",
-    "Confirmed working tree is clean."
+    "Recovered issue 081 onto codex/081-gpt-5-6-model-tier-guidance (2 commits): implementation plus backlog issues 082, 083, 084.",
+    "Fast-forwarded local main with codex/reconcile-077-080 (5 commits).",
+    "Ran the independent review of issue 093 inline; subagent dispatch was withheld and that limitation is recorded in review.md and status.md.",
+    "Wrote specs/093-.../review.md and refreshed status.md with findings, evidence, and the converge limitation.",
+    "Registered issue 095-commit-issue-resolution-parity.",
+    "Fixed the non-file issue source crash in scripts/project_issue_schema.py; bumped plugin version to 0.3.29 in the same commit after the version gate caught the omission.",
+    "Merged main into codex/093-... and resolved .moduflow/state.json and workspace/loop-state.json.",
+    "Verified: 741 tests OK, release_check valid, lifecycle drift [], project validation valid, working tree clean."
   ],
   "next_todo": [
-    "If continuing product work, choose the next backlog issue after the merged improvement stack.",
-    "If preparing a user-facing release, update/install the ModuFlow plugin cache from the merged main."
+    "Push local main (5 commits ahead of origin/main), then push codex/081-... and codex/093-....",
+    "Run product:pr 093-frontmatter-issue-schema-readiness-gate to produce the PR packet and Korean review surface, then open the PR.",
+    "When issue 081 merges, bump the plugin version in that merge; the bump was deliberately skipped on its branch.",
+    "Pick up issue 095 (commit-to-issue resolution parity) — it weakens the review evidence step for every future issue until fixed.",
+    "Decide whether .playwright-mcp/ and the two dashboard PNGs at the repo root should be gitignored or removed; they are untracked and were left alone.",
+    "Issue 092 stays parked: it is blocked by 086, 090, and 091, all unfinished."
   ],
   "key_files": [
-    "commands/product-plan.md",
-    "commands/product-execute.md",
-    "commands/product-review.md",
-    "scripts/project_execution.py",
-    "scripts/project_reference_backlog.py",
-    "templates/frontend-qa/README.md",
-    "templates/workspace/reference-improvements.md",
-    "workspace/reference-improvements.md",
-    "workspace/roadmap.md"
+    "scripts/project_issue_schema.py",
+    "scripts/project_loop.py",
+    "scripts/project_converge.py",
+    "scripts/linkage_check.py",
+    "specs/093-frontmatter-issue-schema-readiness-gate/review.md",
+    "specs/093-frontmatter-issue-schema-readiness-gate/status.md",
+    "issues/095-commit-issue-resolution-parity.md",
+    "tests/test_project_issue_schema.py",
+    "tests/test_project_loop.py",
+    "workspace/loop-state.json"
   ],
+  "branches": {
+    "main": "5 commits ahead of origin/main, not pushed",
+    "codex/081-gpt-5-6-model-tier-guidance": "2 commits, not pushed, version bump deferred",
+    "codex/093-frontmatter-issue-schema-readiness-gate": "48 commits ahead of main, contains all of main, reviewed and PR-ready, not pushed",
+    "codex/092-current-dashboard-korean": "1 commit, parked behind 086/090/091",
+    "codex/reconcile-077-080": "merged into local main"
+  },
+  "worktrees": {
+    "093": "/Users/dongwon.lee/.config/superpowers/worktrees/moduflow/093-frontmatter-readiness-spec",
+    "092": "/Users/dongwon.lee/.config/superpowers/worktrees/moduflow/092-current-dashboard-korean"
+  },
   "github": {
-    "merged_prs": [
-      "https://github.com/dongwonlee222/moduflow/pull/13",
-      "https://github.com/dongwonlee222/moduflow/pull/14",
-      "https://github.com/dongwonlee222/moduflow/pull/15",
-      "https://github.com/dongwonlee222/moduflow/pull/16"
-    ],
-    "main_status": "local main equals origin/main"
+    "main_status": "local main is 5 commits ahead of origin/main; nothing from this session is on GitHub",
+    "open_prs": []
   },
   "verification": {
-    "release_check": "pass",
-    "working_tree": "clean"
+    "tests": "741 pass on the 093 branch, 582 on main",
+    "release_check": "pass on both main and the 093 branch",
+    "lifecycle_drift": "[]",
+    "working_tree": "clean except untracked .playwright-mcp/ and two dashboard PNGs"
   },
-  "next_start_keyword": "moduflow next backlog"
+  "next_start_keyword": "moduflow 093 pr"
 }
