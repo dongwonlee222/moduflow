@@ -3083,5 +3083,111 @@ issue_id: FUTURE-B
         self.assertEqual(payload["error"]["code"], "PROJECT_ROOT_INVALID")
 
 
+class ProjectIssueIdBoundaryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.schema = load_module(
+            "project_issue_schema_issue_id_boundary",
+            "scripts/project_issue_schema.py",
+        )
+
+    def write_versioned_issue(self, root, filename, issue_id, dependencies=()):
+        (root / "issues").mkdir(parents=True, exist_ok=True)
+        dependency_text = ", ".join(dependencies)
+        (root / "issues" / filename).write_text(
+            f"""---
+schema_version: 0.1.0
+issue_id: {issue_id}
+canonical_state: active
+status: in_progress
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: [{dependency_text}]
+next_command: product:execute {issue_id}
+---
+# Issue: `{issue_id}` Boundary fixture
+
+**Status: active** — created 2026-07-25.
+""",
+            encoding="utf-8",
+        )
+
+    def test_validate_issue_id_accepts_legal_filename_stems(self):
+        for issue_id in (
+            "0",
+            "BIZ-033",
+            "093-frontmatter-issue-schema-readiness-gate",
+            "alpha_beta",
+            "alpha.beta",
+        ):
+            with self.subTest(issue_id=issue_id):
+                self.assertTrue(self.schema.validate_issue_id(issue_id))
+
+    def test_validate_issue_id_rejects_path_tokens(self):
+        for issue_id in (
+            "",
+            ".",
+            "..",
+            "../../outside",
+            "/tmp/outside",
+            "folder/issue",
+            r"folder\issue",
+            "-leading-hyphen",
+        ):
+            with self.subTest(issue_id=issue_id):
+                self.assertFalse(self.schema.validate_issue_id(issue_id))
+
+    def test_frontmatter_path_tokens_are_malformed_and_route_to_doctor(self):
+        for malicious_id in (
+            "../../outside",
+            "/tmp/outside",
+            "folder/issue",
+            r"folder\issue",
+            ".",
+            "..",
+        ):
+            with self.subTest(issue_id=malicious_id), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.write_versioned_issue(root, "SAFE.md", malicious_id)
+
+                issue = self.schema.evaluate_project(root)["issues"][0]
+
+                self.assertEqual(issue["issue_id"], "SAFE")
+                self.assertIn("ISSUE_SCHEMA_MALFORMED", codes(issue))
+                self.assertTrue(
+                    any(
+                        diagnostic["field"] == "issue_id"
+                        for diagnostic in issue["diagnostics"]
+                    )
+                )
+                self.assertEqual(
+                    issue["recommended_next_command"],
+                    "product:doctor",
+                )
+
+    def test_dependency_path_injection_is_malformed_and_routes_to_doctor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_versioned_issue(
+                root,
+                "BIZ-WORK.md",
+                "BIZ-WORK",
+                dependencies=("../../outside",),
+            )
+
+            issue = self.schema.evaluate_project(root)["issues"][0]
+
+        self.assertEqual(issue["blocked_by"], [])
+        self.assertIn("ISSUE_SCHEMA_MALFORMED", codes(issue))
+        self.assertTrue(
+            any(
+                diagnostic["field"] == "depends_on"
+                for diagnostic in issue["diagnostics"]
+            )
+        )
+        self.assertEqual(issue["recommended_next_command"], "product:doctor")
+
+
 if __name__ == "__main__":
     unittest.main()

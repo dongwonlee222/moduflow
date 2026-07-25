@@ -688,6 +688,58 @@ gate_state: passed
             self.assertEqual(state["status"], "needs_decision")
             self.assertIn("Execution blocked", state["blocker"])
 
+    def test_invalid_issue_ids_fail_closed_before_issue_or_artifact_lookup(self):
+        invalid_issue_ids = (
+            "../../outside",
+            "/tmp/outside",
+            "folder/issue",
+            r"folder\issue",
+            ".",
+            "..",
+        )
+        for issue_id in invalid_issue_ids:
+            with self.subTest(issue_id=issue_id), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.write_loop_state(root, issue_id)
+
+                state = project_loop.recommend_loop(root)
+                errors = project_loop.validate_loop_state(root)
+
+                self.assertEqual(state["status"], "needs_decision")
+                self.assertEqual(state["next_command"], "product:doctor")
+                self.assertNotIn("product:execute", state["next_command"])
+                self.assertIn("Invalid active_issue_id", state["blocker"])
+                self.assertTrue(
+                    any("invalid active_issue_id" in error for error in errors)
+                )
+                self.assertTrue(
+                    any("invalid issue_id" in error for error in errors)
+                )
+                with self.assertRaises(ValueError):
+                    project_loop.issue_path(root, issue_id)
+
+    def test_invalid_secondary_issue_id_blocks_valid_active_issue_execution(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_loop_state(root, "BIZ-SAFE")
+            state_path = root / "workspace" / "loop-state.json"
+            raw = json.loads(state_path.read_text(encoding="utf-8"))
+            raw["issue_ids"] = ["BIZ-SAFE", "../../outside"]
+            state_path.write_text(
+                json.dumps(raw) + "\n",
+                encoding="utf-8",
+            )
+            self.write_versioned_issue(root, "BIZ-SAFE")
+            self.add_artifacts(root, "BIZ-SAFE", "spec", "plan", "tasks")
+
+            state = project_loop.recommend_loop(root)
+            errors = project_loop.validate_loop_state(root)
+
+        self.assertEqual(state["status"], "needs_decision")
+        self.assertEqual(state["next_command"], "product:doctor")
+        self.assertIn("Invalid issue_ids", state["blocker"])
+        self.assertTrue(any("invalid issue_id" in error for error in errors))
+
 
 if __name__ == "__main__":
     unittest.main()

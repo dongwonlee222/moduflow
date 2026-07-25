@@ -73,11 +73,32 @@ _SCALAR_CONTRACT_FIELDS = (
 _CONTRACT_FIELDS = set(_SCALAR_CONTRACT_FIELDS) | {"depends_on"}
 _KEY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):(?:[ \t]*(.*))?$")
 _INTEGER_RE = re.compile(r"^-?(?:0|[1-9][0-9]*)$")
+_ISSUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 DEFAULT_PROJECT_PATHS = {
     "issues": "issues",
     "specs": "specs",
     "workspace": "workspace",
 }
+
+
+def validate_issue_id(value):
+    """Return whether value is a safe, non-empty issue filename stem."""
+    return (
+        isinstance(value, str)
+        and value not in {".", ".."}
+        and _ISSUE_ID_RE.fullmatch(value) is not None
+    )
+
+
+def _contained_path(root, *parts):
+    """Resolve a descendant path and reject any escape from root."""
+    resolved_root = Path(root).resolve()
+    candidate = resolved_root.joinpath(*parts).resolve()
+    try:
+        candidate.relative_to(resolved_root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(f"path escapes configured root: {candidate}") from exc
+    return candidate
 
 
 def _safe_project_relative_path(project_root, value, default):
@@ -491,11 +512,34 @@ def validate_contract_field_types(fields, issue_id, source_path):
             )
         )
 
+    declared_issue_id = fields.get("issue_id")
+    if (
+        "issue_id" in fields
+        and "issue_id" not in invalid_fields
+        and not validate_issue_id(declared_issue_id)
+    ):
+        invalid_fields.add("issue_id")
+        sanitized.pop("issue_id", None)
+        diagnostics.append(
+            _malformed(
+                issue_id,
+                source_path,
+                "Contract field 'issue_id' must be a safe filename-stem token.",
+                field="issue_id",
+                current=declared_issue_id,
+                expected="^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                recommendation=(
+                    "Set issue_id to a non-empty filename-stem token without "
+                    "absolute paths, slashes, backslashes, or path segments."
+                ),
+            )
+        )
+
     if "depends_on" in fields and (
         not isinstance(fields["depends_on"], list)
         or not all(isinstance(value, str) for value in fields["depends_on"])
         or any(
-            not _normalized_dependency_id(value)
+            not validate_issue_id(_normalized_dependency_id(value))
             for value in fields["depends_on"]
             if isinstance(value, str)
         )
@@ -506,14 +550,14 @@ def validate_contract_field_types(fields, issue_id, source_path):
             _malformed(
                 issue_id,
                 source_path,
-                "Contract field 'depends_on' must be a list of non-empty issue ID strings.",
+                "Contract field 'depends_on' must contain safe issue ID tokens.",
                 field="depends_on",
                 current=fields["depends_on"],
                 expected="list of non-empty issue ID strings",
                 recommendation=(
-                    "Set depends_on to a supported top-level list of non-empty "
-                    "issue ID strings; remove blank entries or replace them "
-                    "with valid issue IDs."
+                    "Set depends_on to a supported top-level list of safe "
+                    "issue filename-stem tokens; replace path-like or blank "
+                    "dependency values."
                 ),
             )
         )
@@ -595,17 +639,27 @@ def _relative_source_path(path, project_root):
 
 def _base_issue(path, project_root, text):
     source_path = _relative_source_path(path, project_root)
-    return {
+    source_issue_id = path.stem
+    safe_issue_id = (
+        source_issue_id if validate_issue_id(source_issue_id) else "invalid-issue"
+    )
+    raw_dependencies = markdown_blocked_by(text)
+    invalid_dependencies = [
+        dependency
+        for dependency in raw_dependencies
+        if not validate_issue_id(dependency)
+    ]
+    issue = {
         "schema": NORMALIZED_SCHEMA,
         "schema_version": None,
-        "issue_id": path.stem,
+        "issue_id": safe_issue_id,
         "source_path": source_path,
         "source_format": "markdown",
         "title": markdown_title(text),
         "lifecycle_state": markdown_status(text),
         "projection_status": markdown_status(text),
         "priority": markdown_priority(text),
-        "blocked_by": markdown_blocked_by(text),
+        "blocked_by": _normalized_dependency_list(raw_dependencies),
         "advisory_blocked_by": [],
         "definition_readiness": None,
         "gate_state": None,
@@ -617,6 +671,34 @@ def _base_issue(path, project_root, text):
         "extensions": {},
         "diagnostics": [],
     }
+    if safe_issue_id != source_issue_id:
+        issue["diagnostics"].append(
+            _malformed(
+                safe_issue_id,
+                source_path,
+                "Issue filename stem is not a safe issue ID token.",
+                field="issue_id",
+                current=source_issue_id,
+                expected="^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                recommendation="Rename the issue file to a safe issue ID token.",
+            )
+        )
+    if invalid_dependencies:
+        issue["diagnostics"].append(
+            _malformed(
+                safe_issue_id,
+                source_path,
+                "Markdown Blocked-by contains unsafe issue ID tokens.",
+                field="blocked_by",
+                current=invalid_dependencies,
+                expected="issue IDs matching ^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                recommendation=(
+                    "Replace path-like dependency values with safe issue "
+                    "filename-stem tokens."
+                ),
+            )
+        )
+    return issue
 
 
 def _adapter_diagnostic(
@@ -654,7 +736,7 @@ def _normalized_dependency_list(value):
     normalized = []
     for dependency in value:
         dependency = _normalized_dependency_id(dependency)
-        if dependency and dependency not in normalized:
+        if validate_issue_id(dependency) and dependency not in normalized:
             normalized.append(dependency)
     return normalized
 
@@ -687,7 +769,10 @@ def normalize_frontmatter_0_1_0(
     issue["diagnostics"].extend(parse_diagnostics or [])
 
     declared_issue_id = fields.get("issue_id")
-    if isinstance(declared_issue_id, str) and declared_issue_id:
+    if (
+        "issue_id" not in invalid_fields
+        and validate_issue_id(declared_issue_id)
+    ):
         issue["issue_id"] = declared_issue_id
 
     canonical_state = fields.get("canonical_state")
@@ -866,7 +951,7 @@ def normalize_unsupported_frontmatter(
     declared_issue_id = fields.get("issue_id")
     issue["tentative_issue_id"] = (
         declared_issue_id
-        if isinstance(declared_issue_id, str) and declared_issue_id.strip()
+        if validate_issue_id(declared_issue_id)
         else None
     )
     issue["lifecycle_state"] = None
@@ -998,9 +1083,16 @@ def build_artifact_index(project_root, issue_ids, project_paths=None):
     """Return actual workflow-artifact coverage for each supplied issue id."""
     project_root = Path(project_root)
     project_paths = project_paths or configured_project_paths(project_root)
+    specs_root = _contained_path(project_root, project_paths["specs"])
     artifact_index = {}
-    for issue_id in sorted(set(issue_ids)):
-        artifact_root = project_root / project_paths["specs"] / issue_id
+    for issue_id in sorted(set(issue_ids), key=str):
+        if not validate_issue_id(issue_id):
+            artifact_index[issue_id] = {
+                **{phase: False for phase in _ARTIFACT_PHASES},
+                "artifact_phase": "issue",
+            }
+            continue
+        artifact_root = _contained_path(specs_root, issue_id)
         coverage = {
             phase: (artifact_root / f"{phase}.md").is_file()
             for phase in _ARTIFACT_PHASES
@@ -1183,7 +1275,29 @@ def dependency_diagnostics(issue_index, ambiguous_targets=None):
         issue = issue_index[issue_id]
         if issue_id not in open_issue_ids:
             continue
-        dependencies = _issue_dependencies(issue)
+        raw_dependencies = _issue_dependencies(issue)
+        invalid_dependencies = [
+            dependency
+            for dependency in raw_dependencies
+            if not validate_issue_id(dependency)
+        ]
+        for dependency in invalid_dependencies:
+            add(
+                issue_id,
+                _dependency_diagnostic(
+                    issue,
+                    "ISSUE_SCHEMA_MALFORMED",
+                    dependency,
+                    "an issue ID matching ^[A-Za-z0-9][A-Za-z0-9._-]*$",
+                    f"Dependency {dependency!r} is not a safe issue ID token.",
+                    "Replace the dependency with a safe filename-stem issue ID, then run product:doctor.",
+                ),
+            )
+        dependencies = [
+            dependency
+            for dependency in raw_dependencies
+            if validate_issue_id(dependency)
+        ]
         graph[issue_id] = [
             dependency
             for dependency in dependencies

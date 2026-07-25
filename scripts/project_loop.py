@@ -23,6 +23,31 @@ def load_project_issue_schema():
     return module
 
 
+def validate_issue_id(value):
+    """Delegate issue ID validation to the shared issue-schema boundary."""
+    return load_project_issue_schema().validate_issue_id(value)
+
+
+def _contained_issue_location(root, path_key, issue_id, *suffix):
+    if not validate_issue_id(issue_id):
+        raise ValueError(f"invalid issue ID: {issue_id!r}")
+    project_root = Path(root).resolve()
+    paths = load_project_issue_schema().configured_project_paths(project_root)
+    location_root = (project_root / paths[path_key]).resolve()
+    try:
+        location_root.relative_to(project_root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(
+            f"configured {path_key} path escapes project root"
+        ) from exc
+    candidate = location_root.joinpath(issue_id, *suffix).resolve()
+    try:
+        candidate.relative_to(location_root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(f"issue path escapes configured {path_key} root") from exc
+    return candidate
+
+
 def read_json(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -182,21 +207,29 @@ def load_loop_state(root):
 
 
 def issue_path(root, issue_id):
-    paths = load_project_issue_schema().configured_project_paths(root)
-    return (
-        Path(root).resolve()
-        / paths["issues"]
-        / f"{issue_id}.md"
-    )
+    if not validate_issue_id(issue_id):
+        raise ValueError(f"invalid issue ID: {issue_id!r}")
+    project_root = Path(root).resolve()
+    paths = load_project_issue_schema().configured_project_paths(project_root)
+    issues_root = (project_root / paths["issues"]).resolve()
+    try:
+        issues_root.relative_to(project_root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError("configured issues path escapes project root") from exc
+    candidate = (issues_root / f"{issue_id}.md").resolve()
+    try:
+        candidate.relative_to(issues_root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError("issue path escapes configured issues root") from exc
+    return candidate
 
 
 def implementation_readiness_path(root, issue_id):
-    paths = load_project_issue_schema().configured_project_paths(root)
-    return (
-        Path(root).resolve()
-        / paths["specs"]
-        / issue_id
-        / "implementation-readiness.json"
+    return _contained_issue_location(
+        root,
+        "specs",
+        issue_id,
+        "implementation-readiness.json",
     )
 
 
@@ -283,7 +316,10 @@ def primary_structural_diagnostic(issue):
 def missing_structural_artifact(root, issue):
     issue_id = issue["issue_id"]
     paths = load_project_issue_schema().configured_project_paths(root)
-    artifact_root = Path(root).resolve() / paths["specs"] / issue_id
+    try:
+        artifact_root = _contained_issue_location(root, "specs", issue_id)
+    except ValueError:
+        return None
     command_name = (
         issue.get("recommended_next_command") or ""
     ).split(maxsplit=1)[0]
@@ -380,6 +416,29 @@ def recommend_loop(root):
         state["blocker"] = "No active issue selected"
         state["next_command"] = "product:goal"
         return state
+    if not validate_issue_id(active_issue_id):
+        state["phase"] = "status"
+        state["status"] = "needs_decision"
+        state["blocker"] = (
+            f"Invalid active_issue_id {active_issue_id!r}; "
+            "use a safe issue filename-stem token."
+        )
+        state["next_command"] = "product:doctor"
+        return state
+    invalid_issue_ids = [
+        issue_id
+        for issue_id in state.get("issue_ids", [])
+        if not validate_issue_id(issue_id)
+    ]
+    if invalid_issue_ids:
+        state["phase"] = "status"
+        state["status"] = "needs_decision"
+        state["blocker"] = (
+            f"Invalid issue_ids {invalid_issue_ids!r}; "
+            "use safe issue filename-stem tokens."
+        )
+        state["next_command"] = "product:doctor"
+        return state
 
     structural_issue = evaluated_active_issue(root, active_issue_id)
     if structural_issue:
@@ -447,16 +506,32 @@ def validate_loop_state(root):
         errors.append(f"workspace/loop-state.json: unsupported status {status}")
     state = normalize_loop_state(raw)
     active_issue_id = state.get("active_issue_id")
-    if active_issue_id and not issue_path(root, active_issue_id).exists():
+    active_issue_id_is_valid = (
+        active_issue_id is None or validate_issue_id(active_issue_id)
+    )
+    if active_issue_id is not None and not active_issue_id_is_valid:
+        errors.append(
+            f"workspace/loop-state.json: invalid active_issue_id {active_issue_id!r}"
+        )
+    elif active_issue_id and not issue_path(root, active_issue_id).exists():
         errors.append(
             f"workspace/loop-state.json: active_issue_id {active_issue_id} has no matching issue file"
         )
     for issue_id in state.get("issue_ids", []):
-        if not issue_path(root, issue_id).exists():
+        if not validate_issue_id(issue_id):
+            errors.append(
+                f"workspace/loop-state.json: invalid issue_id {issue_id!r}"
+            )
+        elif not issue_path(root, issue_id).exists():
             errors.append(
                 f"workspace/loop-state.json: issue_id {issue_id} has no matching issue file"
             )
-    errors.extend(validate_git_binding_for_issue(state.get("git_binding"), active_issue_id))
+    if active_issue_id_is_valid:
+        errors.extend(
+            validate_git_binding_for_issue(
+                state.get("git_binding"), active_issue_id
+            )
+        )
     return errors
 
 
