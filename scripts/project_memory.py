@@ -889,6 +889,19 @@ def _issue_status_bucket(status_word):
     return "backlog"
 
 
+def _resolve_evaluated_issue_reference(reference, valid_ids):
+    if reference in valid_ids:
+        return reference
+    if not reference or not reference.isdigit():
+        return None
+    matches = sorted(
+        issue_id
+        for issue_id in valid_ids
+        if issue_id.startswith(reference + "-")
+    )
+    return matches[0] if len(matches) == 1 else None
+
+
 def _issue_linked_memory(root):
     """Map issue_id -> [{id,title,kind,file}] from memory frontmatter. Sparse by design."""
     project_root = Path(root).resolve()
@@ -938,6 +951,11 @@ def _evaluated_issue_context(root):
     }
     texts = {}
     for issue_id, issue in issues.items():
+        if issue.get("source_format") in {"blocked", "unreadable"} or any(
+            str(diagnostic.get("code") or "").startswith("ISSUE_SOURCE_")
+            for diagnostic in issue.get("diagnostics", [])
+        ):
+            continue
         source = project_root / (issue.get("source_path") or "")
         try:
             resolved = source.resolve()
@@ -957,6 +975,7 @@ def _normalized_issue_fields(issue):
     return {
         "normalized_schema": issue.get("schema"),
         "blocked_by": list(issue.get("blocked_by") or []),
+        "superseded_by": issue.get("superseded_by"),
         "readiness": issue.get("readiness"),
         "recommended_next_command": issue.get("recommended_next_command"),
         "diagnostic_codes": sorted({
@@ -988,6 +1007,11 @@ def _collect_issue_graph(root, issue_context=None):
             "goal": goal,
             **_normalized_issue_fields(issue),
         }
+        successor = _resolve_evaluated_issue_reference(
+            issue.get("superseded_by"), valid_ids
+        )
+        if successor:
+            edges.append((successor, issue_id, "supersedes"))
         # supersedes prose: "Supersedes `NNN-...`"
         for m in re.finditer(r"[Ss]upersedes\s+`([0-9]{3}-[a-z0-9-]+)`", text):
             edges.append((issue_id, m.group(1), "supersedes"))
@@ -1258,6 +1282,7 @@ def _issue_elements(root, issue_context=None):
                     "labelbase": display,
                     "status": info["status"],
                     "blocked_by": info["blocked_by"],
+                    "superseded_by": info["superseded_by"],
                     "readiness": info["readiness"],
                     "recommended_next_command": info["recommended_next_command"],
                     "diagnostic_codes": info["diagnostic_codes"],

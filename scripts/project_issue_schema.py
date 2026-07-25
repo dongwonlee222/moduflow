@@ -609,13 +609,28 @@ def markdown_status(text):
     return status if status in LIFECYCLE_STATES else "backlog"
 
 
-def markdown_status_projection(text):
+def _markdown_status_token(text):
     match = re.search(
         r"^\*\*Status:\s*([A-Za-z0-9_-]+)",
         metadata_region(text),
         re.IGNORECASE | re.MULTILINE,
     )
-    return match.group(1).lower() if match else None
+    return match.group(1) if match else None
+
+
+def markdown_status_projection(text):
+    status = _markdown_status_token(text)
+    return status.lower() if status else None
+
+
+def markdown_superseded_by(text):
+    """Return the validated successor encoded by a legacy status projection."""
+    status = _markdown_status_token(text)
+    prefix = "superseded-by-"
+    if not status or not status.lower().startswith(prefix):
+        return None
+    target = status[len(prefix):]
+    return target if validate_issue_id(target) else None
 
 
 def markdown_priority(text):
@@ -689,6 +704,7 @@ def _base_issue(path, project_root, text):
         "title": markdown_title(text),
         "lifecycle_state": markdown_status(text),
         "projection_status": markdown_status(text),
+        "superseded_by": markdown_superseded_by(text),
         "priority": markdown_priority(text),
         "blocked_by": _normalized_dependency_list(raw_dependencies),
         "advisory_blocked_by": [],
@@ -850,6 +866,7 @@ def normalize_frontmatter_0_1_0(
     version = fields["schema_version"]
     issue["source_format"] = f"frontmatter-{version}"
     issue["schema_version"] = version
+    issue["superseded_by"] = None
     issue["diagnostics"].extend(parse_diagnostics or [])
 
     declared_issue_id = fields.get("issue_id")
@@ -1040,6 +1057,7 @@ def normalize_unsupported_frontmatter(
     )
     issue["lifecycle_state"] = None
     issue["projection_status"] = None
+    issue["superseded_by"] = None
     issue["blocked_by"] = []
     issue["readiness"] = "blocked"
     issue["extensions"] = _extensions(fields)

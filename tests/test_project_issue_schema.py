@@ -55,16 +55,21 @@ class ProjectIssueSchemaParsingTests(unittest.TestCase):
 
     def test_legacy_markdown_statuses_preserve_lifecycle_parity(self):
         cases = {
-            "backlog": "backlog",
-            "active": "active",
-            "done": "done",
-            "superseded-by-001-replacement": "superseded",
+            "backlog": ("backlog", None),
+            "active": ("active", None),
+            "done": ("done", None),
+            "superseded-by-001-replacement": (
+                "superseded",
+                "001-replacement",
+            ),
+            "superseded-by-BIZ-107": ("superseded", "BIZ-107"),
+            "superseded-by-": ("superseded", None),
         }
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             path = root / "legacy-status.md"
-            for status, expected in cases.items():
+            for status, (expected, superseded_by) in cases.items():
                 with self.subTest(status=status):
                     path.write_text(
                         f"# Issue: `legacy-status` Status parity\n\n"
@@ -74,6 +79,7 @@ class ProjectIssueSchemaParsingTests(unittest.TestCase):
                     issue = self.schema.parse_issue(path, root)
                     self.assertEqual(issue["source_format"], "markdown")
                     self.assertEqual(issue["lifecycle_state"], expected)
+                    self.assertEqual(issue["superseded_by"], superseded_by)
 
     def test_versioned_canonical_state_does_not_inherit_legacy_superseded(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -102,6 +108,7 @@ next_command: product:status
 
         self.assertEqual(issue["source_format"], "frontmatter-0.1.0")
         self.assertEqual(issue["lifecycle_state"], "backlog")
+        self.assertIsNone(issue["superseded_by"])
 
     def test_supported_frontmatter_fixture_parses_into_normalized_fields(self):
         issue = self.schema.parse_issue(FIXTURES / "BIZ-033.md", FIXTURES)

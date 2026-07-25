@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -540,6 +541,73 @@ More detail contents here.
             self.assertEqual(nodes["043-todo"]["status"], "backlog")
             # both the prose and the superseded-by line resolve to ONE deduped edge
             self.assertEqual(edges, [("042-new", "041-old", "supersedes")])
+
+    def test_collect_issue_graph_preserves_status_only_supersedes_edge(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "issues" / "044-old.md").write_text(
+                "# Issue: `044-old`\n\n"
+                "**Status: superseded-by-045-replacement** — created.\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "045-replacement.md").write_text(
+                "# Issue: `045-replacement`\n\n**Status: done** — created.\n",
+                encoding="utf-8",
+            )
+
+            _nodes, edges = project_memory._collect_issue_graph(root)
+
+            self.assertEqual(
+                edges,
+                [("045-replacement", "044-old", "supersedes")],
+            )
+
+    def test_real_legacy_status_supersedes_edges_remain_in_issue_graph(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+
+        _nodes, edges = project_memory._collect_issue_graph(ROOT)
+        supersedes = {
+            (source, target)
+            for source, target, relation in edges
+            if relation == "supersedes"
+        }
+
+        self.assertTrue({
+            ("019-loop-kernel-and-state-model", "014-loop-attempts-guard"),
+            ("023-worker-routing-and-isolation", "015-worker-disjoint-isolation"),
+            ("023-worker-routing-and-isolation", "016-worker-keyword-and-dead"),
+            ("019-loop-kernel-and-state-model", "017-goal-multi-issue"),
+            ("019-loop-kernel-and-state-model", "018-state-single-source"),
+            ("042-decision-graph-dashboard", "041-decision-graph-native-mermaid-rendering"),
+        }.issubset(supersedes))
+
+    def test_dashboard_does_not_reread_evaluator_blocked_issue_symlink(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            secret = root / "private-issue.md"
+            secret.write_text(
+                "# Issue: `BIZ-LINK` DO-NOT-EXPOSE-TITLE\n\n"
+                "**Status: active** — Part of goal `DO-NOT-EXPOSE-GOAL`.\n\n"
+                "## Summary\n\nDO-NOT-EXPOSE-SUMMARY\n",
+                encoding="utf-8",
+            )
+            (root / "issues" / "BIZ-LINK.md").symlink_to(secret)
+
+            nodes, _edges = project_memory._collect_issue_graph(root)
+            rows = project_memory._collect_issue_table(root)
+            html = project_memory.render_project_view(root)
+            serialized = json.dumps(
+                {"nodes": nodes, "rows": rows, "html": html},
+                ensure_ascii=False,
+            )
+
+            self.assertNotIn("DO-NOT-EXPOSE", serialized)
+            self.assertEqual(nodes["BIZ-LINK"]["title"], "BIZ-LINK")
+            self.assertEqual(nodes["BIZ-LINK"]["goal"], "(기타)")
 
     def test_issue_graph_and_table_use_normalized_frontmatter_routing(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
