@@ -16,6 +16,13 @@ PLUGIN_CACHE_EXCLUDES = (
     "*.pyc",
 )
 TOP_LEVEL_CACHE_EXCLUDES = {"issues", "specs", "tests", "sessions"}
+RUNTIME_TEST_FIXTURES = (
+    "tests/fixtures/issue-schema/BIZ-033.md",
+    "tests/fixtures/issue-schema/BIZ-038.md",
+    "tests/fixtures/issue-schema/BIZ-039.md",
+    "tests/fixtures/issue-schema/BIZ-040.md",
+    "tests/fixtures/issue-schema/legacy-markdown.md",
+)
 
 
 def read_json(path: Path) -> dict:
@@ -123,6 +130,13 @@ def copy_plugin_cache(source: Path, home: Path, version: str) -> Path:
         return ignored
 
     shutil.copytree(source, destination, ignore=ignore)
+    for relative_path in RUNTIME_TEST_FIXTURES:
+        source_file = source / relative_path
+        if not source_file.is_file():
+            continue
+        destination_file = destination / relative_path
+        destination_file.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_file, destination_file)
     return destination
 
 

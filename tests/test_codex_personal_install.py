@@ -60,6 +60,42 @@ class CodexPersonalInstallTests(unittest.TestCase):
             self.assertIn("enabled = true", config)
             self.assertEqual(result["plugin"], "moduflow@personal")
 
+    def test_cache_copy_ships_only_runtime_issue_schema_fixtures(self):
+        installer = load_module(
+            "register_codex_personal_marketplace_distribution",
+            "scripts/register_codex_personal_marketplace.py",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = installer.copy_plugin_cache(
+                ROOT, Path(tmp) / "home", "0.0.0+codex.test"
+            )
+
+            expected = {
+                "tests/fixtures/issue-schema/BIZ-033.md",
+                "tests/fixtures/issue-schema/BIZ-038.md",
+                "tests/fixtures/issue-schema/BIZ-039.md",
+                "tests/fixtures/issue-schema/BIZ-040.md",
+                "tests/fixtures/issue-schema/legacy-markdown.md",
+            }
+            self.assertTrue((cache / "scripts" / "project_issue_schema.py").is_file())
+            self.assertTrue(all((cache / path).is_file() for path in expected))
+            self.assertFalse((cache / "tests" / "test_issue_generator.py").exists())
+            self.assertEqual(
+                {
+                    path.relative_to(cache).as_posix()
+                    for path in (cache / "tests").rglob("*")
+                    if path.is_file()
+                },
+                expected,
+            )
+
+            validator = load_module(
+                "validate_moduflow_cached_distribution",
+                cache / "scripts" / "validate_moduflow.py",
+            )
+            validation = validator.validate_moduflow(cache)
+            self.assertTrue(validation["valid"], validation["errors"])
+
 
 if __name__ == "__main__":
     unittest.main()
