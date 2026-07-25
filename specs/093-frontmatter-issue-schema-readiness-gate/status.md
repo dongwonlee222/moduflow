@@ -143,9 +143,45 @@ issue lifecycle/dependency routing parser.
 | C3 MCP/dashboard | `4c9b46a` |
 | D1 authoring/distribution | `7d76100` |
 
+## Review
+
+Run 2026-07-25 at head `098c0f3` by Claude Opus 5, inline (coordinator-judged).
+Subagent dispatch was withheld this session, so findings are single-reviewer
+judgments rather than independent multi-reviewer consensus.
+
+Verification reproduced at review time: `unittest discover` 737 passed `OK`;
+`release_check.py` `valid: true` with every sub-check `ok`.
+
+Verdict: **approve with conditions**. Full notes:
+`specs/093-frontmatter-issue-schema-readiness-gate/review.md`.
+
+| # | Finding | Verdict | Severity |
+| --- | --- | --- | --- |
+| 1 | Converge collects 1 of 44 commits, silently; no implementation file reaches the judge | Confirmed | Important (pre-existing, not 093) |
+| 2 | `infer_issue_phase` checkbox-less default flipped `status` to `execute`, reachable with no gate passed | Plausible | Medium |
+| 3 | 43 of 44 commits carry no `Issue:` trailer; linkage passes only via branch fallback | Confirmed | Low (process) |
+
+Conditions before merge:
+
+1. Finding 2 — record a reachability argument here, or add a regression test.
+2. Finding 1 — register as a new issue. Pre-existing, so it does not block 093.
+
+## Evidence
+
+- Review notes: `specs/093-frontmatter-issue-schema-readiness-gate/review.md`
+- Review handoff: `specs/093-frontmatter-issue-schema-readiness-gate/review-handoff.md`
+- Dashboard: `memory/dashboard.html`
+- Issue drill-down: `memory/issue-093-frontmatter-issue-schema-readiness-gate.html`
+- Converge: **not usable this run.** `project_converge.py --evidence` returned
+  1 commit and 7 files, none of them implementation, with `errors: []`. See
+  finding 1. Per `product-review.md` step 5 converge is reported, never
+  gating; the verdict rests on the test suite, release gates, and inline
+  reading instead.
+- Reference improvements: none found.
+
 ## Next gate
 
-Issue 093 remains `active`. Independent review is next; no push, PR, merge, or
-release was performed during E2.
+Issue 093 remains `active`. No push, PR, merge, or release has been performed.
+Clear the two review conditions, then proceed to PR.
 
-`product:review 093-frontmatter-issue-schema-readiness-gate`
+`product:pr 093-frontmatter-issue-schema-readiness-gate`
