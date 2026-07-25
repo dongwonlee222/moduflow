@@ -32,7 +32,8 @@ passed.
 ## Review
 
 Original review: pass, no blocking findings. A PR-time addendum was added on
-2026-07-25 — see `specs/081-gpt-5-6-model-tier-guidance/review.md`.
+2026-07-25 — see `specs/081-gpt-5-6-model-tier-guidance/review.md`,
+Korean sidecar `specs/081-gpt-5-6-model-tier-guidance/review.ko.md`.
 
 One accepted finding: `COGNITIVE_DEMAND_GUIDANCE` is appended to every generated
 worker prompt unconditionally, so hosts that are not OpenAI still receive the
