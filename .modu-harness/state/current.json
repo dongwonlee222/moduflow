@@ -2,30 +2,33 @@
   "project": "moduflow",
   "project_root": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
   "updated_at": "2026-07-25",
-  "current_goal": "Issue 093 frontmatter issue schema and readiness gate is reviewed and PR-ready; nothing is pushed to GitHub yet.",
+  "current_goal": "Issue 093 is reviewed, pushed, and open as Draft PR #31 awaiting Dongwon Lee's human review. Issue 081 is pushed but unreviewed.",
   "latest_decisions": [
     "Issue 081 was recovered from an uncommitted working tree onto branch codex/081-gpt-5-6-model-tier-guidance. Its version bump is deliberately deferred because issue 093 already claims 0.3.27-0.3.29; it must bump when it merges.",
-    "The local 077-080 reconciliation edits were discarded in favor of branch codex/reconcile-077-080, which was verified file-by-file as the newer and richer version, then fast-forwarded into local main.",
+    "The local 077-080 reconciliation edits were discarded in favor of branch codex/reconcile-077-080, verified file-by-file as the newer and richer version, then fast-forwarded into main.",
     "Issue 093 review verdict is approve with conditions; both conditions were cleared during the review.",
     "Review finding 2 (loop phase default read as fail-open) was refuted by direct probing of recommend_loop. Every route reaches a gate.",
     "The probe instead found a real crash: list_normalized_issues silently skipped existing non-file *.md paths, so a directory-shaped issue file raised IsADirectoryError out of recommend_loop. Fixed inside 093 with four regression tests.",
     "Review finding 1 (project_converge collects only trailer-linked commits, 1 of 44 on this branch) is pre-existing and does not block 093. Registered as issue 095.",
-    "main was merged into the 093 branch so it is PR-ready; two state files conflicted and were resolved to the branch's newer values."
+    "Review was coordinator-judged inline; subagent dispatch was withheld. Recorded as a limitation in review.md, status.md, and the PR body.",
+    "093 opened as a Draft PR rather than ready-for-review, so merge stays gated by human approval."
   ],
   "last_done": [
-    "Recovered issue 081 onto codex/081-gpt-5-6-model-tier-guidance (2 commits): implementation plus backlog issues 082, 083, 084.",
-    "Fast-forwarded local main with codex/reconcile-077-080 (5 commits).",
-    "Ran the independent review of issue 093 inline; subagent dispatch was withheld and that limitation is recorded in review.md and status.md.",
-    "Wrote specs/093-.../review.md and refreshed status.md with findings, evidence, and the converge limitation.",
+    "Recovered issue 081 onto codex/081-gpt-5-6-model-tier-guidance (2 commits) with backlog issues 082, 083, 084.",
+    "Fast-forwarded main with codex/reconcile-077-080 (5 commits).",
+    "Ran the independent review of issue 093 inline and wrote review.md plus a refreshed status.md.",
     "Registered issue 095-commit-issue-resolution-parity.",
-    "Fixed the non-file issue source crash in scripts/project_issue_schema.py; bumped plugin version to 0.3.29 in the same commit after the version gate caught the omission.",
+    "Fixed the non-file issue source crash in scripts/project_issue_schema.py; bumped plugin version to 0.3.29 after the version gate caught the omission.",
     "Merged main into codex/093-... and resolved .moduflow/state.json and workspace/loop-state.json.",
-    "Verified: 741 tests OK, release_check valid, lifecycle drift [], project validation valid, working tree clean."
+    "Added a consolidated '## Verification' section to status.md — the PR generator reads that exact heading and was emitting 'not recorded yet' despite a green run.",
+    "Generated pr.md and human-review.ko.md; recorded PR state in workflow/team-state.json.",
+    "Pushed main, codex/081-..., and codex/093-... to origin.",
+    "Opened Draft PR #31 for issue 093 and stored its URL back into the issue Links, pr.md, human-review.ko.md, and team-state.json.",
+    "Final verification on the 093 branch: 741 tests OK, release_check valid, lifecycle drift [], working tree clean."
   ],
   "next_todo": [
-    "Push local main (5 commits ahead of origin/main), then push codex/081-... and codex/093-....",
-    "Run product:pr 093-frontmatter-issue-schema-readiness-gate to produce the PR packet and Korean review surface, then open the PR.",
-    "When issue 081 merges, bump the plugin version in that merge; the bump was deliberately skipped on its branch.",
+    "Dongwon Lee reviews Draft PR #31 using human-review.ko.md, memory/dashboard.html, and the issue drill-down. On approval, mark ready and merge, then run product:release 093-frontmatter-issue-schema-readiness-gate.",
+    "Issue 081 is pushed but has no PR and no review. Open one when ready, and bump the plugin version in that merge — the bump was deliberately skipped on its branch.",
     "Pick up issue 095 (commit-to-issue resolution parity) — it weakens the review evidence step for every future issue until fixed.",
     "Decide whether .playwright-mcp/ and the two dashboard PNGs at the repo root should be gitignored or removed; they are untracked and were left alone.",
     "Issue 092 stays parked: it is blocked by 086, 090, and 091, all unfinished."
@@ -37,25 +40,27 @@
     "scripts/linkage_check.py",
     "specs/093-frontmatter-issue-schema-readiness-gate/review.md",
     "specs/093-frontmatter-issue-schema-readiness-gate/status.md",
+    "specs/093-frontmatter-issue-schema-readiness-gate/human-review.ko.md",
     "issues/095-commit-issue-resolution-parity.md",
     "tests/test_project_issue_schema.py",
-    "tests/test_project_loop.py",
-    "workspace/loop-state.json"
+    "tests/test_project_loop.py"
   ],
   "branches": {
-    "main": "5 commits ahead of origin/main, not pushed",
-    "codex/081-gpt-5-6-model-tier-guidance": "2 commits, not pushed, version bump deferred",
-    "codex/093-frontmatter-issue-schema-readiness-gate": "48 commits ahead of main, contains all of main, reviewed and PR-ready, not pushed",
-    "codex/092-current-dashboard-korean": "1 commit, parked behind 086/090/091",
-    "codex/reconcile-077-080": "merged into local main"
+    "main": "pushed, equals origin/main",
+    "codex/081-gpt-5-6-model-tier-guidance": "pushed, no PR, unreviewed, version bump deferred",
+    "codex/093-frontmatter-issue-schema-readiness-gate": "pushed, Draft PR #31 open",
+    "codex/092-current-dashboard-korean": "1 commit, local only, parked behind 086/090/091",
+    "codex/reconcile-077-080": "merged into main"
   },
   "worktrees": {
     "093": "/Users/dongwon.lee/.config/superpowers/worktrees/moduflow/093-frontmatter-readiness-spec",
     "092": "/Users/dongwon.lee/.config/superpowers/worktrees/moduflow/092-current-dashboard-korean"
   },
   "github": {
-    "main_status": "local main is 5 commits ahead of origin/main; nothing from this session is on GitHub",
-    "open_prs": []
+    "main_status": "local main equals origin/main",
+    "open_prs": [
+      "https://github.com/dongwonlee222/moduflow/pull/31"
+    ]
   },
   "verification": {
     "tests": "741 pass on the 093 branch, 582 on main",
@@ -63,5 +68,5 @@
     "lifecycle_drift": "[]",
     "working_tree": "clean except untracked .playwright-mcp/ and two dashboard PNGs"
   },
-  "next_start_keyword": "moduflow 093 pr"
+  "next_start_keyword": "moduflow 093 pr review"
 }
