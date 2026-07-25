@@ -88,8 +88,11 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 - Spec: `specs/081-gpt-5-6-model-tier-guidance/spec.md`
 - Review: `specs/081-gpt-5-6-model-tier-guidance/review.md`
 - Status: `specs/081-gpt-5-6-model-tier-guidance/status.md`
+- PR handoff: `specs/081-gpt-5-6-model-tier-guidance/pr.md`
+- Korean review packet: `specs/081-gpt-5-6-model-tier-guidance/human-review.ko.md`
 - Sessions: `sessions/081-gpt-5-6-model-tier-guidance/`
 - Roadmap: `workspace/roadmap.md`
+- Draft PR: https://github.com/dongwonlee222/moduflow/pull/32
 
 ## Next Command
 

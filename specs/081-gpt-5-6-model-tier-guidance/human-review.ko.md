@@ -6,7 +6,7 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-081-gpt-5-6-model-tier-guidance.html`
-- PR/로컬 마커: `local:081-gpt-5-6-model-tier-guidance:draft-pr-ready`
+- PR/로컬 마커: `https://github.com/dongwonlee222/moduflow/pull/32`
 - 브랜치: `codex/081-gpt-5-6-model-tier-guidance`
 - 리뷰어: `Dongwon Lee`
 
