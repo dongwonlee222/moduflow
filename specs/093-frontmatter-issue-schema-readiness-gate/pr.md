@@ -8,9 +8,9 @@ Use a Draft PR or a local PR-ready marker early, then attach review, verificatio
 ## Draft PR
 
 - Branch: `codex/093-frontmatter-issue-schema-readiness-gate`
-- PR: `local:093-frontmatter-issue-schema-readiness-gate:draft-pr-ready`
+- PR: `https://github.com/dongwonlee222/moduflow/pull/31`
 - Reviewer: `Dongwon Lee`
-- Fallback reason: GitHub Draft PR URL is not recorded yet. This local PR-ready marker preserves review state until GitHub sync creates or mirrors the PR.
+- Fallback reason: GitHub Draft PR URL is available or expected to be supplied by the workflow.
 - Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
 - Commit mode: `local-git-write`
@@ -22,7 +22,7 @@ python3 scripts/project_pr.py . --issue-id 093-frontmatter-issue-schema-readines
 ```
 
 ```bash
-python3 scripts/project_workflow.py . --pr-state --issue-id 093-frontmatter-issue-schema-readiness-gate --pr "local:093-frontmatter-issue-schema-readiness-gate:draft-pr-ready" --reviewer "Dongwon Lee"
+python3 scripts/project_workflow.py . --pr-state --issue-id 093-frontmatter-issue-schema-readiness-gate --pr "https://github.com/dongwonlee222/moduflow/pull/31" --reviewer "Dongwon Lee"
 ```
 
 - Continue review: `product:review 093-frontmatter-issue-schema-readiness-gate`
@@ -239,4 +239,4 @@ at rebase time) makes both linkage and converge resolve the same way.
 - Issue bytes: 6121
 - Spec bytes: 16875
 - Status bytes: 10060
-- Review bytes: 9410
+- Review bytes: 10369

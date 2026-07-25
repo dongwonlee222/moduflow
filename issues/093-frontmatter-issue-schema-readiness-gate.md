@@ -107,7 +107,11 @@ Do not introduce separate parsers in lifecycle, dashboard, or MCP consumers. Sch
 - Plan: `specs/093-frontmatter-issue-schema-readiness-gate/plan.md`
 - Tasks: `specs/093-frontmatter-issue-schema-readiness-gate/tasks.md`
 - Status: `specs/093-frontmatter-issue-schema-readiness-gate/status.md`
+- Review: `specs/093-frontmatter-issue-schema-readiness-gate/review.md`
+- PR handoff: `specs/093-frontmatter-issue-schema-readiness-gate/pr.md`
+- Korean review packet: `specs/093-frontmatter-issue-schema-readiness-gate/human-review.ko.md`
 - GitHub: https://github.com/dongwonlee222/moduflow/issues/23
+- Draft PR: https://github.com/dongwonlee222/moduflow/pull/31
 
 ## Next Command
 

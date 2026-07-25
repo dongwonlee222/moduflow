@@ -6,7 +6,7 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-093-frontmatter-issue-schema-readiness-gate.html`
-- PR/로컬 마커: `local:093-frontmatter-issue-schema-readiness-gate:draft-pr-ready`
+- PR/로컬 마커: `https://github.com/dongwonlee222/moduflow/pull/31`
 - 브랜치: `codex/093-frontmatter-issue-schema-readiness-gate`
 - 리뷰어: `Dongwon Lee`
 

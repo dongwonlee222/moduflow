@@ -237,7 +237,14 @@ Tests added:
 
 ## Next gate
 
-Issue 093 remains `active`. No push, PR, merge, or release has been performed.
-Clear the two review conditions, then proceed to PR.
+Issue 093 remains `active`. Both review conditions are cleared, the branch is
+pushed, and a Draft PR is open:
+https://github.com/dongwonlee222/moduflow/pull/31
 
-`product:pr 093-frontmatter-issue-schema-readiness-gate`
+Merge remains gated by human approval, required reviews, and status checks. No
+merge or release has been performed.
+
+Next: Dongwon Lee reviews the Draft PR using
+`specs/093-frontmatter-issue-schema-readiness-gate/human-review.ko.md`, the
+dashboard, and the issue drill-down. On approval, mark the PR ready and merge,
+then `product:release 093-frontmatter-issue-schema-readiness-gate`.
