@@ -525,6 +525,57 @@ gate_state: passed
             self.assertEqual(result["phase"], "issue")
             self.assertEqual(result["next_command"], "product:status")
 
+    def test_unsafe_configured_issues_root_blocks_before_phase_inference(self):
+        for unsafe_root_kind in ("parent", "absolute", "external-symlink"):
+            with (
+                self.subTest(unsafe_root_kind=unsafe_root_kind),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
+                base = Path(tmp)
+                root = base / "project"
+                outside_issues = base / "outside-issues"
+                root.mkdir()
+                outside_issues.mkdir()
+                self.write_loop_state(root, "BIZ-UNSAFE-ROOT")
+
+                if unsafe_root_kind == "external-symlink":
+                    (root / "issues").symlink_to(
+                        outside_issues,
+                        target_is_directory=True,
+                    )
+                else:
+                    (root / ".moduflow").mkdir()
+                    configured_issues = (
+                        "../outside-issues"
+                        if unsafe_root_kind == "parent"
+                        else str(outside_issues)
+                    )
+                    (root / ".moduflow" / "config.json").write_text(
+                        json.dumps(
+                            {
+                                "schema": "moduflow.config.v1",
+                                "paths": {"issues": configured_issues},
+                            }
+                        )
+                        + "\n",
+                        encoding="utf-8",
+                    )
+
+                result = project_loop.recommend_loop(root)
+
+                self.assertEqual(result["phase"], "status")
+                self.assertEqual(result["status"], "needs_decision")
+                self.assertEqual(result["next_command"], "product:doctor")
+                self.assertIn("ISSUE_SOURCE_OUTSIDE_ROOT", result["blocker"])
+                self.assertIn(
+                    "Configured issues root resolves outside the project root.",
+                    result["blocker"],
+                )
+                self.assertIn(
+                    "Replace the external issues path or directory symlink",
+                    result["blocker"],
+                )
+
     def test_recommend_loop_uses_configured_issue_and_spec_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

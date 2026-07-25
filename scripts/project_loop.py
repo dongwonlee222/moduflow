@@ -363,11 +363,27 @@ def structural_blocker(root, issue):
 
 def evaluated_active_issue(root, active_issue_id):
     evaluation = load_project_issue_schema().evaluate_project(root)
+    issues = evaluation.get("issues", [])
+    active_issue = next(
+        (
+            issue
+            for issue in issues
+            if issue.get("issue_id") == active_issue_id
+        ),
+        None,
+    )
+    if active_issue:
+        return active_issue
     return next(
         (
             issue
-            for issue in evaluation.get("issues", [])
-            if issue.get("issue_id") == active_issue_id
+            for issue in issues
+            if issue.get("issue_id") == "project-issues-root"
+            and any(
+                diagnostic.get("code") == "ISSUE_SOURCE_OUTSIDE_ROOT"
+                and diagnostic.get("field") == "issues_root"
+                for diagnostic in issue.get("diagnostics", [])
+            )
         ),
         None,
     )
