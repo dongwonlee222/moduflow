@@ -992,7 +992,7 @@ next_command: product:execute BIZ-CUSTOM
             "product:execute BIZ-CUSTOM",
         )
 
-    def test_evaluate_project_ignores_configured_paths_outside_root(self):
+    def test_evaluate_project_reports_configured_paths_outside_root(self):
         base = self.root.parent
         outside_issues = base / f"{self.root.name}-outside-issues"
         outside_issues.mkdir(exist_ok=True)
@@ -1028,7 +1028,76 @@ next_command: product:execute BIZ-CUSTOM
 
         self.assertEqual(configured_paths["issues"], "issues")
         self.assertEqual(configured_paths["specs"], "specs")
-        self.assertEqual(project["issues"], [])
+        self.assertEqual(len(project["issues"]), 1)
+        issue = project["issues"][0]
+        self.assertEqual(issue["issue_id"], "project-issues-root")
+        self.assertIn("ISSUE_SOURCE_OUTSIDE_ROOT", codes(issue))
+        self.assertEqual(issue["recommended_next_command"], "product:doctor")
+        self.assertNotIn("Outside", json.dumps(project))
+
+    def test_evaluate_project_reports_absolute_configured_issues_path(self):
+        outside_issues = self.root.parent / f"{self.root.name}-absolute-issues"
+        outside_issues.mkdir()
+        self.addCleanup(lambda: shutil.rmtree(outside_issues))
+        (outside_issues / "BIZ-ABSOLUTE.md").write_text(
+            "# DO-NOT-EXPOSE-ABSOLUTE-ISSUE\n",
+            encoding="utf-8",
+        )
+        (self.root / ".moduflow").mkdir()
+        (self.root / ".moduflow" / "config.json").write_text(
+            json.dumps(
+                {
+                    "schema": "moduflow.config.v1",
+                    "paths": {"issues": str(outside_issues)},
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        project = self.schema.evaluate_project(self.root)
+        issue = project["issues"][0]
+
+        self.assertEqual(issue["issue_id"], "project-issues-root")
+        self.assertIn("ISSUE_SOURCE_OUTSIDE_ROOT", codes(issue))
+        self.assertNotIn("DO-NOT-EXPOSE", json.dumps(project))
+
+    def test_evaluate_project_reports_external_issues_root_symlink(self):
+        base = self.root.parent
+        outside_issues = base / f"{self.root.name}-symlink-issues"
+        outside_issues.mkdir()
+        self.addCleanup(lambda: shutil.rmtree(outside_issues))
+        (outside_issues / "BIZ-ROOT-LINK.md").write_text(
+            "# DO-NOT-EXPOSE-ROOT-LINK\n",
+            encoding="utf-8",
+        )
+        (self.root / "issues").rmdir()
+        (self.root / "issues").symlink_to(
+            outside_issues,
+            target_is_directory=True,
+        )
+
+        project = self.schema.evaluate_project(self.root)
+        issue = project["issues"][0]
+
+        self.assertEqual(issue["issue_id"], "project-issues-root")
+        self.assertEqual(issue["source_path"], "issues")
+        self.assertIn("ISSUE_SOURCE_OUTSIDE_ROOT", codes(issue))
+        self.assertEqual(issue["recommended_next_command"], "product:doctor")
+        self.assertNotIn("DO-NOT-EXPOSE", json.dumps(project))
+
+    def test_missing_or_empty_default_issues_root_remains_safe_and_empty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            missing_root = Path(tmp) / "missing"
+            missing_root.mkdir()
+            missing = self.schema.evaluate_project(missing_root)
+
+            empty_root = Path(tmp) / "empty"
+            (empty_root / "issues").mkdir(parents=True)
+            empty = self.schema.evaluate_project(empty_root)
+
+        self.assertEqual(missing["issues"], [])
+        self.assertEqual(empty["issues"], [])
 
     def test_sanitized_biz_fixtures_apply_project_level_routing(self):
         for issue_id in ("BIZ-033", "BIZ-038", "BIZ-039", "BIZ-040"):

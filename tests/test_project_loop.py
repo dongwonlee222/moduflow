@@ -740,6 +740,35 @@ gate_state: passed
         self.assertIn("Invalid issue_ids", state["blocker"])
         self.assertTrue(any("invalid issue_id" in error for error in errors))
 
+    def test_structural_blocker_preserves_outside_root_diagnostics(self):
+        for code in (
+            "ISSUE_SOURCE_OUTSIDE_ROOT",
+            "ISSUE_ARTIFACT_OUTSIDE_ROOT",
+        ):
+            with self.subTest(code=code):
+                issue = {
+                    "issue_id": "BIZ-SYMLINK",
+                    "readiness": "blocked",
+                    "recommended_next_command": "product:doctor",
+                    "diagnostics": [
+                        {
+                            "code": code,
+                            "source_path": "issues/BIZ-SYMLINK.md",
+                            "message": "Symlink target is outside the configured root.",
+                            "recommendation": "Replace the external symlink.",
+                        }
+                    ],
+                }
+
+                blocker = project_loop.structural_blocker(Path("."), issue)
+
+                self.assertIn(code, blocker)
+                self.assertIn(
+                    "Symlink target is outside the configured root.",
+                    blocker,
+                )
+                self.assertIn("Replace the external symlink.", blocker)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -137,6 +137,32 @@ def configured_project_paths(project_root):
     }
 
 
+def _configured_path_violations(project_root):
+    """Return explicitly configured paths that do not stay inside the project."""
+    root = Path(project_root).resolve()
+    config_path = root / ".moduflow" / "config.json"
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return {}
+    raw_paths = config.get("paths", {}) if isinstance(config, dict) else {}
+    if not isinstance(raw_paths, dict):
+        return {}
+    violations = {}
+    for key in DEFAULT_PROJECT_PATHS:
+        value = raw_paths.get(key)
+        if not isinstance(value, str) or not value.strip():
+            continue
+        relative = Path(value)
+        try:
+            if relative.is_absolute():
+                raise ValueError("absolute path")
+            (root / relative).resolve().relative_to(root)
+        except (OSError, RuntimeError, ValueError):
+            violations[key] = value
+    return violations
+
+
 def split_frontmatter(text):
     """Return ``(frontmatter, body)`` or ``(None, text)`` when absent/invalid."""
     lines = text.splitlines(keepends=True)
@@ -731,6 +757,34 @@ def _blocked_issue_source(path, project_root):
     return issue
 
 
+def _blocked_issues_root(project_root, source_path, current):
+    """Build one synthetic hard record for an unsafe configured issues root."""
+    path = Path(project_root) / "project-issues-root.md"
+    issue = _base_issue(path, project_root, "")
+    issue["issue_id"] = "project-issues-root"
+    issue["source_path"] = source_path
+    issue["source_format"] = "blocked"
+    issue["lifecycle_state"] = None
+    issue["projection_status"] = None
+    issue["readiness"] = "blocked"
+    issue["diagnostics"].append(
+        _diagnostic(
+            "ISSUE_SOURCE_OUTSIDE_ROOT",
+            issue["issue_id"],
+            source_path,
+            "Configured issues root resolves outside the project root.",
+            field="issues_root",
+            current=current,
+            expected="an issues directory resolving inside the project root",
+            recommendation=(
+                "Replace the external issues path or directory symlink with "
+                "a path whose target remains inside the project root."
+            ),
+        )
+    )
+    return issue
+
+
 def _adapter_diagnostic(
     issue,
     code,
@@ -1102,7 +1156,13 @@ def list_normalized_issues(project_root, project_paths=None):
     try:
         issues_dir = _contained_path(project_root, project_paths["issues"])
     except ValueError:
-        return []
+        return [
+            _blocked_issues_root(
+                project_root,
+                _relative_source_path(lexical_issues_dir, project_root),
+                _relative_source_path(lexical_issues_dir, project_root),
+            )
+        ]
     if not issues_dir.is_dir():
         return []
     issues = []
@@ -1779,6 +1839,24 @@ def evaluate_project(project_root):
     project_root = Path(project_root)
     project_paths = configured_project_paths(project_root)
     issues = list_normalized_issues(project_root, project_paths)
+    configured_issues_violation = _configured_path_violations(
+        project_root
+    ).get("issues")
+    if configured_issues_violation is not None and not any(
+        any(
+            diagnostic.get("code") == "ISSUE_SOURCE_OUTSIDE_ROOT"
+            and diagnostic.get("field") == "issues_root"
+            for diagnostic in issue.get("diagnostics", [])
+        )
+        for issue in issues
+    ):
+        issues.append(
+            _blocked_issues_root(
+                project_root,
+                ".moduflow/config.json",
+                configured_issues_violation,
+            )
+        )
     return _evaluate_issue_records(project_root, issues, project_paths)
 
 

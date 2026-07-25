@@ -296,6 +296,8 @@ def primary_structural_diagnostic(issue):
             "ISSUE_DEPENDENCY_CYCLE",
         ),
         "product:doctor": (
+            "ISSUE_SOURCE_OUTSIDE_ROOT",
+            "ISSUE_ARTIFACT_OUTSIDE_ROOT",
             "ISSUE_SOURCE_UNREADABLE",
             "ISSUE_SCHEMA_MALFORMED",
             "ISSUE_SCHEMA_UNSUPPORTED",

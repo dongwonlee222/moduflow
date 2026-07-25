@@ -218,6 +218,75 @@ next_command: product:execute BIZ-ARTIFACT-LINK
         self.assertNotIn("DO-NOT-EXPOSE-ISSUE-CONTENT", serialized)
         self.assertNotIn("DO-NOT-EXPOSE-SPEC-CONTENT", serialized)
 
+    def test_external_issues_root_symlink_fails_validator_and_doctor_closed(self):
+        validator = load_module(
+            "validate_project_external_issues_root",
+            "scripts/validate_project_artifacts.py",
+        )
+        project_doctor = load_module(
+            "project_doctor_external_issues_root",
+            "scripts/project_doctor.py",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            root = base / "project"
+            root.mkdir()
+            self.create_minimal_project(root)
+            outside_issues = base / "DO-NOT-EXPOSE-ISSUES-ROOT"
+            outside_issues.mkdir()
+            (outside_issues / "BIZ-SECRET.md").write_text(
+                "# DO-NOT-EXPOSE-ROOT-CONTENT\n",
+                encoding="utf-8",
+            )
+            (root / "issues").rmdir()
+            (root / "issues").symlink_to(
+                outside_issues,
+                target_is_directory=True,
+            )
+
+            validation = validator.validate_project(root)
+            doctor = project_doctor.inspect_project(
+                root,
+                include_preflight=False,
+            )
+            validator_proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "validate_project_artifacts.py"),
+                    str(root),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            doctor_proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "project_doctor.py"),
+                    str(root),
+                    "--no-preflight",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            serialized = json.dumps(
+                {
+                    "validation": validation,
+                    "doctor": doctor,
+                    "validator_cli": json.loads(validator_proc.stdout),
+                    "doctor_cli": json.loads(doctor_proc.stdout),
+                },
+                ensure_ascii=False,
+            )
+
+        self.assertEqual(validator_proc.returncode, 1)
+        self.assertEqual(doctor_proc.returncode, 1)
+        self.assertIn(
+            "ISSUE_SOURCE_OUTSIDE_ROOT",
+            validation["issue_schema"]["codes"],
+        )
+        self.assertEqual(validation["issue_schema"], doctor["issue_schema"])
+        self.assertNotIn("DO-NOT-EXPOSE-ROOT-CONTENT", serialized)
+
     def test_validate_project_surfaces_sorted_actionable_issue_schema_diagnostics_once(self):
         validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
         with tempfile.TemporaryDirectory() as tmp:
@@ -636,7 +705,16 @@ issue_id: BIZ-CUSTOM
                 for error in result["errors"]
             )
         )
-        self.assertEqual(result["issue_schema"]["diagnostics"], [])
+        self.assertIn(
+            "ISSUE_SOURCE_OUTSIDE_ROOT",
+            result["issue_schema"]["codes"],
+        )
+        self.assertTrue(
+            any(
+                diagnostic["field"] == "issues_root"
+                for diagnostic in result["issue_schema"]["diagnostics"]
+            )
+        )
 
     def test_validate_project_artifacts_reports_loop_state_missing_active_issue(self):
         validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
