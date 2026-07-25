@@ -26,7 +26,7 @@ Plan: `specs/093-frontmatter-issue-schema-readiness-gate/plan.md`
 ## Stream E — Convergence, Dogfood, and Completion Evidence
 
 - [x] E1 Prove cross-consumer parity for legacy Markdown and BIZ-033/038/039/040, then record focused-test and migration-report evidence.
-- [ ] E2 Pass spec consistency, full unittest, project validation, lifecycle drift, and release check before moving to review.
+- [x] E2 Pass spec consistency, full unittest, project validation, lifecycle drift, and release check before moving to review.
 
 ## Acceptance Coverage
 
@@ -45,4 +45,4 @@ Plan: `specs/093-frontmatter-issue-schema-readiness-gate/plan.md`
 
 ## Next
 
-`product:execute 093-frontmatter-issue-schema-readiness-gate`
+`product:review 093-frontmatter-issue-schema-readiness-gate`

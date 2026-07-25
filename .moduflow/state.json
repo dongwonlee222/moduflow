@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "execute",
+  "phase": "review",
   "active_goal": "trustworthy-execution-and-project-knowledge",
   "active_issue": "093-frontmatter-issue-schema-readiness-gate",
-  "last_command": "product:plan 093-frontmatter-issue-schema-readiness-gate",
-  "next_command": "product:execute 093-frontmatter-issue-schema-readiness-gate",
+  "last_command": "product:execute 093-frontmatter-issue-schema-readiness-gate",
+  "next_command": "product:review 093-frontmatter-issue-schema-readiness-gate",
   "blockers": [],
-  "updated_at": "2026-07-22"
+  "updated_at": "2026-07-25"
 }

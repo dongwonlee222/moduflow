@@ -15,26 +15,37 @@
     "087-korean-github-pr-review-surface"
   ],
   "active_issue_id": "093-frontmatter-issue-schema-readiness-gate",
-  "phase": "execute",
+  "phase": "review",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:execute 093-frontmatter-issue-schema-readiness-gate",
+  "next_command": "product:review 093-frontmatter-issue-schema-readiness-gate",
   "attempts": {
-    "command": "product:execute 093-frontmatter-issue-schema-readiness-gate",
+    "command": "product:review 093-frontmatter-issue-schema-readiness-gate",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-07-22"
+    "last_changed_at": "2026-07-25"
   },
   "blocker": null,
-  "last_action": "wrote the approved Issue 093 implementation plan and executable task checklist",
-  "last_verification": "2026-07-22: plan has spec-consistency 0/0/0, implementation-readiness ready, lifecycle drift [], and release_check valid",
-  "updated_at": "2026-07-22",
+  "last_action": "completed Issue 093 implementation and fresh E2 release/lifecycle verification",
+  "last_verification": "2026-07-25 at ab682e3: spec consistency 0/0/0 with 12/12 coverage, full unittest 732/732, project validation valid, lifecycle drift [], release_check valid, and diff check clean",
+  "updated_at": "2026-07-25",
   "git_binding": {
     "mode": "git-files",
     "branch": "codex/093-frontmatter-issue-schema-readiness-gate",
     "base_branch": "main",
-    "commits": [],
+    "commits": [
+      "7207a0f",
+      "2b786d5",
+      "e220e4a",
+      "96485a2",
+      "28ac7ff",
+      "26659dd",
+      "4c9b46a",
+      "7d76100",
+      "34be14b",
+      "ab682e3"
+    ],
     "pull_request": null,
     "release": null,
     "execution_backend": {
