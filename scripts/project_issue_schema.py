@@ -43,6 +43,8 @@ DECLARED_PHASE_TO_ARTIFACT_PHASE = {
 
 _ARTIFACT_PHASES = ("spec", "plan", "tasks", "review", "release")
 _SCHEMA_ERROR_CODES = {
+    "ISSUE_ARTIFACT_OUTSIDE_ROOT",
+    "ISSUE_SOURCE_OUTSIDE_ROOT",
     "ISSUE_SOURCE_UNREADABLE",
     "ISSUE_SCHEMA_MALFORMED",
     "ISSUE_SCHEMA_UNSUPPORTED",
@@ -631,10 +633,13 @@ def markdown_title(text):
 
 
 def _relative_source_path(path, project_root):
+    """Return a safe lexical source path without resolving symlink targets."""
     try:
-        return str(path.resolve().relative_to(Path(project_root).resolve()))
-    except ValueError:
-        return str(path)
+        lexical_path = Path(os.path.abspath(path))
+        lexical_root = Path(os.path.abspath(project_root))
+        return str(lexical_path.relative_to(lexical_root))
+    except (OSError, RuntimeError, ValueError):
+        return Path(path).name
 
 
 def _base_issue(path, project_root, text):
@@ -698,6 +703,31 @@ def _base_issue(path, project_root, text):
                 ),
             )
         )
+    return issue
+
+
+def _blocked_issue_source(path, project_root):
+    """Build a minimal fail-closed record without reading an external target."""
+    issue = _base_issue(path, project_root, "")
+    issue["source_format"] = "blocked"
+    issue["lifecycle_state"] = None
+    issue["projection_status"] = None
+    issue["readiness"] = "blocked"
+    issue["diagnostics"].append(
+        _diagnostic(
+            "ISSUE_SOURCE_OUTSIDE_ROOT",
+            issue["issue_id"],
+            issue["source_path"],
+            "Issue source resolves outside the configured issues root.",
+            field="source",
+            current=issue["source_path"],
+            expected="a file resolving inside the configured issues root",
+            recommendation=(
+                "Replace the external symlink with a regular issue file or "
+                "a symlink whose target remains inside the issues root."
+            ),
+        )
+    )
     return issue
 
 
@@ -1068,35 +1098,103 @@ def list_normalized_issues(project_root, project_paths=None):
     """Return normalized issue records sorted by their canonical issue id."""
     project_root = Path(project_root)
     project_paths = project_paths or configured_project_paths(project_root)
-    issues_dir = project_root / project_paths["issues"]
+    lexical_issues_dir = project_root / project_paths["issues"]
+    try:
+        issues_dir = _contained_path(project_root, project_paths["issues"])
+    except ValueError:
+        return []
     if not issues_dir.is_dir():
         return []
-    issues = [
-        parse_issue(path, project_root)
-        for path in sorted(issues_dir.glob("*.md"))
-        if path.is_file()
-    ]
+    issues = []
+    for path in sorted(lexical_issues_dir.glob("*.md")):
+        try:
+            resolved = _contained_path(issues_dir, path.name)
+        except ValueError:
+            issues.append(_blocked_issue_source(path, project_root))
+            continue
+        if resolved.is_file():
+            issues.append(parse_issue(path, project_root))
     return sorted(issues, key=lambda issue: issue["issue_id"])
+
+
+def _empty_artifact_coverage():
+    return {
+        **{phase: False for phase in _ARTIFACT_PHASES},
+        "artifact_phase": "issue",
+        "diagnostics": [],
+    }
+
+
+def _artifact_outside_root_diagnostic(issue_id, source_path):
+    return _diagnostic(
+        "ISSUE_ARTIFACT_OUTSIDE_ROOT",
+        issue_id,
+        source_path,
+        "Issue artifact resolves outside the configured specs root.",
+        field="artifact",
+        current=source_path,
+        expected="a path resolving inside the configured specs root",
+        recommendation=(
+            "Replace the external symlink with a regular artifact or a symlink "
+            "whose target remains inside the specs root."
+        ),
+        origin="evaluator",
+    )
 
 
 def build_artifact_index(project_root, issue_ids, project_paths=None):
     """Return actual workflow-artifact coverage for each supplied issue id."""
     project_root = Path(project_root)
     project_paths = project_paths or configured_project_paths(project_root)
-    specs_root = _contained_path(project_root, project_paths["specs"])
+    lexical_specs_root = project_root / project_paths["specs"]
+    try:
+        specs_root = _contained_path(project_root, project_paths["specs"])
+    except ValueError:
+        specs_root = None
     artifact_index = {}
     for issue_id in sorted(set(issue_ids), key=str):
+        coverage = _empty_artifact_coverage()
         if not validate_issue_id(issue_id):
-            artifact_index[issue_id] = {
-                **{phase: False for phase in _ARTIFACT_PHASES},
-                "artifact_phase": "issue",
-            }
+            artifact_index[issue_id] = coverage
             continue
-        artifact_root = _contained_path(specs_root, issue_id)
-        coverage = {
-            phase: (artifact_root / f"{phase}.md").is_file()
-            for phase in _ARTIFACT_PHASES
-        }
+        artifact_source = _relative_source_path(
+            lexical_specs_root / issue_id,
+            project_root,
+        )
+        if specs_root is None:
+            coverage["diagnostics"].append(
+                _artifact_outside_root_diagnostic(issue_id, artifact_source)
+            )
+            artifact_index[issue_id] = coverage
+            continue
+        try:
+            _contained_path(specs_root, issue_id)
+        except ValueError:
+            coverage["diagnostics"].append(
+                _artifact_outside_root_diagnostic(issue_id, artifact_source)
+            )
+            artifact_index[issue_id] = coverage
+            continue
+        for phase in _ARTIFACT_PHASES:
+            artifact_file_source = _relative_source_path(
+                lexical_specs_root / issue_id / f"{phase}.md",
+                project_root,
+            )
+            try:
+                artifact_file = _contained_path(
+                    specs_root,
+                    issue_id,
+                    f"{phase}.md",
+                )
+            except ValueError:
+                coverage["diagnostics"].append(
+                    _artifact_outside_root_diagnostic(
+                        issue_id,
+                        artifact_file_source,
+                    )
+                )
+                continue
+            coverage[phase] = artifact_file.is_file()
         present_phases = [phase for phase in _ARTIFACT_PHASES if coverage[phase]]
         coverage["artifact_phase"] = (
             present_phases[-1] if present_phases else "issue"
@@ -1461,6 +1559,7 @@ def _append_unique_diagnostic(issue, diagnostic):
 def _is_evaluator_diagnostic(diagnostic):
     code = diagnostic["code"]
     if code in _DEPENDENCY_ERROR_CODES or code in {
+        "ISSUE_ARTIFACT_OUTSIDE_ROOT",
         "ISSUE_DEFINITION_NOT_READY",
         "ISSUE_GATE_BLOCKED",
         "ISSUE_NEXT_COMMAND_INVALID",
@@ -1624,6 +1723,8 @@ def _evaluate_issue_after_dependency(issue, issue_index, artifact_index):
     evaluated = dict(issue)
     evaluated["diagnostics"] = copy.deepcopy(issue.get("diagnostics", []))
     coverage = artifact_index.get(issue["issue_id"], {})
+    for diagnostic in coverage.get("diagnostics", []):
+        _append_unique_diagnostic(evaluated, diagnostic)
     evaluated["artifact_phase"] = coverage.get("artifact_phase", "issue")
     _append_structural_state_diagnostics(evaluated)
 

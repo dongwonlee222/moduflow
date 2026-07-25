@@ -3188,6 +3188,191 @@ next_command: product:execute {issue_id}
         )
         self.assertEqual(issue["recommended_next_command"], "product:doctor")
 
+    def test_external_issue_symlink_is_blocked_before_content_is_parsed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            root = base / "project"
+            outside = base / "outside-secret.md"
+            root.mkdir()
+            outside.write_text(
+                """---
+schema_version: 0.1.0
+issue_id: BIZ-LINK
+canonical_state: active
+status: in_progress
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:execute BIZ-LINK
+external_secret: DO-NOT-EXPOSE-ISSUE-SECRET
+---
+# Issue: `BIZ-LINK` DO-NOT-EXPOSE-ISSUE-TITLE
+
+**Status: active**
+""",
+                encoding="utf-8",
+            )
+            (root / "issues").mkdir()
+            (root / "issues" / "BIZ-LINK.md").symlink_to(outside)
+
+            project = self.schema.evaluate_project(root)
+            issue = project["issues"][0]
+            serialized = json.dumps(project, ensure_ascii=False)
+
+        self.assertEqual(issue["issue_id"], "BIZ-LINK")
+        self.assertEqual(issue["source_path"], "issues/BIZ-LINK.md")
+        self.assertEqual(issue["title"], "")
+        self.assertEqual(issue["extensions"], {})
+        self.assertNotIn("DO-NOT-EXPOSE", serialized)
+        self.assertIn("ISSUE_SOURCE_OUTSIDE_ROOT", codes(issue))
+        self.assertEqual(issue["recommended_next_command"], "product:doctor")
+
+    def test_internal_issue_symlink_is_allowed_with_lexical_source_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target_dir = root / "issues" / "targets"
+            target_dir.mkdir(parents=True)
+            self.write_versioned_issue(
+                target_dir.parent.parent,
+                "targets/BIZ-INTERNAL-SOURCE.md",
+                "BIZ-INTERNAL",
+            )
+            (root / "issues" / "BIZ-INTERNAL.md").symlink_to(
+                target_dir / "BIZ-INTERNAL-SOURCE.md"
+            )
+
+            issue = next(
+                item
+                for item in self.schema.evaluate_project(root)["issues"]
+                if item["issue_id"] == "BIZ-INTERNAL"
+            )
+
+        self.assertEqual(issue["source_path"], "issues/BIZ-INTERNAL.md")
+        self.assertNotIn("ISSUE_SOURCE_OUTSIDE_ROOT", codes(issue))
+        self.assertIn("Boundary fixture", issue["title"])
+
+    def test_external_spec_directory_is_a_per_issue_hard_diagnostic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            root = base / "project"
+            outside = base / "outside-specs"
+            root.mkdir()
+            outside.mkdir()
+            self.write_versioned_issue(root, "BIZ-SPEC-LINK.md", "BIZ-SPEC-LINK")
+            for phase in ("spec", "plan", "tasks"):
+                (outside / f"{phase}.md").write_text(
+                    f"# DO-NOT-EXPOSE-{phase.upper()}-SECRET\n",
+                    encoding="utf-8",
+                )
+            (root / "specs").mkdir()
+            (root / "specs" / "BIZ-SPEC-LINK").symlink_to(
+                outside,
+                target_is_directory=True,
+            )
+
+            project = self.schema.evaluate_project(root)
+            issue = project["issues"][0]
+            serialized = json.dumps(project, ensure_ascii=False)
+
+        self.assertNotIn("DO-NOT-EXPOSE", serialized)
+        self.assertEqual(issue["artifact_phase"], "issue")
+        self.assertIn("ISSUE_ARTIFACT_OUTSIDE_ROOT", codes(issue))
+        self.assertEqual(issue["recommended_next_command"], "product:doctor")
+
+    def test_external_artifact_file_symlinks_are_blocked_per_phase(self):
+        for linked_phase in ("spec", "plan", "tasks"):
+            with self.subTest(phase=linked_phase), tempfile.TemporaryDirectory() as tmp:
+                base = Path(tmp)
+                root = base / "project"
+                outside = base / f"outside-{linked_phase}.md"
+                root.mkdir()
+                self.write_versioned_issue(
+                    root,
+                    "BIZ-ARTIFACT-LINK.md",
+                    "BIZ-ARTIFACT-LINK",
+                )
+                artifact_root = root / "specs" / "BIZ-ARTIFACT-LINK"
+                artifact_root.mkdir(parents=True)
+                outside.write_text(
+                    f"# DO-NOT-EXPOSE-{linked_phase.upper()}-SECRET\n",
+                    encoding="utf-8",
+                )
+                for phase in ("spec", "plan", "tasks"):
+                    path = artifact_root / f"{phase}.md"
+                    if phase == linked_phase:
+                        path.symlink_to(outside)
+                    else:
+                        path.write_text(f"# {phase}\n", encoding="utf-8")
+
+                project = self.schema.evaluate_project(root)
+                issue = project["issues"][0]
+                serialized = json.dumps(project, ensure_ascii=False)
+
+                self.assertNotIn("DO-NOT-EXPOSE", serialized)
+                self.assertIn("ISSUE_ARTIFACT_OUTSIDE_ROOT", codes(issue))
+                self.assertTrue(
+                    any(
+                        diagnostic["current"]
+                        == f"specs/BIZ-ARTIFACT-LINK/{linked_phase}.md"
+                        for diagnostic in issue["diagnostics"]
+                    )
+                )
+                self.assertEqual(
+                    issue["recommended_next_command"],
+                    "product:doctor",
+                )
+
+    def test_internal_artifact_file_symlinks_are_allowed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_versioned_issue(
+                root,
+                "BIZ-INTERNAL-ARTIFACT.md",
+                "BIZ-INTERNAL-ARTIFACT",
+            )
+            shared = root / "specs" / "shared"
+            artifact_root = root / "specs" / "BIZ-INTERNAL-ARTIFACT"
+            shared.mkdir(parents=True)
+            artifact_root.mkdir()
+            for phase in ("spec", "plan", "tasks"):
+                target = shared / f"{phase}.md"
+                target.write_text(f"# {phase}\n", encoding="utf-8")
+                (artifact_root / f"{phase}.md").symlink_to(target)
+
+            issue = self.schema.evaluate_project(root)["issues"][0]
+
+        self.assertNotIn("ISSUE_ARTIFACT_OUTSIDE_ROOT", codes(issue))
+        self.assertEqual(issue["recommended_next_command"], "product:execute BIZ-INTERNAL-ARTIFACT")
+
+    def test_internal_spec_directory_symlink_is_allowed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_versioned_issue(
+                root,
+                "BIZ-INTERNAL-SPEC-DIR.md",
+                "BIZ-INTERNAL-SPEC-DIR",
+            )
+            shared = root / "specs" / "shared"
+            shared.mkdir(parents=True)
+            for phase in ("spec", "plan", "tasks"):
+                (shared / f"{phase}.md").write_text(
+                    f"# {phase}\n",
+                    encoding="utf-8",
+                )
+            (root / "specs" / "BIZ-INTERNAL-SPEC-DIR").symlink_to(
+                shared,
+                target_is_directory=True,
+            )
+
+            issue = self.schema.evaluate_project(root)["issues"][0]
+
+        self.assertNotIn("ISSUE_ARTIFACT_OUTSIDE_ROOT", codes(issue))
+        self.assertEqual(
+            issue["recommended_next_command"],
+            "product:execute BIZ-INTERNAL-SPEC-DIR",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
