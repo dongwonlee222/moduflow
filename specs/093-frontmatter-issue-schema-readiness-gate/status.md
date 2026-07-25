@@ -143,6 +143,34 @@ issue lifecycle/dependency routing parser.
 | C3 MCP/dashboard | `4c9b46a` |
 | D1 authoring/distribution | `7d76100` |
 
+## Verification
+
+Current as of the post-review merge of `main` into this branch. These supersede
+the E2 numbers recorded above, which were taken at `ab682e3` before the review
+fix and the merge.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Full suite | `python3 -m unittest discover -s tests` | 741 passed, `OK` |
+| Release gates | `python3 scripts/release_check.py .` | `valid: true`, zero errors, every sub-check `ok` |
+| Lifecycle drift | `python3 scripts/project_lifecycle.py . --drift` | `[]` |
+| Project artifacts | `python3 scripts/validate_project_artifacts.py .` | `valid: true`, zero errors |
+| Package | `python3 scripts/validate_moduflow.py .` | passed |
+| Commit capability | `python3 scripts/project_git_handoff.py . --operation commit` | `mode: local-git-write`, `ok: true` |
+| GitHub PR preflight | `python3 scripts/project_pr.py . --github-preflight` | `ok: true`, `mode: github-draft-pr` |
+
+Test count moved 737 to 741 through the four regression tests added while
+clearing review condition 1.
+
+Known gaps carried into the PR:
+
+- The converge evidence step is not usable on this branch — it collected 1 of
+  44 commits and no implementation file while reporting `errors: []`. Cause and
+  scope are in review finding 1; tracked as issue `095`. Per
+  `product-review.md` step 5 converge is reported, never gating.
+- The review was coordinator-judged inline rather than dispatched to review
+  subagents, so findings are single-reviewer judgments.
+
 ## Review
 
 Run 2026-07-25 at head `098c0f3` by Claude Opus 5, inline (coordinator-judged).

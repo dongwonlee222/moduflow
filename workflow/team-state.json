@@ -270,6 +270,21 @@
       "last_handoff": "Human approved PR #26 for merge; final CI and release gates remain required.",
       "next_command": "product:status",
       "updated_at": "2026-07-16"
+    },
+    {
+      "issue_id": "093-frontmatter-issue-schema-readiness-gate",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Dongwon Lee",
+      "status": "review",
+      "branch": "",
+      "pr": "local:093-frontmatter-issue-schema-readiness-gate:draft-pr-ready",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: local:093-frontmatter-issue-schema-readiness-gate:draft-pr-ready",
+      "next_command": "product:review 093-frontmatter-issue-schema-readiness-gate",
+      "updated_at": "2026-07-25"
     }
   ]
 }

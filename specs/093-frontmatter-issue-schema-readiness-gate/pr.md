@@ -1,32 +1,74 @@
-# Review: 093-frontmatter-issue-schema-readiness-gate
+# PR Handoff: 093-frontmatter-issue-schema-readiness-gate
 
-Reviewer: Claude Opus 5 (coordinator-inline)
-Date: 2026-07-25
-Head reviewed: `098c0f3a61942fd5b1d1f56b0141f65dcfca1016`
-Base: `4808fccc526647edc481d0f11775bd1b62b37ee7` (`main`)
+## Purpose
 
-## Review mode limitation
+Make the pull request the visible review surface instead of waiting until all local review work is finished.
+Use a Draft PR or a local PR-ready marker early, then attach review, verification, and dashboard evidence to it as work progresses.
 
-`product-review.md` prescribes dispatching `qa-reviewer` and
-`pm-strategist` / `spec-architect` subagents. This session ran with subagent
-dispatch withheld, so review concerns were judged inline by the coordinator.
-The command's documented fallback for the converge step ("coordinator judges
-and records the limitation if dispatch is unavailable") is applied here to the
-whole review. Findings below are therefore single-reviewer judgments, not
-independent multi-reviewer consensus.
+## Draft PR
 
-## Verification reproduced
+- Branch: `codex/093-frontmatter-issue-schema-readiness-gate`
+- PR: `local:093-frontmatter-issue-schema-readiness-gate:draft-pr-ready`
+- Reviewer: `Dongwon Lee`
+- Fallback reason: GitHub Draft PR URL is not recorded yet. This local PR-ready marker preserves review state until GitHub sync creates or mirrors the PR.
+- Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
+- Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
+- Commit mode: `local-git-write`
 
-Re-ran at review time, in the issue's own worktree with the branch attached:
+## Commands
 
-- `python3 -m unittest discover -s tests` — 737 passed, `OK`.
-- `python3 scripts/release_check.py .` — `valid: true`, zero errors, every
-  sub-check `ok` including `linkage_gate` and `version_bump_gate`.
-- Working tree clean at `098c0f3`.
+```bash
+python3 scripts/project_pr.py . --issue-id 093-frontmatter-issue-schema-readiness-gate --write
+```
 
-The E2 numbers recorded in `status.md` reproduce exactly.
+```bash
+python3 scripts/project_workflow.py . --pr-state --issue-id 093-frontmatter-issue-schema-readiness-gate --pr "local:093-frontmatter-issue-schema-readiness-gate:draft-pr-ready" --reviewer "Dongwon Lee"
+```
 
-## Findings
+- Continue review: `product:review 093-frontmatter-issue-schema-readiness-gate`
+- Refresh PR handoff: `product:pr 093-frontmatter-issue-schema-readiness-gate`
+
+## PR Body Contract
+
+- Summary: what changed and why.
+- Verification: local tests, release checks, CI/status checks, and known gaps.
+- Dashboard: `memory/dashboard.html`.
+- Issue drill-down: `memory/issue-093-frontmatter-issue-schema-readiness-gate.html`.
+- Korean human-review packet: `specs/093-frontmatter-issue-schema-readiness-gate/human-review.ko.md`.
+- Review findings: implementation, QA, and PM/spec review results.
+- Human approval: who reviewed the dashboard, PR diff, and merge readiness.
+
+## Evidence To Mirror
+
+### Verification
+
+Current as of the post-review merge of `main` into this branch. These supersede
+the E2 numbers recorded above, which were taken at `ab682e3` before the review
+fix and the merge.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Full suite | `python3 -m unittest discover -s tests` | 741 passed, `OK` |
+| Release gates | `python3 scripts/release_check.py .` | `valid: true`, zero errors, every sub-check `ok` |
+| Lifecycle drift | `python3 scripts/project_lifecycle.py . --drift` | `[]` |
+| Project artifacts | `python3 scripts/validate_project_artifacts.py .` | `valid: true`, zero errors |
+| Package | `python3 scripts/validate_moduflow.py .` | passed |
+| Commit capability | `python3 scripts/project_git_handoff.py . --operation commit` | `mode: local-git-write`, `ok: true` |
+| GitHub PR preflight | `python3 scripts/project_pr.py . --github-preflight` | `ok: true`, `mode: github-draft-pr` |
+
+Test count moved 737 to 741 through the four regression tests added while
+clearing review condition 1.
+
+Known gaps carried into the PR:
+
+- The converge evidence step is not usable on this branch — it collected 1 of
+  44 commits and no implementation file while reporting `errors: []`. Cause and
+  scope are in review finding 1; tracked as issue `095`. Per
+  `product-review.md` step 5 converge is reported, never gating.
+- The review was coordinator-judged inline rather than dispatched to review
+  subagents, so findings are single-reviewer judgments.
+
+### Review Findings
 
 ### 1. Converge evidence collects 1 of 44 commits, silently — CONFIRMED, important
 
@@ -166,57 +208,35 @@ fallback, which makes the linkage evidence positional rather than durable:
 Finding 1 is the concrete consequence. Adding trailers on future commits (or
 at rebase time) makes both linkage and converge resolve the same way.
 
-## Acceptance criteria
+### Visual Evidence
 
-Checked against `spec.md`. All eight criteria are covered by tests in
-`tests/test_project_issue_schema.py` (92 focused tests pass), including the
-BIZ-038/039-blocked and BIZ-040-to-spec fixtures. The "every consumer uses the
-shared normalized parser" criterion is additionally pinned by
-`ProjectIssueSchemaCrossConsumerParityTests`, and `git diff --check` plus the
-static search recorded in `status.md` show no second parser surviving in the
-consumers.
+- Dashboard: `memory/dashboard.html`.
+- Issue drill-down: `memory/issue-093-frontmatter-issue-schema-readiness-gate.html`.
 
-## Reference improvements
+## Approval Record
 
-Reference improvements: none found.
+- Dashboard reviewer: `Dongwon Lee` or assigned reviewer before merge.
+- PR diff reviewer: `Dongwon Lee` or assigned reviewer before merge.
+- Merge approver: human approval required; not granted by this handoff.
+- Deployment approver: required only when a protected deployment environment is configured.
 
-## Verdict
+## Human Checkpoints
 
-**Approve with conditions.**
+- Spec/plan approval before implementation starts.
+- Dashboard and issue drill-down inspection after review.
+- GitHub PR diff, conversation, and status checks before approval.
+- Merge and deployment approval through protected branch or environment gates.
 
-The implementation is sound on the evidence available: 737 tests pass, all
-release gates are green, the shared-parser boundary holds, and the
-read-only migration dogfood is proven non-mutating by a before/after digest.
+## GitHub Gate Alignment
 
-Conditions before merge — **both cleared during this review**:
+- PR review can approve, comment, or request changes.
+- Required status checks must pass before merge when branch protection is configured.
+- Required reviewers or CODEOWNERS remain the merge authority.
+- Deployment environments may add a separate approval gate after merge or before release.
 
-1. ~~Resolve finding 2.~~ Done. The fail-open reading was refuted by direct
-   probing of `recommend_loop`; the crash it exposed instead was fixed inside
-   093's own module with four regression tests. Suite 741 passing.
-2. ~~Register finding 1 as a new issue.~~ Done — issue
-   `095-commit-issue-resolution-parity`.
+## Source Snapshot
 
-Finding 3 is advisory.
-
-### 4. `project_workflow.py --pr-state` silently ignores `--branch` and `--next-command` — CONFIRMED, low (advisory)
-
-Found while producing this issue's PR packet. Both flags are declared in the
-parser and accepted without complaint, but the `--pr-state` path calls
-`record_pr_state(path, issue_id, pr, reviewer, status)`, which has no `branch`
-or `next_command` parameter — `branch` stays `""` and `next_command` is derived
-from the status instead. Passing either flag changes nothing and reports no
-warning.
-
-Pre-existing and outside 093's diff, so it is not a merge condition. The branch
-is recorded correctly in `pr.md` and `workspace/loop-state.json`, so the
-practical impact here is cosmetic. Noted because it is the same silent-gap
-pattern as findings 1 and 2b: input accepted, quietly dropped, no signal.
-
-`review` is the correct team status regardless — `TEAM_STATUSES` has no `pr`
-value, and the item genuinely awaits human review of the PR.
-
-093 is ready for PR. Note that `main` has since moved ahead by 5 commits
-(the 077–080 reconciliation), so this branch needs a merge or rebase first;
-the overlap is four state files — `.moduflow/state.json`,
-`workspace/dashboard.md`, `workspace/loop-state.json`, `workspace/roadmap.md`
-— with no source conflict.
+- Issue bytes: 6121
+- Spec bytes: 16875
+- Status bytes: 10060
+- Review bytes: 9410

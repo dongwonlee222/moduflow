@@ -1,32 +1,73 @@
-# Review: 093-frontmatter-issue-schema-readiness-gate
+# 한글 검토 패킷: 093-frontmatter-issue-schema-readiness-gate
 
-Reviewer: Claude Opus 5 (coordinator-inline)
-Date: 2026-07-25
-Head reviewed: `098c0f3a61942fd5b1d1f56b0141f65dcfca1016`
-Base: `4808fccc526647edc481d0f11775bd1b62b37ee7` (`main`)
+> 영어 산출물은 canonical입니다. 이 파일은 사람이 PR을 검토하기 위한 한국어 읽기용 패킷입니다.
 
-## Review mode limitation
+## 먼저 볼 것
 
-`product-review.md` prescribes dispatching `qa-reviewer` and
-`pm-strategist` / `spec-architect` subagents. This session ran with subagent
-dispatch withheld, so review concerns were judged inline by the coordinator.
-The command's documented fallback for the converge step ("coordinator judges
-and records the limitation if dispatch is unavailable") is applied here to the
-whole review. Findings below are therefore single-reviewer judgments, not
-independent multi-reviewer consensus.
+- 대시보드: `memory/dashboard.html#issue-db`
+- 이슈 상세: `memory/issue-093-frontmatter-issue-schema-readiness-gate.html`
+- PR/로컬 마커: `local:093-frontmatter-issue-schema-readiness-gate:draft-pr-ready`
+- 브랜치: `codex/093-frontmatter-issue-schema-readiness-gate`
+- 리뷰어: `Dongwon Lee`
 
-## Verification reproduced
+## 이슈 요약
 
-Re-ran at review time, in the issue's own worktree with the branch attached:
+- 제목: Issue 093: Frontmatter Issue Schema and Readiness/Dependency Gate
+- 설명: Normalize YAML-frontmatter and Markdown issue formats through one parser, then block ready/execute routing when dependencies, definition readiness, lifecycle state, body status, or next command contradict one another.
 
-- `python3 -m unittest discover -s tests` — 737 passed, `OK`.
-- `python3 scripts/release_check.py .` — `valid: true`, zero errors, every
-  sub-check `ok` including `linkage_gate` and `version_bump_gate`.
-- Working tree clean at `098c0f3`.
+## 사람이 확인할 내용
 
-The E2 numbers recorded in `status.md` reproduce exactly.
+- 대시보드 DB에서 상태, 설명, 산출물 누락, 검증 플래그를 확인합니다.
+- 이슈 상세 페이지에서 `한글` 탭을 먼저 보고, 필요한 경우 `English` 원문으로 내려갑니다.
+- GitHub PR이 있으면 diff, conversation, status checks를 확인합니다.
+- 아래 보류 조건에 해당하면 승인하지 말고 수정 요청합니다.
 
-## Findings
+## 산출물 체크
+
+| 산출물 | 용도 | 원문 | 한글 보기 |
+| --- | --- | --- | --- |
+| `spec.md` | 스펙 | `specs/093-frontmatter-issue-schema-readiness-gate/spec.md` | 가능 |
+| `plan.md` | 계획 | `specs/093-frontmatter-issue-schema-readiness-gate/plan.md` | 요약/상세 한글 개요로 대체 |
+| `tasks.md` | 작업 | `specs/093-frontmatter-issue-schema-readiness-gate/tasks.md` | 요약/상세 한글 개요로 대체 |
+| `design.md` | 화면/설계 | 없음 | 요약/상세 한글 개요로 대체 |
+| `status.md` | 상태/검증 | `specs/093-frontmatter-issue-schema-readiness-gate/status.md` | 요약/상세 한글 개요로 대체 |
+| `review.md` | 리뷰 | `specs/093-frontmatter-issue-schema-readiness-gate/review.md` | 요약/상세 한글 개요로 대체 |
+| `pr.md` | PR 핸드오프 | `specs/093-frontmatter-issue-schema-readiness-gate/pr.md` | 요약/상세 한글 개요로 대체 |
+| `human-review.ko.md` | 한글 검토 패킷 | `specs/093-frontmatter-issue-schema-readiness-gate/human-review.ko.md` | 가능 |
+
+## 검증 요약
+
+Current as of the post-review merge of `main` into this branch. These supersede
+the E2 numbers recorded above, which were taken at `ab682e3` before the review
+fix and the merge.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Full suite | `python3 -m unittest discover -s tests` | 741 passed, `OK` |
+| Release gates | `python3 scripts/release_check.py .` | `valid: true`, zero errors, every sub-check `ok` |
+| Lifecycle drift | `python3 scripts/project_lifecycle.py . --drift` | `[]` |
+| Project artifacts | `python3 scripts/validate_project_artifacts.py .` | `valid: true`, zero errors |
+| Package | `python3 scripts/validate_moduflow.py .` | passed |
+| Commit capability | `python3 scripts/project_git_handoff.py . --operation commit` | `mode: local-git-write`, `ok: true` |
+| GitHub PR preflight | `python3 scripts/project_pr.py . --github-preflight` | `ok: true`, `mode: github-draft-pr` |
+
+Test count moved 737 to 741 through the four regression tests added while
+clearing review condition 1.
+
+Known gaps carried into the PR:
+
+- The converge evidence step is not usable on this branch — it collected 1 of
+  44 commits and no implementation file while reporting `errors: []`. Cause and
+  scope are in review finding 1; tracked as issue `095`. Per
+  `product-review.md` step 5 converge is reported, never gating.
+- The review was coordinator-judged inline rather than dispatched to review
+  subagents, so findings are single-reviewer judgments.
+
+## no-issue 선언 (issue 075)
+
+- 선언 없음 — 모든 동작 변경이 이슈에 연결되어 있습니다.
+
+## 리뷰 결과
 
 ### 1. Converge evidence collects 1 of 44 commits, silently — CONFIRMED, important
 
@@ -166,57 +207,25 @@ fallback, which makes the linkage evidence positional rather than durable:
 Finding 1 is the concrete consequence. Adding trailers on future commits (or
 at rebase time) makes both linkage and converge resolve the same way.
 
-## Acceptance criteria
+## 보류 조건
 
-Checked against `spec.md`. All eight criteria are covered by tests in
-`tests/test_project_issue_schema.py` (92 focused tests pass), including the
-BIZ-038/039-blocked and BIZ-040-to-spec fixtures. The "every consumer uses the
-shared normalized parser" criterion is additionally pinned by
-`ProjectIssueSchemaCrossConsumerParityTests`, and `git diff --check` plus the
-static search recorded in `status.md` show no second parser surviving in the
-consumers.
+- 테스트 또는 release check가 실패했습니다.
+- 대시보드/상세 페이지가 생성되지 않았거나 최신 변경을 반영하지 않습니다.
+- PR diff가 이슈 범위를 벗어났습니다.
+- 사람이 이해할 수 있는 한글 개요 또는 검토 패킷이 없습니다.
+- 검토 패킷이 최신 PR diff 또는 로컬 변경 범위를 반영하지 않습니다.
+- merge/release 승인자와 승인 근거가 명확하지 않습니다.
 
-## Reference improvements
+## 승인 체크리스트
 
-Reference improvements: none found.
+- [ ] 대시보드 DB에서 이슈 상태와 설명을 확인했습니다.
+- [ ] 이슈 상세 페이지의 `한글` 탭을 확인했습니다.
+- [ ] PR diff 또는 로컬 변경 범위를 확인했습니다.
+- [ ] 검증 결과가 통과했거나 실패 사유를 이해했습니다.
+- [ ] release 대상이면 rollback/post-release check와 승인 기록을 확인했습니다.
+- [ ] 보류 조건에 해당하지 않습니다.
 
-## Verdict
+## 다음 액션
 
-**Approve with conditions.**
-
-The implementation is sound on the evidence available: 737 tests pass, all
-release gates are green, the shared-parser boundary holds, and the
-read-only migration dogfood is proven non-mutating by a before/after digest.
-
-Conditions before merge — **both cleared during this review**:
-
-1. ~~Resolve finding 2.~~ Done. The fail-open reading was refuted by direct
-   probing of `recommend_loop`; the crash it exposed instead was fixed inside
-   093's own module with four regression tests. Suite 741 passing.
-2. ~~Register finding 1 as a new issue.~~ Done — issue
-   `095-commit-issue-resolution-parity`.
-
-Finding 3 is advisory.
-
-### 4. `project_workflow.py --pr-state` silently ignores `--branch` and `--next-command` — CONFIRMED, low (advisory)
-
-Found while producing this issue's PR packet. Both flags are declared in the
-parser and accepted without complaint, but the `--pr-state` path calls
-`record_pr_state(path, issue_id, pr, reviewer, status)`, which has no `branch`
-or `next_command` parameter — `branch` stays `""` and `next_command` is derived
-from the status instead. Passing either flag changes nothing and reports no
-warning.
-
-Pre-existing and outside 093's diff, so it is not a merge condition. The branch
-is recorded correctly in `pr.md` and `workspace/loop-state.json`, so the
-practical impact here is cosmetic. Noted because it is the same silent-gap
-pattern as findings 1 and 2b: input accepted, quietly dropped, no signal.
-
-`review` is the correct team status regardless — `TEAM_STATUSES` has no `pr`
-value, and the item genuinely awaits human review of the PR.
-
-093 is ready for PR. Note that `main` has since moved ahead by 5 commits
-(the 077–080 reconciliation), so this branch needs a merge or rebase first;
-the overlap is four state files — `.moduflow/state.json`,
-`workspace/dashboard.md`, `workspace/loop-state.json`, `workspace/roadmap.md`
-— with no source conflict.
+- 승인 가능하면 PR에서 approve 또는 로컬에 승인 기록을 남깁니다.
+- 보류하면 `product:review 093-frontmatter-issue-schema-readiness-gate`로 되돌려 수정합니다.
