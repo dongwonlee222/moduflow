@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "spec",
+  "phase": "select",
   "active_goal": "trustworthy-execution-and-project-knowledge",
-  "active_issue": "086-project-aware-production-library-dashboard",
+  "active_issue": "",
   "last_command": "product:review 093-frontmatter-issue-schema-readiness-gate",
-  "next_command": "product:plan 086-project-aware-production-library-dashboard",
+  "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-07-26"
 }

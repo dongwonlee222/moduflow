@@ -108,8 +108,8 @@ existing history. Do not make converge gate the review verdict.
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/095-commit-issue-resolution-parity/spec.md`
-- [ ] plan → `specs/095-commit-issue-resolution-parity/plan.md`
+- [x] spec → `specs/095-commit-issue-resolution-parity/spec.md`
+- [x] plan → `specs/095-commit-issue-resolution-parity/plan.md` + `tasks.md`
 - [ ] execute → PR / commits
 - [ ] review → review notes
 
@@ -125,6 +125,7 @@ existing history. Do not make converge gate the review verdict.
 ## Sessions
 
 - 2026-07-25: found during the independent review of issue 093.
+- 2026-07-26: reproduced on `main` at `6bca2b4` after 093 merged — converge collects 10 commits (trailer 9, merge-subject 1) with `errors: []`, while `linkage_check` attributes 53 over the same window. Merging raised the count but did not close the gap, confirming the defect is structural rather than a branch-lifetime artifact. Spec and plan written.
 
 ## Links
 
@@ -134,4 +135,4 @@ existing history. Do not make converge gate the review verdict.
 
 ## Next Command
 
-`/product:spec 095-commit-issue-resolution-parity`
+`/product:execute 095-commit-issue-resolution-parity`

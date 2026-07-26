@@ -10,7 +10,7 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Active Issue
 
-- `086-project-aware-production-library-dashboard` (phase: spec). Canonical: `issues/086-project-aware-production-library-dashboard.md`.
+- None active. Run `product:status` to pick the next issue.
 
 ## Priority Queue — 2026-07-25
 

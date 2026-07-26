@@ -1,6 +1,6 @@
 # Issue 086: Project-Aware Production Library Dashboard
 
-**Status: active** — created 2026-07-10, started 2026-07-10.
+**Status: backlog** — created 2026-07-10; spec, design, and prototype completed 2026-07-10. Execution not started.
 **Priority: p2**
 **Dependency: `085-project-production-records-and-playbooks` (done 2026-07-10; unblocked)**
 
@@ -109,6 +109,7 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 - 2026-07-10: User decided the top project selector must control issue, production, knowledge, and status views globally.
 - 2026-07-10: User approved preserving the existing ModuFlow UI and opening Production Record details in a dimmed modal.
 - 2026-07-10: Corrected Issue 086 from backlog to active so the existing issue graph current-work focus remains functional.
+- 2026-07-26: Restored to backlog after the branch artifacts were merged into `main`. Only one issue may be active at a time (`project_lifecycle.py` reports multiple active issues as drift), and `095-commit-issue-resolution-parity` takes priority as p1. Design and prototype artifacts remain in `main`; nothing is lost.
 
 ## Links
 
