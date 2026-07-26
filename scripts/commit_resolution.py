@@ -114,6 +114,11 @@ def issue_id_from_branch(name, issue_ids):
     return None
 
 
+def _merge_source_text(subject):
+    """The part of a merge subject naming what was merged *from*."""
+    return subject.split(" into ")[0] if " into " in subject else subject
+
+
 def merge_source_issue(subject, issue_ids):
     """The issue whose branch a merge commit merged *from*, or None.
 
@@ -127,24 +132,58 @@ def merge_source_issue(subject, issue_ids):
     branch, so its second-parent side is the base branch's history. Claiming
     it attributes all of main to the issue — measured live in this repository,
     where issue 081's merge commit landed inside issue 093's evidence."""
-    source = subject.split(" into ")[0] if " into " in subject else subject
+    source = _merge_source_text(subject)
     match = re.search(rf"codex/({ISSUE_ID_PATTERN})", source)
     if not match:
         return None
     return issue_id_from_branch(f"codex/{match.group(1)}", issue_ids)
 
 
-def base_ref(refs):
+def base_ref(runner, cwd, refs):
     """The branch other branches are cut from.
 
     A branch's own contribution is what it has that the base does not. Deriving
     it by excluding every *other* ref instead makes any unmerged descendant
     branch zero its parent, and leaves nothing to exclude at all in a
-    single-branch clone."""
-    for candidate in ("main", "origin/main", "master", "origin/master"):
-        if candidate in refs:
-            return candidate
-    return None
+    single-branch clone.
+
+    Asked of the repository rather than guessed from a list of names. A name
+    list gets two cases wrong that this does not: a trunk called something else
+    (`develop`), and a local `main` left behind `origin/main`, where measuring
+    against the stale one hands the branch every commit the trunk has moved on
+    by."""
+    head = _run(runner, ["git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], cwd)
+    if head.returncode == 0:
+        name = (head.stdout or "").strip()
+        if name in refs:
+            return name
+
+    # Fall back to the ref contributing the fewest commits no other ref has. A
+    # trunk is contained in the branches cut from it and so contributes nothing
+    # unique; a topic branch contributes its own work.
+    # Ties are the common case — in stacked work both the trunk and the lower
+    # branch contribute nothing unique. Break them by containment: a trunk is
+    # an ancestor of everything cut from it, a lower branch only of what sits
+    # on top. Picking wrong here silently zeroes a branch.
+    scored = []
+    for ref in refs:
+        others = [other for other in refs if not _same_branch(other, ref)]
+        if not others:
+            continue
+        rev = _run(runner, ["git", "rev-list", ref, "--not", *others], cwd)
+        if rev.returncode != 0:
+            continue
+        exclusive = len((rev.stdout or "").split())
+        contained_in = sum(
+            1
+            for other in others
+            if _run(runner, ["git", "merge-base", "--is-ancestor", ref, other], cwd).returncode == 0
+        )
+        scored.append((exclusive, -contained_in, ref))
+    if not scored:
+        return None
+    scored.sort()
+    return scored[0][2]
 
 
 def _same_branch(ref, name):
@@ -163,6 +202,31 @@ def _branch_tail(ref):
     if "/" in ref and not ref.startswith("codex/"):
         return ref.split("/", 1)[1]
     return ref
+
+
+def merge_side_commits(records, merge_sha, parent_index):
+    """Commits contributed by one non-first parent of a merge.
+
+    An octopus merge has three or more parents. Walking only `^2` loses every
+    branch past the second — the second independent review measured an entire
+    issue's work attributed to nothing that way."""
+    parents = records.get(merge_sha, {}).get("parents", [])
+    if parent_index >= len(parents):
+        return set()
+
+    def reachable(start):
+        seen = set()
+        stack = [start]
+        while stack:
+            sha = stack.pop()
+            if sha in seen or sha not in records:
+                continue
+            seen.add(sha)
+            stack.extend(records[sha].get("parents", []))
+        return seen
+
+    mainline = reachable(parents[0])
+    return reachable(parents[parent_index]) - mainline
 
 
 def branch_side_commits(records, merge_sha):
@@ -243,7 +307,7 @@ def build_branch_membership(runner, cwd):
     if not branches:
         degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
 
-    base = base_ref(all_refs)
+    base = base_ref(runner, cwd, all_refs)
     if base is None:
         # Nothing to measure a branch's own contribution against.
         if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
@@ -360,12 +424,19 @@ def build_attribution(runner, cwd, *, rev_range=None):
         entry = records[sha]
         if len(entry["parents"]) < 2:
             continue
-        issue_id = merge_source_issue(entry["subject"], issue_ids)
-        if not issue_id:
+        # An octopus merge names several branches and has one parent per
+        # branch. Pair them in order: the Nth named issue came in on parent N.
+        named = [
+            issue_id_from_branch(f"codex/{m}", issue_ids)
+            for m in re.findall(rf"codex/({ISSUE_ID_PATTERN})", _merge_source_text(entry["subject"]))
+        ]
+        named = [i for i in named if i]
+        if not named:
             continue
-        claim(sha, issue_id, "merge-subject")
-        for side_sha in branch_side_commits(records, sha):
-            claim(side_sha, issue_id, "branch")
+        for offset, issue_id in enumerate(named):
+            claim(sha, issue_id, "merge-subject")
+            for side_sha in merge_side_commits(records, sha, offset + 1):
+                claim(side_sha, issue_id, "branch")
 
     # Live branches have no merge commit to delimit them.
     built = build_branch_membership(runner, cwd)

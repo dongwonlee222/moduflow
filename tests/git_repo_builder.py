@@ -22,12 +22,17 @@ GIT_ENV = {
 class GitRepo:
     """A disposable git repository. Use as a context manager."""
 
-    def __init__(self):
+    def __init__(self, default_branch="main"):
+        """`default_branch` is a parameter, not a constant. Hardcoding `main`
+        meant no fixture could reach a repository whose trunk is called
+        anything else, and the second independent review found the resolver
+        returns nothing there."""
         self.path = Path(tempfile.mkdtemp(prefix="moduflow-095-"))
+        self.default_branch = default_branch
         self.call_count = 0
         self.call_log = []
         self._file_seq = 0
-        self._git("init", "-q", "-b", "main")
+        self._git("init", "-q", "-b", default_branch)
 
     def __enter__(self):
         return self

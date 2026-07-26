@@ -145,6 +145,68 @@ def no_issue_commits_at_all(repo):
     return [ALPHA]
 
 
+def non_main_default_branch(repo):
+    """A repository whose trunk is not called `main`. Review finding N1:
+    ground truth 2, both implementation and oracle 0, differential agreeing —
+    unreachable while the builder hardcoded `-b main`."""
+    _seed(repo, ALPHA)
+    name = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work")
+    repo.publish(name)
+    repo.checkout(repo.default_branch)
+    return [ALPHA]
+
+
+def stale_local_default_branch(repo):
+    """Review finding Q4. `origin/main` has moved ahead of local `main`; a
+    name list that tries `main` first measures the branch against a base that
+    is four commits behind, and hands the issue all four."""
+    _seed(repo, ALPHA)
+    repo.publish("main")
+    repo.commit("chore: main moved one")
+    repo.commit("chore: main moved two")
+    repo.publish("main")
+    stale = repo.head()
+    name = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work")
+    repo.publish(name)
+    repo.checkout("main")
+    repo._git("reset", "-q", "--hard", "HEAD~2")
+    return [ALPHA]
+
+
+def two_registered_stacked_issues(repo):
+    """Review finding Q3, with both issues registered. `stacked_live_branches`
+    only avoids the over-collection because its second branch name is not a
+    tracked issue."""
+    _seed(repo, ALPHA, BETA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha one")
+    repo.commit("feat: alpha two")
+    second = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta on top of alpha")
+    repo.publish(first)
+    repo.publish(second)
+    repo.checkout(repo.default_branch)
+    return [ALPHA, BETA]
+
+
+def octopus_merge(repo):
+    """Review finding N2. Two branches merged at once; the second-parent-only
+    walk loses everything past `^2`, and the reviewer measured an entire
+    issue's work attributed to nothing."""
+    _seed(repo, ALPHA, BETA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work")
+    repo.checkout(repo.default_branch)
+    second = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta work")
+    repo.checkout(repo.default_branch)
+    repo._git("merge", "-q", "--no-ff", "-m",
+              f"Merge branches 'codex/{ALPHA}' and 'codex/{BETA}'", first, second)
+    return [ALPHA, BETA]
+
+
 ALL_SHAPES = {
     "happy_merge": happy_merge,
     "sync_merge_then_pr_merge": sync_merge_then_pr_merge,
@@ -157,4 +219,15 @@ ALL_SHAPES = {
     "two_issues_interleaved": two_issues_interleaved,
     "empty_repository": empty_repository,
     "no_issue_commits_at_all": no_issue_commits_at_all,
+    "non_main_default_branch": non_main_default_branch,
+    "stale_local_default_branch": stale_local_default_branch,
+    "two_registered_stacked_issues": two_registered_stacked_issues,
+    "octopus_merge": octopus_merge,
+}
+
+
+# Shapes that need the repository built differently, not just committed to
+# differently.
+REPO_KWARGS = {
+    "non_main_default_branch": {"default_branch": "develop"},
 }

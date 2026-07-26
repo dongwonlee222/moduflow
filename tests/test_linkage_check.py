@@ -1,14 +1,27 @@
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from scripts import linkage_check
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from git_repo_builder import GitRepo  # noqa: E402
+
+
+SYMBOLIC_REF_ARGS = ("git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+
 
 class FakeRunner:
     def __init__(self, responses):
-        self.responses = responses
+        # Issue 095: base_ref asks the repository which branch is the trunk
+        # instead of guessing from a name list. These scenarios have no remote
+        # HEAD, so it falls through to the containment scoring below.
+        self.responses = {
+            SYMBOLIC_REF_ARGS: linkage_check.CommandResult(128, "", "not a symbolic ref"),
+            **responses,
+        }
         self.calls = []
 
     def __call__(self, args, cwd, timeout=None):
@@ -84,73 +97,53 @@ class ResolveIssueForCommitTests(unittest.TestCase):
         # Trailer short-circuits: no branch lookups.
         self.assertNotIn(("git", "branch", "-r", "--contains", "abc123"), runner.calls)
 
+    # Branch resolution is exercised against real temporary repositories
+    # rather than stubbed command sequences. These three used to pin the exact
+    # git commands the resolver issued, so every change to its access strategy
+    # broke them for reasons unrelated to behavior — and a stub can only
+    # reproduce the git the author imagined, which is what three review rounds
+    # found to be the defect source.
+
     def test_branch_resolution(self):
-        runner = FakeRunner(
-            {
-                ("git", "show", "-s", "--format=%B", "abc123"): "fix: handle sandboxed fetch\n",
-                tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00fix: handle sandboxed fetch\x00\x00fix: handle sandboxed fetch\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "main\norigin/codex/074-sync-fetch-sandbox-handling\n",
-                (
-                    "git",
-                    "rev-list",
-                    "origin/codex/074-sync-fetch-sandbox-handling",
-                    "--not",
-                    "main",
-                    ): "abc123\n",
-                ("git", "ls-files", "issues"): "issues/074-sync-fetch-sandbox-handling.md\n",
-            }
-        )
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file("074-sync-fetch-sandbox-handling")
+            name = repo.branch("codex/074-sync-fetch-sandbox-handling")
+            sha = repo.commit("fix: handle sandboxed fetch")
+            repo.publish(name)
+            repo.checkout("main")
 
-        result = linkage_check.resolve_issue_for_commit(runner, Path("."), "abc123")
+            result = linkage_check.resolve_issue_for_commit(repo.runner, repo.path, sha)
 
-        self.assertEqual(result["issue_id"], "074-sync-fetch-sandbox-handling")
-        self.assertEqual(result["source"], "branch")
-        self.assertEqual(result["errors"], [])
+            self.assertEqual(result["issue_id"], "074-sync-fetch-sandbox-handling")
+            self.assertEqual(result["source"], "branch")
+            self.assertEqual(result["errors"], [])
 
     def test_local_branch_resolution(self):
-        runner = FakeRunner(
-            {
-                ("git", "show", "-s", "--format=%B", "abc123"): "feat: promote\n",
-                tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00feat: promote\x00\x00feat: promote\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "main\ncodex/075-issue-less-context-capture\n",
-                (
-                    "git",
-                    "rev-list",
-                    "codex/075-issue-less-context-capture",
-                    "--not",
-                    "main",
-                    ): "abc123\n",
-                ("git", "ls-files", "issues"): "issues/075-issue-less-context-capture.md\n",
-            }
-        )
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file("075-issue-less-context-capture")
+            repo.branch("codex/075-issue-less-context-capture")
+            sha = repo.commit("feat: promote")
 
-        result = linkage_check.resolve_issue_for_commit(runner, Path("."), "abc123")
+            result = linkage_check.resolve_issue_for_commit(repo.runner, repo.path, sha)
 
-        self.assertEqual(result["issue_id"], "075-issue-less-context-capture")
-        self.assertEqual(result["source"], "branch")
+            self.assertEqual(result["issue_id"], "075-issue-less-context-capture")
+            self.assertEqual(result["source"], "branch")
 
     def test_branch_suffix_resolves_full_issue_id(self):
-        # Global Constraint 7: codex/<issue-id>-<suffix> resolves the full id.
-        runner = FakeRunner(
-            {
-                ("git", "show", "-s", "--format=%B", "abc123"): "feat: gate\n",
-                tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00feat: gate\x00\x00feat: gate\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "main\norigin/codex/075-issue-less-context-capture-gate\n",
-                (
-                    "git",
-                    "rev-list",
-                    "origin/codex/075-issue-less-context-capture-gate",
-                    "--not",
-                    "main",
-                    ): "abc123\n",
-                ("git", "ls-files", "issues"): "issues/075-issue-less-context-capture.md\n",
-            }
-        )
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file("075-issue-less-context-capture")
+            name = repo.branch("codex/075-issue-less-context-capture-gate")
+            sha = repo.commit("feat: gate")
+            repo.publish(name)
+            repo.checkout("main")
 
-        result = linkage_check.resolve_issue_for_commit(runner, Path("."), "abc123")
+            result = linkage_check.resolve_issue_for_commit(repo.runner, repo.path, sha)
 
-        self.assertEqual(result["issue_id"], "075-issue-less-context-capture")
-        self.assertEqual(result["source"], "branch")
+            self.assertEqual(result["issue_id"], "075-issue-less-context-capture")
+            self.assertEqual(result["source"], "branch")
 
     def test_trailer_beats_branch_on_conflict(self):
         runner = FakeRunner(

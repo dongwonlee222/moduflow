@@ -31,7 +31,7 @@ from git_repo_builder import GitRepo  # noqa: E402
 class DifferentialTests(unittest.TestCase):
     def _check(self, shape_name):
         builder = shapes.ALL_SHAPES[shape_name]
-        with GitRepo() as repo:
+        with GitRepo(**shapes.REPO_KWARGS.get(shape_name, {})) as repo:
             issue_ids = builder(repo)
             for issue_id in issue_ids:
                 expected = reference_commits_for_issue(repo.runner, repo.path, issue_id)
@@ -78,7 +78,7 @@ class CommitDirectionTests(unittest.TestCase):
         from scripts import linkage_check
 
         builder = shapes.ALL_SHAPES[shape_name]
-        with GitRepo() as repo:
+        with GitRepo(**shapes.REPO_KWARGS.get(shape_name, {})) as repo:
             builder(repo)
             index = cr.build_attribution(repo.runner, repo.path)
             for sha in index["order"]:
