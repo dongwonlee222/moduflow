@@ -313,6 +313,70 @@ reading — and an error in round 1's own evidence. The pattern is that reading 
 not surface its defects. An independent reviewer executing against a repository with unmerged
 branches remains the useful next check.
 
+## Review round 3 — independent
+
+Run 2026-07-26 at head `41e539b` by an independent reviewer (subagent, read-only; repository
+verified unmutated afterward). Dispatched after two self-review rounds, on the observation
+that reading this diff had not been surfacing its defects.
+
+**Verdict: request changes.** Twelve findings. Two acceptance criteria fail.
+
+| AC | Verdict |
+| --- | --- |
+| 1. Both modules resolve identical commit sets for the same range | **FAIL** (F1) |
+| 2. Converge on 093 collects the full set including `project_issue_schema.py` | PASS — 57 commits, 46 files, present |
+| 3. Payload carries unmatched count and per-commit source | PASS structurally; the number is not actionable (F8) |
+| 4. Detached HEAD resolves trailers and reports the limitation | **FAIL** (F2, F3) |
+| 5. Git calls do not scale with history | PASS — 24 calls / 309 commits / 26 refs |
+| 6–7. `unittest`, `release_check` | PASS |
+
+### Findings
+
+| # | Finding | Severity |
+| --- | --- | --- |
+| F1 | The two consumers still disagree. `resolve_issue_for_commit` short-circuits on `git show` before the index; `build_attribution` only sees `--branches --remotes`. A commit outside that window resolves one way and not the other. | High |
+| F5 | `Merge branch 'main' into codex/<id>` names the issue in its subject, so the second-parent side — *main* — is claimed for the issue. Live here: issue 081's PR merge sits inside issue 093's evidence bundle. | High |
+| F6 | Branch-exclusive rev-list excludes by name, so any other ref covering the tip (a stacked or follow-up branch) zeroes the branch silently. `codex/089-…` and `codex/089-…-release` are that arrangement. | High |
+| F7 | When every other ref is the branch's own counterpart the exclusion list is empty and `rev-list <b> --not` returns all ancestors — the 279-vs-52 over-collection returns. Triggered by `clone --single-branch`. | High |
+| F2 | `resolve_commits_for_issue` returns nothing at all in a detached HEAD, including trailer-bearing commits. | High |
+| F3 | `branch-unavailable` fires when no issue-shaped ref exists, not when branch resolution is unavailable — false positive on healthy repos, false negative in the detached-HEAD case the spec names. | Medium |
+| F4 | Neither consumer surfaces `degraded`. The resolver reports degradation into a channel nothing reads. | Medium |
+| F8 | `unmatched_count` is a repository-wide constant — 107 of 309 for every issue, including one that does not exist. It cannot distinguish a run that dropped commits from one that had unrelated ones, which is the job its own comment claims. | Medium |
+| F9 | Nested merges attribute the inner branch's commits to the outer issue, silently. | Medium |
+| F10 | Octopus merges lose every parent past the second. | Low |
+| F11 | `hooks/on_stop.py` reads branch grammar from `linkage_check`'s private copy — a third owner (GC1). Four now-unreferenced helpers remain in `linkage_check` and read as a live second rule set. | Low |
+| F12 | `resolve_issue_for_commit` runs `git show` even when the supplied index already holds the answer. | Low |
+
+Probed and clean: real-repo membership matches ground truth on all 20 issue refs; empty
+repository; shallow clone; repo with no remotes; non-conforming branch names; merge with an
+empty branch side; trailer-over-branch precedence in every arrangement built; GC4 subprocess
+scaling across three repositories.
+
+### What this round says about the previous two
+
+Round 1 found 4 findings, round 2 found a fifth cause and an error in round 1's own evidence,
+and this round found 12 — including three High-severity over- and under-collection defects in
+code that had already passed two reviews and 778 tests. F1 and F6 are the same class as round
+1's finding 3 and round 2's fix respectively: each earlier round repaired the instance it was
+shown and not the class. F5 is live damage in this repository right now.
+
+The fixtures are the common thread. Every parity fixture leaves HEAD on a branch, so
+`rev-list HEAD` is a subset of the index window by construction and F1 cannot appear.
+`TestDetachedHead` detaches after committing, so its commit is still on `main` and F2 cannot
+appear. `TestDetachedHead.test_branch_only_commit_reports_degraded_not_silent` passes with
+`repo.detach()` removed — verified by the reviewer — so it does not pin what its name claims.
+
+### Reviewer limitations, as reported
+
+- `project_converge.py --evidence` was not run because it mutates; `collect_evidence()` was
+  imported and called directly instead.
+- Ref-count scaling was measured only to 26 refs. `rev-list` argv grows O(refs) per branch
+  across O(branches) calls, so cost is O(branches × refs) in argv — unmeasured beyond that.
+- Detached HEAD was simulated by clone plus `--detach` rather than `git worktree add`.
+
 ## Next gate
 
-Independent review, then `product:pr`.
+Do not open a PR. F1, F2, F5, F6, and F7 are correctness defects in shipped code; F5 is
+actively wrong in this repository's evidence bundles today. The fixture gaps that hid them
+need addressing as a class, not case by case — three rounds have now each fixed the instance
+they were handed.
