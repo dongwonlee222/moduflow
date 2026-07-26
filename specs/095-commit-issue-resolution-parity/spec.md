@@ -128,8 +128,20 @@ batch path is what converge uses.
 
 ## Acceptance Criteria
 
-- `project_converge.py` and `linkage_check.py` resolve identical commit sets for the same
-  range, proven by a parity test that fails if either module reintroduces a private rule.
+- `project_converge.py` and `linkage_check.py` never disagree about the same history, proven
+  by a parity test across every shape in `commit_resolution_shapes.py` that fails if either
+  module reintroduces a private rule.
+
+  *Refined 2026-07-26.* This was written as "resolve identical commit sets", which the
+  multi-attribution model makes unachievable and, on inspection, wrong to want. A commit
+  merged from one branch into another before reaching main belongs to both issues.
+  `resolve_commits_for_issue` answers "which commits are this issue's" and returns it for
+  each; `resolve_issue_for_commit` answers "which issue owns this commit" and must return
+  one. Identity between a set and a single value is not the right relation. The criterion is
+  consistency: the issue `linkage_check` names for a commit must be one the converge side
+  would claim it for, and any commit converge collects must resolve to something. Demanding
+  literal identity would have forced dropping multi-attribution and silently losing the
+  inner issue — the F9 defect, reintroduced as a spec requirement.
 - Converge evidence for issue 093 collects the full commit set, including
   `scripts/project_issue_schema.py` among the changed files.
 - The evidence payload carries an unmatched-commit count and a per-commit resolution source.
