@@ -217,10 +217,15 @@ def detect_unlinked(project_root, runner=None, deadline=None):
     """Working-tree linkage quick-check.
 
     Returns {"unlinked": [paths], "errors": [msgs], "reason": str}.
-    Linked when the current branch matches codex/<issue-id>* (linkage_check's
-    BRANCH_ISSUE_RE — the working tree has no trailer yet, so the branch is
-    the only linkage signal), or a no-issue declaration file is present
-    (release gate owns that path).
+    Linked when the current branch resolves to an issue through the shared
+    resolver (the working tree has no trailer yet, so the branch is the only
+    linkage signal), or a no-issue declaration file is present (release gate
+    owns that path).
+
+    Branch-name interpretation belongs to `commit_resolution` alone (issue 095
+    Global Constraint 1). This hook used to read `linkage_check`'s private
+    regex directly, which made it a third owner of the grammar and meant it
+    accepted a branch named for an issue that does not exist.
     """
     project_root = Path(project_root)
     linkage = _load_linkage_check(project_root)
@@ -261,7 +266,9 @@ def detect_unlinked(project_root, runner=None, deadline=None):
             "reason": "git-error",
         }
     branch_name = (branch.stdout or "").strip()
-    if linkage.BRANCH_ISSUE_RE.match(branch_name):
+    resolver = linkage.commit_resolution
+    known = resolver.known_issue_ids(runner, project_root, [])
+    if resolver.issue_id_from_branch(branch_name, known):
         return {"unlinked": [], "errors": [], "reason": "codex-branch"}
 
     if (project_root / NO_ISSUE_DECLARATIONS_RELPATH).is_file():

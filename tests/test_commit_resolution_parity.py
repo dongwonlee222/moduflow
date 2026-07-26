@@ -123,6 +123,29 @@ class SharedOwnershipTests(unittest.TestCase):
                     f"{module.__name__} must delegate to commit_resolution",
                 )
 
+    def test_no_module_outside_the_resolver_owns_branch_grammar(self):
+        """GC1. `hooks/on_stop.py` read `linkage_check.BRANCH_ISSUE_RE`
+        directly, making three owners of the grammar — and it accepted a branch
+        named for an issue that does not exist, the same bypass the linkage
+        gate had."""
+        for relpath in ("scripts/linkage_check.py", "scripts/project_converge.py",
+                        "hooks/on_stop.py"):
+            source = Path(relpath).read_text(encoding="utf-8")
+            with self.subTest(module=relpath):
+                self.assertNotIn(
+                    "BRANCH_ISSUE_RE",
+                    source,
+                    f"{relpath} reads branch grammar outside commit_resolution",
+                )
+
+    def test_dead_resolution_helpers_are_gone(self):
+        """Unreferenced copies of the old rules read as a live second rule set
+        to the next person."""
+        source = Path("scripts/linkage_check.py").read_text(encoding="utf-8")
+        for name in ("_known_issue_ids", "_branch_names", "_issue_id_from_branch"):
+            with self.subTest(helper=name):
+                self.assertNotIn(f"def {name}(", source)
+
     def test_consumers_do_not_define_their_own_trailer_pattern(self):
         source = Path("scripts/project_converge.py").read_text(encoding="utf-8")
         self.assertNotIn(

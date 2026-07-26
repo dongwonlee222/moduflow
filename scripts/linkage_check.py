@@ -36,9 +36,10 @@ def _load_sibling(name, filename):
 
 commit_resolution = _load_sibling("commit_resolution", "commit_resolution.py")
 
-ISSUE_ID_PATTERN = r"\d{3}-[a-z0-9-]+"
-TRAILER_RE = re.compile(rf"^Issue:\s*({ISSUE_ID_PATTERN})\s*$", re.MULTILINE)
-BRANCH_ISSUE_RE = re.compile(rf"^codex/({ISSUE_ID_PATTERN})$")
+# Trailer and branch grammar live in `commit_resolution` (issue 095 GC1). The
+# copies that were here are gone; `ISSUE_ID_PATTERN` stays only because this
+# module's own no-issue-declaration parsing uses it.
+ISSUE_ID_PATTERN = commit_resolution.ISSUE_ID_PATTERN
 
 BEHAVIOR_PREFIXES = (
     "scripts/",
@@ -101,65 +102,7 @@ def _error_text(args, result):
     return f"{' '.join(args)} failed: {detail}"
 
 
-def _known_issue_ids(runner, cwd, errors):
-    """Issue ids from tracked issues/*.md files, used to disambiguate branch
-    names such as codex/075-issue-less-context-capture-gate where the trailing
-    segment is a work-branch suffix rather than part of the issue id."""
-    args = ["git", "ls-files", "issues"]
-    result = _run(runner, args, cwd)
-    if result.returncode != 0:
-        errors.append(_error_text(args, result))
-        return []
-    ids = []
-    for line in (result.stdout or "").splitlines():
-        line = line.strip()
-        if line.startswith("issues/") and line.endswith(".md"):
-            issue_id = line[len("issues/") : -len(".md")]
-            if re.fullmatch(ISSUE_ID_PATTERN, issue_id):
-                ids.append(issue_id)
-    return ids
 
-
-def _branch_names(runner, cwd, sha, errors):
-    names = []
-    for args in (
-        ["git", "branch", "-r", "--contains", sha],
-        ["git", "branch", "--contains", sha],
-    ):
-        result = _run(runner, args, cwd)
-        if result.returncode != 0:
-            errors.append(_error_text(args, result))
-            continue
-        for line in (result.stdout or "").splitlines():
-            name = line.strip()
-            if name.startswith("* "):
-                name = name[2:].strip()
-            # "origin/HEAD -> origin/main" style lines
-            name = name.split(" -> ")[0].strip()
-            if name:
-                names.append(name)
-    return names
-
-
-def _issue_id_from_branch(name, known_issue_ids):
-    candidates = [name]
-    if "/" in name and not name.startswith("codex/"):
-        # remote-qualified names, e.g. origin/codex/074-...
-        candidates.append(name.split("/", 1)[1])
-    for candidate in candidates:
-        match = BRANCH_ISSUE_RE.match(candidate)
-        if not match:
-            continue
-        tail = match.group(1)
-        best = None
-        for issue_id in known_issue_ids:
-            if tail == issue_id or tail.startswith(issue_id + "-"):
-                if best is None or len(issue_id) > len(best):
-                    best = issue_id
-        # No known issue id matched: treat the whole tail as the issue id
-        # (codex/<issue-id> with no extra suffix).
-        return best or tail
-    return None
 
 
 def resolve_issue_for_commit(runner, cwd, sha, *, attribution=None):
