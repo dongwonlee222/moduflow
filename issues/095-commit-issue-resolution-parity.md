@@ -110,7 +110,7 @@ existing history. Do not make converge gate the review verdict.
 
 - [x] spec → `specs/095-commit-issue-resolution-parity/spec.md`
 - [x] plan → `specs/095-commit-issue-resolution-parity/plan.md` + `tasks.md`
-- [ ] execute → PR / commits (stream A done: `scripts/commit_resolution.py`)
+- [x] execute → PR / commits (streams A–E; `scripts/commit_resolution.py` plus both consumer migrations)
 - [ ] review → review notes
 
 ## Related Issues
@@ -136,4 +136,4 @@ existing history. Do not make converge gate the review verdict.
 
 ## Next Command
 
-`/product:execute 095-commit-issue-resolution-parity`
+`/product:review 095-commit-issue-resolution-parity`

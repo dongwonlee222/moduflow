@@ -291,5 +291,91 @@ class TestParity(unittest.TestCase):
         )
 
 
+class TestRegressionMatrix(unittest.TestCase):
+    """The remaining rows of the spec's regression table (issue 095, task D1).
+
+    Streams A and B covered the rows they needed as they went; these fill the
+    rest so the table is a coverage contract rather than a wish list."""
+
+    def test_trailer_survives_rebase_style_rewrite(self):
+        """A trailer is intrinsic to the commit, so it outlives history edits
+        that branch and merge evidence do not."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            name = repo.branch(f"codex/{ISSUE}")
+            repo.commit("feat: with trailer", issue=ISSUE)
+            repo.checkout("main")
+            repo.merge(name, message=f"Merge branch 'codex/{ISSUE}'")
+            repo.delete_branch(name)
+
+            out = cr.resolve_commits_for_issue(repo.runner, repo.path, ISSUE)
+            sources = {c["source"] for c in out["commits"]}
+            self.assertIn("trailer", sources)
+
+    def test_two_issues_in_one_history_do_not_bleed(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.add_issue_file(OTHER)
+            mine = repo.commit("feat: mine", issue=ISSUE)
+            theirs = repo.commit("feat: theirs", issue=OTHER)
+
+            mine_out = cr.resolve_commits_for_issue(repo.runner, repo.path, ISSUE)
+            theirs_out = cr.resolve_commits_for_issue(repo.runner, repo.path, OTHER)
+
+            self.assertEqual([c["sha"] for c in mine_out["commits"]], [mine])
+            self.assertEqual([c["sha"] for c in theirs_out["commits"]], [theirs])
+
+    def test_branch_suffix_resolves_to_the_issue_not_the_suffix(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            name = repo.branch(f"codex/{ISSUE}-engine")
+            mine = repo.commit("feat: suffixed branch")
+            repo.checkout("main")
+            repo.merge(name, message=f"Merge branch 'codex/{ISSUE}-engine'")
+
+            out = cr.resolve_commits_for_issue(repo.runner, repo.path, ISSUE)
+            self.assertIn(mine, {c["sha"] for c in out["commits"]})
+
+    def test_unknown_issue_id_resolves_nothing_without_error(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.commit("feat: mine", issue=ISSUE)
+
+            out = cr.resolve_commits_for_issue(
+                repo.runner, repo.path, "999-does-not-exist"
+            )
+            self.assertEqual(out["commits"], [])
+            self.assertEqual(out["errors"], [])
+            self.assertEqual(out["unmatched_count"], 1)
+
+    def test_empty_repository_is_not_an_error(self):
+        with GitRepo() as repo:
+            out = cr.resolve_commits_for_issue(repo.runner, repo.path, ISSUE)
+            self.assertEqual(out["commits"], [])
+            self.assertEqual(out["examined_count"], 0)
+
+    def test_git_failure_is_reported_not_swallowed(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+
+            def failing(args, cwd=None):
+                if args[:2] == ["git", "log"]:
+                    class Result:
+                        returncode = 128
+                        stdout = ""
+                        stderr = "fatal: bad revision"
+
+                    return Result()
+                return repo.runner(args, cwd)
+
+            out = cr.resolve_commits_for_issue(failing, repo.path, ISSUE)
+            self.assertEqual(out["commits"], [])
+            self.assertTrue(out["errors"])
+            self.assertIn("bad revision", out["errors"][0])
+
+
 if __name__ == "__main__":
     unittest.main()

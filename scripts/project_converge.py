@@ -666,6 +666,12 @@ def _human_summary(evidence, written_path):
         f"converge evidence: {evidence['issue_id']} (generated {evidence['generated']})",
         f"  commits: {len(evidence['commits'])}"
         + (f" ({source_detail})" if source_detail else ""),
+        # Issue 095 C1: the number a reader needs to judge whether this bundle
+        # is complete. Without it, a run that dropped 43 commits reads exactly
+        # like a run that had 43 unrelated ones.
+        f"  unmatched: {evidence.get('unmatched_count', 0)}"
+        f" of {evidence.get('examined_count', 0)} commits examined"
+        " (commits linked to no issue; not an error)",
         f"  files: {len(evidence['files'])} (truncated: "
         f"{'yes' if evidence['truncated'] else 'no'})",
         f"  acceptance criteria: {len(evidence['acceptance_criteria'])}"

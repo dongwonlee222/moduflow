@@ -15,13 +15,13 @@ Plan: `specs/095-commit-issue-resolution-parity/plan.md`
 
 ## Stream C — Surface and Documentation
 
-- [ ] C1 Surface the unmatched count wherever converge evidence reaches a human reviewer, without changing review verdict logic.
+- [x] C1 Surface the unmatched count wherever converge evidence reaches a human reviewer, without changing review verdict logic.
 
 ## Stream D — Regression Coverage
 
-- [ ] D1 Extend `tests/git_repo_builder.py` (created in stream A) and cover trailer-only, branch-only, mixed, merge-subject with branch deleted, detached HEAD, no-issue commits, and parity.
+- [x] D1 Extend `tests/git_repo_builder.py` (created in stream A) and cover trailer-only, branch-only, mixed, merge-subject with branch deleted, detached HEAD, no-issue commits, and parity.
 
 ## Stream E — Parity Proof and Completion
 
-- [ ] E1 Add the cross-module parity test, then confirm converge on issue 093's history collects the full commit set including `scripts/project_issue_schema.py`.
-- [ ] E2 Pass full unittest, lifecycle drift, and release check before moving to review.
+- [x] E1 Add the cross-module parity test, then confirm converge on issue 093's history collects the full commit set including `scripts/project_issue_schema.py`.
+- [x] E2 Pass full unittest, lifecycle drift, and release check before moving to review.
