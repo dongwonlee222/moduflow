@@ -8,14 +8,29 @@ original fixtures built, and every defect lived outside it.
 
 Shapes marked LIVE are arrangements that exist in the ModuFlow repository
 today; the rest are arrangements git permits and the resolver must survive.
+
+Every commit declares `belongs_to` (issue 095, review round 8). That is the
+ground truth, written by hand by the shape that built the history, and it
+replaced a reference oracle that re-derived the answer from git — which is why
+the oracle kept agreeing with the bug. Two rules keep the declarations honest:
+
+1. Declare issue ids only, never a `source`. Truth is what a commit belongs to,
+   not how the resolver found it. Asserting the strategy is the same coupling
+   one level down.
+2. A merge commit belongs to every issue branch it touches — the branch it sits
+   on and the branches it brings in. Merges carry no content of their own, so a
+   reviewer who sees one in either bundle is not misled; the strict part of the
+   declaration is the *content* commits, where an id crossing from one issue to
+   another is a real defect and is declared as such even where it disagrees
+   with what the shipped resolver returns today.
 """
 ALPHA = "101-alpha"
 BETA = "102-beta"
 
 
 def _seed(repo, *issue_ids):
-    repo.commit("chore: unrelated base one")
-    repo.commit("chore: unrelated base two")
+    repo.commit("chore: unrelated base one", belongs_to=None)
+    repo.commit("chore: unrelated base two", belongs_to=None)
     for issue_id in issue_ids:
         repo.add_issue_file(issue_id)
 
@@ -24,9 +39,9 @@ def happy_merge(repo):
     """The only shape the original fixtures built."""
     _seed(repo, ALPHA)
     name = repo.branch(f"codex/{ALPHA}")
-    repo.commit("feat: alpha work")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
     repo.checkout("main")
-    repo.merge(name, message=f"Merge branch 'codex/{ALPHA}'")
+    repo.merge(name, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
     return [ALPHA]
 
 
@@ -36,14 +51,17 @@ def sync_merge_then_pr_merge(repo):
     attributes the whole base branch to the issue."""
     _seed(repo, ALPHA)
     name = repo.branch(f"codex/{ALPHA}")
-    repo.commit("feat: alpha work")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
     repo.checkout("main")
-    repo.commit("chore: main moved on one")
-    repo.commit("chore: main moved on two")
+    repo.commit("chore: main moved on one", belongs_to=None)
+    repo.commit("chore: main moved on two", belongs_to=None)
     repo.checkout(name)
-    repo.merge("main", message=f"Merge branch 'main' into codex/{ALPHA}")
+    # Sits on codex/alpha, brings in main. Alpha's, by the branch it is on.
+    repo.merge("main", message=f"Merge branch 'main' into codex/{ALPHA}",
+               belongs_to=ALPHA)
     repo.checkout("main")
-    repo.merge(name, message=f"Merge pull request #9 from o/codex/{ALPHA}")
+    repo.merge(name, message=f"Merge pull request #9 from o/codex/{ALPHA}",
+               belongs_to=ALPHA)
     return [ALPHA]
 
 
@@ -52,10 +70,10 @@ def stacked_live_branches(repo):
     top of another; excluding by name lets the descendant zero its parent."""
     _seed(repo, ALPHA, BETA)
     first = repo.branch(f"codex/{ALPHA}")
-    repo.commit("feat: alpha one")
-    repo.commit("feat: alpha two")
+    repo.commit("feat: alpha one", belongs_to=ALPHA)
+    repo.commit("feat: alpha two", belongs_to=ALPHA)
     second = repo.branch(f"codex/{BETA}")
-    repo.commit("feat: beta on top of alpha")
+    repo.commit("feat: beta on top of alpha", belongs_to=BETA)
     repo.publish(first)
     repo.publish(second)
     repo.checkout("main")
@@ -67,7 +85,7 @@ def single_branch_clone(repo):
     besides its own counterpart, so a name-based exclusion list is empty."""
     _seed(repo, ALPHA)
     name = repo.branch(f"codex/{ALPHA}")
-    repo.commit("feat: alpha work")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
     repo.publish(name)
     return [ALPHA]
 
@@ -78,8 +96,8 @@ def detached_before_commit(repo):
     main where the arrangement cannot bite."""
     _seed(repo, ALPHA)
     repo.detach()
-    repo.commit("feat: work with trailer", issue=ALPHA)
-    repo.commit("feat: more work", issue=ALPHA)
+    repo.commit("feat: work with trailer", issue=ALPHA, belongs_to=ALPHA)
+    repo.commit("feat: more work", issue=ALPHA, belongs_to=ALPHA)
     return [ALPHA]
 
 
@@ -88,13 +106,15 @@ def nested_merges(repo):
     stay A's."""
     _seed(repo, ALPHA, BETA)
     first = repo.branch(f"codex/{ALPHA}")
-    repo.commit("feat: alpha one")
+    repo.commit("feat: alpha one", belongs_to=ALPHA)
     repo.checkout("main")
     second = repo.branch(f"codex/{BETA}")
-    repo.commit("feat: beta one")
-    repo.merge(first, message=f"Merge branch 'codex/{ALPHA}'")
+    repo.commit("feat: beta one", belongs_to=BETA)
+    # Sits on codex/beta, brings in codex/alpha — touches both issue branches.
+    repo.merge(first, message=f"Merge branch 'codex/{ALPHA}'",
+               belongs_to=[ALPHA, BETA])
     repo.checkout("main")
-    repo.merge(second, message=f"Merge branch 'codex/{BETA}'")
+    repo.merge(second, message=f"Merge branch 'codex/{BETA}'", belongs_to=BETA)
     return [ALPHA, BETA]
 
 
@@ -103,7 +123,9 @@ def branch_name_not_matching_issue(repo):
     A branch whose name is not the issue id it belongs to."""
     _seed(repo, ALPHA)
     name = repo.branch("codex/199-unregistered-name")
-    repo.commit("feat: work under a non-conforming branch")
+    # 199 is not a registered issue and the work is not alpha's. Naming a
+    # branch is not the same as having an issue (round 6).
+    repo.commit("feat: work under a non-conforming branch", belongs_to=None)
     repo.publish(name)
     repo.checkout("main")
     return [ALPHA]
@@ -113,11 +135,11 @@ def trailer_outside_any_branch(repo):
     """A trailer-bearing commit merged and then its branch deleted, plus one
     committed straight to main."""
     _seed(repo, ALPHA)
-    repo.commit("feat: straight to main", issue=ALPHA)
+    repo.commit("feat: straight to main", issue=ALPHA, belongs_to=ALPHA)
     name = repo.branch(f"codex/{ALPHA}")
-    repo.commit("feat: on branch", issue=ALPHA)
+    repo.commit("feat: on branch", issue=ALPHA, belongs_to=ALPHA)
     repo.checkout("main")
-    repo.merge(name, message=f"Merge branch 'codex/{ALPHA}'")
+    repo.merge(name, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
     repo.delete_branch(name)
     return [ALPHA]
 
@@ -125,13 +147,13 @@ def trailer_outside_any_branch(repo):
 def two_issues_interleaved(repo):
     _seed(repo, ALPHA, BETA)
     first = repo.branch(f"codex/{ALPHA}")
-    repo.commit("feat: alpha", issue=ALPHA)
+    repo.commit("feat: alpha", issue=ALPHA, belongs_to=ALPHA)
     repo.checkout("main")
     second = repo.branch(f"codex/{BETA}")
-    repo.commit("feat: beta")
+    repo.commit("feat: beta", belongs_to=BETA)
     repo.checkout("main")
-    repo.merge(first, message=f"Merge branch 'codex/{ALPHA}'")
-    repo.merge(second, message=f"Merge branch 'codex/{BETA}'")
+    repo.merge(first, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+    repo.merge(second, message=f"Merge branch 'codex/{BETA}'", belongs_to=BETA)
     return [ALPHA, BETA]
 
 
@@ -140,8 +162,8 @@ def empty_repository(repo):
 
 
 def no_issue_commits_at_all(repo):
-    repo.commit("chore: one")
-    repo.commit("chore: two")
+    repo.commit("chore: one", belongs_to=None)
+    repo.commit("chore: two", belongs_to=None)
     return [ALPHA]
 
 
@@ -151,7 +173,7 @@ def non_main_default_branch(repo):
     unreachable while the builder hardcoded `-b main`."""
     _seed(repo, ALPHA)
     name = repo.branch(f"codex/{ALPHA}")
-    repo.commit("feat: alpha work")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
     repo.publish(name)
     repo.checkout(repo.default_branch)
     return [ALPHA]
@@ -163,12 +185,12 @@ def stale_local_default_branch(repo):
     is four commits behind, and hands the issue all four."""
     _seed(repo, ALPHA)
     repo.publish("main")
-    repo.commit("chore: main moved one")
-    repo.commit("chore: main moved two")
+    repo.commit("chore: main moved one", belongs_to=None)
+    repo.commit("chore: main moved two", belongs_to=None)
     repo.publish("main")
     stale = repo.head()
     name = repo.branch(f"codex/{ALPHA}")
-    repo.commit("feat: alpha work")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
     repo.publish(name)
     repo.checkout("main")
     repo._git("reset", "-q", "--hard", "HEAD~2")
@@ -181,10 +203,10 @@ def two_registered_stacked_issues(repo):
     tracked issue."""
     _seed(repo, ALPHA, BETA)
     first = repo.branch(f"codex/{ALPHA}")
-    repo.commit("feat: alpha one")
-    repo.commit("feat: alpha two")
+    repo.commit("feat: alpha one", belongs_to=ALPHA)
+    repo.commit("feat: alpha two", belongs_to=ALPHA)
     second = repo.branch(f"codex/{BETA}")
-    repo.commit("feat: beta on top of alpha")
+    repo.commit("feat: beta on top of alpha", belongs_to=BETA)
     repo.publish(first)
     repo.publish(second)
     repo.checkout(repo.default_branch)
@@ -197,13 +219,15 @@ def octopus_merge(repo):
     issue's work attributed to nothing."""
     _seed(repo, ALPHA, BETA)
     first = repo.branch(f"codex/{ALPHA}")
-    repo.commit("feat: alpha work")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
     repo.checkout(repo.default_branch)
     second = repo.branch(f"codex/{BETA}")
-    repo.commit("feat: beta work")
+    repo.commit("feat: beta work", belongs_to=BETA)
     repo.checkout(repo.default_branch)
     repo._git("merge", "-q", "--no-ff", "-m",
               f"Merge branches 'codex/{ALPHA}' and 'codex/{BETA}'", first, second)
+    # Brings in both branches, so it belongs to both.
+    repo.record(repo.head(), [ALPHA, BETA])
     return [ALPHA, BETA]
 
 
