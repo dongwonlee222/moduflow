@@ -415,8 +415,10 @@ class CollectEvidenceTests(unittest.TestCase):
                 "global_constraints",
                 "truncated",
                 "no_evidence",
-                "unmatched_count",
-                "examined_count",
+                "repo_unmatched_count",
+                "repo_examined_count",
+                "coverage",
+                "degraded",
                 "errors",
             ],
         )

@@ -374,6 +374,8 @@ def build_attribution(runner, cwd, *, rev_range=None):
         "records": records,
         "order": order,
         "unmatched": unmatched,
+        "branches": built["branches"],
+        "issue_ids": issue_ids,
         "degraded": degraded,
         "errors": errors,
     }
@@ -475,10 +477,35 @@ def resolve_commits_for_issue(runner, cwd, issue_id, *, rev_range=None, index=No
             }
         )
 
+    sources = {}
+    branch_refs = sorted(
+        {
+            name
+            for name, names_issue in (
+                (name, issue_id_from_branch(name, built.get("issue_ids", [])))
+                for name in built.get("branches", [])
+            )
+            if names_issue == issue_id
+        }
+    )
+    for entry in commits:
+        sources[entry["source"]] = sources.get(entry["source"], 0) + 1
+
     return {
         "commits": commits,
-        "unmatched_count": len(built["unmatched"]),
-        "examined_count": len(built["order"]),
+        # Repository-wide, not per issue: the same numbers for every issue in
+        # the range. Named so, because the earlier `unmatched_count` read as a
+        # per-run gap and could not be one — it does not move when a commit is
+        # attributed to the wrong issue, which is the failure it was added for.
+        "repo_examined_count": len(built["order"]),
+        "repo_unmatched_count": len(built["unmatched"]),
+        # Per issue, and what a reviewer can actually act on: which evidence
+        # carried this bundle, and which branch refs were read for it.
+        "coverage": {
+            "sources": sources,
+            "branch_refs": branch_refs,
+            "base_ref_available": DEGRADED_BRANCH_UNAVAILABLE not in built["degraded"],
+        },
         "degraded": list(built["degraded"]),
         "errors": list(built["errors"]),
     }

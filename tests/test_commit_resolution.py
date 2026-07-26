@@ -141,8 +141,8 @@ class TestIssueToCommits(unittest.TestCase):
             repo.commit("feat: mine", issue=ISSUE)
             out = cr.resolve_commits_for_issue(repo.runner, repo.path, ISSUE)
             self.assertEqual(len(out["commits"]), 1)
-            self.assertEqual(out["unmatched_count"], 2)
-            self.assertEqual(out["examined_count"], 3)
+            self.assertEqual(out["repo_unmatched_count"], 2)
+            self.assertEqual(out["repo_examined_count"], 3)
             self.assertEqual(out["errors"], [], "unmatched is descriptive, not an error")
 
     def test_each_commit_carries_its_source(self):
@@ -349,13 +349,13 @@ class TestRegressionMatrix(unittest.TestCase):
             )
             self.assertEqual(out["commits"], [])
             self.assertEqual(out["errors"], [])
-            self.assertEqual(out["unmatched_count"], 1)
+            self.assertEqual(out["repo_unmatched_count"], 1)
 
     def test_empty_repository_is_not_an_error(self):
         with GitRepo() as repo:
             out = cr.resolve_commits_for_issue(repo.runner, repo.path, ISSUE)
             self.assertEqual(out["commits"], [])
-            self.assertEqual(out["examined_count"], 0)
+            self.assertEqual(out["repo_examined_count"], 0)
 
     def test_git_failure_is_reported_not_swallowed(self):
         with GitRepo() as repo:

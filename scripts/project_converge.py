@@ -203,8 +203,10 @@ def resolve_commits(runner, cwd, issue_id):
     resolved = commit_resolution.resolve_commits_for_issue(runner, cwd, issue_id)
     return {
         "commits": resolved["commits"],
-        "unmatched_count": resolved["unmatched_count"],
-        "examined_count": resolved["examined_count"],
+        "repo_unmatched_count": resolved["repo_unmatched_count"],
+        "repo_examined_count": resolved["repo_examined_count"],
+        "coverage": resolved["coverage"],
+        "degraded": resolved["degraded"],
         "errors": resolved["errors"],
     }
 
@@ -329,9 +331,12 @@ def collect_evidence(
         "no_evidence": not commits,
         # Issue 095: a run that collects nothing must not look identical to a
         # run that had nothing to collect. Descriptive only — never an error,
-        # never blocking (GC5).
-        "unmatched_count": resolution["unmatched_count"],
-        "examined_count": resolution["examined_count"],
+        # never blocking (GC5). The repo_* pair is repository-wide and
+        # identical for every issue; `coverage` is the per-issue part.
+        "repo_unmatched_count": resolution["repo_unmatched_count"],
+        "repo_examined_count": resolution["repo_examined_count"],
+        "coverage": resolution["coverage"],
+        "degraded": resolution["degraded"],
         "errors": errors,
     }
     return evidence, ok
@@ -671,9 +676,14 @@ def _human_summary(evidence, written_path):
         # Issue 095 C1: the number a reader needs to judge whether this bundle
         # is complete. Without it, a run that dropped 43 commits reads exactly
         # like a run that had 43 unrelated ones.
-        f"  unmatched: {evidence.get('unmatched_count', 0)}"
-        f" of {evidence.get('examined_count', 0)} commits examined"
-        " (commits linked to no issue; not an error)",
+        f"  coverage: sources {evidence.get('coverage', {}).get('sources') or 'none'}"
+        f", branch refs {evidence.get('coverage', {}).get('branch_refs') or 'none'}"
+        f", base ref available: "
+        f"{'yes' if (evidence.get('coverage') or {}).get('base_ref_available') else 'no'}",
+        f"  repository-wide: {evidence.get('repo_unmatched_count', 0)}"
+        f" of {evidence.get('repo_examined_count', 0)} commits link to no issue"
+        " (same for every issue; not an error)",
+        f"  degraded: {evidence.get('degraded') or 'none'}",
         f"  files: {len(evidence['files'])} (truncated: "
         f"{'yes' if evidence['truncated'] else 'no'})",
         f"  acceptance criteria: {len(evidence['acceptance_criteria'])}"

@@ -131,16 +131,20 @@ class SharedOwnershipTests(unittest.TestCase):
             "project_converge reintroduced a private trailer pattern",
         )
 
-    def test_unmatched_count_reaches_the_converge_payload(self):
+    def test_coverage_facts_reach_the_converge_payload(self):
+        """The per-issue half of the payload. The repo-wide counts cannot tell
+        a reviewer whether *this* bundle is complete — they are identical for
+        every issue — so the actionable part is which evidence carried it."""
         with GitRepo() as repo:
             repo.commit("chore: one")
             repo.commit("chore: two")
             repo.commit("feat: mine", issue=ISSUE)
             result = project_converge.resolve_commits(repo.runner, repo.path, ISSUE)
-            self.assertEqual(result["unmatched_count"], 2)
-            self.assertEqual(result["examined_count"], 3)
+            self.assertEqual(result["coverage"]["sources"], {"trailer": 1})
+            self.assertEqual(result["repo_unmatched_count"], 2)
+            self.assertEqual(result["repo_examined_count"], 3)
             self.assertEqual(
-                result["errors"], [], "unmatched is descriptive, never an error"
+                result["errors"], [], "coverage is descriptive, never an error"
             )
 
 
@@ -158,15 +162,23 @@ class HumanSurfaceTests(unittest.TestCase):
             "global_constraints": [],
             "truncated": False,
             "no_evidence": False,
-            "unmatched_count": 43,
-            "examined_count": 44,
+            "repo_unmatched_count": 43,
+            "repo_examined_count": 44,
+            "coverage": {
+                "sources": {"trailer": 1},
+                "branch_refs": ["codex/" + ISSUE],
+                "base_ref_available": True,
+            },
+            "degraded": [],
             "errors": [],
         }
 
         summary = project_converge._human_summary(evidence, None)
 
-        self.assertIn("unmatched: 43 of 44", summary)
-        self.assertIn("not an error", summary)
+        self.assertIn("43 of 44", summary)
+        self.assertIn("same for every issue", summary)
+        self.assertIn("coverage:", summary)
+        self.assertIn("base ref available: yes", summary)
 
     def test_review_command_requires_reporting_the_gap(self):
         text = Path("commands/product-review.md").read_text(encoding="utf-8")
