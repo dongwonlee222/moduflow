@@ -183,6 +183,12 @@ def resolve_issue_for_commit(runner, cwd, sha, *, attribution=None):
         "sha": resolved["sha"],
         "issue_id": resolved["issue_id"],
         "source": resolved["source"],
+        # Issue 095 F4: the resolver was reporting degraded resolution into a
+        # channel nothing read. The linkage gate is the one place a reader
+        # needs to know that branch evidence could not be consulted, because a
+        # commit it cannot resolve looks identical to one that belongs to no
+        # issue.
+        "degraded": resolved["degraded"],
         "errors": resolved["errors"],
     }
 
@@ -219,12 +225,13 @@ def find_unlinked_behavior_commits(runner, cwd, merge_base, head):
     errors = []
     commits = []
     unlinked = []
+    degraded = []
 
     rev_list_args = ["git", "rev-list", f"{merge_base}..{head}"]
     rev_list = _run(runner, rev_list_args, cwd)
     if rev_list.returncode != 0:
         errors.append(_error_text(rev_list_args, rev_list))
-        return {"ok": False, "commits": commits, "unlinked": unlinked, "errors": errors}
+        return {"ok": False, "commits": commits, "unlinked": unlinked, "degraded": degraded, "errors": errors}
 
     shas = [line.strip() for line in (rev_list.stdout or "").splitlines() if line.strip()]
     # One attribution index for the whole range (GC4) — resolving per commit
@@ -243,6 +250,7 @@ def find_unlinked_behavior_commits(runner, cwd, merge_base, head):
         if not index_built:
             built = commit_resolution.build_attribution(runner, cwd)
             errors.extend(built["errors"])
+            degraded.extend(built["degraded"])
             index = built["attribution"]
             index_built = True
         resolution = resolve_issue_for_commit(runner, cwd, sha, attribution=index)
@@ -258,7 +266,7 @@ def find_unlinked_behavior_commits(runner, cwd, merge_base, head):
             unlinked.append(entry)
 
     ok = not errors and not unlinked
-    return {"ok": ok, "commits": commits, "unlinked": unlinked, "errors": errors}
+    return {"ok": ok, "commits": commits, "unlinked": unlinked, "degraded": degraded, "errors": errors}
 
 
 def _parse_blame_porcelain(text):

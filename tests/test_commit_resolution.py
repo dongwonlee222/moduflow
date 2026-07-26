@@ -461,6 +461,36 @@ class TestNoPerCommitProbe(unittest.TestCase):
                 contains, [], "no per-commit branch probe may return (GC4)"
             )
 
+    def test_supplied_index_answers_without_asking_git(self):
+        """F12: the index already holds every source, trailer included. Asking
+        git again per commit was measured at 65 redundant `git show -s` calls,
+        1.7s, on a 65-commit range."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            for index_n in range(4):
+                repo.commit(f"feat: step {index_n}", issue=ISSUE)
+
+            index = cr.build_attribution(repo.runner, repo.path)
+            attributed = [s for s in repo.log_shas() if s in index["attribution"]]
+            self.assertTrue(attributed, "fixture should attribute something")
+
+            before = len(repo.call_log)
+            for sha in attributed:
+                cr.resolve_issue_for_commit(
+                    repo.runner, repo.path, sha, attribution=index["attribution"]
+                )
+            issued = repo.call_log[before:]
+            self.assertEqual(
+                issued, [], f"an attributed commit must answer from the index: {issued}"
+            )
+
+            # A commit absent from the index still costs one lookup: absence
+            # cannot distinguish "belongs to no issue" from "outside the range
+            # the index was built over". That is correct, and it is not the
+            # fan-out — the measured case is behavior commits, which are
+            # attributed.
+
 
 class TestUnregisteredIssueIds(unittest.TestCase):
     """Naming a branch is not the same as having an issue.
