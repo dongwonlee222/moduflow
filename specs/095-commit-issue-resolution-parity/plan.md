@@ -20,7 +20,7 @@ Constitution v1.0 applies (`workspace/constitution.md`). Plan-specific additions
 4. Converge's git subprocess count must not scale with history length. Branch membership is computed once per invocation, never with `git branch --contains` per commit.
 5. `unmatched_count` is descriptive, not an error. It never populates `errors` and never blocks.
 6. Converge stays reported, never blocking. This plan does not let it gate a review verdict.
-7. Public helper names in `linkage_check.py` and `project_converge.py` survive as wrappers. No caller or existing test is edited to accommodate the refactor.
+7. Public helper names in `linkage_check.py` and `project_converge.py` survive as wrappers, and so do their return contracts. Callers are not edited. Tests that stub specific git command strings are updated as implementation detail — the assertions on returned values stay, and no existing scenario is dropped. *(Amended 2026-07-26 during B1. As first written this clause also froze existing tests, but `tests/test_linkage_check.py` stubs `git branch --contains` by exact command tuple, which the shared resolver no longer issues. Freezing those stubs would have forced a second, containment-based resolution path — reintroducing the two-rule split this issue exists to remove, and with it the 279-versus-52 over-attribution measured in stream A. The command list was never part of `linkage_check`'s contract; the returned values are.)*
 8. Degraded resolution is reported, never raised. Detached HEAD returns trailer results plus an explicit note that branch resolution was unavailable.
 9. Every behavior change starts with a failing test, uses the smallest implementation that passes, and gets a focused commit before the next consumer migration.
 10. Test fixtures build throwaway git repositories in a temp directory. No test depends on this checkout's history, branches, or remotes.
@@ -56,8 +56,18 @@ Constitution v1.0 applies (`workspace/constitution.md`). Plan-specific additions
 The contract both consumers depend on. Task A1 fixes these signatures; downstream tasks may add fields but may not change existing ones.
 
 ```python
+# one attribution index, built once, read by both directions
+build_attribution(runner, cwd, *, rev_range=None) -> {
+    "attribution": {sha: {"issue_id": str, "source": str}},
+    "records": {sha: {"sha", "subject", "parents", "body"}},
+    "order": list[str],        # git log order
+    "unmatched": list[str],    # shas attributed to no issue
+    "degraded": list[str],
+    "errors": list[str],
+}
+
 # commit → issue, one sha
-resolve_issue_for_commit(runner, cwd, sha, *, membership=None) -> {
+resolve_issue_for_commit(runner, cwd, sha, *, attribution=None) -> {
     "sha": str,
     "issue_id": str | None,
     "source": "trailer" | "branch" | "merge-subject" | None,
@@ -66,20 +76,23 @@ resolve_issue_for_commit(runner, cwd, sha, *, membership=None) -> {
 }
 
 # issue → commits, whole range
-resolve_commits_for_issue(runner, cwd, issue_id, *, rev_range=None) -> {
+resolve_commits_for_issue(runner, cwd, issue_id, *, rev_range=None, index=None) -> {
     "commits": [{"sha", "subject", "source", "is_merge"}],
     "unmatched_count": int,
     "examined_count": int,
     "degraded": list[str],
     "errors": list[str],
 }
-
-# built once per invocation, passed into per-commit calls to avoid fan-out
-build_branch_membership(runner, cwd) -> {sha: [branch_name, ...]}
 ```
 
 `degraded` is the detached-HEAD channel: a non-empty list means some source could not be
 consulted, and the caller should present the result as partial.
+
+**Both directions read `build_attribution`'s index.** That is what makes the parity criterion
+structural rather than a property two implementations happen to share. Stream A first shipped
+the directions with separate evidence — only issue→commits walked merge topology — and they
+disagreed on 13 of 30 real commits. Pass a prebuilt index when resolving many commits;
+omitting it makes each call build its own.
 
 ## Implementation Readiness Contracts
 

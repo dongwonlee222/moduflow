@@ -10,7 +10,7 @@ Plan: `specs/095-commit-issue-resolution-parity/plan.md`
 
 ## Stream B — Consumer Migration
 
-- [ ] B1 Make `linkage_check.resolve_issue_for_commit()` a wrapper over the shared resolver and gain the merge-subject source it lacked.
+- [x] B1 Make `linkage_check.resolve_issue_for_commit()` a wrapper over the shared resolver and gain the merge-subject source it lacked.
 - [ ] B2 Make `project_converge.resolve_commits()` delegate, gain the branch fallback, and add `unmatched_count`, `examined_count`, and per-commit `source` to the evidence payload.
 
 ## Stream C — Surface and Documentation

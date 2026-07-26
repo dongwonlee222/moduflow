@@ -10,6 +10,7 @@ Every failure surfaces as an explicit entry in the result dict, and no
 function returns a passing/empty result on error.
 """
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -17,6 +18,23 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+
+def _load_sibling(name, filename):
+    """Import a sibling script by path. Callers load this module by file path
+    rather than as a package, so a plain `import` would not resolve."""
+    if name in sys.modules:
+        return sys.modules[name]
+    spec = importlib.util.spec_from_file_location(
+        name, Path(__file__).resolve().parent / filename
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+commit_resolution = _load_sibling("commit_resolution", "commit_resolution.py")
 
 ISSUE_ID_PATTERN = r"\d{3}-[a-z0-9-]+"
 TRAILER_RE = re.compile(rf"^Issue:\s*({ISSUE_ID_PATTERN})\s*$", re.MULTILINE)
@@ -144,46 +162,29 @@ def _issue_id_from_branch(name, known_issue_ids):
     return None
 
 
-def resolve_issue_for_commit(runner, cwd, sha):
+def resolve_issue_for_commit(runner, cwd, sha, *, attribution=None):
     """Resolve the issue id linked to a commit.
 
+    Wrapper over `commit_resolution` (issue 095, task B1). This module no
+    longer carries its own matching rules; the shared resolver owns trailer,
+    branch, and merge-subject matching and the precedence between them, so
+    `linkage_check` and `project_converge` cannot answer the same question
+    differently. `merge-subject` is newly reachable here as a result.
+
+    Pass `attribution` (from commit_resolution.build_attribution) when
+    resolving many commits so the index is built once, not per commit.
+
     Returns {sha, issue_id, source, errors} where source is
-    'trailer' | 'branch' | None. Trailer wins over branch on conflict
-    (Global Constraint 7)."""
-    errors = []
-    result = {"sha": sha, "issue_id": None, "source": None, "errors": errors}
-
-    show_args = ["git", "show", "-s", "--format=%B", sha]
-    show = _run(runner, show_args, cwd)
-    if show.returncode != 0:
-        errors.append(_error_text(show_args, show))
-        return result
-
-    trailer = TRAILER_RE.search(show.stdout or "")
-    if trailer:
-        result["issue_id"] = trailer.group(1)
-        result["source"] = "trailer"
-        return result
-
-    branch_names = _branch_names(runner, cwd, sha, errors)
-    matched = [n for n in branch_names if _issue_id_from_branch(n, []) is not None]
-    if not matched:
-        return result
-
-    known_issue_ids = _known_issue_ids(runner, cwd, errors)
-    issue_ids = sorted(
-        {
-            issue_id
-            for issue_id in (
-                _issue_id_from_branch(name, known_issue_ids) for name in matched
-            )
-            if issue_id
-        }
+    'trailer' | 'branch' | 'merge-subject' | None. Trailer wins on conflict."""
+    resolved = commit_resolution.resolve_issue_for_commit(
+        runner, cwd, sha, attribution=attribution
     )
-    if issue_ids:
-        result["issue_id"] = issue_ids[0]
-        result["source"] = "branch"
-    return result
+    return {
+        "sha": resolved["sha"],
+        "issue_id": resolved["issue_id"],
+        "source": resolved["source"],
+        "errors": resolved["errors"],
+    }
 
 
 def classify_changed_paths(paths):
@@ -226,6 +227,12 @@ def find_unlinked_behavior_commits(runner, cwd, merge_base, head):
         return {"ok": False, "commits": commits, "unlinked": unlinked, "errors": errors}
 
     shas = [line.strip() for line in (rev_list.stdout or "").splitlines() if line.strip()]
+    # One attribution index for the whole range (GC4) — resolving per commit
+    # would rebuild it for every behavior commit. Built lazily so a range with
+    # no behavior commits still does no resolution work at all.
+    index = None
+    index_built = False
+
     for sha in shas:
         paths = _changed_paths_for_commit(runner, cwd, sha, errors)
         if paths is None:
@@ -233,7 +240,12 @@ def find_unlinked_behavior_commits(runner, cwd, merge_base, head):
         classified = classify_changed_paths(paths)
         if not classified["behavior"]:
             continue
-        resolution = resolve_issue_for_commit(runner, cwd, sha)
+        if not index_built:
+            built = commit_resolution.build_attribution(runner, cwd)
+            errors.extend(built["errors"])
+            index = built["attribution"]
+            index_built = True
+        resolution = resolve_issue_for_commit(runner, cwd, sha, attribution=index)
         errors.extend(resolution["errors"])
         entry = {
             "sha": sha,

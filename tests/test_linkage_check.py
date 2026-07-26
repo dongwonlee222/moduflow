@@ -24,6 +24,47 @@ class FakeRunner:
         return linkage_check.CommandResult(0, value, "")
 
 
+def attribution_stubs(entries, issue_files=()):
+    """Stub the command set `commit_resolution.build_attribution` issues.
+
+    `entries` maps sha -> (subject, parents, body). `issue_files` are tracked
+    issue ids used for branch-name disambiguation.
+    """
+    log = "".join(
+        f"{sha}\x00{subject}\x00{parents}\x00{body}\x01"
+        for sha, (subject, parents, body) in entries.items()
+    )
+    stubs = {
+        ("git", "log", f"--format={linkage_check.commit_resolution.GIT_LOG_FORMAT}"): log,
+        ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
+        ("git", "ls-files", "issues"): "".join(
+            f"issues/{issue_id}.md\n" for issue_id in issue_files
+        ),
+    }
+    return stubs
+
+
+def branch_stubs(branch_name, shas, issue_files=()):
+    """Stub for-each-ref plus the branch-exclusive rev-list for one branch."""
+    return {
+        ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): (
+            f"{branch_name}\n"
+        ),
+        (
+            "git",
+            "rev-list",
+            branch_name,
+            "--not",
+            "--exclude=" + branch_name,
+            "--branches",
+            "--remotes",
+        ): "".join(f"{sha}\n" for sha in shas),
+        ("git", "ls-files", "issues"): "".join(
+            f"issues/{issue_id}.md\n" for issue_id in issue_files
+        ),
+    }
+
+
 class ResolveIssueForCommitTests(unittest.TestCase):
     def test_trailer_resolution(self):
         runner = FakeRunner(
@@ -47,10 +88,17 @@ class ResolveIssueForCommitTests(unittest.TestCase):
         runner = FakeRunner(
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "fix: handle sandboxed fetch\n",
-                ("git", "branch", "-r", "--contains", "abc123"): (
-                    "  origin/codex/074-sync-fetch-sandbox-handling\n"
-                ),
-                ("git", "branch", "--contains", "abc123"): "",
+                ("git", "log", f"--format={linkage_check.commit_resolution.GIT_LOG_FORMAT}"): "abc123\x00fix: handle sandboxed fetch\x00\x00fix: handle sandboxed fetch\n\x01",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "origin/codex/074-sync-fetch-sandbox-handling\n",
+                (
+                    "git",
+                    "rev-list",
+                    "origin/codex/074-sync-fetch-sandbox-handling",
+                    "--not",
+                    "--exclude=origin/codex/074-sync-fetch-sandbox-handling",
+                    "--branches",
+                    "--remotes",
+                ): "abc123\n",
                 ("git", "ls-files", "issues"): "issues/074-sync-fetch-sandbox-handling.md\n",
             }
         )
@@ -65,8 +113,17 @@ class ResolveIssueForCommitTests(unittest.TestCase):
         runner = FakeRunner(
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "feat: promote\n",
-                ("git", "branch", "-r", "--contains", "abc123"): "",
-                ("git", "branch", "--contains", "abc123"): "* codex/075-issue-less-context-capture\n",
+                ("git", "log", f"--format={linkage_check.commit_resolution.GIT_LOG_FORMAT}"): "abc123\x00feat: promote\x00\x00feat: promote\n\x01",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "codex/075-issue-less-context-capture\n",
+                (
+                    "git",
+                    "rev-list",
+                    "codex/075-issue-less-context-capture",
+                    "--not",
+                    "--exclude=codex/075-issue-less-context-capture",
+                    "--branches",
+                    "--remotes",
+                ): "abc123\n",
                 ("git", "ls-files", "issues"): "issues/075-issue-less-context-capture.md\n",
             }
         )
@@ -81,10 +138,17 @@ class ResolveIssueForCommitTests(unittest.TestCase):
         runner = FakeRunner(
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "feat: gate\n",
-                ("git", "branch", "-r", "--contains", "abc123"): (
-                    "  origin/codex/075-issue-less-context-capture-gate\n"
-                ),
-                ("git", "branch", "--contains", "abc123"): "",
+                ("git", "log", f"--format={linkage_check.commit_resolution.GIT_LOG_FORMAT}"): "abc123\x00feat: gate\x00\x00feat: gate\n\x01",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "origin/codex/075-issue-less-context-capture-gate\n",
+                (
+                    "git",
+                    "rev-list",
+                    "origin/codex/075-issue-less-context-capture-gate",
+                    "--not",
+                    "--exclude=origin/codex/075-issue-less-context-capture-gate",
+                    "--branches",
+                    "--remotes",
+                ): "abc123\n",
                 ("git", "ls-files", "issues"): "issues/075-issue-less-context-capture.md\n",
             }
         )
@@ -101,10 +165,7 @@ class ResolveIssueForCommitTests(unittest.TestCase):
                     "fix: thing\n\nIssue: 070-spec-consistency-analyze\n"
                 ),
                 # A conflicting branch exists but must not be consulted/win.
-                ("git", "branch", "-r", "--contains", "abc123"): (
-                    "  origin/codex/074-sync-fetch-sandbox-handling\n"
-                ),
-                ("git", "branch", "--contains", "abc123"): "",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "origin/codex/074-sync-fetch-sandbox-handling\n",
                 ("git", "ls-files", "issues"): (
                     "issues/070-spec-consistency-analyze.md\n"
                     "issues/074-sync-fetch-sandbox-handling.md\n"
@@ -121,7 +182,9 @@ class ResolveIssueForCommitTests(unittest.TestCase):
         runner = FakeRunner(
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "chore: misc\n",
-                ("git", "branch", "-r", "--contains", "abc123"): "  origin/main\n",
+                ("git", "log", f"--format={linkage_check.commit_resolution.GIT_LOG_FORMAT}"): "abc123\x00chore: misc\x00\x00chore: misc\n\x01",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "origin/main\nmain\n",
+                ("git", "ls-files", "issues"): "",
                 ("git", "branch", "--contains", "abc123"): "* main\n",
             }
         )
@@ -152,10 +215,10 @@ class ResolveIssueForCommitTests(unittest.TestCase):
         runner = FakeRunner(
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "fix: thing\n",
-                ("git", "branch", "-r", "--contains", "abc123"): linkage_check.CommandResult(
+                ("git", "log", f"--format={linkage_check.commit_resolution.GIT_LOG_FORMAT}"): "abc123\x00fix: thing\x00\x00fix: thing\n\x01",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): linkage_check.CommandResult(
                     128, "", "fatal: malformed object name"
                 ),
-                ("git", "branch", "--contains", "abc123"): "",
             }
         )
 
@@ -230,6 +293,9 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
         runner = FakeRunner(
             {
                 ("git", "rev-list", "base..head"): "sha1\n",
+                ("git", "log", f"--format={linkage_check.commit_resolution.GIT_LOG_FORMAT}"): "sha1\x00feat: foo\x00\x00feat: foo\n\nIssue: 070-spec-consistency-analyze\n\x01",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
+                ("git", "ls-files", "issues"): "",
                 ("git", "show", "--name-only", "--format=", "sha1"): (
                     "scripts/foo.py\nREADME.md\n"
                 ),
@@ -260,9 +326,11 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
         runner = FakeRunner(
             {
                 ("git", "rev-list", "base..head"): "sha2\n",
+                ("git", "log", f"--format={linkage_check.commit_resolution.GIT_LOG_FORMAT}"): "sha2\x00docs tweak\x00\x00docs tweak\n\x01",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
+                ("git", "ls-files", "issues"): "",
                 ("git", "show", "--name-only", "--format=", "sha2"): "commands/product-x.md\n",
                 ("git", "show", "-s", "--format=%B", "sha2"): "docs tweak\n",
-                ("git", "branch", "-r", "--contains", "sha2"): "  origin/main\n",
                 ("git", "branch", "--contains", "sha2"): "* main\n",
             }
         )
@@ -302,7 +370,6 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
                 ),
                 ("git", "show", "--name-only", "--format=", "sha2"): "commands/product-x.md\n",
                 ("git", "show", "-s", "--format=%B", "sha2"): "tweak\n",
-                ("git", "branch", "-r", "--contains", "sha2"): "  origin/main\n",
                 ("git", "branch", "--contains", "sha2"): "* main\n",
                 ("git", "show", "--name-only", "--format=", "sha3"): "README.md\n",
             }
