@@ -62,64 +62,25 @@ for _shape in shapes.ALL_SHAPES:
     _attach(_shape)
 
 
-
-class ConsumerParityTests(unittest.TestCase):
-    """Acceptance criterion 1, checked across every shape rather than in the
-    fixtures the author happened to build.
-
-    Round 3's F1 found the two consumers disagreeing on a commit outside the
-    index window. The window is now `--all`, which is a superset of any range a
-    caller can name, so the two should agree everywhere — this is where that is
-    established rather than assumed."""
-
-    def _check(self, shape_name):
-        from scripts import linkage_check, project_converge
-
-        builder = shapes.ALL_SHAPES[shape_name]
-        with GitRepo() as repo:
-            issue_ids = builder(repo)
-            index = cr.build_attribution(repo.runner, repo.path)
-            all_shas = set(index["order"])
-
-            for issue_id in issue_ids:
-                converge = {
-                    c["sha"]
-                    for c in project_converge.resolve_commits(
-                        repo.runner, repo.path, issue_id
-                    )["commits"]
-                }
-                for sha in all_shas:
-                    resolved = linkage_check.resolve_issue_for_commit(
-                        repo.runner, repo.path, sha
-                    )
-                    claimed = set((index["attribution"].get(sha) or {}))
-
-                    if resolved["issue_id"] is not None:
-                        self.assertIn(
-                            resolved["issue_id"],
-                            claimed,
-                            f"\nshape {shape_name}: linkage_check named "
-                            f"{resolved['issue_id']} for {sha[:8]}, which converge "
-                            f"would not claim it for (claims: {sorted(claimed)})",
-                        )
-                    if sha in converge:
-                        self.assertTrue(
-                            claimed,
-                            f"\nshape {shape_name}: converge collected {sha[:8]} for "
-                            f"{issue_id} while linkage_check resolves it to nothing",
-                        )
-
-
-def _attach_consumer(name):
-    def test(self):
-        self._check(name)
-
-    test.__name__ = f"test_consumers_agree_{name}"
-    setattr(ConsumerParityTests, test.__name__, test)
-
-
-for _shape in shapes.ALL_SHAPES:
-    _attach_consumer(_shape)
+# There is deliberately no consumer-parity test here.
+#
+# One was added at 81b943b and removed after the second independent review
+# mutation-tested it: it passed when project_converge returned nothing (issue
+# 095's founding defect), when linkage_check resolved every commit to None, and
+# when either consumer reintroduced its pre-095 private rule — the exact
+# condition the acceptance criterion says it must fail on. It compared
+# `build_attribution` to itself, so both sides of every assertion came from one
+# function and `if sha in converge: assertTrue(claimed)` was true by
+# construction.
+#
+# A real one needs a reference for the commit->issue direction;
+# `commit_resolution_reference` only implements issue->commits, so half of the
+# criterion has no oracle. Writing that reference is the prerequisite, not the
+# test. Until then this file covers one direction honestly rather than two
+# dishonestly.
+#
+# Before adding any replacement: mutate the implementation and confirm the new
+# test fails. A parity assertion between two views of the same index cannot.
 
 
 if __name__ == "__main__":

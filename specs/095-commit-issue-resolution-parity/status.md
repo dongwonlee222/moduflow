@@ -528,14 +528,59 @@ expressions of one author's understanding. Two High over-collection defects now 
 same class as F5 — the defect round 4 was convened to fix — and one of them is written into a
 fixture as expected behaviour.
 
-## Next gate
+## Handoff — 2026-07-26
 
-Do not open a PR. Before any further fixes:
+Work stopped here deliberately. Five rounds in, the pattern is that this author's
+self-verification produces confidence rather than coverage: rounds 1, 2 and 4 each declared a
+problem closed that the next independent pass reopened, and round 4's oracle — built
+specifically to remove the author's judgement from the loop — turned out to share half its
+logic with the implementation. Continuing in the same session would most likely repeat it.
 
-1. The parity test needs at least one mutation that makes it fail, and a commit→issue oracle.
-2. The oracle needs an independently derived base-ref and branch-grammar layer, and
-   ground-truth assertions rather than only implementation-versus-oracle agreement.
-3. The shape generator must stop hardcoding `-b main`.
+Nothing is urgent. No PR is open, and the shipped state is better than before this issue:
+issue 093 collects 53 commits against 10, `scripts/project_issue_schema.py` is in the bundle,
+and issue 081's merge no longer sits inside 093's evidence.
+
+### Done before stopping
+
+`ConsumerParityTests` was deleted rather than left in place. A test that cannot fail reads as
+coverage to the next person, which is worse than an absent one — it passed under six
+mutations including converge returning nothing. `tests/test_commit_resolution_differential.py`
+now carries a comment explaining why the gap exists and what a real replacement requires, so
+the same test does not get rebuilt.
+
+Verified after removal: unittest 789/789 OK, release_check errors `[]`, lifecycle drift `[]`.
+
+### Next session, in order
+
+The apparatus comes before any further fixes. Fixing F3 or F10 now would produce claims
+nothing can check.
+
+1. Write a commit→issue reference in `commit_resolution_reference.py`. Half of AC1 currently
+   has no oracle at all.
+2. Re-derive the oracle's base-ref and branch-grammar layers independently — they are verbatim
+   copies today, which is why the suite is blind to Q3 and Q4. Assert against ground truth,
+   not against implementation-oracle agreement.
+3. Remove `-b main` from `git_repo_builder`, and add shapes for a non-`main` default branch, a
+   stale local `main`, two registered stacked issues, an octopus merge, and `\x01` in a commit
+   body.
+4. Then F3, F4's remaining half, F10, F11, F12.
+
+For every new test, mutate the implementation first and confirm the test fails. That check is
+what rounds 1 through 4 skipped.
+
+### Open findings
+
+| # | Claim | Severity |
+| --- | --- | --- |
+| Q3 | `stacked_live_branches` encodes over-collection as expected behaviour | High |
+| Q4 | `base_ref` prefers a stale local `main` over `origin/main` | High |
+| Q5 | Oracle's parsing and base-ref layers are copies; suite structurally blind | High |
+| Q6 | Non-`main` default branch; octopus loses an entire issue; `\x01` corrupts records | High/Medium |
+| F3 | `branch-unavailable` keyed on ref layout, not on whether resolution degraded | Medium |
+| F4 | `linkage_check` still drops `degraded`; the linkage gate cannot see it | Medium |
+| F12 | 65 behavior commits produced 65 redundant `git show` calls, 1.7s | Medium |
+| F11 | `hooks/on_stop.py` is a third owner of branch grammar (GC1); four dead helpers | Low |
+| Q12 | `rev_range` is a dead parameter; squash merges and `refs/pull/*` under-collect | Low |
 
 ## Superseded — round 3 next gate
 
