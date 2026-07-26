@@ -191,10 +191,123 @@ def build_branch_membership(runner, cwd):
 
 
 # ---------------------------------------------------------------------------
+# One attribution index, read by both directions
+# ---------------------------------------------------------------------------
+
+def build_attribution(runner, cwd, *, rev_range=None):
+    """Attribute every commit in range to at most one issue, once.
+
+    This is the single source both query directions read. Building the index
+    rather than answering per commit is what makes parity structural: there is
+    no second code path that could resolve the same commit differently.
+
+    Sources are applied in precedence order (GC2):
+      trailer        an `Issue:` line in the commit body
+      branch         the branch side of a merge naming codex/<issue-id>, or a
+                     commit exclusive to a live codex/<issue-id> branch
+      merge-subject  the merge commit itself
+
+    Returns {attribution: {sha: {issue_id, source}}, records, order,
+    unmatched, degraded, errors}."""
+    errors = []
+    degraded = []
+
+    args = ["git", "log", f"--format={GIT_LOG_FORMAT}"]
+    if rev_range:
+        args.append(rev_range)
+    result = _run(runner, args, cwd)
+    if result.returncode != 0:
+        errors.append(_error_text(args, result))
+        return {
+            "attribution": {},
+            "records": {},
+            "order": [],
+            "unmatched": [],
+            "degraded": degraded,
+            "errors": errors,
+        }
+
+    records = {}
+    order = []
+    for record in (result.stdout or "").split("\x01"):
+        record = record.strip("\n")
+        if not record.strip():
+            continue
+        parts = record.split("\x00")
+        if len(parts) != 4:
+            errors.append(
+                f"git log produced a malformed record (expected 4 fields, "
+                f"got {len(parts)}): {record[:80]!r}"
+            )
+            continue
+        sha, subject, parents, body = parts
+        sha = sha.strip()
+        records[sha] = {
+            "sha": sha,
+            "subject": subject.strip(),
+            "parents": parents.split(),
+            "body": body,
+        }
+        order.append(sha)
+
+    attribution = {}
+
+    def claim(sha, issue_id, source):
+        current = attribution.get(sha)
+        if current is None:
+            attribution[sha] = {"issue_id": issue_id, "source": source}
+            return
+        if SOURCE_PRECEDENCE.index(source) < SOURCE_PRECEDENCE.index(current["source"]):
+            attribution[sha] = {"issue_id": issue_id, "source": source}
+
+    for sha in order:
+        trailer = TRAILER_RE.search(records[sha]["body"])
+        if trailer:
+            claim(sha, trailer.group(1), "trailer")
+
+    # Merged work: the merge commit delimits exactly what its branch added.
+    # Derived from `records`, so it costs no extra subprocess (GC4).
+    for sha in order:
+        entry = records[sha]
+        if len(entry["parents"]) < 2:
+            continue
+        match = re.search(rf"codex/({ISSUE_ID_PATTERN})", entry["subject"])
+        if not match:
+            continue
+        issue_id = match.group(1)
+        claim(sha, issue_id, "merge-subject")
+        for side_sha in branch_side_commits(records, sha):
+            claim(side_sha, issue_id, "branch")
+
+    # Live branches have no merge commit to delimit them.
+    built = build_branch_membership(runner, cwd)
+    errors.extend(built["errors"])
+    degraded.extend(built["degraded"])
+    issue_ids = known_issue_ids(runner, cwd, errors)
+    for sha, names in built["membership"].items():
+        if sha not in records:
+            continue
+        for name in names:
+            issue_id = issue_id_from_branch(name, issue_ids)
+            if issue_id:
+                claim(sha, issue_id, "branch")
+
+    unmatched = [sha for sha in order if sha not in attribution]
+    return {
+        "attribution": attribution,
+        "records": records,
+        "order": order,
+        "unmatched": unmatched,
+        "degraded": degraded,
+        "errors": errors,
+    }
+
+
+# ---------------------------------------------------------------------------
 # commit -> issue
 # ---------------------------------------------------------------------------
 
-def resolve_issue_for_commit(runner, cwd, sha, *, membership=None, issue_ids=None):
+def resolve_issue_for_commit(runner, cwd, sha, *, attribution=None, membership=None, issue_ids=None):
     """Resolve the issue id linked to one commit.
 
     Pass `membership` (from build_branch_membership) when resolving many
@@ -212,63 +325,39 @@ def resolve_issue_for_commit(runner, cwd, sha, *, membership=None, issue_ids=Non
         "errors": errors,
     }
 
-    show_args = ["git", "show", "-s", "--format=%B%x00%s%x00%P", sha]
+    # The trailer is intrinsic to the commit object, so it answers without the
+    # index. Everything else is positional and needs the graph.
+    show_args = ["git", "show", "-s", "--format=%B", sha]
     show = _run(runner, show_args, cwd)
     if show.returncode != 0:
         errors.append(_error_text(show_args, show))
         return result
 
-    parts = (show.stdout or "").split("\x00")
-    body = parts[0] if parts else ""
-    subject = parts[1].strip() if len(parts) > 1 else ""
-    parents = parts[2] if len(parts) > 2 else ""
-    is_merge = len(parents.split()) >= 2
-
-    trailer = TRAILER_RE.search(body)
+    trailer = TRAILER_RE.search(show.stdout or "")
     if trailer:
         result["issue_id"] = trailer.group(1)
         result["source"] = "trailer"
         return result
 
-    if membership is None:
-        built = build_branch_membership(runner, cwd)
-        membership = built["membership"]
+    if attribution is None:
+        built = build_attribution(runner, cwd)
+        attribution = built["attribution"]
         errors.extend(built["errors"])
         degraded.extend(built["degraded"])
 
-    if issue_ids is None:
-        issue_ids = known_issue_ids(runner, cwd, errors)
-
-    names = membership.get(sha, [])
-    resolved = sorted(
-        {
-            issue_id
-            for issue_id in (issue_id_from_branch(name, issue_ids) for name in names)
-            if issue_id
-        }
-    )
-    if resolved:
-        result["issue_id"] = resolved[0]
-        result["source"] = "branch"
+    found = attribution.get(sha)
+    if found:
+        result["issue_id"] = found["issue_id"]
+        result["source"] = found["source"]
         return result
 
-    if is_merge:
-        for issue_id in issue_ids or []:
-            if f"codex/{issue_id}" in subject:
-                result["issue_id"] = issue_id
-                result["source"] = "merge-subject"
-                return result
-        match = re.search(rf"codex/({ISSUE_ID_PATTERN})", subject)
-        if match:
-            result["issue_id"] = match.group(1)
-            result["source"] = "merge-subject"
-            return result
-
-    if not names and DEGRADED_BRANCH_UNAVAILABLE not in degraded:
-        # Nothing matched and no branch contained this commit. Say so rather
-        # than letting an unresolvable branch-only commit look like a commit
-        # that genuinely belongs to no issue (GC8).
-        degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
+    if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
+        # Nothing matched. Say whether branch evidence was even consultable,
+        # rather than letting an unresolvable branch-only commit look like a
+        # commit that genuinely belongs to no issue (GC8).
+        probe = _run(runner, ["git", "branch", "--contains", sha], cwd)
+        if probe.returncode != 0 or not (probe.stdout or "").strip():
+            degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
 
     return result
 
@@ -277,122 +366,40 @@ def resolve_issue_for_commit(runner, cwd, sha, *, membership=None, issue_ids=Non
 # issue -> commits
 # ---------------------------------------------------------------------------
 
-def resolve_commits_for_issue(runner, cwd, issue_id, *, rev_range=None):
+def resolve_commits_for_issue(runner, cwd, issue_id, *, rev_range=None, index=None):
     """Resolve every commit linked to issue_id, in git log order.
+
+    Reads the same attribution index as `resolve_issue_for_commit`, so the two
+    directions cannot disagree — the parity acceptance criterion is structural
+    rather than a property both implementations happen to share.
 
     Returns {commits: [{sha, subject, source, is_merge}], unmatched_count,
     examined_count, degraded, errors}. `unmatched_count` counts commits in the
-    examined range that matched no issue — descriptive, never an error (GC5)."""
-    errors = []
-    degraded = []
+    examined range attributed to no issue at all — descriptive, never an
+    error (GC5)."""
+    built = index or build_attribution(runner, cwd, rev_range=rev_range)
+    attribution = built["attribution"]
+    records = built["records"]
 
-    args = ["git", "log", f"--format={GIT_LOG_FORMAT}"]
-    if rev_range:
-        args.append(rev_range)
-    result = _run(runner, args, cwd)
-    if result.returncode != 0:
-        errors.append(_error_text(args, result))
-        return {
-            "commits": [],
-            "unmatched_count": 0,
-            "examined_count": 0,
-            "degraded": degraded,
-            "errors": errors,
-        }
-
-    built = build_branch_membership(runner, cwd)
-    membership = built["membership"]
-    errors.extend(built["errors"])
-    degraded.extend(built["degraded"])
-    issue_ids = known_issue_ids(runner, cwd, errors)
-
-    branch_token = f"codex/{issue_id}"
-    by_sha = {}
-    order = []
-    examined = 0
-    unmatched = 0
-
-    records = {}
-    parsed = []
-    for record in (result.stdout or "").split("\x01"):
-        record = record.strip("\n")
-        if not record.strip():
+    commits = []
+    for sha in built["order"]:
+        found = attribution.get(sha)
+        if not found or found["issue_id"] != issue_id:
             continue
-        parts = record.split("\x00")
-        if len(parts) != 4:
-            errors.append(
-                f"git log produced a malformed record (expected 4 fields, "
-                f"got {len(parts)}): {record[:80]!r}"
-            )
-            continue
-        sha, subject, parents, body = parts
-        sha = sha.strip()
-        entry = {
-            "sha": sha,
-            "subject": subject.strip(),
-            "parents": parents.split(),
-            "body": body,
-        }
-        records[sha] = entry
-        parsed.append(entry)
-
-    # Merged work: the merge commit delimits exactly what the branch added.
-    # Computed from `records`, so this costs no extra subprocess (GC4).
-    merged_side = set()
-    for entry in parsed:
-        if len(entry["parents"]) >= 2 and branch_token in entry["subject"]:
-            merged_side |= branch_side_commits(records, entry["sha"])
-
-    for entry in parsed:
-        sha = entry["sha"]
-        subject = entry["subject"]
-        body = entry["body"]
-        is_merge = len(entry["parents"]) >= 2
-        examined += 1
-
-        source = None
-        trailer = TRAILER_RE.search(body)
-        if trailer:
-            if trailer.group(1) == issue_id:
-                source = "trailer"
-            else:
-                continue  # belongs to another issue; not unmatched
-        if source is None:
-            names = membership.get(sha, [])
-            branch_issues = {
-                candidate
-                for candidate in (
-                    issue_id_from_branch(name, issue_ids) for name in names
-                )
-                if candidate
+        entry = records[sha]
+        commits.append(
+            {
+                "sha": sha,
+                "subject": entry["subject"],
+                "source": found["source"],
+                "is_merge": len(entry["parents"]) >= 2,
             }
-            if issue_id in branch_issues or sha in merged_side:
-                source = "branch"
-            elif is_merge and branch_token in subject:
-                source = "merge-subject"
-
-        if source is None:
-            unmatched += 1
-            continue
-
-        if sha in by_sha:
-            existing = by_sha[sha]["source"]
-            if SOURCE_PRECEDENCE.index(source) < SOURCE_PRECEDENCE.index(existing):
-                by_sha[sha]["source"] = source
-            continue
-
-        by_sha[sha] = {
-            "sha": sha,
-            "subject": subject,
-            "source": source,
-            "is_merge": is_merge,
-        }
-        order.append(sha)
+        )
 
     return {
-        "commits": [by_sha[sha] for sha in order],
-        "unmatched_count": unmatched,
-        "examined_count": examined,
-        "degraded": degraded,
-        "errors": errors,
+        "commits": commits,
+        "unmatched_count": len(built["unmatched"]),
+        "examined_count": len(built["order"]),
+        "degraded": list(built["degraded"]),
+        "errors": list(built["errors"]),
     }

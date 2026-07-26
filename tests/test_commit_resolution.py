@@ -241,23 +241,54 @@ class TestParity(unittest.TestCase):
             repo.commit("feat: b")
             repo.commit("feat: c", issue=ISSUE)
 
-            from_issue = {
-                c["sha"] for c in cr.resolve_commits_for_issue(repo.runner, repo.path, ISSUE)["commits"]
-            }
-            membership = cr.build_branch_membership(repo.runner, repo.path)["membership"]
-            from_commits = set()
-            for sha in repo.log_shas():
-                out = cr.resolve_issue_for_commit(
-                    repo.runner, repo.path, sha, membership=membership
-                )
-                if out["issue_id"] == ISSUE:
-                    from_commits.add(sha)
+            self._assert_directions_agree(repo)
 
-            self.assertEqual(
-                from_issue,
-                from_commits,
-                "issue→commits and commit→issue resolved different sets",
+    def test_directions_agree_on_merged_history(self):
+        """The asymmetry this pins: while stream A was being built, only the
+        issue->commits direction consulted merge topology, so a merged branch
+        commit resolved from one direction and not the other. On 30 real
+        commits that disagreed 13 times."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            name = repo.branch(f"codex/{ISSUE}")
+            merged = repo.commit("feat: no trailer, branch only")
+            repo.checkout("main")
+            repo.merge(name, message=f"Merge branch 'codex/{ISSUE}'")
+            repo.delete_branch(name)
+
+            index = cr.build_attribution(repo.runner, repo.path)
+            per_commit = cr.resolve_issue_for_commit(
+                repo.runner, repo.path, merged, attribution=index["attribution"]
             )
+            self.assertEqual(
+                per_commit["issue_id"],
+                ISSUE,
+                "a merged branch commit must resolve from the commit direction too",
+            )
+            self._assert_directions_agree(repo)
+
+    def _assert_directions_agree(self, repo):
+        index = cr.build_attribution(repo.runner, repo.path)
+        from_issue = {
+            c["sha"]
+            for c in cr.resolve_commits_for_issue(
+                repo.runner, repo.path, ISSUE, index=index
+            )["commits"]
+        }
+        from_commits = set()
+        for sha in repo.log_shas():
+            out = cr.resolve_issue_for_commit(
+                repo.runner, repo.path, sha, attribution=index["attribution"]
+            )
+            if out["issue_id"] == ISSUE:
+                from_commits.add(sha)
+
+        self.assertEqual(
+            from_issue,
+            from_commits,
+            "issue→commits and commit→issue resolved different sets",
+        )
 
 
 if __name__ == "__main__":
