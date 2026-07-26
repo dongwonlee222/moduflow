@@ -94,8 +94,10 @@ CV_LINE_RE = re.compile(
 )
 
 # NUL-separated fields, \x01-terminated records: sha, subject, parents, body.
-GIT_LOG_FORMAT = "%H%x00%s%x00%P%x00%B%x01"
-GIT_LOG_ARGS = ("git", "log", f"--format={GIT_LOG_FORMAT}")
+# Owned by commit_resolution (issue 095). Re-exported so existing callers and
+# tests keep one definition rather than drifting apart again.
+GIT_LOG_FORMAT = commit_resolution.GIT_LOG_FORMAT
+GIT_LOG_ARGS = commit_resolution.GIT_LOG_ARGS
 
 CHECKBOX_RE = re.compile(r"^-\s+\[[ xX]\]\s+(.*)$")
 BULLET_RE = re.compile(r"^-\s+(.*)$")

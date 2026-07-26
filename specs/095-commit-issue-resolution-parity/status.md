@@ -227,6 +227,92 @@ Separated per the review integrity rules:
    index that is already built.
 3. Finding 4 is optional cleanup; record the decision either way.
 
+## Review round 2 — conditions addressed
+
+Fixes applied 2026-07-26 after the review above. All four findings are resolved; two
+corrections to the review record itself are recorded below, because parts of round 1 were
+wrong and leaving them would let the next reader build on a false premise.
+
+### Finding 1 had two causes, not one
+
+Round 1 identified the `--exclude` glob semantics. That was real, but fixing it alone would
+have left the defect standing. `build_attribution` also ran a bare `git log`, which walks
+HEAD only — commits on an unmerged branch are not reachable from HEAD, so they never entered
+`records` and the membership loop skipped them with `if sha not in records: continue`.
+
+| Cause | Fix |
+| --- | --- |
+| `--exclude` applies only to the next ref glob, so a remote counterpart re-included the branch and it excluded itself | Exclusion is now an explicit ref list; `_same_branch` treats `codex/X` and `origin/codex/X` as one branch |
+| `git log` walks HEAD only, so unmerged commits were never in the record set | `GIT_LOG_ARGS` now carries `--branches --remotes`; `project_converge` re-exports the constant so both stay in step |
+
+Measured on this repository: `build_branch_membership` went from 0 attributed commits to 11.
+
+### Correction — the round 1 example was wrong
+
+Round 1 offered issue 092 as evidence: "`resolve_commits_for_issue("092-project-home-dashboard")`
+returns 0 commits, though `origin/codex/092-current-dashboard-korean` carries one."
+
+**That example does not demonstrate the defect.** The branch is named
+`codex/092-current-dashboard-korean`; the issue is `092-project-home-dashboard`. The names do
+not match, so the branch is not attributable to that issue under the `codex/<issue-id>`
+convention — and 092 still resolves 0 commits after the fix, correctly. The finding was real
+and the fix is measured; the evidence cited for it was not.
+
+What actually recovered:
+
+| Issue | Commits recovered via membership |
+| --- | --- |
+| `051-autonomous-execute-review-visual-handoff` | 3 |
+| `086-project-aware-production-library-dashboard` | 4 |
+
+### Findings 2, 3, 4
+
+- **2** — the per-commit `git branch --contains` probe is removed. Whether branch evidence was
+  consultable is a property of the index, which `build_attribution` already reports; probing
+  per commit answered a question the index had already answered. A test now asserts no
+  `git branch --contains` is issued while resolving a range.
+- **3** — `GitRepo.publish()` creates a remote-tracking ref without a server, and three tests
+  cover a live branch with a remote counterpart, a remote-only branch, and the guarantee that
+  fixing self-exclusion does not reopen the over-collection defect. All three fail without the
+  finding 1 fix.
+- **4** — `build_branch_membership` now calls `issue_id_from_branch` instead of inlining its
+  own match, so branch-name interpretation has one owner again (GC1).
+
+### New observation, not a finding against this change
+
+With membership working, two of the four branches it attributes resolve to issue ids that do
+not exist in `issues/`:
+
+| Branch | Resolved id | Exists |
+| --- | --- | --- |
+| `codex/034-pr-ready-and-dashboard-db-followup` | `034-pr-ready-and-dashboard-db-followup` | no |
+| `codex/092-current-dashboard-korean` | `092-current-dashboard-korean` | no |
+
+The resolver behaves as specified — with no known id matching, the branch tail is treated as
+the id. The branches simply do not follow `codex/<issue-id>`. Whether the resolver should
+reject, warn on, or keep accepting an unknown id is a design decision outside this issue's
+scope. Recorded here rather than fixed.
+
+### Verification after fixes
+
+```
+python3 -m unittest discover -s tests     778 passed, OK  (774 before, plus 4)
+python3 scripts/release_check.py .        errors []
+python3 scripts/project_lifecycle.py . --drift   []
+```
+
+Test-stub updates: `GIT_LOG_ARGS` changed shape, so `test_linkage_check` and
+`test_release_check` now reference the module constant rather than a literal tuple, and three
+`rev-list` stubs moved to the explicit-ref form. Assertions on returned values are unchanged.
+
+### Remaining review limitation
+
+Still a single reviewer, still the implementer. Round 1 found two defects by running the code
+and one by reading it; round 2 found a third cause of finding 1 — again by running, not by
+reading — and an error in round 1's own evidence. The pattern is that reading this diff does
+not surface its defects. An independent reviewer executing against a repository with unmerged
+branches remains the useful next check.
+
 ## Next gate
 
-Address the conditions above, then re-review before `product:pr`.
+Independent review, then `product:pr`.

@@ -25,6 +25,7 @@ class GitRepo:
     def __init__(self):
         self.path = Path(tempfile.mkdtemp(prefix="moduflow-095-"))
         self.call_count = 0
+        self.call_log = []
         self._git("init", "-q", "-b", "main")
 
     def __enter__(self):
@@ -60,6 +61,7 @@ class GitRepo:
         import os
 
         self.call_count += 1
+        self.call_log.append(list(args))
         env = dict(os.environ)
         env.update(GIT_ENV)
         return subprocess.run(
@@ -111,6 +113,16 @@ class GitRepo:
         self._git("add", f"issues/{issue_id}.md")
         self._git("commit", "-q", "-m", f"chore: register {issue_id}")
         return self.head()
+
+    def publish(self, name, remote="origin"):
+        """Create a remote-tracking ref for `name` without needing a server.
+
+        Real repositories carry every branch twice — `codex/X` and
+        `origin/codex/X`. Fixtures that only ever build local branches exercise
+        one arrangement of git's ref globs, and issue 095's review found a
+        live-branch defect that was invisible under exactly that gap."""
+        self._git("update-ref", f"refs/remotes/{remote}/{name}", name)
+        return f"{remote}/{name}"
 
     def head(self):
         return self._git("rev-parse", "HEAD").strip()

@@ -377,5 +377,90 @@ class TestRegressionMatrix(unittest.TestCase):
             self.assertIn("bad revision", out["errors"][0])
 
 
+class TestRemoteTrackingRefs(unittest.TestCase):
+    """Issue 095 review, finding 1 and 3.
+
+    Every branch in a real repository exists twice: `codex/X` and
+    `origin/codex/X`. The first implementation excluded only the exact branch
+    name from its rev-list, so the counterpart re-included the branch and it
+    excluded itself — `build_branch_membership` returned an empty map against
+    this repository while passing 33 tests, because no fixture had a remote."""
+
+    def test_live_branch_with_remote_counterpart_still_resolves(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            name = repo.branch(f"codex/{ISSUE}")
+            mine = repo.commit("feat: unmerged branch work")
+            repo.publish(name)
+            repo.checkout("main")
+
+            built = cr.build_branch_membership(repo.runner, repo.path)
+            self.assertIn(
+                mine,
+                built["membership"],
+                "a branch that also exists as a remote ref must not exclude itself",
+            )
+
+            out = cr.resolve_commits_for_issue(repo.runner, repo.path, ISSUE)
+            self.assertIn(mine, {c["sha"] for c in out["commits"]})
+
+    def test_remote_only_branch_resolves(self):
+        """The 092 shape: work pushed to a branch this checkout has no local
+        copy of."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            name = repo.branch(f"codex/{ISSUE}")
+            mine = repo.commit("feat: remote-only work")
+            repo.publish(name)
+            repo.checkout("main")
+            repo.delete_branch(name)
+
+            out = cr.resolve_commits_for_issue(repo.runner, repo.path, ISSUE)
+            self.assertIn(
+                mine,
+                {c["sha"] for c in out["commits"]},
+                "unmerged work on a remote branch is the case this issue exists for",
+            )
+
+    def test_base_history_still_excluded_with_a_remote(self):
+        """Fixing self-exclusion must not reopen the over-collection defect."""
+        with GitRepo() as repo:
+            base = repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            name = repo.branch(f"codex/{ISSUE}")
+            repo.commit("feat: branch work")
+            repo.publish(name)
+            repo.checkout("main")
+
+            out = cr.resolve_commits_for_issue(repo.runner, repo.path, ISSUE)
+            self.assertNotIn(base, {c["sha"] for c in out["commits"]})
+
+
+class TestNoPerCommitProbe(unittest.TestCase):
+    """Issue 095 review, finding 2: the degraded probe reintroduced the
+    per-commit fan-out that task A2 removed."""
+
+    def test_resolving_unmatched_commits_issues_no_branch_contains(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            for index in range(5):
+                repo.commit(f"chore: unrelated {index}")
+
+            index = cr.build_attribution(repo.runner, repo.path)
+            repo.call_count = 0
+            calls_before = len(repo.call_log)
+            for sha in repo.log_shas():
+                cr.resolve_issue_for_commit(
+                    repo.runner, repo.path, sha, attribution=index["attribution"]
+                )
+            issued = repo.call_log[calls_before:]
+            contains = [c for c in issued if c[:3] == ["git", "branch", "--contains"]]
+            self.assertEqual(
+                contains, [], "no per-commit branch probe may return (GC4)"
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

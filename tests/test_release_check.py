@@ -69,7 +69,7 @@ def unlinked_commit_responses(sha="badc0ffee", path="scripts/hotfix.py"):
         ("git", "show", "--name-only", "--format=", sha): f"{path}\n",
         ("git", "show", "-s", "--format=%B", sha): "hotfix without issue\n",
         ("git", "branch", "--contains", sha): "* main\n",
-        ("git", "log", f"--format={linkage_check.commit_resolution.GIT_LOG_FORMAT}"): "{sha}\x00hotfix without issue\x00\x00hotfix without issue\n\x01",
+        tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "{sha}\x00hotfix without issue\x00\x00hotfix without issue\n\x01",
         ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
         ("git", "ls-files", "issues"): "",
 
@@ -109,7 +109,7 @@ class LinkageGateTests(unittest.TestCase):
                 ("git", "show", "-s", "--format=%B", "sha1"): (
                     "feat: foo\n\nIssue: 075-issue-less-context-capture\n"
                 ),
-                ("git", "log", f"--format={linkage_check.commit_resolution.GIT_LOG_FORMAT}"): "sha1\x00feat: thing\x00\x00feat: thing\n\nIssue: 070-spec-consistency-analyze\n\x01",
+                tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "sha1\x00feat: thing\x00\x00feat: thing\n\nIssue: 070-spec-consistency-analyze\n\x01",
                 ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
                 ("git", "ls-files", "issues"): "",
             }

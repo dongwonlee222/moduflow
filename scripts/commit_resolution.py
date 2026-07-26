@@ -34,6 +34,11 @@ BRANCH_ISSUE_RE = re.compile(rf"^codex/({ISSUE_ID_PATTERN})$")
 # NUL-separated fields, \x01-terminated records: sha, subject, parents, body.
 GIT_LOG_FORMAT = "%H%x00%s%x00%P%x00%B%x01"
 
+# `--branches --remotes` rather than a bare `git log`, which walks HEAD only.
+# Work on a branch that has not been merged is not reachable from HEAD, so a
+# bare log cannot see the very commits this module exists to attribute.
+GIT_LOG_ARGS = ("git", "log", "--branches", "--remotes", f"--format={GIT_LOG_FORMAT}")
+
 # GC2. Highest first. A commit matching several sources is recorded once, at
 # the highest that matched.
 SOURCE_PRECEDENCE = ("trailer", "branch", "merge-subject")
@@ -95,6 +100,24 @@ def issue_id_from_branch(name, issue_ids):
                     best = issue_id
         return best or tail
     return None
+
+
+def _same_branch(ref, name):
+    """True when two ref names denote the same branch.
+
+    A branch usually exists twice — `codex/X` and `origin/codex/X`. Excluding
+    only the exact name lets the counterpart exclude the branch from itself,
+    which yields an empty commit set."""
+    if ref == name:
+        return True
+    return _branch_tail(ref) == _branch_tail(name)
+
+
+def _branch_tail(ref):
+    """Strip a remote prefix: origin/codex/X -> codex/X."""
+    if "/" in ref and not ref.startswith("codex/"):
+        return ref.split("/", 1)[1]
+    return ref
 
 
 def branch_side_commits(records, merge_sha):
@@ -162,19 +185,31 @@ def build_branch_membership(runner, cwd):
             "errors": errors,
         }
 
-    branches = []
+    all_refs = []
     for line in (result.stdout or "").splitlines():
         name = line.strip().split(" -> ")[0].strip()
-        if name and BRANCH_ISSUE_RE.match(name.split("/", 1)[1] if "/" in name and not name.startswith("codex/") else name):
-            branches.append(name)
+        if name:
+            all_refs.append(name)
+
+    issue_ids = known_issue_ids(runner, cwd, errors)
+    # One owner for branch-name interpretation (GC1) — no second copy here.
+    branches = [name for name in all_refs if issue_id_from_branch(name, issue_ids)]
 
     if not branches:
         degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
 
     for name in branches:
-        # Branch-exclusive commits only. Plain `rev-list <branch>` would return
-        # every ancestor, i.e. all of the base branch's history.
-        rev_args = ["git", "rev-list", name, "--not", "--exclude=" + name, "--branches", "--remotes"]
+        # Branch-exclusive commits only: plain `rev-list <branch>` returns every
+        # ancestor, i.e. all of the base branch's history.
+        #
+        # The exclusion is an explicit ref list rather than `--exclude` plus ref
+        # globs. `--exclude` applies only to the *next* glob, so
+        # `--exclude=<b> --branches --remotes` leaves a remote branch excluded
+        # from `--branches` (where it never appeared) and re-included by
+        # `--remotes` — the branch excludes itself and the result is empty.
+        # That shipped, and made every live-branch commit invisible.
+        others = [ref for ref in all_refs if not _same_branch(ref, name)]
+        rev_args = ["git", "rev-list", name, "--not", *others]
         rev = _run(runner, rev_args, cwd)
         if rev.returncode != 0:
             errors.append(_error_text(rev_args, rev))
@@ -212,9 +247,10 @@ def build_attribution(runner, cwd, *, rev_range=None):
     errors = []
     degraded = []
 
-    args = ["git", "log", f"--format={GIT_LOG_FORMAT}"]
     if rev_range:
-        args.append(rev_range)
+        args = ["git", "log", f"--format={GIT_LOG_FORMAT}", rev_range]
+    else:
+        args = list(GIT_LOG_ARGS)
     result = _run(runner, args, cwd)
     if result.returncode != 0:
         errors.append(_error_text(args, result))
@@ -357,14 +393,11 @@ def resolve_issue_for_commit(runner, cwd, sha, *, attribution=None, membership=N
         result["source"] = found["source"]
         return result
 
-    if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
-        # Nothing matched. Say whether branch evidence was even consultable,
-        # rather than letting an unresolvable branch-only commit look like a
-        # commit that genuinely belongs to no issue (GC8).
-        probe = _run(runner, ["git", "branch", "--contains", sha], cwd)
-        if probe.returncode != 0 or not (probe.stdout or "").strip():
-            degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
-
+    # Whether branch evidence was consultable is a property of the index, not
+    # of this commit, and `build_attribution` already reports it. Probing per
+    # commit here reintroduced the fan-out task A2 removed — measured at one
+    # `git branch --contains` per unresolved commit. A caller that supplies its
+    # own `attribution` reads `degraded` from the same build.
     return result
 
 
