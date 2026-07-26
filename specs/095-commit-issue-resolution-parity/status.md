@@ -798,16 +798,94 @@ another round.
 Five of the reviewer's ten new arrangements broke the implementation; four broke the oracle
 identically.
 
+## Superseded — round 8 next gate
+
+Item 1 said "derive the oracle's base ref by a genuinely different route". Rounds 4, 5 and 7
+each attempted oracle independence and round 8 measured the result: the layer it called
+independent executed in 0 of 15 shapes. A fourth attempt was round 9's most likely way to
+fail. Round 9 took item 1's *second* clause instead and generalised it, which dissolved all
+three items. Recorded rather than deleted because the branch not taken is the finding.
+
+## Round 9 — the oracle is deleted, not repaired
+
+The fixture built the history, so it knows the answer without deriving anything. Every commit
+now declares `belongs_to` and the tests compare against that literal, which cannot share a
+blind spot with the code it checks. `commit_resolution_reference.py` is gone; a test asserts
+it stays gone.
+
+Two rules keep the declarations from re-coupling. They name issue ids only, never a `source` —
+truth is what a commit belongs to, not how the resolver finds it, and asserting the strategy
+is the same coupling one level down. And a commit built without a declaration is recorded as
+`UNDECLARED` and fails `DeclarationCoverageTests`, so a shape added later cannot silently test
+nothing.
+
+| Round 8 item | Status |
+| --- | --- |
+| Next gate 1 — oracle base ref independent | dissolved; no oracle base ref exists |
+| Next gate 2 — sweep ids a shape *builds* | dissolved; the sweep is derived from the declarations, so it is structural rather than a list that can be forgotten |
+| Next gate 3 — `_branch_issue` tail fallback | dissolved; no `_branch_issue` |
+| Q-2 — oracle not independent | dissolved |
+| Q-3 — oracle contradicts itself | dissolved |
+
+### Found on the declaration's first run
+
+Two shapes that were green under the oracle failed immediately. Both are over-collection
+across issues — this issue's founding defect class — and both were green because the oracle
+shared the derivation that produced them.
+
+| Id | Shape | Defect |
+| --- | --- | --- |
+| R9-1 | `nested_merges` | A merged into B, then B to main: B's bundle collects A's *content* commit, not just the boundary merge |
+| R9-2 | `stale_local_default_branch` | `base_ref` elects the stale local trunk, so the issue collects trunk commits predating its branch. Recorded as Q4 in round 5, reported closed in round 7 |
+
+Two more came from chasing a surviving mutation rather than from a shape:
+
+| Id | Defect |
+| --- | --- |
+| R9-3 | Precedence holds in one direction only. A commit whose trailer names beta, sitting on alpha's branch, resolves to beta commit→issue but appears in *both* bundles issue→commits: branch membership is collected without asking whether a higher-precedence source already claimed the commit |
+| R9-4 | Precedence is stated twice. `resolve_issue_for_commit` short-circuits on a trailer and returns before `SOURCE_PRECEDENCE` is read; only the index path consults the constant. They agree today solely because the constant happens to list trailer first, so the same commit can resolve differently depending on whether the caller passed an index — GC1's one owner violated inside the resolver |
+
+R9-1, R9-2 and R9-3 are marked `expectedFailure` with their ids, not skipped: unittest reports
+an expected failure that starts passing as an unexpected success and fails the run, so a fix
+forces the marker's removal. R9-4 has no failing case today; the dual-path assertion added to
+`CommitDirectionTests` is what would catch it.
+
+### Mutation results
+
+| Mutation | Result |
+| --- | --- |
+| `build_attribution` returns an empty index | caught |
+| trailer rule disabled | caught |
+| branch rule disabled | caught |
+| `SOURCE_PRECEDENCE` reversed | **survived**, until the precedence shape and the dual-path assertion were added — then caught |
+| `record()` stops storing ground truth | caught |
+| a shape omits `belongs_to` | caught |
+| a known defect declared to match the code | caught, as unexpected successes |
+
+The surviving mutation is the one worth keeping in view: precedence, the rule the module names
+in a constant and documents in GC2, was asserted by no test at all. It survived because no
+shape ever made two sources disagree.
+
+### Also corrected
+
+A module-level loop variable left bound to a `TestCase` subclass made `loadTestsFromModule`
+collect that class twice. Every count in the differential file was inflated by fifteen, and
+the suite total with it: 852 → 837, now 840 with the new shape.
+
+### State
+
+840 tests, OK with 4 expected failures. `release_check` errors `[]`, warnings 0.
+
 ## Next gate
 
-Three items, in order, before any further defect fixes:
+Open defects, no apparatus work outstanding: R9-1, R9-2, R9-3, R9-4, and from round 8 Q-1 (the
+wider base-ref cluster R9-2 is one instance of), Q-4, Q-5, Q-6.
 
-1. Derive the oracle's base ref by a genuinely different route, or assert base ref against
-   hand-written ground truth per shape.
-2. Make the differential sweep every issue id a shape *builds*, not the list it returns.
-3. Reconcile `_branch_issue`'s tail fallback with `issue_id_from_branch`.
+Take Q-1 and R9-2 together — they are one cause — and expect the R9-2 marker to disappear when
+it lands. R9-3 and R9-4 are also one cause: precedence needs a single owner applied in both
+directions and both call shapes.
 
-Then Q-1, Q-4, Q-5, Q-6.
+Independent review before any closure claim. Self-declared closure on this issue is 0 for 4.
 
 ## Superseded — round 3 next gate
 
