@@ -265,6 +265,8 @@ def build_attribution(runner, cwd, *, rev_range=None):
         if trailer:
             claim(sha, trailer.group(1), "trailer")
 
+    issue_ids = known_issue_ids(runner, cwd, errors)
+
     # Merged work: the merge commit delimits exactly what its branch added.
     # Derived from `records`, so it costs no extra subprocess (GC4).
     for sha in order:
@@ -274,7 +276,12 @@ def build_attribution(runner, cwd, *, rev_range=None):
         match = re.search(rf"codex/({ISSUE_ID_PATTERN})", entry["subject"])
         if not match:
             continue
-        issue_id = match.group(1)
+        # Work branches carry suffixes (codex/<id>-<suffix>), and the id
+        # pattern would otherwise swallow the suffix. Same disambiguation the
+        # branch-name path uses, so both agree on what the id is.
+        issue_id = issue_id_from_branch(f"codex/{match.group(1)}", issue_ids)
+        if not issue_id:
+            continue
         claim(sha, issue_id, "merge-subject")
         for side_sha in branch_side_commits(records, sha):
             claim(side_sha, issue_id, "branch")
@@ -283,7 +290,6 @@ def build_attribution(runner, cwd, *, rev_range=None):
     built = build_branch_membership(runner, cwd)
     errors.extend(built["errors"])
     degraded.extend(built["degraded"])
-    issue_ids = known_issue_ids(runner, cwd, errors)
     for sha, names in built["membership"].items():
         if sha not in records:
             continue

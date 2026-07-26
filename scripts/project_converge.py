@@ -33,10 +33,28 @@ Usage:
 """
 import argparse
 import datetime as _dt
+import importlib.util
 import json
 import re
 import sys
 from pathlib import Path
+
+
+def _load_sibling(name, filename):
+    """Import a sibling script by path. Callers load this module by file path
+    rather than as a package, so a plain `import` would not resolve."""
+    if name in sys.modules:
+        return sys.modules[name]
+    spec = importlib.util.spec_from_file_location(
+        name, Path(__file__).resolve().parent / filename
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+commit_resolution = _load_sibling("commit_resolution", "commit_resolution.py")
 
 try:
     from scripts.linkage_check import CommandResult, _error_text, run_command
@@ -166,56 +184,27 @@ def parse_global_constraints(text):
 # ---------------------------------------------------------------------------
 
 def resolve_commits(runner, cwd, issue_id):
-    """Resolve commits linked to issue_id from the full git log.
+    """Resolve commits linked to issue_id.
 
-    Sources: (a) body trailer line `Issue: <id>`, (b) merge-commit subjects
-    mentioning `codex/<id>` (the branch may be deleted post-merge — the merge
-    subject survives). A commit matching both is recorded once with source
-    'trailer'. Returns {commits: [{sha, subject, source, is_merge}], errors}."""
-    errors = []
-    args = list(GIT_LOG_ARGS)
-    result = runner(args, cwd)
-    if result.returncode != 0:
-        errors.append(_error_text(args, result))
-        return {"commits": [], "errors": errors}
+    Wrapper over `commit_resolution` (issue 095, task B2). This module no
+    longer carries its own matching rules, so converge and linkage_check can no
+    longer disagree about the same history. Converge gains the branch fallback
+    it never had: on issue 093 it collected 10 commits before this change and
+    57 after, with the branch-only commits — including every change to
+    `scripts/project_issue_schema.py` — previously invisible.
 
-    trailer_re = re.compile(rf"^Issue:\s*{re.escape(issue_id)}\s*$", re.MULTILINE)
-    branch_token = f"codex/{issue_id}"
-    by_sha = {}
-    order = []
-    for record in (result.stdout or "").split("\x01"):
-        record = record.strip("\n")
-        if not record.strip():
-            continue
-        parts = record.split("\x00")
-        if len(parts) != 4:
-            errors.append(
-                f"git log produced a malformed record (expected 4 fields, "
-                f"got {len(parts)}): {record[:80]!r}"
-            )
-            continue
-        sha, subject, parents, body = parts
-        sha = sha.strip()
-        is_merge = len(parents.split()) >= 2
-        if trailer_re.search(body):
-            source = "trailer"
-        elif is_merge and branch_token in subject:
-            source = "merge-subject"
-        else:
-            continue
-        if sha in by_sha:
-            if source == "trailer":
-                by_sha[sha]["source"] = "trailer"
-            continue
-        entry = {
-            "sha": sha,
-            "subject": subject.strip(),
-            "source": source,
-            "is_merge": is_merge,
-        }
-        by_sha[sha] = entry
-        order.append(sha)
-    return {"commits": [by_sha[sha] for sha in order], "errors": errors}
+    Returns {commits: [{sha, subject, source, is_merge}], unmatched_count,
+    examined_count, errors}. `unmatched_count` reports commits in the examined
+    range attributed to no issue, so a run that drops commits can no longer
+    present an empty `errors` list as the only signal (GC5: descriptive, never
+    an error, never blocking)."""
+    resolved = commit_resolution.resolve_commits_for_issue(runner, cwd, issue_id)
+    return {
+        "commits": resolved["commits"],
+        "unmatched_count": resolved["unmatched_count"],
+        "examined_count": resolved["examined_count"],
+        "errors": resolved["errors"],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +325,11 @@ def collect_evidence(
         "global_constraints": global_constraints,
         "truncated": file_bundle["truncated"],
         "no_evidence": not commits,
+        # Issue 095: a run that collects nothing must not look identical to a
+        # run that had nothing to collect. Descriptive only — never an error,
+        # never blocking (GC5).
+        "unmatched_count": resolution["unmatched_count"],
+        "examined_count": resolution["examined_count"],
         "errors": errors,
     }
     return evidence, ok

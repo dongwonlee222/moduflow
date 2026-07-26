@@ -216,6 +216,7 @@ class ResolveIssueForCommitTests(unittest.TestCase):
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "fix: thing\n",
                 ("git", "log", f"--format={linkage_check.commit_resolution.GIT_LOG_FORMAT}"): "abc123\x00fix: thing\x00\x00fix: thing\n\x01",
+                ("git", "ls-files", "issues"): "",
                 ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): linkage_check.CommandResult(
                     128, "", "fatal: malformed object name"
                 ),

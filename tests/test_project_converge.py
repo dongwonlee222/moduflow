@@ -11,9 +11,26 @@ ISSUE = "071-spec-code-converge-check"
 LOG_ARGS = tuple(project_converge.GIT_LOG_ARGS)
 
 
+# Issue 095: resolution moved to commit_resolution, which reads branch refs and
+# tracked issue ids alongside the log. These scenarios exercise log-based
+# resolution, so both default to empty unless a test overrides them.
+BRANCH_REF_ARGS = (
+    "git",
+    "for-each-ref",
+    "--format=%(refname:short)",
+    "refs/heads",
+    "refs/remotes",
+)
+ISSUE_FILES_ARGS = ("git", "ls-files", "issues")
+
+
 class FakeRunner:
     def __init__(self, responses):
-        self.responses = responses
+        self.responses = {
+            BRANCH_REF_ARGS: "",
+            ISSUE_FILES_ARGS: "",
+            **responses,
+        }
         self.calls = []
 
     def __call__(self, args, cwd, timeout=None):
@@ -94,9 +111,12 @@ class ResolveCommitsTests(unittest.TestCase):
         self.assertTrue(commit["is_merge"])
 
     def test_merge_subject_with_branch_suffix_resolves(self):
-        # Work branches carry suffixes: codex/<id>-<suffix>.
+        # Work branches carry suffixes: codex/<id>-<suffix>. Separating the id
+        # from the suffix requires knowing which issues exist, so the tracked
+        # issue list is part of this scenario's preconditions.
         runner = FakeRunner(
             {
+                ISSUE_FILES_ARGS: f"issues/{ISSUE}.md\n",
                 LOG_ARGS: log_record(
                     "mrg2",
                     f"Merge branch 'codex/{ISSUE}-engine'",
@@ -395,6 +415,8 @@ class CollectEvidenceTests(unittest.TestCase):
                 "global_constraints",
                 "truncated",
                 "no_evidence",
+                "unmatched_count",
+                "examined_count",
                 "errors",
             ],
         )
