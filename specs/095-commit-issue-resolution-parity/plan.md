@@ -39,7 +39,7 @@ Constitution v1.0 applies (`workspace/constitution.md`). Plan-specific additions
 | --- | --- |
 | `scripts/commit_resolution.py` | Shared resolver: rules, precedence, batched branch membership, both query directions |
 | `tests/test_commit_resolution.py` | Unit coverage for the resolver, including detached HEAD and precedence |
-| `tests/fixtures/git_repo_builder.py` | Helper that builds temporary git repositories for the regression table |
+| `tests/git_repo_builder.py` | Helper that builds temporary git repositories for the regression table. Lives at the tests root, not under `tests/fixtures/`, which holds data fixtures rather than importable modules. |
 
 ### Modify
 
@@ -160,8 +160,8 @@ opening the JSON. Do not change the review verdict logic (Global Constraint 6).
 
 #### Task D1: Build the fixture matrix
 
-Implement `tests/fixtures/git_repo_builder.py` and cover every row of the spec's regression
-table: trailer-only, branch-only, mixed, merge-subject with branch deleted, detached HEAD,
+Extend `tests/git_repo_builder.py` (created in stream A) and cover every remaining row of the
+spec's regression table: trailer-only, branch-only, mixed, merge-subject with branch deleted, detached HEAD,
 no-issue commits, and parity.
 
 **Interfaces** — Consumes: A1's signatures. Produces: fixtures E1 reuses.

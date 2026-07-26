@@ -5,8 +5,8 @@ Plan: `specs/095-commit-issue-resolution-parity/plan.md`
 
 ## Stream A — Shared Resolver
 
-- [ ] A1 Create `scripts/commit_resolution.py` owning trailer, branch, and merge-subject rules behind three fixed signatures, porting existing behavior verbatim.
-- [ ] A2 Replace per-commit `git branch --contains` with one batched branch-membership build, and assert subprocess count does not scale with history length.
+- [x] A1 Create `scripts/commit_resolution.py` owning trailer, branch, and merge-subject rules behind three fixed signatures, porting existing behavior verbatim.
+- [x] A2 Replace per-commit `git branch --contains` with one batched branch-membership build, and assert subprocess count does not scale with history length.
 
 ## Stream B — Consumer Migration
 
@@ -19,7 +19,7 @@ Plan: `specs/095-commit-issue-resolution-parity/plan.md`
 
 ## Stream D — Regression Coverage
 
-- [ ] D1 Build `tests/fixtures/git_repo_builder.py` and cover trailer-only, branch-only, mixed, merge-subject with branch deleted, detached HEAD, no-issue commits, and parity.
+- [ ] D1 Extend `tests/git_repo_builder.py` (created in stream A) and cover trailer-only, branch-only, mixed, merge-subject with branch deleted, detached HEAD, no-issue commits, and parity.
 
 ## Stream E — Parity Proof and Completion
 

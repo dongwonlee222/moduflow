@@ -10,7 +10,7 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `095-commit-issue-resolution-parity` (phase: execute). Canonical: `issues/095-commit-issue-resolution-parity.md`.
 
 ## Priority Queue — 2026-07-25
 

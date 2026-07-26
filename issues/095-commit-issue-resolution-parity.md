@@ -1,6 +1,6 @@
 # Issue 095: Commit-to-Issue Resolution Parity
 
-**Status: backlog** — created 2026-07-25.
+**Status: active** — created 2026-07-25, started 2026-07-26; stream A implemented.
 **Priority: p1**
 **Blocked-by:**
 
@@ -110,7 +110,7 @@ existing history. Do not make converge gate the review verdict.
 
 - [x] spec → `specs/095-commit-issue-resolution-parity/spec.md`
 - [x] plan → `specs/095-commit-issue-resolution-parity/plan.md` + `tasks.md`
-- [ ] execute → PR / commits
+- [ ] execute → PR / commits (stream A done: `scripts/commit_resolution.py`)
 - [ ] review → review notes
 
 ## Related Issues
@@ -125,6 +125,7 @@ existing history. Do not make converge gate the review verdict.
 ## Sessions
 
 - 2026-07-25: found during the independent review of issue 093.
+- 2026-07-26: stream A landed. Implementing it surfaced a rule the spec had assumed away — branch containment is not branch authorship. `git rev-list <branch>` attributed 279 commits to issue 093 where the branch contributed 52, because a branch cut from main carries all of main as ancestors; `--not main` yields 0 once merged. Merged work is now delimited by the merge commit's second-parent side minus its first-parent side, computed from the log records already parsed, so it adds no subprocess. Converge-equivalent collection on 093 moved from 10 to 57 and includes `scripts/project_issue_schema.py`.
 - 2026-07-26: reproduced on `main` at `6bca2b4` after 093 merged — converge collects 10 commits (trailer 9, merge-subject 1) with `errors: []`, while `linkage_check` attributes 53 over the same window. Merging raised the count but did not close the gap, confirming the defect is structural rather than a branch-lifetime artifact. Spec and plan written.
 
 ## Links
