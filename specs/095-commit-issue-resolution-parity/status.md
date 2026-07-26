@@ -712,6 +712,103 @@ A third independent review. Two of the previous three rounds of self-declared co
 reopened by one, and the one apparatus built to prevent that was itself half a copy of the
 implementation.
 
+## Review round 8 — third independent review
+
+Run at head `59432c7`, read-only, repository verified unmutated. **Verdict: request changes.**
+
+### Confirmed
+
+Two claims from round 7 survived checking, and they matter:
+
+- **AC1 is genuinely met.** Replacing `linkage_check.resolve_issue_for_commit` with its
+  pre-095 trailer-only rule fails 19 tests. `CommitDirectionTests` is what catches it — the
+  test deleted at `e8e4977` has been replaced by something that works.
+- **"Every fix is mutation-checked" holds.** All ten mutations the reviewer built were caught,
+  across every fix named in round 7. No mutation was blind.
+
+### Not closed, and claimed closed — Q-2
+
+Round 7's apparatus table says the oracle's base-ref layer is independent. It is not:
+
+| Layer | Reality |
+| --- | --- |
+| `origin/HEAD` lookup | Textually identical in implementation and oracle, and **executes in 0 of 15 shapes** — `GitRepo.publish()` never writes `origin/HEAD` |
+| Scoring fallback | Differs only in `_same_branch(other, ref)` versus `other != ref`, and returns the *same wrong answer* as the implementation on every base-ref defect below |
+
+The independence claim is true only of the layer that never runs. This is the third round in
+which Q5's substance outlives its closure.
+
+### Q-1 — the base-ref fallback elects an issue branch as the trunk. High.
+
+In 5 of the 15 existing shapes the implementation and the oracle both elect `codex/101-alpha`
+as base. They survive it by accident: when the mis-elected base *is* the branch being
+measured, `_same_branch` short-circuits and merge topology carries the answer. Add a second
+branch and it bites. Five hand-derived arrangements, both sides wrong:
+
+| Arrangement | Hand | Both | Failure |
+| --- | --- | --- | --- |
+| A merged and kept, B cut from main after | 1 | 3 | over-collection |
+| A and B at the identical commit | 1, 1 | 0, 0 | **F6 reopened** |
+| Stacked, ancestor merged then deleted | 1 | 0 | work lost entirely |
+| Live branch and main each 1 ahead | 1 | 0 | ordinary in-progress branch collects nothing |
+| Ancestor branch renamed out of `codex/` | 1 | 3 | claims the renamed branch's commits |
+
+Scope: any repository without `origin/HEAD` — every fixture here, and any local-only project.
+This checkout has it set, which is why five rounds of real-repo probing missed it.
+
+It also lands on F3, closed one round ago. The failure is not *no base* but *wrong base*, and
+all five report healthy: `degraded: []`, `base_ref_available: True`, with `branch_refs` naming
+a branch that produced no sources — a self-contradicting payload.
+
+### Q-3 — the oracle contradicts itself. High.
+
+`_branch_issue` kept the tail fallback that round 6 deliberately removed from
+`issue_id_from_branch`. On `branch_name_not_matching_issue`, the oracle's issue→commits half
+returns 1 commit for an unregistered id while its commit→issue half returns nothing, and the
+shipped rule returns nothing. An oracle that answers two ways cannot arbitrate.
+
+The suite cannot see it because differential coverage is bounded by what each shape *returns*,
+not what it *builds*. A sweep over every issue id a shape constructs finds exactly this one
+divergence.
+
+### Q-4 — evidence is not reproducible from history. High.
+
+`known_issue_ids` runs `git ls-files issues` — worktree state, not history. On byte-identical
+history, resolution differs by which branch is checked out (0 versus 2 commits). For a file
+whose purpose is to be the review record, that is worse than a low count.
+
+Same cause, direct blast radius from `0076b67`: archiving or moving an issue file silently
+drops its commits, with `degraded: []`. The round-6 phantom-branch fix was right; its cost was
+not measured.
+
+### Q-5, Q-6 — Medium
+
+`\x01` in a commit body still drops that commit, now with a surfaced error rather than silent
+corruption of neighbours. The Q3 ancestor probe made subprocess count quadratic in branch
+count: 208 of 228 calls on this repository, 9.5× round 3. AC5 still passes — it does not scale
+with *history* — but GC4 says "bounded by branch count", and it is now branch count squared.
+
+### Assessment
+
+Round 7 closed eleven findings and the mutation discipline is real. The one it reported closed
+without closing is the one about the apparatus itself, and that is what let a base-ref cluster
+of over- and under-collection — this issue's founding defect class — stay invisible for
+another round.
+
+Five of the reviewer's ten new arrangements broke the implementation; four broke the oracle
+identically.
+
+## Next gate
+
+Three items, in order, before any further defect fixes:
+
+1. Derive the oracle's base ref by a genuinely different route, or assert base ref against
+   hand-written ground truth per shape.
+2. Make the differential sweep every issue id a shape *builds*, not the list it returns.
+3. Reconcile `_branch_issue`'s tail fallback with `issue_id_from_branch`.
+
+Then Q-1, Q-4, Q-5, Q-6.
+
 ## Superseded — round 3 next gate
 
 Do not open a PR. F1, F2, F5, F6, and F7 are correctness defects in shipped code; F5 is
