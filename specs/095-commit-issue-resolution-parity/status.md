@@ -646,6 +646,72 @@ Apparatus items 2 and 3 from round 5 — the oracle's base-ref and branch-gramma
 still verbatim copies, so Q3 and Q4 remain structurally invisible, and `git_repo_builder` still
 hardcodes `-b main`. F3, F4's remaining half, F10, F11 and F12 are untouched.
 
+## Review round 7 — remaining findings closed
+
+All twelve findings from the two independent reviews are addressed. Apparatus first, then the
+defects it could then see.
+
+### Apparatus (round 5's next gate)
+
+| Item | Done |
+| --- | --- |
+| commit→issue oracle | `reference_issues_for_commit` inverts the issue→commits reference over every registered issue |
+| Oracle's base-ref layer independent | asks `origin/HEAD`, else scores refs by fewest unique commits, tie-broken by containment. No name list |
+| Shape generator stops hardcoding `-b main` | `GitRepo(default_branch=...)`, plus four shapes for the arrangements that were unreachable |
+
+Each of the three exposed a defect the moment it landed.
+
+### Findings closed this round
+
+| # | Fix |
+| --- | --- |
+| N1 | A trunk called anything but `main`/`master` resolved to no base; `base_ref` derives it from the repository |
+| N2 | Octopus merges lost every parent past the second — an entire issue's work attributed to nothing. `merge_side_commits` takes a parent index and each named issue is paired with its own parent |
+| Q3 | Work stacked on another issue's branch collected that issue's commits. Contribution now excludes the base *and any issue branch this one descends from* — ancestors only, so F6's descendant case stays fixed |
+| F12 | A supplied index answers without asking git. Measured: 65 redundant `git show -s` calls to 0, 1.7s to 1.25s |
+| F4 | `linkage_check` carries `degraded` through both entry points; the gate can see it |
+| F11 | `hooks/on_stop.py` asked `linkage_check`'s private regex — a third owner of branch grammar, carrying the same phantom-issue bypass. Now delegates; four dead helpers deleted |
+| F3 | `branch-unavailable` fired whenever no issue-shaped branch existed, true of most healthy repositories. It now means what it says: issue branches exist and no base could be found |
+
+Plus, found by the new commit→issue oracle on its first run rather than by looking for it: a
+branch named for an issue that does not exist satisfied both the linkage gate and the stop
+hook. `codex/999-not-a-real-issue` with a behavior change reported `ok: True, unlinked: 0`.
+Naming a branch is not having an issue.
+
+### Every fix is mutation-checked
+
+Reverting any one of them fails at least one test. The apparatus was checked the same way:
+reverting merge-direction detection, the `--all` log range, or the base-ref exclusion each
+fails the differential suite.
+
+### State
+
+```
+unittest                 820/820 OK   (741 at the start of this issue)
+differential              30/30 OK    (15 repository shapes)
+release_check            errors []
+lifecycle drift          []
+```
+
+Resolution on this repository is unchanged across every fix: issue 093 at 53 commits, 086 at
+5, 081 at 7, with issue 081's merge commit attributed to 081 rather than sitting inside 093's
+evidence.
+
+### Known limitations, asserted rather than hidden
+
+- A commit orphaned by branch deletion is unreachable from every ref, so no source can
+  attribute it. It resolves to `None`, indistinguishable from a commit belonging to no issue.
+  Pinned by a test that says so.
+- `rev_range` remains a parameter no consumer passes.
+- Squash merges and work surviving only under `refs/pull/*` under-collect. Both fall outside
+  the `codex/<issue-id>` convention the spec declares a non-goal.
+
+## Next gate
+
+A third independent review. Two of the previous three rounds of self-declared completion were
+reopened by one, and the one apparatus built to prevent that was itself half a copy of the
+implementation.
+
 ## Superseded — round 3 next gate
 
 Do not open a PR. F1, F2, F5, F6, and F7 are correctness defects in shipped code; F5 is

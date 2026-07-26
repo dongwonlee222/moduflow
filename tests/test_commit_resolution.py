@@ -168,7 +168,19 @@ class TestDetachedHead(unittest.TestCase):
             self.assertEqual(out["source"], "trailer")
             self.assertEqual(out["errors"], [], "degraded resolution must not raise")
 
-    def test_branch_only_commit_reports_degraded_not_silent(self):
+    def test_commit_orphaned_by_branch_deletion_resolves_to_nothing(self):
+        """A known limitation, asserted rather than hidden.
+
+        Delete the only branch holding a commit and it becomes unreachable
+        from every ref, so `--all` does not see it and no source can attribute
+        it. It resolves to `None`, indistinguishable from a commit that
+        genuinely belongs to no issue.
+
+        `degraded` is deliberately empty here. The flag means branch evidence
+        could not be consulted; here there is no evidence left to consult,
+        which is a different thing. The previous version of this test asserted
+        `branch-unavailable` and passed with its own `detach()` removed — it
+        never checked what its name claimed."""
         with GitRepo() as repo:
             repo.commit("chore: base")
             repo.add_issue_file(ISSUE)
@@ -176,14 +188,29 @@ class TestDetachedHead(unittest.TestCase):
             sha = repo.commit("feat: no trailer")
             repo.checkout("main")
             repo.delete_branch(name)
-            repo.detach()
+
+            index = cr.build_attribution(repo.runner, repo.path)
+            self.assertNotIn(sha, index["records"], "an orphaned commit is unreachable")
+
             out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
             self.assertIsNone(out["issue_id"])
-            self.assertIn(
-                "branch-unavailable",
-                out["degraded"],
-                "a commit resolvable only by branch must say why it was not resolved",
-            )
+            self.assertEqual(out["degraded"], [])
+
+    def test_a_trailer_survives_branch_deletion(self):
+        """The reason the trailer outranks branch evidence: it is intrinsic to
+        the commit and does not depend on a ref still existing."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            name = repo.branch(f"codex/{ISSUE}")
+            sha = repo.commit("feat: with trailer", issue=ISSUE)
+            repo.checkout("main")
+            repo.merge(name, message=f"Merge branch 'codex/{ISSUE}'")
+            repo.delete_branch(name)
+
+            out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
+            self.assertEqual(out["issue_id"], ISSUE)
+            self.assertEqual(out["source"], "trailer")
 
 
 class TestBatching(unittest.TestCase):
@@ -548,6 +575,62 @@ class TestUnregisteredIssueIds(unittest.TestCase):
 
             out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
             self.assertEqual(out["issue_id"], "321-no-issues-tracked")
+
+
+class TestDegradedMeaning(unittest.TestCase):
+    """F3: the flag must mean branch evidence could not be consulted, not
+    that the repository's refs happen to be arranged a certain way.
+
+    It used to fire whenever no issue-shaped branch existed — true of most
+    healthy repositories, where every merged branch still resolves through
+    merge topology — and stayed silent in cases where attribution really was
+    impossible."""
+
+    def test_healthy_repo_with_issue_branches_is_not_degraded(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.branch(f"codex/{ISSUE}")
+            repo.commit("feat: work")
+            repo.checkout("main")
+            self.assertEqual(cr.build_attribution(repo.runner, repo.path)["degraded"], [])
+
+    def test_healthy_repo_without_issue_branches_is_not_degraded(self):
+        """Nothing was unavailable — there are simply no issue branches."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.commit("feat: work", issue=ISSUE)
+            self.assertEqual(cr.build_attribution(repo.runner, repo.path)["degraded"], [])
+
+    def test_issue_branch_with_no_base_is_degraded(self):
+        """Evidence exists and cannot be read: the case the flag is for."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.branch(f"codex/{ISSUE}")
+            repo.commit("feat: work")
+            repo._git("branch", "-q", "-D", "main")
+
+            self.assertIn(
+                cr.DEGRADED_BRANCH_UNAVAILABLE,
+                cr.build_attribution(repo.runner, repo.path)["degraded"],
+            )
+
+    def test_detached_commits_reach_the_index(self):
+        """Once the log covers `--all`, a detached commit is visible and its
+        lack of a branch is a fact about it, not a degradation."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.branch(f"codex/{ISSUE}")
+            repo.commit("feat: on branch")
+            repo.checkout("main")
+            repo.detach()
+            detached = repo.commit("feat: detached work")
+
+            index = cr.build_attribution(repo.runner, repo.path)
+            self.assertIn(detached, index["records"])
+            self.assertEqual(index["degraded"], [])
 
 
 if __name__ == "__main__":

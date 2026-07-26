@@ -304,14 +304,17 @@ def build_branch_membership(runner, cwd):
     # One owner for branch-name interpretation (GC1) — no second copy here.
     branches = [name for name in all_refs if issue_id_from_branch(name, issue_ids)]
 
-    if not branches:
-        degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
+    # Note what is NOT degraded: having no issue-shaped branch at all. Nothing
+    # was unavailable there — the repository simply has none, and every merged
+    # branch still resolves through merge topology. Firing here made the flag
+    # true of most healthy repositories, which is how it came to mean nothing.
 
     base = base_ref(runner, cwd, all_refs)
-    if base is None:
-        # Nothing to measure a branch's own contribution against.
-        if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
-            degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
+    if base is None and branches:
+        # There are issue branches but nothing to measure their contribution
+        # against, so their commits cannot be attributed. This is the case the
+        # flag is for: evidence exists and could not be read.
+        degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
 
     for name in branches:
         # A branch's contribution is what it has that the base branch does not.
