@@ -21,7 +21,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import commit_resolution as cr  # noqa: E402
 import commit_resolution_shapes as shapes  # noqa: E402
-from commit_resolution_reference import reference_commits_for_issue  # noqa: E402
+from commit_resolution_reference import (  # noqa: E402
+    reference_commits_for_issue,
+    reference_issues_for_commit,
+)
 from git_repo_builder import GitRepo  # noqa: E402
 
 
@@ -62,7 +65,56 @@ for _shape in shapes.ALL_SHAPES:
     _attach(_shape)
 
 
-# There is deliberately no consumer-parity test here.
+class CommitDirectionTests(unittest.TestCase):
+    """The commit→issue half of AC1, against the oracle rather than against
+    the implementation's own index.
+
+    The test deleted at e8e4977 compared `build_attribution` to itself and
+    passed under six mutations, including converge returning nothing. This one
+    asks the oracle what a commit belongs to and holds the implementation to
+    that answer."""
+
+    def _check(self, shape_name):
+        from scripts import linkage_check
+
+        builder = shapes.ALL_SHAPES[shape_name]
+        with GitRepo() as repo:
+            builder(repo)
+            index = cr.build_attribution(repo.runner, repo.path)
+            for sha in index["order"]:
+                expected = reference_issues_for_commit(repo.runner, repo.path, sha)
+                resolved = linkage_check.resolve_issue_for_commit(
+                    repo.runner, repo.path, sha
+                )["issue_id"]
+
+                if not expected:
+                    self.assertIsNone(
+                        resolved,
+                        f"\nshape {shape_name}: {sha[:8]} belongs to no issue, "
+                        f"but linkage_check named {resolved}",
+                    )
+                else:
+                    self.assertIn(
+                        resolved,
+                        expected,
+                        f"\nshape {shape_name}: {sha[:8]} belongs to "
+                        f"{sorted(expected)}, but linkage_check named {resolved}",
+                    )
+
+
+def _attach_commit_direction(name):
+    def test(self):
+        self._check(name)
+
+    test.__name__ = f"test_commit_direction_{name}"
+    setattr(CommitDirectionTests, test.__name__, test)
+
+
+for _shape in shapes.ALL_SHAPES:
+    _attach_commit_direction(_shape)
+
+
+# The consumer-parity test that lived here is gone, deliberately.
 #
 # One was added at 81b943b and removed after the second independent review
 # mutation-tested it: it passed when project_converge returned nothing (issue

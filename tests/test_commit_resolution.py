@@ -462,5 +462,63 @@ class TestNoPerCommitProbe(unittest.TestCase):
             )
 
 
+class TestUnregisteredIssueIds(unittest.TestCase):
+    """Naming a branch is not the same as having an issue.
+
+    `issue_id_from_branch` used to return the branch tail when no registered
+    issue matched, so a behavior commit on `codex/999-not-a-real-issue`
+    satisfied the linkage gate — `ok: True, unlinked: 0` — while linking to
+    nothing that exists. Found by the commit-direction oracle, which enumerates
+    registered issues and so could not see the phantom id."""
+
+    def test_branch_naming_an_unregistered_issue_resolves_to_nothing(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.branch("codex/999-not-a-real-issue")
+            sha = repo.commit("feat: work under a phantom issue")
+
+            out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
+            self.assertIsNone(out["issue_id"])
+
+    def test_linkage_gate_flags_a_phantom_branch(self):
+        from scripts import linkage_check
+
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            base = repo.head()
+            repo.branch("codex/999-not-a-real-issue")
+            (repo.path / "scripts").mkdir(exist_ok=True)
+            repo.commit("feat: behavior change", filename="scripts/thing.py")
+
+            out = linkage_check.find_unlinked_behavior_commits(
+                repo.runner, repo.path, base, repo.head()
+            )
+            self.assertFalse(out["ok"], "a phantom issue id must not pass the gate")
+            self.assertEqual(len(out["unlinked"]), 1)
+
+    def test_registered_issue_still_resolves(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.branch(f"codex/{ISSUE}")
+            sha = repo.commit("feat: real work")
+
+            out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
+            self.assertEqual(out["issue_id"], ISSUE)
+
+    def test_no_issue_list_at_all_keeps_the_tail(self):
+        """With nothing to check against, refusing everything would be worse
+        than the previous behavior."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.branch("codex/321-no-issues-tracked")
+            sha = repo.commit("feat: work")
+
+            out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
+            self.assertEqual(out["issue_id"], "321-no-issues-tracked")
+
+
 if __name__ == "__main__":
     unittest.main()

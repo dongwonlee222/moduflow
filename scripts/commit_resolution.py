@@ -99,7 +99,18 @@ def issue_id_from_branch(name, issue_ids):
             if tail == issue_id or tail.startswith(issue_id + "-"):
                 if best is None or len(issue_id) > len(best):
                     best = issue_id
-        return best or tail
+        if best:
+            return best
+        # No registered issue matches. The tail used to be returned as the id,
+        # which let a branch named for an issue that does not exist satisfy the
+        # linkage gate: a behavior commit on `codex/999-not-a-real-issue`
+        # reported `ok: True, unlinked: 0` while linking to nothing. Naming a
+        # branch is not the same as having an issue.
+        #
+        # Callers that have no issue list at all (`issue_ids` empty) still get
+        # the tail, because there is nothing to check against and refusing
+        # everything would be worse than the old behavior.
+        return tail if not issue_ids else None
     return None
 
 

@@ -155,3 +155,37 @@ def reference_commits_for_issue(runner, cwd, issue_id):
             found.update(side.split())
 
     return found
+
+
+def reference_issues_for_commit(runner, cwd, sha):
+    """Every issue a commit belongs to. Returns a set of issue ids.
+
+    Derived by inverting `reference_commits_for_issue` over every known issue
+    rather than by asking a per-commit question — the point of an oracle is
+    that it reaches the answer a different way than the implementation, which
+    builds one attribution index and reads it from both directions.
+
+    A commit can belong to several issues: one merged from branch A into branch
+    B before B reached main belongs to both.
+    """
+    found = set()
+    for issue_id in _known_ids(runner, cwd):
+        if sha in reference_commits_for_issue(runner, cwd, issue_id):
+            found.add(issue_id)
+
+    # Trailers can name an issue with no tracked issues/<id>.md file, which
+    # `_known_ids` cannot enumerate. Read them off the commit itself.
+    body = _out(runner, ["git", "show", "-s", "--format=%B", sha], cwd) or ""
+    trailer = TRAILER_RE.search(body)
+    if trailer:
+        found.add(trailer.group(1))
+
+    # Same for a merge naming a branch whose issue is not registered.
+    subject = _out(runner, ["git", "show", "-s", "--format=%s", sha], cwd) or ""
+    parents = _out(runner, ["git", "show", "-s", "--format=%P", sha], cwd) or ""
+    if len(parents.split()) >= 2:
+        merged = merge_source_issue(subject.strip(), _known_ids(runner, cwd))
+        if merged:
+            found.add(merged)
+
+    return found

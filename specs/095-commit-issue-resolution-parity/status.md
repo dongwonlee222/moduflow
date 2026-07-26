@@ -582,6 +582,70 @@ what rounds 1 through 4 skipped.
 | F11 | `hooks/on_stop.py` is a third owner of branch grammar (GC1); four dead helpers | Low |
 | Q12 | `rev_range` is a dead parameter; squash merges and `refs/pull/*` under-collect | Low |
 
+## Review round 6 — commit→issue oracle
+
+Apparatus item 1 from round 5's next gate. `reference_issues_for_commit` inverts
+`reference_commits_for_issue` over every registered issue, so the commit→issue direction now
+has an oracle that reaches its answer differently from the implementation's single index.
+`CommitDirectionTests` holds `linkage_check.resolve_issue_for_commit` to it across all 11
+shapes.
+
+**It found a gate bypass on first run, without being told what to look for.**
+
+### A branch named for an issue that does not exist satisfied the linkage gate
+
+`issue_id_from_branch` returned the branch tail whenever no registered issue matched. Measured
+before the fix:
+
+```
+branch   codex/999-not-a-real-issue      (no issues/999-....md)
+change   scripts/thing.py                (a behavior path)
+gate     ok: True, unlinked: 0           <- passes
+issue    999-not-a-real-issue            <- does not exist
+```
+
+The gate exists to require that behavior changes link to an issue. Naming a branch is not
+having an issue, and the branch name is attacker-controlled in the only sense that matters
+here: it is the thing a person types when they want the gate to stop complaining.
+
+Fixed: an unmatched tail resolves to `None` when an issue list is available. When no issues are
+tracked at all the tail is still returned — there is nothing to check against, and refusing
+everything would be worse than the prior behavior. After the fix the same case reports
+`ok: False, unlinked: 1`.
+
+### Impact measured before changing anything
+
+Six commits in this repository were attributed to unregistered ids; five become unattributed,
+one is also claimed by a registered issue and is unaffected.
+
+| Branch | Resolved id | Commits |
+| --- | --- | --- |
+| `codex/034-pr-ready-and-dashboard-db-followup` | unregistered | 3 |
+| `codex/086-087-github-issue-projection` | unregistered | 2 |
+| `codex/092-current-dashboard-korean` | unregistered | 1 |
+
+All three are branches that do not follow `codex/<issue-id>` — the observation recorded in
+round 4 as out of scope, now the thing the gate correctly refuses.
+
+### Mutation-checked
+
+Restoring the old fallback fails three tests. Unlike the test deleted at `e8e4977`, this one
+can fail.
+
+### Verification
+
+```
+python3 -m unittest discover -s tests     804/804 OK   (789 before)
+python3 scripts/release_check.py .        errors []
+python3 scripts/project_lifecycle.py . --drift   []
+```
+
+### Still open
+
+Apparatus items 2 and 3 from round 5 — the oracle's base-ref and branch-grammar layers are
+still verbatim copies, so Q3 and Q4 remain structurally invisible, and `git_repo_builder` still
+hardcodes `-b main`. F3, F4's remaining half, F10, F11 and F12 are untouched.
+
 ## Superseded — round 3 next gate
 
 Do not open a PR. F1, F2, F5, F6, and F7 are correctness defects in shipped code; F5 is
