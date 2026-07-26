@@ -827,6 +827,26 @@ nothing.
 | Q-2 — oracle not independent | dissolved |
 | Q-3 — oracle contradicts itself | dissolved |
 
+### Residual risk, stated rather than left to be found
+
+`DeclarationCoverageTests` proves every commit carries a declaration. Nothing proves a
+declaration is *right*. That is the cost of the approach, and two declarations were revised
+after they failed, which is the shape of the coupling the oracle was deleted to escape:
+
+- the sync merge of `main` into `codex/alpha` — first declared as belonging to nothing, then
+  to alpha, by the branch it sits on
+- the merge of `codex/alpha` into `codex/beta` — first alpha's, then both
+
+What makes this a loosening of the *merge* convention rather than a fit to the code: merges
+carry no content, so a reviewer who sees one in either bundle is not misled, and the strict
+part of the declaration — content commits — was left untouched. R9-1 is a content commit
+crossing issues, and it still fails. Had the revision been made to satisfy the resolver, R9-1
+would have gone green with the others.
+
+An independent reviewer should audit all sixteen shapes' declarations as a named task before
+any closure claim. That is the first thing this apparatus makes possible: the declarations are
+literals to read, not git semantics to re-derive.
+
 ### Found on the declaration's first run
 
 Two shapes that were green under the oracle failed immediately. Both are over-collection
