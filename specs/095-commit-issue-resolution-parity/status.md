@@ -436,7 +436,108 @@ F1, F3, F4, F8, F10, F11, F12 are not addressed in this round. F8 in particular 
 `unmatched_count` being a repository-wide constant rather than a property of the run — is a
 contract problem, not a bug fix, and needs a decision about what the number should mean.
 
+## Review round 5 — second independent review
+
+Run 2026-07-26 at head `81b943b`, read-only, repository verified unmutated. Eight of round 3's
+twelve findings had been addressed; this pass judged the fixes and the new apparatus.
+
+**Verdict: request changes.** The round-4 claim that consumer parity was proven is false.
+
+### Q1 — The AC1 parity test cannot fail. Critical.
+
+`ConsumerParityTests` compares `build_attribution` to itself: both sides of every assertion
+are sourced from the same function, and `if sha in converge: assertTrue(claimed)` is true by
+construction because converge only emits shas that have attribution. The reviewer
+mutation-tested it in process:
+
+| Mutation | Result |
+| --- | --- |
+| baseline | passes |
+| converge returns nothing — **issue 095's founding defect** | passes |
+| linkage_check resolves every commit to `None` | passes |
+| both consumers return nothing | passes |
+| linkage_check reintroduces its pre-095 private rule | passes |
+| project_converge reintroduces its pre-095 private rule | passes |
+
+The spec's wording — "fails if either module reintroduces a private rule" — is falsified by
+the last two rows. Commit `81b943b` is titled "prove consumer parity across all shapes"; it
+proves nothing. There is also no reference implementation for the commit→issue direction, so
+half of AC1 has no oracle at all.
+
+### Q3 — The round-4 shape encodes over-collection as correct. High.
+
+`stacked_live_branches`, added to fix F6, asserts that issue `102-beta` collects three commits
+when it contributed one — the other two are `101-alpha`'s branch. The F6 fix turned an
+under-collection defect into an over-collection defect of the same class as F5, and the
+differential suite blesses it because implementation and oracle share the same base-ref rule.
+Latent rather than live here (`089-…-release` is not a registered issue id, so both refs map to
+one issue); it fires when two registered issues are stacked.
+
+### Q4 — `base_ref` prefers a stale local `main` over `origin/main`. High.
+
+Ground truth 2 commits, oracle 6, implementation 6, differential agrees. Any fork, CI
+checkout, or clone whose local `main` has not been fast-forwarded re-opens the 279-versus-52
+over-collection this module's docstring claims to have closed. No shape can reach it —
+`git_repo_builder` hardcodes `init -b main` and every shape checks out `main`.
+
+### Q5 — The oracle is only half independent. High.
+
+Independent: the graph layer (`git rev-list` subprocesses versus in-memory reachability). That
+half earned its four round-4 catches. Verbatim copies: `merge_source_issue`, `BASE_CANDIDATES`,
+and the longest-prefix branch rule. Mutation results:
+
+| Mutation | Differential suite |
+| --- | --- |
+| drop the branch source | catches |
+| ignore merge direction (F5) | catches |
+| `base_ref` always `None` | catches |
+| `base_ref` prefers `origin/main` | **blind** |
+| trailer regex tightened | **blind** |
+
+Q3, Q4 and Q6 are all instances of the blind half.
+
+### Q6 — Shapes that break the implementation and that no shape builds. High/Medium.
+
+- Non-`main` default branch (`init -b develop`): ground truth 2, both 0, differential agrees.
+- Octopus merge: F10 is worse than described — `102-beta` gets **zero** commits, its work
+  attributed to nothing at all, not merely "parents past the second lost".
+- `` inside a commit body: `GIT_LOG_FORMAT` uses it as the record terminator with no
+  escaping, so one such commit corrupts its neighbours and is dropped from every path
+  including its own trailer. The differential suite *would* catch this; no shape builds it.
+
+Clean, verified against subjects git actually generates: merge-subject parsing across
+`--no-ff`, remote-tracking, GitHub PR and squash merges, `Merge tag`, reverts, prose
+containing " into ", and a non-English locale. Also clean: rebased branches, merge/revert/
+re-merge, prefix disambiguation with an unregistered suffix.
+
+### Q7–Q12 — the findings claimed open
+
+F8's rename is an honest improvement but signals over-collection not at all. F3 is confirmed
+**and round 3's characterization of its second half was wrong** — the real false negative is
+the worktree case, where `degraded` is empty while a detached commit is attributed to nothing.
+F4's remaining half, F11 and F12 are confirmed; F12 is a live cost issue rather than a nit
+(65 behavior commits → 65 redundant `git show` calls, 1.7s). `rev_range` is a dead parameter no
+consumer passes.
+
+### Assessment
+
+Round 4 replaced author-modelled correctness with an oracle, and the oracle's graph layer
+works. But its parsing and base-ref layers were copied from the implementation, so the
+apparatus reproduces exactly the failure mode it was built to end: agreement between two
+expressions of one author's understanding. Two High over-collection defects now sit in the
+same class as F5 — the defect round 4 was convened to fix — and one of them is written into a
+fixture as expected behaviour.
+
 ## Next gate
+
+Do not open a PR. Before any further fixes:
+
+1. The parity test needs at least one mutation that makes it fail, and a commit→issue oracle.
+2. The oracle needs an independently derived base-ref and branch-grammar layer, and
+   ground-truth assertions rather than only implementation-versus-oracle agreement.
+3. The shape generator must stop hardcoding `-b main`.
+
+## Superseded — round 3 next gate
 
 Do not open a PR. F1, F2, F5, F6, and F7 are correctness defects in shipped code; F5 is
 actively wrong in this repository's evidence bundles today. The fixture gaps that hid them
