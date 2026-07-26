@@ -162,13 +162,28 @@ def reference_commits_for_issue(runner, cwd, issue_id):
             found.add(sha)
 
     # 2. Live branches named for this issue. A branch's contribution is what it
-    #    has that the base branch does not — independent of every other branch.
+    #    has that neither the base branch nor any issue branch it was cut from
+    #    already had.
+    #
+    #    Excluding only the base is not enough: work stacked on another issue's
+    #    branch then collects that issue's commits too. Excluding every other
+    #    ref is too much — that is the defect where a descendant branch zeroes
+    #    its parent. Ancestors only.
     for ref in refs:
         if _branch_issue(ref, known_ids) != issue_id:
             continue
         if base is None:
             continue
-        text = _out(runner, ["git", "rev-list", ref, "--not", base], cwd)
+        excludes = [base]
+        for other in refs:
+            if other == ref or _branch_issue(other, known_ids) in (None, issue_id):
+                continue
+            ancestor = runner(
+                ["git", "merge-base", "--is-ancestor", other, ref], cwd
+            )
+            if ancestor.returncode == 0:
+                excludes.append(other)
+        text = _out(runner, ["git", "rev-list", ref, "--not", *excludes], cwd)
         if text:
             found.update(text.split())
 

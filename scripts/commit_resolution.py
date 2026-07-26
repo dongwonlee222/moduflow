@@ -323,7 +323,21 @@ def build_branch_membership(runner, cwd):
         # re-opens the 279-versus-52 over-collection.
         if base is None or _same_branch(base, name):
             continue
-        rev_args = ["git", "rev-list", name, "--not", base]
+        # Exclude the base and any *other* issue branch this one was cut from.
+        # Base alone is not enough — work stacked on another issue's branch
+        # then collects that issue's commits as its own. Excluding every other
+        # ref is too much: that is what let a descendant branch zero its
+        # parent. Ancestors only.
+        excludes = [base]
+        for other in branches:
+            if _same_branch(other, name):
+                continue
+            if issue_id_from_branch(other, issue_ids) == issue_id_from_branch(name, issue_ids):
+                continue
+            probe = _run(runner, ["git", "merge-base", "--is-ancestor", other, name], cwd)
+            if probe.returncode == 0:
+                excludes.append(other)
+        rev_args = ["git", "rev-list", name, "--not", *excludes]
         rev = _run(runner, rev_args, cwd)
         if rev.returncode != 0:
             errors.append(_error_text(rev_args, rev))
