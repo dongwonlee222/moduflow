@@ -213,6 +213,23 @@ def two_registered_stacked_issues(repo):
     return [ALPHA, BETA]
 
 
+def trailer_disagrees_with_branch(repo):
+    """Two sources naming different issues for one commit.
+
+    Reversing `SOURCE_PRECEDENCE` to put merge-subject ahead of trailer changed
+    no shape's outcome — the mutation survived — because no shape ever made two
+    sources disagree. Precedence was the one rule the suite asserted nowhere.
+    The trailer is the author saying outright which issue the work is for, and
+    the spec makes it authoritative over the branch it happens to sit on."""
+    _seed(repo, ALPHA, BETA)
+    name = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
+    repo.commit("fix: actually beta's work", issue=BETA, belongs_to=BETA)
+    repo.publish(name)
+    repo.checkout("main")
+    return [ALPHA, BETA]
+
+
 def octopus_merge(repo):
     """Review finding N2. Two branches merged at once; the second-parent-only
     walk loses everything past `^2`, and the reviewer measured an entire
@@ -246,6 +263,7 @@ ALL_SHAPES = {
     "non_main_default_branch": non_main_default_branch,
     "stale_local_default_branch": stale_local_default_branch,
     "two_registered_stacked_issues": two_registered_stacked_issues,
+    "trailer_disagrees_with_branch": trailer_disagrees_with_branch,
     "octopus_merge": octopus_merge,
 }
 

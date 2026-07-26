@@ -114,25 +114,43 @@ class CommitDirectionTests(_ShapeCase):
 
         repo, _ = self._build(shape_name)
         with repo:
+            index = cr.build_attribution(repo.runner, repo.path)["attribution"]
             for sha in repo.truth:
                 expected = repo.truth[sha]
-                resolved = linkage_check.resolve_issue_for_commit(
+                # Both call shapes. Without an index the trailer short-circuits
+                # and returns before `SOURCE_PRECEDENCE` is consulted; with one,
+                # the constant decides. Precedence is stated twice, so reversing
+                # the constant changed only half the callers and the mutation
+                # survived. Checking one path is checking one of two rules.
+                bare = linkage_check.resolve_issue_for_commit(
                     repo.runner, repo.path, sha
                 )["issue_id"]
+                indexed = linkage_check.resolve_issue_for_commit(
+                    repo.runner, repo.path, sha, attribution=index
+                )["issue_id"]
 
-                if not expected:
-                    self.assertIsNone(
-                        resolved,
-                        f"\nshape {shape_name}: {sha[:8]} belongs to no issue, "
-                        f"but linkage_check named {resolved}",
-                    )
-                else:
-                    self.assertIn(
-                        resolved,
-                        expected,
-                        f"\nshape {shape_name}: {sha[:8]} belongs to "
-                        f"{sorted(expected)}, but linkage_check named {resolved}",
-                    )
+                self.assertEqual(
+                    bare,
+                    indexed,
+                    f"\nshape {shape_name}: {sha[:8]} resolves to {bare} without "
+                    f"an attribution index and {indexed} with one — the caller's "
+                    "call shape must not change the answer",
+                )
+                for label, resolved in (("bare", bare), ("indexed", indexed)):
+                    if not expected:
+                        self.assertIsNone(
+                            resolved,
+                            f"\nshape {shape_name} ({label}): {sha[:8]} belongs "
+                            f"to no issue, but linkage_check named {resolved}",
+                        )
+                    else:
+                        self.assertIn(
+                            resolved,
+                            expected,
+                            f"\nshape {shape_name} ({label}): {sha[:8]} belongs "
+                            f"to {sorted(expected)}, but linkage_check named "
+                            f"{resolved}",
+                        )
 
 
 def _attach(cls, prefix):
@@ -170,6 +188,12 @@ OPEN_FINDINGS = {
     # covering it passed anyway.
     (GroundTruthTests, "stale_local_default_branch"): "R9-2",
     (CommitDirectionTests, "stale_local_default_branch"): "R9-2",
+    # R9-3. Precedence holds in one direction only. A commit whose trailer names
+    # beta, sitting on alpha's branch, resolves to beta commit->issue but lands
+    # in *both* bundles issue->commits: branch membership is collected without
+    # asking whether a higher-precedence source already claimed the commit. Two
+    # answers to one question — the condition this issue exists to remove.
+    (GroundTruthTests, "trailer_disagrees_with_branch"): "R9-3",
 }
 
 def _mark_open_findings():
