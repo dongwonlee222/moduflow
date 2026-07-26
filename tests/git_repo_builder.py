@@ -26,6 +26,7 @@ class GitRepo:
         self.path = Path(tempfile.mkdtemp(prefix="moduflow-095-"))
         self.call_count = 0
         self.call_log = []
+        self._file_seq = 0
         self._git("init", "-q", "-b", "main")
 
     def __enter__(self):
@@ -131,4 +132,8 @@ class GitRepo:
         return self._git("rev-list", "HEAD").split()
 
     def _next_index(self):
-        return len(list(self.path.glob("f*.txt"))) + 1
+        """Monotonic, not a directory count. Counting files gives the same name
+        on two branches, and the resulting content conflict makes a merge in a
+        fixture fail for reasons unrelated to what the fixture is testing."""
+        self._file_seq += 1
+        return self._file_seq

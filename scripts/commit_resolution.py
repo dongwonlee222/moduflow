@@ -34,10 +34,11 @@ BRANCH_ISSUE_RE = re.compile(rf"^codex/({ISSUE_ID_PATTERN})$")
 # NUL-separated fields, \x01-terminated records: sha, subject, parents, body.
 GIT_LOG_FORMAT = "%H%x00%s%x00%P%x00%B%x01"
 
-# `--branches --remotes` rather than a bare `git log`, which walks HEAD only.
-# Work on a branch that has not been merged is not reachable from HEAD, so a
-# bare log cannot see the very commits this module exists to attribute.
-GIT_LOG_ARGS = ("git", "log", "--branches", "--remotes", f"--format={GIT_LOG_FORMAT}")
+# `--all` rather than a bare `git log`, which walks HEAD only, and rather than
+# `--branches --remotes`, which misses a detached HEAD. Work on an unmerged
+# branch is not reachable from HEAD, and work committed in a detached worktree
+# is on no branch at all; `--all` covers every ref plus HEAD.
+GIT_LOG_ARGS = ("git", "log", "--all", f"--format={GIT_LOG_FORMAT}")
 
 # GC2. Highest first. A commit matching several sources is recorded once, at
 # the highest that matched.
@@ -99,6 +100,39 @@ def issue_id_from_branch(name, issue_ids):
                 if best is None or len(issue_id) > len(best):
                     best = issue_id
         return best or tail
+    return None
+
+
+def merge_source_issue(subject, issue_ids):
+    """The issue whose branch a merge commit merged *from*, or None.
+
+    Direction matters and the subject carries it:
+
+      Merge branch 'codex/X'                -> X    (X merged in)
+      Merge pull request #9 from o/codex/X  -> X    (X merged in)
+      Merge branch 'main' into codex/X      -> None (main merged into X)
+
+    A sync merge names the issue while merging the base branch *into* the
+    branch, so its second-parent side is the base branch's history. Claiming
+    it attributes all of main to the issue — measured live in this repository,
+    where issue 081's merge commit landed inside issue 093's evidence."""
+    source = subject.split(" into ")[0] if " into " in subject else subject
+    match = re.search(rf"codex/({ISSUE_ID_PATTERN})", source)
+    if not match:
+        return None
+    return issue_id_from_branch(f"codex/{match.group(1)}", issue_ids)
+
+
+def base_ref(refs):
+    """The branch other branches are cut from.
+
+    A branch's own contribution is what it has that the base does not. Deriving
+    it by excluding every *other* ref instead makes any unmerged descendant
+    branch zero its parent, and leaves nothing to exclude at all in a
+    single-branch clone."""
+    for candidate in ("main", "origin/main", "master", "origin/master"):
+        if candidate in refs:
+            return candidate
     return None
 
 
@@ -198,18 +232,23 @@ def build_branch_membership(runner, cwd):
     if not branches:
         degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
 
+    base = base_ref(all_refs)
+    if base is None:
+        # Nothing to measure a branch's own contribution against.
+        if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
+            degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
+
     for name in branches:
-        # Branch-exclusive commits only: plain `rev-list <branch>` returns every
-        # ancestor, i.e. all of the base branch's history.
+        # A branch's contribution is what it has that the base branch does not.
         #
-        # The exclusion is an explicit ref list rather than `--exclude` plus ref
-        # globs. `--exclude` applies only to the *next* glob, so
-        # `--exclude=<b> --branches --remotes` leaves a remote branch excluded
-        # from `--branches` (where it never appeared) and re-included by
-        # `--remotes` — the branch excludes itself and the result is empty.
-        # That shipped, and made every live-branch commit invisible.
-        others = [ref for ref in all_refs if not _same_branch(ref, name)]
-        rev_args = ["git", "rev-list", name, "--not", *others]
+        # Excluding every *other* ref instead looks equivalent and is not: an
+        # unmerged descendant branch then zeroes its parent (stacked work, live
+        # here as codex/089-... and codex/089-...-release), and in a
+        # single-branch clone there is nothing left to exclude at all, which
+        # re-opens the 279-versus-52 over-collection.
+        if base is None or _same_branch(base, name):
+            continue
+        rev_args = ["git", "rev-list", name, "--not", base]
         rev = _run(runner, rev_args, cwd)
         if rev.returncode != 0:
             errors.append(_error_text(rev_args, rev))
@@ -286,22 +325,23 @@ def build_attribution(runner, cwd, *, rev_range=None):
         }
         order.append(sha)
 
+    issue_ids = known_issue_ids(runner, cwd, errors)
+
+    # sha -> {issue_id: source}. A commit can belong to more than one issue —
+    # a branch merged into another branch before reaching main contributes to
+    # both — and a single-owner map silently drops the inner one.
     attribution = {}
 
     def claim(sha, issue_id, source):
-        current = attribution.get(sha)
-        if current is None:
-            attribution[sha] = {"issue_id": issue_id, "source": source}
-            return
-        if SOURCE_PRECEDENCE.index(source) < SOURCE_PRECEDENCE.index(current["source"]):
-            attribution[sha] = {"issue_id": issue_id, "source": source}
+        per_issue = attribution.setdefault(sha, {})
+        current = per_issue.get(issue_id)
+        if current is None or SOURCE_PRECEDENCE.index(source) < SOURCE_PRECEDENCE.index(current):
+            per_issue[issue_id] = source
 
     for sha in order:
         trailer = TRAILER_RE.search(records[sha]["body"])
         if trailer:
             claim(sha, trailer.group(1), "trailer")
-
-    issue_ids = known_issue_ids(runner, cwd, errors)
 
     # Merged work: the merge commit delimits exactly what its branch added.
     # Derived from `records`, so it costs no extra subprocess (GC4).
@@ -309,13 +349,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
         entry = records[sha]
         if len(entry["parents"]) < 2:
             continue
-        match = re.search(rf"codex/({ISSUE_ID_PATTERN})", entry["subject"])
-        if not match:
-            continue
-        # Work branches carry suffixes (codex/<id>-<suffix>), and the id
-        # pattern would otherwise swallow the suffix. Same disambiguation the
-        # branch-name path uses, so both agree on what the id is.
-        issue_id = issue_id_from_branch(f"codex/{match.group(1)}", issue_ids)
+        issue_id = merge_source_issue(entry["subject"], issue_ids)
         if not issue_id:
             continue
         claim(sha, issue_id, "merge-subject")
@@ -387,10 +421,16 @@ def resolve_issue_for_commit(runner, cwd, sha, *, attribution=None, membership=N
         errors.extend(built["errors"])
         degraded.extend(built["degraded"])
 
-    found = attribution.get(sha)
-    if found:
-        result["issue_id"] = found["issue_id"]
-        result["source"] = found["source"]
+    per_issue = attribution.get(sha) or {}
+    if per_issue:
+        # A commit can belong to several issues; this direction answers "which
+        # issue owns it", so pick the strongest source, ties by issue id.
+        issue_id, source = min(
+            per_issue.items(),
+            key=lambda item: (SOURCE_PRECEDENCE.index(item[1]), item[0]),
+        )
+        result["issue_id"] = issue_id
+        result["source"] = source
         return result
 
     # Whether branch evidence was consultable is a property of the index, not
@@ -422,15 +462,15 @@ def resolve_commits_for_issue(runner, cwd, issue_id, *, rev_range=None, index=No
 
     commits = []
     for sha in built["order"]:
-        found = attribution.get(sha)
-        if not found or found["issue_id"] != issue_id:
+        found = (attribution.get(sha) or {}).get(issue_id)
+        if not found:
             continue
         entry = records[sha]
         commits.append(
             {
                 "sha": sha,
                 "subject": entry["subject"],
-                "source": found["source"],
+                "source": found,
                 "is_merge": len(entry["parents"]) >= 2,
             }
         )

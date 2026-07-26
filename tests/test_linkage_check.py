@@ -89,12 +89,13 @@ class ResolveIssueForCommitTests(unittest.TestCase):
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "fix: handle sandboxed fetch\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00fix: handle sandboxed fetch\x00\x00fix: handle sandboxed fetch\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "origin/codex/074-sync-fetch-sandbox-handling\n",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "main\norigin/codex/074-sync-fetch-sandbox-handling\n",
                 (
                     "git",
                     "rev-list",
                     "origin/codex/074-sync-fetch-sandbox-handling",
                     "--not",
+                    "main",
                     ): "abc123\n",
                 ("git", "ls-files", "issues"): "issues/074-sync-fetch-sandbox-handling.md\n",
             }
@@ -111,12 +112,13 @@ class ResolveIssueForCommitTests(unittest.TestCase):
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "feat: promote\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00feat: promote\x00\x00feat: promote\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "codex/075-issue-less-context-capture\n",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "main\ncodex/075-issue-less-context-capture\n",
                 (
                     "git",
                     "rev-list",
                     "codex/075-issue-less-context-capture",
                     "--not",
+                    "main",
                     ): "abc123\n",
                 ("git", "ls-files", "issues"): "issues/075-issue-less-context-capture.md\n",
             }
@@ -133,12 +135,13 @@ class ResolveIssueForCommitTests(unittest.TestCase):
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "feat: gate\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00feat: gate\x00\x00feat: gate\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "origin/codex/075-issue-less-context-capture-gate\n",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "main\norigin/codex/075-issue-less-context-capture-gate\n",
                 (
                     "git",
                     "rev-list",
                     "origin/codex/075-issue-less-context-capture-gate",
                     "--not",
+                    "main",
                     ): "abc123\n",
                 ("git", "ls-files", "issues"): "issues/075-issue-less-context-capture.md\n",
             }
@@ -156,7 +159,7 @@ class ResolveIssueForCommitTests(unittest.TestCase):
                     "fix: thing\n\nIssue: 070-spec-consistency-analyze\n"
                 ),
                 # A conflicting branch exists but must not be consulted/win.
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "origin/codex/074-sync-fetch-sandbox-handling\n",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "main\norigin/codex/074-sync-fetch-sandbox-handling\n",
                 ("git", "ls-files", "issues"): (
                     "issues/070-spec-consistency-analyze.md\n"
                     "issues/074-sync-fetch-sandbox-handling.md\n"

@@ -374,6 +374,68 @@ appear. `TestDetachedHead.test_branch_only_commit_reports_degraded_not_silent` p
   across O(branches) calls, so cost is O(branches × refs) in argv — unmeasured beyond that.
 - Detached HEAD was simulated by clone plus `--detach` rather than `git worktree add`.
 
+## Review round 4 — differential oracle
+
+Round 3's finding was not really twelve defects; it was that three rounds had each fixed the
+case they were handed while the tests kept encoding the same understanding of git that
+produced the bugs. Fixing twelve items the same way would have produced a thirteenth.
+
+So correctness is no longer decided by the author's model of git:
+
+| File | Role |
+| --- | --- |
+| `tests/commit_resolution_reference.py` | A slow, obviously-correct resolver. Asks git one plain question at a time — no index, no batching. Too slow to ship, which is the point. |
+| `tests/commit_resolution_shapes.py` | Eleven repository shapes, chosen for what the author had least reason to try. Five are arrangements that exist in this repository today. |
+| `tests/test_commit_resolution_differential.py` | Runs the shipped resolver against the oracle across every shape. |
+
+It found four divergences on first run, without being told what to look for:
+
+| Shape | Divergence | Matches |
+| --- | --- | --- |
+| `sync_merge_then_pr_merge` | 2 extra — main's history claimed for the issue | F5 |
+| `stacked_live_branches` | 2 missing — descendant branch zeroed its parent | F6 |
+| `detached_before_commit` | 2 missing — commits on no branch never entered the record set | F2 |
+| `nested_merges` | 1 missing — inner branch's commit claimed by the outer issue | F9 |
+
+### Fixes
+
+- **F5** — `merge_source_issue` reads merge direction from the subject. `Merge branch 'main'
+  into codex/X` merges the base *into* the branch, so its second-parent side is main's
+  history, not the issue's. Only a merge that brought the branch *in* contributes its side.
+- **F6, F7** — a branch's contribution is now what it has that the *base branch* does not,
+  rather than what no other ref contains. Excluding every other ref let an unmerged descendant
+  zero its parent, and left nothing to exclude at all in a single-branch clone.
+- **F2** — `GIT_LOG_ARGS` uses `--all`, which covers every ref plus HEAD. `--branches
+  --remotes` missed a detached worktree entirely.
+- **F9** — attribution is `{sha: {issue_id: source}}`. A commit can belong to more than one
+  issue when a branch is merged into another before reaching main; the single-owner map
+  silently dropped the inner one.
+
+### Measured on this repository
+
+| | Before | After |
+| --- | --- | --- |
+| Issue 081's PR merge attributed to | `093` (`branch`) | `081` (`merge-subject`) |
+| Issue 093 commit count | 57 | 53 |
+| Issue 093 bundle contains 081's merge | yes | no |
+
+The drop from 57 to 53 is the sync-merge over-collection being removed, not evidence being
+lost.
+
+### Verification
+
+```
+python3 -m unittest tests.test_commit_resolution_differential    11/11 OK
+python3 -m unittest discover -s tests                           789/789 OK
+python3 scripts/release_check.py .                              errors []
+```
+
+### Still open from round 3
+
+F1, F3, F4, F8, F10, F11, F12 are not addressed in this round. F8 in particular —
+`unmatched_count` being a repository-wide constant rather than a property of the run — is a
+contract problem, not a bug fix, and needs a decision about what the number should mean.
+
 ## Next gate
 
 Do not open a PR. F1, F2, F5, F6, and F7 are correctness defects in shipped code; F5 is
