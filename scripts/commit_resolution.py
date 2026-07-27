@@ -27,25 +27,19 @@ No git failure is swallowed: failures surface in the result's `errors` list.
 """
 import re
 
+try:  # Works both as `scripts.commit_resolution` and a direct script import.
+    from . import commit_graph
+except ImportError:  # pragma: no cover - exercised by direct script consumers.
+    import commit_graph
+
 ISSUE_ID_PATTERN = r"\d{3}-[a-z0-9-]+"
 TRAILER_RE = re.compile(rf"^Issue:\s*({ISSUE_ID_PATTERN})\s*$", re.MULTILINE)
 BRANCH_ISSUE_RE = re.compile(rf"^codex/({ISSUE_ID_PATTERN})$")
 
-# NUL-separated fields, \x01-terminated records: sha, subject, parents, body.
-GIT_LOG_FORMAT = "%H%x00%s%x00%P%x00%B%x01"
-
-# `--all` rather than a bare `git log`, which walks HEAD only, and rather than
-# `--branches --remotes`, which misses a detached HEAD. Work on an unmerged
-# branch is not reachable from HEAD, and work committed in a detached worktree
-# is on no branch at all; `--all` covers every ref plus HEAD.
-GIT_LOG_ARGS = ("git", "log", "--all", f"--format={GIT_LOG_FORMAT}")
-BRANCH_REF_ARGS = (
-    "git",
-    "for-each-ref",
-    "--format=%(refname) %(objectname)",
-    "refs/heads",
-    "refs/remotes",
-)
+# Re-exported for callers during the graph-snapshot migration.
+GIT_LOG_FORMAT = commit_graph.GIT_LOG_FORMAT
+GIT_LOG_ARGS = commit_graph.GIT_LOG_ARGS
+BRANCH_REF_ARGS = commit_graph.BRANCH_REF_ARGS
 ORIGIN_HEAD_ARGS = (
     "git",
     "symbolic-ref",
@@ -565,13 +559,13 @@ def build_attribution(runner, cwd, *, rev_range=None):
     errors = []
     degraded = []
 
-    if rev_range:
-        args = ["git", "log", f"--format={GIT_LOG_FORMAT}", rev_range]
-    else:
-        args = list(GIT_LOG_ARGS)
-    result = _run(runner, args, cwd)
-    if result.returncode != 0:
-        errors.append(_error_text(args, result))
+    snapshot = commit_graph.load_snapshot(runner, cwd, rev_range=rev_range)
+    graph_errors = snapshot["fatal_errors"]
+    errors.extend(error["message"] for error in graph_errors)
+    if any(
+        error["code"] in ("git-command-failed", "git-terminated")
+        for error in graph_errors
+    ):
         return {
             "attribution": {},
             "records": {},
@@ -580,29 +574,8 @@ def build_attribution(runner, cwd, *, rev_range=None):
             "degraded": degraded,
             "errors": errors,
         }
-
-    records = {}
-    order = []
-    for record in (result.stdout or "").split("\x01"):
-        record = record.strip("\n")
-        if not record.strip():
-            continue
-        parts = record.split("\x00")
-        if len(parts) != 4:
-            errors.append(
-                f"git log produced a malformed record (expected 4 fields, "
-                f"got {len(parts)}): {record[:80]!r}"
-            )
-            continue
-        sha, subject, parents, body = parts
-        sha = sha.strip()
-        records[sha] = {
-            "sha": sha,
-            "subject": subject.strip(),
-            "parents": parents.split(),
-            "body": body,
-        }
-        order.append(sha)
+    records = snapshot["records"]
+    order = snapshot["order"]
 
     issue_ids = known_issue_ids(runner, cwd, errors)
     built = build_branch_membership(runner, cwd, issue_ids=issue_ids)
