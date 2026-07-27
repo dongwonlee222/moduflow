@@ -637,15 +637,32 @@ class TestHistoricalIssueRegistry(unittest.TestCase):
             self.assertEqual(cr.known_issue_ids(repo.runner, repo.path, errors), [])
             self.assertEqual(errors, [])
 
+    def test_registry_ids_are_sorted_and_deduplicated(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(OTHER)
+            repo.add_issue_file(ISSUE)
+            issue_path = repo.path / "issues" / f"{OTHER}.md"
+            issue_path.write_text("# Updated issue\n")
+            repo._git("add", str(issue_path))
+            repo._git("commit", "-q", "-m", f"docs: update {OTHER}")
+
+            errors = []
+            self.assertEqual(
+                cr.known_issue_ids(repo.runner, repo.path, errors),
+                [OTHER, ISSUE],
+            )
+            self.assertEqual(errors, [])
+
 
 class TestGraphQueryFailures(unittest.TestCase):
     @staticmethod
-    def _failed_result(message):
+    def _failed_result(message, returncode=128):
         class Result:
-            returncode = 128
             stdout = ""
             stderr = message
 
+        Result.returncode = returncode
         return Result()
 
     def _repo_with_live_issue_branch(self):
@@ -694,6 +711,69 @@ class TestGraphQueryFailures(unittest.TestCase):
             )
         finally:
             repo.__exit__()
+
+    def test_base_ref_rejects_a_terminated_merge_base_query(self):
+        repo, work = self._repo_with_live_issue_branch()
+        try:
+            def terminated(args, cwd=None):
+                if args[:3] == ["git", "merge-base", "--is-ancestor"]:
+                    return self._failed_result(
+                        "terminated by signal",
+                        returncode=-15,
+                    )
+                return repo.runner(args, cwd)
+
+            index = cr.build_attribution(terminated, repo.path)
+
+            self.assertNotIn(work, index["attribution"])
+            self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, index["degraded"])
+            self.assertTrue(
+                any("merge-base" in error and "terminated by signal" in error
+                    for error in index["errors"])
+            )
+        finally:
+            repo.__exit__()
+
+    def test_branch_membership_rejects_a_terminated_merge_base_query(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.add_issue_file(OTHER)
+            repo.branch(f"codex/{ISSUE}")
+            issue_work = repo.commit("feat: issue work")
+            repo.checkout("main")
+            repo.branch(f"codex/{OTHER}")
+            other_work = repo.commit("feat: other work")
+            repo.checkout("main")
+
+            def terminated(args, cwd=None):
+                if args == [
+                    "git",
+                    "symbolic-ref",
+                    "--short",
+                    "refs/remotes/origin/HEAD",
+                ]:
+                    return type(
+                        "Result",
+                        (),
+                        {"returncode": 0, "stdout": "main\n", "stderr": ""},
+                    )()
+                if args[:3] == ["git", "merge-base", "--is-ancestor"]:
+                    return self._failed_result(
+                        "terminated by signal",
+                        returncode=-15,
+                    )
+                return repo.runner(args, cwd)
+
+            built = cr.build_branch_membership(terminated, repo.path)
+
+            self.assertNotIn(issue_work, built["membership"])
+            self.assertNotIn(other_work, built["membership"])
+            self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, built["degraded"])
+            self.assertTrue(
+                any("merge-base" in error and "terminated by signal" in error
+                    for error in built["errors"])
+            )
 
     def test_merge_base_rc_one_means_not_ancestor_not_error(self):
         repo, _ = self._repo_with_live_issue_branch()

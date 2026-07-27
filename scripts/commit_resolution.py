@@ -82,14 +82,14 @@ def known_issue_ids(runner, cwd, errors):
     if result.returncode != 0:
         errors.append(_error_text(args, result))
         return []
-    ids = []
+    ids = set()
     for line in (result.stdout or "").splitlines():
         line = line.strip()
         if line.startswith("issues/") and line.endswith(".md"):
             issue_id = line[len("issues/") : -len(".md")]
             if re.fullmatch(ISSUE_ID_PATTERN, issue_id):
-                ids.append(issue_id)
-    return ids
+                ids.add(issue_id)
+    return sorted(ids)
 
 
 def issue_id_from_branch(name, issue_ids):
@@ -187,7 +187,7 @@ def base_ref(runner, cwd, refs, errors=None):
             probe = _run(runner, merge_args, cwd)
             if probe.returncode == 0:
                 contained_in += 1
-            elif probe.returncode > 1:
+            elif probe.returncode not in (0, 1):
                 errors.append(_error_text(merge_args, probe))
                 return None
         scored.append((exclusive, -contained_in, ref))
@@ -354,7 +354,7 @@ def build_branch_membership(runner, cwd, *, issue_ids=None):
             probe = _run(runner, merge_args, cwd)
             if probe.returncode == 0:
                 excludes.append(other)
-            elif probe.returncode > 1:
+            elif probe.returncode not in (0, 1):
                 errors.append(_error_text(merge_args, probe))
                 graph_failed = True
                 break
