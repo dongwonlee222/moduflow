@@ -565,6 +565,35 @@ class TopicDeltaTests(unittest.TestCase):
 
             self.assertEqual(small_calls, large_calls)
 
+    def test_publication_recovery_ignores_pre_topic_unrelated_merge(self):
+        """FH-029: only a merge whose parent is the topic tip is publication."""
+        with GitRepo() as small, GitRepo() as large:
+            shapes.happy_merge(small)
+            large.commit("chore: root", belongs_to=None)
+            large.add_issue_file(ALPHA)
+            large.branch("long-lived-unrelated")
+            large.commit("chore: unrelated before topic", belongs_to=None)
+            large.checkout("main")
+            topic = large.branch(f"codex/{ALPHA}")
+            large.commit("feat: alpha work", belongs_to=ALPHA)
+            large.checkout("main")
+            large.merge(topic, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+            large.merge(
+                "long-lived-unrelated",
+                message="Merge branch 'long-lived-unrelated'",
+                belongs_to=None,
+            )
+            large.delete_branch("long-lived-unrelated")
+
+            small.call_log.clear()
+            delta_for_repo(small, ALPHA)
+            small_calls = len(small.call_log)
+            large.call_log.clear()
+            delta_for_repo(large, ALPHA)
+            large_calls = len(large.call_log)
+
+            self.assertEqual(small_calls, large_calls)
+
     def test_published_no_ff_topic_recovers_pre_publication_fork(self):
         """FH-003: main containing the topic tip does not erase its content."""
         with GitRepo() as repo:

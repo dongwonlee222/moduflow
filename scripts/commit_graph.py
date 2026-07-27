@@ -236,19 +236,14 @@ def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
         record = snapshot["records"][merge_sha]
         if len(record["parents"]) < 2:
             continue
-        topic_parents = []
-        base_parents = []
-        for parent in record["parents"]:
-            ancestors = _record_ancestors(snapshot, parent)
-            if ancestors is None:
-                return []
-            if topic_sha in ancestors:
-                topic_parents.append(parent)
-            else:
-                base_parents.append(parent)
-        if not topic_parents or not base_parents:
+        # A topic merely reachable through one parent is not publication
+        # evidence: a later unrelated merge has exactly that shape. The saved
+        # topic-ref object must be a direct no-ff merge parent.
+        if topic_sha not in record["parents"]:
             continue
-        for parent in base_parents:
+        for parent in record["parents"]:
+            if parent == topic_sha:
+                continue
             bases = merge_bases(runner, cwd, snapshot, topic_sha, parent)
             _preserve_fatal_errors(
                 snapshot,
