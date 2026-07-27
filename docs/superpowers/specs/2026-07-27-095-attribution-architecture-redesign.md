@@ -212,6 +212,19 @@ Keep declared ground-truth shapes and add invariant-oriented metamorphic tests:
 Full-suite and release-check verification must run before any new completion
 claim. Focused suites are not sufficient closure evidence.
 
+## Failure Memory and Traceability
+
+`specs/095-commit-issue-resolution-parity/failure-history.md` is the durable,
+append-only input to this design and every later attribution plan or review.
+Each entry preserves the reproducing topology, observed failure, invalid
+assumption, derived invariant, evidence, and current status.
+
+Architecture requirements and invariant tests must link to one or more
+`FH-*` ids. A new Critical or Important finding is recorded in the corpus
+before another fix begins. Passing a focused suite may record a regression,
+but cannot close the entry; closure requires the relevant invariant, full
+suite, release check, and independent review.
+
 ## Migration and Compatibility
 
 - Existing consumers keep their public function signatures.
@@ -235,4 +248,6 @@ Issue 095 returns to review only when all of the following are true:
 - Project validation is valid and lifecycle drift is empty.
 - Independent spec and quality reviews report no Critical or Important
   findings.
+- Every Critical or Important finding has a failure-history entry and a
+  mapped regression or invariant test.
 - Issue 093 evidence still includes `scripts/project_issue_schema.py`.

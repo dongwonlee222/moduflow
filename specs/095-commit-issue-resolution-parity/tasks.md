@@ -38,8 +38,10 @@ Plan: `docs/superpowers/plans/2026-07-27-095-corrective-completion.md`
 ## Attribution Architecture Redesign — 2026-07-27
 
 - [x] G1 Diagnose the repeated failure class and approve the per-issue fork-point design.
+- [x] G1b Preserve the failed topologies, invalid assumptions, derived invariants, and evidence in an append-only failure corpus.
 - [ ] G2 Write the TDD implementation plan for fork points and scoped diagnostics.
 - [ ] G3 Replace the global-base heuristic and unscoped error propagation.
 - [ ] G4 Pass invariant/focused/full/release gates and independent whole-branch review.
 
 Design: `docs/superpowers/specs/2026-07-27-095-attribution-architecture-redesign.md`
+Failure history: `specs/095-commit-issue-resolution-parity/failure-history.md`

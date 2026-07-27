@@ -94,7 +94,9 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   unrelated historical octopus ambiguity reached the release gate. Independent
   review separately reproduced a normal trunk advance being treated as an
   ambiguous base. The approved fix is per-issue merge-base fork points plus
-  diagnostics projected to the caller's commit/issue range.
+  diagnostics projected to the caller's commit/issue range. Twenty failure
+  families are now preserved in an append-only corpus; future requirements,
+  invariant tests, and Critical/Important findings must trace to `FH-*` ids.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance

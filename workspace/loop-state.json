@@ -29,7 +29,7 @@
     "last_changed_at": "2026-07-27"
   },
   "blocker": null,
-  "last_action": "approved the Issue 095 per-issue fork-point and scoped-diagnostic architecture redesign",
+  "last_action": "preserved Issue 095 failed topologies and derived invariants as an append-only corpus required by future plans and reviews",
   "last_verification": "2026-07-27 at bfa4157: focused suite 221/221 PASS, but full discovery failed 2 of 885 because unscoped historical attribution errors reached release_check; final quality review also reproduced normal trunk advancement misclassified as ambiguous",
   "updated_at": "2026-07-27",
   "git_binding": {
@@ -48,7 +48,9 @@
       "5ccdbb5",
       "3c3e072",
       "77ecbbf",
-      "bfa4157"
+      "bfa4157",
+      "b6f45bc",
+      "2b4870b"
     ],
     "pull_request": null,
     "release": null,
