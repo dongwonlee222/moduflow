@@ -10,7 +10,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import commit_graph  # noqa: E402
 import commit_resolution as cr  # noqa: E402
+import commit_resolution_shapes as shapes  # noqa: E402
 from git_repo_builder import GitRepo  # noqa: E402
+
+
+ALPHA = shapes.ALPHA
 
 
 def disconnected_runner(returncode):
@@ -48,6 +52,31 @@ def empty_snapshot():
         "ancestor_cache": {},
         "fatal_errors": [],
     }
+
+
+def derive_for_repo(repo, issue_id):
+    """Derive one issue ref's historical fork from the immutable snapshot."""
+    errors = []
+    ids = cr.known_issue_ids(repo.runner, repo.path, errors)
+    assert errors == []
+    snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+    topic_refs = {
+        ref: cr.issue_id_from_branch(ref, ids)
+        for ref in snapshot["refs"]
+        if cr.issue_id_from_branch(ref, ids) is not None
+    }
+    base_refs = [ref for ref in snapshot["refs"] if ref not in topic_refs]
+    topic_ref = next(
+        ref for ref, found_issue in topic_refs.items() if found_issue == issue_id
+    )
+    return commit_graph.derive_fork_point(
+        repo.runner,
+        repo.path,
+        snapshot,
+        topic_ref,
+        issue_id,
+        base_refs=base_refs,
+    )
 
 
 class SnapshotTests(unittest.TestCase):
@@ -231,3 +260,116 @@ assert Path(module.commit_graph.__file__).resolve() == path.with_name('commit_gr
                 sum(call[:2] == ["git", "for-each-ref"] for call in repo.call_log),
                 1,
             )
+
+
+class ForkPointInvariantTests(unittest.TestCase):
+    def test_advancing_trunk_does_not_change_fork_point(self):
+        """FH-006/FH-011: later trunk work cannot move a topic's fork point."""
+        with GitRepo() as repo:
+            repo.commit("chore: base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: alpha", belongs_to=ALPHA)
+            before = derive_for_repo(repo, ALPHA)
+            repo.checkout("main")
+            repo.commit("chore: main advances", belongs_to=None)
+            after = derive_for_repo(repo, ALPHA)
+
+            self.assertEqual(after["fork_point"], before["fork_point"])
+            self.assertEqual(after["diagnostics"], [])
+
+    def test_equivalent_remote_ref_does_not_change_fork_point(self):
+        """FH-012/FH-017: equal-object remote refs remain equivalent by identity."""
+        with GitRepo() as repo:
+            repo.commit("chore: base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: alpha", belongs_to=ALPHA)
+            before = derive_for_repo(repo, ALPHA)
+            repo.publish("main", remote="upstream")
+            after = derive_for_repo(repo, ALPHA)
+
+            self.assertEqual(after["fork_point"], before["fork_point"])
+            self.assertIn("refs/remotes/upstream/main", after["equivalent_base_refs"])
+
+    def test_disconnected_ref_does_not_change_connected_topic(self):
+        """FH-013/FH-014: disconnected refs are ordinary negatives, not failures."""
+        with GitRepo() as repo:
+            repo.commit("chore: base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: alpha", belongs_to=ALPHA)
+            before = derive_for_repo(repo, ALPHA)
+            repo.create_orphan_ref("refs/heads/unrelated")
+            after = derive_for_repo(repo, ALPHA)
+
+            self.assertEqual(after["fork_point"], before["fork_point"])
+            self.assertEqual(after["diagnostics"], [])
+
+    def test_incomparable_maximal_forks_are_scoped_to_topic(self):
+        """FH-006/FH-011/FH-017: incomparable remote histories fail closed per issue."""
+        with GitRepo() as repo:
+            shapes.ambiguous_same_tail_remotes(repo)
+
+            result = derive_for_repo(repo, ALPHA)
+
+            self.assertIsNone(result["fork_point"])
+            self.assertEqual(
+                {item["issue_id"] for item in result["diagnostics"]}, {ALPHA}
+            )
+
+    def test_same_tail_slash_ref_stays_a_distinct_equivalent_base_ref(self):
+        """FH-012/FH-017: full slash ref identity is never reduced to a tail."""
+        with GitRepo() as repo:
+            repo.commit("chore: base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: alpha", belongs_to=ALPHA)
+            repo._git("branch", "release/main", "main")
+
+            result = derive_for_repo(repo, ALPHA)
+
+            self.assertEqual(result["diagnostics"], [])
+            self.assertEqual(
+                result["equivalent_base_refs"],
+                ["refs/heads/main", "refs/heads/release/main"],
+            )
+
+    def test_missing_topic_ref_returns_scoped_diagnostic(self):
+        """FH-006/FH-014: a missing topic is diagnostic, not a Git negative."""
+        snapshot = empty_snapshot()
+
+        result = commit_graph.derive_fork_point(
+            disconnected_runner(1),
+            ".",
+            snapshot,
+            "refs/heads/codex/101-alpha",
+            ALPHA,
+            base_refs=[],
+        )
+
+        self.assertIsNone(result["fork_point"])
+        self.assertEqual(result["diagnostics"][0]["code"], "topic-ref-missing")
+        self.assertEqual(result["diagnostics"][0]["issue_id"], ALPHA)
+        self.assertEqual(snapshot["fatal_errors"], [])
+
+    def test_query_failure_is_preserved_on_snapshot_not_a_negative(self):
+        """FH-013/FH-014: failed merge-base probes remain snapshot fatal errors."""
+        snapshot = empty_snapshot()
+        snapshot["refs"] = {
+            "refs/heads/codex/101-alpha": "topic",
+            "refs/heads/main": "base",
+        }
+
+        result = commit_graph.derive_fork_point(
+            disconnected_runner(128),
+            ".",
+            snapshot,
+            "refs/heads/codex/101-alpha",
+            ALPHA,
+            base_refs=["refs/heads/main"],
+        )
+
+        self.assertIsNone(result["fork_point"])
+        self.assertEqual(result["diagnostics"][0]["code"], "ambiguous-topic-fork")
+        self.assertTrue(snapshot["fatal_errors"])

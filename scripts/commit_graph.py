@@ -98,6 +98,82 @@ def is_ancestor(runner, cwd, snapshot, older, newer):
     return _result("value", value, fatal_errors)
 
 
+def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
+    """Select one ancestry-maximal historical fork point for a topic ref.
+
+    A base ref contributes a merge-base candidate only when it is connected to
+    the topic. Full ref names remain distinct throughout: refs are equivalent
+    only when Git returns the exact same selected merge-base object.
+    """
+    if topic_ref not in snapshot["refs"]:
+        return {
+            "issue_id": issue_id,
+            "topic_ref": topic_ref,
+            "fork_point": None,
+            "equivalent_base_refs": [],
+            "diagnostics": [
+                diagnostic(
+                    "topic-ref-missing",
+                    f"{topic_ref} is not present in the graph snapshot",
+                    issue_id=issue_id,
+                    ref=topic_ref,
+                )
+            ],
+        }
+
+    by_fork = {}
+    for ref in base_refs:
+        if ref not in snapshot["refs"]:
+            continue
+        result = merge_base(runner, cwd, snapshot, topic_ref, ref)
+        snapshot["fatal_errors"].extend(result["fatal_errors"])
+        if result["sha"] is not None:
+            by_fork.setdefault(result["sha"], []).append(ref)
+
+    maximal = []
+    for fork_sha in sorted(by_fork):
+        dominated = False
+        for other_sha in sorted(by_fork):
+            if fork_sha == other_sha:
+                continue
+            relation = is_ancestor(runner, cwd, snapshot, fork_sha, other_sha)
+            snapshot["fatal_errors"].extend(relation["fatal_errors"])
+            if relation["value"] is not True:
+                continue
+            reverse = is_ancestor(runner, cwd, snapshot, other_sha, fork_sha)
+            snapshot["fatal_errors"].extend(reverse["fatal_errors"])
+            if reverse["value"] is False:
+                dominated = True
+                break
+        if not dominated:
+            maximal.append(fork_sha)
+
+    if len(maximal) != 1:
+        return {
+            "issue_id": issue_id,
+            "topic_ref": topic_ref,
+            "fork_point": None,
+            "equivalent_base_refs": [],
+            "diagnostics": [
+                diagnostic(
+                    "ambiguous-topic-fork",
+                    f"{topic_ref} has {len(maximal)} incomparable fork points",
+                    issue_id=issue_id,
+                    ref=topic_ref,
+                )
+            ],
+        }
+
+    fork_point = maximal[0]
+    return {
+        "issue_id": issue_id,
+        "topic_ref": topic_ref,
+        "fork_point": fork_point,
+        "equivalent_base_refs": sorted(by_fork[fork_point]),
+        "diagnostics": [],
+    }
+
+
 def _parse_records(stdout, fatal_errors):
     records = {}
     order = []
