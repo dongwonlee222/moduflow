@@ -942,9 +942,10 @@ The five-module suite covers `test_commit_resolution`,
 `test_commit_resolution_differential`, `test_commit_resolution_parity`,
 `test_linkage_check`, and `test_project_converge`.
 
-The current branch's full unittest suite, lifecycle validation, and release
-check have not yet been recorded. They remain F4 and must pass before a closure
-claim.
+Task 3 artifact validation reports `valid: true` and `errors: []`; lifecycle
+drift is `[]`, and `git diff --check` is clean. Only the current branch's full
+unittest suite, release check, and final whole-branch review remain F4 before a
+closure claim.
 
 ### Independent review
 
@@ -958,18 +959,20 @@ claim.
 Human approval is still required before merge. No GitHub PR is claimed by this
 status record.
 
-### Issue 096 separation
+### Issue 096 proposed handoff
 
-Command-safety work is intentionally outside Issue 095:
+Issue 095 does not modify Issue 096. Its proposed command-safety handoff is:
 
 - make `--evidence` read-only by default or require an explicit write flag;
 - validate issue ids so they cannot traverse paths;
 - reject symlinks that resolve outside the repository;
 - announce every write path.
 
-That work belongs to Issue 096 on a separate branch after 095 is approved and
-merged. The installed ModuFlow plugin must not be updated until both Issue 095
-and Issue 096 are safe.
+Before Issue 096 execution, its canonical issue must be expanded with these
+acceptance criteria, an explicit dependency on 095, and the installed-plugin
+update gate. The work then proceeds on a separate branch after 095 is approved
+and merged. The installed ModuFlow plugin remains on hold until both issues are
+safe.
 
 ## Next gate
 

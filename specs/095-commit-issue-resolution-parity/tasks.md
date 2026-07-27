@@ -23,7 +23,7 @@ Plan: `specs/095-commit-issue-resolution-parity/plan.md`
 
 ## Stream E — Parity Proof and Completion
 
-- [x] E1 Add the cross-module parity test, then confirm converge on issue 093's history collects the full commit set including `scripts/project_issue_schema.py`.
+- [x] E1 Prove both query directions satisfy the shared consistency contract, then confirm stable issue 093 evidence includes `scripts/project_issue_schema.py`.
 - [x] E2 Pass full unittest, lifecycle drift, and release check before moving to review.
 
 ## Corrective Completion — 2026-07-27

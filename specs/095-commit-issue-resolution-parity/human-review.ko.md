@@ -40,10 +40,13 @@
 - Task 1 집중 테스트: `92/92 PASS`
 - 5개 모듈 집중 테스트: `195/195 PASS`
 - 예상 실패(expected failure): `0`
+- 산출물 검증: `valid: true`, `errors: []`
+- lifecycle drift: `[]`
+- `git diff --check`: 통과
 - 독립 스펙 리뷰: Task 1, Task 2 모두 통과
 - 독립 품질 리뷰: Task 1 통과. Task 2에서 발견한 Important 2건은
   `4f5d14a`에서 수정 후 재검토 통과
-- 아직 남은 것: 교정 브랜치 전체 테스트, release check, 전체 diff
+- 아직 남은 것: 교정 브랜치 전체 테스트, release check, 전체 브랜치
   최종 리뷰. 아직 완료 또는 릴리스 가능 상태로 판정하지 않습니다.
 
 ## no-issue 선언 (issue 075)
@@ -61,17 +64,19 @@
 - GitHub PR은 아직 생성되었다고 기록하지 않습니다. 현재는 로컬 Draft
   PR-ready 마커이며, merge에는 사람의 명시적 승인이 필요합니다.
 
-## Issue 096 분리 범위
+## Issue 096 후속 제안
 
-다음 안전성 작업은 095에 섞지 않고 Issue 096에서 별도 처리합니다.
+095는 Issue 096 파일을 수정하지 않습니다. 아래 항목은 Issue 096에 넘길
+제안 범위입니다.
 
 - `--evidence`의 명시적 쓰기 동작
 - issue-id 경로 순회 차단
 - 저장소 밖으로 해석되는 symlink 거부
 - 모든 쓰기 경로 사전 고지
 
-설치된 ModuFlow 플러그인은 095와 096이 모두 안전해질 때까지 업데이트하지
-않습니다.
+Issue 096 실행 전 canonical 이슈에 위 acceptance criteria, 095 의존성,
+플러그인 업데이트 게이트를 추가해야 합니다. 설치된 ModuFlow 플러그인은
+095와 096이 모두 안전해질 때까지 업데이트하지 않습니다.
 
 ## 보류 조건
 

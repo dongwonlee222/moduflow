@@ -46,9 +46,11 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 095-commit-issue-res
 - Task 1 focused suite: `92/92 PASS`.
 - Five-module focused suite: `195/195 PASS`.
 - Expected failures: `0`.
-- Artifact validation and lifecycle drift are refreshed by F3.
-- Full unittest discovery and release check remain F4; this handoff does not
-  claim they have passed on the corrective branch.
+- Artifact validation: `valid: true`, `errors: []`.
+- Lifecycle drift: `[]`.
+- `git diff --check`: clean.
+- Full unittest discovery, release check, and final whole-branch review remain
+  F4; this handoff does not claim they have passed on the corrective branch.
 
 ### Review Findings
 
@@ -87,12 +89,13 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 095-commit-issue-res
 - `ef149a8` — apply one global attribution policy.
 - `4f5d14a` — fail closed on unusable branch bases.
 
-## Separate Issue 096 Gate
+## Proposed Issue 096 Handoff
 
-Issue 096 owns the command-safety follow-up: explicit evidence writes,
-issue-id path traversal prevention, repo-external symlink rejection, and write
-announcements. Do not update the installed plugin until both 095 and 096 are
-safe. Issue 096 is not part of this PR diff.
+Issue 095 does not modify Issue 096. The proposed handoff is explicit evidence
+writes, issue-id path traversal prevention, repo-external symlink rejection,
+and write announcements. Before Issue 096 execution, its canonical issue must
+add these acceptance criteria, its dependency on 095, and the installed-plugin
+update gate. Keep the plugin update on hold until both issues are safe.
 
 ## GitHub Gate Alignment
 
@@ -103,7 +106,7 @@ safe. Issue 096 is not part of this PR diff.
 
 ## Source Snapshot
 
-- Issue bytes: 5907
-- Spec bytes: 7818
-- Status bytes: 10909
+- Issue bytes: 7218
+- Spec bytes: 8248
+- Status bytes: 51598
 - Review bytes: 0

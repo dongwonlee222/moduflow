@@ -85,10 +85,14 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   focused suite `92/92 PASS`; five-module focused suite `195/195 PASS`; zero
   expected failures. Independent Task 1/Task 2 spec and quality reviews passed
   after two Important base-selection findings were fixed and re-reviewed in
-  `4f5d14a`. Full unittest discovery and release check remain F4.
-- Issue `096` is the separate safety follow-up for explicit evidence writes,
-  issue-id traversal, repo-external symlinks, and write announcements. Installed
-  plugin update waits until both 095 and 096 are safe.
+  `4f5d14a`. Artifact validation is `valid: true` with `errors: []`; lifecycle
+  drift is `[]`; `git diff --check` is clean. Full unittest discovery, release
+  check, and final whole-branch review remain F4.
+- Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
+  repo-external symlinks, and write announcements. Issue 095 does not modify
+  Issue 096; before execution its canonical issue must add these acceptance
+  criteria, its dependency on 095, and the plugin-update gate. Installed plugin
+  update remains on hold until both issues are safe.
 - `python3 scripts/release_check.py` passed (exit 0) after each of issues 042/044/046/047/045/043/048/049.
 - `python3 -m unittest discover -s tests` passed (157 tests).
 - `python3 -m unittest tests.test_project_sync -v` passed (4 tests) for Issue 050 RED/GREEN coverage.
