@@ -453,6 +453,7 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
     errors = []
     degraded = []
     membership = {}
+    diagnostics = []
 
     if snapshot is None:
         snapshot = commit_graph.load_snapshot(runner, cwd)
@@ -463,6 +464,7 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
                 "ref_tips": {},
                 "degraded": [DEGRADED_BRANCH_UNAVAILABLE],
                 "errors": list(snapshot["fatal_errors"]),
+                "diagnostics": [],
             }
     ref_tips = dict(refs if refs is not None else snapshot["refs"])
     all_refs = list(ref_tips)
@@ -500,6 +502,7 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
             topic_refs=topic_refs,
             base_refs=base_refs,
         )
+        diagnostics.extend(delta["diagnostics"])
         if delta["fork_point"] is None:
             if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
                 degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
@@ -510,6 +513,12 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
         errors.extend(snapshot["fatal_errors"][fatal_before:])
         if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
             degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
+    for item in diagnostics:
+        message = item["message"]
+        if item["code"] == "ambiguous-topic-fork":
+            message = f"remote topic fork ambiguity: {message}"
+        if message not in errors:
+            errors.append(message)
 
     return {
         "membership": membership,
@@ -517,6 +526,7 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
         "ref_tips": ref_tips,
         "degraded": degraded,
         "errors": errors,
+        "diagnostics": diagnostics,
     }
 
 
@@ -553,6 +563,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
             "unmatched": [],
             "degraded": degraded,
             "errors": errors,
+            "diagnostics": [],
         }
     records = snapshot["records"]
     order = snapshot["order"]
@@ -567,6 +578,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
     )
     errors.extend(built["errors"])
     degraded.extend(built["degraded"])
+    diagnostics = list(built.get("diagnostics", []))
 
     # sha -> {issue_id: source}. Content has one owner. Merge boundaries can
     # legitimately touch several issues and retain one claim per issue.
@@ -711,6 +723,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
         "issue_ids": issue_ids,
         "degraded": degraded,
         "errors": errors,
+        "diagnostics": diagnostics,
     }
 
 

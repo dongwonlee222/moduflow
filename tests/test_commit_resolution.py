@@ -705,7 +705,7 @@ class TestGraphQueryFailures(unittest.TestCase):
         repo, work = self._repo_with_live_issue_branch()
         try:
             def failing(args, cwd=None):
-                if args[:3] == ["git", "merge-base", "--is-ancestor"]:
+                if args[:3] == ["git", "merge-base", "--all"]:
                     return self._failed_result("fatal: corrupt commit graph")
                 return repo.runner(args, cwd)
 
@@ -720,11 +720,11 @@ class TestGraphQueryFailures(unittest.TestCase):
         finally:
             repo.__exit__()
 
-    def test_base_ref_rejects_a_terminated_merge_base_query(self):
+    def test_topic_delta_rejects_a_terminated_merge_base_query(self):
         repo, work = self._repo_with_live_issue_branch()
         try:
             def terminated(args, cwd=None):
-                if args[:3] == ["git", "merge-base", "--is-ancestor"]:
+                if args[:3] == ["git", "merge-base", "--all"]:
                     return self._failed_result(
                         "terminated by signal",
                         returncode=-15,
@@ -742,48 +742,36 @@ class TestGraphQueryFailures(unittest.TestCase):
         finally:
             repo.__exit__()
 
-    def test_origin_head_termination_fails_branch_attribution_closed(self):
+    def test_live_membership_does_not_call_origin_head(self):
         repo, work = self._repo_with_live_issue_branch()
         try:
             calls = []
 
             def terminated(args, cwd=None):
                 calls.append(args)
-                if args == self.ORIGIN_HEAD_ARGS:
-                    return self._failed_result(
-                        "terminated by signal",
-                        returncode=-15,
-                    )
                 return repo.runner(args, cwd)
 
             index = cr.build_attribution(terminated, repo.path)
 
-            self.assertIn(self.ORIGIN_HEAD_ARGS, calls)
-            self.assertNotIn(work, index["attribution"])
-            self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, index["degraded"])
-            self.assertTrue(
-                any(
-                    "symbolic-ref" in error and "terminated by signal" in error
-                    for error in index["errors"]
-                )
-            )
+            self.assertNotIn(self.ORIGIN_HEAD_ARGS, calls)
+            self.assertIn(work, index["attribution"])
+            self.assertEqual(index["errors"], [])
+            self.assertEqual(index["degraded"], [])
         finally:
             repo.__exit__()
 
-    def test_missing_origin_head_rc_one_uses_fallback_without_error(self):
+    def test_live_membership_does_not_need_origin_head_fallback(self):
         repo, work = self._repo_with_live_issue_branch()
         try:
             calls = []
 
             def missing(args, cwd=None):
                 calls.append(args)
-                if args == self.ORIGIN_HEAD_ARGS:
-                    return self._failed_result("", returncode=1)
                 return repo.runner(args, cwd)
 
             index = cr.build_attribution(missing, repo.path)
 
-            self.assertIn(self.ORIGIN_HEAD_ARGS, calls)
+            self.assertNotIn(self.ORIGIN_HEAD_ARGS, calls)
             self.assertIn(work, index["attribution"])
             self.assertEqual(index["errors"], [])
             self.assertEqual(index["degraded"], [])
@@ -803,13 +791,7 @@ class TestGraphQueryFailures(unittest.TestCase):
             repo.checkout("main")
 
             def terminated(args, cwd=None):
-                if args == list(cr.ORIGIN_HEAD_ARGS):
-                    return type(
-                        "Result",
-                        (),
-                        {"returncode": 0, "stdout": "main\n", "stderr": ""},
-                    )()
-                if args[:3] == ["git", "merge-base", "--is-ancestor"]:
+                if args[:3] == ["git", "merge-base", "--all"]:
                     return self._failed_result(
                         "terminated by signal",
                         returncode=-15,
