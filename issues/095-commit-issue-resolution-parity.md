@@ -1,6 +1,6 @@
 # Issue 095: Commit-to-Issue Resolution Parity
 
-**Status: active** — created 2026-07-25, started 2026-07-26; corrective implementation complete, review in progress.
+**Status: active** — created 2026-07-25, started 2026-07-26; attribution architecture redesign approved and planning in progress.
 **Priority: p1**
 **Blocked-by:**
 
@@ -116,6 +116,7 @@ existing history. Do not make converge gate the review verdict.
 - [x] spec → `specs/095-commit-issue-resolution-parity/spec.md`
 - [x] plan → `specs/095-commit-issue-resolution-parity/plan.md` + `tasks.md`; corrective plan → `docs/superpowers/plans/2026-07-27-095-corrective-completion.md`
 - [x] execute → corrective branch `codex/095-commit-issue-resolution-parity-fix`; shared resolver plus both consumer migrations
+- [x] redesign → `docs/superpowers/specs/2026-07-27-095-attribution-architecture-redesign.md`
 - [ ] review → review notes
 
 ## Related Issues
@@ -133,14 +134,16 @@ existing history. Do not make converge gate the review verdict.
 - 2026-07-26: stream A landed. Implementing it surfaced a rule the spec had assumed away — branch containment is not branch authorship. `git rev-list <branch>` attributed 279 commits to issue 093 where the branch contributed 52, because a branch cut from main carries all of main as ancestors; `--not main` yields 0 once merged. Merged work is now delimited by the merge commit's second-parent side minus its first-parent side, computed from the log records already parsed, so it adds no subprocess. Converge-equivalent collection on 093 moved from 10 to 57 and includes `scripts/project_issue_schema.py`.
 - 2026-07-26: reproduced on `main` at `6bca2b4` after 093 merged — converge collects 10 commits (trailer 9, merge-subject 1) with `errors: []`, while `linkage_check` attributes 53 over the same window. Merging raised the count but did not close the gap, confirming the defect is structural rather than a branch-lifetime artifact. Spec and plan written.
 - 2026-07-27: corrective TDD removed the four Round 9 expected failures, made issue discovery and graph failures fail closed, and applied one global precedence policy. Task 1 passed 92/92 focused tests; the five-module focused suite passed 195/195 with zero expected failures. Independent spec and quality reviews passed after two Important base-selection findings were fixed in `4f5d14a`. Full-suite and release gates remain the final review step.
+- 2026-07-27: stopped the corrective patch loop after repeated review findings proved the global-base architecture unsound. The current branch reached 221/221 focused tests, but full discovery failed 2 of 885 because an unrelated historical octopus ambiguity leaked into the release gate; a separate review reproduced normal trunk advancement being misclassified as an ambiguous base. Approved redesign: per-issue fork points, graph-corroborated merge content, and caller-scoped diagnostics.
 - 2026-07-27: prepared an Issue 096 handoff proposing explicit `--evidence` writes, issue-id path traversal prevention, repo-external symlink rejection, and write-path announcements. Issue 095 does not modify Issue 096; its canonical issue must add these acceptance criteria, the dependency on 095, and the plugin-update gate before execution. The installed plugin remains on hold until both issues are safe.
 
 ## Links
 
 - Spec: `specs/095-commit-issue-resolution-parity/spec.md`
+- Redesign: `docs/superpowers/specs/2026-07-27-095-attribution-architecture-redesign.md`
 - Status: `specs/095-commit-issue-resolution-parity/status.md`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`product:review 095-commit-issue-resolution-parity`
+`product:plan 095-commit-issue-resolution-parity`

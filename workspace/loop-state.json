@@ -17,20 +17,20 @@
     "087-korean-github-pr-review-surface"
   ],
   "active_issue_id": "095-commit-issue-resolution-parity",
-  "phase": "review",
+  "phase": "plan",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:review 095-commit-issue-resolution-parity",
+  "next_command": "product:plan 095-commit-issue-resolution-parity",
   "attempts": {
-    "command": "product:review 095-commit-issue-resolution-parity",
+    "command": "product:plan 095-commit-issue-resolution-parity",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-27"
   },
   "blocker": null,
-  "last_action": "completed Issue 095 corrective implementation and reconciled the review artifacts",
-  "last_verification": "2026-07-27 at 4f5d14a: Task 1 focused suite 92/92 PASS; five-module focused suite 195/195 PASS with zero expected failures; independent spec and quality reviews passed after two Important base findings were fixed and re-reviewed",
+  "last_action": "approved the Issue 095 per-issue fork-point and scoped-diagnostic architecture redesign",
+  "last_verification": "2026-07-27 at bfa4157: focused suite 221/221 PASS, but full discovery failed 2 of 885 because unscoped historical attribution errors reached release_check; final quality review also reproduced normal trunk advancement misclassified as ambiguous",
   "updated_at": "2026-07-27",
   "git_binding": {
     "mode": "git-files",
@@ -41,14 +41,21 @@
       "21d1290",
       "881d81d",
       "ef149a8",
-      "4f5d14a"
+      "4f5d14a",
+      "0549569",
+      "c35215c",
+      "235f357",
+      "5ccdbb5",
+      "3c3e072",
+      "77ecbbf",
+      "bfa4157"
     ],
     "pull_request": null,
     "release": null,
     "execution_backend": {
       "type": "codex",
-      "status": "review",
-      "reason": "Issue 095 corrective implementation passed focused verification and independent task reviews; full-suite and release gates remain",
+      "status": "planning",
+      "reason": "Repeated correctness findings invalidated the global-base heuristic; per-issue fork-point and scoped-diagnostic redesign is approved",
       "session": "codex-2026-07-27"
     }
   }

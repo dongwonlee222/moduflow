@@ -10,13 +10,14 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Active Issue
 
-- `095-commit-issue-resolution-parity` (phase: review). Canonical: `issues/095-commit-issue-resolution-parity.md`.
+- `095-commit-issue-resolution-parity` (phase: plan). Canonical: `issues/095-commit-issue-resolution-parity.md`.
 
 ## Priority Queue — 2026-07-25
 
-- Now: `095` corrective review. Fail-closed attribution and one global
-  precedence policy passed the 195-test focused suite with zero expected
-  failures; full-suite/release gates and human approval remain.
+- Now: `095` attribution architecture redesign. Repeated reviews proved one
+  repository-wide base cannot represent every issue branch. Replace it with
+  per-issue fork points and caller-scoped diagnostics before returning to
+  review.
 - Next: `094` risk-based security/quality review gate (its blocker `089` is done).
 - Then: `086` project-aware production/playbook dashboard.
 - Also ready: `087` Korean GitHub PR review surface, `090` project knowledge registry — both independent.
@@ -88,6 +89,12 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   `4f5d14a`. Artifact validation is `valid: true` with `errors: []`; lifecycle
   drift is `[]`; `git diff --check` is clean. Full unittest discovery, release
   check, and final whole-branch review remain F4.
+- Issue `095` redesign trigger (2026-07-27 at `bfa4157`): focused resolver
+  tests reached `221/221 PASS`, but full discovery failed 2 of 885 because an
+  unrelated historical octopus ambiguity reached the release gate. Independent
+  review separately reproduced a normal trunk advance being treated as an
+  ambiguous base. The approved fix is per-issue merge-base fork points plus
+  diagnostics projected to the caller's commit/issue range.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance
@@ -107,4 +114,4 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Next Command
 
-`product:review 095-commit-issue-resolution-parity`
+`product:plan 095-commit-issue-resolution-parity`
