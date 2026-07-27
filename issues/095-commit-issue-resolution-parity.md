@@ -1,6 +1,6 @@
 # Issue 095: Commit-to-Issue Resolution Parity
 
-**Status: active** — created 2026-07-25, started 2026-07-26; stream A implemented.
+**Status: active** — created 2026-07-25, started 2026-07-26; corrective implementation complete, review in progress.
 **Priority: p1**
 **Blocked-by:**
 
@@ -78,10 +78,15 @@ rather than issues.
 
 ## Acceptance Criteria
 
-- `project_converge.py` and `linkage_check.py` resolve identical commit sets
-  for the same range, proven by a parity test.
-- Converge evidence on issue 093's branch collects all 44 commits and includes
-  `project_issue_schema.py`.
+- Both query directions use the same attribution index and policy:
+  `trailer > branch > merge-subject`.
+- A content commit has one owner under that precedence. A merge boundary may
+  be attributed to multiple issues when it connects their histories.
+- Cross-consumer parity proves that the commit named by `linkage_check.py` is
+  among the issues that `project_converge.py` claims, and that every commit
+  collected by converge resolves through the shared policy.
+- Converge evidence for issue 093 includes
+  `scripts/project_issue_schema.py`.
 - The evidence payload reports an unmatched-commit count; a run that drops
   commits cannot report an empty `errors` list with no other signal.
 - Resolution succeeds in a detached-HEAD worktree for trailer-bearing commits
@@ -110,7 +115,7 @@ existing history. Do not make converge gate the review verdict.
 
 - [x] spec → `specs/095-commit-issue-resolution-parity/spec.md`
 - [x] plan → `specs/095-commit-issue-resolution-parity/plan.md` + `tasks.md`; corrective plan → `docs/superpowers/plans/2026-07-27-095-corrective-completion.md`
-- [x] execute → PR / commits (streams A–E; `scripts/commit_resolution.py` plus both consumer migrations)
+- [x] execute → corrective branch `codex/095-commit-issue-resolution-parity-fix`; shared resolver plus both consumer migrations
 - [ ] review → review notes
 
 ## Related Issues
@@ -127,6 +132,8 @@ existing history. Do not make converge gate the review verdict.
 - 2026-07-25: found during the independent review of issue 093.
 - 2026-07-26: stream A landed. Implementing it surfaced a rule the spec had assumed away — branch containment is not branch authorship. `git rev-list <branch>` attributed 279 commits to issue 093 where the branch contributed 52, because a branch cut from main carries all of main as ancestors; `--not main` yields 0 once merged. Merged work is now delimited by the merge commit's second-parent side minus its first-parent side, computed from the log records already parsed, so it adds no subprocess. Converge-equivalent collection on 093 moved from 10 to 57 and includes `scripts/project_issue_schema.py`.
 - 2026-07-26: reproduced on `main` at `6bca2b4` after 093 merged — converge collects 10 commits (trailer 9, merge-subject 1) with `errors: []`, while `linkage_check` attributes 53 over the same window. Merging raised the count but did not close the gap, confirming the defect is structural rather than a branch-lifetime artifact. Spec and plan written.
+- 2026-07-27: corrective TDD removed the four Round 9 expected failures, made issue discovery and graph failures fail closed, and applied one global precedence policy. Task 1 passed 92/92 focused tests; the five-module focused suite passed 195/195 with zero expected failures. Independent spec and quality reviews passed after two Important base-selection findings were fixed in `4f5d14a`. Full-suite and release gates remain the final review step.
+- 2026-07-27: command-safety hardening was separated into Issue 096: explicit `--evidence` writes, issue-id path traversal prevention, repo-external symlink rejection, and write-path announcements. The installed plugin will not be updated until both 095 and 096 are safe.
 
 ## Links
 
@@ -136,4 +143,4 @@ existing history. Do not make converge gate the review verdict.
 
 ## Next Command
 
-`/product:review 095-commit-issue-resolution-parity`
+`product:review 095-commit-issue-resolution-parity`

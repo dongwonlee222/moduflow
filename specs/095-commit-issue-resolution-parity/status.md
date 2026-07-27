@@ -1,6 +1,6 @@
 # Issue 095 Execution Status
 
-**Status: active** — started 2026-07-26. Streams A through E implemented; review is the next gate.
+**Status: active** — started 2026-07-26. Corrective implementation is complete; final review gates are next. Earlier review rounds below are retained as history; the latest state is in “Corrective completion — 2026-07-27”.
 
 ## Progress
 
@@ -14,7 +14,11 @@
 | C | C1 surface unmatched count for reviewers | done | pending commit |
 | D | D1 extend the regression matrix | done | pending commit |
 | E | E1 cross-module parity proof | done | pending commit |
-| E | E2 completion gates | done | pending commit |
+| E | E2 historical completion gates | superseded by F4 | — |
+| F | F1 fail-closed registry and graph handling | done | `21d1290`, `881d81d` |
+| F | F2 global precedence and safe base selection | done | `ef149a8`, `4f5d14a` |
+| F | F3 artifact and lifecycle reconciliation | done | this documentation commit |
+| F | F4 full verification and final review | pending | — |
 
 ## Stream A outcome
 
@@ -913,3 +917,61 @@ Do not open a PR. F1, F2, F5, F6, and F7 are correctness defects in shipped code
 actively wrong in this repository's evidence bundles today. The fixture gaps that hid them
 need addressing as a class, not case by case — three rounds have now each fixed the instance
 they were handed.
+
+## Corrective completion — 2026-07-27
+
+Round 9's four expected failures are removed. The corrective branch is
+`codex/095-commit-issue-resolution-parity-fix`.
+
+| Area | Result | Evidence |
+| --- | --- | --- |
+| Historical issue registry | Fail closed; checkout-independent; unknown issue claims rejected | `21d1290` |
+| Git graph queries | Errors and terminated queries surface degradation instead of attribution | `881d81d` |
+| Global attribution | Content commits have one owner under `trailer > branch > merge-subject`; merge boundaries may carry multiple issue claims | `ef149a8` |
+| Base selection | Issue-shaped refs cannot become the base; unusable candidates fail closed | `4f5d14a` |
+
+### Verification recorded so far
+
+```text
+Task 1 focused suite: 92/92 PASS
+Five-module focused suite: 195/195 PASS
+Expected failures: 0
+```
+
+The five-module suite covers `test_commit_resolution`,
+`test_commit_resolution_differential`, `test_commit_resolution_parity`,
+`test_linkage_check`, and `test_project_converge`.
+
+The current branch's full unittest suite, lifecycle validation, and release
+check have not yet been recorded. They remain F4 and must pass before a closure
+claim.
+
+### Independent review
+
+- Task 1 spec review: pass.
+- Task 1 quality review: pass after terminated graph-query handling was fixed
+  in `881d81d`.
+- Task 2 spec review: pass.
+- Task 2 quality review: pass after two Important base-selection findings were
+  fixed and re-reviewed in `4f5d14a`.
+
+Human approval is still required before merge. No GitHub PR is claimed by this
+status record.
+
+### Issue 096 separation
+
+Command-safety work is intentionally outside Issue 095:
+
+- make `--evidence` read-only by default or require an explicit write flag;
+- validate issue ids so they cannot traverse paths;
+- reject symlinks that resolve outside the repository;
+- announce every write path.
+
+That work belongs to Issue 096 on a separate branch after 095 is approved and
+merged. The installed ModuFlow plugin must not be updated until both Issue 095
+and Issue 096 are safe.
+
+## Next gate
+
+Run F4 full verification and final independent review, then prepare a Draft PR
+for human approval.

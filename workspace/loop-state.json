@@ -17,32 +17,38 @@
     "087-korean-github-pr-review-surface"
   ],
   "active_issue_id": "095-commit-issue-resolution-parity",
-  "phase": "execute",
+  "phase": "review",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:execute 095-commit-issue-resolution-parity",
+  "next_command": "product:review 095-commit-issue-resolution-parity",
   "attempts": {
-    "command": "product:execute 095-commit-issue-resolution-parity",
+    "command": "product:review 095-commit-issue-resolution-parity",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-27"
   },
   "blocker": null,
-  "last_action": "approved and recorded the Issue 095 corrective completion design and implementation plan",
-  "last_verification": "2026-07-27 at 0079fbf: differential baseline 50 tests OK with 4 expected failures; corrective work must reduce expected failures to zero",
+  "last_action": "completed Issue 095 corrective implementation and reconciled the review artifacts",
+  "last_verification": "2026-07-27 at 4f5d14a: Task 1 focused suite 92/92 PASS; five-module focused suite 195/195 PASS with zero expected failures; independent spec and quality reviews passed after two Important base findings were fixed and re-reviewed",
   "updated_at": "2026-07-27",
   "git_binding": {
     "mode": "git-files",
     "branch": "codex/095-commit-issue-resolution-parity-fix",
     "base_branch": "main",
-    "commits": [],
+    "commits": [
+      "f980aef",
+      "21d1290",
+      "881d81d",
+      "ef149a8",
+      "4f5d14a"
+    ],
     "pull_request": null,
     "release": null,
     "execution_backend": {
       "type": "codex",
-      "status": "selected",
-      "reason": "Issue 095 corrective completion is approved for TDD implementation in an isolated worktree",
+      "status": "review",
+      "reason": "Issue 095 corrective implementation passed focused verification and independent task reviews; full-suite and release gates remain",
       "session": "codex-2026-07-27"
     }
   }

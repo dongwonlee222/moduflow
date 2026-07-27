@@ -10,11 +10,13 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Active Issue
 
-- `095-commit-issue-resolution-parity` (phase: execute). Canonical: `issues/095-commit-issue-resolution-parity.md`.
+- `095-commit-issue-resolution-parity` (phase: review). Canonical: `issues/095-commit-issue-resolution-parity.md`.
 
 ## Priority Queue — 2026-07-25
 
-- Now: `095` commit-to-issue resolution parity. Until it lands, converge collects only trailer-linked commits, so the review evidence step is unreliable for every issue.
+- Now: `095` corrective review. Fail-closed attribution and one global
+  precedence policy passed the 195-test focused suite with zero expected
+  failures; full-suite/release gates and human approval remain.
 - Next: `094` risk-based security/quality review gate (its blocker `089` is done).
 - Then: `086` project-aware production/playbook dashboard.
 - Also ready: `087` Korean GitHub PR review surface, `090` project knowledge registry — both independent.
@@ -79,6 +81,14 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Verification
 
+- Issue `095` corrective implementation (2026-07-27 at `4f5d14a`): Task 1
+  focused suite `92/92 PASS`; five-module focused suite `195/195 PASS`; zero
+  expected failures. Independent Task 1/Task 2 spec and quality reviews passed
+  after two Important base-selection findings were fixed and re-reviewed in
+  `4f5d14a`. Full unittest discovery and release check remain F4.
+- Issue `096` is the separate safety follow-up for explicit evidence writes,
+  issue-id traversal, repo-external symlinks, and write announcements. Installed
+  plugin update waits until both 095 and 096 are safe.
 - `python3 scripts/release_check.py` passed (exit 0) after each of issues 042/044/046/047/045/043/048/049.
 - `python3 -m unittest discover -s tests` passed (157 tests).
 - `python3 -m unittest tests.test_project_sync -v` passed (4 tests) for Issue 050 RED/GREEN coverage.
@@ -93,4 +103,4 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Next Command
 
-`product:review 093-frontmatter-issue-schema-readiness-gate`
+`product:review 095-commit-issue-resolution-parity`
