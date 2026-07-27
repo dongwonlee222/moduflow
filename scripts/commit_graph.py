@@ -231,8 +231,9 @@ def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
     base_ancestors = _record_ancestors(snapshot, base_sha)
     topic_ancestors = _record_ancestors(snapshot, topic_sha)
     if base_ancestors is None or topic_ancestors is None:
-        return []
+        return [], []
     recovered = []
+    fatal_errors = []
     for merge_sha in sorted(base_ancestors):
         record = snapshot["records"][merge_sha]
         if len(record["parents"]) < 2:
@@ -263,8 +264,9 @@ def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
                 ("merge-bases", tuple(sorted((topic_sha, parent)))),
                 bases["fatal_errors"],
             )
+            fatal_errors.extend(bases["fatal_errors"])
             recovered.extend(bases["shas"] or [])
-    return sorted(set(recovered))
+    return sorted(set(recovered)), fatal_errors
 
 
 def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
@@ -280,6 +282,7 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             "topic_ref": topic_ref,
             "fork_point": None,
             "equivalent_base_refs": [],
+            "fatal_errors": [],
             "diagnostics": [
                 diagnostic(
                     "topic-ref-missing",
@@ -293,6 +296,7 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
     topic_sha = snapshot["refs"][topic_ref]
     by_fork = {}
     needs_publication_recovery = False
+    fatal_errors = []
     for ref in sorted(set(base_refs)):
         if ref not in snapshot["refs"]:
             continue
@@ -303,12 +307,14 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             ("merge-bases", tuple(sorted((topic_sha, base_sha)))),
             result["fatal_errors"],
         )
+        fatal_errors.extend(result["fatal_errors"])
         candidates = result["shas"] or []
         recovered = []
         if not result["fatal_errors"] and topic_sha in snapshot["records"]:
-            recovered = _publication_forks(
+            recovered, recovery_errors = _publication_forks(
                 runner, cwd, snapshot, topic_sha, base_sha
             )
+            fatal_errors.extend(recovery_errors)
         if recovered:
             needs_publication_recovery = True
             candidates = [
@@ -328,6 +334,7 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             "topic_ref": topic_ref,
             "fork_point": None,
             "equivalent_base_refs": [],
+            "fatal_errors": fatal_errors,
             "diagnostics": [
                 diagnostic(
                     "topic-publication-fork-unresolved",
@@ -350,6 +357,7 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
                 ("is-ancestor", fork_sha, other_sha),
                 relation["fatal_errors"],
             )
+            fatal_errors.extend(relation["fatal_errors"])
             if relation["value"] is not True:
                 continue
             reverse = is_ancestor(runner, cwd, snapshot, other_sha, fork_sha)
@@ -358,6 +366,7 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
                 ("is-ancestor", other_sha, fork_sha),
                 reverse["fatal_errors"],
             )
+            fatal_errors.extend(reverse["fatal_errors"])
             if reverse["value"] is False:
                 dominated = True
                 break
@@ -370,6 +379,7 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             "topic_ref": topic_ref,
             "fork_point": None,
             "equivalent_base_refs": [],
+            "fatal_errors": fatal_errors,
             "diagnostics": [
                 diagnostic(
                     "ambiguous-topic-fork",
@@ -386,6 +396,7 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
         "topic_ref": topic_ref,
         "fork_point": fork_point,
         "equivalent_base_refs": sorted(by_fork[fork_point]),
+        "fatal_errors": fatal_errors,
         "diagnostics": [],
     }
 
@@ -465,6 +476,13 @@ def topic_delta(
         )) is not None
     )
     if fork["fork_point"] is None:
+        return {
+            **fork,
+            "stacked_exclusions": [],
+            "commits": set(),
+            "diagnostics": diagnostics,
+        }
+    if fork["fatal_errors"]:
         return {
             **fork,
             "stacked_exclusions": [],

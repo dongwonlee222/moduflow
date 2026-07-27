@@ -886,6 +886,24 @@ class TestDegradedMeaning(unittest.TestCase):
 
 
 class TestRangeProjection(unittest.TestCase):
+    def _malformed_range_result(self, output):
+        repo = GitRepo()
+        repo.commit("chore: base")
+        repo.add_issue_file(ISSUE)
+        repo.branch(f"codex/{ISSUE}")
+        work = repo.commit("feat: issue")
+        range_text = f"{work}^..{work}"
+        range_args = ["git", "log", "--format=%H", range_text]
+
+        def malformed(args, cwd=None):
+            if args == range_args:
+                return TestGraphQueryFailures._failed_result(output, returncode=0)
+            return repo.runner(args, cwd)
+
+        return repo, cr.resolve_commits_for_issue(
+            malformed, repo.path, ISSUE, rev_range=range_text
+        )
+
     def test_live_range_projects_only_target_topic(self):
         """FH-031: full topology resolves a range without truncating graph data."""
         with GitRepo() as repo:
@@ -940,6 +958,26 @@ class TestRangeProjection(unittest.TestCase):
             result = cr.resolve_commits_for_issue(terminated, repo.path, ISSUE, rev_range=f"{work}^..{work}")
             self.assertEqual(result["commits"], [])
             self.assertTrue(any("exit code -15" in error for error in result["errors"]))
+
+    def test_range_projection_rejects_multi_token_success_output(self):
+        """FH-022/FH-031: a successful range response must be one SHA per line."""
+        repo, result = self._malformed_range_result("not-a-snapshot-sha extra\n")
+        try:
+            self.assertEqual(result["commits"], [])
+            self.assertTrue(any("range" in error and "malformed" in error for error in result["errors"]))
+        finally:
+            repo.__exit__()
+
+    def test_range_projection_rejects_unknown_or_empty_success_output(self):
+        """FH-022/FH-031: unknown and empty rc=0 range output are fatal."""
+        for output in ("not-a-snapshot-sha\n", ""):
+            with self.subTest(output=output):
+                repo, result = self._malformed_range_result(output)
+                try:
+                    self.assertEqual(result["commits"], [])
+                    self.assertTrue(any("range" in error and "malformed" in error for error in result["errors"]))
+                finally:
+                    repo.__exit__()
 
 
 if __name__ == "__main__":

@@ -87,6 +87,17 @@ def _error_text(args, result):
     return f"{' '.join(args)} failed: {detail}"
 
 
+def _range_order(stdout, records):
+    """Validate a successful range projection against the full snapshot."""
+    order = []
+    for line in (stdout or "").splitlines():
+        fields = line.split()
+        if len(fields) != 1 or fields[0] not in records:
+            return None
+        order.append(fields[0])
+    return order if order else None
+
+
 # ---------------------------------------------------------------------------
 # Branch-name interpretation
 # ---------------------------------------------------------------------------
@@ -383,7 +394,16 @@ def build_attribution(runner, cwd, *, rev_range=None):
                 "attribution": {}, "records": {}, "order": [], "unmatched": [],
                 "degraded": degraded, "errors": errors, "diagnostics": [],
             }
-        order = [sha for sha in (ranged.stdout or "").split() if sha in records]
+        order = _range_order(ranged.stdout, records)
+        if order is None:
+            errors.append(
+                "git log range projection produced malformed output "
+                "(expected one known SHA token per nonempty line)"
+            )
+            return {
+                "attribution": {}, "records": {}, "order": [], "unmatched": [],
+                "degraded": degraded, "errors": errors, "diagnostics": [],
+            }
     else:
         order = topology_order
 

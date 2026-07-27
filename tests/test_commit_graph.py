@@ -754,6 +754,45 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertEqual(result["commits"], set())
             self.assertTrue(snapshot["fatal_errors"])
 
+    def test_cached_publication_recovery_failure_stays_closed(self):
+        """FH-010: cached recovery failures must close every later delta call."""
+        with GitRepo() as repo:
+            base = repo.commit("chore: base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            topic = repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: alpha", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.merge(topic, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+            repo._git("branch", "older-base", base)
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+            topic_ref = f"refs/heads/codex/{ALPHA}"
+            topic_sha = snapshot["refs"][topic_ref]
+            publication = next(
+                record for record in snapshot["records"].values()
+                if topic_sha in record["parents"] and len(record["parents"]) == 2
+            )
+            base_parent = next(parent for parent in publication["parents"] if parent != topic_sha)
+            failing_args = ["git", "merge-base", "--all", topic_sha, base_parent]
+            calls = []
+
+            def failing(args, cwd=None):
+                calls.append(args)
+                if args == failing_args:
+                    return subprocess.CompletedProcess(args, 128, "", "recovery unavailable")
+                return repo.runner(args, cwd)
+
+            kwargs = {
+                "topic_refs": {topic_ref: ALPHA},
+                "base_refs": ["refs/heads/main", "refs/heads/older-base"],
+            }
+            first = commit_graph.topic_delta(failing, repo.path, snapshot, topic_ref, ALPHA, **kwargs)
+            second = commit_graph.topic_delta(failing, repo.path, snapshot, topic_ref, ALPHA, **kwargs)
+
+            self.assertEqual(first["commits"], set())
+            self.assertEqual(second["commits"], set())
+            self.assertEqual(len(snapshot["fatal_errors"]), 1)
+            self.assertEqual(sum(call == failing_args for call in calls), 1)
+
     def test_nested_merge_does_not_relabel_inner_content(self):
         """FH-005: outer topic deltas exclude the inner issue's content."""
         with GitRepo() as repo:
