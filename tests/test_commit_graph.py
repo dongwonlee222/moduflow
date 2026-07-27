@@ -604,6 +604,18 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertEqual(result["commits"], declared_content_truth(repo, ALPHA))
             self.assertTrue(result["commits"])
 
+    def test_advanced_topic_ref_keeps_published_and_new_content(self):
+        """FH-003: a live ref advanced after publication retains T1 and T2."""
+        with GitRepo() as repo:
+            shapes.happy_merge(repo)
+            repo.checkout(f"codex/{ALPHA}")
+            repo.commit("feat: alpha follow-up", belongs_to=ALPHA)
+
+            result = delta_for_repo(repo, ALPHA)
+
+            self.assertEqual(result["commits"], declared_content_truth(repo, ALPHA))
+            self.assertTrue(result["commits"])
+
     def test_base_history_is_not_topic_work(self):
         """FH-002: a stale local trunk cannot become alpha's contribution."""
         with GitRepo() as repo:

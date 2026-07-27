@@ -229,20 +229,33 @@ def _record_ancestors(snapshot, start):
 def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
     """Recover no-ff publication forks without probing unrelated records."""
     base_ancestors = _record_ancestors(snapshot, base_sha)
-    if base_ancestors is None:
+    topic_ancestors = _record_ancestors(snapshot, topic_sha)
+    if base_ancestors is None or topic_ancestors is None:
         return []
     recovered = []
     for merge_sha in sorted(base_ancestors):
         record = snapshot["records"][merge_sha]
         if len(record["parents"]) < 2:
             continue
-        # A topic merely reachable through one parent is not publication
-        # evidence: a later unrelated merge has exactly that shape. The saved
-        # topic-ref object must be a direct no-ff merge parent.
-        if topic_sha not in record["parents"]:
+        topic_sides = [
+            parent for parent in record["parents"] if parent in topic_ancestors
+        ]
+        # The topic parent must be in the current topic ref's own history. A
+        # later unrelated merge has main (which contains the topic) as a
+        # parent, but that merge object is not an ancestor of the topic ref.
+        if not topic_sides:
+            continue
+        maximal_sides = []
+        for side in topic_sides:
+            if not any(
+                side != other and side in (_record_ancestors(snapshot, other) or ())
+                for other in topic_sides
+            ):
+                maximal_sides.append(side)
+        if len(maximal_sides) != 1:
             continue
         for parent in record["parents"]:
-            if parent == topic_sha:
+            if parent in maximal_sides:
                 continue
             bases = merge_bases(runner, cwd, snapshot, topic_sha, parent)
             _preserve_fatal_errors(
@@ -291,12 +304,21 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             result["fatal_errors"],
         )
         candidates = result["shas"] or []
-        if topic_sha in candidates:
+        recovered = []
+        if not result["fatal_errors"] and topic_sha in snapshot["records"]:
+            recovered = _publication_forks(
+                runner, cwd, snapshot, topic_sha, base_sha
+            )
+        if recovered:
+            needs_publication_recovery = True
+            candidates = [
+                sha for sha in candidates
+                if sha not in _record_ancestors(snapshot, topic_sha)
+            ]
+            candidates.extend(recovered)
+        elif topic_sha in candidates:
             needs_publication_recovery = True
             candidates = [sha for sha in candidates if sha != topic_sha]
-            candidates.extend(
-                _publication_forks(runner, cwd, snapshot, topic_sha, base_sha)
-            )
         for fork_sha in candidates:
             by_fork.setdefault(fork_sha, []).append(ref)
 
@@ -420,6 +442,7 @@ def topic_delta(
     base_refs,
 ):
     """Return commits introduced by one topic, excluding stacked issue work."""
+    fatal_before = len(snapshot["fatal_errors"])
     topic_sha = snapshot["refs"].get(topic_ref)
     # A non-issue alias at the topic tip (for example local `release/main`)
     # is evidence of publication, not a historical fork candidate.
@@ -431,6 +454,13 @@ def topic_delta(
     )
     diagnostics = list(fork["diagnostics"])
     if fork["fork_point"] is None:
+        return {
+            **fork,
+            "stacked_exclusions": [],
+            "commits": set(),
+            "diagnostics": diagnostics,
+        }
+    if len(snapshot["fatal_errors"]) != fatal_before:
         return {
             **fork,
             "stacked_exclusions": [],
@@ -451,6 +481,13 @@ def topic_delta(
             ("merge-bases", tuple(sorted((topic_sha, other_sha)))),
             pair["fatal_errors"],
         )
+        if pair["fatal_errors"]:
+            return {
+                **fork,
+                "stacked_exclusions": [],
+                "commits": set(),
+                "diagnostics": diagnostics,
+            }
         for candidate in pair["shas"] or []:
             # A descendant topic's merge-base can be this topic's own tip.
             # That proves the *other* topic stacks on us; it must not erase us.
@@ -468,6 +505,13 @@ def topic_delta(
                 exclusions.append(candidate)
 
     exclusions = _ancestry_maximal(runner, cwd, snapshot, exclusions)
+    if len(snapshot["fatal_errors"]) != fatal_before:
+        return {
+            **fork,
+            "stacked_exclusions": [],
+            "commits": set(),
+            "diagnostics": diagnostics,
+        }
     args = [
         "git",
         "rev-list",
