@@ -1030,8 +1030,23 @@ graph, resolver, parity, and linkage suites passed 105/105. Independent spec
 review and independent quality re-review both approved T01 with no open
 Critical, Important, or Minor findings.
 
+## T02 / B1 completion — 2026-07-27
+
+The initial implementation at `ccffbce` passed its declared invariants, but
+independent quality review reproduced three missing boundaries: snapshot ref
+movement, criss-cross multiple best merge bases, and an unexercised comparable
+candidate path. They were preserved as `FH-023`, `FH-024`, and `FH-025` before
+the fixes.
+
+`b711c06` moved graph queries to snapshot object IDs, consumed complete
+`merge-base --all` candidates, deduplicated repeated query diagnostics, and
+added actual-Git invariant fixtures. `d25bbdd` made the criss-cross merge truth
+explicit. The graph, resolver, parity, and linkage suites passed 117/117.
+Independent spec and final quality reviews approved with no open Critical,
+Important, or Minor findings.
+
 ## Current task
 
-T02 / B1 — derive one ancestry-maximal historical fork point per issue ref
-with invariant coverage for `FH-006`, `FH-011`, `FH-012`, `FH-013`, and
-`FH-017`.
+T03 / B2 — compute per-topic deltas with ancestry-maximal stacked-issue
+exclusions and remove the live global-base path, covering `FH-002`, `FH-003`,
+and `FH-005`.

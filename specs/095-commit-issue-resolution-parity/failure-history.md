@@ -66,6 +66,9 @@ the architectural closure.
 | FH-020 | Reference oracle repeated implementation assumptions | Truth is declared independently and checked with invariants | superseded by redesign |
 | FH-021 | A stricter ref parser broke an unrun consumer fixture | Every changed boundary runs all direct consumer suites before review | regression captured |
 | FH-022 | Successful merge-base with empty output became “no base” | Success return codes still require structurally valid output | regression captured |
+| FH-023 | Ref movement mixed snapshot-time and query-time graph state | Graph queries use snapshot object IDs, not live ref names | regression captured |
+| FH-024 | One arbitrary criss-cross merge base became a unique fork | Fork selection consumes every best merge base or fails scoped ambiguity | regression captured |
+| FH-025 | Tests never exercised comparable fork candidates | Invariant tests must fail when ancestry-maximal selection is removed | regression captured |
 
 ## Failure Records
 
@@ -364,6 +367,60 @@ the architectural closure.
   direct graph, resolver, parity, and linkage consumer suites passed 105/105.
 - **Status**: regression captured.
 
+### FH-023 — Snapshot Ref Movement Mixed Graph Times
+
+- **Topology**: load a graph snapshot, then move `refs/heads/main` to the topic
+  tip before deriving the topic fork.
+- **Observed failure**: the snapshot retained the old main object ID, but
+  `derive_fork_point()` queried Git with the live ref name and returned the
+  moved topic tip as the fork without diagnostics or fatal errors.
+- **Invalid assumption**: an immutable ref inventory remains immutable when
+  later graph queries use ref names instead of the captured object IDs.
+- **Derived invariant**: every graph query associated with a snapshot uses the
+  snapshot's object IDs for both command arguments and cache identity; ref
+  names are reporting metadata only.
+- **Evidence**: T02 independent code-quality review at `ccffbce`,
+  `scripts/commit_graph.py:128`.
+- **Resolution evidence**: `b711c06` changed fork queries and cache identity to
+  snapshot object IDs and added ref-movement, duplicate-ref, and cached-fatal
+  regressions. The T02 direct consumer gate passed 117/117 at `d25bbdd`.
+- **Status**: regression captured.
+
+### FH-024 — Arbitrary Criss-Cross Merge Base
+
+- **Topology**: a valid criss-cross graph where `git merge-base --all` returns
+  two incomparable best merge bases for one topic/base pair.
+- **Observed failure**: the single-result merge-base query returned one SHA,
+  and `derive_fork_point()` accepted it as the unique fork with no diagnostic.
+- **Invalid assumption**: default `git merge-base` output is the complete set
+  of best common ancestors.
+- **Derived invariant**: fork derivation consumes every best merge-base
+  candidate; incomparable maxima yield an issue-scoped ambiguity instead of
+  selecting Git's arbitrary single output.
+- **Evidence**: T02 independent code-quality review at `ccffbce`,
+  `scripts/commit_graph.py:62` and `scripts/commit_graph.py:128`.
+- **Resolution evidence**: `b711c06` added complete `merge-base --all`
+  candidate handling and an executable criss-cross fixture that returns a
+  scoped ambiguity. `d25bbdd` also made every fixture merge truth-explicit.
+- **Status**: regression captured.
+
+### FH-025 — Comparable Fork Candidate Path Was Untested
+
+- **Topology**: two distinct fork candidates where the older candidate is a
+  strict ancestor of the newer candidate.
+- **Observed failure**: replacing `is_ancestor()` with an always-false answer
+  still left all seven T02 invariant tests green.
+- **Invalid assumption**: single, equal, and incomparable candidate cases also
+  prove ancestry-maximal elimination.
+- **Derived invariant**: the test suite must exercise a comparable candidate
+  chain and fail if the dominated candidate is not removed.
+- **Evidence**: T02 independent code-quality review at `ccffbce`,
+  `tests/test_commit_graph.py:265`.
+- **Resolution evidence**: `b711c06` added a comparable-chain invariant whose
+  result fails when ancestry elimination is disabled and selects only the
+  newer unique maximal fork.
+- **Status**: regression captured.
+
 ## Required Design Traceability
 
 The redesign maps its requirements to this corpus:
@@ -379,5 +436,7 @@ The redesign maps its requirements to this corpus:
 | Caller-scoped diagnostics | FH-018 |
 | Independent invariant and boundary testing | FH-019, FH-020 |
 | Complete consumer gates and successful-output validation | FH-021, FH-022 |
+| Snapshot-time graph identity and complete fork candidates | FH-023, FH-024 |
+| Executable ancestry-maximal selection proof | FH-025 |
 
 Future findings extend this table rather than replacing it.

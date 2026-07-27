@@ -29,8 +29,8 @@
     "last_changed_at": "2026-07-27"
   },
   "blocker": null,
-  "last_action": "completed T01 graph snapshot and Git failure semantics with independent spec and quality approval; T02 historical fork-point derivation is next",
-  "last_verification": "2026-07-27 T01 gate: graph, resolver, parity, and linkage consumer suites passed 105/105 at 8068f98; spec review approved; quality re-review reported no Critical, Important, or Minor findings; FH-021 and FH-022 regressions captured",
+  "last_action": "completed T02 per-issue historical fork points with independent spec and quality approval; T03 stacked topic delta implementation is next",
+  "last_verification": "2026-07-27 T02 gate: graph, resolver, parity, and linkage consumer suites passed 117/117 at d25bbdd; spec review approved; final quality review reported no Critical, Important, or Minor findings; FH-023 through FH-025 regressions captured",
   "updated_at": "2026-07-27",
   "git_binding": {
     "mode": "git-files",
@@ -54,7 +54,11 @@
       "9356cb0",
       "064ca05",
       "1ceb153",
-      "8068f98"
+      "8068f98",
+      "918e9ad",
+      "ccffbce",
+      "b711c06",
+      "d25bbdd"
     ],
     "pull_request": null,
     "release": null,

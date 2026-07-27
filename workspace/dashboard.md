@@ -106,8 +106,12 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 - Issue `095` T01 (2026-07-27 at `8068f98`): graph snapshot and Git failure
   semantics completed. Four direct consumer suites passed 105/105; separate
   spec and quality reviews approved with no open findings. `FH-021` and
-  `FH-022` are regression-captured. Current task is T02 historical fork-point
-  derivation.
+  `FH-022` are regression-captured.
+- Issue `095` T02 (2026-07-27 at `d25bbdd`): per-issue historical fork-point
+  derivation completed. Review caught and closed snapshot ref drift,
+  criss-cross incomplete merge bases, and a missing comparable-candidate
+  invariant as `FH-023`–`FH-025`. Four direct consumer suites passed 117/117;
+  final review has no open finding. Current task is T03 stacked topic deltas.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance
