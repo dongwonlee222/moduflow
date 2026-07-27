@@ -109,7 +109,7 @@ existing history. Do not make converge gate the review verdict.
 ## Workflow Tasks
 
 - [x] spec → `specs/095-commit-issue-resolution-parity/spec.md`
-- [x] plan → `specs/095-commit-issue-resolution-parity/plan.md` + `tasks.md`
+- [x] plan → `specs/095-commit-issue-resolution-parity/plan.md` + `tasks.md`; corrective plan → `docs/superpowers/plans/2026-07-27-095-corrective-completion.md`
 - [x] execute → PR / commits (streams A–E; `scripts/commit_resolution.py` plus both consumer migrations)
 - [ ] review → review notes
 

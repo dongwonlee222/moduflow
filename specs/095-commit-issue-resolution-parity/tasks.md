@@ -25,3 +25,12 @@ Plan: `specs/095-commit-issue-resolution-parity/plan.md`
 
 - [x] E1 Add the cross-module parity test, then confirm converge on issue 093's history collects the full commit set including `scripts/project_issue_schema.py`.
 - [x] E2 Pass full unittest, lifecycle drift, and release check before moving to review.
+
+## Corrective Completion — 2026-07-27
+
+- [ ] F1 Fail closed on historical issue discovery and Git graph errors.
+- [ ] F2 Remove R9-1 through R9-4 expected-failure masking and fix global attribution.
+- [ ] F3 Reconcile the canonical issue, refined spec, lifecycle state, PR handoff, and Korean packet.
+- [ ] F4 Pass focused/full verification with zero expected failures and complete independent review.
+
+Plan: `docs/superpowers/plans/2026-07-27-095-corrective-completion.md`

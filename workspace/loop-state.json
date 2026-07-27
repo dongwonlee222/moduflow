@@ -16,48 +16,34 @@
     "092-project-home-dashboard",
     "087-korean-github-pr-review-surface"
   ],
-  "active_issue_id": "093-frontmatter-issue-schema-readiness-gate",
-  "phase": "review",
+  "active_issue_id": "095-commit-issue-resolution-parity",
+  "phase": "execute",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:pr 093-frontmatter-issue-schema-readiness-gate",
+  "next_command": "product:execute 095-commit-issue-resolution-parity",
   "attempts": {
-    "command": "product:pr 093-frontmatter-issue-schema-readiness-gate",
+    "command": "product:execute 095-commit-issue-resolution-parity",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-07-25"
+    "last_changed_at": "2026-07-27"
   },
   "blocker": null,
-  "last_action": "completed independent review of Issue 093, refuted the fail-open reading of the loop phase default, fixed the non-file issue source crash it exposed, and merged main into the branch",
-  "last_verification": "2026-07-25 at 1eb8c13: full unittest 741/741 OK, release_check valid, lifecycle drift [], working tree clean",
-  "updated_at": "2026-07-25",
+  "last_action": "approved and recorded the Issue 095 corrective completion design and implementation plan",
+  "last_verification": "2026-07-27 at 0079fbf: differential baseline 50 tests OK with 4 expected failures; corrective work must reduce expected failures to zero",
+  "updated_at": "2026-07-27",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/093-frontmatter-issue-schema-readiness-gate",
+    "branch": "codex/095-commit-issue-resolution-parity-fix",
     "base_branch": "main",
-    "commits": [
-      "7207a0f",
-      "2b786d5",
-      "e220e4a",
-      "96485a2",
-      "28ac7ff",
-      "26659dd",
-      "4c9b46a",
-      "7d76100",
-      "34be14b",
-      "ab682e3",
-      "9a7b879",
-      "fa015b6",
-      "1eb8c13"
-    ],
+    "commits": [],
     "pull_request": null,
     "release": null,
     "execution_backend": {
       "type": "codex",
       "status": "selected",
-      "reason": "Issue 093 is approved Git-native spec work in an isolated branch; review is complete and PR is next",
-      "session": "codex-2026-07-22"
+      "reason": "Issue 095 corrective completion is approved for TDD implementation in an isolated worktree",
+      "session": "codex-2026-07-27"
     }
   }
 }
