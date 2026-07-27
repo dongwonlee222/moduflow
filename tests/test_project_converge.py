@@ -13,13 +13,7 @@ LOG_ARGS = tuple(project_converge.GIT_LOG_ARGS)
 
 # Issue 095: resolution moved to commit_resolution, which reads branch refs and
 # historically registered issue ids alongside the log.
-BRANCH_REF_ARGS = (
-    "git",
-    "for-each-ref",
-    "--format=%(refname:short)",
-    "refs/heads",
-    "refs/remotes",
-)
+BRANCH_REF_ARGS = tuple(project_converge.commit_resolution.BRANCH_REF_ARGS)
 ISSUE_HISTORY_ARGS = tuple(project_converge.commit_resolution.ISSUE_HISTORY_ARGS)
 
 

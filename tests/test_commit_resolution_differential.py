@@ -117,6 +117,13 @@ class GroundTruthTests(_ShapeCase):
                     f"\nextra:   {_short(actual - expected)}"
                     f"\nmissing: {_short(expected - actual)}",
                 )
+            if shape_name == "disconnected_non_issue_base":
+                built = cr.build_attribution(repo.runner, repo.path)
+                self.assertIn(
+                    cr.DEGRADED_BRANCH_UNAVAILABLE,
+                    built["degraded"],
+                    "a disconnected non-issue ref is not a usable base",
+                )
 
 
 class CommitDirectionTests(_ShapeCase):

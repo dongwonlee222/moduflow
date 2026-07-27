@@ -11,6 +11,7 @@ from git_repo_builder import GitRepo  # noqa: E402
 
 
 SYMBOLIC_REF_ARGS = ("git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+BRANCH_REF_ARGS = tuple(linkage_check.commit_resolution.BRANCH_REF_ARGS)
 
 
 class FakeRunner:
@@ -49,7 +50,7 @@ def attribution_stubs(entries, issue_files=()):
     )
     stubs = {
         tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): log,
-        ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
+        BRANCH_REF_ARGS: "",
         tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "".join(
             f"issues/{issue_id}.md\n" for issue_id in issue_files
         ),
@@ -60,7 +61,7 @@ def attribution_stubs(entries, issue_files=()):
 def branch_stubs(branch_name, shas, issue_files=()):
     """Stub for-each-ref plus the branch-exclusive rev-list for one branch."""
     return {
-        ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): (
+        BRANCH_REF_ARGS: (
             f"{branch_name}\n"
         ),
         (
@@ -155,7 +156,10 @@ class ResolveIssueForCommitTests(unittest.TestCase):
                     "fix: thing\n\nIssue: 070-spec-consistency-analyze\n"
                 ),
                 # A conflicting branch exists but must not be consulted/win.
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "main\norigin/codex/074-sync-fetch-sandbox-handling\n",
+                BRANCH_REF_ARGS: (
+                    "refs/heads/main\n"
+                    "refs/remotes/origin/codex/074-sync-fetch-sandbox-handling\n"
+                ),
                 tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): (
                     "issues/070-spec-consistency-analyze.md\n"
                     "issues/074-sync-fetch-sandbox-handling.md\n"
@@ -173,7 +177,9 @@ class ResolveIssueForCommitTests(unittest.TestCase):
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "chore: misc\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00chore: misc\x00\x00chore: misc\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "origin/main\nmain\n",
+                BRANCH_REF_ARGS: (
+                    "refs/remotes/origin/main\nrefs/heads/main\n"
+                ),
                 tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "",
                 ("git", "branch", "--contains", "abc123"): "* main\n",
             }
@@ -207,7 +213,7 @@ class ResolveIssueForCommitTests(unittest.TestCase):
                 ("git", "show", "-s", "--format=%B", "abc123"): "fix: thing\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00fix: thing\x00\x00fix: thing\n\x01",
                 tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): linkage_check.CommandResult(
+                BRANCH_REF_ARGS: linkage_check.CommandResult(
                     128, "", "fatal: malformed object name"
                 ),
             }
@@ -285,7 +291,7 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
             {
                 ("git", "rev-list", "base..head"): "sha1\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "sha1\x00feat: foo\x00\x00feat: foo\n\nIssue: 070-spec-consistency-analyze\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
+                BRANCH_REF_ARGS: "",
                 tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): (
                     "issues/070-spec-consistency-analyze.md\n"
                 ),
@@ -320,7 +326,7 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
             {
                 ("git", "rev-list", "base..head"): "sha2\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "sha2\x00docs tweak\x00\x00docs tweak\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
+                BRANCH_REF_ARGS: "",
                 tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "",
                 ("git", "show", "--name-only", "--format=", "sha2"): "commands/product-x.md\n",
                 ("git", "show", "-s", "--format=%B", "sha2"): "docs tweak\n",
@@ -419,13 +425,7 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
                 tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): (
                     "issues/070-spec-consistency-analyze.md\n"
                 ),
-                (
-                    "git",
-                    "for-each-ref",
-                    "--format=%(refname:short)",
-                    "refs/heads",
-                    "refs/remotes",
-                ): "",
+                BRANCH_REF_ARGS: "",
                 ("git", "show", "--name-only", "--format=", "sha1"): "scripts/foo.py\n",
                 ("git", "show", "-s", "--format=%B", "sha1"): (
                     "feat: foo\n\nIssue: 070-spec-consistency-analyze\n"

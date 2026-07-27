@@ -131,6 +131,36 @@ def branch_name_not_matching_issue(repo):
     return [ALPHA]
 
 
+def disconnected_non_issue_base(repo):
+    """A disconnected non-issue ref is not a usable branch base.
+
+    With the real trunk deleted, selecting the orphan as base makes the issue
+    branch appear to contribute every commit in its disconnected history."""
+    _seed(repo, ALPHA)
+    issue_branch = repo.branch(f"codex/{ALPHA}")
+    repo.commit(
+        "feat: alpha work",
+        issue=ALPHA,
+        belongs_to=ALPHA,
+    )
+    repo.checkout("main")
+    repo._git("checkout", "-q", "--orphan", "orphan-base")
+    repo.commit("chore: disconnected root", belongs_to=None)
+    repo.checkout(issue_branch)
+    repo.delete_branch("main")
+    return [ALPHA]
+
+
+def local_slash_branch_is_not_remote(repo):
+    """A local `release/main` branch is not `main`'s remote counterpart."""
+    _seed(repo, ALPHA)
+    repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
+    repo._git("branch", "release/main")
+    repo.checkout("main")
+    return [ALPHA]
+
+
 def trailer_outside_any_branch(repo):
     """A trailer-bearing commit merged and then its branch deleted, plus one
     committed straight to main."""
@@ -256,6 +286,8 @@ ALL_SHAPES = {
     "detached_before_commit": detached_before_commit,
     "nested_merges": nested_merges,
     "branch_name_not_matching_issue": branch_name_not_matching_issue,
+    "disconnected_non_issue_base": disconnected_non_issue_base,
+    "local_slash_branch_is_not_remote": local_slash_branch_is_not_remote,
     "trailer_outside_any_branch": trailer_outside_any_branch,
     "two_issues_interleaved": two_issues_interleaved,
     "empty_repository": empty_repository,

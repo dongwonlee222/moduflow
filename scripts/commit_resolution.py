@@ -39,6 +39,13 @@ GIT_LOG_FORMAT = "%H%x00%s%x00%P%x00%B%x01"
 # branch is not reachable from HEAD, and work committed in a detached worktree
 # is on no branch at all; `--all` covers every ref plus HEAD.
 GIT_LOG_ARGS = ("git", "log", "--all", f"--format={GIT_LOG_FORMAT}")
+BRANCH_REF_ARGS = (
+    "git",
+    "for-each-ref",
+    "--format=%(refname)",
+    "refs/heads",
+    "refs/remotes",
+)
 ISSUE_HISTORY_ARGS = (
     "git",
     "log",
@@ -98,8 +105,13 @@ def issue_id_from_branch(name, issue_ids):
     Accepts remote-qualified names (origin/codex/094-...). When a work-branch
     suffix is present, the longest known issue id that prefixes the tail wins.
     A branch name never registers an issue by itself."""
-    candidates = [name]
-    if "/" in name and not name.startswith("codex/"):
+    branch_name = _branch_tail(name)
+    candidates = [name, branch_name]
+    if (
+        branch_name == name
+        and "/" in name
+        and not name.startswith("codex/")
+    ):
         candidates.append(name.split("/", 1)[1])
     for candidate in candidates:
         match = BRANCH_ISSUE_RE.match(candidate)
@@ -160,10 +172,32 @@ def base_ref(runner, cwd, refs, issue_ids=None, errors=None):
     candidates = [
         ref for ref in refs if BRANCH_ISSUE_RE.match(_branch_tail(ref)) is None
     ]
+    issue_refs = [
+        ref for ref in refs if issue_id_from_branch(ref, issue_ids) is not None
+    ]
+
+    if issue_refs:
+        connected = []
+        for ref in candidates:
+            usable = True
+            for issue_ref in issue_refs:
+                merge_args = ["git", "merge-base", ref, issue_ref]
+                probe = _run(runner, merge_args, cwd)
+                if probe.returncode == 1:
+                    usable = False
+                    break
+                if probe.returncode != 0:
+                    errors.append(_error_text(merge_args, probe))
+                    return None
+            if usable:
+                connected.append(ref)
+        candidates = connected
 
     head = _run(runner, ["git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], cwd)
     if head.returncode == 0:
         name = (head.stdout or "").strip()
+        if not name.startswith("refs/"):
+            name = f"refs/remotes/{name}"
         if name in candidates:
             return name
 
@@ -178,8 +212,13 @@ def base_ref(runner, cwd, refs, issue_ids=None, errors=None):
     candidates = []
     for tail in sorted(by_tail):
         counterparts = sorted(by_tail[tail])
-        local = tail if tail in counterparts else None
-        remotes = [ref for ref in counterparts if ref != local]
+        local = next(
+            (ref for ref in counterparts if ref.startswith("refs/heads/")),
+            None,
+        )
+        remotes = [
+            ref for ref in counterparts if ref.startswith("refs/remotes/")
+        ]
         if local is None or not remotes:
             candidates.append(counterparts[0])
             continue
@@ -214,8 +253,11 @@ def base_ref(runner, cwd, refs, issue_ids=None, errors=None):
     # an ancestor of everything cut from it, a lower branch only of what sits
     # on top. Picking wrong here silently zeroes a branch.
     scored = []
+    relevant_refs = list(dict.fromkeys([*issue_refs, *candidates]))
     for ref in candidates:
-        others = [other for other in refs if not _same_branch(other, ref)]
+        others = [
+            other for other in relevant_refs if not _same_branch(other, ref)
+        ]
         if not others:
             continue
         rev = _run(runner, ["git", "rev-list", ref, "--not", *others], cwd)
@@ -249,13 +291,31 @@ def _same_branch(ref, name):
     which yields an empty commit set."""
     if ref == name:
         return True
+    if not (
+        ref.startswith(("refs/heads/", "refs/remotes/"))
+        and name.startswith(("refs/heads/", "refs/remotes/"))
+    ):
+        return False
     return _branch_tail(ref) == _branch_tail(name)
 
 
 def _branch_tail(ref):
-    """Strip a remote prefix: origin/codex/X -> codex/X."""
-    if "/" in ref and not ref.startswith("codex/"):
-        return ref.split("/", 1)[1]
+    """Return a branch name while preserving local-vs-remote provenance."""
+    if ref.startswith("refs/heads/"):
+        return ref[len("refs/heads/") :]
+    if ref.startswith("refs/remotes/"):
+        remote_and_branch = ref[len("refs/remotes/") :]
+        if "/" in remote_and_branch:
+            return remote_and_branch.split("/", 1)[1]
+    return ref
+
+
+def _short_ref(ref):
+    """Render a full ref using Git's familiar short spelling."""
+    if ref.startswith("refs/heads/"):
+        return ref[len("refs/heads/") :]
+    if ref.startswith("refs/remotes/"):
+        return ref[len("refs/remotes/") :]
     return ref
 
 
@@ -332,13 +392,7 @@ def build_branch_membership(runner, cwd, *, issue_ids=None):
     degraded = []
     membership = {}
 
-    args = [
-        "git",
-        "for-each-ref",
-        "--format=%(refname:short)",
-        "refs/heads",
-        "refs/remotes",
-    ]
+    args = list(BRANCH_REF_ARGS)
     result = _run(runner, args, cwd)
     if result.returncode != 0:
         errors.append(_error_text(args, result))
@@ -352,7 +406,9 @@ def build_branch_membership(runner, cwd, *, issue_ids=None):
     all_refs = []
     for line in (result.stdout or "").splitlines():
         name = line.strip().split(" -> ")[0].strip()
-        if name:
+        if name and not (
+            name.startswith("refs/remotes/") and name.endswith("/HEAD")
+        ):
             all_refs.append(name)
 
     if issue_ids is None:
@@ -420,11 +476,11 @@ def build_branch_membership(runner, cwd, *, issue_ids=None):
                 degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
             continue
         for sha in (rev.stdout or "").split():
-            membership.setdefault(sha, []).append(name)
+            membership.setdefault(sha, []).append(_short_ref(name))
 
     return {
         "membership": membership,
-        "branches": branches,
+        "branches": [_short_ref(name) for name in branches],
         "degraded": degraded,
         "errors": errors,
     }
