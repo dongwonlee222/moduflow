@@ -151,6 +151,48 @@ def _preserve_fatal_errors(snapshot, key, fatal_errors):
     recorded.add(key)
 
 
+def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
+    """Recover forks from no-ff publication merges reachable from ``base_sha``."""
+    recovered = []
+    for merge_sha, record in sorted(snapshot["records"].items()):
+        if len(record["parents"]) < 2:
+            continue
+        reaches_base = is_ancestor(runner, cwd, snapshot, merge_sha, base_sha)
+        _preserve_fatal_errors(
+            snapshot,
+            ("is-ancestor", merge_sha, base_sha),
+            reaches_base["fatal_errors"],
+        )
+        if reaches_base["value"] is not True:
+            continue
+        topic_parents = []
+        base_parents = []
+        for parent in record["parents"]:
+            contains_topic = is_ancestor(
+                runner, cwd, snapshot, topic_sha, parent
+            )
+            _preserve_fatal_errors(
+                snapshot,
+                ("is-ancestor", topic_sha, parent),
+                contains_topic["fatal_errors"],
+            )
+            if contains_topic["value"] is True:
+                topic_parents.append(parent)
+            elif contains_topic["value"] is False:
+                base_parents.append(parent)
+        if not topic_parents or not base_parents:
+            continue
+        for parent in base_parents:
+            bases = merge_bases(runner, cwd, snapshot, topic_sha, parent)
+            _preserve_fatal_errors(
+                snapshot,
+                ("merge-bases", tuple(sorted((topic_sha, parent)))),
+                bases["fatal_errors"],
+            )
+            recovered.extend(bases["shas"] or [])
+    return sorted(set(recovered))
+
+
 def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
     """Select one ancestry-maximal historical fork point for a topic ref.
 
@@ -176,6 +218,7 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
 
     topic_sha = snapshot["refs"][topic_ref]
     by_fork = {}
+    needs_publication_recovery = False
     for ref in sorted(set(base_refs)):
         if ref not in snapshot["refs"]:
             continue
@@ -186,8 +229,31 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             ("merge-bases", tuple(sorted((topic_sha, base_sha)))),
             result["fatal_errors"],
         )
-        for fork_sha in result["shas"] or []:
+        candidates = result["shas"] or []
+        if topic_sha in candidates:
+            needs_publication_recovery = True
+            candidates = [sha for sha in candidates if sha != topic_sha]
+            candidates.extend(
+                _publication_forks(runner, cwd, snapshot, topic_sha, base_sha)
+            )
+        for fork_sha in candidates:
             by_fork.setdefault(fork_sha, []).append(ref)
+
+    if not by_fork and needs_publication_recovery:
+        return {
+            "issue_id": issue_id,
+            "topic_ref": topic_ref,
+            "fork_point": None,
+            "equivalent_base_refs": [],
+            "diagnostics": [
+                diagnostic(
+                    "topic-publication-fork-unresolved",
+                    f"{topic_ref} publication boundary has no unique pre-publication fork",
+                    issue_id=issue_id,
+                    ref=topic_ref,
+                )
+            ],
+        }
 
     maximal = []
     for fork_sha in sorted(by_fork):
@@ -361,6 +427,15 @@ def topic_delta(
                 "(expected one known SHA token per line)"
             )
             commits = set()
+        else:
+            # Merge boundaries are attributed by resolver merge policy. A
+            # topic delta supplies only side-content, so an inner publication
+            # merge cannot become outer topic work.
+            commits = {
+                sha
+                for sha in commits
+                if len(snapshot["records"][sha]["parents"]) < 2
+            }
     return {
         **fork,
         "stacked_exclusions": exclusions,

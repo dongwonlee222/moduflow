@@ -108,6 +108,12 @@ def delta_for_repo(repo, issue_id):
     )
 
 
+def declared_content_truth(repo, issue_id):
+    """Fixture truth limited to non-merge commits, via Git's actual graph."""
+    non_merges = set(repo._git("rev-list", "--no-merges", "--all").split())
+    return repo.truth_for(issue_id) & non_merges
+
+
 class SnapshotTests(unittest.TestCase):
     def test_loads_log_and_refs_once(self):
         """FH-010/FH-014: one immutable snapshot reads each source once."""
@@ -538,6 +544,16 @@ class ForkPointInvariantTests(unittest.TestCase):
 
 
 class TopicDeltaTests(unittest.TestCase):
+    def test_published_no_ff_topic_recovers_pre_publication_fork(self):
+        """FH-003: main containing the topic tip does not erase its content."""
+        with GitRepo() as repo:
+            shapes.happy_merge(repo)
+
+            result = delta_for_repo(repo, ALPHA)
+
+            self.assertEqual(result["commits"], declared_content_truth(repo, ALPHA))
+            self.assertTrue(result["commits"])
+
     def test_base_history_is_not_topic_work(self):
         """FH-002: a stale local trunk cannot become alpha's contribution."""
         with GitRepo() as repo:
@@ -555,8 +571,10 @@ class TopicDeltaTests(unittest.TestCase):
             alpha = delta_for_repo(repo, ALPHA)
             beta = delta_for_repo(repo, BETA)
 
-            self.assertEqual(alpha["commits"], repo.truth_for(ALPHA))
-            self.assertEqual(beta["commits"], repo.truth_for(BETA))
+            self.assertEqual(alpha["commits"], declared_content_truth(repo, ALPHA))
+            self.assertEqual(beta["commits"], declared_content_truth(repo, BETA))
+            self.assertTrue(alpha["commits"])
+            self.assertTrue(beta["commits"])
             self.assertTrue(beta["stacked_exclusions"])
 
     def test_nested_merge_does_not_relabel_inner_content(self):
@@ -566,4 +584,6 @@ class TopicDeltaTests(unittest.TestCase):
 
             beta = delta_for_repo(repo, BETA)
 
+            self.assertEqual(beta["commits"], declared_content_truth(repo, BETA))
+            self.assertTrue(beta["commits"])
             self.assertTrue(repo.truth_for(ALPHA).isdisjoint(beta["commits"]))
