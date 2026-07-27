@@ -468,13 +468,6 @@ def topic_delta(
         runner, cwd, snapshot, topic_ref, issue_id, base_refs=fork_base_refs
     )
     diagnostics = list(fork["diagnostics"])
-    fork_query_failed = any(
-        cached[1]
-        for ref in fork_base_refs
-        if (cached := snapshot["merge_bases_cache"].get(
-            tuple(sorted((topic_sha, snapshot["refs"][ref])))
-        )) is not None
-    )
     if fork["fork_point"] is None:
         return {
             **fork,
@@ -483,13 +476,6 @@ def topic_delta(
             "diagnostics": diagnostics,
         }
     if fork["fatal_errors"]:
-        return {
-            **fork,
-            "stacked_exclusions": [],
-            "commits": set(),
-            "diagnostics": diagnostics,
-        }
-    if fork_query_failed:
         return {
             **fork,
             "stacked_exclusions": [],
@@ -537,6 +523,13 @@ def topic_delta(
                 ("is-ancestor", fork["fork_point"], candidate),
                 above_fork["fatal_errors"],
             )
+            if above_fork["fatal_errors"]:
+                return {
+                    **fork,
+                    "stacked_exclusions": [],
+                    "commits": set(),
+                    "diagnostics": diagnostics,
+                }
             if above_fork["value"] is True:
                 exclusions.append(candidate)
 

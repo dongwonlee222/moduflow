@@ -720,6 +720,55 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertEqual(result["commits"], set())
             self.assertTrue(any("terminated by signal" in error for error in snapshot["fatal_errors"]))
 
+    def test_stacked_cached_above_fork_failure_stays_closed(self):
+        """FH-010: cached ancestry failure cannot turn into a false exclusion."""
+        with GitRepo() as repo:
+            shapes.two_registered_stacked_issues(repo)
+            errors = []
+            ids = cr.known_issue_ids(repo.runner, repo.path, errors)
+            self.assertEqual(errors, [])
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+            topic_refs = {
+                ref: cr.issue_id_from_branch(ref, ids)
+                for ref in snapshot["refs"]
+                if cr.issue_id_from_branch(ref, ids) is not None
+            }
+            base_refs = [ref for ref in snapshot["refs"] if ref not in topic_refs]
+            beta_ref = next(ref for ref, issue in topic_refs.items() if issue == BETA)
+            alpha_ref = next(ref for ref, issue in topic_refs.items() if issue == ALPHA)
+            fork = commit_graph.derive_fork_point(
+                repo.runner, repo.path, snapshot, beta_ref, BETA,
+                base_refs=base_refs,
+            )
+            pair = commit_graph.merge_bases(
+                repo.runner, repo.path, snapshot,
+                snapshot["refs"][beta_ref], snapshot["refs"][alpha_ref],
+            )
+            candidate = next(
+                sha for sha in pair["shas"]
+                if sha not in (fork["fork_point"], snapshot["refs"][beta_ref])
+            )
+            failing_args = [
+                "git", "merge-base", "--is-ancestor", fork["fork_point"], candidate,
+            ]
+            calls = []
+
+            def failing(args, cwd=None):
+                calls.append(args)
+                if args == failing_args:
+                    return subprocess.CompletedProcess(args, 128, "", "ancestry unavailable")
+                return repo.runner(args, cwd)
+
+            kwargs = {"topic_refs": topic_refs, "base_refs": base_refs}
+            first = commit_graph.topic_delta(failing, repo.path, snapshot, beta_ref, BETA, **kwargs)
+            second = commit_graph.topic_delta(failing, repo.path, snapshot, beta_ref, BETA, **kwargs)
+
+            self.assertEqual(first["commits"], set())
+            self.assertEqual(second["commits"], set())
+            self.assertEqual(len(snapshot["fatal_errors"]), 1)
+            self.assertEqual(sum(call == failing_args for call in calls), 1)
+            self.assertTrue(repo.truth_for(ALPHA).isdisjoint(second["commits"]))
+
     def test_cached_fork_query_failure_fails_closed_even_with_another_fork_candidate(self):
         """FH-010: a cached fork failure cannot be hidden by a good base ref."""
         with GitRepo() as repo:
