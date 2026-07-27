@@ -12,8 +12,7 @@ LOG_ARGS = tuple(project_converge.GIT_LOG_ARGS)
 
 
 # Issue 095: resolution moved to commit_resolution, which reads branch refs and
-# tracked issue ids alongside the log. These scenarios exercise log-based
-# resolution, so both default to empty unless a test overrides them.
+# historically registered issue ids alongside the log.
 BRANCH_REF_ARGS = (
     "git",
     "for-each-ref",
@@ -21,14 +20,14 @@ BRANCH_REF_ARGS = (
     "refs/heads",
     "refs/remotes",
 )
-ISSUE_FILES_ARGS = ("git", "ls-files", "issues")
+ISSUE_HISTORY_ARGS = tuple(project_converge.commit_resolution.ISSUE_HISTORY_ARGS)
 
 
 class FakeRunner:
     def __init__(self, responses):
         self.responses = {
             BRANCH_REF_ARGS: "",
-            ISSUE_FILES_ARGS: "",
+            ISSUE_HISTORY_ARGS: f"issues/{ISSUE}.md\n",
             **responses,
         }
         self.calls = []
@@ -116,7 +115,7 @@ class ResolveCommitsTests(unittest.TestCase):
         # issue list is part of this scenario's preconditions.
         runner = FakeRunner(
             {
-                ISSUE_FILES_ARGS: f"issues/{ISSUE}.md\n",
+                ISSUE_HISTORY_ARGS: f"issues/{ISSUE}.md\n",
                 LOG_ARGS: log_record(
                     "mrg2",
                     f"Merge branch 'codex/{ISSUE}-engine'",

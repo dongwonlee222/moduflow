@@ -142,7 +142,7 @@ def merge_source_issue(subject, issue_ids):
     return issue_id_from_branch(f"codex/{match.group(1)}", issue_ids)
 
 
-def base_ref(runner, cwd, refs, errors=None):
+def base_ref(runner, cwd, refs, issue_ids=None, errors=None):
     """The branch other branches are cut from.
 
     A branch's own contribution is what it has that the base does not. Deriving
@@ -156,11 +156,55 @@ def base_ref(runner, cwd, refs, errors=None):
     against the stale one hands the branch every commit the trunk has moved on
     by."""
     errors = errors if errors is not None else []
+    issue_ids = issue_ids or []
+    candidates = [
+        ref for ref in refs if BRANCH_ISSUE_RE.match(_branch_tail(ref)) is None
+    ]
+
     head = _run(runner, ["git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], cwd)
     if head.returncode == 0:
         name = (head.stdout or "").strip()
-        if name in refs:
+        if name in candidates:
             return name
+
+    # A local and remote-tracking ref usually denote the same branch. Score
+    # that branch once, using the remote counterpart when the local ref is
+    # stale. Otherwise the stale local trunk becomes the base and every commit
+    # by which origin moved ahead is handed to each issue branch.
+    by_tail = {}
+    for ref in candidates:
+        by_tail.setdefault(_branch_tail(ref), []).append(ref)
+
+    candidates = []
+    for tail in sorted(by_tail):
+        counterparts = sorted(by_tail[tail])
+        local = tail if tail in counterparts else None
+        remotes = [ref for ref in counterparts if ref != local]
+        if local is None or not remotes:
+            candidates.append(counterparts[0])
+            continue
+
+        remote = remotes[0]
+        forward_args = ["git", "merge-base", "--is-ancestor", local, remote]
+        forward = _run(runner, forward_args, cwd)
+        if forward.returncode == 0:
+            candidates.append(remote)
+            continue
+        if forward.returncode != 1:
+            errors.append(_error_text(forward_args, forward))
+            return None
+
+        reverse_args = ["git", "merge-base", "--is-ancestor", remote, local]
+        reverse = _run(runner, reverse_args, cwd)
+        if reverse.returncode == 0:
+            candidates.append(local)
+        elif reverse.returncode == 1:
+            # Diverged counterparts have no objectively newer side. Prefer the
+            # remote deterministically because it represents shared history.
+            candidates.append(remote)
+        else:
+            errors.append(_error_text(reverse_args, reverse))
+            return None
 
     # Fall back to the ref contributing the fewest commits no other ref has. A
     # trunk is contained in the branches cut from it and so contributes nothing
@@ -170,7 +214,7 @@ def base_ref(runner, cwd, refs, errors=None):
     # an ancestor of everything cut from it, a lower branch only of what sits
     # on top. Picking wrong here silently zeroes a branch.
     scored = []
-    for ref in refs:
+    for ref in candidates:
         others = [other for other in refs if not _same_branch(other, ref)]
         if not others:
             continue
@@ -321,7 +365,13 @@ def build_branch_membership(runner, cwd, *, issue_ids=None):
     # branch still resolves through merge topology. Firing here made the flag
     # true of most healthy repositories, which is how it came to mean nothing.
 
-    base = base_ref(runner, cwd, all_refs, errors)
+    base = base_ref(
+        runner,
+        cwd,
+        all_refs,
+        issue_ids=issue_ids,
+        errors=errors,
+    )
     if base is None and branches:
         # There are issue branches but nothing to measure their contribution
         # against, so their commits cannot be attributed. This is the case the
@@ -443,15 +493,31 @@ def build_attribution(runner, cwd, *, rev_range=None):
 
     issue_ids = known_issue_ids(runner, cwd, errors)
 
-    # sha -> {issue_id: source}. A commit can belong to more than one issue —
-    # a branch merged into another branch before reaching main contributes to
-    # both — and a single-owner map silently drops the inner one.
+    # sha -> {issue_id: source}. Content has one owner. Merge boundaries can
+    # legitimately touch several issues and retain one claim per issue.
     attribution = {}
 
     def claim(sha, issue_id, source):
         if issue_id not in issue_ids:
             return
         per_issue = attribution.setdefault(sha, {})
+
+        if len(records[sha]["parents"]) < 2:
+            if not per_issue:
+                per_issue[issue_id] = source
+                return
+            _, current_source = next(iter(per_issue.items()))
+            if (
+                SOURCE_PRECEDENCE.index(source)
+                < SOURCE_PRECEDENCE.index(current_source)
+            ):
+                per_issue.clear()
+                per_issue[issue_id] = source
+            # Equal evidence keeps the earlier claim. Merge records are walked
+            # inner-first below, so an outer branch cannot relabel content
+            # already owned by the inner issue.
+            return
+
         current = per_issue.get(issue_id)
         if current is None or SOURCE_PRECEDENCE.index(source) < SOURCE_PRECEDENCE.index(current):
             per_issue[issue_id] = source
@@ -462,8 +528,35 @@ def build_attribution(runner, cwd, *, rev_range=None):
             claim(sha, trailer.group(1), "trailer")
 
     # Merged work: the merge commit delimits exactly what its branch added.
-    # Derived from `records`, so it costs no extra subprocess (GC4).
+    # Derived from `records`, so it costs no extra subprocess (GC4). Git's
+    # default log order is date-based and is not reliably topological when
+    # fixtures (or rebases) give several commits the same timestamp. Walk the
+    # record graph parents-first so nested/inner merges always claim first.
+    graph_order = []
+    visit_state = {}
+
     for sha in order:
+        if visit_state.get(sha) == 2:
+            continue
+        stack = [(sha, False)]
+        while stack:
+            current, expanded = stack.pop()
+            if current not in records:
+                continue
+            if expanded:
+                if visit_state.get(current) != 2:
+                    visit_state[current] = 2
+                    graph_order.append(current)
+                continue
+            if visit_state.get(current):
+                continue
+            visit_state[current] = 1
+            stack.append((current, True))
+            for parent in reversed(records[current]["parents"]):
+                if visit_state.get(parent) != 2:
+                    stack.append((parent, False))
+
+    for sha in graph_order:
         entry = records[sha]
         if len(entry["parents"]) < 2:
             continue
@@ -551,7 +644,10 @@ def resolve_issue_for_commit(runner, cwd, sha, *, attribution=None, membership=N
             registered = known_issue_ids(runner, cwd, errors)
         if errors:
             return result
-        if trailer.group(1) in registered:
+        if (
+            trailer.group(1) in registered
+            and SOURCE_PRECEDENCE[0] == "trailer"
+        ):
             result["issue_id"] = trailer.group(1)
             result["source"] = "trailer"
             return result

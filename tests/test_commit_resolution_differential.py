@@ -84,6 +84,23 @@ class GroundTruthTests(_ShapeCase):
     def _check(self, shape_name):
         repo, returned = self._build(shape_name)
         with repo:
+            if shape_name == "branch_name_not_matching_issue":
+                other = "codex/198-unregistered-other"
+                repo._git("branch", other, "main")
+                repo._git("checkout", "-q", "codex/199-unregistered-name")
+                repo._git("branch", "-D", "main")
+                errors = []
+                self.assertIsNone(
+                    cr.base_ref(
+                        repo.runner,
+                        repo.path,
+                        ["codex/199-unregistered-name", other],
+                        issue_ids=returned,
+                        errors=errors,
+                    ),
+                    "an issue-shaped ref can never be selected as the base",
+                )
+                self.assertEqual(errors, [])
             for issue_id in _built_issue_ids(repo, returned):
                 expected = repo.truth_for(issue_id)
                 actual = {
@@ -152,6 +169,44 @@ class CommitDirectionTests(_ShapeCase):
                             f"{resolved}",
                         )
 
+            if shape_name == "trailer_disagrees_with_branch":
+                original = cr.SOURCE_PRECEDENCE
+                try:
+                    cr.SOURCE_PRECEDENCE = (
+                        "branch",
+                        "trailer",
+                        "merge-subject",
+                    )
+                    alternate = cr.build_attribution(
+                        repo.runner,
+                        repo.path,
+                    )["attribution"]
+                    conflict = next(
+                        sha
+                        for sha, expected in repo.truth.items()
+                        if expected == frozenset({shapes.BETA})
+                    )
+                    bare = linkage_check.resolve_issue_for_commit(
+                        repo.runner,
+                        repo.path,
+                        conflict,
+                    )["issue_id"]
+                    indexed = linkage_check.resolve_issue_for_commit(
+                        repo.runner,
+                        repo.path,
+                        conflict,
+                        attribution=alternate,
+                    )["issue_id"]
+                    self.assertEqual(
+                        bare,
+                        indexed,
+                        "bare and indexed resolution must consult the same "
+                        "SOURCE_PRECEDENCE rule",
+                    )
+                    self.assertEqual(indexed, shapes.ALPHA)
+                finally:
+                    cr.SOURCE_PRECEDENCE = original
+
 
 def _attach(cls, prefix):
     cls._prefix = prefix
@@ -167,46 +222,6 @@ def _attach(cls, prefix):
 _attach(DeclarationCoverageTests, "test_declared_")
 _attach(GroundTruthTests, "test_")
 _attach(CommitDirectionTests, "test_commit_direction_")
-
-
-# Shapes where the declaration and the shipped resolver disagree today. Both
-# were green under the reference oracle — the oracle agreed with the bug — and
-# both failed on the declaration's first run.
-#
-# Expected-failure, not skipped: unittest reports an expected failure that
-# starts passing as an unexpected success and fails the run, so fixing one
-# forces its removal here. A skip would let a fix land unnoticed and let a
-# regression hide.
-OPEN_FINDINGS = {
-    # R9-1. Branch A merged into branch B, then B to main: B's bundle collects
-    # A's *content* commit, not just the boundary merge. Over-collection across
-    # issues — this issue's founding defect class.
-    (GroundTruthTests, "nested_merges"): "R9-1",
-    # R9-2. `base_ref` elects the stale local trunk, so the issue collects trunk
-    # commits that predate its branch. Recorded as Q4 in round 5 and reported
-    # closed in round 7; the oracle shared the base-ref derivation, so the shape
-    # covering it passed anyway.
-    (GroundTruthTests, "stale_local_default_branch"): "R9-2",
-    (CommitDirectionTests, "stale_local_default_branch"): "R9-2",
-    # R9-3. Precedence holds in one direction only. A commit whose trailer names
-    # beta, sitting on alpha's branch, resolves to beta commit->issue but lands
-    # in *both* bundles issue->commits: branch membership is collected without
-    # asking whether a higher-precedence source already claimed the commit. Two
-    # answers to one question — the condition this issue exists to remove.
-    (GroundTruthTests, "trailer_disagrees_with_branch"): "R9-3",
-}
-
-def _mark_open_findings():
-    """Kept in a function on purpose. A module-level loop leaves its variable
-    bound to a TestCase subclass, and `loadTestsFromModule` walks module
-    attributes — so the last class collected twice and every count in this file
-    was inflated by fifteen."""
-    for (cls, shape), _finding in OPEN_FINDINGS.items():
-        attr = f"{cls._prefix}{shape}"
-        setattr(cls, attr, unittest.expectedFailure(getattr(cls, attr)))
-
-
-_mark_open_findings()
 
 
 class DeclarationSanityTests(unittest.TestCase):
