@@ -178,7 +178,7 @@ class ResolveIssueForCommitTests(unittest.TestCase):
                 ("git", "show", "-s", "--format=%B", "abc123"): "chore: misc\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00chore: misc\x00\x00chore: misc\n\x01",
                 BRANCH_REF_ARGS: (
-                    "refs/remotes/origin/main\nrefs/heads/main\n"
+                    "refs/remotes/origin/main abc123\nrefs/heads/main abc123\n"
                 ),
                 tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "",
                 ("git", "branch", "--contains", "abc123"): "* main\n",

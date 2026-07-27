@@ -43,6 +43,15 @@ def _result(field, value, fatal_errors):
     return {field: value, "fatal_errors": list(fatal_errors)}
 
 
+def _merge_base_sha(stdout):
+    """Validate Git's successful merge-base response before trusting it."""
+    lines = (stdout or "").splitlines()
+    if len(lines) != 1:
+        return None
+    tokens = lines[0].split()
+    return tokens[0] if len(tokens) == 1 else None
+
+
 def merge_base(runner, cwd, snapshot, left, right):
     """Return a cached common-base result for an unordered graph pair."""
     key = tuple(sorted((left, right)))
@@ -53,7 +62,15 @@ def merge_base(runner, cwd, snapshot, left, right):
     args = ["git", "merge-base", left, right]
     result = runner(args, cwd)
     if result.returncode == 0:
-        sha, fatal_errors = (result.stdout or "").strip() or None, ()
+        sha = _merge_base_sha(result.stdout)
+        fatal_errors = (
+            ()
+            if sha is not None
+            else (
+                "git merge-base produced malformed output "
+                "(expected exactly one nonempty SHA token)",
+            )
+        )
     elif result.returncode == 1:
         sha, fatal_errors = None, ()
     else:

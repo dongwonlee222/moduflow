@@ -33,14 +33,20 @@ from pathlib import Path
 try:  # Works both as `scripts.commit_resolution` and a direct script import.
     from . import commit_graph
 except ImportError:  # pragma: no cover - exercised by direct script consumers.
-    if "commit_graph" in sys.modules:
-        commit_graph = sys.modules["commit_graph"]
+    graph_path = Path(__file__).resolve().with_name("commit_graph.py")
+    module_key = "_moduflow_commit_graph"
+    existing = sys.modules.get(module_key)
+    if (
+        existing is not None
+        and Path(getattr(existing, "__file__", "")).resolve() == graph_path
+    ):
+        commit_graph = existing
     else:
         spec = importlib.util.spec_from_file_location(
-            "commit_graph", Path(__file__).resolve().with_name("commit_graph.py")
+            module_key, graph_path
         )
         commit_graph = importlib.util.module_from_spec(spec)
-        sys.modules["commit_graph"] = commit_graph
+        sys.modules[module_key] = commit_graph
         spec.loader.exec_module(commit_graph)
 
 ISSUE_ID_PATTERN = r"\d{3}-[a-z0-9-]+"

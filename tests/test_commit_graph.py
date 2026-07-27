@@ -21,6 +21,14 @@ def disconnected_runner(returncode):
     return runner
 
 
+def disconnected_runner_with_stdout(returncode, stdout):
+    """Return a graph runner with controlled successful output."""
+    def runner(args, cwd=None):
+        return subprocess.CompletedProcess(args, returncode, stdout, "")
+
+    return runner
+
+
 def results_runner(log_result, ref_result):
     """Route the snapshot's two inventory commands to fixed results."""
     def runner(args, cwd=None):
@@ -80,6 +88,23 @@ class SnapshotTests(unittest.TestCase):
         self.assertIsNone(result["sha"])
         self.assertTrue(result["fatal_errors"])
         self.assertEqual(failed["fatal_errors"], [])
+
+    def test_merge_base_rejects_empty_or_multitoken_success_output(self):
+        """FH-022: rc=0 must carry exactly one nonempty merge-base SHA token."""
+        for output in ("", "   \n", "first second\n", "first\nsecond\n"):
+            with self.subTest(output=output):
+                snapshot = empty_snapshot()
+
+                result = commit_graph.merge_base(
+                    disconnected_runner_with_stdout(0, output),
+                    ".",
+                    snapshot,
+                    "left",
+                    "right",
+                )
+
+                self.assertIsNone(result["sha"])
+                self.assertTrue(result["fatal_errors"])
 
     def test_terminated_ancestry_query_is_a_failure(self):
         """FH-019: a signal-terminated Git probe is never a negative answer."""
@@ -159,6 +184,32 @@ class SnapshotTests(unittest.TestCase):
                 "-c",
                 "from scripts import linkage_check, project_converge",
             ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_file_mode_import_rejects_an_unrelated_preloaded_graph_module(self):
+        """FH-021: file-mode resolver loading must not reuse foreign modules."""
+        root = Path(__file__).resolve().parents[1]
+        code = """
+import importlib.util
+import sys
+import types
+from pathlib import Path
+foreign = types.ModuleType('commit_graph')
+foreign.GIT_LOG_FORMAT = 'foreign'
+sys.modules['commit_graph'] = foreign
+path = Path('scripts/commit_resolution.py').resolve()
+spec = importlib.util.spec_from_file_location('isolated_commit_resolution', path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+assert Path(module.commit_graph.__file__).resolve() == path.with_name('commit_graph.py')
+"""
+        result = subprocess.run(
+            [sys.executable, "-c", code],
             cwd=root,
             capture_output=True,
             text=True,
