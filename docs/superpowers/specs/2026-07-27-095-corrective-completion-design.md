@@ -66,4 +66,3 @@ The following stay in Issue 096:
 - Rejecting evidence files that resolve outside the repository through a
   symlink.
 - Announcing every evidence write.
-

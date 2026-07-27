@@ -271,4 +271,3 @@ After the 095 corrective PR is approved and merged, create
 `codex/096-read-shaped-commands-that-write` from updated `main`. Its separate
 plan must cover explicit evidence writes, canonical issue-id validation,
 resolved-path containment, symlink rejection, and write-path reporting.
-
