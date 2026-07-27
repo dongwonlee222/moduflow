@@ -17,20 +17,20 @@
     "087-korean-github-pr-review-surface"
   ],
   "active_issue_id": "095-commit-issue-resolution-parity",
-  "phase": "plan",
+  "phase": "execute",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:plan 095-commit-issue-resolution-parity",
+  "next_command": "product:execute 095-commit-issue-resolution-parity",
   "attempts": {
-    "command": "product:plan 095-commit-issue-resolution-parity",
+    "command": "product:execute 095-commit-issue-resolution-parity",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-07-27"
   },
   "blocker": null,
-  "last_action": "preserved Issue 095 failed topologies and derived invariants as an append-only corpus required by future plans and reviews",
-  "last_verification": "2026-07-27 at bfa4157: focused suite 221/221 PASS, but full discovery failed 2 of 885 because unscoped historical attribution errors reached release_check; final quality review also reproduced normal trunk advancement misclassified as ambiguous",
+  "last_action": "completed the Issue 095 six-stream TDD redesign plan with FH traceability, scoped diagnostics, full verification, review, and rollback gates",
+  "last_verification": "2026-07-27 redesign plan gate: spec consistency 0 findings across 9 requirements, project validation valid with errors [], lifecycle drift [], JSON valid, and git diff check clean; implementation baseline remains 221/221 focused with 2 of 885 full failures at bfa4157",
   "updated_at": "2026-07-27",
   "git_binding": {
     "mode": "git-files",
@@ -56,8 +56,8 @@
     "release": null,
     "execution_backend": {
       "type": "codex",
-      "status": "planning",
-      "reason": "Repeated correctness findings invalidated the global-base heuristic; per-issue fork-point and scoped-diagnostic redesign is approved",
+      "status": "ready",
+      "reason": "The approved per-issue fork-point and scoped-diagnostic redesign now has a failure-traceable TDD execution plan",
       "session": "codex-2026-07-27"
     }
   }

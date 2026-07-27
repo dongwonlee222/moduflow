@@ -978,3 +978,32 @@ safe.
 
 Run F4 full verification and final independent review, then prepare a Draft PR
 for human approval.
+
+## Redesign implementation plan — 2026-07-27
+
+The preceding corrective next gate is superseded. Full-suite failures and the
+final independent review proved that extending one repository-wide base
+heuristic would continue the patch loop.
+
+The active plan is now
+`specs/095-commit-issue-resolution-parity/plan.md`. Its six streams replace the
+global-base path with:
+
+1. one injected Git graph snapshot and explicit failure semantics;
+2. per-issue historical fork points and stacked-issue exclusions;
+3. separate merge-boundary and content-side claims;
+4. one precedence pass plus caller-scoped diagnostics;
+5. release-SHA and converge-issue scope integration;
+6. failure-corpus traceability, full gates, and independent review.
+
+No implementation claim accompanies this planning artifact. The branch remains
+unfit for a PR until all Stream F gates pass.
+
+Planning validation: spec consistency reported 0 findings across 9 checked
+requirements; project validation returned `valid: true` with `errors: []`;
+lifecycle drift was `[]`; JSON and diff checks passed.
+
+## Next gate
+
+Execute Stream A1 with RED/GREEN evidence:
+`product:execute 095-commit-issue-resolution-parity`.

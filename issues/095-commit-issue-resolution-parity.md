@@ -1,6 +1,6 @@
 # Issue 095: Commit-to-Issue Resolution Parity
 
-**Status: active** — created 2026-07-25, started 2026-07-26; attribution architecture redesign approved and planning in progress.
+**Status: active** — created 2026-07-25, started 2026-07-26; attribution redesign plan complete and ready for guarded execution.
 **Priority: p1**
 **Blocked-by:**
 
@@ -114,7 +114,7 @@ existing history. Do not make converge gate the review verdict.
 ## Workflow Tasks
 
 - [x] spec → `specs/095-commit-issue-resolution-parity/spec.md`
-- [x] plan → `specs/095-commit-issue-resolution-parity/plan.md` + `tasks.md`; corrective plan → `docs/superpowers/plans/2026-07-27-095-corrective-completion.md`
+- [x] plan → active redesign `specs/095-commit-issue-resolution-parity/plan.md` + `tasks.md`; corrective history → `docs/superpowers/plans/2026-07-27-095-corrective-completion.md`
 - [x] execute → corrective branch `codex/095-commit-issue-resolution-parity-fix`; shared resolver plus both consumer migrations
 - [x] redesign → `docs/superpowers/specs/2026-07-27-095-attribution-architecture-redesign.md`
 - [x] failure history → `specs/095-commit-issue-resolution-parity/failure-history.md`
@@ -137,6 +137,7 @@ existing history. Do not make converge gate the review verdict.
 - 2026-07-27: corrective TDD removed the four Round 9 expected failures, made issue discovery and graph failures fail closed, and applied one global precedence policy. Task 1 passed 92/92 focused tests; the five-module focused suite passed 195/195 with zero expected failures. Independent spec and quality reviews passed after two Important base-selection findings were fixed in `4f5d14a`. Full-suite and release gates remain the final review step.
 - 2026-07-27: stopped the corrective patch loop after repeated review findings proved the global-base architecture unsound. The current branch reached 221/221 focused tests, but full discovery failed 2 of 885 because an unrelated historical octopus ambiguity leaked into the release gate; a separate review reproduced normal trunk advancement being misclassified as an ambiguous base. Approved redesign: per-issue fork points, graph-corroborated merge content, and caller-scoped diagnostics.
 - 2026-07-27: preserved twenty failure families as an append-only design corpus. Future architecture requirements, plans, invariant tests, and Critical/Important review findings must trace to its `FH-*` ids; focused tests alone cannot close an entry.
+- 2026-07-27: replaced the superseded global-base execution plan with six redesign streams: graph snapshot, per-topic fork points and stacked deltas, merge/content claims, scoped diagnostics, consumer scope integration, and invariant/full-gate review. Every stream names its failure-history inputs and RED/GREEN boundary.
 - 2026-07-27: prepared an Issue 096 handoff proposing explicit `--evidence` writes, issue-id path traversal prevention, repo-external symlink rejection, and write-path announcements. Issue 095 does not modify Issue 096; its canonical issue must add these acceptance criteria, the dependency on 095, and the plugin-update gate before execution. The installed plugin remains on hold until both issues are safe.
 
 ## Links
@@ -149,4 +150,4 @@ existing history. Do not make converge gate the review verdict.
 
 ## Next Command
 
-`product:plan 095-commit-issue-resolution-parity`
+`product:execute 095-commit-issue-resolution-parity`

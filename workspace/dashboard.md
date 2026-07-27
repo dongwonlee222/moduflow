@@ -10,7 +10,7 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Active Issue
 
-- `095-commit-issue-resolution-parity` (phase: plan). Canonical: `issues/095-commit-issue-resolution-parity.md`.
+- `095-commit-issue-resolution-parity` (phase: execute). Canonical: `issues/095-commit-issue-resolution-parity.md`.
 
 ## Priority Queue — 2026-07-25
 
@@ -97,6 +97,9 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   diagnostics projected to the caller's commit/issue range. Twenty failure
   families are now preserved in an append-only corpus; future requirements,
   invariant tests, and Critical/Important findings must trace to `FH-*` ids.
+- Issue `095` redesign plan (2026-07-27): six guarded TDD streams now replace
+  the global-base patch loop. Execution starts by isolating the Git graph
+  snapshot, then lands per-topic fork points before any consumer migration.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance
@@ -116,4 +119,4 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Next Command
 
-`product:plan 095-commit-issue-resolution-parity`
+`product:execute 095-commit-issue-resolution-parity`

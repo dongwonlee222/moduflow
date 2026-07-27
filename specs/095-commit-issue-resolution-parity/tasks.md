@@ -1,47 +1,37 @@
-# Tasks: 095-commit-issue-resolution-parity
+# Tasks: 095 Commit-to-Issue Attribution Redesign
 
 Issue: `095-commit-issue-resolution-parity`
-Plan: `specs/095-commit-issue-resolution-parity/plan.md`
-
-## Stream A — Shared Resolver
-
-- [x] A1 Create `scripts/commit_resolution.py` owning trailer, branch, and merge-subject rules behind three fixed signatures, porting existing behavior verbatim.
-- [x] A2 Replace per-commit `git branch --contains` with one batched branch-membership build, and assert subprocess count does not scale with history length.
-
-## Stream B — Consumer Migration
-
-- [x] B1 Make `linkage_check.resolve_issue_for_commit()` a wrapper over the shared resolver and gain the merge-subject source it lacked.
-- [x] B2 Make `project_converge.resolve_commits()` delegate, gain the branch fallback, and add `unmatched_count`, `examined_count`, and per-commit `source` to the evidence payload.
-
-## Stream C — Surface and Documentation
-
-- [x] C1 Surface the unmatched count wherever converge evidence reaches a human reviewer, without changing review verdict logic.
-
-## Stream D — Regression Coverage
-
-- [x] D1 Extend `tests/git_repo_builder.py` (created in stream A) and cover trailer-only, branch-only, mixed, merge-subject with branch deleted, detached HEAD, no-issue commits, and parity.
-
-## Stream E — Parity Proof and Completion
-
-- [x] E1 Prove both query directions satisfy the shared consistency contract, then confirm stable issue 093 evidence includes `scripts/project_issue_schema.py`.
-- [x] E2 Pass full unittest, lifecycle drift, and release check before moving to review.
-
-## Corrective Completion — 2026-07-27
-
-- [x] F1 Fail closed on historical issue discovery and Git graph errors.
-- [x] F2 Remove R9-1 through R9-4 expected-failure masking and fix global attribution.
-- [x] F3 Reconcile the canonical issue, refined spec, lifecycle state, PR handoff, and Korean packet.
-- [ ] F4 Pass focused/full verification with zero expected failures and complete independent review.
-
-Plan: `docs/superpowers/plans/2026-07-27-095-corrective-completion.md`
-
-## Attribution Architecture Redesign — 2026-07-27
-
-- [x] G1 Diagnose the repeated failure class and approve the per-issue fork-point design.
-- [x] G1b Preserve the failed topologies, invalid assumptions, derived invariants, and evidence in an append-only failure corpus.
-- [ ] G2 Write the TDD implementation plan for fork points and scoped diagnostics.
-- [ ] G3 Replace the global-base heuristic and unscoped error propagation.
-- [ ] G4 Pass invariant/focused/full/release gates and independent whole-branch review.
-
 Design: `docs/superpowers/specs/2026-07-27-095-attribution-architecture-redesign.md`
+Plan: `specs/095-commit-issue-resolution-parity/plan.md`
 Failure history: `specs/095-commit-issue-resolution-parity/failure-history.md`
+
+The original shared-resolver and corrective streams are preserved in
+`status.md` and Git history. The active work below replaces their global-base
+architecture; it does not extend that heuristic.
+
+## Stream A
+
+- [ ] A1 Create `scripts/commit_graph.py` with one log/ref snapshot, cached merge-base and ancestry queries, and explicit ordinary-negative versus command-failure behavior (`FH-010`, `FH-014`, `FH-019`).
+
+## Stream B
+
+- [ ] B1 Derive one ancestry-maximal historical fork point per issue ref; prove trunk advancement, equivalent refs, disconnected refs, slash names, and multiple remotes cannot change unrelated attribution (`FH-006`, `FH-011`, `FH-012`, `FH-013`, `FH-017`).
+- [ ] B2 Compute topic deltas from the fork point plus ancestry-maximal stacked-issue exclusions; remove the live global-base path (`FH-002`, `FH-003`, `FH-005`).
+
+## Stream C
+
+- [ ] C1 Separate merge-boundary claims from content-side claims, require graph corroboration for octopus/multi-name content, and apply source precedence once (`FH-004`, `FH-007`, `FH-015`, `FH-016`).
+
+## Stream D
+
+- [ ] D1 Add structured `fatal_errors` and scoped diagnostics, preserve compatibility `errors`, and make bare/indexed resolution project the same attribution result (`FH-001`, `FH-008`, `FH-009`, `FH-010`, `FH-018`).
+
+## Stream E
+
+- [ ] E1 Make linkage build one attribution result scoped to behavior SHAs in the requested release range; unrelated historical ambiguity must remain recorded but not fail the release (`FH-018`).
+- [ ] E2 Make converge request one issue-scoped result while preserving existing payload keys and cross-consumer parity (`FH-001`, `FH-018`).
+
+## Stream F
+
+- [ ] F1 Trace every open or redesign-superseded `FH-*` entry to an executable invariant test and append implementation evidence without rewriting failure records (`FH-019`, `FH-020`).
+- [ ] F2 Pass focused/full/release/project/lifecycle gates, reproduce the original historical-octopus symptom as out of scope, and complete independent whole-branch review before any PR-readiness claim.

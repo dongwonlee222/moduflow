@@ -92,15 +92,18 @@ Git snapshot and fork-point mechanics into a focused internal module,
 
 Responsibilities:
 
-- Load one repository snapshot: commit records, full ref names, ref object ids,
-  and registered issue ids.
+- Load one repository snapshot: commit records, full ref names, and ref object
+  ids.
+- Accept the registered issue ids and topic/base ref partition already
+  classified by the policy layer.
 - Cache ancestry and merge-base queries.
 - Collapse refs that point to the same object before comparing lineages.
 - Derive a fork point for one topic ref.
 - Derive stacked-issue exclusions for one topic ref.
 - Return structured graph diagnostics instead of assigning issue ownership.
 
-It does not parse trailers, choose source precedence, or know consumer policy.
+It does not parse trailers or branch names, discover issue identity, choose
+source precedence, or know consumer policy.
 
 ### `scripts/commit_resolution.py`
 
