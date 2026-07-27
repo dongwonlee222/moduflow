@@ -885,5 +885,26 @@ class TestDegradedMeaning(unittest.TestCase):
             self.assertEqual(index["degraded"], [])
 
 
+class TestRangeProjection(unittest.TestCase):
+    def test_live_range_projects_only_target_topic(self):
+        """FH-031: full topology resolves a range without truncating graph data."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.add_issue_file(OTHER)
+            alpha = repo.branch(f"codex/{ISSUE}")
+            a_work = repo.commit("feat: alpha")
+            repo.checkout("main")
+            beta = repo.branch(f"codex/{OTHER}")
+            b_work = repo.commit("feat: beta")
+
+            result = cr.resolve_commits_for_issue(
+                repo.runner, repo.path, OTHER, rev_range=f"{a_work}..{b_work}"
+            )
+
+            self.assertEqual({item["sha"] for item in result["commits"]}, {b_work})
+            self.assertEqual(result["errors"], [])
+
+
 if __name__ == "__main__":
     unittest.main()
