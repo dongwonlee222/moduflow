@@ -26,11 +26,22 @@ Every function takes an injected runner so callers control subprocess access.
 No git failure is swallowed: failures surface in the result's `errors` list.
 """
 import re
+import importlib.util
+import sys
+from pathlib import Path
 
 try:  # Works both as `scripts.commit_resolution` and a direct script import.
     from . import commit_graph
 except ImportError:  # pragma: no cover - exercised by direct script consumers.
-    import commit_graph
+    if "commit_graph" in sys.modules:
+        commit_graph = sys.modules["commit_graph"]
+    else:
+        spec = importlib.util.spec_from_file_location(
+            "commit_graph", Path(__file__).resolve().with_name("commit_graph.py")
+        )
+        commit_graph = importlib.util.module_from_spec(spec)
+        sys.modules["commit_graph"] = commit_graph
+        spec.loader.exec_module(commit_graph)
 
 ISSUE_ID_PATTERN = r"\d{3}-[a-z0-9-]+"
 TRAILER_RE = re.compile(rf"^Issue:\s*({ISSUE_ID_PATTERN})\s*$", re.MULTILINE)
@@ -561,11 +572,8 @@ def build_attribution(runner, cwd, *, rev_range=None):
 
     snapshot = commit_graph.load_snapshot(runner, cwd, rev_range=rev_range)
     graph_errors = snapshot["fatal_errors"]
-    errors.extend(error["message"] for error in graph_errors)
-    if any(
-        error["code"] in ("git-command-failed", "git-terminated")
-        for error in graph_errors
-    ):
+    errors.extend(graph_errors)
+    if graph_errors:
         return {
             "attribution": {},
             "records": {},

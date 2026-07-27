@@ -32,10 +32,15 @@ def _failure(args, result):
         return diagnostic(
             "git-terminated",
             f"{' '.join(args)} terminated by signal {-result.returncode}",
-        )
+        )["message"]
     detail = (result.stderr or "").strip() or (result.stdout or "").strip()
     detail = detail or f"exit code {result.returncode}"
-    return diagnostic("git-command-failed", f"{' '.join(args)} failed: {detail}")
+    return diagnostic("git-command-failed", f"{' '.join(args)} failed: {detail}")["message"]
+
+
+def _result(field, value, fatal_errors):
+    """Return a caller-owned result mapping from immutable cached values."""
+    return {field: value, "fatal_errors": list(fatal_errors)}
 
 
 def merge_base(runner, cwd, snapshot, left, right):
@@ -43,17 +48,18 @@ def merge_base(runner, cwd, snapshot, left, right):
     key = tuple(sorted((left, right)))
     cache = snapshot["merge_base_cache"]
     if key in cache:
-        return cache[key]
+        sha, fatal_errors = cache[key]
+        return _result("sha", sha, fatal_errors)
     args = ["git", "merge-base", left, right]
     result = runner(args, cwd)
     if result.returncode == 0:
-        outcome = {"sha": (result.stdout or "").strip() or None, "fatal_errors": []}
+        sha, fatal_errors = (result.stdout or "").strip() or None, ()
     elif result.returncode == 1:
-        outcome = {"sha": None, "fatal_errors": []}
+        sha, fatal_errors = None, ()
     else:
-        outcome = {"sha": None, "fatal_errors": [_failure(args, result)["message"]]}
-    cache[key] = outcome
-    return outcome
+        sha, fatal_errors = None, (_failure(args, result),)
+    cache[key] = (sha, fatal_errors)
+    return _result("sha", sha, fatal_errors)
 
 
 def is_ancestor(runner, cwd, snapshot, older, newer):
@@ -61,17 +67,18 @@ def is_ancestor(runner, cwd, snapshot, older, newer):
     key = (older, newer)
     cache = snapshot["ancestor_cache"]
     if key in cache:
-        return cache[key]
+        value, fatal_errors = cache[key]
+        return _result("value", value, fatal_errors)
     args = ["git", "merge-base", "--is-ancestor", older, newer]
     result = runner(args, cwd)
     if result.returncode == 0:
-        outcome = {"value": True, "fatal_errors": []}
+        value, fatal_errors = True, ()
     elif result.returncode == 1:
-        outcome = {"value": False, "fatal_errors": []}
+        value, fatal_errors = False, ()
     else:
-        outcome = {"value": None, "fatal_errors": [_failure(args, result)["message"]]}
-    cache[key] = outcome
-    return outcome
+        value, fatal_errors = None, (_failure(args, result),)
+    cache[key] = (value, fatal_errors)
+    return _result("value", value, fatal_errors)
 
 
 def _parse_records(stdout, fatal_errors):
@@ -84,15 +91,17 @@ def _parse_records(stdout, fatal_errors):
         parts = record.split("\x00")
         if len(parts) != 4:
             fatal_errors.append(
-                diagnostic(
-                    "malformed-log-record",
-                    "git log produced a malformed record "
-                    f"(expected 4 fields, got {len(parts)}): {record[:80]!r}",
-                )
+                "git log produced a malformed record "
+                f"(expected 4 fields, got {len(parts)}): {record[:80]!r}"
             )
             continue
         sha, subject, parents, body = parts
         sha = sha.strip()
+        if not sha:
+            fatal_errors.append(
+                "git log produced a malformed record with an empty SHA"
+            )
+            continue
         records[sha] = {
             "sha": sha,
             "subject": subject.strip(),
@@ -103,15 +112,31 @@ def _parse_records(stdout, fatal_errors):
     return records, order
 
 
-def _parse_refs(stdout):
+def _parse_refs(stdout, fatal_errors):
     refs = {}
     for line in (stdout or "").splitlines():
-        fields = line.strip().split(maxsplit=1)
-        ref = fields[0].split(" -> ")[0].strip() if fields else ""
-        if not ref or (ref.startswith("refs/remotes/") and ref.endswith("/HEAD")):
+        if not line.strip():
             continue
-        if len(fields) == 2:
-            refs[ref] = fields[1].strip()
+        if line[0].isspace():
+            fatal_errors.append(
+                "git for-each-ref produced malformed output with an empty ref name"
+            )
+            continue
+        fields = line.split(maxsplit=1)
+        if len(fields) != 2 or not fields[1].strip():
+            fatal_errors.append(
+                "git for-each-ref produced malformed output with a missing object ID"
+            )
+            continue
+        ref = fields[0].split(" -> ")[0].strip()
+        if not ref:
+            fatal_errors.append(
+                "git for-each-ref produced malformed output with an empty ref name"
+            )
+            continue
+        if ref.startswith("refs/remotes/") and ref.endswith("/HEAD"):
+            continue
+        refs[ref] = fields[1].strip()
     return refs
 
 
@@ -135,7 +160,7 @@ def load_snapshot(runner, cwd, *, rev_range=None):
         fatal_errors.append(_failure(ref_args, ref_result))
         refs = {}
     else:
-        refs = _parse_refs(ref_result.stdout)
+        refs = _parse_refs(ref_result.stdout, fatal_errors)
     return {
         "records": records,
         "order": order,

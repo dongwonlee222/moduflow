@@ -21,6 +21,15 @@ def disconnected_runner(returncode):
     return runner
 
 
+def results_runner(log_result, ref_result):
+    """Route the snapshot's two inventory commands to fixed results."""
+    def runner(args, cwd=None):
+        result = log_result if args[:2] == ["git", "log"] else ref_result
+        return subprocess.CompletedProcess(args, *result)
+
+    return runner
+
+
 def empty_snapshot():
     """Return the smallest valid graph snapshot for isolated query tests."""
     return {
@@ -84,6 +93,78 @@ class SnapshotTests(unittest.TestCase):
         self.assertTrue(result["fatal_errors"])
         self.assertIn("terminated", result["fatal_errors"][0])
         self.assertEqual(snapshot["fatal_errors"], [])
+
+    def test_cached_query_result_is_defensive(self):
+        """FH-019: a caller cannot mutate a cached graph-query result."""
+        snapshot = empty_snapshot()
+        first = commit_graph.merge_base(
+            disconnected_runner(1), ".", snapshot, "left", "right"
+        )
+        first["fatal_errors"].append("caller mutation")
+
+        second = commit_graph.merge_base(
+            disconnected_runner(1), ".", snapshot, "right", "left"
+        )
+
+        self.assertEqual(second, {"sha": None, "fatal_errors": []})
+
+    def test_snapshot_failures_propagate_as_strings_without_crashing_resolver(self):
+        """FH-014: snapshot command failures fail attribution closed as text."""
+        for detail, log_result, ref_result in (
+            ("bad log", (128, "", "fatal: bad log"), (0, "", "")),
+            ("bad refs", (0, "", ""), (128, "", "fatal: bad refs")),
+        ):
+            with self.subTest(detail=detail):
+                result = cr.build_attribution(
+                    results_runner(log_result, ref_result), "."
+                )
+                self.assertTrue(result["errors"])
+                self.assertTrue(
+                    all(isinstance(error, str) for error in result["errors"])
+                )
+                self.assertIn(detail, result["errors"][0])
+
+    def test_malformed_log_sha_is_a_fatal_error(self):
+        """FH-014: a successful log response still needs a nonempty SHA."""
+        runner = results_runner(
+            (0, "\x00subject\x00\x00body\x01", ""),
+            (0, "refs/heads/main abc123\n", ""),
+        )
+
+        snapshot = commit_graph.load_snapshot(runner, ".")
+
+        self.assertEqual(snapshot["records"], {})
+        self.assertTrue(snapshot["fatal_errors"])
+        self.assertTrue(all(isinstance(error, str) for error in snapshot["fatal_errors"]))
+
+    def test_malformed_ref_output_is_a_fatal_error(self):
+        """FH-010: refs require a name and object while remote HEAD is ignored."""
+        cases = ("refs/heads/main\n", " deadbeef\n", "refs/heads/main \n")
+        for output in cases:
+            with self.subTest(output=output):
+                runner = results_runner((0, "", ""), (0, output, ""))
+                snapshot = commit_graph.load_snapshot(runner, ".")
+                self.assertTrue(snapshot["fatal_errors"])
+        valid_head = results_runner(
+            (0, "", ""), (0, "refs/remotes/origin/HEAD deadbeef\n", "")
+        )
+        self.assertEqual(commit_graph.load_snapshot(valid_head, ".")["fatal_errors"], [])
+
+    def test_package_consumers_import_without_test_sys_path(self):
+        """FH-010: sibling loading supports package consumers in a clean process."""
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "from scripts import linkage_check, project_converge",
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_build_attribution_reads_refs_once(self):
         """FH-010: resolver attribution reuses the snapshot ref inventory."""
