@@ -151,34 +151,100 @@ def _preserve_fatal_errors(snapshot, key, fatal_errors):
     recorded.add(key)
 
 
-def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
-    """Recover forks from no-ff publication merges reachable from ``base_sha``."""
-    recovered = []
-    for merge_sha, record in sorted(snapshot["records"].items()):
-        if len(record["parents"]) < 2:
-            continue
-        reaches_base = is_ancestor(runner, cwd, snapshot, merge_sha, base_sha)
-        _preserve_fatal_errors(
+def _snapshot_graph_error(snapshot, key, message):
+    """Record malformed snapshot topology once without guessing through it."""
+    recorded = snapshot.setdefault("fatal_error_cache_keys", set())
+    if key not in recorded:
+        snapshot["fatal_errors"].append(message)
+        recorded.add(key)
+
+
+def _record_ancestors(snapshot, start):
+    """Return ``start`` and its recorded parents from snapshot-local cache."""
+    cache = snapshot.setdefault("record_ancestor_cache", {})
+    if start in cache:
+        return cache[start]
+    records = snapshot["records"]
+    if start not in records:
+        _snapshot_graph_error(
             snapshot,
-            ("is-ancestor", merge_sha, base_sha),
-            reaches_base["fatal_errors"],
+            ("record-ancestor-missing", start),
+            f"snapshot graph is incomplete: missing record for {start}",
         )
-        if reaches_base["value"] is not True:
+        cache[start] = None
+        return None
+    seen = set()
+    active = set()
+    stack = [(start, False)]
+    while stack:
+        sha, expanded = stack.pop()
+        if expanded:
+            active.discard(sha)
+            continue
+        if sha in seen:
+            continue
+        if sha in active:
+            _snapshot_graph_error(
+                snapshot,
+                ("record-ancestor-cycle", sha),
+                f"snapshot graph contains a parent cycle at {sha}",
+            )
+            cache[start] = None
+            return None
+        record = records.get(sha)
+        if record is None:
+            _snapshot_graph_error(
+                snapshot,
+                ("record-ancestor-missing", sha),
+                f"snapshot graph is incomplete: missing record for {sha}",
+            )
+            cache[start] = None
+            return None
+        seen.add(sha)
+        active.add(sha)
+        stack.append((sha, True))
+        for parent in record.get("parents", []):
+            if parent in active:
+                _snapshot_graph_error(
+                    snapshot,
+                    ("record-ancestor-cycle", parent),
+                    f"snapshot graph contains a parent cycle at {parent}",
+                )
+                cache[start] = None
+                return None
+            if parent not in records:
+                _snapshot_graph_error(
+                    snapshot,
+                    ("record-ancestor-missing", parent),
+                    f"snapshot graph is incomplete: missing record for {parent}",
+                )
+                cache[start] = None
+                return None
+            if parent not in seen:
+                stack.append((parent, False))
+    cache[start] = frozenset(seen)
+    return cache[start]
+
+
+def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
+    """Recover no-ff publication forks without probing unrelated records."""
+    base_ancestors = _record_ancestors(snapshot, base_sha)
+    if base_ancestors is None:
+        return []
+    recovered = []
+    for merge_sha in sorted(base_ancestors):
+        record = snapshot["records"][merge_sha]
+        if len(record["parents"]) < 2:
             continue
         topic_parents = []
         base_parents = []
         for parent in record["parents"]:
-            contains_topic = is_ancestor(
-                runner, cwd, snapshot, topic_sha, parent
-            )
-            _preserve_fatal_errors(
-                snapshot,
-                ("is-ancestor", topic_sha, parent),
-                contains_topic["fatal_errors"],
-            )
-            if contains_topic["value"] is True:
+            ancestors = _record_ancestors(snapshot, parent)
+            if ancestors is None:
+                return []
+            if topic_sha in ancestors:
                 topic_parents.append(parent)
-            elif contains_topic["value"] is False:
+            else:
                 base_parents.append(parent)
         if not topic_parents or not base_parents:
             continue

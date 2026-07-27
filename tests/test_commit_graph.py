@@ -544,6 +544,27 @@ class ForkPointInvariantTests(unittest.TestCase):
 
 
 class TopicDeltaTests(unittest.TestCase):
+    def test_publication_recovery_ignores_unrelated_history_for_command_count(self):
+        """FH-029: unrelated snapshot records add no topic-delta Git probes."""
+        with GitRepo() as small, GitRepo() as large:
+            shapes.happy_merge(small)
+            shapes.happy_merge(large)
+            large.branch("unrelated")
+            for index in range(8):
+                large.commit(f"chore: unrelated {index}", belongs_to=None)
+            large.checkout("main")
+            large.merge("unrelated", message="Merge branch 'unrelated'", belongs_to=None)
+            large.delete_branch("unrelated")
+
+            small.call_log.clear()
+            delta_for_repo(small, ALPHA)
+            small_calls = len(small.call_log)
+            large.call_log.clear()
+            delta_for_repo(large, ALPHA)
+            large_calls = len(large.call_log)
+
+            self.assertEqual(small_calls, large_calls)
+
     def test_published_no_ff_topic_recovers_pre_publication_fork(self):
         """FH-003: main containing the topic tip does not erase its content."""
         with GitRepo() as repo:
