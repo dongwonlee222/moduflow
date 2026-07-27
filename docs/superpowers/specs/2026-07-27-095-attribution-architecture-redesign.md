@@ -236,4 +236,3 @@ Issue 095 returns to review only when all of the following are true:
 - Independent spec and quality reviews report no Critical or Important
   findings.
 - Issue 093 evidence still includes `scripts/project_issue_schema.py`.
-
