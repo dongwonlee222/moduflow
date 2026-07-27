@@ -557,13 +557,23 @@ class TopicDeltaTests(unittest.TestCase):
             large.delete_branch("unrelated")
 
             small.call_log.clear()
-            delta_for_repo(small, ALPHA)
+            small_result = delta_for_repo(small, ALPHA)
             small_calls = len(small.call_log)
             large.call_log.clear()
-            delta_for_repo(large, ALPHA)
+            large_result = delta_for_repo(large, ALPHA)
             large_calls = len(large.call_log)
 
+            self.assertEqual(small_result["commits"], declared_content_truth(small, ALPHA))
+            self.assertEqual(large_result["commits"], declared_content_truth(large, ALPHA))
+            self.assertTrue(small_result["commits"])
+            self.assertTrue(large_result["commits"])
             self.assertEqual(small_calls, large_calls)
+            self.assertGreaterEqual(small_calls, 3)
+            self.assertLessEqual(small_calls, 8)
+            self.assertTrue(any(call[:2] == ["git", "log"] for call in small.call_log))
+            self.assertTrue(any(call[:2] == ["git", "for-each-ref"] for call in small.call_log))
+            self.assertTrue(any(call[:3] == ["git", "merge-base", "--all"] for call in small.call_log))
+            self.assertTrue(any(call[:2] == ["git", "rev-list"] for call in small.call_log))
 
     def test_publication_recovery_ignores_pre_topic_unrelated_merge(self):
         """FH-029: only a merge whose parent is the topic tip is publication."""
@@ -586,13 +596,20 @@ class TopicDeltaTests(unittest.TestCase):
             large.delete_branch("long-lived-unrelated")
 
             small.call_log.clear()
-            delta_for_repo(small, ALPHA)
+            small_result = delta_for_repo(small, ALPHA)
             small_calls = len(small.call_log)
             large.call_log.clear()
-            delta_for_repo(large, ALPHA)
+            large_result = delta_for_repo(large, ALPHA)
             large_calls = len(large.call_log)
 
+            self.assertEqual(small_result["commits"], declared_content_truth(small, ALPHA))
+            self.assertEqual(large_result["commits"], declared_content_truth(large, ALPHA))
+            self.assertTrue(small_result["commits"])
+            self.assertTrue(large_result["commits"])
             self.assertEqual(small_calls, large_calls)
+            self.assertEqual(small_calls, 6)
+            self.assertTrue(any(call[:3] == ["git", "merge-base", "--all"] for call in small.call_log))
+            self.assertTrue(any(call[:2] == ["git", "rev-list"] for call in small.call_log))
 
     def test_published_no_ff_topic_recovers_pre_publication_fork(self):
         """FH-003: main containing the topic tip does not erase its content."""
@@ -638,6 +655,104 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertTrue(alpha["commits"])
             self.assertTrue(beta["commits"])
             self.assertTrue(beta["stacked_exclusions"])
+
+    def test_stacked_pairwise_merge_base_failure_fails_closed_and_stays_closed_when_cached(self):
+        """FH-010: a broken beta/alpha exclusion query cannot leak beta work."""
+        with GitRepo() as repo:
+            shapes.two_registered_stacked_issues(repo)
+            errors = []
+            ids = cr.known_issue_ids(repo.runner, repo.path, errors)
+            self.assertEqual(errors, [])
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+            topic_refs = {
+                ref: cr.issue_id_from_branch(ref, ids)
+                for ref in snapshot["refs"]
+                if cr.issue_id_from_branch(ref, ids) is not None
+            }
+            base_refs = [ref for ref in snapshot["refs"] if ref not in topic_refs]
+            beta_ref = next(ref for ref, issue in topic_refs.items() if issue == BETA)
+            alpha_ref = next(ref for ref, issue in topic_refs.items() if issue == ALPHA)
+            failing_args = [
+                "git", "merge-base", "--all", snapshot["refs"][beta_ref],
+                snapshot["refs"][alpha_ref],
+            ]
+            calls = []
+
+            def failing(args, cwd=None):
+                calls.append(args)
+                if args == failing_args:
+                    return subprocess.CompletedProcess(args, 128, "", "pairwise unavailable")
+                return repo.runner(args, cwd)
+
+            first = commit_graph.topic_delta(
+                failing, repo.path, snapshot, beta_ref, BETA,
+                topic_refs=topic_refs, base_refs=base_refs,
+            )
+            second = commit_graph.topic_delta(
+                failing, repo.path, snapshot, beta_ref, BETA,
+                topic_refs=topic_refs, base_refs=base_refs,
+            )
+
+            self.assertEqual(first["commits"], set())
+            self.assertEqual(second["commits"], set())
+            self.assertTrue(snapshot["fatal_errors"])
+            self.assertEqual(sum(call == failing_args for call in calls), 1)
+
+    def test_stacked_pairwise_terminated_merge_base_fails_closed(self):
+        """FH-010: terminated pairwise exclusion is fatal, not a no-base negative."""
+        with GitRepo() as repo:
+            shapes.two_registered_stacked_issues(repo)
+            errors = []
+            ids = cr.known_issue_ids(repo.runner, repo.path, errors)
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+            topic_refs = {ref: cr.issue_id_from_branch(ref, ids) for ref in snapshot["refs"] if cr.issue_id_from_branch(ref, ids) is not None}
+            base_refs = [ref for ref in snapshot["refs"] if ref not in topic_refs]
+            beta_ref = next(ref for ref, issue in topic_refs.items() if issue == BETA)
+            alpha_ref = next(ref for ref, issue in topic_refs.items() if issue == ALPHA)
+            failing_args = ["git", "merge-base", "--all", snapshot["refs"][beta_ref], snapshot["refs"][alpha_ref]]
+
+            def terminated(args, cwd=None):
+                if args == failing_args:
+                    return subprocess.CompletedProcess(args, -15, "", "")
+                return repo.runner(args, cwd)
+
+            result = commit_graph.topic_delta(terminated, repo.path, snapshot, beta_ref, BETA, topic_refs=topic_refs, base_refs=base_refs)
+            self.assertEqual(result["commits"], set())
+            self.assertTrue(any("terminated by signal" in error for error in snapshot["fatal_errors"]))
+
+    def test_cached_fork_query_failure_fails_closed_even_with_another_fork_candidate(self):
+        """FH-010: a cached fork failure cannot be hidden by a good base ref."""
+        with GitRepo() as repo:
+            repo.commit("chore: base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: alpha", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.commit("chore: release base", belongs_to=None)
+            repo._git("branch", "release/main", "main")
+            repo.commit("chore: main advances", belongs_to=None)
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+            topic_ref = f"refs/heads/codex/{ALPHA}"
+            bad_base = "refs/heads/main"
+            good_base = "refs/heads/release/main"
+            failing_args = ["git", "merge-base", "--all", snapshot["refs"][topic_ref], snapshot["refs"][bad_base]]
+
+            def failing(args, cwd=None):
+                if args == failing_args:
+                    return subprocess.CompletedProcess(args, 128, "", "cached fork unavailable")
+                return repo.runner(args, cwd)
+
+            initial = commit_graph.derive_fork_point(
+                failing, repo.path, snapshot, topic_ref, ALPHA,
+                base_refs=[bad_base, good_base],
+            )
+            self.assertIsNotNone(initial["fork_point"])
+            result = commit_graph.topic_delta(
+                failing, repo.path, snapshot, topic_ref, ALPHA,
+                topic_refs={topic_ref: ALPHA}, base_refs=[bad_base, good_base],
+            )
+            self.assertEqual(result["commits"], set())
+            self.assertTrue(snapshot["fatal_errors"])
 
     def test_nested_merge_does_not_relabel_inner_content(self):
         """FH-005: outer topic deltas exclude the inner issue's content."""

@@ -404,6 +404,8 @@ def _ancestry_maximal(runner, cwd, snapshot, candidates):
                 ("is-ancestor", candidate, other),
                 relation["fatal_errors"],
             )
+            if relation["fatal_errors"]:
+                return None
             if relation["value"] is not True:
                 continue
             reverse = is_ancestor(runner, cwd, snapshot, other, candidate)
@@ -412,6 +414,8 @@ def _ancestry_maximal(runner, cwd, snapshot, candidates):
                 ("is-ancestor", other, candidate),
                 reverse["fatal_errors"],
             )
+            if reverse["fatal_errors"]:
+                return None
             if reverse["value"] is False:
                 dominated = True
                 break
@@ -453,7 +457,21 @@ def topic_delta(
         runner, cwd, snapshot, topic_ref, issue_id, base_refs=fork_base_refs
     )
     diagnostics = list(fork["diagnostics"])
+    fork_query_failed = any(
+        cached[1]
+        for ref in fork_base_refs
+        if (cached := snapshot["merge_bases_cache"].get(
+            tuple(sorted((topic_sha, snapshot["refs"][ref])))
+        )) is not None
+    )
     if fork["fork_point"] is None:
+        return {
+            **fork,
+            "stacked_exclusions": [],
+            "commits": set(),
+            "diagnostics": diagnostics,
+        }
+    if fork_query_failed:
         return {
             **fork,
             "stacked_exclusions": [],
@@ -505,6 +523,13 @@ def topic_delta(
                 exclusions.append(candidate)
 
     exclusions = _ancestry_maximal(runner, cwd, snapshot, exclusions)
+    if exclusions is None:
+        return {
+            **fork,
+            "stacked_exclusions": [],
+            "commits": set(),
+            "diagnostics": diagnostics,
+        }
     if len(snapshot["fatal_errors"]) != fatal_before:
         return {
             **fork,

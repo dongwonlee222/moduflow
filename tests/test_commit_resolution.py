@@ -905,6 +905,42 @@ class TestRangeProjection(unittest.TestCase):
             self.assertEqual({item["sha"] for item in result["commits"]}, {b_work})
             self.assertEqual(result["errors"], [])
 
+    def test_range_projection_failure_returns_no_full_topology_attribution(self):
+        """FH-031: a failed range query never falls back to the --all index."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.branch(f"codex/{ISSUE}")
+            work = repo.commit("feat: issue")
+            range_args = ["git", "log", "--format=%H", f"{work}^..{work}"]
+
+            def failing(args, cwd=None):
+                if args == range_args:
+                    return TestGraphQueryFailures._failed_result("range unavailable")
+                return repo.runner(args, cwd)
+
+            result = cr.resolve_commits_for_issue(failing, repo.path, ISSUE, rev_range=f"{work}^..{work}")
+            self.assertEqual(result["commits"], [])
+            self.assertTrue(any("range unavailable" in error for error in result["errors"]))
+
+    def test_terminated_range_projection_returns_no_attribution(self):
+        """FH-031: a signal-terminated range query is observable and closed."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.branch(f"codex/{ISSUE}")
+            work = repo.commit("feat: issue")
+            range_args = ["git", "log", "--format=%H", f"{work}^..{work}"]
+
+            def terminated(args, cwd=None):
+                if args == range_args:
+                    return TestGraphQueryFailures._failed_result("", returncode=-15)
+                return repo.runner(args, cwd)
+
+            result = cr.resolve_commits_for_issue(terminated, repo.path, ISSUE, rev_range=f"{work}^..{work}")
+            self.assertEqual(result["commits"], [])
+            self.assertTrue(any("exit code -15" in error for error in result["errors"]))
+
 
 if __name__ == "__main__":
     unittest.main()

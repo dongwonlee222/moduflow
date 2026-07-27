@@ -84,23 +84,6 @@ class GroundTruthTests(_ShapeCase):
     def _check(self, shape_name):
         repo, returned = self._build(shape_name)
         with repo:
-            if shape_name == "branch_name_not_matching_issue":
-                other = "codex/198-unregistered-other"
-                repo._git("branch", other, "main")
-                repo._git("checkout", "-q", "codex/199-unregistered-name")
-                repo._git("branch", "-D", "main")
-                errors = []
-                self.assertIsNone(
-                    cr.base_ref(
-                        repo.runner,
-                        repo.path,
-                        ["codex/199-unregistered-name", other],
-                        issue_ids=returned,
-                        errors=errors,
-                    ),
-                    "an issue-shaped ref can never be selected as the base",
-                )
-                self.assertEqual(errors, [])
             for issue_id in _built_issue_ids(repo, returned):
                 expected = repo.truth_for(issue_id)
                 actual = {

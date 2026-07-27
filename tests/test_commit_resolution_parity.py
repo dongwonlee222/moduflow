@@ -12,6 +12,7 @@ one gains a source the other does not. They run against real temporary git
 repositories rather than stubs, so a divergence in git access strategy shows up
 here too.
 """
+import ast
 import sys
 import unittest
 from pathlib import Path
@@ -156,6 +157,16 @@ class SharedOwnershipTests(unittest.TestCase):
             source,
             "project_converge reintroduced a private trailer pattern",
         )
+
+    def test_live_resolution_has_no_global_base_election_or_origin_head_probe(self):
+        """FH-030: live topics derive forks independently, without origin/HEAD."""
+        source = Path("scripts/commit_resolution.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        functions = {
+            node.name for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertNotIn("base_ref", functions)
+        self.assertNotIn("symbolic-ref", source)
 
     def test_coverage_facts_reach_the_converge_payload(self):
         """The per-issue half of the payload. The repo-wide counts cannot tell
