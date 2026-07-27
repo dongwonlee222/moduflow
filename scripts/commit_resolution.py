@@ -552,7 +552,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
     errors = []
     degraded = []
 
-    snapshot = commit_graph.load_snapshot(runner, cwd, rev_range=rev_range)
+    snapshot = commit_graph.load_snapshot(runner, cwd)
     graph_errors = snapshot["fatal_errors"]
     errors.extend(graph_errors)
     if graph_errors:
@@ -566,7 +566,19 @@ def build_attribution(runner, cwd, *, rev_range=None):
             "diagnostics": [],
         }
     records = snapshot["records"]
-    order = snapshot["order"]
+    topology_order = snapshot["order"]
+    if rev_range:
+        range_args = ["git", "log", "--format=%H", rev_range]
+        ranged = _run(runner, range_args, cwd)
+        if ranged.returncode != 0:
+            errors.append(_error_text(range_args, ranged))
+            return {
+                "attribution": {}, "records": {}, "order": [], "unmatched": [],
+                "degraded": degraded, "errors": errors, "diagnostics": [],
+            }
+        order = [sha for sha in (ranged.stdout or "").split() if sha in records]
+    else:
+        order = topology_order
 
     issue_ids = known_issue_ids(runner, cwd, errors)
     built = build_branch_membership(
@@ -609,7 +621,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
         if current is None or SOURCE_PRECEDENCE.index(source) < SOURCE_PRECEDENCE.index(current):
             per_issue[issue_id] = source
 
-    for sha in order:
+    for sha in topology_order:
         trailer = TRAILER_RE.search(records[sha]["body"])
         if trailer:
             claim(sha, trailer.group(1), "trailer")
@@ -622,7 +634,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
     graph_order = []
     visit_state = {}
 
-    for sha in order:
+    for sha in topology_order:
         if visit_state.get(sha) == 2:
             continue
         stack = [(sha, False)]

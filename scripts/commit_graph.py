@@ -610,11 +610,9 @@ def _parse_refs(stdout, fatal_errors):
 
 def load_snapshot(runner, cwd, *, rev_range=None):
     """Read commit records and refs once into one reusable graph snapshot."""
-    log_args = (
-        ["git", "log", f"--format={GIT_LOG_FORMAT}", rev_range]
-        if rev_range
-        else list(GIT_LOG_ARGS)
-    )
+    # Topology must remain complete even when a consumer later projects a
+    # requested range; fork recovery and rev-list validation need --all.
+    log_args = list(GIT_LOG_ARGS)
     ref_args = list(BRANCH_REF_ARGS)
     log_result = runner(log_args, cwd)
     ref_result = runner(ref_args, cwd)
