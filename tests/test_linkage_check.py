@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from git_repo_builder import GitRepo  # noqa: E402
 
 
-SYMBOLIC_REF_ARGS = ("git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+SYMBOLIC_REF_ARGS = tuple(linkage_check.commit_resolution.ORIGIN_HEAD_ARGS)
 BRANCH_REF_ARGS = tuple(linkage_check.commit_resolution.BRANCH_REF_ARGS)
 
 
@@ -20,7 +20,7 @@ class FakeRunner:
         # instead of guessing from a name list. These scenarios have no remote
         # HEAD, so it falls through to the containment scoring below.
         self.responses = {
-            SYMBOLIC_REF_ARGS: linkage_check.CommandResult(128, "", "not a symbolic ref"),
+            SYMBOLIC_REF_ARGS: linkage_check.CommandResult(1, "", ""),
             **responses,
         }
         self.calls = []

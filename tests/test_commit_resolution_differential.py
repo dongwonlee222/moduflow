@@ -124,6 +124,26 @@ class GroundTruthTests(_ShapeCase):
                     built["degraded"],
                     "a disconnected non-issue ref is not a usable base",
                 )
+            if shape_name == "octopus_mapping_ambiguous":
+                built = cr.build_attribution(repo.runner, repo.path)
+                self.assertIn(
+                    cr.DEGRADED_BRANCH_UNAVAILABLE,
+                    built["degraded"],
+                )
+                self.assertTrue(
+                    any("octopus" in error for error in built["errors"]),
+                    built["errors"],
+                )
+            if shape_name == "ambiguous_same_tail_remotes":
+                built = cr.build_attribution(repo.runner, repo.path)
+                self.assertIn(
+                    cr.DEGRADED_BRANCH_UNAVAILABLE,
+                    built["degraded"],
+                )
+                self.assertTrue(
+                    any("remote" in error for error in built["errors"]),
+                    built["errors"],
+                )
 
 
 class CommitDirectionTests(_ShapeCase):

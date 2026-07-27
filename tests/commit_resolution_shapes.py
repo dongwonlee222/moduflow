@@ -161,6 +161,51 @@ def local_slash_branch_is_not_remote(repo):
     return [ALPHA]
 
 
+def divergent_same_tail_remotes(repo):
+    """Choose the remote base whose ancestry the issue branch proves."""
+    _seed(repo, ALPHA)
+    origin_line = repo.branch("origin-line")
+    repo.commit("chore: origin diverged", belongs_to=None)
+    origin_tip = repo.head()
+    repo.checkout("main")
+    repo.commit("chore: upstream base moved", belongs_to=None)
+    upstream_tip = repo.head()
+    repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
+    repo._git("update-ref", "refs/remotes/origin/main", origin_tip)
+    repo._git("update-ref", "refs/remotes/upstream/main", upstream_tip)
+    repo.delete_branch(origin_line)
+    repo.delete_branch("main")
+    return [ALPHA]
+
+
+def ambiguous_same_tail_remotes(repo):
+    """Incomparable remote bases with equal issue ancestry must fail closed."""
+    _seed(repo, ALPHA)
+    origin_line = repo.branch("origin-line")
+    repo.commit("chore: origin diverged", belongs_to=None)
+    origin_tip = repo.head()
+    repo.checkout("main")
+    repo.commit("chore: upstream diverged", belongs_to=None)
+    upstream_tip = repo.head()
+    repo.merge(
+        origin_line,
+        message="Merge branch 'origin-line'",
+        belongs_to=None,
+    )
+    repo.branch(f"codex/{ALPHA}")
+    repo.commit(
+        "feat: alpha work",
+        issue=ALPHA,
+        belongs_to=ALPHA,
+    )
+    repo._git("update-ref", "refs/remotes/origin/main", origin_tip)
+    repo._git("update-ref", "refs/remotes/upstream/main", upstream_tip)
+    repo.delete_branch(origin_line)
+    repo.delete_branch("main")
+    return [ALPHA]
+
+
 def trailer_outside_any_branch(repo):
     """A trailer-bearing commit merged and then its branch deleted, plus one
     committed straight to main."""
@@ -278,6 +323,52 @@ def octopus_merge(repo):
     return [ALPHA, BETA]
 
 
+def octopus_subject_order_reversed(repo):
+    """Octopus subject token order is not evidence of parent order."""
+    _seed(repo, ALPHA, BETA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    second = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta work", belongs_to=BETA)
+    repo.checkout(repo.default_branch)
+    repo._git(
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        f"Merge branches 'codex/{BETA}' and 'codex/{ALPHA}'",
+        first,
+        second,
+    )
+    repo.record(repo.head(), [ALPHA, BETA])
+    return [ALPHA, BETA]
+
+
+def octopus_mapping_ambiguous(repo):
+    """Without corroborating refs, octopus side ownership is unavailable."""
+    _seed(repo, ALPHA, BETA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", issue=ALPHA, belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    second = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta work", issue=BETA, belongs_to=BETA)
+    repo.checkout(repo.default_branch)
+    repo._git(
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        f"Merge branches 'codex/{BETA}' and 'codex/{ALPHA}'",
+        first,
+        second,
+    )
+    repo.record(repo.head(), [ALPHA, BETA])
+    repo.delete_branch(first)
+    repo.delete_branch(second)
+    return [ALPHA, BETA]
+
+
 ALL_SHAPES = {
     "happy_merge": happy_merge,
     "sync_merge_then_pr_merge": sync_merge_then_pr_merge,
@@ -288,6 +379,8 @@ ALL_SHAPES = {
     "branch_name_not_matching_issue": branch_name_not_matching_issue,
     "disconnected_non_issue_base": disconnected_non_issue_base,
     "local_slash_branch_is_not_remote": local_slash_branch_is_not_remote,
+    "divergent_same_tail_remotes": divergent_same_tail_remotes,
+    "ambiguous_same_tail_remotes": ambiguous_same_tail_remotes,
     "trailer_outside_any_branch": trailer_outside_any_branch,
     "two_issues_interleaved": two_issues_interleaved,
     "empty_repository": empty_repository,
@@ -297,6 +390,8 @@ ALL_SHAPES = {
     "two_registered_stacked_issues": two_registered_stacked_issues,
     "trailer_disagrees_with_branch": trailer_disagrees_with_branch,
     "octopus_merge": octopus_merge,
+    "octopus_subject_order_reversed": octopus_subject_order_reversed,
+    "octopus_mapping_ambiguous": octopus_mapping_ambiguous,
 }
 
 

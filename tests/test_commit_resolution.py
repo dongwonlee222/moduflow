@@ -656,6 +656,14 @@ class TestHistoricalIssueRegistry(unittest.TestCase):
 
 
 class TestGraphQueryFailures(unittest.TestCase):
+    ORIGIN_HEAD_ARGS = [
+        "git",
+        "symbolic-ref",
+        "--quiet",
+        "--short",
+        "refs/remotes/origin/HEAD",
+    ]
+
     @staticmethod
     def _failed_result(message, returncode=128):
         class Result:
@@ -734,6 +742,54 @@ class TestGraphQueryFailures(unittest.TestCase):
         finally:
             repo.__exit__()
 
+    def test_origin_head_termination_fails_branch_attribution_closed(self):
+        repo, work = self._repo_with_live_issue_branch()
+        try:
+            calls = []
+
+            def terminated(args, cwd=None):
+                calls.append(args)
+                if args == self.ORIGIN_HEAD_ARGS:
+                    return self._failed_result(
+                        "terminated by signal",
+                        returncode=-15,
+                    )
+                return repo.runner(args, cwd)
+
+            index = cr.build_attribution(terminated, repo.path)
+
+            self.assertIn(self.ORIGIN_HEAD_ARGS, calls)
+            self.assertNotIn(work, index["attribution"])
+            self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, index["degraded"])
+            self.assertTrue(
+                any(
+                    "symbolic-ref" in error and "terminated by signal" in error
+                    for error in index["errors"]
+                )
+            )
+        finally:
+            repo.__exit__()
+
+    def test_missing_origin_head_rc_one_uses_fallback_without_error(self):
+        repo, work = self._repo_with_live_issue_branch()
+        try:
+            calls = []
+
+            def missing(args, cwd=None):
+                calls.append(args)
+                if args == self.ORIGIN_HEAD_ARGS:
+                    return self._failed_result("", returncode=1)
+                return repo.runner(args, cwd)
+
+            index = cr.build_attribution(missing, repo.path)
+
+            self.assertIn(self.ORIGIN_HEAD_ARGS, calls)
+            self.assertIn(work, index["attribution"])
+            self.assertEqual(index["errors"], [])
+            self.assertEqual(index["degraded"], [])
+        finally:
+            repo.__exit__()
+
     def test_branch_membership_rejects_a_terminated_merge_base_query(self):
         with GitRepo() as repo:
             repo.commit("chore: base")
@@ -747,12 +803,7 @@ class TestGraphQueryFailures(unittest.TestCase):
             repo.checkout("main")
 
             def terminated(args, cwd=None):
-                if args == [
-                    "git",
-                    "symbolic-ref",
-                    "--short",
-                    "refs/remotes/origin/HEAD",
-                ]:
+                if args == list(cr.ORIGIN_HEAD_ARGS):
                     return type(
                         "Result",
                         (),

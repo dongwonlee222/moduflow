@@ -42,9 +42,16 @@ GIT_LOG_ARGS = ("git", "log", "--all", f"--format={GIT_LOG_FORMAT}")
 BRANCH_REF_ARGS = (
     "git",
     "for-each-ref",
-    "--format=%(refname)",
+    "--format=%(refname) %(objectname)",
     "refs/heads",
     "refs/remotes",
+)
+ORIGIN_HEAD_ARGS = (
+    "git",
+    "symbolic-ref",
+    "--quiet",
+    "--short",
+    "refs/remotes/origin/HEAD",
 )
 ISSUE_HISTORY_ARGS = (
     "git",
@@ -193,13 +200,17 @@ def base_ref(runner, cwd, refs, issue_ids=None, errors=None):
                 connected.append(ref)
         candidates = connected
 
-    head = _run(runner, ["git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], cwd)
+    head_args = list(ORIGIN_HEAD_ARGS)
+    head = _run(runner, head_args, cwd)
     if head.returncode == 0:
         name = (head.stdout or "").strip()
         if not name.startswith("refs/"):
             name = f"refs/remotes/{name}"
         if name in candidates:
             return name
+    elif head.returncode != 1:
+        errors.append(_error_text(head_args, head))
+        return None
 
     # A local and remote-tracking ref usually denote the same branch. Score
     # that branch once, using the remote counterpart when the local ref is
@@ -220,8 +231,78 @@ def base_ref(runner, cwd, refs, issue_ids=None, errors=None):
             ref for ref in counterparts if ref.startswith("refs/remotes/")
         ]
         if local is None or not remotes:
-            candidates.append(counterparts[0])
-            continue
+            if len(remotes) <= 1 or not issue_refs:
+                candidates.append(counterparts[0])
+                continue
+
+            ancestor_cache = {}
+
+            def is_ancestor(older, newer):
+                key = (older, newer)
+                if key in ancestor_cache:
+                    return ancestor_cache[key]
+                merge_args = [
+                    "git",
+                    "merge-base",
+                    "--is-ancestor",
+                    older,
+                    newer,
+                ]
+                probe = _run(runner, merge_args, cwd)
+                if probe.returncode == 0:
+                    ancestor_cache[key] = True
+                    return True
+                if probe.returncode == 1:
+                    ancestor_cache[key] = False
+                    return False
+                errors.append(_error_text(merge_args, probe))
+                return None
+
+            eligible = []
+            for remote in remotes:
+                relations = [
+                    is_ancestor(remote, issue_ref)
+                    for issue_ref in issue_refs
+                ]
+                if any(relation is None for relation in relations):
+                    return None
+                if all(relations):
+                    eligible.append(remote)
+
+            maximal = []
+            for remote in eligible:
+                relations = [
+                    is_ancestor(other, remote)
+                    for other in eligible
+                    if other != remote
+                ]
+                if any(relation is None for relation in relations):
+                    return None
+                if all(relations):
+                    maximal.append(remote)
+
+            if len(maximal) == 1:
+                candidates.append(maximal[0])
+                continue
+
+            if maximal:
+                first = maximal[0]
+                equivalent = [
+                    is_ancestor(first, other)
+                    and is_ancestor(other, first)
+                    for other in maximal[1:]
+                ]
+                if any(relation is None for relation in equivalent):
+                    return None
+                if all(equivalent):
+                    candidates.append(sorted(maximal)[0])
+                    continue
+
+            errors.append(
+                f"same-tail remote base refs for {tail} are ambiguous: "
+                f"{', '.join(remotes)}"
+            )
+            return None
 
         remote = remotes[0]
         forward_args = ["git", "merge-base", "--is-ancestor", local, remote]
@@ -399,17 +480,22 @@ def build_branch_membership(runner, cwd, *, issue_ids=None):
         return {
             "membership": {},
             "branches": [],
+            "ref_tips": {},
             "degraded": [DEGRADED_BRANCH_UNAVAILABLE],
             "errors": errors,
         }
 
     all_refs = []
+    ref_tips = {}
     for line in (result.stdout or "").splitlines():
-        name = line.strip().split(" -> ")[0].strip()
+        fields = line.strip().split(maxsplit=1)
+        name = fields[0].split(" -> ")[0].strip() if fields else ""
         if name and not (
             name.startswith("refs/remotes/") and name.endswith("/HEAD")
         ):
             all_refs.append(name)
+            if len(fields) == 2:
+                ref_tips[name] = fields[1].strip()
 
     if issue_ids is None:
         issue_ids = known_issue_ids(runner, cwd, errors)
@@ -481,6 +567,7 @@ def build_branch_membership(runner, cwd, *, issue_ids=None):
     return {
         "membership": membership,
         "branches": [_short_ref(name) for name in branches],
+        "ref_tips": ref_tips,
         "degraded": degraded,
         "errors": errors,
     }
@@ -548,6 +635,9 @@ def build_attribution(runner, cwd, *, rev_range=None):
         order.append(sha)
 
     issue_ids = known_issue_ids(runner, cwd, errors)
+    built = build_branch_membership(runner, cwd, issue_ids=issue_ids)
+    errors.extend(built["errors"])
+    degraded.extend(built["degraded"])
 
     # sha -> {issue_id: source}. Content has one owner. Merge boundaries can
     # legitimately touch several issues and retain one claim per issue.
@@ -616,8 +706,6 @@ def build_attribution(runner, cwd, *, rev_range=None):
         entry = records[sha]
         if len(entry["parents"]) < 2:
             continue
-        # An octopus merge names several branches and has one parent per
-        # branch. Pair them in order: the Nth named issue came in on parent N.
         named = [
             issue_id_from_branch(f"codex/{m}", issue_ids)
             for m in re.findall(rf"codex/({ISSUE_ID_PATTERN})", _merge_source_text(entry["subject"]))
@@ -625,15 +713,50 @@ def build_attribution(runner, cwd, *, rev_range=None):
         named = [i for i in named if i]
         if not named:
             continue
-        for offset, issue_id in enumerate(named):
+        for issue_id in named:
             claim(sha, issue_id, "merge-subject")
+
+        if len(entry["parents"]) > 2:
+            parent_issues = []
+            for parent in entry["parents"][1:]:
+                corroborated = {
+                    issue_id_from_branch(ref, issue_ids)
+                    for ref, tip in built["ref_tips"].items()
+                    if tip == parent
+                }
+                corroborated.discard(None)
+                if len(corroborated) != 1:
+                    parent_issues = []
+                    break
+                parent_issues.append(corroborated.pop())
+
+            if (
+                len(parent_issues) != len(entry["parents"]) - 1
+                or len(set(parent_issues)) != len(parent_issues)
+                or set(parent_issues) != set(named)
+            ):
+                if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
+                    degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
+                errors.append(
+                    f"octopus merge {sha} has no unambiguous "
+                    "parent-to-issue ref mapping"
+                )
+                continue
+
+            for parent_index, issue_id in enumerate(parent_issues, start=1):
+                for side_sha in merge_side_commits(
+                    records,
+                    sha,
+                    parent_index,
+                ):
+                    claim(side_sha, issue_id, "branch")
+            continue
+
+        for offset, issue_id in enumerate(named):
             for side_sha in merge_side_commits(records, sha, offset + 1):
                 claim(side_sha, issue_id, "branch")
 
     # Live branches have no merge commit to delimit them.
-    built = build_branch_membership(runner, cwd, issue_ids=issue_ids)
-    errors.extend(built["errors"])
-    degraded.extend(built["degraded"])
     for sha, names in built["membership"].items():
         if sha not in records:
             continue
