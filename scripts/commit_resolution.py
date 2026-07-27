@@ -437,7 +437,7 @@ def branch_side_commits(records, merge_sha):
     return reachable(parents[1]) - mainline
 
 
-def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None):
+def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=None):
     """Map every commit sha to the branch names that contain it.
 
     Used for commits on a branch that has not been merged yet, where no merge
@@ -454,28 +454,17 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None):
     degraded = []
     membership = {}
 
-    if refs is None:
-        args = list(BRANCH_REF_ARGS)
-        result = _run(runner, args, cwd)
-        if result.returncode != 0:
-            errors.append(_error_text(args, result))
+    if snapshot is None:
+        snapshot = commit_graph.load_snapshot(runner, cwd)
+        if snapshot["fatal_errors"]:
             return {
                 "membership": {},
                 "branches": [],
                 "ref_tips": {},
                 "degraded": [DEGRADED_BRANCH_UNAVAILABLE],
-                "errors": errors,
+                "errors": list(snapshot["fatal_errors"]),
             }
-        ref_tips = {}
-        for line in (result.stdout or "").splitlines():
-            fields = line.strip().split(maxsplit=1)
-            name = fields[0].split(" -> ")[0].strip() if fields else ""
-            if name and not (
-                name.startswith("refs/remotes/") and name.endswith("/HEAD")
-            ) and len(fields) == 2:
-                ref_tips[name] = fields[1].strip()
-    else:
-        ref_tips = dict(refs)
+    ref_tips = dict(refs if refs is not None else snapshot["refs"])
     all_refs = list(ref_tips)
 
     if issue_ids is None:
@@ -488,62 +477,39 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None):
     # branch still resolves through merge topology. Firing here made the flag
     # true of most healthy repositories, which is how it came to mean nothing.
 
-    base = base_ref(
-        runner,
-        cwd,
-        all_refs,
-        issue_ids=issue_ids,
-        errors=errors,
-    )
-    if base is None and branches:
-        # There are issue branches but nothing to measure their contribution
-        # against, so their commits cannot be attributed. This is the case the
-        # flag is for: evidence exists and could not be read.
-        degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
+    topic_refs = {
+        name: issue_id_from_branch(name, issue_ids) for name in branches
+    }
+    base_refs = [name for name in all_refs if name not in topic_refs]
+    # Local and remote refs to the same object are one topic observation. A
+    # same-issue ref at another object remains distinct, so its ambiguity is
+    # contained to that issue's graph result rather than silently discarded.
+    representatives = {}
+    for name in sorted(branches):
+        key = (topic_refs[name], ref_tips[name])
+        representatives.setdefault(key, name)
 
-    for name in branches:
-        # A branch's contribution is what it has that the base branch does not.
-        #
-        # Excluding every *other* ref instead looks equivalent and is not: an
-        # unmerged descendant branch then zeroes its parent (stacked work, live
-        # here as codex/089-... and codex/089-...-release), and in a
-        # single-branch clone there is nothing left to exclude at all, which
-        # re-opens the 279-versus-52 over-collection.
-        if base is None or _same_branch(base, name):
-            continue
-        # Exclude the base and any *other* issue branch this one was cut from.
-        # Base alone is not enough — work stacked on another issue's branch
-        # then collects that issue's commits as its own. Excluding every other
-        # ref is too much: that is what let a descendant branch zero its
-        # parent. Ancestors only.
-        excludes = [base]
-        graph_failed = False
-        for other in branches:
-            if _same_branch(other, name):
-                continue
-            if issue_id_from_branch(other, issue_ids) == issue_id_from_branch(name, issue_ids):
-                continue
-            merge_args = ["git", "merge-base", "--is-ancestor", other, name]
-            probe = _run(runner, merge_args, cwd)
-            if probe.returncode == 0:
-                excludes.append(other)
-            elif probe.returncode not in (0, 1):
-                errors.append(_error_text(merge_args, probe))
-                graph_failed = True
-                break
-        if graph_failed:
+    fatal_before = len(snapshot["fatal_errors"])
+    for (_issue_id, _tip), name in sorted(representatives.items()):
+        delta = commit_graph.topic_delta(
+            runner,
+            cwd,
+            snapshot,
+            name,
+            topic_refs[name],
+            topic_refs=topic_refs,
+            base_refs=base_refs,
+        )
+        if delta["fork_point"] is None:
             if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
                 degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
             continue
-        rev_args = ["git", "rev-list", name, "--not", *excludes]
-        rev = _run(runner, rev_args, cwd)
-        if rev.returncode != 0:
-            errors.append(_error_text(rev_args, rev))
-            if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
-                degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
-            continue
-        for sha in (rev.stdout or "").split():
+        for sha in delta["commits"]:
             membership.setdefault(sha, []).append(_short_ref(name))
+    if len(snapshot["fatal_errors"]) != fatal_before:
+        errors.extend(snapshot["fatal_errors"][fatal_before:])
+        if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
+            degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
 
     return {
         "membership": membership,
@@ -597,6 +563,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
         cwd,
         issue_ids=issue_ids,
         refs=snapshot["refs"],
+        snapshot=snapshot,
     )
     errors.extend(built["errors"])
     degraded.extend(built["degraded"])

@@ -241,6 +241,134 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
     }
 
 
+def _ancestry_maximal(runner, cwd, snapshot, candidates):
+    """Keep only candidate commits not strictly below another candidate."""
+    maximal = []
+    for candidate in sorted(set(candidates)):
+        dominated = False
+        for other in sorted(set(candidates)):
+            if candidate == other:
+                continue
+            relation = is_ancestor(runner, cwd, snapshot, candidate, other)
+            _preserve_fatal_errors(
+                snapshot,
+                ("is-ancestor", candidate, other),
+                relation["fatal_errors"],
+            )
+            if relation["value"] is not True:
+                continue
+            reverse = is_ancestor(runner, cwd, snapshot, other, candidate)
+            _preserve_fatal_errors(
+                snapshot,
+                ("is-ancestor", other, candidate),
+                reverse["fatal_errors"],
+            )
+            if reverse["value"] is False:
+                dominated = True
+                break
+        if not dominated:
+            maximal.append(candidate)
+    return sorted(maximal)
+
+
+def _rev_list_shas(stdout, records):
+    """Accept only complete one-SHA-per-line rev-list success output."""
+    shas = []
+    for line in (stdout or "").splitlines():
+        fields = line.split()
+        if len(fields) != 1 or fields[0] not in records:
+            return None
+        shas.append(fields[0])
+    return set(shas)
+
+
+def topic_delta(
+    runner,
+    cwd,
+    snapshot,
+    topic_ref,
+    issue_id,
+    *,
+    topic_refs,
+    base_refs,
+):
+    """Return commits introduced by one topic, excluding stacked issue work."""
+    topic_sha = snapshot["refs"].get(topic_ref)
+    # A non-issue alias at the topic tip (for example local `release/main`)
+    # is evidence of publication, not a historical fork candidate.
+    fork_base_refs = [
+        ref for ref in base_refs if snapshot["refs"].get(ref) != topic_sha
+    ]
+    fork = derive_fork_point(
+        runner, cwd, snapshot, topic_ref, issue_id, base_refs=fork_base_refs
+    )
+    diagnostics = list(fork["diagnostics"])
+    if fork["fork_point"] is None:
+        return {
+            **fork,
+            "stacked_exclusions": [],
+            "commits": set(),
+            "diagnostics": diagnostics,
+        }
+
+    exclusions = []
+    for other_ref in sorted(topic_refs):
+        if other_ref == topic_ref or topic_refs[other_ref] == issue_id:
+            continue
+        other_sha = snapshot["refs"].get(other_ref)
+        if other_sha is None:
+            continue
+        pair = merge_bases(runner, cwd, snapshot, topic_sha, other_sha)
+        _preserve_fatal_errors(
+            snapshot,
+            ("merge-bases", tuple(sorted((topic_sha, other_sha)))),
+            pair["fatal_errors"],
+        )
+        for candidate in pair["shas"] or []:
+            # A descendant topic's merge-base can be this topic's own tip.
+            # That proves the *other* topic stacks on us; it must not erase us.
+            if candidate in (fork["fork_point"], topic_sha):
+                continue
+            above_fork = is_ancestor(
+                runner, cwd, snapshot, fork["fork_point"], candidate
+            )
+            _preserve_fatal_errors(
+                snapshot,
+                ("is-ancestor", fork["fork_point"], candidate),
+                above_fork["fatal_errors"],
+            )
+            if above_fork["value"] is True:
+                exclusions.append(candidate)
+
+    exclusions = _ancestry_maximal(runner, cwd, snapshot, exclusions)
+    args = [
+        "git",
+        "rev-list",
+        topic_sha,
+        "--not",
+        fork["fork_point"],
+        *exclusions,
+    ]
+    result = runner(args, cwd)
+    if result.returncode != 0:
+        snapshot["fatal_errors"].append(_failure(args, result))
+        commits = set()
+    else:
+        commits = _rev_list_shas(result.stdout, snapshot["records"])
+        if commits is None:
+            snapshot["fatal_errors"].append(
+                "git rev-list produced malformed output "
+                "(expected one known SHA token per line)"
+            )
+            commits = set()
+    return {
+        **fork,
+        "stacked_exclusions": exclusions,
+        "commits": commits,
+        "diagnostics": diagnostics,
+    }
+
+
 def _parse_records(stdout, fatal_errors):
     records = {}
     order = []

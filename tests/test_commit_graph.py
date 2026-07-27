@@ -15,6 +15,7 @@ from git_repo_builder import GitRepo  # noqa: E402
 
 
 ALPHA = shapes.ALPHA
+BETA = shapes.BETA
 
 
 def disconnected_runner(returncode):
@@ -77,6 +78,32 @@ def derive_for_repo(repo, issue_id):
         snapshot,
         topic_ref,
         issue_id,
+        base_refs=base_refs,
+    )
+
+
+def delta_for_repo(repo, issue_id):
+    """Measure one registered topic against its own historical fork."""
+    errors = []
+    ids = cr.known_issue_ids(repo.runner, repo.path, errors)
+    assert errors == []
+    snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+    topic_refs = {
+        ref: cr.issue_id_from_branch(ref, ids)
+        for ref in snapshot["refs"]
+        if cr.issue_id_from_branch(ref, ids) is not None
+    }
+    base_refs = [ref for ref in snapshot["refs"] if ref not in topic_refs]
+    topic_ref = next(
+        ref for ref, found_issue in topic_refs.items() if found_issue == issue_id
+    )
+    return commit_graph.topic_delta(
+        repo.runner,
+        repo.path,
+        snapshot,
+        topic_ref,
+        issue_id,
+        topic_refs=topic_refs,
         base_refs=base_refs,
     )
 
@@ -508,3 +535,35 @@ class ForkPointInvariantTests(unittest.TestCase):
         self.assertIsNone(result["fork_point"])
         self.assertEqual(result["diagnostics"][0]["code"], "ambiguous-topic-fork")
         self.assertTrue(snapshot["fatal_errors"])
+
+
+class TopicDeltaTests(unittest.TestCase):
+    def test_base_history_is_not_topic_work(self):
+        """FH-002: a stale local trunk cannot become alpha's contribution."""
+        with GitRepo() as repo:
+            shapes.stale_local_default_branch(repo)
+
+            result = delta_for_repo(repo, ALPHA)
+
+            self.assertEqual(result["commits"], repo.truth_for(ALPHA))
+
+    def test_stacked_issue_excludes_inner_content(self):
+        """FH-003/FH-005: each stacked issue retains only its declared work."""
+        with GitRepo() as repo:
+            shapes.two_registered_stacked_issues(repo)
+
+            alpha = delta_for_repo(repo, ALPHA)
+            beta = delta_for_repo(repo, BETA)
+
+            self.assertEqual(alpha["commits"], repo.truth_for(ALPHA))
+            self.assertEqual(beta["commits"], repo.truth_for(BETA))
+            self.assertTrue(beta["stacked_exclusions"])
+
+    def test_nested_merge_does_not_relabel_inner_content(self):
+        """FH-005: outer topic deltas exclude the inner issue's content."""
+        with GitRepo() as repo:
+            shapes.nested_merges(repo)
+
+            beta = delta_for_repo(repo, BETA)
+
+            self.assertTrue(repo.truth_for(ALPHA).isdisjoint(beta["commits"]))
