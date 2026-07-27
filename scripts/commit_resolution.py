@@ -223,108 +223,78 @@ def base_ref(runner, cwd, refs, issue_ids=None, errors=None):
     candidates = []
     for tail in sorted(by_tail):
         counterparts = sorted(by_tail[tail])
-        local = next(
-            (ref for ref in counterparts if ref.startswith("refs/heads/")),
-            None,
-        )
-        remotes = [
-            ref for ref in counterparts if ref.startswith("refs/remotes/")
-        ]
-        if local is None or not remotes:
-            if len(remotes) <= 1 or not issue_refs:
-                candidates.append(counterparts[0])
-                continue
-
-            ancestor_cache = {}
-
-            def is_ancestor(older, newer):
-                key = (older, newer)
-                if key in ancestor_cache:
-                    return ancestor_cache[key]
-                merge_args = [
-                    "git",
-                    "merge-base",
-                    "--is-ancestor",
-                    older,
-                    newer,
-                ]
-                probe = _run(runner, merge_args, cwd)
-                if probe.returncode == 0:
-                    ancestor_cache[key] = True
-                    return True
-                if probe.returncode == 1:
-                    ancestor_cache[key] = False
-                    return False
-                errors.append(_error_text(merge_args, probe))
-                return None
-
-            eligible = []
-            for remote in remotes:
-                relations = [
-                    is_ancestor(remote, issue_ref)
-                    for issue_ref in issue_refs
-                ]
-                if any(relation is None for relation in relations):
-                    return None
-                if all(relations):
-                    eligible.append(remote)
-
-            maximal = []
-            for remote in eligible:
-                relations = [
-                    is_ancestor(other, remote)
-                    for other in eligible
-                    if other != remote
-                ]
-                if any(relation is None for relation in relations):
-                    return None
-                if all(relations):
-                    maximal.append(remote)
-
-            if len(maximal) == 1:
-                candidates.append(maximal[0])
-                continue
-
-            if maximal:
-                first = maximal[0]
-                equivalent = [
-                    is_ancestor(first, other)
-                    and is_ancestor(other, first)
-                    for other in maximal[1:]
-                ]
-                if any(relation is None for relation in equivalent):
-                    return None
-                if all(equivalent):
-                    candidates.append(sorted(maximal)[0])
-                    continue
-
-            errors.append(
-                f"same-tail remote base refs for {tail} are ambiguous: "
-                f"{', '.join(remotes)}"
-            )
-            return None
-
-        remote = remotes[0]
-        forward_args = ["git", "merge-base", "--is-ancestor", local, remote]
-        forward = _run(runner, forward_args, cwd)
-        if forward.returncode == 0:
-            candidates.append(remote)
+        if len(counterparts) == 1 or not issue_refs:
+            candidates.append(counterparts[0])
             continue
-        if forward.returncode != 1:
-            errors.append(_error_text(forward_args, forward))
+
+        ancestor_cache = {}
+
+        def is_ancestor(older, newer):
+            key = (older, newer)
+            if key in ancestor_cache:
+                return ancestor_cache[key]
+            merge_args = [
+                "git",
+                "merge-base",
+                "--is-ancestor",
+                older,
+                newer,
+            ]
+            probe = _run(runner, merge_args, cwd)
+            if probe.returncode == 0:
+                ancestor_cache[key] = True
+                return True
+            if probe.returncode == 1:
+                ancestor_cache[key] = False
+                return False
+            errors.append(_error_text(merge_args, probe))
             return None
 
-        reverse_args = ["git", "merge-base", "--is-ancestor", remote, local]
-        reverse = _run(runner, reverse_args, cwd)
-        if reverse.returncode == 0:
-            candidates.append(local)
-        elif reverse.returncode == 1:
-            # Diverged counterparts have no objectively newer side. Prefer the
-            # remote deterministically because it represents shared history.
-            candidates.append(remote)
-        else:
-            errors.append(_error_text(reverse_args, reverse))
-            return None
+        eligible = []
+        for counterpart in counterparts:
+            relations = [
+                is_ancestor(counterpart, issue_ref)
+                for issue_ref in issue_refs
+            ]
+            if any(relation is None for relation in relations):
+                return None
+            if all(relations):
+                eligible.append(counterpart)
+
+        maximal = []
+        for counterpart in eligible:
+            relations = [
+                is_ancestor(other, counterpart)
+                for other in eligible
+                if other != counterpart
+            ]
+            if any(relation is None for relation in relations):
+                return None
+            if all(relations):
+                maximal.append(counterpart)
+
+        if len(maximal) == 1:
+            candidates.append(maximal[0])
+            continue
+
+        if maximal:
+            first = maximal[0]
+            equivalent = [
+                is_ancestor(first, other)
+                and is_ancestor(other, first)
+                for other in maximal[1:]
+            ]
+            if any(relation is None for relation in equivalent):
+                return None
+            if all(equivalent):
+                candidates.append(sorted(maximal)[0])
+                continue
+
+        errors.append(
+            f"same-tail local/remote base refs for {tail} are ambiguous: "
+            f"{', '.join(counterparts)}"
+        )
+        return None
 
     # Fall back to the ref contributing the fewest commits no other ref has. A
     # trunk is contained in the branches cut from it and so contributes nothing
@@ -716,7 +686,10 @@ def build_attribution(runner, cwd, *, rev_range=None):
         for issue_id in named:
             claim(sha, issue_id, "merge-subject")
 
-        if len(entry["parents"]) > 2:
+        needs_parent_mapping = (
+            len(entry["parents"]) > 2 or len(set(named)) > 1
+        )
+        if needs_parent_mapping:
             parent_issues = []
             for parent in entry["parents"][1:]:
                 corroborated = {
@@ -730,15 +703,19 @@ def build_attribution(runner, cwd, *, rev_range=None):
                     break
                 parent_issues.append(corroborated.pop())
 
-            if (
+            octopus = len(entry["parents"]) > 2
+            invalid_mapping = (
                 len(parent_issues) != len(entry["parents"]) - 1
                 or len(set(parent_issues)) != len(parent_issues)
-                or set(parent_issues) != set(named)
-            ):
+                or not set(parent_issues).issubset(set(named))
+                or (octopus and set(parent_issues) != set(named))
+            )
+            if invalid_mapping:
                 if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
                     degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
                 errors.append(
-                    f"octopus merge {sha} has no unambiguous "
+                    f"{'octopus ' if octopus else ''}merge {sha} "
+                    "has no unambiguous "
                     "parent-to-issue ref mapping"
                 )
                 continue

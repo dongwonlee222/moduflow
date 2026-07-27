@@ -206,6 +206,61 @@ def ambiguous_same_tail_remotes(repo):
     return [ALPHA]
 
 
+def local_with_divergent_same_tail_remotes(repo):
+    """Local and equivalent upstream beat an unrelated same-tail origin."""
+    _seed(repo, ALPHA)
+    origin_line = repo.branch("origin-line")
+    repo.commit("chore: origin diverged", belongs_to=None)
+    origin_tip = repo.head()
+    repo.checkout("main")
+    repo.commit("chore: local upstream base", belongs_to=None)
+    local_tip = repo.head()
+    repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
+    repo._git("update-ref", "refs/remotes/origin/main", origin_tip)
+    repo._git("update-ref", "refs/remotes/upstream/main", local_tip)
+    repo.delete_branch(origin_line)
+    return [ALPHA]
+
+
+def local_with_ambiguous_same_tail_remotes(repo):
+    """Three incomparable same-tail bases must not be chosen arbitrarily."""
+    _seed(repo, ALPHA)
+    common = repo.head()
+    origin_line = repo.branch("origin-line")
+    repo.commit("chore: origin diverged", belongs_to=None)
+    origin_tip = repo.head()
+    repo.checkout("main")
+    repo.commit("chore: local diverged", belongs_to=None)
+    repo._git("checkout", "-q", "-b", "upstream-line", common)
+    repo.commit("chore: upstream diverged", belongs_to=None)
+    upstream_tip = repo.head()
+    repo.checkout("main")
+    integration = repo.branch("integration")
+    repo.merge(
+        origin_line,
+        message="Merge branch 'origin-line'",
+        belongs_to=None,
+    )
+    repo.merge(
+        "upstream-line",
+        message="Merge branch 'upstream-line'",
+        belongs_to=None,
+    )
+    repo.branch(f"codex/{ALPHA}")
+    repo.commit(
+        "feat: alpha work",
+        issue=ALPHA,
+        belongs_to=ALPHA,
+    )
+    repo._git("update-ref", "refs/remotes/origin/main", origin_tip)
+    repo._git("update-ref", "refs/remotes/upstream/main", upstream_tip)
+    repo.delete_branch(origin_line)
+    repo.delete_branch("upstream-line")
+    repo.delete_branch(integration)
+    return [ALPHA]
+
+
 def trailer_outside_any_branch(repo):
     """A trailer-bearing commit merged and then its branch deleted, plus one
     committed straight to main."""
@@ -369,6 +424,39 @@ def octopus_mapping_ambiguous(repo):
     return [ALPHA, BETA]
 
 
+def two_parent_multi_name_subject(repo):
+    """Two-parent side ownership follows the parent ref, not token order."""
+    _seed(repo, ALPHA, BETA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    repo.merge(
+        first,
+        message=f"Merge codex/{BETA} and codex/{ALPHA}",
+        belongs_to=[ALPHA, BETA],
+    )
+    return [ALPHA, BETA]
+
+
+def two_parent_multi_name_ambiguous(repo):
+    """Two distinct issue refs at parent2 make side ownership ambiguous."""
+    _seed(repo, ALPHA, BETA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit(
+        "feat: alpha work",
+        issue=ALPHA,
+        belongs_to=ALPHA,
+    )
+    repo._git("branch", f"codex/{BETA}")
+    repo.checkout(repo.default_branch)
+    repo.merge(
+        first,
+        message=f"Merge codex/{BETA} and codex/{ALPHA}",
+        belongs_to=[ALPHA, BETA],
+    )
+    return [ALPHA, BETA]
+
+
 ALL_SHAPES = {
     "happy_merge": happy_merge,
     "sync_merge_then_pr_merge": sync_merge_then_pr_merge,
@@ -381,6 +469,12 @@ ALL_SHAPES = {
     "local_slash_branch_is_not_remote": local_slash_branch_is_not_remote,
     "divergent_same_tail_remotes": divergent_same_tail_remotes,
     "ambiguous_same_tail_remotes": ambiguous_same_tail_remotes,
+    "local_with_divergent_same_tail_remotes": (
+        local_with_divergent_same_tail_remotes
+    ),
+    "local_with_ambiguous_same_tail_remotes": (
+        local_with_ambiguous_same_tail_remotes
+    ),
     "trailer_outside_any_branch": trailer_outside_any_branch,
     "two_issues_interleaved": two_issues_interleaved,
     "empty_repository": empty_repository,
@@ -392,6 +486,8 @@ ALL_SHAPES = {
     "octopus_merge": octopus_merge,
     "octopus_subject_order_reversed": octopus_subject_order_reversed,
     "octopus_mapping_ambiguous": octopus_mapping_ambiguous,
+    "two_parent_multi_name_subject": two_parent_multi_name_subject,
+    "two_parent_multi_name_ambiguous": two_parent_multi_name_ambiguous,
 }
 
 
