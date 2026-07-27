@@ -49,8 +49,10 @@ def empty_snapshot():
         "order": [],
         "refs": {},
         "merge_base_cache": {},
+        "merge_bases_cache": {},
         "ancestor_cache": {},
         "fatal_errors": [],
+        "fatal_error_cache_keys": set(),
     }
 
 
@@ -263,6 +265,137 @@ assert Path(module.commit_graph.__file__).resolve() == path.with_name('commit_gr
 
 
 class ForkPointInvariantTests(unittest.TestCase):
+    def test_snapshot_ref_movement_uses_captured_object_ids(self):
+        """FH-023: moving a live base ref cannot change a loaded snapshot's fork."""
+        with GitRepo() as repo:
+            base_sha = repo.commit("chore: base", belongs_to=None)
+            repo.branch(f"codex/{ALPHA}")
+            topic_sha = repo.commit("feat: alpha", belongs_to=ALPHA)
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+            repo._git("update-ref", "refs/heads/main", topic_sha)
+
+            result = commit_graph.derive_fork_point(
+                repo.runner,
+                repo.path,
+                snapshot,
+                f"refs/heads/codex/{ALPHA}",
+                ALPHA,
+                base_refs=["refs/heads/main"],
+            )
+
+            self.assertEqual(result["fork_point"], base_sha)
+            self.assertEqual(result["diagnostics"], [])
+
+    def test_criss_cross_best_bases_fail_closed_as_ambiguous(self):
+        """FH-024: every incomparable --all best base is an ambiguous fork."""
+        with GitRepo() as repo:
+            repo.commit("chore: root", belongs_to=None)
+            repo.branch(f"codex/{ALPHA}")
+            topic_side = repo.commit("feat: topic side", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.branch("base")
+            repo.commit("chore: base side", belongs_to=None)
+            repo.checkout(f"codex/{ALPHA}")
+            repo.merge("base", message="Merge branch 'base'", belongs_to=ALPHA)
+            repo.checkout("base")
+            repo._git(
+                "merge", "--no-ff", "-m", "Merge topic first side", topic_side
+            )
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+
+            result = commit_graph.derive_fork_point(
+                repo.runner,
+                repo.path,
+                snapshot,
+                f"refs/heads/codex/{ALPHA}",
+                ALPHA,
+                base_refs=["refs/heads/base"],
+            )
+
+            self.assertIsNone(result["fork_point"])
+            self.assertEqual(
+                [item["code"] for item in result["diagnostics"]],
+                ["ambiguous-topic-fork"],
+            )
+
+    def test_newer_comparable_candidate_is_the_unique_maximal_fork(self):
+        """FH-025: a strict-ancestor candidate loses to the newer fork."""
+        with GitRepo() as repo:
+            repo.commit("chore: root", belongs_to=None)
+            older = repo.commit("chore: older base", belongs_to=None)
+            repo._git("branch", "older", older)
+            newer = repo.commit("chore: newer base", belongs_to=None)
+            repo._git("branch", "newer", newer)
+            repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: alpha", belongs_to=ALPHA)
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+
+            result = commit_graph.derive_fork_point(
+                repo.runner,
+                repo.path,
+                snapshot,
+                f"refs/heads/codex/{ALPHA}",
+                ALPHA,
+                base_refs=["refs/heads/older", "refs/heads/newer"],
+            )
+
+            self.assertEqual(result["fork_point"], newer)
+            self.assertEqual(result["diagnostics"], [])
+            self.assertEqual(snapshot["fatal_errors"], [])
+
+    def test_duplicate_base_refs_are_deduped_in_result_and_queries(self):
+        """FH-023: duplicate base inputs cannot duplicate equivalent ref output."""
+        with GitRepo() as repo:
+            repo.commit("chore: base", belongs_to=None)
+            repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: alpha", belongs_to=ALPHA)
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+
+            result = commit_graph.derive_fork_point(
+                repo.runner,
+                repo.path,
+                snapshot,
+                f"refs/heads/codex/{ALPHA}",
+                ALPHA,
+                base_refs=["refs/heads/main", "refs/heads/main"],
+            )
+
+            self.assertEqual(result["equivalent_base_refs"], ["refs/heads/main"])
+            self.assertEqual(
+                sum(
+                    call[:4]
+                    == [
+                        "git",
+                        "merge-base",
+                        "--all",
+                        snapshot["refs"][f"refs/heads/codex/{ALPHA}"],
+                    ]
+                    for call in repo.call_log
+                ),
+                1,
+            )
+
+    def test_cached_fatal_error_is_recorded_once_per_query(self):
+        """FH-023: cached failures cannot repeatedly pollute snapshot fatal errors."""
+        snapshot = empty_snapshot()
+        snapshot["refs"] = {
+            "refs/heads/codex/101-alpha": "topic",
+            "refs/heads/main": "base",
+        }
+        runner = disconnected_runner(128)
+
+        for _ in range(2):
+            commit_graph.derive_fork_point(
+                runner,
+                ".",
+                snapshot,
+                "refs/heads/codex/101-alpha",
+                ALPHA,
+                base_refs=["refs/heads/main", "refs/heads/main"],
+            )
+
+        self.assertEqual(len(snapshot["fatal_errors"]), 1)
+
     def test_advancing_trunk_does_not_change_fork_point(self):
         """FH-006/FH-011: later trunk work cannot move a topic's fork point."""
         with GitRepo() as repo:

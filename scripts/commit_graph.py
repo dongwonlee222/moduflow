@@ -52,6 +52,17 @@ def _merge_base_sha(stdout):
     return tokens[0] if len(tokens) == 1 else None
 
 
+def _merge_base_shas(stdout):
+    """Validate all of Git's best common ancestors from ``merge-base --all``."""
+    shas = []
+    for line in (stdout or "").splitlines():
+        tokens = line.split()
+        if len(tokens) != 1:
+            return None
+        shas.append(tokens[0])
+    return tuple(sorted(set(shas))) if shas else None
+
+
 def merge_base(runner, cwd, snapshot, left, right):
     """Return a cached common-base result for an unordered graph pair."""
     key = tuple(sorted((left, right)))
@@ -79,6 +90,37 @@ def merge_base(runner, cwd, snapshot, left, right):
     return _result("sha", sha, fatal_errors)
 
 
+def merge_bases(runner, cwd, snapshot, left, right):
+    """Return every cached best common ancestor for an unordered graph pair."""
+    key = tuple(sorted((left, right)))
+    cache = snapshot.setdefault("merge_bases_cache", {})
+    if key in cache:
+        shas, fatal_errors = cache[key]
+        return _result(
+            "shas", list(shas) if shas is not None else None, fatal_errors
+        )
+    args = ["git", "merge-base", "--all", left, right]
+    result = runner(args, cwd)
+    if result.returncode == 0:
+        shas = _merge_base_shas(result.stdout)
+        fatal_errors = (
+            ()
+            if shas is not None
+            else (
+                "git merge-base --all produced malformed output "
+                "(expected one or more SHA tokens, one per line)",
+            )
+        )
+    elif result.returncode == 1:
+        shas, fatal_errors = None, ()
+    else:
+        shas, fatal_errors = None, (_failure(args, result),)
+    cache[key] = (shas, fatal_errors)
+    return _result(
+        "shas", list(shas) if shas is not None else None, fatal_errors
+    )
+
+
 def is_ancestor(runner, cwd, snapshot, older, newer):
     """Return a cached directional ancestry-query result."""
     key = (older, newer)
@@ -96,6 +138,17 @@ def is_ancestor(runner, cwd, snapshot, older, newer):
         value, fatal_errors = None, (_failure(args, result),)
     cache[key] = (value, fatal_errors)
     return _result("value", value, fatal_errors)
+
+
+def _preserve_fatal_errors(snapshot, key, fatal_errors):
+    """Add cached query failures to a snapshot once, at their query identity."""
+    if not fatal_errors:
+        return
+    recorded = snapshot.setdefault("fatal_error_cache_keys", set())
+    if key in recorded:
+        return
+    snapshot["fatal_errors"].extend(fatal_errors)
+    recorded.add(key)
 
 
 def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
@@ -121,14 +174,20 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             ],
         }
 
+    topic_sha = snapshot["refs"][topic_ref]
     by_fork = {}
-    for ref in base_refs:
+    for ref in sorted(set(base_refs)):
         if ref not in snapshot["refs"]:
             continue
-        result = merge_base(runner, cwd, snapshot, topic_ref, ref)
-        snapshot["fatal_errors"].extend(result["fatal_errors"])
-        if result["sha"] is not None:
-            by_fork.setdefault(result["sha"], []).append(ref)
+        base_sha = snapshot["refs"][ref]
+        result = merge_bases(runner, cwd, snapshot, topic_sha, base_sha)
+        _preserve_fatal_errors(
+            snapshot,
+            ("merge-bases", tuple(sorted((topic_sha, base_sha)))),
+            result["fatal_errors"],
+        )
+        for fork_sha in result["shas"] or []:
+            by_fork.setdefault(fork_sha, []).append(ref)
 
     maximal = []
     for fork_sha in sorted(by_fork):
@@ -137,11 +196,19 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             if fork_sha == other_sha:
                 continue
             relation = is_ancestor(runner, cwd, snapshot, fork_sha, other_sha)
-            snapshot["fatal_errors"].extend(relation["fatal_errors"])
+            _preserve_fatal_errors(
+                snapshot,
+                ("is-ancestor", fork_sha, other_sha),
+                relation["fatal_errors"],
+            )
             if relation["value"] is not True:
                 continue
             reverse = is_ancestor(runner, cwd, snapshot, other_sha, fork_sha)
-            snapshot["fatal_errors"].extend(reverse["fatal_errors"])
+            _preserve_fatal_errors(
+                snapshot,
+                ("is-ancestor", other_sha, fork_sha),
+                reverse["fatal_errors"],
+            )
             if reverse["value"] is False:
                 dominated = True
                 break
@@ -259,6 +326,8 @@ def load_snapshot(runner, cwd, *, rev_range=None):
         "order": order,
         "refs": refs,
         "merge_base_cache": {},
+        "merge_bases_cache": {},
         "ancestor_cache": {},
         "fatal_errors": fatal_errors,
+        "fatal_error_cache_keys": set(),
     }
