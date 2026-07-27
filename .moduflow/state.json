@@ -3,7 +3,7 @@
   "phase": "execute",
   "active_goal": "trustworthy-execution-and-project-knowledge",
   "active_issue": "095-commit-issue-resolution-parity",
-  "last_command": "product:plan 095-commit-issue-resolution-parity",
+  "last_command": "product:execute 095-commit-issue-resolution-parity",
   "next_command": "product:execute 095-commit-issue-resolution-parity",
   "blockers": [],
   "updated_at": "2026-07-27"

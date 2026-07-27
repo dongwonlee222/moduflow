@@ -100,6 +100,10 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 - Issue `095` redesign plan (2026-07-27): six guarded TDD streams now replace
   the global-base patch loop. Execution starts by isolating the Git graph
   snapshot, then lands per-topic fork points before any consumer migration.
+- Issue `095` execution start (2026-07-27): repository identity and
+  implementation readiness passed. Worker analysis selected sequential
+  host-subagent execution T01→T09 due shared graph/resolver state; current task
+  is T01 graph snapshot and Git failure semantics.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance

@@ -1007,3 +1007,19 @@ lifecycle drift was `[]`; JSON and diff checks passed.
 
 Execute Stream A1 with RED/GREEN evidence:
 `product:execute 095-commit-issue-resolution-parity`.
+
+## Execution start — 2026-07-27
+
+Repository identity allowed `execute`, implementation readiness is `ready`,
+and the generated worker plan is sequential because every task touches shared
+graph/resolver state or depends on the preceding task. Dongwon Lee selected
+the recommended host-subagent workflow.
+
+Each task uses one fresh implementer, then a separate spec-compliance reviewer,
+then a separate code-quality reviewer. No later task starts while either
+review has an open finding.
+
+## Current task
+
+T01 / A1 — create the graph snapshot boundary with RED/GREEN coverage for
+`FH-010`, `FH-014`, and `FH-019`.

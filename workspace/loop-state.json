@@ -29,7 +29,7 @@
     "last_changed_at": "2026-07-27"
   },
   "blocker": null,
-  "last_action": "completed the Issue 095 six-stream TDD redesign plan with FH traceability, scoped diagnostics, full verification, review, and rollback gates",
+  "last_action": "started sequential host-subagent execution for Issue 095 after repository identity and implementation-readiness gates passed",
   "last_verification": "2026-07-27 redesign plan gate: spec consistency 0 findings across 9 requirements, project validation valid with errors [], lifecycle drift [], JSON valid, and git diff check clean; implementation baseline remains 221/221 focused with 2 of 885 full failures at bfa4157",
   "updated_at": "2026-07-27",
   "git_binding": {
@@ -55,9 +55,9 @@
     "pull_request": null,
     "release": null,
     "execution_backend": {
-      "type": "codex",
-      "status": "ready",
-      "reason": "The approved per-issue fork-point and scoped-diagnostic redesign now has a failure-traceable TDD execution plan",
+      "type": "host-subagent",
+      "status": "executing",
+      "reason": "Dongwon Lee selected the recommended subagent-driven workflow; the worker plan requires sequential T01 through T09 execution",
       "session": "codex-2026-07-27"
     }
   }
