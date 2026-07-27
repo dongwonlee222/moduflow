@@ -39,6 +39,15 @@ GIT_LOG_FORMAT = "%H%x00%s%x00%P%x00%B%x01"
 # branch is not reachable from HEAD, and work committed in a detached worktree
 # is on no branch at all; `--all` covers every ref plus HEAD.
 GIT_LOG_ARGS = ("git", "log", "--all", f"--format={GIT_LOG_FORMAT}")
+ISSUE_HISTORY_ARGS = (
+    "git",
+    "log",
+    "--all",
+    "--name-only",
+    "--format=",
+    "--",
+    "issues",
+)
 
 # GC2. Highest first. A commit matching several sources is recorded once, at
 # the highest that matched.
@@ -62,10 +71,13 @@ def _error_text(args, result):
 # ---------------------------------------------------------------------------
 
 def known_issue_ids(runner, cwd, errors):
-    """Issue ids from tracked issues/*.md, used to disambiguate branch names
-    such as codex/075-issue-less-context-capture-gate where the trailing
-    segment is a work-branch suffix rather than part of the issue id."""
-    args = ["git", "ls-files", "issues"]
+    """Issue ids ever registered in reachable Git history.
+
+    The current index is checkout-dependent and loses deleted issue files.
+    History is the registry: an issue remains registered after archival and
+    while another branch is checked out.
+    """
+    args = list(ISSUE_HISTORY_ARGS)
     result = _run(runner, args, cwd)
     if result.returncode != 0:
         errors.append(_error_text(args, result))
@@ -84,8 +96,8 @@ def issue_id_from_branch(name, issue_ids):
     """Extract an issue id from a branch name, or None.
 
     Accepts remote-qualified names (origin/codex/094-...). When a work-branch
-    suffix is present, the longest known issue id that prefixes the tail wins;
-    with no known ids the whole tail is treated as the issue id."""
+    suffix is present, the longest known issue id that prefixes the tail wins.
+    A branch name never registers an issue by itself."""
     candidates = [name]
     if "/" in name and not name.startswith("codex/"):
         candidates.append(name.split("/", 1)[1])
@@ -101,16 +113,7 @@ def issue_id_from_branch(name, issue_ids):
                     best = issue_id
         if best:
             return best
-        # No registered issue matches. The tail used to be returned as the id,
-        # which let a branch named for an issue that does not exist satisfy the
-        # linkage gate: a behavior commit on `codex/999-not-a-real-issue`
-        # reported `ok: True, unlinked: 0` while linking to nothing. Naming a
-        # branch is not the same as having an issue.
-        #
-        # Callers that have no issue list at all (`issue_ids` empty) still get
-        # the tail, because there is nothing to check against and refusing
-        # everything would be worse than the old behavior.
-        return tail if not issue_ids else None
+        return None
     return None
 
 
@@ -139,7 +142,7 @@ def merge_source_issue(subject, issue_ids):
     return issue_id_from_branch(f"codex/{match.group(1)}", issue_ids)
 
 
-def base_ref(runner, cwd, refs):
+def base_ref(runner, cwd, refs, errors=None):
     """The branch other branches are cut from.
 
     A branch's own contribution is what it has that the base does not. Deriving
@@ -152,6 +155,7 @@ def base_ref(runner, cwd, refs):
     (`develop`), and a local `main` left behind `origin/main`, where measuring
     against the stale one hands the branch every commit the trunk has moved on
     by."""
+    errors = errors if errors is not None else []
     head = _run(runner, ["git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], cwd)
     if head.returncode == 0:
         name = (head.stdout or "").strip()
@@ -172,13 +176,20 @@ def base_ref(runner, cwd, refs):
             continue
         rev = _run(runner, ["git", "rev-list", ref, "--not", *others], cwd)
         if rev.returncode != 0:
-            continue
+            errors.append(
+                _error_text(["git", "rev-list", ref, "--not", *others], rev)
+            )
+            return None
         exclusive = len((rev.stdout or "").split())
-        contained_in = sum(
-            1
-            for other in others
-            if _run(runner, ["git", "merge-base", "--is-ancestor", ref, other], cwd).returncode == 0
-        )
+        contained_in = 0
+        for other in others:
+            merge_args = ["git", "merge-base", "--is-ancestor", ref, other]
+            probe = _run(runner, merge_args, cwd)
+            if probe.returncode == 0:
+                contained_in += 1
+            elif probe.returncode > 1:
+                errors.append(_error_text(merge_args, probe))
+                return None
         scored.append((exclusive, -contained_in, ref))
     if not scored:
         return None
@@ -260,7 +271,7 @@ def branch_side_commits(records, merge_sha):
     return reachable(parents[1]) - mainline
 
 
-def build_branch_membership(runner, cwd):
+def build_branch_membership(runner, cwd, *, issue_ids=None):
     """Map every commit sha to the branch names that contain it.
 
     Used for commits on a branch that has not been merged yet, where no merge
@@ -300,7 +311,8 @@ def build_branch_membership(runner, cwd):
         if name:
             all_refs.append(name)
 
-    issue_ids = known_issue_ids(runner, cwd, errors)
+    if issue_ids is None:
+        issue_ids = known_issue_ids(runner, cwd, errors)
     # One owner for branch-name interpretation (GC1) — no second copy here.
     branches = [name for name in all_refs if issue_id_from_branch(name, issue_ids)]
 
@@ -309,7 +321,7 @@ def build_branch_membership(runner, cwd):
     # branch still resolves through merge topology. Firing here made the flag
     # true of most healthy repositories, which is how it came to mean nothing.
 
-    base = base_ref(runner, cwd, all_refs)
+    base = base_ref(runner, cwd, all_refs, errors)
     if base is None and branches:
         # There are issue branches but nothing to measure their contribution
         # against, so their commits cannot be attributed. This is the case the
@@ -332,18 +344,30 @@ def build_branch_membership(runner, cwd):
         # ref is too much: that is what let a descendant branch zero its
         # parent. Ancestors only.
         excludes = [base]
+        graph_failed = False
         for other in branches:
             if _same_branch(other, name):
                 continue
             if issue_id_from_branch(other, issue_ids) == issue_id_from_branch(name, issue_ids):
                 continue
-            probe = _run(runner, ["git", "merge-base", "--is-ancestor", other, name], cwd)
+            merge_args = ["git", "merge-base", "--is-ancestor", other, name]
+            probe = _run(runner, merge_args, cwd)
             if probe.returncode == 0:
                 excludes.append(other)
+            elif probe.returncode > 1:
+                errors.append(_error_text(merge_args, probe))
+                graph_failed = True
+                break
+        if graph_failed:
+            if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
+                degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
+            continue
         rev_args = ["git", "rev-list", name, "--not", *excludes]
         rev = _run(runner, rev_args, cwd)
         if rev.returncode != 0:
             errors.append(_error_text(rev_args, rev))
+            if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
+                degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
             continue
         for sha in (rev.stdout or "").split():
             membership.setdefault(sha, []).append(name)
@@ -425,6 +449,8 @@ def build_attribution(runner, cwd, *, rev_range=None):
     attribution = {}
 
     def claim(sha, issue_id, source):
+        if issue_id not in issue_ids:
+            return
         per_issue = attribution.setdefault(sha, {})
         current = per_issue.get(issue_id)
         if current is None or SOURCE_PRECEDENCE.index(source) < SOURCE_PRECEDENCE.index(current):
@@ -456,7 +482,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
                 claim(side_sha, issue_id, "branch")
 
     # Live branches have no merge commit to delimit them.
-    built = build_branch_membership(runner, cwd)
+    built = build_branch_membership(runner, cwd, issue_ids=issue_ids)
     errors.extend(built["errors"])
     degraded.extend(built["degraded"])
     for sha, names in built["membership"].items():
@@ -520,9 +546,15 @@ def resolve_issue_for_commit(runner, cwd, sha, *, attribution=None, membership=N
 
     trailer = TRAILER_RE.search(show.stdout or "")
     if trailer:
-        result["issue_id"] = trailer.group(1)
-        result["source"] = "trailer"
-        return result
+        registered = issue_ids
+        if registered is None:
+            registered = known_issue_ids(runner, cwd, errors)
+        if errors:
+            return result
+        if trailer.group(1) in registered:
+            result["issue_id"] = trailer.group(1)
+            result["source"] = "trailer"
+            return result
 
     if attribution is None:
         built = build_attribution(runner, cwd)

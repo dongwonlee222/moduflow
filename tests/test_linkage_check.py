@@ -50,7 +50,7 @@ def attribution_stubs(entries, issue_files=()):
     stubs = {
         tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): log,
         ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
-        ("git", "ls-files", "issues"): "".join(
+        tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "".join(
             f"issues/{issue_id}.md\n" for issue_id in issue_files
         ),
     }
@@ -72,7 +72,7 @@ def branch_stubs(branch_name, shas, issue_files=()):
             "--branches",
             "--remotes",
         ): "".join(f"{sha}\n" for sha in shas),
-        ("git", "ls-files", "issues"): "".join(
+        tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "".join(
             f"issues/{issue_id}.md\n" for issue_id in issue_files
         ),
     }
@@ -84,6 +84,9 @@ class ResolveIssueForCommitTests(unittest.TestCase):
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): (
                     "fix: handle sandboxed fetch\n\nIssue: 074-sync-fetch-sandbox-handling\n"
+                ),
+                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): (
+                    "issues/074-sync-fetch-sandbox-handling.md\n"
                 ),
             }
         )
@@ -153,7 +156,7 @@ class ResolveIssueForCommitTests(unittest.TestCase):
                 ),
                 # A conflicting branch exists but must not be consulted/win.
                 ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "main\norigin/codex/074-sync-fetch-sandbox-handling\n",
-                ("git", "ls-files", "issues"): (
+                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): (
                     "issues/070-spec-consistency-analyze.md\n"
                     "issues/074-sync-fetch-sandbox-handling.md\n"
                 ),
@@ -171,7 +174,7 @@ class ResolveIssueForCommitTests(unittest.TestCase):
                 ("git", "show", "-s", "--format=%B", "abc123"): "chore: misc\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00chore: misc\x00\x00chore: misc\n\x01",
                 ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "origin/main\nmain\n",
-                ("git", "ls-files", "issues"): "",
+                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "",
                 ("git", "branch", "--contains", "abc123"): "* main\n",
             }
         )
@@ -203,7 +206,7 @@ class ResolveIssueForCommitTests(unittest.TestCase):
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "fix: thing\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00fix: thing\x00\x00fix: thing\n\x01",
-                ("git", "ls-files", "issues"): "",
+                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "",
                 ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): linkage_check.CommandResult(
                     128, "", "fatal: malformed object name"
                 ),
@@ -283,7 +286,9 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
                 ("git", "rev-list", "base..head"): "sha1\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "sha1\x00feat: foo\x00\x00feat: foo\n\nIssue: 070-spec-consistency-analyze\n\x01",
                 ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
-                ("git", "ls-files", "issues"): "",
+                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): (
+                    "issues/070-spec-consistency-analyze.md\n"
+                ),
                 ("git", "show", "--name-only", "--format=", "sha1"): (
                     "scripts/foo.py\nREADME.md\n"
                 ),
@@ -316,7 +321,7 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
                 ("git", "rev-list", "base..head"): "sha2\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "sha2\x00docs tweak\x00\x00docs tweak\n\x01",
                 ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
-                ("git", "ls-files", "issues"): "",
+                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "",
                 ("git", "show", "--name-only", "--format=", "sha2"): "commands/product-x.md\n",
                 ("git", "show", "-s", "--format=%B", "sha2"): "docs tweak\n",
                 ("git", "branch", "--contains", "sha2"): "* main\n",
@@ -331,6 +336,59 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
         self.assertEqual(result["unlinked"][0]["sha"], "sha2")
         self.assertIsNone(result["unlinked"][0]["issue_id"])
         self.assertEqual(result["unlinked"][0]["behavior_paths"], ["commands/product-x.md"])
+
+    def test_unknown_trailer_does_not_link_against_an_empty_registry(self):
+        with GitRepo() as repo:
+            base = repo.commit("chore: base")
+            (repo.path / "scripts").mkdir()
+            sha = repo.commit(
+                "feat: behavior under a phantom issue",
+                issue="321-no-issues-tracked",
+                filename="scripts/thing.py",
+            )
+
+            result = linkage_check.find_unlinked_behavior_commits(
+                repo.runner, repo.path, base, sha
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual([entry["sha"] for entry in result["unlinked"]], [sha])
+            self.assertIsNone(result["unlinked"][0]["issue_id"])
+
+    def test_graph_failure_is_reported_and_branch_commit_stays_unlinked(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file("074-sync-fetch-sandbox-handling")
+            base = repo.head()
+            repo.branch("codex/074-sync-fetch-sandbox-handling")
+            (repo.path / "scripts").mkdir()
+            sha = repo.commit(
+                "feat: behavior change",
+                filename="scripts/thing.py",
+            )
+
+            def failing(args, cwd=None, timeout=None):
+                if args[:2] == ["git", "rev-list"] and ".." not in args[2]:
+                    return linkage_check.CommandResult(
+                        128, "", "fatal: graph unavailable"
+                    )
+                return repo.runner(args, cwd)
+
+            result = linkage_check.find_unlinked_behavior_commits(
+                failing, repo.path, base, sha
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual([entry["sha"] for entry in result["unlinked"]], [sha])
+            self.assertIsNone(result["unlinked"][0]["issue_id"])
+            self.assertIn(
+                linkage_check.commit_resolution.DEGRADED_BRANCH_UNAVAILABLE,
+                result["degraded"],
+            )
+            self.assertTrue(
+                any("rev-list" in error and "graph unavailable" in error
+                    for error in result["errors"])
+            )
 
     def test_neutral_only_commit_ignored(self):
         runner = FakeRunner(
@@ -352,6 +410,22 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
         runner = FakeRunner(
             {
                 ("git", "rev-list", "base..head"): "sha1\nsha2\nsha3\n",
+                tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): (
+                    "sha1\x00feat: foo\x00\x00"
+                    "feat: foo\n\nIssue: 070-spec-consistency-analyze\n\x01"
+                    "sha2\x00tweak\x00\x00tweak\n\x01"
+                    "sha3\x00docs\x00\x00docs\n\x01"
+                ),
+                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): (
+                    "issues/070-spec-consistency-analyze.md\n"
+                ),
+                (
+                    "git",
+                    "for-each-ref",
+                    "--format=%(refname:short)",
+                    "refs/heads",
+                    "refs/remotes",
+                ): "",
                 ("git", "show", "--name-only", "--format=", "sha1"): "scripts/foo.py\n",
                 ("git", "show", "-s", "--format=%B", "sha1"): (
                     "feat: foo\n\nIssue: 070-spec-consistency-analyze\n"

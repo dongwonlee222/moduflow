@@ -22,6 +22,8 @@ OTHER = "094-risk-based-security-and-quality-review-gate"
 class TestTrailerResolution(unittest.TestCase):
     def test_trailer_commit_resolves(self):
         with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
             sha = repo.commit("feat: something", issue=ISSUE)
             out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
             self.assertEqual(out["issue_id"], ISSUE)
@@ -52,6 +54,7 @@ class TestBranchResolution(unittest.TestCase):
         with GitRepo() as repo:
             repo.commit("chore: base")
             repo.add_issue_file(OTHER)
+            repo.add_issue_file(ISSUE)
             repo.branch(f"codex/{OTHER}")
             sha = repo.commit("feat: trailer disagrees with branch", issue=ISSUE)
             out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
@@ -63,6 +66,7 @@ class TestMergeSubjectResolution(unittest.TestCase):
     def test_merge_subject_resolves_after_branch_deleted(self):
         with GitRepo() as repo:
             repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
             name = repo.branch(f"codex/{ISSUE}")
             repo.commit("feat: work")
             repo.checkout("main")
@@ -138,11 +142,12 @@ class TestIssueToCommits(unittest.TestCase):
         with GitRepo() as repo:
             repo.commit("chore: unrelated one")
             repo.commit("chore: unrelated two")
+            repo.add_issue_file(ISSUE)
             repo.commit("feat: mine", issue=ISSUE)
             out = cr.resolve_commits_for_issue(repo.runner, repo.path, ISSUE)
             self.assertEqual(len(out["commits"]), 1)
-            self.assertEqual(out["repo_unmatched_count"], 2)
-            self.assertEqual(out["repo_examined_count"], 3)
+            self.assertEqual(out["repo_unmatched_count"], 3)
+            self.assertEqual(out["repo_examined_count"], 4)
             self.assertEqual(out["errors"], [], "unmatched is descriptive, not an error")
 
     def test_each_commit_carries_its_source(self):
@@ -161,6 +166,7 @@ class TestDetachedHead(unittest.TestCase):
     def test_trailer_resolves_and_branch_gap_is_reported(self):
         with GitRepo() as repo:
             repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
             sha = repo.commit("feat: work", issue=ISSUE)
             repo.detach()
             out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
@@ -376,7 +382,7 @@ class TestRegressionMatrix(unittest.TestCase):
             )
             self.assertEqual(out["commits"], [])
             self.assertEqual(out["errors"], [])
-            self.assertEqual(out["repo_unmatched_count"], 1)
+            self.assertEqual(out["repo_unmatched_count"], 2)
 
     def test_empty_repository_is_not_an_error(self):
         with GitRepo() as repo:
@@ -565,16 +571,149 @@ class TestUnregisteredIssueIds(unittest.TestCase):
             out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
             self.assertEqual(out["issue_id"], ISSUE)
 
-    def test_no_issue_list_at_all_keeps_the_tail(self):
-        """With nothing to check against, refusing everything would be worse
-        than the previous behavior."""
+    def test_empty_registry_rejects_an_unknown_branch(self):
         with GitRepo() as repo:
             repo.commit("chore: base")
             repo.branch("codex/321-no-issues-tracked")
             sha = repo.commit("feat: work")
 
             out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
-            self.assertEqual(out["issue_id"], "321-no-issues-tracked")
+            self.assertIsNone(out["issue_id"])
+
+    def test_empty_registry_rejects_an_unknown_trailer(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            sha = repo.commit(
+                "feat: work",
+                issue="321-no-issues-tracked",
+            )
+
+            out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
+            self.assertIsNone(out["issue_id"])
+
+    def test_empty_registry_rejects_an_unknown_merge_subject(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            name = repo.branch("codex/321-no-issues-tracked")
+            work = repo.commit("feat: work")
+            repo.checkout("main")
+            merge = repo.merge(
+                name,
+                message="Merge branch 'codex/321-no-issues-tracked'",
+            )
+
+            index = cr.build_attribution(repo.runner, repo.path)
+            self.assertNotIn(work, index["attribution"])
+            self.assertNotIn(merge, index["attribution"])
+
+
+class TestHistoricalIssueRegistry(unittest.TestCase):
+    def test_issue_on_another_checkout_is_registered(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.branch("registry")
+            repo.add_issue_file(ISSUE)
+            repo.checkout("main")
+            self.assertFalse((repo.path / "issues" / f"{ISSUE}.md").exists())
+
+            errors = []
+            self.assertIn(ISSUE, cr.known_issue_ids(repo.runner, repo.path, errors))
+            self.assertEqual(errors, [])
+
+    def test_deleted_issue_file_remains_registered_from_history(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo._git("rm", f"issues/{ISSUE}.md")
+            repo._git("commit", "-q", "-m", f"chore: archive {ISSUE}")
+
+            errors = []
+            self.assertIn(ISSUE, cr.known_issue_ids(repo.runner, repo.path, errors))
+            self.assertEqual(errors, [])
+
+    def test_empty_repository_has_a_valid_empty_registry(self):
+        with GitRepo() as repo:
+            errors = []
+            self.assertEqual(cr.known_issue_ids(repo.runner, repo.path, errors), [])
+            self.assertEqual(errors, [])
+
+
+class TestGraphQueryFailures(unittest.TestCase):
+    @staticmethod
+    def _failed_result(message):
+        class Result:
+            returncode = 128
+            stdout = ""
+            stderr = message
+
+        return Result()
+
+    def _repo_with_live_issue_branch(self):
+        repo = GitRepo()
+        repo.commit("chore: base")
+        repo.add_issue_file(ISSUE)
+        repo.branch(f"codex/{ISSUE}")
+        work = repo.commit("feat: branch work")
+        repo.checkout("main")
+        return repo, work
+
+    def test_rev_list_failure_surfaces_and_does_not_attribute(self):
+        repo, work = self._repo_with_live_issue_branch()
+        try:
+            def failing(args, cwd=None):
+                if args[:2] == ["git", "rev-list"]:
+                    return self._failed_result("fatal: graph unavailable")
+                return repo.runner(args, cwd)
+
+            index = cr.build_attribution(failing, repo.path)
+
+            self.assertNotIn(work, index["attribution"])
+            self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, index["degraded"])
+            self.assertTrue(
+                any("rev-list" in error and "graph unavailable" in error
+                    for error in index["errors"])
+            )
+        finally:
+            repo.__exit__()
+
+    def test_merge_base_failure_surfaces_and_does_not_attribute(self):
+        repo, work = self._repo_with_live_issue_branch()
+        try:
+            def failing(args, cwd=None):
+                if args[:3] == ["git", "merge-base", "--is-ancestor"]:
+                    return self._failed_result("fatal: corrupt commit graph")
+                return repo.runner(args, cwd)
+
+            index = cr.build_attribution(failing, repo.path)
+
+            self.assertNotIn(work, index["attribution"])
+            self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, index["degraded"])
+            self.assertTrue(
+                any("merge-base" in error and "corrupt commit graph" in error
+                    for error in index["errors"])
+            )
+        finally:
+            repo.__exit__()
+
+    def test_merge_base_rc_one_means_not_ancestor_not_error(self):
+        repo, _ = self._repo_with_live_issue_branch()
+        try:
+            def not_ancestor(args, cwd=None):
+                if args[:3] == ["git", "merge-base", "--is-ancestor"]:
+                    return type(
+                        "Result",
+                        (),
+                        {"returncode": 1, "stdout": "", "stderr": ""},
+                    )()
+                return repo.runner(args, cwd)
+
+            index = cr.build_attribution(not_ancestor, repo.path)
+
+            self.assertFalse(
+                any("merge-base" in error for error in index["errors"])
+            )
+        finally:
+            repo.__exit__()
 
 
 class TestDegradedMeaning(unittest.TestCase):

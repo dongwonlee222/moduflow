@@ -57,6 +57,7 @@ class CrossModuleParityTests(unittest.TestCase):
     def test_trailer_only_history(self):
         with GitRepo() as repo:
             repo.commit("chore: unrelated")
+            repo.add_issue_file(ISSUE)
             mine = repo.commit("feat: work", issue=ISSUE)
             self.assertEqual(self.assertParity(repo), {mine})
 
@@ -105,6 +106,8 @@ class CrossModuleParityTests(unittest.TestCase):
     def test_other_issue_commits_are_not_claimed(self):
         with GitRepo() as repo:
             repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.add_issue_file(OTHER)
             theirs = repo.commit("feat: theirs", issue=OTHER)
             mine = repo.commit("feat: mine", issue=ISSUE)
 
@@ -161,11 +164,12 @@ class SharedOwnershipTests(unittest.TestCase):
         with GitRepo() as repo:
             repo.commit("chore: one")
             repo.commit("chore: two")
+            repo.add_issue_file(ISSUE)
             repo.commit("feat: mine", issue=ISSUE)
             result = project_converge.resolve_commits(repo.runner, repo.path, ISSUE)
             self.assertEqual(result["coverage"]["sources"], {"trailer": 1})
-            self.assertEqual(result["repo_unmatched_count"], 2)
-            self.assertEqual(result["repo_examined_count"], 3)
+            self.assertEqual(result["repo_unmatched_count"], 3)
+            self.assertEqual(result["repo_examined_count"], 4)
             self.assertEqual(
                 result["errors"], [], "coverage is descriptive, never an error"
             )
