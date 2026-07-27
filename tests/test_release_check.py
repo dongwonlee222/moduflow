@@ -33,6 +33,8 @@ class FakeRunner:
 
 MERGE_BASE_ARGS = ("git", "merge-base", "HEAD", "origin/main")
 FETCH_ARGS = ("git", "fetch", "origin", "main", "--depth=200")
+BRANCH_REF_ARGS = tuple(linkage_check.commit_resolution.BRANCH_REF_ARGS)
+ISSUE_HISTORY_ARGS = tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS)
 
 HUMANS = [{"name": "Dongwon Lee", "email": "webn77@gmail.com"}]
 
@@ -70,8 +72,8 @@ def unlinked_commit_responses(sha="badc0ffee", path="scripts/hotfix.py"):
         ("git", "show", "-s", "--format=%B", sha): "hotfix without issue\n",
         ("git", "branch", "--contains", sha): "* main\n",
         tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "{sha}\x00hotfix without issue\x00\x00hotfix without issue\n\x01",
-        ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
-        ("git", "ls-files", "issues"): "",
+        BRANCH_REF_ARGS: "",
+        ISSUE_HISTORY_ARGS: "",
 
     }
 
@@ -110,8 +112,11 @@ class LinkageGateTests(unittest.TestCase):
                     "feat: foo\n\nIssue: 075-issue-less-context-capture\n"
                 ),
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "sha1\x00feat: thing\x00\x00feat: thing\n\nIssue: 070-spec-consistency-analyze\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
-                ("git", "ls-files", "issues"): "",
+                BRANCH_REF_ARGS: "",
+                ISSUE_HISTORY_ARGS: (
+                    "issues/070-spec-consistency-analyze.md\n"
+                    "issues/075-issue-less-context-capture.md\n"
+                ),
             }
         )
         with tempfile.TemporaryDirectory() as tmp:
