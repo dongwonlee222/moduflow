@@ -298,8 +298,10 @@ class ForkPointInvariantTests(unittest.TestCase):
             repo.checkout(f"codex/{ALPHA}")
             repo.merge("base", message="Merge branch 'base'", belongs_to=ALPHA)
             repo.checkout("base")
-            repo._git(
-                "merge", "--no-ff", "-m", "Merge topic first side", topic_side
+            repo.merge(
+                topic_side,
+                message="Merge topic first side",
+                belongs_to=None,
             )
             snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
 
