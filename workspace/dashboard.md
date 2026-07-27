@@ -102,8 +102,12 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   snapshot, then lands per-topic fork points before any consumer migration.
 - Issue `095` execution start (2026-07-27): repository identity and
   implementation readiness passed. Worker analysis selected sequential
-  host-subagent execution T01→T09 due shared graph/resolver state; current task
-  is T01 graph snapshot and Git failure semantics.
+  host-subagent execution T01→T09 due shared graph/resolver state.
+- Issue `095` T01 (2026-07-27 at `8068f98`): graph snapshot and Git failure
+  semantics completed. Four direct consumer suites passed 105/105; separate
+  spec and quality reviews approved with no open findings. `FH-021` and
+  `FH-022` are regression-captured. Current task is T02 historical fork-point
+  derivation.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance

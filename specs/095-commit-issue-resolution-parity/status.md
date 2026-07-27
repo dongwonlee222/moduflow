@@ -1019,7 +1019,19 @@ Each task uses one fresh implementer, then a separate spec-compliance reviewer,
 then a separate code-quality reviewer. No later task starts while either
 review has an open finding.
 
+## T01 / A1 completion — 2026-07-27
+
+RED exposed stale direct-consumer fixtures, malformed successful merge-base
+output, and file-mode module reuse. Those review findings were preserved as
+`FH-021` and `FH-022` before the fixes landed.
+
+GREEN is `8068f98` on top of `9356cb0`, `064ca05`, and `1ceb153`. The direct
+graph, resolver, parity, and linkage suites passed 105/105. Independent spec
+review and independent quality re-review both approved T01 with no open
+Critical, Important, or Minor findings.
+
 ## Current task
 
-T01 / A1 — create the graph snapshot boundary with RED/GREEN coverage for
-`FH-010`, `FH-014`, and `FH-019`.
+T02 / B1 — derive one ancestry-maximal historical fork point per issue ref
+with invariant coverage for `FH-006`, `FH-011`, `FH-012`, `FH-013`, and
+`FH-017`.

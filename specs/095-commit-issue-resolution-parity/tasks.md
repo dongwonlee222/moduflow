@@ -11,7 +11,7 @@ architecture; it does not extend that heuristic.
 
 ## Stream A
 
-- [ ] A1 Create `scripts/commit_graph.py` with one log/ref snapshot, cached merge-base and ancestry queries, and explicit ordinary-negative versus command-failure behavior (`FH-010`, `FH-014`, `FH-019`). [files: scripts/commit_graph.py, scripts/commit_resolution.py, tests/test_commit_graph.py] [shared_state: true]
+- [x] A1 Create `scripts/commit_graph.py` with one log/ref snapshot, cached merge-base and ancestry queries, and explicit ordinary-negative versus command-failure behavior (`FH-010`, `FH-014`, `FH-019`). [files: scripts/commit_graph.py, scripts/commit_resolution.py, tests/test_commit_graph.py] [shared_state: true]
 
 ## Stream B
 

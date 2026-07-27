@@ -64,6 +64,8 @@ the architectural closure.
 | FH-018 | Unrelated historical ambiguity failed the current release | Diagnostics are projected to the caller's commit or issue scope | open |
 | FH-019 | Stale fixtures masked shared-index regressions | Fixtures must reproduce each Git boundary and consumer call shape | regression captured |
 | FH-020 | Reference oracle repeated implementation assumptions | Truth is declared independently and checked with invariants | superseded by redesign |
+| FH-021 | A stricter ref parser broke an unrun consumer fixture | Every changed boundary runs all direct consumer suites before review | regression captured |
+| FH-022 | Successful merge-base with empty output became “no base” | Success return codes still require structurally valid output | regression captured |
 
 ## Failure Records
 
@@ -324,6 +326,44 @@ the architectural closure.
 - **Evidence**: review rounds 4, 5, 7, 8, and 9.
 - **Status**: superseded by redesign; the reference oracle stays deleted.
 
+### FH-021 — Stale Consumer Fixture Outside the Focused Gate
+
+- **Topology**: `build_attribution()` begins requiring full
+  `<ref> <object-id>` records, while a linkage FakeRunner still returns ref
+  names without object ids.
+- **Observed failure**: the graph snapshot correctly failed closed, but Task
+  T01's selected focused suites passed because `tests.test_linkage_check` was
+  not run; the direct consumer suite remained red.
+- **Invalid assumption**: resolver and unit suites cover every consumer whose
+  fixtures encode the changed Git boundary.
+- **Derived invariant**: changing a shared Git boundary requires running every
+  direct consumer suite and updating fixtures to the complete command-output
+  contract without weakening fail-closed parsing.
+- **Evidence**: T01 independent code-quality review at `1ceb153`,
+  `tests/test_linkage_check.py:180`.
+- **Resolution evidence**: `8068f98` updated the linkage fixture to the full
+  ref-record contract. The direct graph, resolver, parity, and linkage consumer
+  suites then passed 105/105, and independent quality re-review found no open
+  Critical, Important, or Minor findings.
+- **Status**: regression captured.
+
+### FH-022 — Empty Successful Merge-Base Output
+
+- **Topology**: `git merge-base` returns code 0 with empty stdout.
+- **Observed failure**: `merge_base()` returned `sha: None` with no fatal
+  errors, making malformed successful output indistinguishable from return
+  code 1 meaning no common ancestor.
+- **Invalid assumption**: return code 0 proves the command output is
+  structurally usable.
+- **Derived invariant**: every successful Git boundary validates its required
+  output fields; empty or malformed success is a fatal command-output error.
+- **Evidence**: T01 independent code-quality review at `1ceb153`,
+  `scripts/commit_graph.py:55`.
+- **Resolution evidence**: `8068f98` added RED/GREEN coverage for empty and
+  multi-token successful merge-base output and made both fail closed. The
+  direct graph, resolver, parity, and linkage consumer suites passed 105/105.
+- **Status**: regression captured.
+
 ## Required Design Traceability
 
 The redesign maps its requirements to this corpus:
@@ -338,5 +378,6 @@ The redesign maps its requirements to this corpus:
 | Historical issue registry and fail-closed commands | FH-009, FH-010 |
 | Caller-scoped diagnostics | FH-018 |
 | Independent invariant and boundary testing | FH-019, FH-020 |
+| Complete consumer gates and successful-output validation | FH-021, FH-022 |
 
 Future findings extend this table rather than replacing it.
