@@ -420,7 +420,7 @@ def branch_side_commits(records, merge_sha):
     return reachable(parents[1]) - mainline
 
 
-def build_branch_membership(runner, cwd, *, issue_ids=None):
+def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None):
     """Map every commit sha to the branch names that contain it.
 
     Used for commits on a branch that has not been merged yet, where no merge
@@ -437,29 +437,29 @@ def build_branch_membership(runner, cwd, *, issue_ids=None):
     degraded = []
     membership = {}
 
-    args = list(BRANCH_REF_ARGS)
-    result = _run(runner, args, cwd)
-    if result.returncode != 0:
-        errors.append(_error_text(args, result))
-        return {
-            "membership": {},
-            "branches": [],
-            "ref_tips": {},
-            "degraded": [DEGRADED_BRANCH_UNAVAILABLE],
-            "errors": errors,
-        }
-
-    all_refs = []
-    ref_tips = {}
-    for line in (result.stdout or "").splitlines():
-        fields = line.strip().split(maxsplit=1)
-        name = fields[0].split(" -> ")[0].strip() if fields else ""
-        if name and not (
-            name.startswith("refs/remotes/") and name.endswith("/HEAD")
-        ):
-            all_refs.append(name)
-            if len(fields) == 2:
+    if refs is None:
+        args = list(BRANCH_REF_ARGS)
+        result = _run(runner, args, cwd)
+        if result.returncode != 0:
+            errors.append(_error_text(args, result))
+            return {
+                "membership": {},
+                "branches": [],
+                "ref_tips": {},
+                "degraded": [DEGRADED_BRANCH_UNAVAILABLE],
+                "errors": errors,
+            }
+        ref_tips = {}
+        for line in (result.stdout or "").splitlines():
+            fields = line.strip().split(maxsplit=1)
+            name = fields[0].split(" -> ")[0].strip() if fields else ""
+            if name and not (
+                name.startswith("refs/remotes/") and name.endswith("/HEAD")
+            ) and len(fields) == 2:
                 ref_tips[name] = fields[1].strip()
+    else:
+        ref_tips = dict(refs)
+    all_refs = list(ref_tips)
 
     if issue_ids is None:
         issue_ids = known_issue_ids(runner, cwd, errors)
@@ -578,7 +578,12 @@ def build_attribution(runner, cwd, *, rev_range=None):
     order = snapshot["order"]
 
     issue_ids = known_issue_ids(runner, cwd, errors)
-    built = build_branch_membership(runner, cwd, issue_ids=issue_ids)
+    built = build_branch_membership(
+        runner,
+        cwd,
+        issue_ids=issue_ids,
+        refs=snapshot["refs"],
+    )
     errors.extend(built["errors"])
     degraded.extend(built["degraded"])
 

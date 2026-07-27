@@ -39,7 +39,7 @@ def _failure(args, result):
 
 
 def merge_base(runner, cwd, snapshot, left, right):
-    """Return the common base, or None; cache unordered graph pairs."""
+    """Return a cached common-base result for an unordered graph pair."""
     key = tuple(sorted((left, right)))
     cache = snapshot["merge_base_cache"]
     if key in cache:
@@ -47,18 +47,17 @@ def merge_base(runner, cwd, snapshot, left, right):
     args = ["git", "merge-base", left, right]
     result = runner(args, cwd)
     if result.returncode == 0:
-        value = (result.stdout or "").strip() or None
+        outcome = {"sha": (result.stdout or "").strip() or None, "fatal_errors": []}
     elif result.returncode == 1:
-        value = None
+        outcome = {"sha": None, "fatal_errors": []}
     else:
-        value = None
-        snapshot["fatal_errors"].append(_failure(args, result))
-    cache[key] = value
-    return value
+        outcome = {"sha": None, "fatal_errors": [_failure(args, result)["message"]]}
+    cache[key] = outcome
+    return outcome
 
 
 def is_ancestor(runner, cwd, snapshot, older, newer):
-    """Return ancestor relation, caching the directional query result."""
+    """Return a cached directional ancestry-query result."""
     key = (older, newer)
     cache = snapshot["ancestor_cache"]
     if key in cache:
@@ -66,14 +65,13 @@ def is_ancestor(runner, cwd, snapshot, older, newer):
     args = ["git", "merge-base", "--is-ancestor", older, newer]
     result = runner(args, cwd)
     if result.returncode == 0:
-        value = True
+        outcome = {"value": True, "fatal_errors": []}
     elif result.returncode == 1:
-        value = False
+        outcome = {"value": False, "fatal_errors": []}
     else:
-        value = None
-        snapshot["fatal_errors"].append(_failure(args, result))
-    cache[key] = value
-    return value
+        outcome = {"value": None, "fatal_errors": [_failure(args, result)["message"]]}
+    cache[key] = outcome
+    return outcome
 
 
 def _parse_records(stdout, fatal_errors):

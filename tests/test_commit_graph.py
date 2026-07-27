@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import commit_graph  # noqa: E402
+import commit_resolution as cr  # noqa: E402
 from git_repo_builder import GitRepo  # noqa: E402
 
 
@@ -57,27 +58,44 @@ class SnapshotTests(unittest.TestCase):
     def test_merge_base_distinguishes_no_base_from_failure(self):
         """FH-014: return code 1 is no common base, not a Git failure."""
         no_base = empty_snapshot()
-        sha = commit_graph.merge_base(
+        result = commit_graph.merge_base(
             disconnected_runner(1), ".", no_base, "left", "right"
         )
-        self.assertIsNone(sha)
+        self.assertEqual(result, {"sha": None, "fatal_errors": []})
         self.assertEqual(no_base["fatal_errors"], [])
 
         failed = empty_snapshot()
-        sha = commit_graph.merge_base(
+        result = commit_graph.merge_base(
             disconnected_runner(128), ".", failed, "left", "right"
         )
-        self.assertIsNone(sha)
-        self.assertTrue(failed["fatal_errors"])
+        self.assertIsNone(result["sha"])
+        self.assertTrue(result["fatal_errors"])
+        self.assertEqual(failed["fatal_errors"], [])
 
     def test_terminated_ancestry_query_is_a_failure(self):
         """FH-019: a signal-terminated Git probe is never a negative answer."""
         snapshot = empty_snapshot()
 
-        value = commit_graph.is_ancestor(
+        result = commit_graph.is_ancestor(
             disconnected_runner(-15), ".", snapshot, "older", "newer"
         )
 
-        self.assertIsNone(value)
-        self.assertTrue(snapshot["fatal_errors"])
-        self.assertIn("terminated", snapshot["fatal_errors"][0]["message"])
+        self.assertIsNone(result["value"])
+        self.assertTrue(result["fatal_errors"])
+        self.assertIn("terminated", result["fatal_errors"][0])
+        self.assertEqual(snapshot["fatal_errors"], [])
+
+    def test_build_attribution_reads_refs_once(self):
+        """FH-010: resolver attribution reuses the snapshot ref inventory."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file("095-commit-issue-resolution-parity")
+            repo.call_log.clear()
+
+            result = cr.build_attribution(repo.runner, repo.path)
+
+            self.assertEqual(result["errors"], [])
+            self.assertEqual(
+                sum(call[:2] == ["git", "for-each-ref"] for call in repo.call_log),
+                1,
+            )
