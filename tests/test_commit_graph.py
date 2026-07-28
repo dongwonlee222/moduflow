@@ -672,6 +672,26 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertEqual(result["commits"], declared_content_truth(repo, ALPHA))
             self.assertTrue(result["commits"])
 
+    def test_archive_named_published_tip_alias_is_ref_order_independent(self):
+        """FH-003: an alias sorted before main cannot elect T1 as the fork."""
+        with GitRepo() as repo:
+            repo.commit("chore: base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            topic = repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: T1", belongs_to=ALPHA)
+            t1 = repo.head()
+            repo.checkout("main")
+            repo.merge(topic, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+            repo._git("branch", "archive/last-topic", t1)
+            repo.checkout(topic)
+            repo.commit("feat: T2", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.merge(topic, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+            result = delta_for_repo(repo, ALPHA)
+            self.assertEqual(result["commits"], declared_content_truth(repo, ALPHA))
+            self.assertTrue(result["commits"])
+            self.assertEqual(result["diagnostics"], [])
+
     def test_published_topic_with_incomparable_other_base_is_ambiguous(self):
         """FH-002: recovery must not discard an incomparable ordinary base."""
         with GitRepo() as repo:

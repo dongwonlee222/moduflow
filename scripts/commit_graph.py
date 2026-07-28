@@ -321,7 +321,6 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             )
             publication_sides.update(sides)
             fatal_errors.extend(recovery_errors)
-        candidates = [sha for sha in candidates if sha not in publication_sides]
         if recovered:
             needs_publication_recovery = True
             recovered_forks.update(recovered)
@@ -339,6 +338,12 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             ordinary_forks.update(candidates)
         for fork_sha in candidates:
             by_fork.setdefault(fork_sha, []).append(ref)
+
+    # Ref iteration order must not let an alias observed before its confirming
+    # publication merge survive as an ordinary base candidate.
+    ordinary_forks.difference_update(publication_sides)
+    for side in publication_sides:
+        by_fork.pop(side, None)
 
     if not by_fork and needs_publication_recovery:
         return {
