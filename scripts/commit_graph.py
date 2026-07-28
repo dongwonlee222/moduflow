@@ -406,6 +406,24 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             current = parents[0]
         if current in publication_sides:
             topic_line_aliases.update(path)
+    # A live topic may have advanced after its latest publication.  Its
+    # first-parent segment down to that observed publication side is likewise
+    # alias territory, but the walk stops at the anchor and never reaches
+    # behind the earliest side into a genuine base lineage.
+    current = topic_sha
+    path = set()
+    seen = set()
+    while current not in publication_sides:
+        if current in seen or current not in snapshot["records"]:
+            break
+        seen.add(current)
+        path.add(current)
+        parents = snapshot["records"][current]["parents"]
+        if not parents:
+            break
+        current = parents[0]
+    if current in publication_sides:
+        topic_line_aliases.update(path)
     ordinary_forks.difference_update(topic_line_aliases)
 
     selected_forks = ordinary_forks | recovered_minimal

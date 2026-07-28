@@ -772,6 +772,24 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertEqual(result["fork_point"], a)
             self.assertEqual(result["commits"], {work})
 
+    def test_live_advanced_intermediate_alias_keeps_historical_fork(self):
+        """FH-003: Tmid alias after T1 publication cannot elect Tmid as fork."""
+        with GitRepo() as repo:
+            repo.commit("chore: base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            topic = repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: T1", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.merge(topic, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+            repo.checkout(topic)
+            repo.commit("feat: Tmid", belongs_to=ALPHA)
+            mid = repo.head()
+            repo._git("branch", "archive/post-publication-mid", mid)
+            repo.commit("feat: T2", belongs_to=ALPHA)
+            result = delta_for_repo(repo, ALPHA)
+            self.assertEqual(result["commits"], declared_content_truth(repo, ALPHA))
+            self.assertTrue(result["commits"])
+
     def test_base_history_is_not_topic_work(self):
         """FH-002: a stale local trunk cannot become alpha's contribution."""
         with GitRepo() as repo:
