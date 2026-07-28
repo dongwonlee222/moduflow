@@ -143,6 +143,22 @@ def nested_merges_reversed_issue_order(repo):
     return [ALPHA, BETA]
 
 
+def stacked_parent_then_child_merge(repo):
+    """FH-005: live topic specificity beats a broad child merge side."""
+    _seed(repo, ALPHA, BETA)
+    alpha = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha parent work", belongs_to=ALPHA)
+    beta = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta child work", belongs_to=BETA)
+    repo.checkout(repo.default_branch)
+    repo.merge(
+        beta,
+        message=f"Merge branch 'codex/{BETA}'",
+        belongs_to=BETA,
+    )
+    return [ALPHA, BETA]
+
+
 def branch_name_not_matching_issue(repo):
     """LIVE (codex/092-current-dashboard-korean vs 092-project-home-dashboard).
     A branch whose name is not the issue id it belongs to."""
@@ -425,6 +441,52 @@ def octopus_subject_order_reversed(repo):
     return [ALPHA, BETA]
 
 
+def octopus_shared_ancestor_b_before_a(repo):
+    """FH-005: overlapping mapped sides keep shared work with parent topic."""
+    _seed(repo, ALPHA, BETA)
+    alpha = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: shared alpha work", belongs_to=ALPHA)
+    beta = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta stacked work", belongs_to=BETA)
+    repo.checkout(alpha)
+    repo.commit("feat: alpha advanced work", belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    repo._git(
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        f"Merge branches 'codex/{BETA}' and 'codex/{ALPHA}'",
+        beta,
+        alpha,
+    )
+    repo.record(repo.head(), [ALPHA, BETA])
+    return [ALPHA, BETA]
+
+
+def octopus_shared_ancestor_a_before_b(repo):
+    """FH-005: reversing mapped octopus parents changes no content owner."""
+    _seed(repo, ALPHA, BETA)
+    alpha = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: shared alpha work", belongs_to=ALPHA)
+    beta = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta stacked work", belongs_to=BETA)
+    repo.checkout(alpha)
+    repo.commit("feat: alpha advanced work", belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    repo._git(
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        f"Merge branches 'codex/{BETA}' and 'codex/{ALPHA}'",
+        alpha,
+        beta,
+    )
+    repo.record(repo.head(), [ALPHA, BETA])
+    return [ALPHA, BETA]
+
+
 def octopus_mapping_ambiguous(repo):
     """Without corroborating refs, octopus side ownership is unavailable."""
     _seed(repo, ALPHA, BETA)
@@ -537,6 +599,7 @@ ALL_SHAPES = {
     "detached_before_commit": detached_before_commit,
     "nested_merges": nested_merges,
     "nested_merges_reversed_issue_order": nested_merges_reversed_issue_order,
+    "stacked_parent_then_child_merge": stacked_parent_then_child_merge,
     "branch_name_not_matching_issue": branch_name_not_matching_issue,
     "disconnected_non_issue_base": disconnected_non_issue_base,
     "local_slash_branch_is_not_remote": local_slash_branch_is_not_remote,
@@ -558,6 +621,8 @@ ALL_SHAPES = {
     "trailer_disagrees_with_branch": trailer_disagrees_with_branch,
     "octopus_merge": octopus_merge,
     "octopus_subject_order_reversed": octopus_subject_order_reversed,
+    "octopus_shared_ancestor_b_before_a": octopus_shared_ancestor_b_before_a,
+    "octopus_shared_ancestor_a_before_b": octopus_shared_ancestor_a_before_b,
     "octopus_mapping_ambiguous": octopus_mapping_ambiguous,
     "two_parent_multi_name_subject": two_parent_multi_name_subject,
     "two_parent_multi_name_ambiguous": two_parent_multi_name_ambiguous,

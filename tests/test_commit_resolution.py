@@ -53,6 +53,19 @@ class MergeClaimInvariantTests(unittest.TestCase):
             reversed_order["content_owners"],
         )
 
+    def test_octopus_parent_order_does_not_change_shared_content(self):
+        """FH-005: mapped overlap is resolved by topic, not parent order."""
+        beta_first = resolve_shape("octopus_shared_ancestor_b_before_a")
+        alpha_first = resolve_shape("octopus_shared_ancestor_a_before_b")
+        self.assertEqual(
+            beta_first["content_owners"],
+            alpha_first["content_owners"],
+        )
+        self.assertEqual(
+            beta_first["content_owners"],
+            beta_first["declared_content_owners"],
+        )
+
     def test_deleted_refs_keep_boundary_but_not_unproven_content(self):
         """FH-015: deleted refs retain boundaries and expose unresolved sides."""
         result = resolve_shape("octopus_mapping_ambiguous")

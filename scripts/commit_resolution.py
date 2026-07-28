@@ -280,6 +280,77 @@ def merge_side_commits(records, merge_sha, parent_index):
     return reachable(parents[parent_index]) - mainline
 
 
+def partition_topic_side_commits(records, side_commits, ref_tips, issue_ids):
+    """Partition overlapping merge-side content by retained topic topology.
+
+    Ancestor topic tips are assigned before descendant tips. Incomparable tips
+    use stable topic identity, never merge-parent or subject-token order.
+    A tip naming several issues is ambiguous and disables this refinement.
+    """
+    tip_topics = {}
+    for ref, tip in ref_tips.items():
+        issue_id = issue_id_from_branch(ref, issue_ids)
+        if issue_id is not None and tip in side_commits:
+            tip_topics.setdefault(tip, set()).add((issue_id, ref))
+    if any(
+        len({issue_id for issue_id, _ref in topics}) > 1
+        for topics in tip_topics.values()
+    ):
+        return {}
+
+    entries = sorted(
+        {
+            (next(iter(topics))[0], tip)
+            for tip, topics in tip_topics.items()
+        }
+    )
+    reachable_cache = {}
+
+    def reachable(start):
+        if start not in reachable_cache:
+            seen = set()
+            stack = [start]
+            while stack:
+                sha = stack.pop()
+                if sha in seen or sha not in records:
+                    continue
+                seen.add(sha)
+                stack.extend(records[sha].get("parents", []))
+            reachable_cache[start] = seen
+        return reachable_cache[start]
+
+    ordered = []
+    remaining = list(entries)
+    while remaining:
+        roots = [
+            entry
+            for entry in remaining
+            if not any(
+                other[1] != entry[1]
+                and other[1] in reachable(entry[1])
+                for other in remaining
+            )
+        ]
+        if not roots:
+            return {}
+        current = min(roots)
+        ordered.append(current)
+        remaining.remove(current)
+
+    claimed = set()
+    partitions = {}
+    for issue_id, tip in ordered:
+        commits = {
+            sha
+            for sha in reachable(tip).intersection(side_commits) - claimed
+            if len(records[sha]["parents"]) < 2
+        }
+        if commits:
+            partitions.setdefault(issue_id, set()).update(commits)
+            claimed.update(commits)
+    return partitions
+
+
 def branch_side_commits(records, merge_sha):
     """Commits contributed by the branch side of a merge commit.
 
@@ -567,7 +638,23 @@ def build_attribution(runner, cwd, *, rev_range=None):
         # before that side can be assigned; subject token position is not graph
         # evidence.
         if len(entry["parents"]) == 2 and len(named) == 1:
-            for side_sha in merge_side_commits(records, sha, 1):
+            side = merge_side_commits(records, sha, 1)
+            partitions = partition_topic_side_commits(
+                records,
+                side,
+                built["ref_tips"],
+                issue_ids,
+            )
+            for issue_id, topic_commits in sorted(partitions.items()):
+                for side_sha in sorted(topic_commits):
+                    add_candidate(
+                        candidate_claims,
+                        side_sha,
+                        issue_id,
+                        "branch",
+                        "content",
+                    )
+            for side_sha in side:
                 add_candidate(
                     candidate_claims,
                     side_sha,
@@ -578,7 +665,9 @@ def build_attribution(runner, cwd, *, rev_range=None):
             continue
 
         unresolved_sides = []
+        mapped_sides = []
         for parent_index, parent in enumerate(entry["parents"][1:], start=1):
+            side = merge_side_commits(records, sha, parent_index)
             corroborated = {
                 issue_id_from_branch(ref, issue_ids)
                 for ref, tip in built["ref_tips"].items()
@@ -588,22 +677,39 @@ def build_attribution(runner, cwd, *, rev_range=None):
             if len(corroborated) == 1:
                 issue_id = next(iter(corroborated))
                 if issue_id in named:
-                    for side_sha in merge_side_commits(
-                        records,
-                        sha,
-                        parent_index,
-                    ):
-                        add_candidate(
-                            candidate_claims,
-                            side_sha,
-                            issue_id,
-                            "branch",
-                            "content",
-                        )
+                    mapped_sides.append((issue_id, side))
                     continue
-            unresolved_sides.append(
-                merge_side_commits(records, sha, parent_index)
+            unresolved_sides.append(side)
+
+        if not unresolved_sides:
+            side_union = set().union(
+                *(side for _issue_id, side in mapped_sides)
             )
+            partitions = partition_topic_side_commits(
+                records,
+                side_union,
+                built["ref_tips"],
+                issue_ids,
+            )
+            for issue_id, topic_commits in sorted(partitions.items()):
+                for side_sha in sorted(topic_commits):
+                    add_candidate(
+                        candidate_claims,
+                        side_sha,
+                        issue_id,
+                        "branch",
+                        "content",
+                    )
+
+        for issue_id, side in mapped_sides:
+            for side_sha in side:
+                add_candidate(
+                    candidate_claims,
+                    side_sha,
+                    issue_id,
+                    "branch",
+                    "content",
+                )
 
         if unresolved_sides:
             if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
