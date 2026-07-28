@@ -224,10 +224,11 @@ def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
     topic_result = _record_ancestors(snapshot, topic_sha)
     fatal_errors = [*base_result["fatal_errors"], *topic_result["fatal_errors"]]
     if fatal_errors:
-        return [], fatal_errors
+        return [], set(), fatal_errors
     base_ancestors = base_result["ancestors"]
     topic_ancestors = topic_result["ancestors"]
     recovered = []
+    publication_sides = set()
     for merge_sha in sorted(base_ancestors):
         record = snapshot["records"][merge_sha]
         if len(record["parents"]) < 2:
@@ -250,11 +251,12 @@ def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
                 error for result in other_results for error in result["fatal_errors"]
             )
             if fatal_errors:
-                return [], fatal_errors
+                return [], publication_sides, fatal_errors
             if not any(side in result["ancestors"] for result in other_results):
                 maximal_sides.append(side)
         if len(maximal_sides) != 1:
             continue
+        publication_sides.update(maximal_sides)
         for parent in record["parents"]:
             if parent in maximal_sides:
                 continue
@@ -266,7 +268,7 @@ def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
             )
             fatal_errors.extend(bases["fatal_errors"])
             recovered.extend(bases["shas"] or [])
-    return sorted(set(recovered)), fatal_errors
+    return sorted(set(recovered)), publication_sides, fatal_errors
 
 
 def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
@@ -296,6 +298,7 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
     topic_sha = snapshot["refs"][topic_ref]
     by_fork = {}
     recovered_forks = set()
+    publication_sides = set()
     ordinary_forks = set()
     needs_publication_recovery = False
     fatal_errors = []
@@ -313,10 +316,12 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
         candidates = result["shas"] or []
         recovered = []
         if not result["fatal_errors"] and topic_sha in snapshot["records"]:
-            recovered, recovery_errors = _publication_forks(
+            recovered, sides, recovery_errors = _publication_forks(
                 runner, cwd, snapshot, topic_sha, base_sha
             )
+            publication_sides.update(sides)
             fatal_errors.extend(recovery_errors)
+        candidates = [sha for sha in candidates if sha not in publication_sides]
         if recovered:
             needs_publication_recovery = True
             recovered_forks.update(recovered)
@@ -540,6 +545,7 @@ def topic_delta(
                 **fork,
                 "stacked_exclusions": [],
                 "commits": set(),
+                "fatal_errors": [*fork["fatal_errors"], *pair["fatal_errors"]],
                 "diagnostics": diagnostics,
             }
         for candidate in pair["shas"] or []:
@@ -560,6 +566,7 @@ def topic_delta(
                     **fork,
                     "stacked_exclusions": [],
                     "commits": set(),
+                    "fatal_errors": [*fork["fatal_errors"], *above_fork["fatal_errors"]],
                     "diagnostics": diagnostics,
                 }
             if above_fork["value"] is True:
