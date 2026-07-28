@@ -75,6 +75,7 @@ the architectural closure.
 | FH-029 | Publication recovery probed Git per history record | Snapshot traversal must not make subprocess count grow with history length | regression captured |
 | FH-030 | A compatibility wrapper retained the retired global-base policy | Compatibility paths delegate per topic or are removed | regression captured |
 | FH-031 | Range-truncated snapshots rejected valid topology output | Topology inventory is complete and range projection is separate | regression captured |
+| FH-032 | Structured diagnostics duplicated flat compatibility errors | Compatibility messages are stable and deduplicated without losing diagnostic scope | regression captured |
 
 ## Failure Records
 
@@ -319,11 +320,21 @@ the architectural closure.
   cached a stacked pairwise merge-base failure. Attribution stayed empty, but
   the second membership build returned `errors=[]` and `degraded=[]` because
   the fatal early return omitted query metadata from the delta payload.
+- **Sixth recurrence evidence**: T05 independent quality review at `a4065f6`
+  forced the live topic `merge-base --all` query to fail after the snapshot
+  loaded. `build_attribution()` collected the membership fatal but continued
+  candidate calculation, so a trailer-bearing commit remained attributed and
+  the bare resolver returned an issue id together with `fatal_errors`.
 - **Resolution evidence**: `95be177`, `9c03d0f`, `290aa62`, `4fc5525`,
   `bea07b3`, and `414a81f` made fresh and cached fork, ancestry, publication,
   and stacked-membership failures replay the same scoped compatibility signal
   while keeping the affected delta empty. T03 passed 231/231 and final quality
   review explicitly rechecked cached failure behavior.
+- **Resolution evidence**: `8221ea0` makes every post-snapshot membership or
+  registry fatal return empty attribution, preserves records/order/unmatched
+  and scoped diagnostic surfaces, and prevents whole-result and bare resolvers
+  from returning an owner. The cumulative T05 gate passed 279/279, and
+  independent spec and quality reviews reported no finding.
 - **Status**: regression captured.
 
 ### FH-011 — Disconnected Non-Issue Base
@@ -636,6 +647,17 @@ the architectural closure.
 - **Resolution evidence**: T03 migrated the failure fixtures to
   `merge-base --all` object-id queries, removed retired `origin/HEAD`
   expectations, and passed the cumulative 231/231 gate.
+- **Recurrence evidence**: T05 implementation at `e9d141e` removed the
+  explicitly retired bare `git show` resolver, but three direct linkage
+  fixtures still stubbed or failed only that command. The new single
+  `build_attribution(target_shas={sha})` path therefore received no usable
+  snapshot in two ownership tests, while the old git-show failure test asserted
+  an obsolete error boundary. Restoring a production fallback would recreate
+  the duplicated policy D1 is required to remove.
+- **Resolution evidence**: `a4065f6` migrated all three linkage fixtures to
+  the current snapshot/graph boundary and removed the bare `git show` policy
+  path. The T05 direct-consumer gate passed 279/279 at `8221ea0` with clean
+  independent reviews.
 - **Status**: regression captured.
 
 ### FH-028 — Topic Diagnostics Disappeared at Live Attribution
@@ -735,6 +757,28 @@ the architectural closure.
   passed 231/231.
 - **Status**: regression captured.
 
+### FH-032 — Duplicated Flat Compatibility Errors
+
+- **Topology**: one unresolved merge produces several structured diagnostics
+  for its boundary, affected SHAs, and affected issue ids.
+- **Observed failure**: `compatibility_errors()` copied every diagnostic
+  message verbatim, so one logical unresolved merge appeared four to six times
+  in the legacy flat `errors` list.
+- **Invalid assumption**: preserving structured diagnostic multiplicity also
+  requires duplicating the compatibility message surface.
+- **Derived invariant**: structured diagnostics retain every scoped record,
+  while compatibility errors preserve first-seen order and deduplicate equal
+  fatal strings and diagnostic messages.
+- **Evidence**: T05 independent quality review at `a4065f6` reproduced six
+  identical errors for `octopus_mapping_ambiguous` and four each for
+  `two_parent_multi_name_ambiguous_no_trailer` and
+  `stacked_partial_ambiguity_conventional_merge`.
+- **Resolution evidence**: `8221ea0` deduplicates fatal strings and diagnostic
+  messages in first-seen order while retaining every structured SHA/issue
+  diagnostic. The cumulative gate passed 279/279 and final quality review
+  independently rechecked both surfaces.
+- **Status**: regression captured.
+
 ## Required Design Traceability
 
 The redesign maps its requirements to this corpus:
@@ -757,5 +801,6 @@ The redesign maps its requirements to this corpus:
 | History-independent graph command count | FH-029 |
 | Removal of superseded compatibility policy | FH-030 |
 | Complete topology with separate range projection | FH-031 |
+| Stable flat compatibility messages over structured diagnostics | FH-032 |
 
 Future findings extend this table rather than replacing it.

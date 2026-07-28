@@ -24,7 +24,7 @@ architecture; it does not extend that heuristic.
 
 ## Stream D
 
-- [ ] D1 Add structured `fatal_errors` and scoped diagnostics, preserve compatibility `errors`, and make bare/indexed resolution project the same attribution result (`FH-001`, `FH-008`, `FH-009`, `FH-010`, `FH-018`). [files: scripts/commit_resolution.py, tests/test_commit_resolution.py, tests/test_commit_resolution_differential.py, tests/test_commit_resolution_parity.py] [depends: T04] [shared_state: true]
+- [x] D1 Add structured `fatal_errors` and scoped diagnostics, preserve compatibility `errors`, and make bare/indexed resolution project the same attribution result (`FH-001`, `FH-008`, `FH-009`, `FH-010`, `FH-018`). [files: scripts/commit_resolution.py, tests/test_commit_resolution.py, tests/test_commit_resolution_differential.py, tests/test_commit_resolution_parity.py] [depends: T04] [shared_state: true]
 
 ## Stream E
 

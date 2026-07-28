@@ -29,8 +29,8 @@
     "last_changed_at": "2026-07-27"
   },
   "blocker": null,
-  "last_action": "completed T04 merge-boundary and content-side claim separation with independent spec and quality approval; T05 structured and scoped diagnostics is next",
-  "last_verification": "2026-07-28 T04 gate: graph, resolver, differential, parity, and linkage suites passed 267/267 to terminal exit at 24bfd3c; independent spec and quality reviews reported no Critical, Important, or Minor findings; FH-005, FH-015, and FH-016 regressions captured",
+  "last_action": "completed T05 structured and scoped attribution diagnostics with independent spec and quality approval; T06 release-SHA linkage scope is next",
+  "last_verification": "2026-07-28 T05 gate: graph, resolver, differential, parity, and linkage suites passed 279/279 to terminal exit at 8221ea0; independent spec and quality reviews reported no Critical, Important, or Minor findings; FH-010, FH-027, and FH-032 regressions captured",
   "updated_at": "2026-07-28",
   "git_binding": {
     "mode": "git-files",
@@ -90,7 +90,10 @@
       "7d873f6",
       "d629281",
       "585a2f7",
-      "24bfd3c"
+      "24bfd3c",
+      "e9d141e",
+      "a4065f6",
+      "8221ea0"
     ],
     "pull_request": null,
     "release": null,

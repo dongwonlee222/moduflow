@@ -1077,8 +1077,23 @@ the fix. The implementation spans `59a4d69` through `24bfd3c`; the controller
 cumulative gate passed 267/267 in 180.284 seconds. Final independent spec and
 quality reviews reported no Critical, Important, or Minor findings.
 
+## T05 / D1 completion — 2026-07-28
+
+T05 introduced structured `fatal_errors`, caller-scoped diagnostics,
+order-preserving deduplicated compatibility errors, and one bare/indexed
+resolution policy. Bare commit lookup no longer uses a private `git show`
+trailer shortcut; whole-result and legacy mapping inputs remain supported.
+
+Implementation exposed stale linkage fixtures after the command-boundary
+migration (`FH-027`), then independent quality review found fatal attribution
+escaping through trailer candidates (`FH-010`) and duplicated flat messages
+over structured diagnostics (`FH-032`). Each was recorded before correction.
+The implementation spans `a4065f6` and `8221ea0`; the controller cumulative
+gate passed 279/279 in 206.813 seconds. Final independent spec and quality
+reviews reported no Critical, Important, or Minor findings.
+
 ## Current task
 
-T05 / D1 — add structured fatal errors and scoped diagnostics, preserve
-compatibility errors, and make bare/indexed resolution project one attribution
-result, covering `FH-001`, `FH-008`, `FH-009`, `FH-010`, and `FH-018`.
+T06 / E1 — make linkage build one attribution result scoped to behavior SHAs
+in the requested release range so unrelated historical ambiguity cannot fail
+the release, covering `FH-018`.

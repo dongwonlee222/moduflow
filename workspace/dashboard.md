@@ -120,8 +120,12 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   are separate, complex side ownership requires graph corroboration, and
   overlapping topic intervals are partitioned independently of subject,
   parent, or issue-id order. The cumulative gate passed 267/267; final spec
-  and quality reviews have no open finding. Current task is T05 structured and
-  scoped diagnostics.
+  and quality reviews have no open finding.
+- Issue `095` T05 (2026-07-28 at `8221ea0`): fatal errors and scoped
+  diagnostics are structured, compatibility errors are stable and deduplicated,
+  and bare/indexed lookups use one policy without per-commit `git show`.
+  The cumulative gate passed 279/279; final reviews have no open finding.
+  Current task is T06 release-SHA linkage scope.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance
