@@ -285,24 +285,20 @@ def partition_topic_side_commits(records, side_commits, ref_tips, issue_ids):
 
     Ancestor topic tips are assigned before descendant tips. Incomparable tips
     use stable topic identity, never merge-parent or subject-token order.
-    A tip naming several issues is ambiguous and disables this refinement.
+    A tip naming several issues reserves only its own interval as unresolved;
+    unique ancestor and descendant intervals remain attributable.
     """
     tip_topics = {}
     for ref, tip in ref_tips.items():
         issue_id = issue_id_from_branch(ref, issue_ids)
         if issue_id is not None and tip in side_commits:
             tip_topics.setdefault(tip, set()).add((issue_id, ref))
-    if any(
-        len({issue_id for issue_id, _ref in topics}) > 1
-        for topics in tip_topics.values()
-    ):
-        return {}
-
     entries = sorted(
-        {
-            (next(iter(topics))[0], tip)
-            for tip, topics in tip_topics.items()
-        }
+        (
+            tuple(sorted({issue_id for issue_id, _ref in topics})),
+            tip,
+        )
+        for tip, topics in tip_topics.items()
     )
     reachable_cache = {}
 
@@ -339,16 +335,24 @@ def partition_topic_side_commits(records, side_commits, ref_tips, issue_ids):
 
     claimed = set()
     partitions = {}
-    for issue_id, tip in ordered:
+    unresolved = {}
+    for affected_issues, tip in ordered:
         commits = {
             sha
             for sha in reachable(tip).intersection(side_commits) - claimed
             if len(records[sha]["parents"]) < 2
         }
-        if commits:
+        claimed.update(commits)
+        if len(affected_issues) == 1 and commits:
+            issue_id = affected_issues[0]
             partitions.setdefault(issue_id, set()).update(commits)
-            claimed.update(commits)
-    return partitions
+        elif commits:
+            for sha in commits:
+                unresolved.setdefault(sha, set()).update(affected_issues)
+    return {
+        "partitions": partitions,
+        "unresolved": unresolved,
+    }
 
 
 def branch_side_commits(records, merge_sha):
@@ -573,6 +577,51 @@ def build_attribution(runner, cwd, *, rev_range=None):
         if item not in candidates.setdefault(sha, []):
             candidates[sha].append(item)
 
+    def add_partition_ambiguity(merge_sha, unresolved):
+        if not unresolved:
+            return
+        if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
+            degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
+        message = (
+            f"merge {merge_sha} has ambiguous retained topic refs "
+            "inside side content"
+        )
+        if message not in errors:
+            errors.append(message)
+        affected_issues = sorted(
+            {
+                issue_id
+                for scoped_issues in unresolved.values()
+                for issue_id in scoped_issues
+            }
+        )
+        for issue_id in affected_issues:
+            boundary_diagnostic = commit_graph.diagnostic(
+                "merge-side-unresolved",
+                message,
+                sha=merge_sha,
+                issue_id=issue_id,
+            )
+            if boundary_diagnostic not in diagnostics:
+                diagnostics.append(boundary_diagnostic)
+        for content_sha, scoped_issues in sorted(unresolved.items()):
+            for issue_id in sorted(scoped_issues):
+                add_candidate(
+                    candidate_claims,
+                    content_sha,
+                    issue_id,
+                    "branch",
+                    "unresolved",
+                )
+                content_diagnostic = commit_graph.diagnostic(
+                    "merge-side-unresolved",
+                    message,
+                    sha=content_sha,
+                    issue_id=issue_id,
+                )
+                if content_diagnostic not in diagnostics:
+                    diagnostics.append(content_diagnostic)
+
     for sha in topology_order:
         trailer = TRAILER_RE.search(records[sha]["body"])
         if trailer:
@@ -639,13 +688,15 @@ def build_attribution(runner, cwd, *, rev_range=None):
         # evidence.
         if len(entry["parents"]) == 2 and len(named) == 1:
             side = merge_side_commits(records, sha, 1)
-            partitions = partition_topic_side_commits(
+            partitioned = partition_topic_side_commits(
                 records,
                 side,
                 built["ref_tips"],
                 issue_ids,
             )
-            for issue_id, topic_commits in sorted(partitions.items()):
+            for issue_id, topic_commits in sorted(
+                partitioned["partitions"].items()
+            ):
                 for side_sha in sorted(topic_commits):
                     add_candidate(
                         candidate_claims,
@@ -654,6 +705,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
                         "branch",
                         "content",
                     )
+            add_partition_ambiguity(sha, partitioned["unresolved"])
             for side_sha in side:
                 add_candidate(
                     candidate_claims,
@@ -685,13 +737,15 @@ def build_attribution(runner, cwd, *, rev_range=None):
             side_union = set().union(
                 *(side for _issue_id, side in mapped_sides)
             )
-            partitions = partition_topic_side_commits(
+            partitioned = partition_topic_side_commits(
                 records,
                 side_union,
                 built["ref_tips"],
                 issue_ids,
             )
-            for issue_id, topic_commits in sorted(partitions.items()):
+            for issue_id, topic_commits in sorted(
+                partitioned["partitions"].items()
+            ):
                 for side_sha in sorted(topic_commits):
                     add_candidate(
                         candidate_claims,
@@ -700,6 +754,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
                         "branch",
                         "content",
                     )
+            add_partition_ambiguity(sha, partitioned["unresolved"])
 
         for issue_id, side in mapped_sides:
             for side_sha in side:

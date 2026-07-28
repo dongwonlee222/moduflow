@@ -27,6 +27,7 @@ the oracle kept agreeing with the bug. Two rules keep the declarations honest:
 ALPHA = "101-alpha"
 BETA = "102-beta"
 GAMMA = "103-gamma"
+DELTA = "104-delta"
 
 
 def _seed(repo, *issue_ids):
@@ -157,6 +158,25 @@ def stacked_parent_then_child_merge(repo):
         belongs_to=BETA,
     )
     return [ALPHA, BETA]
+
+
+def stacked_partial_ambiguity_conventional_merge(repo):
+    """FH-005: one ambiguous topic interval does not erase unique neighbors."""
+    _seed(repo, ALPHA, BETA, GAMMA, DELTA)
+    repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: unique alpha interval", belongs_to=ALPHA)
+    repo.branch(f"codex/{BETA}")
+    repo.commit("feat: ambiguous beta gamma interval", belongs_to=None)
+    repo._git("branch", f"codex/{GAMMA}")
+    delta = repo.branch(f"codex/{DELTA}")
+    repo.commit("feat: unique delta interval", belongs_to=DELTA)
+    repo.checkout(repo.default_branch)
+    repo.merge(
+        delta,
+        message=f"Merge branch 'codex/{DELTA}'",
+        belongs_to=DELTA,
+    )
+    return [ALPHA, BETA, GAMMA, DELTA]
 
 
 def branch_name_not_matching_issue(repo):
@@ -662,6 +682,9 @@ ALL_SHAPES = {
     "nested_merges": nested_merges,
     "nested_merges_reversed_issue_order": nested_merges_reversed_issue_order,
     "stacked_parent_then_child_merge": stacked_parent_then_child_merge,
+    "stacked_partial_ambiguity_conventional_merge": (
+        stacked_partial_ambiguity_conventional_merge
+    ),
     "branch_name_not_matching_issue": branch_name_not_matching_issue,
     "disconnected_non_issue_base": disconnected_non_issue_base,
     "local_slash_branch_is_not_remote": local_slash_branch_is_not_remote,

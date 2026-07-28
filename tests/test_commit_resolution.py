@@ -90,6 +90,30 @@ class MergeClaimInvariantTests(unittest.TestCase):
             )
         )
 
+    def test_partial_topic_ambiguity_is_scoped_to_its_interval(self):
+        """FH-005: unique stacked intervals survive a same-tip ambiguity."""
+        result = resolve_shape("stacked_partial_ambiguity_conventional_merge")
+        self.assertEqual(
+            result["content_owners"]["feat: unique alpha interval"],
+            frozenset({shapes.ALPHA}),
+        )
+        self.assertEqual(
+            result["content_owners"]["feat: ambiguous beta gamma interval"],
+            frozenset(),
+        )
+        self.assertEqual(
+            result["content_owners"]["feat: unique delta interval"],
+            frozenset({shapes.DELTA}),
+        )
+        for issue_id in (shapes.BETA, shapes.GAMMA):
+            self.assertTrue(
+                any(
+                    diagnostic["code"] == "merge-side-unresolved"
+                    and diagnostic.get("issue_id") == issue_id
+                    for diagnostic in result["diagnostics"]
+                )
+            )
+
     def test_deleted_refs_keep_boundary_but_not_unproven_content(self):
         """FH-015: deleted refs retain boundaries and expose unresolved sides."""
         result = resolve_shape("octopus_mapping_ambiguous")
