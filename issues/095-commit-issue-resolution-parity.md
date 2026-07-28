@@ -144,6 +144,7 @@ existing history. Do not make converge gate the review verdict.
 - 2026-07-27: completed T01 graph snapshot and failure-semantics boundary at `8068f98`. Review-discovered `FH-021` and `FH-022` now have executable regressions; the four direct consumer suites pass 105/105, and separate spec and quality reviews approved the result. T02 historical fork-point derivation is next.
 - 2026-07-27: completed T02 historical fork-point derivation at `d25bbdd`. Independent review found and closed snapshot-time ref drift, incomplete criss-cross merge bases, and a missing comparable-candidate invariant as `FH-023`–`FH-025`; the direct consumer gate passes 117/117 with no open review finding. T03 stacked topic deltas are next.
 - 2026-07-27: prepared an Issue 096 handoff proposing explicit `--evidence` writes, issue-id path traversal prevention, repo-external symlink rejection, and write-path announcements. Issue 095 does not modify Issue 096; its canonical issue must add these acceptance criteria, the dependency on 095, and the plugin-update gate before execution. The installed plugin remains on hold until both issues are safe.
+- 2026-07-28: completed T03 stacked topic deltas at `2a000c0`. Repeated publication/base/diagnostic/range failures were preserved as `FH-002`, `FH-003`, `FH-010`, `FH-022`, and `FH-026`–`FH-031`; the cumulative direct-consumer gate passed 231/231 to terminal exit, and independent spec and quality reviews reported no open finding. T04 merge-boundary/content-side claims are next.
 
 ## Links
 

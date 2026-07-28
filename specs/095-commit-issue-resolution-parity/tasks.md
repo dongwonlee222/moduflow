@@ -16,7 +16,7 @@ architecture; it does not extend that heuristic.
 ## Stream B
 
 - [x] B1 Derive one ancestry-maximal historical fork point per issue ref; prove trunk advancement, equivalent refs, disconnected refs, slash names, and multiple remotes cannot change unrelated attribution (`FH-006`, `FH-011`, `FH-012`, `FH-013`, `FH-017`). [files: scripts/commit_graph.py, tests/test_commit_graph.py, tests/git_repo_builder.py, tests/commit_resolution_shapes.py] [depends: T01] [shared_state: true]
-- [ ] B2 Compute topic deltas from the fork point plus ancestry-maximal stacked-issue exclusions; remove the live global-base path (`FH-002`, `FH-003`, `FH-005`). [files: scripts/commit_graph.py, scripts/commit_resolution.py, tests/test_commit_graph.py, tests/commit_resolution_shapes.py, tests/test_commit_resolution_differential.py] [depends: T02] [shared_state: true]
+- [x] B2 Compute topic deltas from the fork point plus ancestry-maximal stacked-issue exclusions; remove the live global-base path (`FH-002`, `FH-003`, `FH-005`). [files: scripts/commit_graph.py, scripts/commit_resolution.py, tests/test_commit_graph.py, tests/commit_resolution_shapes.py, tests/test_commit_resolution_differential.py] [depends: T02] [shared_state: true]
 
 ## Stream C
 

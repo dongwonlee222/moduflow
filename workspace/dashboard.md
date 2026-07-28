@@ -111,7 +111,12 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   derivation completed. Review caught and closed snapshot ref drift,
   criss-cross incomplete merge bases, and a missing comparable-candidate
   invariant as `FH-023`–`FH-025`. Four direct consumer suites passed 117/117;
-  final review has no open finding. Current task is T03 stacked topic deltas.
+  final review has no open finding.
+- Issue `095` T03 (2026-07-28 at `2a000c0`): historical topic deltas, stacked
+  exclusions, publication recovery, cached diagnostic replay, and independent
+  range projection completed. The cumulative five-module gate passed 231/231
+  to terminal exit; independent spec and quality reviews have no open finding.
+  Current task is T04 merge-boundary/content-side claim separation.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance

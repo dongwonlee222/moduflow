@@ -45,22 +45,22 @@ the architectural closure.
 | ID | Failure family | Derived invariant | Status |
 | --- | --- | --- | --- |
 | FH-001 | Consumers used different ownership rules | All query directions use one attribution result and policy | superseded by redesign |
-| FH-002 | Branch containment was treated as authorship | Attribution uses branch contribution, never raw ancestry | superseded by redesign |
-| FH-003 | Merged topic minus current main became empty | Historical fork evidence must survive later merges | superseded by redesign |
+| FH-002 | Branch containment was treated as authorship | Attribution uses branch contribution, never raw ancestry | regression captured |
+| FH-003 | Merged topic minus current main became empty | Historical fork evidence must survive later merges | regression captured |
 | FH-004 | Sync-merge direction attributed trunk content to a topic | Merge direction and content sides come from graph structure | regression captured |
-| FH-005 | Nested merges leaked inner issue content into the outer issue | Content commits remain single-owner across stacked histories | superseded by redesign |
-| FH-006 | A stale local default branch over-collected trunk commits | Base selection compares fork points, not preferred ref tips | open |
+| FH-005 | Nested merges leaked inner issue content into the outer issue | Content commits remain single-owner across stacked histories | regression captured |
+| FH-006 | A stale local default branch over-collected trunk commits | Base selection compares fork points, not preferred ref tips | regression captured |
 | FH-007 | Precedence worked in only one query direction | Apply precedence once after collecting all candidate claims | regression captured |
 | FH-008 | Bare and indexed lookup had separate precedence paths | Bare and indexed lookup must project the same attribution result | regression captured |
 | FH-009 | Checkout state and unknown branch tails changed the issue registry | Registered issue identity must be historical and fail closed | regression captured |
 | FH-010 | Git query failures were flattened into empty attribution | Command failure is distinct from an ordinary negative result | regression captured |
-| FH-011 | A disconnected non-issue ref became the repository base | Unrelated refs cannot change a topic's contribution | open |
-| FH-012 | A local slash branch was mistaken for a remote counterpart | Ref identity uses full ref namespace and object identity | open |
-| FH-013 | Same-tail refs on multiple remotes created false certainty | Equivalent refs collapse by object; distinct lineages stay distinct | open |
+| FH-011 | A disconnected non-issue ref became the repository base | Unrelated refs cannot change a topic's contribution | regression captured |
+| FH-012 | A local slash branch was mistaken for a remote counterpart | Ref identity uses full ref namespace and object identity | regression captured |
+| FH-013 | Same-tail refs on multiple remotes created false certainty | Equivalent refs collapse by object; distinct lineages stay distinct | regression captured |
 | FH-014 | `origin/HEAD` lookup failure was silently ignored | Default-ref discovery failures remain observable diagnostics | regression captured |
 | FH-015 | Octopus subject order and deleted refs changed ownership | Subject token order cannot assign content without graph corroboration | open |
 | FH-016 | Two-parent multi-name merge subjects relabelled side content | A merge boundary claim is not proof of content ownership | open |
-| FH-017 | Normal trunk advancement was reported as base ambiguity | Advancing a base lineage cannot change the historical fork point | open |
+| FH-017 | Normal trunk advancement was reported as base ambiguity | Advancing a base lineage cannot change the historical fork point | regression captured |
 | FH-018 | Unrelated historical ambiguity failed the current release | Diagnostics are projected to the caller's commit or issue scope | open |
 | FH-019 | Stale fixtures masked shared-index regressions | Fixtures must reproduce each Git boundary and consumer call shape | regression captured |
 | FH-020 | Reference oracle repeated implementation assumptions | Truth is declared independently and checked with invariants | superseded by redesign |
@@ -69,6 +69,12 @@ the architectural closure.
 | FH-023 | Ref movement mixed snapshot-time and query-time graph state | Graph queries use snapshot object IDs, not live ref names | regression captured |
 | FH-024 | One arbitrary criss-cross merge base became a unique fork | Fork selection consumes every best merge base or fails scoped ambiguity | regression captured |
 | FH-025 | Tests never exercised comparable fork candidates | Invariant tests must fail when ancestry-maximal selection is removed | regression captured |
+| FH-026 | A yielded long-running test was reported green before exit | Verification evidence includes the terminal process exit and summary | regression captured |
+| FH-027 | Fault-injection fixtures still matched the retired Git command | Boundary migrations update every direct failure fixture before review | regression captured |
+| FH-028 | Topic-fork diagnostics disappeared at live attribution | Every live consumer preserves scoped diagnostics through compatibility surfaces | regression captured |
+| FH-029 | Publication recovery probed Git per history record | Snapshot traversal must not make subprocess count grow with history length | regression captured |
+| FH-030 | A compatibility wrapper retained the retired global-base policy | Compatibility paths delegate per topic or are removed | regression captured |
+| FH-031 | Range-truncated snapshots rejected valid topology output | Topology inventory is complete and range projection is separate | regression captured |
 
 ## Failure Records
 
@@ -96,7 +102,25 @@ the architectural closure.
 - **Derived invariant**: a branch claim covers only its contribution after its
   historical fork, with stacked-issue exclusions.
 - **Evidence**: 2026-07-26 implementation correction in `status.md`.
-- **Status**: superseded by redesign.
+- **Recurrence evidence**: T03 independent spec review at `fd08636` merged an
+  incomparable non-issue lineage into a topic before publication. Publication
+  recovery discarded that ordinary base candidate, selected the main fork
+  without ambiguity, and included unrelated lineage content in the topic
+  delta.
+- **Second recurrence evidence**: T03 independent quality review at `bea07b3`
+  cut a topic from incomparable `develop=A`, sync-merged `main=F` as second
+  parent, then published to main. A first-parent alias walk never reached
+  recovered fork `F` but still removed `A`, silently attributing base content.
+- **Third recurrence evidence**: T03 independent quality review at `414a81f`
+  cut `develop=A` from recovered main fork `F`, then cut and published topic
+  `T` from `A`. The alias walk reached `F` and wrongly removed comparable real
+  base `A`, attributing `{A,T}` instead of only `{T}`.
+- **Resolution evidence**: `0f35406` retained ordinary candidates behind the
+  earliest publication side, while `2a000c0` limited live alias suppression to
+  the segment above the latest observed publication side. The cumulative T03
+  gate reached terminal exit 0 with 231/231 tests; independent spec and quality
+  reviews reported no Critical, Important, or Minor findings.
+- **Status**: regression captured.
 
 ### FH-003 — Current Main Tip Is Not a Historical Base
 
@@ -108,7 +132,41 @@ the architectural closure.
 - **Derived invariant**: contribution is anchored to a merge-base fork point,
   not current containment.
 - **Evidence**: 2026-07-26 correction in `status.md`.
-- **Status**: superseded by redesign.
+- **Recurrence evidence**: T03 independent spec review at `83913d9`
+  reproduced `happy_merge` with `fork_point == topic tip`,
+  `commits == set()`, and no diagnostic. The first B2 implementation therefore
+  repeated the original failure after replacing the global-base path.
+- **Second recurrence evidence**: T03 independent quality review at `db7aee8`
+  published topic tip `T1`, advanced the live topic ref to `T2`, and observed
+  fork `T1` with only `{T2}` returned. Previously published contribution was
+  silently lost with no diagnostic.
+- **Third recurrence evidence**: T03 independent quality review at `9c03d0f`
+  published `T1`, advanced to `T2`, and published again. Fork selection moved
+  to `T1`, returning only `{T2}` instead of the full `{T1, T2}` contribution.
+- **Fourth recurrence evidence**: T03 independent quality review at `8786ae0`
+  retained a non-issue ref at the first published tip `T1`. That ordinary
+  candidate dominated recovered fork `F`, again returning only `{T2}` after
+  the second publication.
+- **Fifth recurrence evidence**: T03 independent spec review at `9bf98e4`
+  renamed that alias from `release/last-topic` to sorting-earlier
+  `archive/last-topic`. The alias entered ordinary candidates before main
+  exposed publication metadata, so ref order again moved the fork to `T1`.
+- **Sixth recurrence evidence**: T03 independent quality review at `c43bd73`
+  kept a non-issue alias at `Tmid`, a first-parent topic commit between
+  publications `T1` and `T2`. Exact publication-side filtering missed it, so
+  fork selection advanced to `Tmid` and returned only `{T2}`.
+- **Seventh recurrence evidence**: T03 independent quality review at `0f35406`
+  published `T1` once, advanced the live topic through `Tmid` to `T2`, and
+  kept a non-issue alias at `Tmid` without republishing. Alias suppression
+  compared only observed publication sides and omitted the live topic tip as
+  the upper anchor, so fork selection advanced to `Tmid` and returned only
+  `{T2}` instead of `{T1, Tmid, T2}`.
+- **Resolution evidence**: publication recovery and alias-boundary fixes from
+  `f9aad10` through `2a000c0` now preserve the pre-publication fork across
+  first publication, repeated publication, ref-order aliases, aliases between
+  publications, and aliases above the latest publication. The cumulative T03
+  gate passed 231/231 with both independent reviews clean.
+- **Status**: regression captured.
 
 ### FH-004 — Sync-Merge Direction
 
@@ -132,7 +190,10 @@ the architectural closure.
 - **Derived invariant**: content commits are single-owner; pairwise fork points
   above the non-issue fork become stacked-issue exclusions.
 - **Evidence**: R9-1 in review round 9; corrective commit `ef149a8`.
-- **Status**: superseded by redesign.
+- **Resolution evidence**: T03 added ancestry-maximal stacked exclusions plus
+  cached failure regressions. `2a000c0` passed the 231/231 cumulative gate and
+  both independent reviews without an open finding.
+- **Status**: regression captured.
 
 ### FH-006 — Stale Local Default Branch
 
@@ -146,7 +207,11 @@ the architectural closure.
   that produce the same fork point are harmless.
 - **Evidence**: Q4 in review round 5, reopened in round 8, R9-2; corrective
   commits `4f5d14a`, `77ecbbf`, and `bfa4157` did not close the architecture.
-- **Status**: open until the fork-point redesign passes all gates.
+- **Resolution evidence**: T02 `b711c06`/`d25bbdd` established per-topic
+  ancestry-maximal fork selection; T03 preserved that fork through live and
+  published deltas. The cumulative gate passed 231/231 at `2a000c0`, followed
+  by clean independent spec and quality reviews.
+- **Status**: regression captured.
 
 ### FH-007 — One-Direction Precedence
 
@@ -196,6 +261,30 @@ the architectural closure.
 - **Derived invariant**: ordinary negative results, command failures, and
   terminated calls have separate outcomes and diagnostics.
 - **Evidence**: corrective commit `881d81d`; independent quality review.
+- **Recurrence evidence**: T03 independent quality review at `db7aee8`
+  failed only the stacked beta/alpha `merge-base --all` query. The fatal error
+  was recorded, but beta still returned both alpha and beta content.
+- **Second recurrence evidence**: T03 independent spec review at `76e8f97`
+  failed a publication-parent merge-base query with another good base present.
+  The first delta was empty, but a second call on the same snapshot reused the
+  cached fatal and returned work plus a base commit.
+- **Third recurrence evidence**: T03 independent spec review at `95be177`
+  failed only the stacked fork-to-pair ancestry query. The first beta delta was
+  empty, but the same snapshot's second call reused the cached fatal and
+  returned three commits including alpha content.
+- **Fourth recurrence evidence**: T03 independent quality review at `9c03d0f`
+  cached an incomplete publication ancestry as `None`. The first delta closed,
+  but a second call lost the cached fatal context and returned topic content;
+  repeated membership projection also lost its compatibility error signal.
+- **Fifth recurrence evidence**: T03 independent quality review at `8786ae0`
+  cached a stacked pairwise merge-base failure. Attribution stayed empty, but
+  the second membership build returned `errors=[]` and `degraded=[]` because
+  the fatal early return omitted query metadata from the delta payload.
+- **Resolution evidence**: `95be177`, `9c03d0f`, `290aa62`, `4fc5525`,
+  `bea07b3`, and `414a81f` made fresh and cached fork, ancestry, publication,
+  and stacked-membership failures replay the same scoped compatibility signal
+  while keeping the affected delta empty. T03 passed 231/231 and final quality
+  review explicitly rechecked cached failure behavior.
 - **Status**: regression captured.
 
 ### FH-011 — Disconnected Non-Issue Base
@@ -208,7 +297,11 @@ the architectural closure.
 - **Derived invariant**: a candidate without a usable merge base for the topic
   is irrelevant to that topic and cannot affect other topics.
 - **Evidence**: independent review around corrective commit `4f5d14a`.
-- **Status**: open until per-topic fork-point tests and full gates pass.
+- **Resolution evidence**: T02 per-topic fork invariants and T03 delta
+  regressions keep disconnected refs irrelevant while scoping true
+  incomparability to the affected topic. The T03 cumulative gate passed
+  231/231 with clean independent reviews.
+- **Status**: regression captured.
 
 ### FH-012 — Local Slash Branch Versus Remote Namespace
 
@@ -219,7 +312,10 @@ the architectural closure.
 - **Derived invariant**: retain full ref namespace; collapse only refs proven
   equivalent by object identity and lineage.
 - **Evidence**: independent review around corrective commit `4f5d14a`.
-- **Status**: open under the redesign.
+- **Resolution evidence**: T02's full-ref/object snapshot regressions and T03's
+  ref-order publication regressions passed the 231/231 cumulative gate at
+  `2a000c0`.
+- **Status**: regression captured.
 
 ### FH-013 — Same Tail Across Multiple Remotes
 
@@ -231,7 +327,11 @@ the architectural closure.
 - **Derived invariant**: identical object ids collapse; distinct fork evidence
   remains distinct and ambiguity is scoped to the affected topic.
 - **Evidence**: final attribution review leading to `77ecbbf` and `bfa4157`.
-- **Status**: open under the redesign.
+- **Resolution evidence**: T02 covers equal-object collapse and divergent
+  same-tail ambiguity; T03 preserves that diagnostic through live membership
+  and cached projection. The cumulative gate passed 231/231 with clean
+  independent reviews.
+- **Status**: regression captured.
 
 ### FH-014 — Silent `origin/HEAD` Failure
 
@@ -281,7 +381,10 @@ the architectural closure.
 - **Derived invariant**: advancing a base lineage after fork does not change
   the topic's merge-base fork point or attribution.
 - **Evidence**: final independent quality review at `bfa4157`.
-- **Status**: open; primary redesign trigger.
+- **Resolution evidence**: T02's advancing-trunk invariant and T03's live and
+  published delta regressions preserve the historical merge-base fork. The
+  cumulative gate passed 231/231 at `2a000c0`.
+- **Status**: regression captured.
 
 ### FH-018 — Unscoped Historical Ambiguity
 
@@ -365,6 +468,13 @@ the architectural closure.
 - **Resolution evidence**: `8068f98` added RED/GREEN coverage for empty and
   multi-token successful merge-base output and made both fail closed. The
   direct graph, resolver, parity, and linkage consumer suites passed 105/105.
+- **Recurrence evidence**: T03 independent spec review at `76e8f97` returned
+  rc=0 range output `not-a-snapshot-sha extra`. The projection silently
+  filtered it to no commits and exposed no error.
+- **Resolution evidence**: `fd08636` validates every nonempty successful range
+  line as exactly one known snapshot SHA while accepting valid empty output.
+  Malformed and unknown output now fail closed observably; the cumulative T03
+  gate passed 231/231.
 - **Status**: regression captured.
 
 ### FH-023 — Snapshot Ref Movement Mixed Graph Times
@@ -421,6 +531,146 @@ the architectural closure.
   newer unique maximal fork.
 - **Status**: regression captured.
 
+### FH-026 — Yielded Test Process Reported Green Before Exit
+
+- **Topology**: the graph, resolver, differential, parity, and linkage command
+  runs longer than the execution tool's initial yield window.
+- **Observed failure**: T03 reported the cumulative gate as exit 0, while an
+  independent run completed after 99 seconds with 200 tests and seven failures.
+- **Invalid assumption**: no output at a yield boundary means the process
+  completed successfully.
+- **Derived invariant**: verification evidence is valid only after polling the
+  same process session to a terminal exit code and recording its final test
+  summary.
+- **Evidence**: T03 independent controller run at `4d20a19`,
+  `python3 -m unittest tests.test_commit_graph tests.test_commit_resolution
+  tests.test_commit_resolution_differential tests.test_commit_resolution_parity
+  tests.test_linkage_check -q`.
+- **Resolution evidence**: the controller polled the same process to terminal
+  exit 0 at `2a000c0`: 231 tests passed in 204.678 seconds. Independent spec
+  review repeated the full command with 231/231 and terminal exit 0.
+- **Status**: regression captured.
+
+### FH-027 — Retired Git Command Left Stale Failure Fixtures
+
+- **Topology**: live topic deltas migrate from single-result
+  `git merge-base <ref> <ref>` to complete
+  `git merge-base --all <object-id> <object-id>`, while resolver failure
+  fixtures still intercept only the old command.
+- **Observed failure**: terminated and failed merge-base tests no longer
+  injected the failure, so branch work was attributed instead of failing
+  closed; origin-HEAD tests also asserted a command the live global-base path
+  intentionally removed.
+- **Invalid assumption**: replacing a Git boundary in production code does not
+  require migrating direct consumer fault-injection fixtures and retired-path
+  expectations.
+- **Derived invariant**: every boundary migration updates all direct failure
+  fixtures to the exact current command shape and removes assertions for
+  intentionally retired commands before the task can be green.
+- **Evidence**: T03 controller gate at `4d20a19`,
+  `tests/test_commit_resolution.py:714-821`.
+- **Resolution evidence**: T03 migrated the failure fixtures to
+  `merge-base --all` object-id queries, removed retired `origin/HEAD`
+  expectations, and passed the cumulative 231/231 gate.
+- **Status**: regression captured.
+
+### FH-028 — Topic Diagnostics Disappeared at Live Attribution
+
+- **Topology**: same-tail remote histories produce incomparable per-topic fork
+  candidates and an `ambiguous-topic-fork` diagnostic.
+- **Observed failure**: `topic_delta()` detected the ambiguity, but
+  `build_attribution()` returned `errors: []`; two differential shapes lost
+  the existing live compatibility warning.
+- **Invalid assumption**: computing a scoped diagnostic is sufficient even
+  when the live builder drops it before consumer-facing output.
+- **Derived invariant**: live membership and attribution preserve every
+  per-topic diagnostic through the current compatibility error surface until
+  Stream D introduces the final structured projection.
+- **Evidence**: T03 controller gate at `4d20a19`,
+  `tests/test_commit_resolution_differential.py:156`.
+- **Recurrence evidence**: T03 independent quality review at `8786ae0`
+  showed that a second membership projection over a cached pairwise graph
+  failure stayed empty but dropped both the compatibility error and degraded
+  marker.
+- **Resolution evidence**: `83913d9`, `4fc5525`, `bea07b3`, and `414a81f`
+  preserve same-tail ambiguity and cached fork/ancestry/publication failures
+  through every membership projection. Final quality review at `2a000c0`
+  explicitly verified the fresh/cached fail-closed contract.
+- **Status**: regression captured.
+
+### FH-029 — Publication Recovery Scaled Git Calls with History
+
+- **Topology**: a published topic is recovered by scanning every snapshot
+  record and issuing cached ancestry queries for candidate commits.
+- **Observed failure**: the correctness gate passed, but implementation
+  self-review found that the number of Git subprocesses could grow with commit
+  history; the 201-test cumulative gate expanded to 121.281 seconds.
+- **Invalid assumption**: cached per-commit graph probes satisfy the
+  command-count contract merely because duplicate pairs do not rerun.
+- **Derived invariant**: publication recovery traverses the already-loaded
+  parent graph in memory and issues only a bounded number of Git commands per
+  topic/ref topology, independent of unrelated history length.
+- **Evidence**: T03 implementation self-review at `f9aad10`,
+  `scripts/commit_graph.py` publication-fork recovery.
+- **Recurrence evidence**: T03 independent spec re-review at `b2ddde6` used a
+  long-lived branch cut before the topic and merged after topic publication.
+  `_publication_forks()` misclassified it as another publication boundary,
+  increasing Git calls from 6 to 7 without changing the result.
+- **Resolution evidence**: `b2ddde6`/`db7aee8` moved publication topology
+  recovery to bounded snapshot traversal and added unrelated-history and
+  pre-topic long-lived-branch command-count metamorphic regressions. Final
+  quality review confirmed live alias handling adds no Git subprocesses.
+- **Status**: regression captured.
+
+### FH-030 — Retired Global-Base Compatibility Wrapper
+
+- **Topology**: the live resolver uses per-topic deltas, but a direct
+  `base_ref()` compatibility call still probes `origin/HEAD`, scores repository
+  refs globally, and elects one base.
+- **Observed failure**: no live caller remained, yet the callable wrapper
+  preserved the exact repository-wide policy B2 was required to remove.
+- **Invalid assumption**: dead compatibility code is harmless even when it
+  exposes the superseded ownership model as an importable function.
+- **Derived invariant**: unsupported global-base helpers are removed with their
+  stale tests; any retained compatibility surface requires an explicit topic
+  and delegates to per-topic fork derivation.
+- **Evidence**: T03 independent quality review at `db7aee8`,
+  `scripts/commit_resolution.py:175`.
+- **Resolution evidence**: T03 removed the `base_ref()` election path and its
+  stale tests. The remaining empty `ORIGIN_HEAD_ARGS` import is inert
+  compatibility only; the live-resolution regression proves no global-base
+  election or `origin/HEAD` query occurs.
+- **Status**: regression captured.
+
+### FH-031 — Range-Truncated Topology Snapshot
+
+- **Topology**: a live topic has commits `A` then `B`, and resolution requests
+  `rev_range=A..B`.
+- **Observed failure**: the snapshot inventory contained only `B`; topic
+  `rev-list` correctly emitted `A` and `B`, but validation treated `A` as
+  malformed and returned an empty result plus a fatal error.
+- **Invalid assumption**: the caller's output range is also a complete graph
+  inventory for topology validation.
+- **Derived invariant**: attribution loads a complete topology snapshot,
+  validates graph output against it, and projects the final attribution onto
+  the requested range separately.
+- **Evidence**: T03 independent quality review at `db7aee8`,
+  `scripts/commit_graph.py:484` and `scripts/commit_graph.py:567`.
+- **Recurrence evidence**: T03 independent quality review at `9c03d0f`
+  showed that `HEAD..HEAD` was rejected as malformed despite being a valid
+  empty range, while `build_attribution(A..B)` returned `order=[B]` but kept
+  out-of-range `A` in its public attribution map.
+- **Second recurrence evidence**: T03 implementation self-review at `290aa62`
+  allowed empty output only when the two range endpoint strings were equal.
+  Distinct refs resolving to the same commit and other graph-equivalent empty
+  ranges still failed despite a successful Git result.
+- **Resolution evidence**: `380e23e`, `fd08636`, and later range fixes load
+  full topology independently, project both order and public attribution to
+  the requested range, accept rc=0 empty ranges regardless of endpoint text,
+  and fail closed on malformed or failed projections. The cumulative T03 gate
+  passed 231/231.
+- **Status**: regression captured.
+
 ## Required Design Traceability
 
 The redesign maps its requirements to this corpus:
@@ -438,5 +688,10 @@ The redesign maps its requirements to this corpus:
 | Complete consumer gates and successful-output validation | FH-021, FH-022 |
 | Snapshot-time graph identity and complete fork candidates | FH-023, FH-024 |
 | Executable ancestry-maximal selection proof | FH-025 |
+| Terminal verification and migrated failure fixtures | FH-026, FH-027 |
+| Live scoped-diagnostic preservation | FH-028 |
+| History-independent graph command count | FH-029 |
+| Removal of superseded compatibility policy | FH-030 |
+| Complete topology with separate range projection | FH-031 |
 
 Future findings extend this table rather than replacing it.

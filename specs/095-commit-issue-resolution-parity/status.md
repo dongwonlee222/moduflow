@@ -1045,8 +1045,23 @@ explicit. The graph, resolver, parity, and linkage suites passed 117/117.
 Independent spec and final quality reviews approved with no open Critical,
 Important, or Minor findings.
 
+## T03 / B2 completion — 2026-07-28
+
+T03 replaced the live global-base path with per-topic deltas anchored to the
+historical fork and ancestry-maximal stacked-issue exclusions. Publication
+recovery now survives no-ff publication, repeated publication, ref-order
+aliases, intermediate aliases, and an unrepublished live topic tip without
+discarding a genuine ordinary base.
+
+The repeated review failures were preserved before each fix under `FH-002`,
+`FH-003`, `FH-010`, `FH-022`, and `FH-026`–`FH-031`. The implementation spans
+`4d20a19` through `2a000c0`; the controller's cumulative graph, resolver,
+differential, parity, and linkage gate reached terminal exit 0 with 231/231
+tests in 204.678 seconds. Independent spec review repeated 231/231, and final
+quality review reported no Critical, Important, or Minor findings.
+
 ## Current task
 
-T03 / B2 — compute per-topic deltas with ancestry-maximal stacked-issue
-exclusions and remove the live global-base path, covering `FH-002`, `FH-003`,
-and `FH-005`.
+T04 / C1 — separate merge-boundary claims from graph-corroborated content-side
+claims and apply source precedence once, covering `FH-004`, `FH-007`,
+`FH-015`, and `FH-016`.
