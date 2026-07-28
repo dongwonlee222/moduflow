@@ -129,7 +129,10 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   attribution result to behavior SHAs; out-of-range ambiguity is excluded,
   in-range ambiguity remains fail-closed, and neutral-only ranges build no
   attribution. The cumulative gate passed 281/281 with clean final reviews.
-  Current task is T07 converge issue scope.
+- Issue `095` T07 (2026-07-28 at `94ca3d4`): converge requests one issue-scoped
+  result, preserves legacy payloads, and carries structured diagnostics/fatal
+  errors. Prebuilt indexes are safely reprojected without Git rebuild. The
+  six-module gate passed 335/335; current task is T08 failure-corpus mapping.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance

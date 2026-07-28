@@ -1103,8 +1103,20 @@ the release and remains fail-closed inside it (`FH-018`). `d5da824` passed the
 controller cumulative gate 281/281 in 146.958 seconds. Final independent spec
 and quality reviews reported no Critical, Important, or Minor findings.
 
+## T07 / E2 completion — 2026-07-28
+
+T07 made converge request `target_issue_ids={issue_id}`, preserved every legacy
+payload key, and exposed structured diagnostics/fatal errors in resolve and
+evidence JSON. Actual Issue 093 evidence remains valid with 56 commits, 46
+files, `scripts/project_issue_schema.py`, and zero diagnostics/fatal/errors.
+
+Independent quality review found that an unscoped prebuilt whole-result could
+bypass issue projection (`FH-018`). `94ca3d4` reprojects it without rebuilding,
+preserves fatal state, rejects incomplete indexes, and corrects merge
+degradation summaries. The controller six-module gate passed 335/335 in
+190.552 seconds; final reviews reported no finding.
+
 ## Current task
 
-T07 / E2 — make converge request one issue-scoped attribution result while
-preserving payload keys and cross-consumer parity, covering `FH-001` and
-`FH-018`.
+T08 / F1 — trace every failure-history entry to executable invariant evidence
+and append implementation evidence without rewriting failure records.

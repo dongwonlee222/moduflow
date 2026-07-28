@@ -481,6 +481,17 @@ the architectural closure.
   scope and fails closed when inside it; neutral-only ranges build no
   attribution. The T06 cumulative gate passed 281/281 with clean independent
   reviews.
+- **Recurrence evidence**: T07 independent quality review at `efda995` passed
+  an unscoped prebuilt attribution result into
+  `resolve_commits_for_issue(..., target_issue_ids={beta})`. The resolver used
+  `index or build_attribution(...)` unchanged, so Alpha's same-tail ambiguity,
+  compatibility error, and degradation leaked into the Beta bundle despite
+  the explicit issue scope.
+- **Resolution evidence**: `94ca3d4` reprojects prebuilt whole-result
+  diagnostics to the requested issue while always preserving fatal errors,
+  rebuilds compatibility errors/degraded without a Git retry, and explicitly
+  rejects incomplete attribution-only indexes. The controller gate passed
+  335/335; final independent reviews reported no finding.
 - **Status**: regression captured.
 
 ### FH-019 — Fixture and Call-Shape Masking
