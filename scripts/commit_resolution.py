@@ -337,7 +337,9 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
         for sha in delta["commits"]:
             membership.setdefault(sha, []).append(_short_ref(name))
     if len(snapshot["fatal_errors"]) != fatal_before:
-        errors.extend(snapshot["fatal_errors"][fatal_before:])
+        for error in snapshot["fatal_errors"][fatal_before:]:
+            if error not in errors:
+                errors.append(error)
         if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
             degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
     for item in diagnostics:

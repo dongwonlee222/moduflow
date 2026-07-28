@@ -894,6 +894,10 @@ class TopicDeltaTests(unittest.TestCase):
                 self.assertEqual(built["membership"], {})
                 self.assertTrue(built["errors"])
                 self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, built["degraded"])
+                self.assertEqual(len(built["errors"]), 1)
+                self.assertEqual(len(built["errors"]), len(set(built["errors"])))
+            self.assertEqual(first["errors"], second["errors"])
+            self.assertEqual(first["degraded"], second["degraded"])
             self.assertEqual(sum(call[:3] == ["git", "merge-base", "--all"] and set(call[3:]) == target_shas for call in calls), 1)
 
     def test_membership_replays_cached_above_fork_failure(self):
