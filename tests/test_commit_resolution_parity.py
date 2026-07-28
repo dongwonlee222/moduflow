@@ -20,6 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from scripts import linkage_check, project_converge  # noqa: E402
+import commit_resolution_shapes as shapes  # noqa: E402
 from git_repo_builder import GitRepo  # noqa: E402
 
 ISSUE = "095-commit-issue-resolution-parity"
@@ -114,6 +115,32 @@ class CrossModuleParityTests(unittest.TestCase):
 
             self.assertEqual(self.assertParity(repo, ISSUE), {mine})
             self.assertEqual(self.assertParity(repo, OTHER), {theirs})
+
+    def test_converge_projects_real_ambiguity_by_requested_issue(self):
+        """FH-018: the consumer keeps only the requested issue's diagnostics."""
+        with GitRepo() as repo:
+            shapes.ambiguous_same_tail_remotes(repo)
+
+            requested = project_converge.resolve_commits(
+                repo.runner,
+                repo.path,
+                shapes.ALPHA,
+            )
+            unrelated = project_converge.resolve_commits(
+                repo.runner,
+                repo.path,
+                OTHER,
+            )
+
+        self.assertTrue(requested["diagnostics"])
+        self.assertTrue(requested["errors"])
+        self.assertEqual(
+            {item["issue_id"] for item in requested["diagnostics"]},
+            {shapes.ALPHA},
+        )
+        self.assertEqual(unrelated["diagnostics"], [])
+        self.assertEqual(unrelated["fatal_errors"], [])
+        self.assertEqual(unrelated["errors"], [])
 
 
 class SharedOwnershipTests(unittest.TestCase):

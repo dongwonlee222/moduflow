@@ -4,10 +4,13 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from scripts import project_converge
 
 ISSUE = "071-spec-code-converge-check"
+ALPHA = "101-alpha"
+BETA = "102-beta"
 LOG_ARGS = tuple(project_converge.GIT_LOG_ARGS)
 
 
@@ -68,6 +71,77 @@ def make_project(spec_body=None, plan_body=None, issue_id=ISSUE):
 
 
 class ResolveCommitsTests(unittest.TestCase):
+    def test_other_issue_ambiguity_does_not_pollute_bundle(self):
+        """FH-018: converge projects diagnostics to the requested issue."""
+        runner = object()
+        resolver_result = {
+            "commits": [],
+            "repo_unmatched_count": 0,
+            "repo_examined_count": 0,
+            "coverage": {
+                "sources": {},
+                "branch_refs": [],
+                "base_ref_available": True,
+            },
+            "diagnostics": [],
+            "fatal_errors": [],
+            "degraded": [],
+            "errors": [],
+        }
+        with mock.patch.object(
+            project_converge.commit_resolution,
+            "resolve_commits_for_issue",
+            return_value=resolver_result,
+        ) as resolver:
+            result = project_converge.resolve_commits(
+                runner, Path("."), BETA
+            )
+
+        self.assertEqual(result["errors"], [])
+        resolver.assert_called_once_with(
+            runner,
+            Path("."),
+            BETA,
+            target_issue_ids={BETA},
+        )
+
+    def test_requested_issue_ambiguity_is_visible(self):
+        """FH-018: requested-issue diagnostics stay machine-visible."""
+        runner = object()
+        resolver_result = {
+            "commits": [],
+            "repo_unmatched_count": 0,
+            "repo_examined_count": 0,
+            "coverage": {
+                "sources": {},
+                "branch_refs": [],
+                "base_ref_available": False,
+            },
+            "diagnostics": [
+                {
+                    "code": "ambiguous-topic-fork",
+                    "message": "alpha is ambiguous",
+                    "issue_id": ALPHA,
+                }
+            ],
+            "fatal_errors": [],
+            "degraded": ["ambiguous-topic-fork"],
+            "errors": ["alpha is ambiguous"],
+        }
+        with mock.patch.object(
+            project_converge.commit_resolution,
+            "resolve_commits_for_issue",
+            return_value=resolver_result,
+        ):
+            result = project_converge.resolve_commits(
+                runner, Path("."), ALPHA
+            )
+
+        self.assertTrue(result["errors"])
+        self.assertIn("ambiguous-topic-fork", result["degraded"])
+        self.assertEqual(result["diagnostics"], resolver_result["diagnostics"])
+        self.assertEqual(result["fatal_errors"], [])
+
     def test_trailer_resolution(self):
         runner = FakeRunner(
             {LOG_ARGS: log_record("sha1", "feat: converge engine", "p1", TRAILER_BODY)}
@@ -411,6 +485,8 @@ class CollectEvidenceTests(unittest.TestCase):
                 "repo_unmatched_count",
                 "repo_examined_count",
                 "coverage",
+                "diagnostics",
+                "fatal_errors",
                 "degraded",
                 "errors",
             ],
@@ -431,6 +507,8 @@ class CollectEvidenceTests(unittest.TestCase):
         )
         self.assertFalse(evidence["truncated"])
         self.assertFalse(evidence["no_evidence"])
+        self.assertEqual(evidence["diagnostics"], [])
+        self.assertEqual(evidence["fatal_errors"], [])
         self.assertEqual(evidence["errors"], [])
         # Merge commits never feed file collection.
         self.assertNotIn(("git", "show", "--name-only", "--format=", "mrg1"), runner.calls)
