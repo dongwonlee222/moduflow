@@ -76,6 +76,83 @@ class MergeClaimInvariantTests(unittest.TestCase):
         )
 
 
+class FinalizeClaimOrderTests(unittest.TestCase):
+    def setUp(self):
+        self.records = {
+            "work": {
+                "parents": [],
+            },
+        }
+
+    def test_unresolved_branch_before_outer_content_blocks_guess(self):
+        """FH-016: inner unresolved evidence is a same-source barrier."""
+        candidates = {
+            "work": [
+                {
+                    "issue_id": shapes.ALPHA,
+                    "source": "branch",
+                    "kind": "unresolved",
+                },
+                {
+                    "issue_id": shapes.GAMMA,
+                    "source": "branch",
+                    "kind": "content",
+                },
+            ],
+        }
+        self.assertEqual(
+            cr.finalize_claims(self.records, candidates),
+            {},
+        )
+
+    def test_mapped_content_before_unresolved_sibling_survives(self):
+        """FH-016: earlier graph-corroborated content remains authoritative."""
+        candidates = {
+            "work": [
+                {
+                    "issue_id": shapes.ALPHA,
+                    "source": "branch",
+                    "kind": "content",
+                },
+                {
+                    "issue_id": shapes.BETA,
+                    "source": "branch",
+                    "kind": "unresolved",
+                },
+            ],
+        }
+        self.assertEqual(
+            cr.finalize_claims(self.records, candidates),
+            {"work": {shapes.ALPHA: "branch"}},
+        )
+
+    def test_trailer_resolves_across_earlier_branch_barrier(self):
+        """FH-016: stronger trailer evidence can resolve blocked branch data."""
+        candidates = {
+            "work": [
+                {
+                    "issue_id": shapes.ALPHA,
+                    "source": "branch",
+                    "kind": "unresolved",
+                },
+                {
+                    "issue_id": shapes.GAMMA,
+                    "source": "branch",
+                    "kind": "content",
+                },
+                {
+                    "issue_id": shapes.BETA,
+                    "source": "trailer",
+                    "kind": "content",
+                },
+            ],
+        }
+        self.assertEqual(
+            cr.finalize_claims(self.records, candidates),
+            {"work": {shapes.BETA: "trailer"}},
+        )
+
+
 class TestTrailerResolution(unittest.TestCase):
     def test_trailer_commit_resolves(self):
         with GitRepo() as repo:

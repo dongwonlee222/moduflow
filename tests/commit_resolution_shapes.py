@@ -26,6 +26,7 @@ the oracle kept agreeing with the bug. Two rules keep the declarations honest:
 """
 ALPHA = "101-alpha"
 BETA = "102-beta"
+GAMMA = "103-gamma"
 
 
 def _seed(repo, *issue_ids):
@@ -499,6 +500,35 @@ def two_parent_multi_name_ambiguous_no_trailer(repo):
     return [ALPHA, BETA]
 
 
+def nested_ambiguous_merge_into_outer(repo):
+    """FH-016: an inner unresolved side blocks broader outer ownership."""
+    _seed(repo, ALPHA, BETA, GAMMA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit(
+        "feat: inner ambiguous work",
+        belongs_to=None,
+    )
+    repo._git("branch", f"codex/{BETA}")
+    repo.checkout(repo.default_branch)
+    outer = repo.branch(f"codex/{GAMMA}")
+    repo.commit("feat: gamma outer work", belongs_to=GAMMA)
+    repo.merge(
+        first,
+        message=f"Merge codex/{ALPHA} and codex/{BETA}",
+        belongs_to=[ALPHA, BETA, GAMMA],
+    )
+    repo.checkout(repo.default_branch)
+    repo.merge(
+        outer,
+        message=f"Merge branch 'codex/{GAMMA}'",
+        belongs_to=GAMMA,
+    )
+    repo.delete_branch(first)
+    repo.delete_branch(f"codex/{BETA}")
+    repo.delete_branch(outer)
+    return [ALPHA, BETA, GAMMA]
+
+
 ALL_SHAPES = {
     "happy_merge": happy_merge,
     "sync_merge_then_pr_merge": sync_merge_then_pr_merge,
@@ -534,6 +564,7 @@ ALL_SHAPES = {
     "two_parent_multi_name_ambiguous_no_trailer": (
         two_parent_multi_name_ambiguous_no_trailer
     ),
+    "nested_ambiguous_merge_into_outer": nested_ambiguous_merge_into_outer,
 }
 
 

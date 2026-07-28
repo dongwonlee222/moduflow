@@ -113,26 +113,19 @@ def finalize_claims(records, candidates):
             default=None,
         )
         if winner is not None:
-            same_source_issues = {
-                item["issue_id"]
+            # Source precedence is global, but graph specificity within one
+            # source follows evidence order. Parents-first collection puts an
+            # inner mapped content claim or unresolved barrier before a
+            # broader outer/live branch claim.
+            first_same_source_evidence = next(
+                item
                 for item in items
                 if (
-                    item["kind"] == "content"
+                    item["kind"] in {"content", "unresolved"}
                     and item["source"] == winner["source"]
                 )
-            }
-            unresolved_issues = {
-                item["issue_id"]
-                for item in items
-                if (
-                    item["kind"] == "unresolved"
-                    and item["source"] == winner["source"]
-                )
-            }
-            if (
-                len(same_source_issues) > 1
-                and same_source_issues.intersection(unresolved_issues)
-            ):
+            )
+            if first_same_source_evidence["kind"] == "unresolved":
                 continue
             attribution[sha] = {
                 winner["issue_id"]: winner["source"]
