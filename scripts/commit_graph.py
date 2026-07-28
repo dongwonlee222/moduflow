@@ -160,19 +160,23 @@ def _snapshot_graph_error(snapshot, key, message):
 
 
 def _record_ancestors(snapshot, start):
-    """Return ``start`` and its recorded parents from snapshot-local cache."""
+    """Return cached recorded ancestors with fatal topology metadata."""
     cache = snapshot.setdefault("record_ancestor_cache", {})
     if start in cache:
-        return cache[start]
+        ancestors, fatal_errors = cache[start]
+        return {"ancestors": ancestors, "fatal_errors": list(fatal_errors)}
     records = snapshot["records"]
+
+    def failed(key, message):
+        _snapshot_graph_error(snapshot, key, message)
+        cache[start] = (None, (message,))
+        return {"ancestors": None, "fatal_errors": [message]}
+
     if start not in records:
-        _snapshot_graph_error(
-            snapshot,
+        return failed(
             ("record-ancestor-missing", start),
             f"snapshot graph is incomplete: missing record for {start}",
         )
-        cache[start] = None
-        return None
     seen = set()
     active = set()
     stack = [(start, False)]
@@ -184,56 +188,46 @@ def _record_ancestors(snapshot, start):
         if sha in seen:
             continue
         if sha in active:
-            _snapshot_graph_error(
-                snapshot,
+            return failed(
                 ("record-ancestor-cycle", sha),
                 f"snapshot graph contains a parent cycle at {sha}",
             )
-            cache[start] = None
-            return None
         record = records.get(sha)
         if record is None:
-            _snapshot_graph_error(
-                snapshot,
+            return failed(
                 ("record-ancestor-missing", sha),
                 f"snapshot graph is incomplete: missing record for {sha}",
             )
-            cache[start] = None
-            return None
         seen.add(sha)
         active.add(sha)
         stack.append((sha, True))
         for parent in record.get("parents", []):
             if parent in active:
-                _snapshot_graph_error(
-                    snapshot,
+                return failed(
                     ("record-ancestor-cycle", parent),
                     f"snapshot graph contains a parent cycle at {parent}",
                 )
-                cache[start] = None
-                return None
             if parent not in records:
-                _snapshot_graph_error(
-                    snapshot,
+                return failed(
                     ("record-ancestor-missing", parent),
                     f"snapshot graph is incomplete: missing record for {parent}",
                 )
-                cache[start] = None
-                return None
             if parent not in seen:
                 stack.append((parent, False))
-    cache[start] = frozenset(seen)
-    return cache[start]
+    cache[start] = (frozenset(seen), ())
+    return {"ancestors": cache[start][0], "fatal_errors": []}
 
 
 def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
     """Recover no-ff publication forks without probing unrelated records."""
-    base_ancestors = _record_ancestors(snapshot, base_sha)
-    topic_ancestors = _record_ancestors(snapshot, topic_sha)
-    if base_ancestors is None or topic_ancestors is None:
-        return [], []
+    base_result = _record_ancestors(snapshot, base_sha)
+    topic_result = _record_ancestors(snapshot, topic_sha)
+    fatal_errors = [*base_result["fatal_errors"], *topic_result["fatal_errors"]]
+    if fatal_errors:
+        return [], fatal_errors
+    base_ancestors = base_result["ancestors"]
+    topic_ancestors = topic_result["ancestors"]
     recovered = []
-    fatal_errors = []
     for merge_sha in sorted(base_ancestors):
         record = snapshot["records"][merge_sha]
         if len(record["parents"]) < 2:
@@ -248,10 +242,16 @@ def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
             continue
         maximal_sides = []
         for side in topic_sides:
-            if not any(
-                side != other and side in (_record_ancestors(snapshot, other) or ())
-                for other in topic_sides
-            ):
+            other_results = [
+                _record_ancestors(snapshot, other)
+                for other in topic_sides if side != other
+            ]
+            fatal_errors.extend(
+                error for result in other_results for error in result["fatal_errors"]
+            )
+            if fatal_errors:
+                return [], fatal_errors
+            if not any(side in result["ancestors"] for result in other_results):
                 maximal_sides.append(side)
         if len(maximal_sides) != 1:
             continue
@@ -295,6 +295,7 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
 
     topic_sha = snapshot["refs"][topic_ref]
     by_fork = {}
+    recovered_forks = set()
     needs_publication_recovery = False
     fatal_errors = []
     for ref in sorted(set(base_refs)):
@@ -317,9 +318,10 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             fatal_errors.extend(recovery_errors)
         if recovered:
             needs_publication_recovery = True
+            recovered_forks.update(recovered)
             candidates = [
                 sha for sha in candidates
-                if sha not in _record_ancestors(snapshot, topic_sha)
+                if sha not in _record_ancestors(snapshot, topic_sha)["ancestors"]
             ]
             candidates.extend(recovered)
         elif topic_sha in candidates:
@@ -345,25 +347,34 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             ],
         }
 
+    # A published topic can have several historical publication boundaries.
+    # Those boundaries are a lineage, not competing base candidates: retaining
+    # the earliest one includes all topic work across repeated no-ff publishes.
+    # Ordinary non-publication candidates keep the existing maximal policy.
+    selected_forks = recovered_forks or set(by_fork)
     maximal = []
-    for fork_sha in sorted(by_fork):
+    for fork_sha in sorted(selected_forks):
         dominated = False
-        for other_sha in sorted(by_fork):
+        for other_sha in sorted(selected_forks):
             if fork_sha == other_sha:
                 continue
-            relation = is_ancestor(runner, cwd, snapshot, fork_sha, other_sha)
+            left, right = (
+                (other_sha, fork_sha)
+                if recovered_forks else (fork_sha, other_sha)
+            )
+            relation = is_ancestor(runner, cwd, snapshot, left, right)
             _preserve_fatal_errors(
                 snapshot,
-                ("is-ancestor", fork_sha, other_sha),
+                ("is-ancestor", left, right),
                 relation["fatal_errors"],
             )
             fatal_errors.extend(relation["fatal_errors"])
             if relation["value"] is not True:
                 continue
-            reverse = is_ancestor(runner, cwd, snapshot, other_sha, fork_sha)
+            reverse = is_ancestor(runner, cwd, snapshot, right, left)
             _preserve_fatal_errors(
                 snapshot,
-                ("is-ancestor", other_sha, fork_sha),
+                ("is-ancestor", right, left),
                 reverse["fatal_errors"],
             )
             fatal_errors.extend(reverse["fatal_errors"])
@@ -558,16 +569,32 @@ def topic_delta(
     ]
     result = runner(args, cwd)
     if result.returncode != 0:
-        snapshot["fatal_errors"].append(_failure(args, result))
-        commits = set()
+        message = _failure(args, result)
+        _snapshot_graph_error(snapshot, ("rev-list-failed", tuple(args)), message)
+        return {
+            **fork,
+            "stacked_exclusions": exclusions,
+            "commits": set(),
+            "fatal_errors": [*fork["fatal_errors"], message],
+            "diagnostics": diagnostics,
+        }
     else:
         commits = _rev_list_shas(result.stdout, snapshot["records"])
         if commits is None:
-            snapshot["fatal_errors"].append(
+            message = (
                 "git rev-list produced malformed output "
                 "(expected one known SHA token per line)"
             )
-            commits = set()
+            _snapshot_graph_error(
+                snapshot, ("rev-list-malformed", tuple(args)), message
+            )
+            return {
+                **fork,
+                "stacked_exclusions": exclusions,
+                "commits": set(),
+                "fatal_errors": [*fork["fatal_errors"], message],
+                "diagnostics": diagnostics,
+            }
         else:
             # Merge boundaries are attributed by resolver merge policy. A
             # topic delta supplies only side-content, so an inner publication

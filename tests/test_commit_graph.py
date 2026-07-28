@@ -633,6 +633,26 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertEqual(result["commits"], declared_content_truth(repo, ALPHA))
             self.assertTrue(result["commits"])
 
+    def test_twice_published_topic_keeps_the_earliest_pre_publication_fork(self):
+        """FH-003: two no-ff publications retain both T1 and T2, not only T2."""
+        with GitRepo() as repo:
+            repo.commit("chore: base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            topic = repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: T1", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.merge(topic, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+            repo.checkout(topic)
+            repo.commit("feat: T2", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.merge(topic, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+
+            result = delta_for_repo(repo, ALPHA)
+
+            self.assertEqual(result["commits"], declared_content_truth(repo, ALPHA))
+            self.assertTrue(result["commits"])
+            self.assertEqual(result["diagnostics"], [])
+
     def test_base_history_is_not_topic_work(self):
         """FH-002: a stale local trunk cannot become alpha's contribution."""
         with GitRepo() as repo:
@@ -841,6 +861,58 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertEqual(second["commits"], set())
             self.assertEqual(len(snapshot["fatal_errors"]), 1)
             self.assertEqual(sum(call == failing_args for call in calls), 1)
+
+    def test_cached_publication_topology_failure_stays_closed_with_good_base(self):
+        """FH-010/FH-028: cached missing topology remains fatal for this topic."""
+        with GitRepo() as repo:
+            root = repo.commit("chore: root", belongs_to=None)
+            repo.commit("chore: base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            topic = repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: alpha", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.merge(topic, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+            repo._git("branch", "older-good-base", root)
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+            topic_ref = f"refs/heads/codex/{ALPHA}"
+            topic_sha = snapshot["refs"][topic_ref]
+            publication = next(record for record in snapshot["records"].values() if topic_sha in record["parents"] and len(record["parents"]) == 2)
+            missing = next(parent for parent in publication["parents"] if parent != topic_sha)
+            del snapshot["records"][missing]
+            kwargs = {"topic_refs": {topic_ref: ALPHA}, "base_refs": ["refs/heads/main", "refs/heads/older-good-base"]}
+
+            first = commit_graph.topic_delta(repo.runner, repo.path, snapshot, topic_ref, ALPHA, **kwargs)
+            second = commit_graph.topic_delta(repo.runner, repo.path, snapshot, topic_ref, ALPHA, **kwargs)
+
+            self.assertEqual(first["commits"], set())
+            self.assertEqual(second["commits"], set())
+            self.assertTrue(first["fatal_errors"])
+            self.assertTrue(second["fatal_errors"])
+            self.assertEqual(len(snapshot["fatal_errors"]), 1)
+
+    def test_cached_topology_failure_reaches_membership_on_every_build(self):
+        """FH-010/FH-028: cached graph failure remains scoped and observable."""
+        with GitRepo() as repo:
+            shapes.two_registered_stacked_issues(repo)
+            errors = []
+            ids = cr.known_issue_ids(repo.runner, repo.path, errors)
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+            beta_ref = f"refs/heads/codex/{BETA}"
+            parent = snapshot["records"][snapshot["refs"][beta_ref]]["parents"][0]
+            del snapshot["records"][parent]
+
+            first = cr.build_branch_membership(repo.runner, repo.path, issue_ids=ids, snapshot=snapshot)
+            first_error_count = len(snapshot["fatal_errors"])
+            second = cr.build_branch_membership(repo.runner, repo.path, issue_ids=ids, snapshot=snapshot)
+
+            self.assertEqual(first["membership"], {})
+            self.assertEqual(second["membership"], {})
+            self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, first["degraded"])
+            self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, second["degraded"])
+            self.assertTrue(first["errors"])
+            self.assertTrue(second["errors"])
+            self.assertGreater(first_error_count, 0)
+            self.assertEqual(len(snapshot["fatal_errors"]), first_error_count)
 
     def test_nested_merge_does_not_relabel_inner_content(self):
         """FH-005: outer topic deltas exclude the inner issue's content."""

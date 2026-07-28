@@ -87,7 +87,7 @@ def _error_text(args, result):
     return f"{' '.join(args)} failed: {detail}"
 
 
-def _range_order(stdout, records):
+def _range_order(stdout, records, *, allow_empty=False):
     """Validate a successful range projection against the full snapshot."""
     order = []
     for line in (stdout or "").splitlines():
@@ -95,7 +95,7 @@ def _range_order(stdout, records):
         if len(fields) != 1 or fields[0] not in records:
             return None
         order.append(fields[0])
-    return order if order else None
+    return order if order or allow_empty else None
 
 
 # ---------------------------------------------------------------------------
@@ -321,6 +321,13 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
             base_refs=base_refs,
         )
         diagnostics.extend(delta["diagnostics"])
+        for error in delta.get("fatal_errors", []):
+            if error not in errors:
+                errors.append(error)
+        if delta.get("fatal_errors"):
+            if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
+                degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
+            continue
         if delta["fork_point"] is None:
             if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
                 degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
@@ -394,7 +401,12 @@ def build_attribution(runner, cwd, *, rev_range=None):
                 "attribution": {}, "records": {}, "order": [], "unmatched": [],
                 "degraded": degraded, "errors": errors, "diagnostics": [],
             }
-        order = _range_order(ranged.stdout, records)
+        left, separator, right = rev_range.partition("..")
+        order = _range_order(
+            ranged.stdout,
+            records,
+            allow_empty=bool(separator and left == right),
+        )
         if order is None:
             errors.append(
                 "git log range projection produced malformed output "
@@ -552,6 +564,10 @@ def build_attribution(runner, cwd, *, rev_range=None):
             if issue_id:
                 claim(sha, issue_id, "branch")
 
+    if rev_range:
+        attribution = {
+            sha: attribution[sha] for sha in order if sha in attribution
+        }
     unmatched = [sha for sha in order if sha not in attribution]
     return {
         "attribution": attribution,

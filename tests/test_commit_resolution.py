@@ -923,6 +923,32 @@ class TestRangeProjection(unittest.TestCase):
             self.assertEqual({item["sha"] for item in result["commits"]}, {b_work})
             self.assertEqual(result["errors"], [])
 
+    def test_empty_normal_range_is_an_empty_success(self):
+        """FH-031: HEAD..HEAD is valid and distinct from malformed rc=0 output."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            index = cr.build_attribution(repo.runner, repo.path, rev_range="HEAD..HEAD")
+            self.assertEqual(index["order"], [])
+            self.assertEqual(index["attribution"], {})
+            self.assertEqual(index["unmatched"], [])
+            self.assertEqual(index["errors"], [])
+
+    def test_range_projects_the_public_attribution_map_not_only_order(self):
+        """FH-031: full topology remains internal; public attribution is ranged."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.add_issue_file(OTHER)
+            repo.branch(f"codex/{ISSUE}")
+            a_work = repo.commit("feat: alpha", issue=ISSUE)
+            repo.checkout("main")
+            repo.branch(f"codex/{OTHER}")
+            b_work = repo.commit("feat: beta", issue=OTHER)
+            index = cr.build_attribution(repo.runner, repo.path, rev_range=f"{a_work}..{b_work}")
+            self.assertEqual(index["order"], [b_work])
+            self.assertEqual(set(index["attribution"]), {b_work})
+            self.assertNotIn(a_work, index["attribution"])
+
     def test_range_projection_failure_returns_no_full_topology_attribution(self):
         """FH-031: a failed range query never falls back to the --all index."""
         with GitRepo() as repo:
