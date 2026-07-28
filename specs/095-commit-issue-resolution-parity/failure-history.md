@@ -58,8 +58,8 @@ the architectural closure.
 | FH-012 | A local slash branch was mistaken for a remote counterpart | Ref identity uses full ref namespace and object identity | regression captured |
 | FH-013 | Same-tail refs on multiple remotes created false certainty | Equivalent refs collapse by object; distinct lineages stay distinct | regression captured |
 | FH-014 | `origin/HEAD` lookup failure was silently ignored | Default-ref discovery failures remain observable diagnostics | regression captured |
-| FH-015 | Octopus subject order and deleted refs changed ownership | Subject token order cannot assign content without graph corroboration | open |
-| FH-016 | Two-parent multi-name merge subjects relabelled side content | A merge boundary claim is not proof of content ownership | open |
+| FH-015 | Octopus subject order and deleted refs changed ownership | Subject token order cannot assign content without graph corroboration | regression captured |
+| FH-016 | Two-parent multi-name merge subjects relabelled side content | A merge boundary claim is not proof of content ownership | regression captured |
 | FH-017 | Normal trunk advancement was reported as base ambiguity | Advancing a base lineage cannot change the historical fork point | regression captured |
 | FH-018 | Unrelated historical ambiguity failed the current release | Diagnostics are projected to the caller's commit or issue scope | open |
 | FH-019 | Stale fixtures masked shared-index regressions | Fixtures must reproduce each Git boundary and consumer call shape | regression captured |
@@ -193,6 +193,45 @@ the architectural closure.
 - **Resolution evidence**: T03 added ancestry-maximal stacked exclusions plus
   cached failure regressions. `2a000c0` passed the 231/231 cumulative gate and
   both independent reviews without an open finding.
+- **Recurrence evidence**: T04 independent quality review at `59a4d69`
+  reversed the existing nested fixture's issue-id order: inner
+  `102-beta` merged into outer `101-alpha`, then the outer branch merged to
+  main and both refs were deleted. Both inner and outer merge passes emitted
+  equal `branch/content` candidates for the inner commit, and
+  `finalize_claims()` broke the tie lexicographically, silently relabelling the
+  beta commit as `101-alpha` with no diagnostic.
+- **Second recurrence evidence**: T04 independent quality re-review at
+  `7d873f6` retained exact refs for stacked A/B sides in a real octopus merge,
+  with B forked from A and listed before A. Both parent side sets contained
+  A's shared ancestor commit because they subtracted only main history; stable
+  same-source ordering assigned that shared commit to B. Reversing octopus
+  parent order changed ownership even though the corroborating refs and graph
+  were otherwise identical.
+- **Third recurrence evidence**: the same `7d873f6` review reduced the defect
+  to a conventional merge: B forks from A after commit `a`, adds `b`, and only
+  B merges to main while both refs remain. The broad merge-side B candidate
+  arrived before the more specific live topic deltas and attributed both
+  `a` and `b` to B instead of preserving `a → A`, `b → B`.
+- **Fourth recurrence evidence**: T04 independent spec re-review at `d629281`
+  retained exact refs for stacked A/B octopus sides but deleted only the third
+  C side's ref. The presence of that one unresolved side disabled partitioning
+  for all already-corroborated mapped sides, so B-first parent order again
+  assigned A's shared commit to B. Unresolved evidence on C's distinct side
+  did not guard the overlapping A/B content.
+- **Fifth recurrence evidence**: T04 independent quality re-review at
+  `585a2f7` built a conventional outer D merge over unique ancestor A, an
+  intermediate same-tip B/C ambiguity, and unique descendant D. Seeing B/C on
+  one tip made `partition_topic_side_commits()` abort the entire partition;
+  the outer fallback silently attributed A, the ambiguous segment, and D all
+  to D with no error. Ambiguity on one interval must not erase uniquely
+  provable ownership on the other intervals.
+- **Resolution evidence**: `5b06879` preserved inner ownership across reversed
+  issue ids; `d629281` partitioned overlapping mapped and conventional side
+  content by retained topic topology; `585a2f7` kept mapped partitions active
+  beside unresolved siblings; and `24bfd3c` scoped same-tip ambiguity to its
+  own ancestry interval. The controller's cumulative T04 gate passed 267/267
+  at terminal exit, and independent spec and quality reviews reported no
+  Critical, Important, or Minor findings.
 - **Status**: regression captured.
 
 ### FH-006 — Stale Local Default Branch
@@ -356,7 +395,12 @@ the architectural closure.
 - **Derived invariant**: subject order may label a merge boundary but cannot
   assign side content without graph corroboration.
 - **Evidence**: review rounds 7–9 and the later historical octopus regression.
-- **Status**: open under the redesign.
+- **Resolution evidence**: T04 separates boundary claims from content claims,
+  requires exact retained-ref corroboration for complex sides, partitions
+  overlapping mapped topic content independently of parent order, and leaves
+  unresolved sides unowned with scoped diagnostics. The cumulative gate
+  passed 267/267 at `24bfd3c` with clean independent reviews.
+- **Status**: regression captured.
 
 ### FH-016 — Two-Parent Multi-Name Merge
 
@@ -369,7 +413,27 @@ the architectural closure.
 - **Derived invariant**: merge boundary claims and content-side claims are
   separate; ambiguous side content stays unresolved.
 - **Evidence**: final quality review before the redesign.
-- **Status**: open under the redesign.
+- **Recurrence evidence**: T04 independent quality re-review at `5b06879`
+  created trailer-free work `W` reachable from both `codex/101-alpha` and
+  `codex/102-beta`, then merged the shared tip with a two-name subject. The
+  merge pass emitted `merge-side-unresolved`, but live membership later added
+  equal `branch/content` candidates for both issues and `finalize_claims()`
+  selected the first one, silently guessing `101-alpha` despite the unresolved
+  side diagnostic. The existing fixture's Alpha trailer masked this path.
+- **Second recurrence evidence**: T04 independent quality re-review at
+  `3f7b863` nested that unresolved A/B boundary inside outer issue C, merged C
+  conventionally to main, and deleted all three refs. The first suppression
+  fix saw only C as the remaining content candidate, ignored the earlier A/B
+  unresolved evidence because their ids did not intersect C, and silently
+  relabelled `W` as C. A broader outer branch is not evidence that resolves an
+  inner merge-side ambiguity.
+- **Resolution evidence**: `3f7b863` introduced explicit unresolved candidate
+  evidence, `7d873f6` preserved its graph-specific ordering against broader
+  outer claims, and `24bfd3c` localized ambiguous same-tip intervals while
+  still allowing stronger trailer or earlier mapped evidence to resolve
+  ownership. The controller gate passed 267/267 and both independent reviews
+  reported no finding.
+- **Status**: regression captured.
 
 ### FH-017 — Trunk Advance After Topic Fork
 

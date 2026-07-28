@@ -20,7 +20,7 @@ architecture; it does not extend that heuristic.
 
 ## Stream C
 
-- [ ] C1 Separate merge-boundary claims from content-side claims, require graph corroboration for octopus/multi-name content, and apply source precedence once (`FH-004`, `FH-007`, `FH-015`, `FH-016`). [files: scripts/commit_resolution.py, tests/commit_resolution_shapes.py, tests/test_commit_resolution.py, tests/test_commit_resolution_differential.py] [depends: T03] [shared_state: true]
+- [x] C1 Separate merge-boundary claims from content-side claims, require graph corroboration for octopus/multi-name content, and apply source precedence once (`FH-004`, `FH-007`, `FH-015`, `FH-016`). [files: scripts/commit_resolution.py, tests/commit_resolution_shapes.py, tests/test_commit_resolution.py, tests/test_commit_resolution_differential.py] [depends: T03] [shared_state: true]
 
 ## Stream D
 

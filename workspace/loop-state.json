@@ -29,8 +29,8 @@
     "last_changed_at": "2026-07-27"
   },
   "blocker": null,
-  "last_action": "completed T03 historical topic deltas and stacked exclusions with independent spec and quality approval; T04 merge-boundary and content-side claim separation is next",
-  "last_verification": "2026-07-28 T03 gate: graph, resolver, differential, parity, and linkage suites passed 231/231 to terminal exit at 2a000c0; independent spec and quality reviews reported no Critical, Important, or Minor findings; FH-002, FH-003, FH-005, FH-006, FH-010 through FH-013, FH-017, FH-022, and FH-026 through FH-031 regressions captured",
+  "last_action": "completed T04 merge-boundary and content-side claim separation with independent spec and quality approval; T05 structured and scoped diagnostics is next",
+  "last_verification": "2026-07-28 T04 gate: graph, resolver, differential, parity, and linkage suites passed 267/267 to terminal exit at 24bfd3c; independent spec and quality reviews reported no Critical, Important, or Minor findings; FH-005, FH-015, and FH-016 regressions captured",
   "updated_at": "2026-07-28",
   "git_binding": {
     "mode": "git-files",
@@ -82,7 +82,15 @@
       "bea07b3",
       "414a81f",
       "0f35406",
-      "2a000c0"
+      "2a000c0",
+      "65afcd0",
+      "59a4d69",
+      "5b06879",
+      "3f7b863",
+      "7d873f6",
+      "d629281",
+      "585a2f7",
+      "24bfd3c"
     ],
     "pull_request": null,
     "release": null,

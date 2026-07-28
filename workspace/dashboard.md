@@ -116,7 +116,12 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   exclusions, publication recovery, cached diagnostic replay, and independent
   range projection completed. The cumulative five-module gate passed 231/231
   to terminal exit; independent spec and quality reviews have no open finding.
-  Current task is T04 merge-boundary/content-side claim separation.
+- Issue `095` T04 (2026-07-28 at `24bfd3c`): merge boundary and content claims
+  are separate, complex side ownership requires graph corroboration, and
+  overlapping topic intervals are partitioned independently of subject,
+  parent, or issue-id order. The cumulative gate passed 267/267; final spec
+  and quality reviews have no open finding. Current task is T05 structured and
+  scoped diagnostics.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance

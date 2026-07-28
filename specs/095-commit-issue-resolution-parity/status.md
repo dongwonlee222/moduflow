@@ -1060,8 +1060,25 @@ differential, parity, and linkage gate reached terminal exit 0 with 231/231
 tests in 204.678 seconds. Independent spec review repeated 231/231, and final
 quality review reported no Critical, Important, or Minor findings.
 
+## T04 / C1 completion — 2026-07-28
+
+T04 split merge-boundary claims from content-side claims and moved source
+precedence into one final pass. Complex merge content now requires retained-ref
+graph corroboration; unresolved sides remain unowned with SHA/issue-scoped
+diagnostics. Overlapping stacked topic sides are partitioned by topology rather
+than issue id, subject order, or octopus parent order, and same-tip ambiguity
+is limited to its own ancestry interval.
+
+Independent review repeatedly exposed reversed-id nested ownership,
+live-membership reopening unresolved content, outer-merge under-suppression,
+overlapping mapped octopus sides, partial-unresolved siblings, and locally
+ambiguous topic intervals. Each was recorded under `FH-005` or `FH-016` before
+the fix. The implementation spans `59a4d69` through `24bfd3c`; the controller
+cumulative gate passed 267/267 in 180.284 seconds. Final independent spec and
+quality reviews reported no Critical, Important, or Minor findings.
+
 ## Current task
 
-T04 / C1 — separate merge-boundary claims from graph-corroborated content-side
-claims and apply source precedence once, covering `FH-004`, `FH-007`,
-`FH-015`, and `FH-016`.
+T05 / D1 — add structured fatal errors and scoped diagnostics, preserve
+compatibility errors, and make bare/indexed resolution project one attribution
+result, covering `FH-001`, `FH-008`, `FH-009`, `FH-010`, and `FH-018`.
