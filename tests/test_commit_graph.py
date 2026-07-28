@@ -692,6 +692,27 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertTrue(result["commits"])
             self.assertEqual(result["diagnostics"], [])
 
+    def test_intermediate_published_topic_alias_does_not_replace_earliest_fork(self):
+        """FH-003: Tmid alias is part of the published topic line, not a base."""
+        with GitRepo() as repo:
+            repo.commit("chore: base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            topic = repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: T1", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.merge(topic, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+            repo.checkout(topic)
+            repo.commit("feat: Tmid", belongs_to=ALPHA)
+            mid = repo.head()
+            repo._git("branch", "archive/mid-topic", mid)
+            repo.commit("feat: T2", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.merge(topic, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+            result = delta_for_repo(repo, ALPHA)
+            self.assertEqual(result["commits"], declared_content_truth(repo, ALPHA))
+            self.assertTrue(result["commits"])
+            self.assertEqual(result["diagnostics"], [])
+
     def test_published_topic_with_incomparable_other_base_is_ambiguous(self):
         """FH-002: recovery must not discard an incomparable ordinary base."""
         with GitRepo() as repo:
