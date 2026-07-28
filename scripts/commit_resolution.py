@@ -681,7 +681,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
                     continue
             unresolved_sides.append(side)
 
-        if not unresolved_sides:
+        if mapped_sides:
             side_union = set().union(
                 *(side for _issue_id, side in mapped_sides)
             )

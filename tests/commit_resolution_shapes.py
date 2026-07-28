@@ -487,6 +487,68 @@ def octopus_shared_ancestor_a_before_b(repo):
     return [ALPHA, BETA]
 
 
+def octopus_partial_unresolved_b_before_a(repo):
+    """FH-005: mapped overlap partitions despite an unresolved sibling side."""
+    _seed(repo, ALPHA, BETA, GAMMA)
+    alpha = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: partial shared alpha work", belongs_to=ALPHA)
+    beta = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: partial beta stacked work", belongs_to=BETA)
+    repo.checkout(alpha)
+    repo.commit("feat: partial alpha advanced work", belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    gamma = repo.branch(f"codex/{GAMMA}")
+    repo.commit("feat: unresolved gamma work", belongs_to=None)
+    repo.checkout(repo.default_branch)
+    repo._git(
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        (
+            f"Merge branches 'codex/{BETA}', 'codex/{ALPHA}', "
+            f"and 'codex/{GAMMA}'"
+        ),
+        beta,
+        alpha,
+        gamma,
+    )
+    repo.record(repo.head(), [ALPHA, BETA, GAMMA])
+    repo.delete_branch(gamma)
+    return [ALPHA, BETA, GAMMA]
+
+
+def octopus_partial_unresolved_a_before_b(repo):
+    """FH-005: unresolved sibling does not restore octopus parent ordering."""
+    _seed(repo, ALPHA, BETA, GAMMA)
+    alpha = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: partial shared alpha work", belongs_to=ALPHA)
+    beta = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: partial beta stacked work", belongs_to=BETA)
+    repo.checkout(alpha)
+    repo.commit("feat: partial alpha advanced work", belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    gamma = repo.branch(f"codex/{GAMMA}")
+    repo.commit("feat: unresolved gamma work", belongs_to=None)
+    repo.checkout(repo.default_branch)
+    repo._git(
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        (
+            f"Merge branches 'codex/{BETA}', 'codex/{ALPHA}', "
+            f"and 'codex/{GAMMA}'"
+        ),
+        alpha,
+        beta,
+        gamma,
+    )
+    repo.record(repo.head(), [ALPHA, BETA, GAMMA])
+    repo.delete_branch(gamma)
+    return [ALPHA, BETA, GAMMA]
+
+
 def octopus_mapping_ambiguous(repo):
     """Without corroborating refs, octopus side ownership is unavailable."""
     _seed(repo, ALPHA, BETA)
@@ -623,6 +685,12 @@ ALL_SHAPES = {
     "octopus_subject_order_reversed": octopus_subject_order_reversed,
     "octopus_shared_ancestor_b_before_a": octopus_shared_ancestor_b_before_a,
     "octopus_shared_ancestor_a_before_b": octopus_shared_ancestor_a_before_b,
+    "octopus_partial_unresolved_b_before_a": (
+        octopus_partial_unresolved_b_before_a
+    ),
+    "octopus_partial_unresolved_a_before_b": (
+        octopus_partial_unresolved_a_before_b
+    ),
     "octopus_mapping_ambiguous": octopus_mapping_ambiguous,
     "two_parent_multi_name_subject": two_parent_multi_name_subject,
     "two_parent_multi_name_ambiguous": two_parent_multi_name_ambiguous,
