@@ -296,6 +296,7 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
     topic_sha = snapshot["refs"][topic_ref]
     by_fork = {}
     recovered_forks = set()
+    ordinary_forks = set()
     needs_publication_recovery = False
     fatal_errors = []
     for ref in sorted(set(base_refs)):
@@ -323,10 +324,14 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
                 sha for sha in candidates
                 if sha not in _record_ancestors(snapshot, topic_sha)["ancestors"]
             ]
+            ordinary_forks.update(candidates)
             candidates.extend(recovered)
         elif topic_sha in candidates:
             needs_publication_recovery = True
             candidates = [sha for sha in candidates if sha != topic_sha]
+            ordinary_forks.update(candidates)
+        else:
+            ordinary_forks.update(candidates)
         for fork_sha in candidates:
             by_fork.setdefault(fork_sha, []).append(ref)
 
@@ -347,21 +352,37 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             ],
         }
 
-    # A published topic can have several historical publication boundaries.
-    # Those boundaries are a lineage, not competing base candidates: retaining
-    # the earliest one includes all topic work across repeated no-ff publishes.
-    # Ordinary non-publication candidates keep the existing maximal policy.
-    selected_forks = recovered_forks or set(by_fork)
+    # Historical publication boundaries are one lineage: select its earliest
+    # valid point first, then compare that point against every ordinary base.
+    # A recovery must never erase an incomparable ordinary base candidate.
+    recovered_minimal = set(recovered_forks)
+    for fork_sha in sorted(recovered_forks):
+        for other_sha in sorted(recovered_forks):
+            if fork_sha == other_sha:
+                continue
+            relation = is_ancestor(runner, cwd, snapshot, other_sha, fork_sha)
+            _preserve_fatal_errors(
+                snapshot, ("is-ancestor", other_sha, fork_sha), relation["fatal_errors"]
+            )
+            fatal_errors.extend(relation["fatal_errors"])
+            if relation["value"] is True:
+                reverse = is_ancestor(runner, cwd, snapshot, fork_sha, other_sha)
+                _preserve_fatal_errors(
+                    snapshot, ("is-ancestor", fork_sha, other_sha), reverse["fatal_errors"]
+                )
+                fatal_errors.extend(reverse["fatal_errors"])
+                if reverse["value"] is False:
+                    recovered_minimal.discard(fork_sha)
+                    break
+
+    selected_forks = ordinary_forks | recovered_minimal
     maximal = []
     for fork_sha in sorted(selected_forks):
         dominated = False
         for other_sha in sorted(selected_forks):
             if fork_sha == other_sha:
                 continue
-            left, right = (
-                (other_sha, fork_sha)
-                if recovered_forks else (fork_sha, other_sha)
-            )
+            left, right = fork_sha, other_sha
             relation = is_ancestor(runner, cwd, snapshot, left, right)
             _preserve_fatal_errors(
                 snapshot,

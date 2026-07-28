@@ -653,6 +653,29 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertTrue(result["commits"])
             self.assertEqual(result["diagnostics"], [])
 
+    def test_published_topic_with_incomparable_other_base_is_ambiguous(self):
+        """FH-002: recovery must not discard an incomparable ordinary base."""
+        with GitRepo() as repo:
+            root = repo.commit("chore: root", belongs_to=None)
+            repo.commit("chore: main base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            alpha = repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: alpha", belongs_to=ALPHA)
+            repo.checkout(root)
+            other = repo.branch("other-base")
+            other_work = repo.commit("chore: other base", belongs_to=None)
+            repo.checkout(alpha)
+            repo.merge(other, message="Merge branch 'other-base'", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.merge(alpha, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+
+            result = delta_for_repo(repo, ALPHA)
+
+            self.assertIsNone(result["fork_point"])
+            self.assertEqual(result["commits"], set())
+            self.assertEqual(result["diagnostics"][0]["code"], "ambiguous-topic-fork")
+            self.assertNotIn(other_work, result["commits"])
+
     def test_base_history_is_not_topic_work(self):
         """FH-002: a stale local trunk cannot become alpha's contribution."""
         with GitRepo() as repo:
