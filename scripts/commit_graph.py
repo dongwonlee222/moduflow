@@ -394,6 +394,8 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
     for side in publication_sides:
         current = side
         seen = set()
+        path = set()
+        reaches_recovered = False
         while current not in recovered_minimal:
             if current in seen or current not in snapshot["records"]:
                 message = f"snapshot graph is incomplete: missing record for {current}"
@@ -401,11 +403,15 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
                 fatal_errors.append(message)
                 break
             seen.add(current)
-            topic_line_aliases.add(current)
+            path.add(current)
             parents = snapshot["records"][current]["parents"]
             if not parents:
                 break
             current = parents[0]
+        else:
+            reaches_recovered = True
+        if reaches_recovered:
+            topic_line_aliases.update(path)
     ordinary_forks.difference_update(topic_line_aliases)
 
     selected_forks = ordinary_forks | recovered_minimal

@@ -736,6 +736,25 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertEqual(result["diagnostics"][0]["code"], "ambiguous-topic-fork")
             self.assertNotIn(other_work, result["commits"])
 
+    def test_sync_merged_incomparable_first_parent_base_stays_ambiguous(self):
+        """FH-002: sync merge must not erase develop A as a false alias."""
+        with GitRepo() as repo:
+            root = repo.commit("chore: root", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            repo.commit("chore: main F", belongs_to=None)
+            repo._git("branch", "develop", root)
+            repo.checkout("develop")
+            repo.commit("chore: develop A", belongs_to=None)
+            topic = repo.branch(f"codex/{ALPHA}")
+            repo.commit("feat: alpha", belongs_to=ALPHA)
+            repo.merge("main", message="Merge branch 'main' into codex", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.merge(topic, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+            result = delta_for_repo(repo, ALPHA)
+            self.assertIsNone(result["fork_point"])
+            self.assertEqual(result["commits"], set())
+            self.assertEqual(result["diagnostics"][0]["code"], "ambiguous-topic-fork")
+
     def test_base_history_is_not_topic_work(self):
         """FH-002: a stale local trunk cannot become alpha's contribution."""
         with GitRepo() as repo:
