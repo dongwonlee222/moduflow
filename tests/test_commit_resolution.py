@@ -897,7 +897,10 @@ class TestRangeProjection(unittest.TestCase):
 
         def malformed(args, cwd=None):
             if args == range_args:
-                return TestGraphQueryFailures._failed_result(output, returncode=0)
+                return type(
+                    "Result", (),
+                    {"returncode": 0, "stdout": output, "stderr": ""},
+                )()
             return repo.runner(args, cwd)
 
         return repo, cr.resolve_commits_for_issue(
@@ -928,6 +931,20 @@ class TestRangeProjection(unittest.TestCase):
         with GitRepo() as repo:
             repo.commit("chore: base")
             index = cr.build_attribution(repo.runner, repo.path, rev_range="HEAD..HEAD")
+            self.assertEqual(index["order"], [])
+            self.assertEqual(index["attribution"], {})
+            self.assertEqual(index["unmatched"], [])
+            self.assertEqual(index["errors"], [])
+
+    def test_graph_empty_range_with_distinct_ref_names_is_an_empty_success(self):
+        """FH-031: rc=0 empty range is valid even when endpoint text differs."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo._git("branch", "range-left", "HEAD")
+            repo._git("branch", "range-right", "HEAD")
+            index = cr.build_attribution(
+                repo.runner, repo.path, rev_range="range-left..range-right"
+            )
             self.assertEqual(index["order"], [])
             self.assertEqual(index["attribution"], {})
             self.assertEqual(index["unmatched"], [])
@@ -994,9 +1011,9 @@ class TestRangeProjection(unittest.TestCase):
         finally:
             repo.__exit__()
 
-    def test_range_projection_rejects_unknown_or_empty_success_output(self):
-        """FH-022/FH-031: unknown and empty rc=0 range output are fatal."""
-        for output in ("not-a-snapshot-sha\n", ""):
+    def test_range_projection_rejects_unknown_success_output(self):
+        """FH-022/FH-031: an unknown SHA in rc=0 range output is fatal."""
+        for output in ("not-a-snapshot-sha\n",):
             with self.subTest(output=output):
                 repo, result = self._malformed_range_result(output)
                 try:

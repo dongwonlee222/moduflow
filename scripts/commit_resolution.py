@@ -87,7 +87,7 @@ def _error_text(args, result):
     return f"{' '.join(args)} failed: {detail}"
 
 
-def _range_order(stdout, records, *, allow_empty=False):
+def _range_order(stdout, records):
     """Validate a successful range projection against the full snapshot."""
     order = []
     for line in (stdout or "").splitlines():
@@ -95,7 +95,7 @@ def _range_order(stdout, records, *, allow_empty=False):
         if len(fields) != 1 or fields[0] not in records:
             return None
         order.append(fields[0])
-    return order if order or allow_empty else None
+    return order
 
 
 # ---------------------------------------------------------------------------
@@ -401,12 +401,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
                 "attribution": {}, "records": {}, "order": [], "unmatched": [],
                 "degraded": degraded, "errors": errors, "diagnostics": [],
             }
-        left, separator, right = rev_range.partition("..")
-        order = _range_order(
-            ranged.stdout,
-            records,
-            allow_empty=bool(separator and left == right),
-        )
+        order = _range_order(ranged.stdout, records)
         if order is None:
             errors.append(
                 "git log range projection produced malformed output "
