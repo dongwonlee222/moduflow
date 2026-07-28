@@ -135,7 +135,7 @@ def branch_stubs(branch_name, shas, issue_files=()):
 
 class ResolveIssueForCommitTests(unittest.TestCase):
     def test_trailer_resolution(self):
-        """FH-027: the consumer fixture supplies the shared snapshot contract."""
+        """FH-021/FH-027: the direct consumer uses the shared snapshot contract."""
         issue_id = "074-sync-fetch-sandbox-handling"
         runner = FakeRunner(
             attribution_stubs(

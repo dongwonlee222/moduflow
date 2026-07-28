@@ -90,6 +90,10 @@ the architectural closure.
 - **Derived invariant**: commit-to-issue and issue-to-commits queries project
   one shared attribution result.
 - **Evidence**: Issue 095 founding measurement in `status.md`; original spec.
+- **Executable invariant evidence (T08 audit)**:
+  `CommitDirectionTests.test_bare_and_full_result_resolution_use_same_policy`
+  exercises the two public directions against one projected result;
+  `8221ea0`, `efda995`, and `94ca3d4` are the implementation evidence.
 - **Status**: superseded by redesign. The shared resolver exists, but its graph
   model still requires replacement.
 
@@ -522,6 +526,11 @@ the architectural closure.
   audit declarations, and metamorphic tests assert properties that do not
   depend on one expected topology.
 - **Evidence**: review rounds 4, 5, 7, 8, and 9.
+- **Executable invariant evidence (T08 audit)**:
+  `DeclarationSanityTests.test_no_reference_oracle_remains`, together with
+  every generated `DeclarationCoverageTests.test_declared_*` and
+  `GroundTruthTests.test_*` case, enforces literal truth without a derived
+  oracle; `f6cfdb3` is the implementation evidence.
 - **Status**: superseded by redesign; the reference oracle stays deleted.
 
 ### FH-021 — Stale Consumer Fixture Outside the Focused Gate
@@ -641,6 +650,9 @@ the architectural closure.
 - **Resolution evidence**: the controller polled the same process to terminal
   exit 0 at `2a000c0`: 231 tests passed in 204.678 seconds. Independent spec
   review repeated the full command with 231/231 and terminal exit 0.
+- **T08 audit evidence**: the six Issue 095 suites were polled in the same
+  session to terminal exit 0: 338 tests passed in 173.165 seconds, including
+  the three executable traceability checks.
 - **Status**: regression captured.
 
 ### FH-027 — Retired Git Command Left Stale Failure Fixtures
@@ -795,6 +807,50 @@ the architectural closure.
   diagnostic. The cumulative gate passed 279/279 and final quality review
   independently rechecked both surfaces.
 - **Status**: regression captured.
+
+## T08 Executable Invariant Audit
+
+This append-only matrix records the executable reference and implementation
+evidence audited for every failure family. The qualified test names are also
+validated by
+`FailureHistoryTraceabilityTests.test_every_failure_record_maps_to_a_loadable_invariant_test`;
+`FH-026` is a process gate and is therefore checked against terminal-exit
+evidence rather than product behavior.
+
+| Failure | Executable invariant test | Implementation evidence |
+| --- | --- | --- |
+| FH-001 | `CommitDirectionTests.test_bare_and_full_result_resolution_use_same_policy` | `8221ea0`, `efda995`, `94ca3d4` |
+| FH-002 | `TopicDeltaTests.test_base_history_is_not_topic_work` | `0f35406`, `2a000c0` |
+| FH-003 | `TopicDeltaTests.test_published_no_ff_topic_recovers_pre_publication_fork` | `f9aad10`–`2a000c0` |
+| FH-004 | `MergeClaimInvariantTests.test_subject_token_order_does_not_change_content` | `59a4d69` |
+| FH-005 | `TopicDeltaTests.test_stacked_issue_excludes_inner_content` | `24bfd3c` |
+| FH-006 | `ForkPointInvariantTests.test_advancing_trunk_does_not_change_fork_point` | `b711c06`, `d25bbdd` |
+| FH-007 | `CommitDirectionTests.test_bare_and_full_result_resolution_use_same_policy` | `ef149a8`, `8221ea0` |
+| FH-008 | `CommitDirectionTests.test_bare_and_full_result_resolution_use_same_policy` | `ef149a8`, `8221ea0` |
+| FH-009 | `TestHistoricalIssueRegistry.test_issue_on_another_checkout_is_registered` | `21d1290`, `8221ea0` |
+| FH-010 | `SnapshotTests.test_merge_base_distinguishes_no_base_from_failure` | `881d81d`, `8221ea0` |
+| FH-011 | `ForkPointInvariantTests.test_disconnected_ref_does_not_change_connected_topic` | `b711c06` |
+| FH-012 | `ForkPointInvariantTests.test_same_tail_slash_ref_stays_a_distinct_equivalent_base_ref` | `b711c06` |
+| FH-013 | `ForkPointInvariantTests.test_incomparable_maximal_forks_are_scoped_to_topic` | `b711c06`, `83913d9` |
+| FH-014 | `SharedOwnershipTests.test_live_resolution_has_no_global_base_election_or_origin_head_probe` | `77ecbbf`, `bfa4157`, `76e8f97` |
+| FH-015 | `MergeClaimInvariantTests.test_deleted_refs_keep_boundary_but_not_unproven_content` | `59a4d69`, `24bfd3c` |
+| FH-016 | `MergeClaimInvariantTests.test_two_parent_multi_name_subject_does_not_relabel_side` | `59a4d69`, `24bfd3c` |
+| FH-017 | `ForkPointInvariantTests.test_advancing_trunk_does_not_change_fork_point` | `b711c06`, `2a000c0` |
+| FH-018 | `FindUnlinkedBehaviorCommitsTests.test_out_of_range_ambiguity_does_not_fail_release_linkage` | `d5da824`, `94ca3d4` |
+| FH-019 | `SnapshotTests.test_terminated_ancestry_query_is_a_failure` | `8068f98`, `f6cfdb3` |
+| FH-020 | `DeclarationSanityTests.test_no_reference_oracle_remains` | `f6cfdb3` |
+| FH-021 | `ResolveIssueForCommitTests.test_trailer_resolution` | `8068f98` |
+| FH-022 | `SnapshotTests.test_merge_base_rejects_empty_or_multitoken_success_output` | `8068f98`, `fd08636` |
+| FH-023 | `ForkPointInvariantTests.test_snapshot_ref_movement_uses_captured_object_ids` | `b711c06` |
+| FH-024 | `ForkPointInvariantTests.test_criss_cross_best_bases_fail_closed_as_ambiguous` | `b711c06` |
+| FH-025 | `ForkPointInvariantTests.test_newer_comparable_candidate_is_the_unique_maximal_fork` | `b711c06` |
+| FH-026 | `FailureHistoryTraceabilityTests.test_process_gate_records_terminal_exit_and_summary` | `2a000c0` and T08 terminal exit 0, 338 tests |
+| FH-027 | `ResolveIssueForCommitTests.test_trailer_resolution` | `a4065f6` |
+| FH-028 | `TopicDeltaTests.test_cached_topology_failure_reaches_membership_on_every_build` | `83913d9`, `414a81f` |
+| FH-029 | `TopicDeltaTests.test_publication_recovery_ignores_unrelated_history_for_command_count` | `b2ddde6`, `db7aee8` |
+| FH-030 | `SharedOwnershipTests.test_live_resolution_has_no_global_base_election_or_origin_head_probe` | `76e8f97` |
+| FH-031 | `TestRangeProjection.test_live_range_projects_only_target_topic` | `380e23e`, `fd08636` |
+| FH-032 | `DiagnosticProjectionTests.test_compatibility_errors_dedupe_in_first_seen_order` | `8221ea0` |
 
 ## Required Design Traceability
 

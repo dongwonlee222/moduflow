@@ -57,8 +57,11 @@ class _ShapeCase(unittest.TestCase):
 
 
 class DeclarationCoverageTests(_ShapeCase):
-    """Every commit a shape builds must carry a declaration. Without this a
-    shape added next month declares nothing and silently tests nothing."""
+    """FH-020: every commit a shape builds must carry a literal declaration.
+
+    Without this a shape added next month declares nothing and silently tests
+    nothing.
+    """
 
     def _check(self, shape_name):
         repo, _ = self._build(shape_name)
@@ -79,7 +82,7 @@ class DeclarationCoverageTests(_ShapeCase):
 
 
 class GroundTruthTests(_ShapeCase):
-    """issue -> commits, against the declaration."""
+    """FH-020: issue -> commits, against independently declared truth."""
 
     def _check(self, shape_name):
         repo, returned = self._build(shape_name)
@@ -295,8 +298,11 @@ class DeclarationSanityTests(unittest.TestCase):
         self.assertGreater(total, 20, "ground truth is not being recorded")
 
     def test_no_reference_oracle_remains(self):
-        """The oracle was deleted, not disabled. A reintroduced one would
-        recreate the shared blind spot rounds 5, 7 and 8 each measured."""
+        """FH-020: the oracle was deleted, not disabled.
+
+        A reintroduced one would recreate the shared blind spot rounds 5, 7
+        and 8 each measured.
+        """
         self.assertFalse(
             (Path(__file__).resolve().parent / "commit_resolution_reference.py").exists(),
             "the reference oracle is back; ground truth must stay declared",

@@ -5,6 +5,8 @@ Covers the spec's regression table: trailer-only, branch-only, mixed,
 merge-subject with the branch deleted, detached HEAD, unmatched commits, and
 the batching constraint that converge must not fan out per commit.
 """
+import importlib
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -18,6 +20,137 @@ from git_repo_builder import GitRepo  # noqa: E402
 
 ISSUE = "095-commit-issue-resolution-parity"
 OTHER = "094-risk-based-security-and-quality-review-gate"
+
+FAILURE_INVARIANT_TESTS = {
+    "FH-001": (
+        "tests.test_commit_resolution_differential.CommitDirectionTests."
+        "test_bare_and_full_result_resolution_use_same_policy"
+    ),
+    "FH-002": (
+        "tests.test_commit_graph.TopicDeltaTests."
+        "test_base_history_is_not_topic_work"
+    ),
+    "FH-003": (
+        "tests.test_commit_graph.TopicDeltaTests."
+        "test_published_no_ff_topic_recovers_pre_publication_fork"
+    ),
+    "FH-004": (
+        "tests.test_commit_resolution.MergeClaimInvariantTests."
+        "test_subject_token_order_does_not_change_content"
+    ),
+    "FH-005": (
+        "tests.test_commit_graph.TopicDeltaTests."
+        "test_stacked_issue_excludes_inner_content"
+    ),
+    "FH-006": (
+        "tests.test_commit_graph.ForkPointInvariantTests."
+        "test_advancing_trunk_does_not_change_fork_point"
+    ),
+    "FH-007": (
+        "tests.test_commit_resolution_differential.CommitDirectionTests."
+        "test_bare_and_full_result_resolution_use_same_policy"
+    ),
+    "FH-008": (
+        "tests.test_commit_resolution_differential.CommitDirectionTests."
+        "test_bare_and_full_result_resolution_use_same_policy"
+    ),
+    "FH-009": (
+        "tests.test_commit_resolution.TestHistoricalIssueRegistry."
+        "test_issue_on_another_checkout_is_registered"
+    ),
+    "FH-010": (
+        "tests.test_commit_graph.SnapshotTests."
+        "test_merge_base_distinguishes_no_base_from_failure"
+    ),
+    "FH-011": (
+        "tests.test_commit_graph.ForkPointInvariantTests."
+        "test_disconnected_ref_does_not_change_connected_topic"
+    ),
+    "FH-012": (
+        "tests.test_commit_graph.ForkPointInvariantTests."
+        "test_same_tail_slash_ref_stays_a_distinct_equivalent_base_ref"
+    ),
+    "FH-013": (
+        "tests.test_commit_graph.ForkPointInvariantTests."
+        "test_incomparable_maximal_forks_are_scoped_to_topic"
+    ),
+    "FH-014": (
+        "tests.test_commit_resolution_parity.SharedOwnershipTests."
+        "test_live_resolution_has_no_global_base_election_or_origin_head_probe"
+    ),
+    "FH-015": (
+        "tests.test_commit_resolution.MergeClaimInvariantTests."
+        "test_deleted_refs_keep_boundary_but_not_unproven_content"
+    ),
+    "FH-016": (
+        "tests.test_commit_resolution.MergeClaimInvariantTests."
+        "test_two_parent_multi_name_subject_does_not_relabel_side"
+    ),
+    "FH-017": (
+        "tests.test_commit_graph.ForkPointInvariantTests."
+        "test_advancing_trunk_does_not_change_fork_point"
+    ),
+    "FH-018": (
+        "tests.test_linkage_check.FindUnlinkedBehaviorCommitsTests."
+        "test_out_of_range_ambiguity_does_not_fail_release_linkage"
+    ),
+    "FH-019": (
+        "tests.test_commit_graph.SnapshotTests."
+        "test_terminated_ancestry_query_is_a_failure"
+    ),
+    "FH-020": (
+        "tests.test_commit_resolution_differential.DeclarationSanityTests."
+        "test_no_reference_oracle_remains"
+    ),
+    "FH-021": (
+        "tests.test_linkage_check.ResolveIssueForCommitTests."
+        "test_trailer_resolution"
+    ),
+    "FH-022": (
+        "tests.test_commit_graph.SnapshotTests."
+        "test_merge_base_rejects_empty_or_multitoken_success_output"
+    ),
+    "FH-023": (
+        "tests.test_commit_graph.ForkPointInvariantTests."
+        "test_snapshot_ref_movement_uses_captured_object_ids"
+    ),
+    "FH-024": (
+        "tests.test_commit_graph.ForkPointInvariantTests."
+        "test_criss_cross_best_bases_fail_closed_as_ambiguous"
+    ),
+    "FH-025": (
+        "tests.test_commit_graph.ForkPointInvariantTests."
+        "test_newer_comparable_candidate_is_the_unique_maximal_fork"
+    ),
+    "FH-026": (
+        "tests.test_commit_resolution.FailureHistoryTraceabilityTests."
+        "test_process_gate_records_terminal_exit_and_summary"
+    ),
+    "FH-027": (
+        "tests.test_linkage_check.ResolveIssueForCommitTests."
+        "test_trailer_resolution"
+    ),
+    "FH-028": (
+        "tests.test_commit_graph.TopicDeltaTests."
+        "test_cached_topology_failure_reaches_membership_on_every_build"
+    ),
+    "FH-029": (
+        "tests.test_commit_graph.TopicDeltaTests."
+        "test_publication_recovery_ignores_unrelated_history_for_command_count"
+    ),
+    "FH-030": (
+        "tests.test_commit_resolution_parity.SharedOwnershipTests."
+        "test_live_resolution_has_no_global_base_election_or_origin_head_probe"
+    ),
+    "FH-031": (
+        "tests.test_commit_resolution.TestRangeProjection."
+        "test_live_range_projects_only_target_topic"
+    ),
+    "FH-032": (
+        "tests.test_commit_resolution.DiagnosticProjectionTests."
+        "test_compatibility_errors_dedupe_in_first_seen_order"
+    ),
+}
 
 
 def resolve_shape(name):
@@ -41,6 +174,53 @@ def resolve_shape(name):
             "boundary_issues": boundary_issues,
             "diagnostics": built["diagnostics"],
         }
+
+
+class FailureHistoryTraceabilityTests(unittest.TestCase):
+    @staticmethod
+    def _failure_corpus():
+        return Path(
+            "specs/095-commit-issue-resolution-parity/failure-history.md"
+        ).read_text(encoding="utf-8")
+
+    def test_every_open_or_redesign_failure_has_a_test_reference(self):
+        corpus = self._failure_corpus()
+        tests = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in Path("tests").glob("test_commit*.py")
+        ) + Path("tests/test_linkage_check.py").read_text(
+            encoding="utf-8"
+        ) + Path("tests/test_project_converge.py").read_text(
+            encoding="utf-8"
+        )
+        required = re.findall(
+            r"\|\s*(FH-\d{3})\s*\|.*\|\s*(?:open|superseded by redesign)\s*\|",
+            corpus,
+        )
+        missing = [failure_id for failure_id in required if failure_id not in tests]
+        self.assertEqual(missing, [])
+
+    def test_every_failure_record_maps_to_a_loadable_invariant_test(self):
+        failure_ids = set(
+            re.findall(r"^### (FH-\d{3})\b", self._failure_corpus(), re.MULTILINE)
+        )
+
+        self.assertEqual(set(FAILURE_INVARIANT_TESTS), failure_ids)
+        for failure_id, dotted_name in FAILURE_INVARIANT_TESTS.items():
+            module_name, class_name, method_name = dotted_name.rsplit(".", 2)
+            with self.subTest(failure_id=failure_id, test=dotted_name):
+                module = importlib.import_module(module_name)
+                test_class = getattr(module, class_name)
+                self.assertTrue(callable(getattr(test_class, method_name)))
+
+    def test_process_gate_records_terminal_exit_and_summary(self):
+        """FH-026: a yielded gate counts only after terminal exit and summary."""
+        section = self._failure_corpus().split(
+            "### FH-026", 1
+        )[1].split("### FH-027", 1)[0]
+
+        self.assertIn("terminal exit 0", section)
+        self.assertRegex(section, r"\b\d+ tests passed\b")
 
 
 class DiagnosticProjectionTests(unittest.TestCase):
