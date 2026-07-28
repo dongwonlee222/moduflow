@@ -24,7 +24,11 @@ OTHER = "094-risk-based-security-and-quality-review-gate"
 FAILURE_INVARIANT_TESTS = {
     "FH-001": (
         "tests.test_commit_resolution_differential.CommitDirectionTests."
-        "test_bare_and_full_result_resolution_use_same_policy"
+        "test_bare_and_full_result_resolution_use_same_policy",
+        "tests.test_commit_resolution_differential.GroundTruthTests."
+        "test_trailer_disagrees_with_branch",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh001_composite_detects_broken_issue_to_commits",
     ),
     "FH-002": (
         "tests.test_commit_graph.TopicDeltaTests."
@@ -47,8 +51,12 @@ FAILURE_INVARIANT_TESTS = {
         "test_advancing_trunk_does_not_change_fork_point"
     ),
     "FH-007": (
+        "tests.test_commit_resolution.SourcePrecedenceInvariantTests."
+        "test_complete_precedence_chain",
         "tests.test_commit_resolution_differential.CommitDirectionTests."
-        "test_bare_and_full_result_resolution_use_same_policy"
+        "test_bare_and_full_result_resolution_use_same_policy",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh007_composite_detects_branch_first_precedence",
     ),
     "FH-008": (
         "tests.test_commit_resolution_differential.CommitDirectionTests."
@@ -75,8 +83,10 @@ FAILURE_INVARIANT_TESTS = {
         "test_incomparable_maximal_forks_are_scoped_to_topic"
     ),
     "FH-014": (
+        "tests.test_commit_resolution.DiagnosticProjectionTests."
+        "test_ref_inventory_failure_is_structured_and_fails_closed",
         "tests.test_commit_resolution_parity.SharedOwnershipTests."
-        "test_live_resolution_has_no_global_base_election_or_origin_head_probe"
+        "test_live_resolution_has_no_global_base_election_or_origin_head_probe",
     ),
     "FH-015": (
         "tests.test_commit_resolution.MergeClaimInvariantTests."
@@ -96,11 +106,37 @@ FAILURE_INVARIANT_TESTS = {
     ),
     "FH-019": (
         "tests.test_commit_graph.SnapshotTests."
-        "test_terminated_ancestry_query_is_a_failure"
+        "test_loads_log_and_refs_once",
+        "tests.test_commit_resolution.DiagnosticProjectionTests."
+        "test_build_result_separates_fatal_errors_from_diagnostics",
+        "tests.test_commit_resolution.DiagnosticProjectionTests."
+        "test_ref_inventory_failure_is_structured_and_fails_closed",
+        "tests.test_commit_graph.SnapshotTests."
+        "test_merge_base_distinguishes_no_base_from_failure",
+        "tests.test_commit_graph.SnapshotTests."
+        "test_terminated_ancestry_query_is_a_failure",
+        "tests.test_commit_resolution.TestGraphQueryFailures."
+        "test_branch_membership_rejects_a_terminated_merge_base_query",
+        "tests.test_commit_resolution.TestGraphQueryFailures."
+        "test_rev_list_failure_surfaces_and_does_not_attribute",
+        "tests.test_commit_graph.SnapshotTests."
+        "test_merge_base_rejects_empty_or_multitoken_success_output",
+        "tests.test_commit_resolution.TestRangeProjection."
+        "test_range_projection_rejects_multi_token_success_output",
+        "tests.test_commit_resolution_differential.CommitDirectionTests."
+        "test_bare_and_full_result_resolution_use_same_policy",
     ),
     "FH-020": (
+        "tests.test_commit_resolution_differential.DeclarationCoverageTests."
+        "test_declared_trailer_disagrees_with_branch",
+        "tests.test_commit_resolution_differential.GroundTruthTests."
+        "test_trailer_disagrees_with_branch",
         "tests.test_commit_resolution_differential.DeclarationSanityTests."
-        "test_no_reference_oracle_remains"
+        "test_some_shape_declares_real_work",
+        "tests.test_commit_resolution_differential.DeclarationSanityTests."
+        "test_no_reference_oracle_remains",
+        "tests.test_commit_resolution.MergeClaimInvariantTests."
+        "test_subject_token_order_does_not_change_content",
     ),
     "FH-021": (
         "tests.test_linkage_check.ResolveIssueForCommitTests."
@@ -123,12 +159,20 @@ FAILURE_INVARIANT_TESTS = {
         "test_newer_comparable_candidate_is_the_unique_maximal_fork"
     ),
     "FH-026": (
-        "tests.test_commit_resolution.FailureHistoryTraceabilityTests."
-        "test_process_gate_records_terminal_exit_and_summary"
+        "tests.test_commit_resolution.ProcessGateInvariantTests."
+        "test_t08_audit_evidence_records_terminal_exit_and_summary",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh026_current_audit_block_removal_is_detected",
     ),
     "FH-027": (
         "tests.test_linkage_check.ResolveIssueForCommitTests."
-        "test_trailer_resolution"
+        "test_trailer_resolution",
+        "tests.test_linkage_check.ResolveIssueForCommitTests."
+        "test_branch_resolution",
+        "tests.test_linkage_check.ResolveIssueForCommitTests."
+        "test_snapshot_failure_surfaces_structured_fatal_error",
+        "tests.test_linkage_check.ResolveIssueForCommitTests."
+        "test_trailer_beats_branch_on_conflict",
     ),
     "FH-028": (
         "tests.test_commit_graph.TopicDeltaTests."
@@ -148,9 +192,46 @@ FAILURE_INVARIANT_TESTS = {
     ),
     "FH-032": (
         "tests.test_commit_resolution.DiagnosticProjectionTests."
-        "test_compatibility_errors_dedupe_in_first_seen_order"
+        "test_compatibility_errors_dedupe_in_first_seen_order",
+        "tests.test_commit_resolution.DiagnosticProjectionTests."
+        "test_octopus_duplicate_diagnostics_have_one_compatibility_error",
+        "tests.test_commit_resolution.DiagnosticProjectionTests."
+        "test_multi_name_duplicate_diagnostics_have_one_compatibility_error",
+    ),
+    "FH-033": (
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh001_composite_detects_broken_issue_to_commits",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh007_composite_detects_branch_first_precedence",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh026_current_audit_block_removal_is_detected",
     ),
 }
+
+
+def _failure_corpus():
+    return Path(
+        "specs/095-commit-issue-resolution-parity/failure-history.md"
+    ).read_text(encoding="utf-8")
+
+
+def _mapped_test_names(mapped):
+    return (mapped,) if isinstance(mapped, str) else tuple(mapped)
+
+
+def _run_named_tests(names):
+    result = unittest.TestResult()
+    unittest.defaultTestLoader.loadTestsFromNames(tuple(names)).run(result)
+    return result
+
+
+def _test_result_details(result):
+    problems = [
+        f"{test.id()}: {traceback.splitlines()[-1]}"
+        for test, traceback in result.failures + result.errors
+    ]
+    problems.extend(f"{test.id()}: skipped: {reason}" for test, reason in result.skipped)
+    return "\n".join(problems)
 
 
 def resolve_shape(name):
@@ -176,15 +257,134 @@ def resolve_shape(name):
         }
 
 
-class FailureHistoryTraceabilityTests(unittest.TestCase):
-    @staticmethod
-    def _failure_corpus():
-        return Path(
-            "specs/095-commit-issue-resolution-parity/failure-history.md"
-        ).read_text(encoding="utf-8")
+class SourcePrecedenceInvariantTests(unittest.TestCase):
+    def test_complete_precedence_chain(self):
+        """FH-007: trailer > branch > merge-subject, through one finalizer."""
+        records = {"sha": {"parents": []}}
 
+        def claim(issue_id, source):
+            return {
+                "issue_id": issue_id,
+                "source": source,
+                "kind": "content",
+            }
+
+        trailer = claim(shapes.ALPHA, "trailer")
+        branch = claim(shapes.BETA, "branch")
+        merge_subject = claim(shapes.GAMMA, "merge-subject")
+
+        self.assertEqual(
+            cr.SOURCE_PRECEDENCE,
+            ("trailer", "branch", "merge-subject"),
+        )
+        self.assertEqual(
+            cr.finalize_claims(
+                records,
+                {"sha": [merge_subject, branch, trailer]},
+            ),
+            {"sha": {shapes.ALPHA: "trailer"}},
+        )
+        self.assertEqual(
+            cr.finalize_claims(records, {"sha": [merge_subject, branch]}),
+            {"sha": {shapes.BETA: "branch"}},
+        )
+        self.assertEqual(
+            cr.finalize_claims(records, {"sha": [merge_subject]}),
+            {"sha": {shapes.GAMMA: "merge-subject"}},
+        )
+
+
+class ProcessGateInvariantTests(unittest.TestCase):
+    def test_t08_audit_evidence_records_terminal_exit_and_summary(self):
+        """FH-026: the current T08 block must contain terminal gate evidence."""
+        section = _failure_corpus().split(
+            "### FH-026", 1
+        )[1].split("### FH-027", 1)[0]
+        marker = "- **T08 audit evidence**:"
+
+        self.assertEqual(section.count(marker), 1)
+        evidence = section.split(marker, 1)[1].split("\n- **", 1)[0]
+        self.assertIn("six Issue 095 suites", evidence)
+        self.assertRegex(
+            evidence,
+            r"terminal exit 0: \d+ tests passed in \d+(?:\.\d+)? seconds",
+        )
+
+
+class FailureInvariantMutationTests(unittest.TestCase):
+    def test_fh001_composite_detects_broken_issue_to_commits(self):
+        """FH-033: FH-001 fails when issue-to-commits returns no ownership."""
+        differential = importlib.import_module(
+            "tests.test_commit_resolution_differential"
+        )
+        original = differential.cr.resolve_commits_for_issue
+        try:
+            differential.cr.resolve_commits_for_issue = (
+                lambda *args, **kwargs: {"commits": []}
+            )
+            result = _run_named_tests(
+                (
+                    "tests.test_commit_resolution_differential.GroundTruthTests."
+                    "test_trailer_disagrees_with_branch",
+                )
+            )
+        finally:
+            differential.cr.resolve_commits_for_issue = original
+
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(result.failures), 1)
+        self.assertFalse(result.wasSuccessful())
+
+    def test_fh007_composite_detects_branch_first_precedence(self):
+        """FH-033: FH-007 fails under branch > trailer precedence."""
+        original = cr.SOURCE_PRECEDENCE
+        try:
+            cr.SOURCE_PRECEDENCE = ("branch", "trailer", "merge-subject")
+            result = _run_named_tests(
+                (
+                    "tests.test_commit_resolution.SourcePrecedenceInvariantTests."
+                    "test_complete_precedence_chain",
+                )
+            )
+        finally:
+            cr.SOURCE_PRECEDENCE = original
+
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(result.failures), 1)
+        self.assertFalse(result.wasSuccessful())
+
+    def test_fh026_current_audit_block_removal_is_detected(self):
+        """FH-033: FH-026 fails when the current T08 evidence is removed."""
+        corpus = _failure_corpus()
+        mutated = re.sub(
+            r"\n- \*\*T08 audit evidence\*\*:.*?(?=\n- \*\*)",
+            "",
+            corpus,
+            count=1,
+            flags=re.DOTALL,
+        )
+        self.assertNotEqual(mutated, corpus)
+
+        original = globals()["_failure_corpus"]
+        try:
+            globals()["_failure_corpus"] = lambda: mutated
+            result = _run_named_tests(
+                (
+                    "tests.test_commit_resolution.ProcessGateInvariantTests."
+                    "test_t08_audit_evidence_records_terminal_exit_and_summary",
+                )
+            )
+        finally:
+            globals()["_failure_corpus"] = original
+
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(result.failures), 1)
+        self.assertFalse(result.wasSuccessful())
+
+
+class FailureHistoryTraceabilityTests(unittest.TestCase):
     def test_every_open_or_redesign_failure_has_a_test_reference(self):
-        corpus = self._failure_corpus()
+        corpus = _failure_corpus()
         tests = "\n".join(
             path.read_text(encoding="utf-8")
             for path in Path("tests").glob("test_commit*.py")
@@ -200,27 +400,25 @@ class FailureHistoryTraceabilityTests(unittest.TestCase):
         missing = [failure_id for failure_id in required if failure_id not in tests]
         self.assertEqual(missing, [])
 
-    def test_every_failure_record_maps_to_a_loadable_invariant_test(self):
+    def test_every_failure_record_maps_to_executable_invariant_tests(self):
         failure_ids = set(
-            re.findall(r"^### (FH-\d{3})\b", self._failure_corpus(), re.MULTILINE)
+            re.findall(r"^### (FH-\d{3})\b", _failure_corpus(), re.MULTILINE)
         )
 
         self.assertEqual(set(FAILURE_INVARIANT_TESTS), failure_ids)
-        for failure_id, dotted_name in FAILURE_INVARIANT_TESTS.items():
-            module_name, class_name, method_name = dotted_name.rsplit(".", 2)
-            with self.subTest(failure_id=failure_id, test=dotted_name):
-                module = importlib.import_module(module_name)
-                test_class = getattr(module, class_name)
-                self.assertTrue(callable(getattr(test_class, method_name)))
+        test_names = []
+        for failure_id, mapped in FAILURE_INVARIANT_TESTS.items():
+            names = _mapped_test_names(mapped)
+            with self.subTest(failure_id=failure_id):
+                self.assertTrue(names)
+                self.assertEqual(len(names), len(set(names)))
+            test_names.extend(names)
 
-    def test_process_gate_records_terminal_exit_and_summary(self):
-        """FH-026: a yielded gate counts only after terminal exit and summary."""
-        section = self._failure_corpus().split(
-            "### FH-026", 1
-        )[1].split("### FH-027", 1)[0]
-
-        self.assertIn("terminal exit 0", section)
-        self.assertRegex(section, r"\b\d+ tests passed\b")
+        unique_test_names = tuple(dict.fromkeys(test_names))
+        result = _run_named_tests(unique_test_names)
+        self.assertEqual(result.testsRun, len(unique_test_names))
+        self.assertTrue(result.wasSuccessful(), _test_result_details(result))
+        self.assertEqual(result.skipped, [])
 
 
 class DiagnosticProjectionTests(unittest.TestCase):
@@ -329,6 +527,42 @@ class DiagnosticProjectionTests(unittest.TestCase):
         self.assertEqual(built["fatal_errors"], built["errors"])
         self.assertTrue(built["fatal_errors"])
         self.assertEqual(built["diagnostics"], [])
+
+    def test_ref_inventory_failure_is_structured_and_fails_closed(self):
+        """FH-014: default-ref inventory failure is observable, not fallback."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.branch(f"codex/{ISSUE}")
+            work = repo.commit("feat: branch work")
+            calls = []
+
+            def failing(args, cwd=None):
+                calls.append(tuple(args))
+                if args[:2] == ["git", "for-each-ref"]:
+                    return type(
+                        "Result",
+                        (),
+                        {
+                            "returncode": 128,
+                            "stdout": "",
+                            "stderr": "fatal: ref inventory unavailable",
+                        },
+                    )()
+                return repo.runner(args, cwd)
+
+            built = cr.build_attribution(failing, repo.path)
+
+        self.assertNotIn(work, built["attribution"])
+        self.assertTrue(
+            any("for-each-ref" in error for error in built["fatal_errors"])
+        )
+        self.assertEqual(built["errors"], built["fatal_errors"])
+        self.assertEqual(built["diagnostics"], [])
+        self.assertFalse(
+            any(call[:2] == ("git", "symbolic-ref") for call in calls),
+            "a failed immutable ref inventory must not trigger a named fallback",
+        )
 
     def test_unrelated_graph_ambiguity_does_not_degrade_requested_issue(self):
         """FH-007/FH-008/FH-009/FH-018: project errors and degradation once."""

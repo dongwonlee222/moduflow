@@ -69,13 +69,14 @@ the architectural closure.
 | FH-023 | Ref movement mixed snapshot-time and query-time graph state | Graph queries use snapshot object IDs, not live ref names | regression captured |
 | FH-024 | One arbitrary criss-cross merge base became a unique fork | Fork selection consumes every best merge base or fails scoped ambiguity | regression captured |
 | FH-025 | Tests never exercised comparable fork candidates | Invariant tests must fail when ancestry-maximal selection is removed | regression captured |
-| FH-026 | A yielded long-running test was reported green before exit | Verification evidence includes the terminal process exit and summary | regression captured |
+| FH-026 | A yielded long-running test was reported green before exit | Verification evidence includes the terminal process exit and summary | open |
 | FH-027 | Fault-injection fixtures still matched the retired Git command | Boundary migrations update every direct failure fixture before review | regression captured |
 | FH-028 | Topic-fork diagnostics disappeared at live attribution | Every live consumer preserves scoped diagnostics through compatibility surfaces | regression captured |
 | FH-029 | Publication recovery probed Git per history record | Snapshot traversal must not make subprocess count grow with history length | regression captured |
 | FH-030 | A compatibility wrapper retained the retired global-base policy | Compatibility paths delegate per topic or are removed | regression captured |
 | FH-031 | Range-truncated snapshots rejected valid topology output | Topology inventory is complete and range projection is separate | regression captured |
 | FH-032 | Structured diagnostics duplicated flat compatibility errors | Compatibility messages are stable and deduplicated without losing diagnostic scope | regression captured |
+| FH-033 | Traceability accepted IDs without proving their invariants | Every mapping executes the complete derived invariant, not only a named test | open |
 
 ## Failure Records
 
@@ -94,6 +95,12 @@ the architectural closure.
   `CommitDirectionTests.test_bare_and_full_result_resolution_use_same_policy`
   exercises the two public directions against one projected result;
   `8221ea0`, `efda995`, and `94ca3d4` are the implementation evidence.
+- **T08 I2 remediation evidence**: the FH-001 composite now also executes
+  `GroundTruthTests.test_trailer_disagrees_with_branch` for issue-to-commits
+  truth and
+  `FailureInvariantMutationTests.test_fh001_composite_detects_broken_issue_to_commits`;
+  the latter proves that replacing issue-to-commits with an empty result is
+  caught rather than merely loading a test name.
 - **Status**: superseded by redesign. The shared resolver exists, but its graph
   model still requires replacement.
 
@@ -267,6 +274,11 @@ the architectural closure.
 - **Derived invariant**: collect candidate claims first, then apply
   `trailer > branch > merge-subject` exactly once.
 - **Evidence**: R9-3; corrective commit `ef149a8`.
+- **T08 I2 remediation evidence**:
+  `SourcePrecedenceInvariantTests.test_complete_precedence_chain` asserts all
+  three levels through `finalize_claims()`, while
+  `FailureInvariantMutationTests.test_fh007_composite_detects_branch_first_precedence`
+  proves the composite fails under `branch > trailer > merge-subject`.
 - **Status**: regression captured.
 
 ### FH-008 — Bare Versus Indexed Lookup
@@ -398,6 +410,12 @@ the architectural closure.
 - **Derived invariant**: Git boundary failures remain structured diagnostics;
   fallback use is observable.
 - **Evidence**: corrective review and commits `77ecbbf`, `bfa4157`.
+- **T08 I2 remediation evidence**:
+  `DiagnosticProjectionTests.test_ref_inventory_failure_is_structured_and_fails_closed`
+  asserts fatal/compatibility projection and empty attribution when immutable
+  ref discovery fails; the composite also executes
+  `SharedOwnershipTests.test_live_resolution_has_no_global_base_election_or_origin_head_probe`
+  to prove no silent named fallback is reintroduced.
 - **Status**: regression captured; must be preserved by the redesign.
 
 ### FH-015 — Octopus Merge Subject Order
@@ -511,6 +529,15 @@ the architectural closure.
   ordinary-negative, failure, terminated-return, bare, and indexed cases.
 - **Evidence**: review rounds 1–4; fixture alignment commits `235f357` and
   `5ccdbb5`.
+- **T08 I2 remediation evidence**: the FH-019 composite executes snapshot log
+  and ref inventory, ordinary-negative versus failed merge-base, terminated
+  ancestry, malformed successful merge-base and range output, and
+  `CommitDirectionTests.test_bare_and_full_result_resolution_use_same_policy`
+  for both public call shapes.
+- **T08 I2 boundary-completion evidence**: the executable set additionally
+  injects structured log and ref-inventory failures, a terminated live
+  merge-base call, and a failed live rev-list call so each current graph
+  boundary family participates in the fail-closed audit.
 - **Status**: regression captured; invariant coverage remains a completion
   gate.
 
@@ -531,6 +558,10 @@ the architectural closure.
   every generated `DeclarationCoverageTests.test_declared_*` and
   `GroundTruthTests.test_*` case, enforces literal truth without a derived
   oracle; `f6cfdb3` is the implementation evidence.
+- **T08 I2 remediation evidence**: the executable composite selects both
+  declaration coverage and ground-truth resolution for the conflicting-source
+  shape, asserts that real work is recorded, asserts the derived oracle file
+  remains absent, and runs the subject-order metamorphic invariant.
 - **Status**: superseded by redesign; the reference oracle stays deleted.
 
 ### FH-021 — Stale Consumer Fixture Outside the Focused Gate
@@ -653,7 +684,19 @@ the architectural closure.
 - **T08 audit evidence**: the six Issue 095 suites were polled in the same
   session to terminal exit 0: 338 tests passed in 173.165 seconds, including
   the three executable traceability checks.
-- **Status**: regression captured.
+- **Recurrence evidence**: T08 independent spec review at `e62d3fe` removed
+  the new T08 audit evidence and the process-gate test still passed by matching
+  the older T03 terminal-exit sentence elsewhere in this record.
+- **T08 I2 remediation evidence**:
+  `ProcessGateInvariantTests.test_t08_audit_evidence_records_terminal_exit_and_summary`
+  isolates the unique `T08 audit evidence` block and requires its six-suite,
+  terminal-exit, count, and duration fields;
+  `FailureInvariantMutationTests.test_fh026_current_audit_block_removal_is_detected`
+  removes that exact block and proves the process invariant turns red.
+- **T08 I2 green evidence**: the remediated six-suite command was polled in
+  the same session to terminal exit 0: 343 tests passed in 226.614 seconds.
+- **Status**: open until the process-gate test identifies the current T08
+  evidence specifically and fails when that evidence is removed.
 
 ### FH-027 — Retired Git Command Left Stale Failure Fixtures
 
@@ -687,6 +730,10 @@ the architectural closure.
   the current snapshot/graph boundary and removed the bare `git show` policy
   path. The T05 direct-consumer gate passed 279/279 at `8221ea0` with clean
   independent reviews.
+- **T08 I2 remediation evidence**: the FH-027 composite executes the current
+  snapshot-contract trailer fixture, a real-repository branch fixture,
+  structured snapshot failure projection, and trailer-versus-branch
+  precedence through the direct linkage consumer.
 - **Status**: regression captured.
 
 ### FH-028 — Topic Diagnostics Disappeared at Live Attribution
@@ -806,7 +853,40 @@ the architectural closure.
   messages in first-seen order while retaining every structured SHA/issue
   diagnostic. The cumulative gate passed 279/279 and final quality review
   independently rechecked both surfaces.
+- **T08 I2 remediation evidence**: the FH-032 composite executes the synthetic
+  first-seen dedupe contract plus octopus and multi-name real-topology cases
+  that first assert duplicate structured messages exist and then assert one
+  flat compatibility message remains.
 - **Status**: regression captured.
+
+### FH-033 — Traceability Without Invariant Coverage
+
+- **Topology**: a failure id is mapped to a loadable test whose assertions
+  cover only a narrower behavior than the record's derived invariant.
+- **Observed failure**: T08 traceability stayed green when issue-to-commits was
+  broken for FH-001 and when precedence was changed to `branch > trailer` for
+  FH-007; several other mappings likewise checked only names, absence, or one
+  boundary variant.
+- **Invalid assumption**: loading and running one named test proves the full
+  invariant merely because its docstring contains the same `FH-*` id.
+- **Derived invariant**: every traceability mapping must execute assertions
+  covering the complete recorded invariant, including both directions,
+  precedence order, observable diagnostics, and required boundary variants.
+- **Evidence**: T08 independent spec review at `e62d3fe`, including mutation
+  probes for FH-001 and FH-007 and coverage review of FH-014, FH-019, FH-020,
+  FH-027, and FH-032.
+- **T08 I2 remediation evidence**:
+  `FailureHistoryTraceabilityTests.test_every_failure_record_maps_to_executable_invariant_tests`
+  expands one-to-many mappings, executes every unique qualified test, rejects
+  missing/duplicate/skipped/failing components, and is backed by explicit
+  mutation probes for FH-001, FH-007, and FH-026.
+- **T08 I2 green evidence**: the composite traceability gate passed, both
+  reviewer mutations were first reproduced as surviving the old mapping, all
+  three new mutation probes caught their injected defect, and the six-suite
+  terminal gate passed 343/343 in 226.614 seconds.
+- **Status**: open until mutation-sensitive or composite invariant tests cover
+  each mapped requirement and the traceability audit fails when any component
+  is removed.
 
 ## T08 Executable Invariant Audit
 
@@ -852,6 +932,25 @@ evidence rather than product behavior.
 | FH-031 | `TestRangeProjection.test_live_range_projects_only_target_topic` | `380e23e`, `fd08636` |
 | FH-032 | `DiagnosticProjectionTests.test_compatibility_errors_dedupe_in_first_seen_order` | `8221ea0` |
 
+## T08 I2 Composite Traceability Override
+
+The earlier single-test matrix remains as append-only RED evidence. For the
+reviewed families below, this composite matrix is authoritative and every
+qualified test is executed by
+`FailureHistoryTraceabilityTests.test_every_failure_record_maps_to_executable_invariant_tests`.
+
+| Failure | Executed composite invariant |
+| --- | --- |
+| FH-001 | commit-to-issue bare/indexed parity + issue-to-commits declared truth + empty issue-to-commits mutation |
+| FH-007 | exact trailer/branch/merge-subject chain + both public call shapes + branch-first mutation |
+| FH-014 | structured ref-inventory fatal projection + absence of a silent named fallback |
+| FH-019 | snapshot sources + ordinary/failed/terminated/malformed Git results + bare/indexed call shapes |
+| FH-020 | literal declaration coverage + ground truth + nonempty truth sanity + no oracle + metamorphic subject order |
+| FH-026 | current T08 terminal evidence + exact-block-removal mutation |
+| FH-027 | current snapshot fixture + real branch topology + structured consumer failure + consumer precedence |
+| FH-032 | first-seen flat dedupe + structured octopus multiplicity + structured multi-name multiplicity |
+| FH-033 | FH-001, FH-007, and FH-026 mutation probes |
+
 ## Required Design Traceability
 
 The redesign maps its requirements to this corpus:
@@ -875,5 +974,6 @@ The redesign maps its requirements to this corpus:
 | Removal of superseded compatibility policy | FH-030 |
 | Complete topology with separate range projection | FH-031 |
 | Stable flat compatibility messages over structured diagnostics | FH-032 |
+| Mutation-sensitive executable invariant coverage | FH-033 |
 
 Future findings extend this table rather than replacing it.
