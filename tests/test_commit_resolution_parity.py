@@ -168,6 +168,21 @@ class SharedOwnershipTests(unittest.TestCase):
         self.assertNotIn("base_ref", functions)
         self.assertNotIn("symbolic-ref", source)
 
+    def test_bare_resolver_has_no_private_trailer_shortcut(self):
+        """FH-001/FH-007/FH-008/FH-009: bare and indexed share one policy."""
+        source = Path("scripts/commit_resolution.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        resolver = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "resolve_issue_for_commit"
+        )
+        resolver_source = ast.get_source_segment(source, resolver)
+
+        self.assertNotIn('git", "show', resolver_source)
+        self.assertNotIn("TRAILER_RE.search", resolver_source)
+
     def test_coverage_facts_reach_the_converge_payload(self):
         """The per-issue half of the payload. The repo-wide counts cannot tell
         a reviewer whether *this* bundle is complete — they are identical for

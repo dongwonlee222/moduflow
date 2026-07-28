@@ -81,25 +81,31 @@ def branch_stubs(branch_name, shas, issue_files=()):
 
 class ResolveIssueForCommitTests(unittest.TestCase):
     def test_trailer_resolution(self):
+        """FH-027: the consumer fixture supplies the shared snapshot contract."""
+        issue_id = "074-sync-fetch-sandbox-handling"
         runner = FakeRunner(
-            {
-                ("git", "show", "-s", "--format=%B", "abc123"): (
-                    "fix: handle sandboxed fetch\n\nIssue: 074-sync-fetch-sandbox-handling\n"
-                ),
-                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): (
-                    "issues/074-sync-fetch-sandbox-handling.md\n"
-                ),
-            }
+            attribution_stubs(
+                {
+                    "abc123": (
+                        "fix: handle sandboxed fetch",
+                        "",
+                        f"fix: handle sandboxed fetch\n\nIssue: {issue_id}\n",
+                    ),
+                },
+                issue_files=(issue_id,),
+            )
         )
 
         result = linkage_check.resolve_issue_for_commit(runner, Path("."), "abc123")
 
         self.assertEqual(result["sha"], "abc123")
-        self.assertEqual(result["issue_id"], "074-sync-fetch-sandbox-handling")
+        self.assertEqual(result["issue_id"], issue_id)
         self.assertEqual(result["source"], "trailer")
         self.assertEqual(result["errors"], [])
-        # Trailer short-circuits: no branch lookups.
-        self.assertNotIn(("git", "branch", "-r", "--contains", "abc123"), runner.calls)
+        self.assertIn(
+            tuple(linkage_check.commit_resolution.GIT_LOG_ARGS),
+            runner.calls,
+        )
 
     # Branch resolution is exercised against real temporary repositories
     # rather than stubbed command sequences. These three used to pin the exact
@@ -150,26 +156,23 @@ class ResolveIssueForCommitTests(unittest.TestCase):
             self.assertEqual(result["source"], "branch")
 
     def test_trailer_beats_branch_on_conflict(self):
-        runner = FakeRunner(
-            {
-                ("git", "show", "-s", "--format=%B", "abc123"): (
-                    "fix: thing\n\nIssue: 070-spec-consistency-analyze\n"
-                ),
-                # A conflicting branch exists but must not be consulted/win.
-                BRANCH_REF_ARGS: (
-                    "refs/heads/main\n"
-                    "refs/remotes/origin/codex/074-sync-fetch-sandbox-handling\n"
-                ),
-                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): (
-                    "issues/070-spec-consistency-analyze.md\n"
-                    "issues/074-sync-fetch-sandbox-handling.md\n"
-                ),
-            }
-        )
+        """FH-027: precedence is exercised through the full attribution path."""
+        trailer_issue = "070-spec-consistency-analyze"
+        branch_issue = "074-sync-fetch-sandbox-handling"
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(trailer_issue)
+            repo.add_issue_file(branch_issue)
+            repo.branch(f"codex/{branch_issue}")
+            sha = repo.commit("fix: thing", issue=trailer_issue)
 
-        result = linkage_check.resolve_issue_for_commit(runner, Path("."), "abc123")
+            result = linkage_check.resolve_issue_for_commit(
+                repo.runner,
+                repo.path,
+                sha,
+            )
 
-        self.assertEqual(result["issue_id"], "070-spec-consistency-analyze")
+        self.assertEqual(result["issue_id"], trailer_issue)
         self.assertEqual(result["source"], "trailer")
 
     def test_no_trailer_no_issue_branch_resolves_none(self):
@@ -191,21 +194,32 @@ class ResolveIssueForCommitTests(unittest.TestCase):
         self.assertIsNone(result["source"])
         self.assertEqual(result["errors"], [])
 
-    def test_git_show_failure_surfaces_error(self):
+    def test_snapshot_failure_surfaces_structured_fatal_error(self):
+        """FH-010/FH-027: fatal graph failure survives SHA projection."""
         runner = FakeRunner(
             {
-                ("git", "show", "-s", "--format=%B", "deadbeef"): linkage_check.CommandResult(
-                    128, "", "fatal: bad object deadbeef"
+                tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): (
+                    linkage_check.CommandResult(
+                        128,
+                        "",
+                        "fatal: snapshot unavailable",
+                    )
                 ),
+                BRANCH_REF_ARGS: "",
             }
         )
 
-        result = linkage_check.resolve_issue_for_commit(runner, Path("."), "deadbeef")
+        result = linkage_check.commit_resolution.resolve_issue_for_commit(
+            runner,
+            Path("."),
+            "deadbeef",
+        )
 
         self.assertIsNone(result["issue_id"])
         self.assertIsNone(result["source"])
         self.assertEqual(len(result["errors"]), 1)
-        self.assertIn("fatal: bad object deadbeef", result["errors"][0])
+        self.assertIn("fatal: snapshot unavailable", result["errors"][0])
+        self.assertEqual(result["fatal_errors"], result["errors"])
 
     def test_branch_listing_failure_surfaces_error(self):
         runner = FakeRunner(

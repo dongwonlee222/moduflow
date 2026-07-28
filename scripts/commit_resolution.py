@@ -154,6 +154,51 @@ def _range_order(stdout, records):
     return order
 
 
+def project_diagnostics(
+    diagnostics,
+    *,
+    target_shas=None,
+    target_issue_ids=None,
+):
+    """Return only attribution diagnostics intersecting the caller's scope."""
+    if target_shas is None and target_issue_ids is None:
+        return list(diagnostics)
+    target_shas = set(target_shas or ())
+    target_issue_ids = set(target_issue_ids or ())
+    projected = []
+    for item in diagnostics:
+        sha_match = item.get("sha") in target_shas
+        issue_match = item.get("issue_id") in target_issue_ids
+        if sha_match or issue_match:
+            projected.append(item)
+    return projected
+
+
+def compatibility_errors(fatal_errors, projected_diagnostics):
+    """Preserve the public flat error list while keeping internal structure."""
+    return [
+        *fatal_errors,
+        *(item["message"] for item in projected_diagnostics),
+    ]
+
+
+def _extend_unique(target, values):
+    for value in values:
+        if value not in target:
+            target.append(value)
+
+
+def _project_degraded(fatal_errors, projected_diagnostics):
+    """Translate structured failures to the legacy degradation surface."""
+    degraded = []
+    if fatal_errors or projected_diagnostics:
+        degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
+    for item in projected_diagnostics:
+        if item["code"] not in degraded:
+            degraded.append(item["code"])
+    return degraded
+
+
 # ---------------------------------------------------------------------------
 # Branch-name interpretation
 # ---------------------------------------------------------------------------
@@ -399,7 +444,7 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
 
     Returns {membership: {sha: [branch_name, ...]}, branches: [...],
     degraded: [...], errors: [...]}."""
-    errors = []
+    fatal_errors = []
     degraded = []
     membership = {}
     diagnostics = []
@@ -414,13 +459,14 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
                 "ref_tips": {},
                 "degraded": [DEGRADED_BRANCH_UNAVAILABLE],
                 "errors": list(snapshot["fatal_errors"]),
+                "fatal_errors": list(snapshot["fatal_errors"]),
                 "diagnostics": [],
             }
     ref_tips = dict(refs if refs is not None else snapshot["refs"])
     all_refs = list(ref_tips)
 
     if issue_ids is None:
-        issue_ids = known_issue_ids(runner, cwd, errors)
+        issue_ids = known_issue_ids(runner, cwd, fatal_errors)
     # One owner for branch-name interpretation (GC1) — no second copy here.
     branches = [name for name in all_refs if issue_id_from_branch(name, issue_ids)]
 
@@ -452,10 +498,14 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
             topic_refs=topic_refs,
             base_refs=base_refs,
         )
-        diagnostics.extend(delta["diagnostics"])
-        for error in delta.get("fatal_errors", []):
-            if error not in errors:
-                errors.append(error)
+        for item in delta["diagnostics"]:
+            item = dict(item)
+            if item["code"] == "ambiguous-topic-fork":
+                item["message"] = (
+                    f"remote topic fork ambiguity: {item['message']}"
+                )
+            diagnostics.append(item)
+        _extend_unique(fatal_errors, delta.get("fatal_errors", []))
         if delta.get("fatal_errors"):
             fatal_delta = True
             if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
@@ -468,17 +518,15 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
         for sha in delta["commits"]:
             membership.setdefault(sha, []).append(_short_ref(name))
     if len(snapshot["fatal_errors"]) != fatal_before:
-        for error in snapshot["fatal_errors"][fatal_before:]:
-            if error not in errors:
-                errors.append(error)
+        _extend_unique(
+            fatal_errors,
+            snapshot["fatal_errors"][fatal_before:],
+        )
         if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
             degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
-    for item in diagnostics:
-        message = item["message"]
-        if item["code"] == "ambiguous-topic-fork":
-            message = f"remote topic fork ambiguity: {message}"
-        if message not in errors:
-            errors.append(message)
+    errors = compatibility_errors(fatal_errors, diagnostics)
+    if diagnostics and DEGRADED_BRANCH_UNAVAILABLE not in degraded:
+        degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
 
     return {
         "membership": {} if fatal_delta else membership,
@@ -486,6 +534,7 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
         "ref_tips": ref_tips,
         "degraded": degraded,
         "errors": errors,
+        "fatal_errors": fatal_errors,
         "diagnostics": diagnostics,
     }
 
@@ -494,7 +543,14 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
 # One attribution index, read by both directions
 # ---------------------------------------------------------------------------
 
-def build_attribution(runner, cwd, *, rev_range=None):
+def build_attribution(
+    runner,
+    cwd,
+    *,
+    rev_range=None,
+    target_shas=None,
+    target_issue_ids=None,
+):
     """Attribute every commit in range to at most one issue, once.
 
     This is the single source both query directions read. Building the index
@@ -508,48 +564,48 @@ def build_attribution(runner, cwd, *, rev_range=None):
       merge-subject  the merge commit itself
 
     Returns {attribution: {sha: {issue_id, source}}, records, order,
-    unmatched, degraded, errors}."""
-    errors = []
-    degraded = []
+    unmatched, fatal_errors, diagnostics, degraded, errors}."""
+    fatal_errors = []
 
-    snapshot = commit_graph.load_snapshot(runner, cwd)
-    graph_errors = snapshot["fatal_errors"]
-    errors.extend(graph_errors)
-    if graph_errors:
+    def empty_result(*, records=None, order=None):
+        diagnostics = []
+        errors = compatibility_errors(fatal_errors, diagnostics)
         return {
             "attribution": {},
-            "records": {},
-            "order": [],
+            "records": records or {},
+            "order": order or [],
             "unmatched": [],
-            "degraded": degraded,
+            "branches": [],
+            "issue_ids": [],
+            "fatal_errors": list(fatal_errors),
+            "degraded": _project_degraded(fatal_errors, diagnostics),
             "errors": errors,
-            "diagnostics": [],
+            "diagnostics": diagnostics,
         }
+
+    snapshot = commit_graph.load_snapshot(runner, cwd)
+    _extend_unique(fatal_errors, snapshot["fatal_errors"])
+    if fatal_errors:
+        return empty_result()
     records = snapshot["records"]
     topology_order = snapshot["order"]
     if rev_range:
         range_args = ["git", "log", "--format=%H", rev_range]
         ranged = _run(runner, range_args, cwd)
         if ranged.returncode != 0:
-            errors.append(_error_text(range_args, ranged))
-            return {
-                "attribution": {}, "records": {}, "order": [], "unmatched": [],
-                "degraded": degraded, "errors": errors, "diagnostics": [],
-            }
+            fatal_errors.append(_error_text(range_args, ranged))
+            return empty_result()
         order = _range_order(ranged.stdout, records)
         if order is None:
-            errors.append(
+            fatal_errors.append(
                 "git log range projection produced malformed output "
                 "(expected one known SHA token per nonempty line)"
             )
-            return {
-                "attribution": {}, "records": {}, "order": [], "unmatched": [],
-                "degraded": degraded, "errors": errors, "diagnostics": [],
-            }
+            return empty_result()
     else:
         order = topology_order
 
-    issue_ids = known_issue_ids(runner, cwd, errors)
+    issue_ids = known_issue_ids(runner, cwd, fatal_errors)
     built = build_branch_membership(
         runner,
         cwd,
@@ -557,8 +613,7 @@ def build_attribution(runner, cwd, *, rev_range=None):
         refs=snapshot["refs"],
         snapshot=snapshot,
     )
-    errors.extend(built["errors"])
-    degraded.extend(built["degraded"])
+    _extend_unique(fatal_errors, built.get("fatal_errors", []))
     diagnostics = list(built.get("diagnostics", []))
 
     # Collect evidence without resolving conflicts inline. Content and merge
@@ -580,14 +635,10 @@ def build_attribution(runner, cwd, *, rev_range=None):
     def add_partition_ambiguity(merge_sha, unresolved):
         if not unresolved:
             return
-        if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
-            degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
         message = (
             f"merge {merge_sha} has ambiguous retained topic refs "
             "inside side content"
         )
-        if message not in errors:
-            errors.append(message)
         affected_issues = sorted(
             {
                 issue_id
@@ -767,15 +818,11 @@ def build_attribution(runner, cwd, *, rev_range=None):
                 )
 
         if unresolved_sides:
-            if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
-                degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
             octopus = len(entry["parents"]) > 2
             message = (
                 f"{'octopus ' if octopus else ''}merge {sha} "
                 "has no unambiguous parent-to-issue ref mapping"
             )
-            if message not in errors:
-                errors.append(message)
             for issue_id in named:
                 boundary_diagnostic = commit_graph.diagnostic(
                     "merge-side-unresolved",
@@ -824,6 +871,13 @@ def build_attribution(runner, cwd, *, rev_range=None):
             sha: attribution[sha] for sha in order if sha in attribution
         }
     unmatched = [sha for sha in order if sha not in attribution]
+    projected_diagnostics = project_diagnostics(
+        diagnostics,
+        target_shas=target_shas,
+        target_issue_ids=target_issue_ids,
+    )
+    errors = compatibility_errors(fatal_errors, projected_diagnostics)
+    degraded = _project_degraded(fatal_errors, projected_diagnostics)
     return {
         "attribution": attribution,
         "records": records,
@@ -831,9 +885,10 @@ def build_attribution(runner, cwd, *, rev_range=None):
         "unmatched": unmatched,
         "branches": built["branches"],
         "issue_ids": issue_ids,
+        "fatal_errors": fatal_errors,
         "degraded": degraded,
         "errors": errors,
-        "diagnostics": diagnostics,
+        "diagnostics": projected_diagnostics,
     }
 
 
@@ -849,54 +904,41 @@ def resolve_issue_for_commit(runner, cwd, sha, *, attribution=None, membership=N
 
     Returns {sha, issue_id, source, degraded, errors} where source is
     'trailer' | 'branch' | 'merge-subject' | None."""
-    errors = []
-    degraded = []
-    result = {
+    if attribution is None:
+        built = build_attribution(
+            runner,
+            cwd,
+            target_shas={sha},
+        )
+        return _from_index_result(sha, built)
+
+    if (
+        isinstance(attribution, dict)
+        and isinstance(attribution.get("attribution"), dict)
+    ):
+        return _from_index_result(sha, attribution)
+
+    # Legacy callers may still pass only {sha: {issue_id: source}}. That shape
+    # cannot carry diagnostics, but it remains an authoritative index.
+    return _from_index(_resolution_result(sha), attribution, sha)
+
+
+def _resolution_result(sha, *, built=None):
+    built = built or {}
+    return {
         "sha": sha,
         "issue_id": None,
         "source": None,
-        "degraded": degraded,
-        "errors": errors,
+        "fatal_errors": list(built.get("fatal_errors", [])),
+        "diagnostics": list(built.get("diagnostics", [])),
+        "degraded": list(built.get("degraded", [])),
+        "errors": list(built.get("errors", [])),
     }
 
-    # A supplied index already holds every source for this commit, trailer
-    # included — `build_attribution` read the bodies out of the same log it
-    # walked. Asking git again per commit is the fan-out this module exists to
-    # remove; measured at 65 redundant `git show` calls, 1.7s, on a 65-commit
-    # range through `find_unlinked_behavior_commits`.
-    if attribution is not None and sha in attribution:
-        return _from_index(result, attribution, sha)
 
-    # The trailer is intrinsic to the commit object, so it answers without the
-    # index. Everything else is positional and needs the graph.
-    show_args = ["git", "show", "-s", "--format=%B", sha]
-    show = _run(runner, show_args, cwd)
-    if show.returncode != 0:
-        errors.append(_error_text(show_args, show))
-        return result
-
-    trailer = TRAILER_RE.search(show.stdout or "")
-    if trailer:
-        registered = issue_ids
-        if registered is None:
-            registered = known_issue_ids(runner, cwd, errors)
-        if errors:
-            return result
-        if (
-            trailer.group(1) in registered
-            and SOURCE_PRECEDENCE[0] == "trailer"
-        ):
-            result["issue_id"] = trailer.group(1)
-            result["source"] = "trailer"
-            return result
-
-    if attribution is None:
-        built = build_attribution(runner, cwd)
-        attribution = built["attribution"]
-        errors.extend(built["errors"])
-        degraded.extend(built["degraded"])
-
-    return _from_index(result, attribution, sha)
+def _from_index_result(sha, built):
+    result = _resolution_result(sha, built=built)
+    return _from_index(result, built["attribution"], sha)
 
 
 def _from_index(result, attribution, sha):
@@ -924,7 +966,15 @@ def _from_index(result, attribution, sha):
 # issue -> commits
 # ---------------------------------------------------------------------------
 
-def resolve_commits_for_issue(runner, cwd, issue_id, *, rev_range=None, index=None):
+def resolve_commits_for_issue(
+    runner,
+    cwd,
+    issue_id,
+    *,
+    rev_range=None,
+    index=None,
+    target_issue_ids=None,
+):
     """Resolve every commit linked to issue_id, in git log order.
 
     Reads the same attribution index as `resolve_issue_for_commit`, so the two
@@ -935,7 +985,12 @@ def resolve_commits_for_issue(runner, cwd, issue_id, *, rev_range=None, index=No
     examined_count, degraded, errors}. `unmatched_count` counts commits in the
     examined range attributed to no issue at all — descriptive, never an
     error (GC5)."""
-    built = index or build_attribution(runner, cwd, rev_range=rev_range)
+    built = index or build_attribution(
+        runner,
+        cwd,
+        rev_range=rev_range,
+        target_issue_ids=target_issue_ids,
+    )
     attribution = built["attribution"]
     records = built["records"]
 
@@ -983,6 +1038,8 @@ def resolve_commits_for_issue(runner, cwd, issue_id, *, rev_range=None, index=No
             "branch_refs": branch_refs,
             "base_ref_available": DEGRADED_BRANCH_UNAVAILABLE not in built["degraded"],
         },
+        "fatal_errors": list(built.get("fatal_errors", [])),
+        "diagnostics": list(built.get("diagnostics", [])),
         "degraded": list(built["degraded"]),
         "errors": list(built["errors"]),
     }

@@ -43,6 +43,82 @@ def resolve_shape(name):
         }
 
 
+class DiagnosticProjectionTests(unittest.TestCase):
+    def test_unrelated_issue_diagnostic_is_not_an_error(self):
+        """FH-018: issue-scoped callers see only intersecting diagnostics."""
+        diagnostics = [
+            {
+                "code": "ambiguous-topic-fork",
+                "message": "alpha",
+                "issue_id": shapes.ALPHA,
+            },
+            {
+                "code": "ambiguous-topic-fork",
+                "message": "beta",
+                "issue_id": shapes.BETA,
+            },
+        ]
+
+        projected = cr.project_diagnostics(
+            diagnostics,
+            target_issue_ids={shapes.BETA},
+        )
+
+        self.assertEqual(
+            [diagnostic["issue_id"] for diagnostic in projected],
+            [shapes.BETA],
+        )
+
+    def test_snapshot_failure_is_never_filtered(self):
+        """FH-010: compatibility errors always retain fatal Git failures."""
+        result = cr.compatibility_errors(["git log failed"], [])
+
+        self.assertEqual(result, ["git log failed"])
+
+    def test_build_result_separates_fatal_errors_from_diagnostics(self):
+        """FH-010: snapshot failure is structured and survives empty scope."""
+        with GitRepo() as repo:
+            def failing(args, cwd=None):
+                if args[:2] == ["git", "log"]:
+                    return type(
+                        "Result",
+                        (),
+                        {
+                            "returncode": 128,
+                            "stdout": "",
+                            "stderr": "fatal: snapshot unavailable",
+                        },
+                    )()
+                return repo.runner(args, cwd)
+
+            built = cr.build_attribution(
+                failing,
+                repo.path,
+                target_shas=set(),
+                target_issue_ids=set(),
+            )
+
+        self.assertEqual(built["fatal_errors"], built["errors"])
+        self.assertTrue(built["fatal_errors"])
+        self.assertEqual(built["diagnostics"], [])
+
+    def test_unrelated_graph_ambiguity_does_not_degrade_requested_issue(self):
+        """FH-007/FH-008/FH-009/FH-018: project errors and degradation once."""
+        with GitRepo() as repo:
+            shapes.ambiguous_same_tail_remotes(repo)
+
+            built = cr.build_attribution(
+                repo.runner,
+                repo.path,
+                target_issue_ids={shapes.BETA},
+            )
+
+        self.assertEqual(built["fatal_errors"], [])
+        self.assertEqual(built["diagnostics"], [])
+        self.assertEqual(built["degraded"], [])
+        self.assertEqual(built["errors"], [])
+
+
 class MergeClaimInvariantTests(unittest.TestCase):
     def test_subject_token_order_does_not_change_content(self):
         """FH-004: subject token order is not parent-side evidence."""

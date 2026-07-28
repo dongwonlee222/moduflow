@@ -149,6 +149,34 @@ class CommitDirectionTests(_ShapeCase):
     passed under six mutations, including converge returning nothing. This one
     holds the implementation to the declaration."""
 
+    def test_bare_and_full_result_resolution_use_same_policy(self):
+        """FH-001/FH-007/FH-008/FH-009/FH-018: one projected public path."""
+        repo, _ = self._build("trailer_disagrees_with_branch")
+        with repo:
+            conflict = next(
+                sha
+                for sha, expected in repo.truth.items()
+                if expected == frozenset({shapes.BETA})
+            )
+            built = cr.build_attribution(
+                repo.runner,
+                repo.path,
+                target_shas={conflict},
+            )
+            bare = cr.resolve_issue_for_commit(
+                repo.runner,
+                repo.path,
+                conflict,
+            )
+            indexed = cr.resolve_issue_for_commit(
+                repo.runner,
+                repo.path,
+                conflict,
+                attribution=built,
+            )
+
+            self.assertEqual(bare, indexed)
+
     def _check(self, shape_name):
         from scripts import linkage_check
 
