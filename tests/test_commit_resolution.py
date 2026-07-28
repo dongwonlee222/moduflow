@@ -75,6 +75,39 @@ class DiagnosticProjectionTests(unittest.TestCase):
 
         self.assertEqual(result, ["git log failed"])
 
+    def test_merge_diagnostic_does_not_mark_base_ref_unavailable(self):
+        """Merge ownership ambiguity is independent of base-ref availability."""
+        degraded = cr._project_degraded(
+            [],
+            [
+                {
+                    "code": "merge-side-unresolved",
+                    "message": "merge side is ambiguous",
+                    "issue_id": shapes.ALPHA,
+                }
+            ],
+        )
+
+        self.assertEqual(degraded, ["merge-side-unresolved"])
+
+    def test_topic_fork_diagnostic_marks_base_ref_unavailable(self):
+        """Topic fork ambiguity means branch-base evidence is unavailable."""
+        degraded = cr._project_degraded(
+            [],
+            [
+                {
+                    "code": "ambiguous-topic-fork",
+                    "message": "topic fork is ambiguous",
+                    "issue_id": shapes.ALPHA,
+                }
+            ],
+        )
+
+        self.assertEqual(
+            degraded,
+            [cr.DEGRADED_BRANCH_UNAVAILABLE, "ambiguous-topic-fork"],
+        )
+
     def test_compatibility_errors_dedupe_in_first_seen_order(self):
         """FH-032: flat compatibility errors are stable and non-repeating."""
         diagnostics = [
@@ -132,6 +165,53 @@ class DiagnosticProjectionTests(unittest.TestCase):
         self.assertEqual(built["diagnostics"], [])
         self.assertEqual(built["degraded"], [])
         self.assertEqual(built["errors"], [])
+
+    def test_prebuilt_whole_result_reprojects_to_requested_issue(self):
+        """FH-018: reused indexes cannot leak another issue's diagnostics."""
+        with GitRepo() as repo:
+            shapes.ambiguous_same_tail_remotes(repo)
+            whole = cr.build_attribution(repo.runner, repo.path)
+            calls_after_build = repo.call_count
+
+            result = cr.resolve_commits_for_issue(
+                repo.runner,
+                repo.path,
+                shapes.BETA,
+                index=whole,
+                target_issue_ids={shapes.BETA},
+            )
+
+            self.assertTrue(whole["diagnostics"])
+            self.assertEqual(
+                repo.call_count,
+                calls_after_build,
+                "index reuse must not rebuild",
+            )
+
+        self.assertEqual(result["fatal_errors"], [])
+        self.assertEqual(result["diagnostics"], [])
+        self.assertEqual(result["degraded"], [])
+        self.assertEqual(result["errors"], [])
+        self.assertTrue(result["coverage"]["base_ref_available"])
+
+    def test_attribution_only_issue_index_is_rejected_without_rebuild(self):
+        """A partial legacy index cannot safely synthesize commit metadata."""
+        calls = []
+
+        def runner(args, cwd=None):
+            calls.append(args)
+            raise AssertionError("partial index must not trigger Git")
+
+        with self.assertRaisesRegex(TypeError, "full attribution result"):
+            cr.resolve_commits_for_issue(
+                runner,
+                Path("."),
+                shapes.BETA,
+                index={"sha": {shapes.BETA: "branch"}},
+                target_issue_ids={shapes.BETA},
+            )
+
+        self.assertEqual(calls, [])
 
     def _assert_duplicate_diagnostics_have_one_compatibility_error(self, shape):
         with GitRepo(**shapes.REPO_KWARGS.get(shape, {})) as repo:

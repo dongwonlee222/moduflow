@@ -75,6 +75,13 @@ ISSUE_HISTORY_ARGS = (
 SOURCE_PRECEDENCE = ("trailer", "branch", "merge-subject")
 
 DEGRADED_BRANCH_UNAVAILABLE = "branch-unavailable"
+BRANCH_AVAILABILITY_DIAGNOSTICS = frozenset(
+    {
+        "ambiguous-topic-fork",
+        "topic-publication-fork-unresolved",
+        "topic-ref-missing",
+    }
+)
 
 
 def _candidate_precedence(candidate):
@@ -192,7 +199,10 @@ def _extend_unique(target, values):
 def _project_degraded(fatal_errors, projected_diagnostics):
     """Translate structured failures to the legacy degradation surface."""
     degraded = []
-    if fatal_errors or projected_diagnostics:
+    if fatal_errors or any(
+        item["code"] in BRANCH_AVAILABILITY_DIAGNOSTICS
+        for item in projected_diagnostics
+    ):
         degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
     for item in projected_diagnostics:
         if item["code"] not in degraded:
@@ -1010,12 +1020,41 @@ def resolve_commits_for_issue(
     examined_count, degraded, errors}. `unmatched_count` counts commits in the
     examined range attributed to no issue at all — descriptive, never an
     error (GC5)."""
-    built = index or build_attribution(
-        runner,
-        cwd,
-        rev_range=rev_range,
-        target_issue_ids=target_issue_ids,
-    )
+    if index is None:
+        built = build_attribution(
+            runner,
+            cwd,
+            rev_range=rev_range,
+            target_issue_ids=target_issue_ids,
+        )
+    else:
+        built = index
+
+    required_index_fields = ("attribution", "records", "order", "unmatched")
+    if not isinstance(built, dict) or any(
+        field not in built for field in required_index_fields
+    ):
+        raise TypeError(
+            "index must be a full attribution result with "
+            "attribution, records, order, and unmatched"
+        )
+
+    if "diagnostics" in built or "fatal_errors" in built:
+        fatal_errors = list(built.get("fatal_errors", []))
+        diagnostics = project_diagnostics(
+            built.get("diagnostics", []),
+            target_issue_ids=target_issue_ids,
+        )
+        errors = compatibility_errors(fatal_errors, diagnostics)
+        degraded = _project_degraded(fatal_errors, diagnostics)
+    else:
+        # A legacy full index may carry only flat failure fields. Preserve
+        # those fail-closed; their scope cannot be reconstructed safely.
+        fatal_errors = []
+        diagnostics = []
+        errors = list(built.get("errors", []))
+        degraded = list(built.get("degraded", []))
+
     attribution = built["attribution"]
     records = built["records"]
 
@@ -1061,10 +1100,10 @@ def resolve_commits_for_issue(
         "coverage": {
             "sources": sources,
             "branch_refs": branch_refs,
-            "base_ref_available": DEGRADED_BRANCH_UNAVAILABLE not in built["degraded"],
+            "base_ref_available": DEGRADED_BRANCH_UNAVAILABLE not in degraded,
         },
-        "fatal_errors": list(built.get("fatal_errors", [])),
-        "diagnostics": list(built.get("diagnostics", [])),
-        "degraded": list(built["degraded"]),
-        "errors": list(built["errors"]),
+        "fatal_errors": fatal_errors,
+        "diagnostics": diagnostics,
+        "degraded": degraded,
+        "errors": errors,
     }

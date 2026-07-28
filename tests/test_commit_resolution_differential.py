@@ -109,20 +109,24 @@ class GroundTruthTests(_ShapeCase):
                 )
             if shape_name == "octopus_mapping_ambiguous":
                 built = cr.build_attribution(repo.runner, repo.path)
-                self.assertIn(
+                self.assertNotIn(
                     cr.DEGRADED_BRANCH_UNAVAILABLE,
                     built["degraded"],
+                    "merge ambiguity must not misreport base-ref availability",
                 )
+                self.assertIn("merge-side-unresolved", built["degraded"])
                 self.assertTrue(
                     any("octopus" in error for error in built["errors"]),
                     built["errors"],
                 )
             if shape_name == "two_parent_multi_name_ambiguous":
                 built = cr.build_attribution(repo.runner, repo.path)
-                self.assertIn(
+                self.assertNotIn(
                     cr.DEGRADED_BRANCH_UNAVAILABLE,
                     built["degraded"],
+                    "merge ambiguity must not misreport base-ref availability",
                 )
+                self.assertIn("merge-side-unresolved", built["degraded"])
                 self.assertTrue(
                     any("merge" in error for error in built["errors"]),
                     built["errors"],
