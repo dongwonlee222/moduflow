@@ -77,6 +77,46 @@ SOURCE_PRECEDENCE = ("trailer", "branch", "merge-subject")
 DEGRADED_BRANCH_UNAVAILABLE = "branch-unavailable"
 
 
+def _candidate_precedence(candidate):
+    return (
+        SOURCE_PRECEDENCE.index(candidate["source"]),
+        candidate["issue_id"],
+    )
+
+
+def finalize_claims(records, candidates):
+    """Apply global source precedence after all evidence is collected."""
+    attribution = {}
+    for sha, items in candidates.items():
+        if len(records[sha]["parents"]) >= 2:
+            per_issue = {}
+            for item in items:
+                current = per_issue.get(item["issue_id"])
+                if (
+                    current is None
+                    or _candidate_precedence(item)
+                    < _candidate_precedence(current)
+                ):
+                    per_issue[item["issue_id"]] = item
+            if per_issue:
+                attribution[sha] = {
+                    issue_id: item["source"]
+                    for issue_id, item in per_issue.items()
+                }
+            continue
+
+        winner = min(
+            (item for item in items if item["kind"] == "content"),
+            key=_candidate_precedence,
+            default=None,
+        )
+        if winner is not None:
+            attribution[sha] = {
+                winner["issue_id"]: winner["source"]
+            }
+    return attribution
+
+
 def _run(runner, args, cwd):
     return runner(list(args), cwd)
 
@@ -430,39 +470,32 @@ def build_attribution(runner, cwd, *, rev_range=None):
     degraded.extend(built["degraded"])
     diagnostics = list(built.get("diagnostics", []))
 
-    # sha -> {issue_id: source}. Content has one owner. Merge boundaries can
-    # legitimately touch several issues and retain one claim per issue.
-    attribution = {}
+    # Collect evidence without resolving conflicts inline. Content and merge
+    # boundaries are different claim kinds: content has one eventual owner,
+    # while a boundary can legitimately connect several issues.
+    candidate_claims = {}
 
-    def claim(sha, issue_id, source):
+    def add_candidate(candidates, sha, issue_id, source, kind):
         if issue_id not in issue_ids:
             return
-        per_issue = attribution.setdefault(sha, {})
-
-        if len(records[sha]["parents"]) < 2:
-            if not per_issue:
-                per_issue[issue_id] = source
-                return
-            _, current_source = next(iter(per_issue.items()))
-            if (
-                SOURCE_PRECEDENCE.index(source)
-                < SOURCE_PRECEDENCE.index(current_source)
-            ):
-                per_issue.clear()
-                per_issue[issue_id] = source
-            # Equal evidence keeps the earlier claim. Merge records are walked
-            # inner-first below, so an outer branch cannot relabel content
-            # already owned by the inner issue.
-            return
-
-        current = per_issue.get(issue_id)
-        if current is None or SOURCE_PRECEDENCE.index(source) < SOURCE_PRECEDENCE.index(current):
-            per_issue[issue_id] = source
+        item = {
+            "issue_id": issue_id,
+            "source": source,
+            "kind": kind,
+        }
+        if item not in candidates.setdefault(sha, []):
+            candidates[sha].append(item)
 
     for sha in topology_order:
         trailer = TRAILER_RE.search(records[sha]["body"])
         if trailer:
-            claim(sha, trailer.group(1), "trailer")
+            add_candidate(
+                candidate_claims,
+                sha,
+                trailer.group(1),
+                "trailer",
+                "content",
+            )
 
     # Merged work: the merge commit delimits exactly what its branch added.
     # Derived from `records`, so it costs no extra subprocess (GC4). Git's
@@ -501,58 +534,90 @@ def build_attribution(runner, cwd, *, rev_range=None):
             issue_id_from_branch(f"codex/{m}", issue_ids)
             for m in re.findall(rf"codex/({ISSUE_ID_PATTERN})", _merge_source_text(entry["subject"]))
         ]
-        named = [i for i in named if i]
+        named = list(dict.fromkeys(i for i in named if i))
         if not named:
             continue
         for issue_id in named:
-            claim(sha, issue_id, "merge-subject")
-
-        needs_parent_mapping = (
-            len(entry["parents"]) > 2 or len(set(named)) > 1
-        )
-        if needs_parent_mapping:
-            parent_issues = []
-            for parent in entry["parents"][1:]:
-                corroborated = {
-                    issue_id_from_branch(ref, issue_ids)
-                    for ref, tip in built["ref_tips"].items()
-                    if tip == parent
-                }
-                corroborated.discard(None)
-                if len(corroborated) != 1:
-                    parent_issues = []
-                    break
-                parent_issues.append(corroborated.pop())
-
-            octopus = len(entry["parents"]) > 2
-            invalid_mapping = (
-                len(parent_issues) != len(entry["parents"]) - 1
-                or len(set(parent_issues)) != len(parent_issues)
-                or not set(parent_issues).issubset(set(named))
-                or (octopus and set(parent_issues) != set(named))
+            add_candidate(
+                candidate_claims,
+                sha,
+                issue_id,
+                "merge-subject",
+                "boundary",
             )
-            if invalid_mapping:
-                if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
-                    degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
-                errors.append(
-                    f"{'octopus ' if octopus else ''}merge {sha} "
-                    "has no unambiguous "
-                    "parent-to-issue ref mapping"
-                )
-                continue
 
-            for parent_index, issue_id in enumerate(parent_issues, start=1):
-                for side_sha in merge_side_commits(
-                    records,
-                    sha,
-                    parent_index,
-                ):
-                    claim(side_sha, issue_id, "branch")
+        # A conventional two-parent, one-name merge has one possible content
+        # side. More complex boundaries need a retained ref at the exact parent
+        # before that side can be assigned; subject token position is not graph
+        # evidence.
+        if len(entry["parents"]) == 2 and len(named) == 1:
+            for side_sha in merge_side_commits(records, sha, 1):
+                add_candidate(
+                    candidate_claims,
+                    side_sha,
+                    named[0],
+                    "branch",
+                    "content",
+                )
             continue
 
-        for offset, issue_id in enumerate(named):
-            for side_sha in merge_side_commits(records, sha, offset + 1):
-                claim(side_sha, issue_id, "branch")
+        unresolved_sides = []
+        for parent_index, parent in enumerate(entry["parents"][1:], start=1):
+            corroborated = {
+                issue_id_from_branch(ref, issue_ids)
+                for ref, tip in built["ref_tips"].items()
+                if tip == parent
+            }
+            corroborated.discard(None)
+            if len(corroborated) == 1:
+                issue_id = next(iter(corroborated))
+                if issue_id in named:
+                    for side_sha in merge_side_commits(
+                        records,
+                        sha,
+                        parent_index,
+                    ):
+                        add_candidate(
+                            candidate_claims,
+                            side_sha,
+                            issue_id,
+                            "branch",
+                            "content",
+                        )
+                    continue
+            unresolved_sides.append(
+                merge_side_commits(records, sha, parent_index)
+            )
+
+        if unresolved_sides:
+            if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
+                degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
+            octopus = len(entry["parents"]) > 2
+            message = (
+                f"{'octopus ' if octopus else ''}merge {sha} "
+                "has no unambiguous parent-to-issue ref mapping"
+            )
+            if message not in errors:
+                errors.append(message)
+            for issue_id in named:
+                boundary_diagnostic = commit_graph.diagnostic(
+                    "merge-side-unresolved",
+                    message,
+                    sha=sha,
+                    issue_id=issue_id,
+                )
+                if boundary_diagnostic not in diagnostics:
+                    diagnostics.append(boundary_diagnostic)
+                for side in unresolved_sides:
+                    for side_sha in side:
+                        content_diagnostic = commit_graph.diagnostic(
+                            "merge-side-unresolved",
+                            message,
+                            sha=side_sha,
+                            issue_id=issue_id,
+                        )
+                        if content_diagnostic not in diagnostics:
+                            diagnostics.append(content_diagnostic)
 
     # Live branches have no merge commit to delimit them.
     for sha, names in built["membership"].items():
@@ -561,8 +626,15 @@ def build_attribution(runner, cwd, *, rev_range=None):
         for name in names:
             issue_id = issue_id_from_branch(name, issue_ids)
             if issue_id:
-                claim(sha, issue_id, "branch")
+                add_candidate(
+                    candidate_claims,
+                    sha,
+                    issue_id,
+                    "branch",
+                    "content",
+                )
 
+    attribution = finalize_claims(records, candidate_claims)
     if rev_range:
         attribution = {
             sha: attribution[sha] for sha in order if sha in attribution

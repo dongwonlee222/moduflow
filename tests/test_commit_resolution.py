@@ -13,10 +13,67 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import commit_resolution as cr  # noqa: E402
+import commit_resolution_shapes as shapes  # noqa: E402
 from git_repo_builder import GitRepo  # noqa: E402
 
 ISSUE = "095-commit-issue-resolution-parity"
 OTHER = "094-risk-based-security-and-quality-review-gate"
+
+
+def resolve_shape(name):
+    """Resolve a fixture shape by stable subject instead of repository SHA."""
+    with GitRepo(**shapes.REPO_KWARGS.get(name, {})) as repo:
+        shapes.ALL_SHAPES[name](repo)
+        built = cr.build_attribution(repo.runner, repo.path)
+        content_owners = {}
+        declared_content_owners = {}
+        boundary_issues = set()
+        for sha, record in built["records"].items():
+            actual = frozenset((built["attribution"].get(sha) or {}).keys())
+            if len(record["parents"]) < 2:
+                content_owners[record["subject"]] = actual
+                declared_content_owners[record["subject"]] = repo.truth[sha]
+            else:
+                boundary_issues.update(actual)
+        return {
+            "content_owners": content_owners,
+            "declared_content_owners": declared_content_owners,
+            "boundary_issues": boundary_issues,
+            "diagnostics": built["diagnostics"],
+        }
+
+
+class MergeClaimInvariantTests(unittest.TestCase):
+    def test_subject_token_order_does_not_change_content(self):
+        """FH-004: subject token order is not parent-side evidence."""
+        normal = resolve_shape("octopus_merge")
+        reversed_order = resolve_shape("octopus_subject_order_reversed")
+        self.assertEqual(
+            normal["content_owners"],
+            reversed_order["content_owners"],
+        )
+
+    def test_deleted_refs_keep_boundary_but_not_unproven_content(self):
+        """FH-015: deleted refs retain boundaries and expose unresolved sides."""
+        result = resolve_shape("octopus_mapping_ambiguous")
+        self.assertEqual(
+            result["boundary_issues"],
+            {shapes.ALPHA, shapes.BETA},
+        )
+        self.assertTrue(
+            any(
+                diagnostic["code"] == "merge-side-unresolved"
+                for diagnostic in result["diagnostics"]
+            )
+        )
+
+    def test_two_parent_multi_name_subject_does_not_relabel_side(self):
+        """FH-016: a multi-name subject cannot relabel content."""
+        result = resolve_shape("two_parent_multi_name_ambiguous")
+        self.assertEqual(
+            result["content_owners"],
+            result["declared_content_owners"],
+        )
 
 
 class TestTrailerResolution(unittest.TestCase):
