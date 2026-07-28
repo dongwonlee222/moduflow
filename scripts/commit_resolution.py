@@ -91,6 +91,8 @@ def finalize_claims(records, candidates):
         if len(records[sha]["parents"]) >= 2:
             per_issue = {}
             for item in items:
+                if item["kind"] == "unresolved":
+                    continue
                 current = per_issue.get(item["issue_id"])
                 if (
                     current is None
@@ -111,6 +113,27 @@ def finalize_claims(records, candidates):
             default=None,
         )
         if winner is not None:
+            same_source_issues = {
+                item["issue_id"]
+                for item in items
+                if (
+                    item["kind"] == "content"
+                    and item["source"] == winner["source"]
+                )
+            }
+            unresolved_issues = {
+                item["issue_id"]
+                for item in items
+                if (
+                    item["kind"] == "unresolved"
+                    and item["source"] == winner["source"]
+                )
+            }
+            if (
+                len(same_source_issues) > 1
+                and same_source_issues.intersection(unresolved_issues)
+            ):
+                continue
             attribution[sha] = {
                 winner["issue_id"]: winner["source"]
             }
@@ -610,6 +633,13 @@ def build_attribution(runner, cwd, *, rev_range=None):
                     diagnostics.append(boundary_diagnostic)
                 for side in unresolved_sides:
                     for side_sha in side:
+                        add_candidate(
+                            candidate_claims,
+                            side_sha,
+                            issue_id,
+                            "branch",
+                            "unresolved",
+                        )
                         content_diagnostic = commit_graph.diagnostic(
                             "merge-side-unresolved",
                             message,
