@@ -177,32 +177,49 @@ def find_unlinked_behavior_commits(runner, cwd, merge_base, head):
         return {"ok": False, "commits": commits, "unlinked": unlinked, "degraded": degraded, "errors": errors}
 
     shas = [line.strip() for line in (rev_list.stdout or "").splitlines() if line.strip()]
-    # One attribution index for the whole range (GC4) — resolving per commit
-    # would rebuild it for every behavior commit. Built lazily so a range with
-    # no behavior commits still does no resolution work at all.
-    index = None
-    index_built = False
-
+    behavior = []
     for sha in shas:
         paths = _changed_paths_for_commit(runner, cwd, sha, errors)
         if paths is None:
             continue
         classified = classify_changed_paths(paths)
-        if not classified["behavior"]:
-            continue
-        if not index_built:
-            built = commit_resolution.build_attribution(runner, cwd)
-            errors.extend(built["errors"])
-            degraded.extend(built["degraded"])
-            index = built["attribution"]
-            index_built = True
-        resolution = resolve_issue_for_commit(runner, cwd, sha, attribution=index)
-        errors.extend(resolution["errors"])
+        if classified["behavior"]:
+            behavior.append((sha, classified["behavior"]))
+
+    # Neutral-only ranges need no repository-wide attribution snapshot.
+    if not behavior:
+        return {
+            "ok": not errors,
+            "commits": commits,
+            "unlinked": unlinked,
+            "degraded": degraded,
+            "errors": errors,
+        }
+
+    # Build one shared result and project attribution diagnostics to the
+    # behavior commits in this release. Historical ambiguity remains available
+    # to an unscoped administrative query without invalidating this one.
+    target_shas = {sha for sha, _paths in behavior}
+    built = commit_resolution.build_attribution(
+        runner,
+        cwd,
+        target_shas=target_shas,
+    )
+    errors.extend(built["errors"])
+    degraded.extend(built["degraded"])
+
+    for sha, behavior_paths in behavior:
+        resolution = resolve_issue_for_commit(
+            runner,
+            cwd,
+            sha,
+            attribution=built,
+        )
         entry = {
             "sha": sha,
             "issue_id": resolution["issue_id"],
             "source": resolution["source"],
-            "behavior_paths": classified["behavior"],
+            "behavior_paths": behavior_paths,
         }
         commits.append(entry)
         if entry["issue_id"] is None:

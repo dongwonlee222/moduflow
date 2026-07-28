@@ -1,3 +1,4 @@
+import contextlib
 import json
 import sys
 import tempfile
@@ -12,6 +13,59 @@ from git_repo_builder import GitRepo  # noqa: E402
 
 SYMBOLIC_REF_ARGS = tuple(linkage_check.commit_resolution.ORIGIN_HEAD_ARGS)
 BRANCH_REF_ARGS = tuple(linkage_check.commit_resolution.BRANCH_REF_ARGS)
+ALPHA = "101-alpha"
+BETA = "102-beta"
+
+
+@contextlib.contextmanager
+def ambiguous_release_repo(*, ambiguity_in_range):
+    """FH-018: the same ambiguity, inside or outside the release range."""
+    with GitRepo() as repo:
+        repo.commit("chore: base", belongs_to=None)
+        repo.add_issue_file(ALPHA)
+        repo.add_issue_file(BETA)
+        base = repo.head()
+
+        first = repo.branch(f"codex/{ALPHA}")
+        (repo.path / "scripts").mkdir()
+        repo.commit(
+            "feat: alpha",
+            filename="scripts/alpha.py",
+            belongs_to=ALPHA,
+        )
+        repo.checkout("main")
+        second = repo.branch(f"codex/{BETA}")
+        (repo.path / "scripts").mkdir(exist_ok=True)
+        repo.commit(
+            "feat: beta",
+            filename="scripts/beta.py",
+            belongs_to=BETA,
+        )
+        repo.checkout("main")
+        repo._git(
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            f"Merge branches 'codex/{BETA}' and 'codex/{ALPHA}'",
+            first,
+            second,
+        )
+        repo.record(repo.head(), [ALPHA, BETA])
+        repo.delete_branch(first)
+        repo.delete_branch(second)
+
+        if ambiguity_in_range:
+            repo.release_base = base
+        else:
+            repo.release_base = repo.head()
+            repo.commit(
+                "fix: current linked change",
+                issue=ALPHA,
+                filename="scripts/current.py",
+                belongs_to=ALPHA,
+            )
+        yield repo
 
 
 class FakeRunner:
@@ -300,6 +354,32 @@ class ClassifyChangedPathsTests(unittest.TestCase):
 
 
 class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
+    def test_out_of_range_ambiguity_does_not_fail_release_linkage(self):
+        """FH-018: diagnostics outside the behavior range stay out of errors."""
+        with ambiguous_release_repo(ambiguity_in_range=False) as repo:
+            result = linkage_check.find_unlinked_behavior_commits(
+                repo.runner,
+                repo.path,
+                repo.release_base,
+                repo.head(),
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["errors"], [])
+
+    def test_in_range_ambiguity_fails_closed(self):
+        """FH-018: a diagnostic touching a release behavior SHA is fatal."""
+        with ambiguous_release_repo(ambiguity_in_range=True) as repo:
+            result = linkage_check.find_unlinked_behavior_commits(
+                repo.runner,
+                repo.path,
+                repo.release_base,
+                repo.head(),
+            )
+
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["errors"])
+
     def test_linked_behavior_commit_passes(self):
         runner = FakeRunner(
             {
