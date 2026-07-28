@@ -755,6 +755,23 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertEqual(result["commits"], set())
             self.assertEqual(result["diagnostics"][0]["code"], "ambiguous-topic-fork")
 
+    def test_comparable_develop_base_behind_publication_side_is_retained(self):
+        """FH-002: develop A behind T is a real comparable fork, not an alias."""
+        with GitRepo() as repo:
+            repo.commit("chore: root", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            repo.commit("chore: main F", belongs_to=None)
+            repo.branch("develop")
+            repo.checkout("develop")
+            a = repo.commit("chore: develop A", belongs_to=None)
+            topic = repo.branch(f"codex/{ALPHA}")
+            work = repo.commit("feat: topic", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.merge(topic, message=f"Merge branch 'codex/{ALPHA}'", belongs_to=ALPHA)
+            result = delta_for_repo(repo, ALPHA)
+            self.assertEqual(result["fork_point"], a)
+            self.assertEqual(result["commits"], {work})
+
     def test_base_history_is_not_topic_work(self):
         """FH-002: a stale local trunk cannot become alpha's contribution."""
         with GitRepo() as repo:

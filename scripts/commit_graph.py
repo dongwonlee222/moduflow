@@ -385,18 +385,14 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
                     recovered_minimal.discard(fork_sha)
                     break
 
-    # A non-issue alias may point anywhere on the published topic's
-    # first-parent line (T1, an intermediate Tmid, or the current tip).  It is
-    # publication evidence, not an independent base.  Deliberately walk only
-    # first parents so merged second-parent content remains an ordinary,
-    # potentially incomparable candidate.
+    # Only segments *between* publication-side anchors are aliases.  The path
+    # behind the earliest side can contain a real comparable base (develop A).
     topic_line_aliases = set()
     for side in publication_sides:
-        current = side
+        current = snapshot["records"].get(side, {}).get("parents", [None])[0]
         seen = set()
         path = set()
-        reaches_recovered = False
-        while current not in recovered_minimal:
+        while current is not None and current not in publication_sides:
             if current in seen or current not in snapshot["records"]:
                 message = f"snapshot graph is incomplete: missing record for {current}"
                 _snapshot_graph_error(snapshot, ("topic-line-alias", current), message)
@@ -408,9 +404,7 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             if not parents:
                 break
             current = parents[0]
-        else:
-            reaches_recovered = True
-        if reaches_recovered:
+        if current in publication_sides:
             topic_line_aliases.update(path)
     ordinary_forks.difference_update(topic_line_aliases)
 
