@@ -78,10 +78,10 @@ DEGRADED_BRANCH_UNAVAILABLE = "branch-unavailable"
 
 
 def _candidate_precedence(candidate):
-    return (
-        SOURCE_PRECEDENCE.index(candidate["source"]),
-        candidate["issue_id"],
-    )
+    # Equal-source candidates keep their evidence order. Merge candidates are
+    # collected parents-first, so an inner boundary's graph-specific content
+    # claim survives a broader outer merge independently of issue-id sorting.
+    return SOURCE_PRECEDENCE.index(candidate["source"])
 
 
 def finalize_claims(records, candidates):

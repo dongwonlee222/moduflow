@@ -118,6 +118,30 @@ def nested_merges(repo):
     return [ALPHA, BETA]
 
 
+def nested_merges_reversed_issue_order(repo):
+    """FH-005: inner ownership survives an outer merge regardless of id sort."""
+    _seed(repo, ALPHA, BETA)
+    inner = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta inner work", belongs_to=BETA)
+    repo.checkout("main")
+    outer = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha outer work", belongs_to=ALPHA)
+    repo.merge(
+        inner,
+        message=f"Merge branch 'codex/{BETA}'",
+        belongs_to=[ALPHA, BETA],
+    )
+    repo.checkout("main")
+    repo.merge(
+        outer,
+        message=f"Merge branch 'codex/{ALPHA}'",
+        belongs_to=ALPHA,
+    )
+    repo.delete_branch(inner)
+    repo.delete_branch(outer)
+    return [ALPHA, BETA]
+
+
 def branch_name_not_matching_issue(repo):
     """LIVE (codex/092-current-dashboard-korean vs 092-project-home-dashboard).
     A branch whose name is not the issue id it belongs to."""
@@ -464,6 +488,7 @@ ALL_SHAPES = {
     "single_branch_clone": single_branch_clone,
     "detached_before_commit": detached_before_commit,
     "nested_merges": nested_merges,
+    "nested_merges_reversed_issue_order": nested_merges_reversed_issue_order,
     "branch_name_not_matching_issue": branch_name_not_matching_issue,
     "disconnected_non_issue_base": disconnected_non_issue_base,
     "local_slash_branch_is_not_remote": local_slash_branch_is_not_remote,
