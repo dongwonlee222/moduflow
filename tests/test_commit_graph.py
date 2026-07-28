@@ -883,6 +883,42 @@ class TopicDeltaTests(unittest.TestCase):
                 self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, built["degraded"])
             self.assertEqual(sum(call == target for call in calls), 1)
 
+    def test_membership_replays_cached_maximalization_failure(self):
+        """FH-010/FH-028: cached A→B exclusion comparison stays observable."""
+        gamma = "103-gamma"
+        with GitRepo() as repo:
+            repo.commit("chore: base", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            repo.add_issue_file(BETA)
+            repo.add_issue_file(gamma)
+            alpha = repo.branch(f"codex/{ALPHA}")
+            a_work = repo.commit("feat: alpha", belongs_to=ALPHA)
+            beta = repo.branch(f"codex/{BETA}")
+            b_work = repo.commit("feat: beta", belongs_to=BETA)
+            gamma_ref = repo.branch(f"codex/{gamma}")
+            repo.commit("feat: gamma", belongs_to=gamma)
+            repo.checkout("main")
+            errors = []
+            ids = cr.known_issue_ids(repo.runner, repo.path, errors)
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+            target = ["git", "merge-base", "--is-ancestor", a_work, b_work]
+            calls = []
+
+            def failing(args, cwd=None):
+                calls.append(args)
+                if args == target:
+                    return subprocess.CompletedProcess(args, 128, "", "maximalization unavailable")
+                return repo.runner(args, cwd)
+
+            first = cr.build_branch_membership(failing, repo.path, issue_ids=ids, snapshot=snapshot)
+            second = cr.build_branch_membership(failing, repo.path, issue_ids=ids, snapshot=snapshot)
+            for built in (first, second):
+                self.assertEqual(built["membership"], {})
+                self.assertTrue(built["errors"])
+                self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, built["degraded"])
+            self.assertEqual(sum(call == target for call in calls), 1)
+            self.assertEqual(len(snapshot["fatal_errors"]), 1)
+
     def test_cached_fork_query_failure_fails_closed_even_with_another_fork_candidate(self):
         """FH-010: a cached fork failure cannot be hidden by a good base ref."""
         with GitRepo() as repo:
