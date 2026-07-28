@@ -125,7 +125,11 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   diagnostics are structured, compatibility errors are stable and deduplicated,
   and bare/indexed lookups use one policy without per-commit `git show`.
   The cumulative gate passed 279/279; final reviews have no open finding.
-  Current task is T06 release-SHA linkage scope.
+- Issue `095` T06 (2026-07-28 at `d5da824`): release linkage scopes one shared
+  attribution result to behavior SHAs; out-of-range ambiguity is excluded,
+  in-range ambiguity remains fail-closed, and neutral-only ranges build no
+  attribution. The cumulative gate passed 281/281 with clean final reviews.
+  Current task is T07 converge issue scope.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance

@@ -28,7 +28,7 @@ architecture; it does not extend that heuristic.
 
 ## Stream E
 
-- [ ] E1 Make linkage build one attribution result scoped to behavior SHAs in the requested release range; unrelated historical ambiguity must remain recorded but not fail the release (`FH-018`). [files: scripts/linkage_check.py, tests/test_linkage_check.py, tests/test_commit_resolution_parity.py] [depends: T05] [shared_state: true]
+- [x] E1 Make linkage build one attribution result scoped to behavior SHAs in the requested release range; unrelated historical ambiguity must remain recorded but not fail the release (`FH-018`). [files: scripts/linkage_check.py, tests/test_linkage_check.py, tests/test_commit_resolution_parity.py] [depends: T05] [shared_state: true]
 - [ ] E2 Make converge request one issue-scoped result while preserving existing payload keys and cross-consumer parity (`FH-001`, `FH-018`). [files: scripts/project_converge.py, tests/test_project_converge.py, tests/test_commit_resolution_parity.py] [depends: T06] [shared_state: true]
 
 ## Stream F

@@ -1092,8 +1092,19 @@ The implementation spans `a4065f6` and `8221ea0`; the controller cumulative
 gate passed 279/279 in 206.813 seconds. Final independent spec and quality
 reviews reported no Critical, Important, or Minor findings.
 
+## T06 / E1 completion — 2026-07-28
+
+T06 refactored release linkage into two passes: changed paths identify behavior
+commits first, then one attribution result is built with exactly those SHAs and
+reused for every commit. Neutral-only ranges skip attribution entirely.
+
+The same deleted-ref ambiguity now produces zero projected diagnostics outside
+the release and remains fail-closed inside it (`FH-018`). `d5da824` passed the
+controller cumulative gate 281/281 in 146.958 seconds. Final independent spec
+and quality reviews reported no Critical, Important, or Minor findings.
+
 ## Current task
 
-T06 / E1 — make linkage build one attribution result scoped to behavior SHAs
-in the requested release range so unrelated historical ambiguity cannot fail
-the release, covering `FH-018`.
+T07 / E2 — make converge request one issue-scoped attribution result while
+preserving payload keys and cross-consumer parity, covering `FH-001` and
+`FH-018`.

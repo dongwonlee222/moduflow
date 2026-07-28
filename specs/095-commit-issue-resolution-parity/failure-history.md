@@ -61,7 +61,7 @@ the architectural closure.
 | FH-015 | Octopus subject order and deleted refs changed ownership | Subject token order cannot assign content without graph corroboration | regression captured |
 | FH-016 | Two-parent multi-name merge subjects relabelled side content | A merge boundary claim is not proof of content ownership | regression captured |
 | FH-017 | Normal trunk advancement was reported as base ambiguity | Advancing a base lineage cannot change the historical fork point | regression captured |
-| FH-018 | Unrelated historical ambiguity failed the current release | Diagnostics are projected to the caller's commit or issue scope | open |
+| FH-018 | Unrelated historical ambiguity failed the current release | Diagnostics are projected to the caller's commit or issue scope | regression captured |
 | FH-019 | Stale fixtures masked shared-index regressions | Fixtures must reproduce each Git boundary and consumer call shape | regression captured |
 | FH-020 | Reference oracle repeated implementation assumptions | Truth is declared independently and checked with invariants | superseded by redesign |
 | FH-021 | A stricter ref parser broke an unrun consumer fixture | Every changed boundary runs all direct consumer suites before review | regression captured |
@@ -475,7 +475,13 @@ the architectural closure.
   globally fatal.
 - **Evidence**: historical merge
   `777b04e6fe531d46a123aadbb236fcf3cb33e5c7`; redesign trigger at `bfa4157`.
-- **Status**: open; primary redesign trigger.
+- **Resolution evidence**: `d5da824` makes linkage collect behavior commits
+  first, build attribution once with exactly those SHAs, and reuse the whole
+  result. The same historical ambiguity is excluded when outside the release
+  scope and fails closed when inside it; neutral-only ranges build no
+  attribution. The T06 cumulative gate passed 281/281 with clean independent
+  reviews.
+- **Status**: regression captured.
 
 ### FH-019 — Fixture and Call-Shape Masking
 
