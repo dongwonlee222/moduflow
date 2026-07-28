@@ -75,6 +75,21 @@ class DiagnosticProjectionTests(unittest.TestCase):
 
         self.assertEqual(result, ["git log failed"])
 
+    def test_compatibility_errors_dedupe_in_first_seen_order(self):
+        """FH-032: flat compatibility errors are stable and non-repeating."""
+        diagnostics = [
+            {"code": "one", "message": "shared"},
+            {"code": "two", "message": "diagnostic"},
+            {"code": "three", "message": "diagnostic"},
+        ]
+
+        result = cr.compatibility_errors(
+            ["fatal", "shared", "fatal"],
+            diagnostics,
+        )
+
+        self.assertEqual(result, ["fatal", "shared", "diagnostic"])
+
     def test_build_result_separates_fatal_errors_from_diagnostics(self):
         """FH-010: snapshot failure is structured and survives empty scope."""
         with GitRepo() as repo:
@@ -117,6 +132,37 @@ class DiagnosticProjectionTests(unittest.TestCase):
         self.assertEqual(built["diagnostics"], [])
         self.assertEqual(built["degraded"], [])
         self.assertEqual(built["errors"], [])
+
+    def _assert_duplicate_diagnostics_have_one_compatibility_error(self, shape):
+        with GitRepo(**shapes.REPO_KWARGS.get(shape, {})) as repo:
+            shapes.ALL_SHAPES[shape](repo)
+            built = cr.build_attribution(repo.runner, repo.path)
+
+        messages = [item["message"] for item in built["diagnostics"]]
+        self.assertGreater(
+            len(messages),
+            len(set(messages)),
+            f"{shape} must exercise multiple structured copies",
+        )
+        self.assertEqual(built["errors"], list(dict.fromkeys(messages)))
+
+    def test_octopus_duplicate_diagnostics_have_one_compatibility_error(self):
+        """FH-032: octopus SHA/issue diagnostics retain one flat message."""
+        self._assert_duplicate_diagnostics_have_one_compatibility_error(
+            "octopus_mapping_ambiguous"
+        )
+
+    def test_multi_name_duplicate_diagnostics_have_one_compatibility_error(self):
+        """FH-032: multi-name SHA/issue diagnostics retain one flat message."""
+        self._assert_duplicate_diagnostics_have_one_compatibility_error(
+            "two_parent_multi_name_ambiguous"
+        )
+
+    def test_partial_duplicate_diagnostics_have_one_compatibility_error(self):
+        """FH-032: partial ambiguity keeps structure without flat repetition."""
+        self._assert_duplicate_diagnostics_have_one_compatibility_error(
+            "stacked_partial_ambiguity_conventional_merge"
+        )
 
 
 class MergeClaimInvariantTests(unittest.TestCase):
@@ -789,11 +835,9 @@ class TestNoPerCommitProbe(unittest.TestCase):
                 issued, [], f"an attributed commit must answer from the index: {issued}"
             )
 
-            # A commit absent from the index still costs one lookup: absence
-            # cannot distinguish "belongs to no issue" from "outside the range
-            # the index was built over". That is correct, and it is not the
-            # fan-out — the measured case is behavior commits, which are
-            # attributed.
+            # A commit absent from a supplied legacy index remains unresolved
+            # without asking Git. The mapping is authoritative but cannot
+            # carry the structured errors/degradation of a whole build result.
 
 
 class TestUnregisteredIssueIds(unittest.TestCase):
@@ -990,6 +1034,76 @@ class TestGraphQueryFailures(unittest.TestCase):
             )
         finally:
             repo.__exit__()
+
+    def test_merge_base_fatal_blocks_trailer_in_build_whole_and_bare(self):
+        """FH-010: no ownership escapes a fatal live graph query."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.branch(f"codex/{ISSUE}")
+            work = repo.commit(
+                "feat: branch work with trailer",
+                issue=ISSUE,
+            )
+            repo.checkout("main")
+
+            def failing(args, cwd=None):
+                if args[:3] == ["git", "merge-base", "--all"]:
+                    return self._failed_result("fatal: graph unavailable")
+                return repo.runner(args, cwd)
+
+            built = cr.build_attribution(
+                failing,
+                repo.path,
+                target_shas={work},
+            )
+            whole = cr.resolve_issue_for_commit(
+                failing,
+                repo.path,
+                work,
+                attribution=built,
+            )
+            bare = cr.resolve_issue_for_commit(
+                failing,
+                repo.path,
+                work,
+            )
+
+        self.assertTrue(built["fatal_errors"])
+        self.assertEqual(built["attribution"], {})
+        for result in (whole, bare):
+            self.assertIsNone(result["issue_id"])
+            self.assertTrue(result["fatal_errors"])
+            self.assertEqual(result["fatal_errors"], result["errors"])
+
+    def test_registry_fatal_blocks_trailer_ownership(self):
+        """FH-010: issue registry failure also fails closed after snapshot."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            work = repo.commit("feat: work with trailer", issue=ISSUE)
+
+            def failing(args, cwd=None):
+                if tuple(args) == cr.ISSUE_HISTORY_ARGS:
+                    return self._failed_result("fatal: registry unavailable")
+                return repo.runner(args, cwd)
+
+            built = cr.build_attribution(
+                failing,
+                repo.path,
+                target_shas={work},
+            )
+            resolved = cr.resolve_issue_for_commit(
+                failing,
+                repo.path,
+                work,
+                attribution=built,
+            )
+
+        self.assertTrue(built["fatal_errors"])
+        self.assertEqual(built["attribution"], {})
+        self.assertIsNone(resolved["issue_id"])
+        self.assertEqual(resolved["fatal_errors"], built["fatal_errors"])
 
     def test_topic_delta_rejects_a_terminated_merge_base_query(self):
         repo, work = self._repo_with_live_issue_branch()

@@ -176,10 +176,11 @@ def project_diagnostics(
 
 def compatibility_errors(fatal_errors, projected_diagnostics):
     """Preserve the public flat error list while keeping internal structure."""
-    return [
+    combined = [
         *fatal_errors,
         *(item["message"] for item in projected_diagnostics),
     ]
+    return list(dict.fromkeys(combined))
 
 
 def _extend_unique(target, values):
@@ -615,6 +616,30 @@ def build_attribution(
     )
     _extend_unique(fatal_errors, built.get("fatal_errors", []))
     diagnostics = list(built.get("diagnostics", []))
+    if fatal_errors:
+        projected_diagnostics = project_diagnostics(
+            diagnostics,
+            target_shas=target_shas,
+            target_issue_ids=target_issue_ids,
+        )
+        return {
+            "attribution": {},
+            "records": records,
+            "order": order,
+            "unmatched": list(order),
+            "branches": built["branches"],
+            "issue_ids": issue_ids,
+            "fatal_errors": fatal_errors,
+            "degraded": _project_degraded(
+                fatal_errors,
+                projected_diagnostics,
+            ),
+            "errors": compatibility_errors(
+                fatal_errors,
+                projected_diagnostics,
+            ),
+            "diagnostics": projected_diagnostics,
+        }
 
     # Collect evidence without resolving conflicts inline. Content and merge
     # boundaries are different claim kinds: content has one eventual owner,
