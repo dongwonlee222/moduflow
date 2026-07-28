@@ -272,6 +272,7 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
     degraded = []
     membership = {}
     diagnostics = []
+    fatal_delta = False
 
     if snapshot is None:
         snapshot = commit_graph.load_snapshot(runner, cwd)
@@ -325,6 +326,7 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
             if error not in errors:
                 errors.append(error)
         if delta.get("fatal_errors"):
+            fatal_delta = True
             if DEGRADED_BRANCH_UNAVAILABLE not in degraded:
                 degraded.append(DEGRADED_BRANCH_UNAVAILABLE)
             continue
@@ -346,7 +348,7 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
             errors.append(message)
 
     return {
-        "membership": membership,
+        "membership": {} if fatal_delta else membership,
         "branches": [_short_ref(name) for name in branches],
         "ref_tips": ref_tips,
         "degraded": degraded,

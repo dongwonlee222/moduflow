@@ -453,7 +453,7 @@ def _ancestry_maximal(runner, cwd, snapshot, candidates):
                 relation["fatal_errors"],
             )
             if relation["fatal_errors"]:
-                return None
+                return {"values": [], "fatal_errors": relation["fatal_errors"]}
             if relation["value"] is not True:
                 continue
             reverse = is_ancestor(runner, cwd, snapshot, other, candidate)
@@ -463,13 +463,13 @@ def _ancestry_maximal(runner, cwd, snapshot, candidates):
                 reverse["fatal_errors"],
             )
             if reverse["fatal_errors"]:
-                return None
+                return {"values": [], "fatal_errors": reverse["fatal_errors"]}
             if reverse["value"] is False:
                 dominated = True
                 break
         if not dominated:
             maximal.append(candidate)
-    return sorted(maximal)
+    return {"values": sorted(maximal), "fatal_errors": []}
 
 
 def _rev_list_shas(stdout, records):
@@ -572,14 +572,16 @@ def topic_delta(
             if above_fork["value"] is True:
                 exclusions.append(candidate)
 
-    exclusions = _ancestry_maximal(runner, cwd, snapshot, exclusions)
-    if exclusions is None:
+    maximalized = _ancestry_maximal(runner, cwd, snapshot, exclusions)
+    if maximalized["fatal_errors"]:
         return {
             **fork,
             "stacked_exclusions": [],
             "commits": set(),
+            "fatal_errors": [*fork["fatal_errors"], *maximalized["fatal_errors"]],
             "diagnostics": diagnostics,
         }
+    exclusions = maximalized["values"]
     if len(snapshot["fatal_errors"]) != fatal_before:
         return {
             **fork,

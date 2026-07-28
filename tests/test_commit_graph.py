@@ -831,6 +831,58 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertEqual(sum(call == failing_args for call in calls), 1)
             self.assertTrue(repo.truth_for(ALPHA).isdisjoint(second["commits"]))
 
+    def test_membership_replays_cached_pair_failure(self):
+        """FH-010: pairwise cached fatal stays visible on both membership builds."""
+        with GitRepo() as repo:
+            shapes.two_registered_stacked_issues(repo)
+            errors = []
+            ids = cr.known_issue_ids(repo.runner, repo.path, errors)
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+            beta = snapshot["refs"][f"refs/heads/codex/{BETA}"]
+            alpha = snapshot["refs"][f"refs/heads/codex/{ALPHA}"]
+            target_shas = {beta, alpha}
+            calls = []
+            def failing(args, cwd=None):
+                calls.append(args)
+                if args[:3] == ["git", "merge-base", "--all"] and set(args[3:]) == target_shas:
+                    return subprocess.CompletedProcess(args, 128, "", "pair unavailable")
+                return repo.runner(args, cwd)
+            first = cr.build_branch_membership(failing, repo.path, issue_ids=ids, snapshot=snapshot)
+            second = cr.build_branch_membership(failing, repo.path, issue_ids=ids, snapshot=snapshot)
+            for built in (first, second):
+                self.assertEqual(built["membership"], {})
+                self.assertTrue(built["errors"])
+                self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, built["degraded"])
+            self.assertEqual(sum(call[:3] == ["git", "merge-base", "--all"] and set(call[3:]) == target_shas for call in calls), 1)
+
+    def test_membership_replays_cached_above_fork_failure(self):
+        """FH-010: above-fork cached fatal stays visible on both builds."""
+        with GitRepo() as repo:
+            shapes.two_registered_stacked_issues(repo)
+            errors = []
+            ids = cr.known_issue_ids(repo.runner, repo.path, errors)
+            snapshot = commit_graph.load_snapshot(repo.runner, repo.path)
+            beta_ref = f"refs/heads/codex/{BETA}"
+            alpha_ref = f"refs/heads/codex/{ALPHA}"
+            refs = {ref: cr.issue_id_from_branch(ref, ids) for ref in snapshot["refs"] if cr.issue_id_from_branch(ref, ids)}
+            bases = [ref for ref in snapshot["refs"] if ref not in refs]
+            fork = commit_graph.derive_fork_point(repo.runner, repo.path, snapshot, beta_ref, BETA, base_refs=bases)
+            candidate = next(sha for sha in commit_graph.merge_bases(repo.runner, repo.path, snapshot, snapshot["refs"][beta_ref], snapshot["refs"][alpha_ref])["shas"] if sha != fork["fork_point"])
+            target = ["git", "merge-base", "--is-ancestor", fork["fork_point"], candidate]
+            calls = []
+            def failing(args, cwd=None):
+                calls.append(args)
+                if args == target:
+                    return subprocess.CompletedProcess(args, 128, "", "above unavailable")
+                return repo.runner(args, cwd)
+            first = cr.build_branch_membership(failing, repo.path, issue_ids=ids, snapshot=snapshot)
+            second = cr.build_branch_membership(failing, repo.path, issue_ids=ids, snapshot=snapshot)
+            for built in (first, second):
+                self.assertEqual(built["membership"], {})
+                self.assertTrue(built["errors"])
+                self.assertIn(cr.DEGRADED_BRANCH_UNAVAILABLE, built["degraded"])
+            self.assertEqual(sum(call == target for call in calls), 1)
+
     def test_cached_fork_query_failure_fails_closed_even_with_another_fork_candidate(self):
         """FH-010: a cached fork failure cannot be hidden by a good base ref."""
         with GitRepo() as repo:
