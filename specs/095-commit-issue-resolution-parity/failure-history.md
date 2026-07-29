@@ -82,6 +82,7 @@ the architectural closure.
 | FH-036 | Required-component manifest copied the mutable mapping | Every required component is declared independently and every deletion turns the audit red | regression captured |
 | FH-037 | Full discovery loaded mutation tests under two module identities | Nested test execution must mutate and assert against one explicit module identity | regression captured |
 | FH-038 | Detached HEAD branch limitation was silently reported as an ordinary unmatched commit | Detached HEAD keeps trailer truth and reports branch attribution unavailability without degrading unrelated attached history | regression captured |
+| FH-039 | New HEAD-state Git boundaries lacked return-code regressions | Every HEAD-state command distinguishes ordinary negative, failure, termination, and malformed success | open |
 
 ## Failure Records
 
@@ -1167,6 +1168,29 @@ the architectural closure.
   `22e679f` through implementation and fixture remediation.
 - **Status**: regression captured.
 
+### FH-039 — HEAD-State Boundary Return Semantics Were Unproved
+
+- **Topology**: snapshot loading calls `git symbolic-ref -q HEAD`, then calls
+  `git rev-parse --verify HEAD` only for the ordinary detached result.
+- **Observed failure**: whole-branch re-review at `34ca965` found no executable
+  regression distinguishing symbolic-ref rc=1 from rc=128 or signal
+  termination, no malformed-success coverage for its branch-ref output, and
+  no failure/termination/malformed-success coverage for detached HEAD SHA
+  lookup.
+- **Invalid assumption**: sharing `_failure()` and `_single_token()` helpers
+  with older graph commands proves the new command boundary without exercising
+  its own return codes and public projection.
+- **Derived invariant**: symbolic-ref rc=1 is the only ordinary detached
+  result and proceeds to HEAD SHA lookup. rc≥2 and negative return codes are
+  fatal, and empty or multi-token rc=0 output fails closed. Detached HEAD SHA
+  lookup likewise treats command failure, signal termination, empty,
+  multi-token, and unknown-SHA success as fatal. No failing boundary may
+  fabricate a detached diagnostic; fatal state must reach
+  `build_attribution()` and public commit lookup.
+- **Reviewer evidence**: Important whole-branch finding against redesign test
+  strategy lines 212–213 at `34ca965`.
+- **Status**: open.
+
 ## T08 Executable Invariant Audit
 
 This append-only matrix records the executable reference and implementation
@@ -1262,5 +1286,6 @@ The redesign maps its requirements to this corpus:
 | Independently declared required-component completeness | FH-036 |
 | Stable mutation injection across unittest module identities | FH-037 |
 | Detached-HEAD branch-attribution limitation projection | FH-038 |
+| HEAD-state ordinary-negative/failure/termination/malformed-success semantics | FH-039 |
 
 Future findings extend this table rather than replacing it.
