@@ -83,7 +83,7 @@ the architectural closure.
 | FH-037 | Full discovery loaded mutation tests under two module identities | Nested test execution must mutate and assert against one explicit module identity | regression captured |
 | FH-038 | Detached HEAD branch limitation was silently reported as an ordinary unmatched commit | Detached HEAD keeps trailer truth and reports branch attribution unavailability without degrading unrelated attached history | regression captured |
 | FH-039 | New HEAD-state Git boundaries lacked return-code regressions | Every HEAD-state command distinguishes ordinary negative, failure, termination, and malformed success | regression captured |
-| FH-040 | An unrelated non-topic side ref became fork evidence | Adding or removing an incomparable non-topic side ref cannot change a topic's ownership, fork, or diagnostics | open |
+| FH-040 | An unrelated non-topic side ref became fork evidence | Adding or removing an incomparable non-topic side ref cannot change a topic's ownership, fork, or diagnostics | regression captured |
 
 ## Failure Records
 
@@ -1245,7 +1245,29 @@ the architectural closure.
   issue `A1 → A2`, unrelated non-issue `scratch` forked at `A1` and diverged.
   `scratch` present omitted `A1`; deleting `scratch` restored it; all
   diagnostic and failure surfaces were empty.
-- **Status**: open.
+- **RED evidence**: the actual-Git metamorphic regression first reached
+  terminal exit 1 with one failure. Adding `scratch` changed the derived fork
+  and the public ownership projection while the baseline and post-deletion
+  states agreed.
+- **Implementation evidence**: `86b06d2` classifies ordinary candidates by
+  topology provenance. A base tip that is itself the merge base and recovered
+  publication forks are positive anchors; a later divergent side-ref fork is
+  excluded. If every base ref has advanced, the earliest comparable
+  divergence remains stable, while incomparable lineages still fail closed.
+  No ref name preference or repository-global base was added.
+- **Qualified executable evidence**:
+  `tests.test_commit_graph.ForkPointInvariantTests.test_incomparable_non_topic_side_ref_is_attribution_neutral`
+  proves add/remove stability for the fork, both public query directions, and
+  every diagnostic/failure surface;
+  `tests.test_commit_resolution.FailureInvariantMutationTests.test_fh040_composite_detects_removed_side_ref_provenance`
+  proves disabling the topology-provenance filter turns the invariant red.
+- **GREEN evidence**: the new regression plus advanced-trunk, publication,
+  legitimate develop lineage, and ambiguity protections passed 7/7. The
+  executable traceability/mutation set passed 5/5. The six Issue 095 suites
+  reached terminal exit 0 with 366/366 tests passed in 248.137 seconds.
+- **Historical state (preserved)**: open from whole-branch quality review at
+  `bdfb70c` through the RED and implementation gate.
+- **Status**: regression captured.
 
 ## T08 Executable Invariant Audit
 
@@ -1290,6 +1312,7 @@ evidence rather than product behavior.
 | FH-030 | `SharedOwnershipTests.test_live_resolution_has_no_global_base_election_or_origin_head_probe` | `76e8f97` |
 | FH-031 | `TestRangeProjection.test_live_range_projects_only_target_topic` | `380e23e`, `fd08636` |
 | FH-032 | `DiagnosticProjectionTests.test_compatibility_errors_dedupe_in_first_seen_order` | `8221ea0` |
+| FH-040 | `ForkPointInvariantTests.test_incomparable_non_topic_side_ref_is_attribution_neutral` + provenance-filter mutation | `86b06d2` |
 
 ## T08 I2 Composite Traceability Override
 
