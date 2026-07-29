@@ -255,6 +255,24 @@ FAILURE_INVARIANT_TESTS = {
         "tests.test_commit_resolution.TestDetachedHead."
         "test_detached_limitation_has_bare_indexed_parity",
     ),
+    "FH-039": (
+        "tests.test_commit_graph.HeadStateBoundaryTests."
+        "test_symbolic_ref_rc1_is_detached_and_reads_valid_head_sha",
+        "tests.test_commit_graph.HeadStateBoundaryTests."
+        "test_symbolic_ref_failure_and_termination_are_fatal",
+        "tests.test_commit_graph.HeadStateBoundaryTests."
+        "test_symbolic_ref_malformed_success_fails_closed",
+        "tests.test_commit_graph.HeadStateBoundaryTests."
+        "test_detached_head_sha_failure_and_termination_are_fatal",
+        "tests.test_commit_graph.HeadStateBoundaryTests."
+        "test_detached_head_sha_malformed_success_fails_closed",
+        "tests.test_commit_resolution.HeadStateBoundaryProjectionTests."
+        "test_symbolic_ref_failure_projects_fatal_without_detached_diagnostic",
+        "tests.test_commit_resolution.HeadStateBoundaryProjectionTests."
+        "test_detached_sha_failure_projects_fatal_without_detached_diagnostic",
+        "tests.test_commit_resolution.TestDetachedHead."
+        "test_trailer_resolves_and_branch_gap_is_reported",
+    ),
 }
 
 REQUIRED_FAILURE_COMPONENTS = {}
@@ -564,6 +582,26 @@ REQUIRED_FAILURE_COMPONENTS.update({
             "test_attached_unrelated_commit_has_no_detached_limitation",
             "tests.test_commit_resolution.TestDetachedHead."
             "test_detached_limitation_has_bare_indexed_parity",
+        }
+    ),
+    "FH-039": frozenset(
+        {
+            "tests.test_commit_graph.HeadStateBoundaryTests."
+            "test_symbolic_ref_rc1_is_detached_and_reads_valid_head_sha",
+            "tests.test_commit_graph.HeadStateBoundaryTests."
+            "test_symbolic_ref_failure_and_termination_are_fatal",
+            "tests.test_commit_graph.HeadStateBoundaryTests."
+            "test_symbolic_ref_malformed_success_fails_closed",
+            "tests.test_commit_graph.HeadStateBoundaryTests."
+            "test_detached_head_sha_failure_and_termination_are_fatal",
+            "tests.test_commit_graph.HeadStateBoundaryTests."
+            "test_detached_head_sha_malformed_success_fails_closed",
+            "tests.test_commit_resolution.HeadStateBoundaryProjectionTests."
+            "test_symbolic_ref_failure_projects_fatal_without_detached_diagnostic",
+            "tests.test_commit_resolution.HeadStateBoundaryProjectionTests."
+            "test_detached_sha_failure_projects_fatal_without_detached_diagnostic",
+            "tests.test_commit_resolution.TestDetachedHead."
+            "test_trailer_resolves_and_branch_gap_is_reported",
         }
     ),
 })
@@ -1618,6 +1656,73 @@ class TestIssueToCommits(unittest.TestCase):
             out = cr.resolve_commits_for_issue(repo.runner, repo.path, ISSUE)
             for entry in out["commits"]:
                 self.assertIn(entry["source"], cr.SOURCE_PRECEDENCE)
+
+
+class HeadStateBoundaryProjectionTests(unittest.TestCase):
+    def _assert_fatal_projection(self, out, expected_fragment):
+        self.assertIsNone(out["issue_id"])
+        self.assertIsNone(out["source"])
+        self.assertTrue(out["fatal_errors"])
+        self.assertIn(expected_fragment, out["fatal_errors"][0])
+        self.assertEqual(out["diagnostics"], [])
+        self.assertEqual(out["degraded"], [cr.DEGRADED_BRANCH_UNAVAILABLE])
+        self.assertEqual(out["errors"], out["fatal_errors"])
+        self.assertFalse(
+            any(
+                "detached-head-branch-unavailable"
+                in diagnostic.get("code", "")
+                for diagnostic in out["diagnostics"]
+            )
+        )
+
+    def test_symbolic_ref_failure_projects_fatal_without_detached_diagnostic(self):
+        """FH-039: HEAD-ref failure reaches the public commit wrapper."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            sha = repo.commit("feat: trailer work", issue=ISSUE)
+
+            def failing(args, cwd=None):
+                if tuple(args) == tuple(cr.HEAD_REF_ARGS):
+                    return type(
+                        "Result",
+                        (),
+                        {
+                            "returncode": -9,
+                            "stdout": "",
+                            "stderr": "terminated",
+                        },
+                    )()
+                return repo.runner(args, cwd)
+
+            out = cr.resolve_issue_for_commit(failing, repo.path, sha)
+
+        self._assert_fatal_projection(out, "terminated by signal 9")
+
+    def test_detached_sha_failure_projects_fatal_without_detached_diagnostic(self):
+        """FH-039: detached SHA failure reaches the public commit wrapper."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            sha = repo.commit("feat: trailer work", issue=ISSUE)
+            repo.detach()
+
+            def failing(args, cwd=None):
+                if tuple(args) == tuple(cr.HEAD_SHA_ARGS):
+                    return type(
+                        "Result",
+                        (),
+                        {
+                            "returncode": 128,
+                            "stdout": "",
+                            "stderr": "fatal: cannot resolve HEAD",
+                        },
+                    )()
+                return repo.runner(args, cwd)
+
+            out = cr.resolve_issue_for_commit(failing, repo.path, sha)
+
+        self._assert_fatal_projection(out, "cannot resolve HEAD")
 
 
 class TestDetachedHead(unittest.TestCase):

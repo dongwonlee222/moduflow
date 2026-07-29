@@ -797,12 +797,14 @@ def load_snapshot(runner, cwd, *, rev_range=None):
             if head_sha_result.returncode != 0:
                 fatal_errors.append(_failure(head_sha_args, head_sha_result))
             else:
-                head_sha = _single_token(head_sha_result.stdout)
-                if head_sha is None or head_sha not in records:
+                parsed_head_sha = _single_token(head_sha_result.stdout)
+                if parsed_head_sha is None or parsed_head_sha not in records:
                     fatal_errors.append(
                         "git rev-parse --verify HEAD produced malformed output "
                         "(expected exactly one SHA present in the snapshot)"
                     )
+                else:
+                    head_sha = parsed_head_sha
         else:
             fatal_errors.append(_failure(head_ref_args, head_ref_result))
     return {

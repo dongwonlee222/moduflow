@@ -119,6 +119,131 @@ def declared_content_truth(repo, issue_id):
     return repo.truth_for(issue_id) & non_merges
 
 
+class HeadStateBoundaryTests(unittest.TestCase):
+    SHA = "a" * 40
+
+    def _runner(self, head_ref_result, head_sha_result=None):
+        log = f"{self.SHA}\x00subject\x00\x00body\x01"
+        refs = f"refs/heads/main {self.SHA}\n"
+        calls = []
+
+        def runner(args, cwd=None):
+            calls.append(tuple(args))
+            if tuple(args) == tuple(commit_graph.GIT_LOG_ARGS):
+                result = (0, log, "")
+            elif tuple(args) == tuple(commit_graph.BRANCH_REF_ARGS):
+                result = (0, refs, "")
+            elif tuple(args) == tuple(commit_graph.HEAD_REF_ARGS):
+                result = head_ref_result
+            elif tuple(args) == tuple(commit_graph.HEAD_SHA_ARGS):
+                if head_sha_result is None:
+                    result = (128, "", "unexpected HEAD SHA lookup")
+                else:
+                    result = head_sha_result
+            else:
+                result = (128, "", f"unexpected command: {' '.join(args)}")
+            return subprocess.CompletedProcess(args, *result)
+
+        return runner, calls
+
+    def test_symbolic_ref_rc1_is_detached_and_reads_valid_head_sha(self):
+        """FH-039: rc=1 is the sole ordinary-negative HEAD-ref result."""
+        runner, calls = self._runner(
+            (1, "", ""),
+            (0, f"{self.SHA}\n", ""),
+        )
+
+        snapshot = commit_graph.load_snapshot(runner, ".")
+
+        self.assertEqual(snapshot["fatal_errors"], [])
+        self.assertTrue(snapshot["head_detached"])
+        self.assertEqual(snapshot["head_sha"], self.SHA)
+        self.assertIn(tuple(commit_graph.HEAD_SHA_ARGS), calls)
+
+    def test_symbolic_ref_failure_and_termination_are_fatal(self):
+        """FH-039: rc>=2 and signals are never mistaken for detached HEAD."""
+        cases = (
+            (128, "", "fatal: symbolic ref unavailable"),
+            (-9, "", "terminated"),
+        )
+        for result in cases:
+            with self.subTest(returncode=result[0]):
+                runner, calls = self._runner(result)
+
+                snapshot = commit_graph.load_snapshot(runner, ".")
+
+                self.assertTrue(snapshot["fatal_errors"])
+                self.assertFalse(snapshot["head_detached"])
+                self.assertIsNone(snapshot["head_sha"])
+                self.assertNotIn(tuple(commit_graph.HEAD_SHA_ARGS), calls)
+                if result[0] < 0:
+                    self.assertIn(
+                        "terminated by signal 9",
+                        snapshot["fatal_errors"][0],
+                    )
+                else:
+                    self.assertIn(
+                        "symbolic ref unavailable",
+                        snapshot["fatal_errors"][0],
+                    )
+
+    def test_symbolic_ref_malformed_success_fails_closed(self):
+        """FH-039: rc=0 still requires exactly one nonempty ref token."""
+        for output in ("", "\n", "refs/heads/main extra\n"):
+            with self.subTest(output=output):
+                runner, calls = self._runner((0, output, ""))
+
+                snapshot = commit_graph.load_snapshot(runner, ".")
+
+                self.assertTrue(snapshot["fatal_errors"])
+                self.assertIn("malformed output", snapshot["fatal_errors"][0])
+                self.assertFalse(snapshot["head_detached"])
+                self.assertNotIn(tuple(commit_graph.HEAD_SHA_ARGS), calls)
+
+    def test_detached_head_sha_failure_and_termination_are_fatal(self):
+        """FH-039: detached SHA lookup failures remain command failures."""
+        cases = (
+            (128, "", "fatal: HEAD object unavailable"),
+            (-15, "", "terminated"),
+        )
+        for result in cases:
+            with self.subTest(returncode=result[0]):
+                runner, _calls = self._runner((1, "", ""), result)
+
+                snapshot = commit_graph.load_snapshot(runner, ".")
+
+                self.assertTrue(snapshot["fatal_errors"])
+                self.assertTrue(snapshot["head_detached"])
+                self.assertIsNone(snapshot["head_sha"])
+                if result[0] < 0:
+                    self.assertIn(
+                        "terminated by signal 15",
+                        snapshot["fatal_errors"][0],
+                    )
+                else:
+                    self.assertIn(
+                        "HEAD object unavailable",
+                        snapshot["fatal_errors"][0],
+                    )
+
+    def test_detached_head_sha_malformed_success_fails_closed(self):
+        """FH-039: detached SHA output must be one known snapshot object."""
+        cases = ("", "\n", f"{self.SHA} extra\n", f"{'b' * 40}\n")
+        for output in cases:
+            with self.subTest(output=output):
+                runner, _calls = self._runner(
+                    (1, "", ""),
+                    (0, output, ""),
+                )
+
+                snapshot = commit_graph.load_snapshot(runner, ".")
+
+                self.assertTrue(snapshot["fatal_errors"])
+                self.assertIn("malformed output", snapshot["fatal_errors"][0])
+                self.assertTrue(snapshot["head_detached"])
+                self.assertIsNone(snapshot["head_sha"])
+
+
 class SnapshotTests(unittest.TestCase):
     def test_loads_log_and_refs_once(self):
         """FH-010/FH-014: one immutable snapshot reads each source once."""
