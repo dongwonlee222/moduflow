@@ -273,6 +273,12 @@ FAILURE_INVARIANT_TESTS = {
         "tests.test_commit_resolution.TestDetachedHead."
         "test_trailer_resolves_and_branch_gap_is_reported",
     ),
+    "FH-040": (
+        "tests.test_commit_graph.ForkPointInvariantTests."
+        "test_incomparable_non_topic_side_ref_is_attribution_neutral",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh040_composite_detects_removed_side_ref_provenance",
+    ),
 }
 
 REQUIRED_FAILURE_COMPONENTS = {}
@@ -604,6 +610,14 @@ REQUIRED_FAILURE_COMPONENTS.update({
             "test_trailer_resolves_and_branch_gap_is_reported",
         }
     ),
+    "FH-040": frozenset(
+        {
+            "tests.test_commit_graph.ForkPointInvariantTests."
+            "test_incomparable_non_topic_side_ref_is_attribution_neutral",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh040_composite_detects_removed_side_ref_provenance",
+        }
+    ),
 })
 
 
@@ -888,6 +902,26 @@ class FailureInvariantMutationTests(unittest.TestCase):
             ),
             owner_module=owner,
         )
+
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(result.failures), 1)
+        self.assertFalse(result.wasSuccessful())
+
+    def test_fh040_composite_detects_removed_side_ref_provenance(self):
+        """FH-040: disabling provenance filtering turns the invariant red."""
+        original = cr.commit_graph._unproven_side_ref_forks
+        try:
+            cr.commit_graph._unproven_side_ref_forks = (
+                lambda *args, **kwargs: (set(), [])
+            )
+            result = _run_named_tests(
+                (
+                    "tests.test_commit_graph.ForkPointInvariantTests."
+                    "test_incomparable_non_topic_side_ref_is_attribution_neutral",
+                )
+            )
+        finally:
+            cr.commit_graph._unproven_side_ref_forks = original
 
         self.assertEqual(result.errors, [])
         self.assertEqual(len(result.failures), 1)

@@ -273,6 +273,46 @@ def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
     return sorted(set(recovered)), publication_sides, fatal_errors
 
 
+def _unproven_side_ref_forks(
+    runner,
+    cwd,
+    snapshot,
+    *,
+    divergent_forks,
+    provenance_anchors,
+):
+    """Return later divergent candidates that have no base provenance."""
+    to_drop = set()
+    fatal_errors = []
+    comparison_anchors = (
+        provenance_anchors if provenance_anchors else divergent_forks
+    )
+    for candidate in sorted(divergent_forks):
+        for anchor in sorted(comparison_anchors):
+            if candidate == anchor:
+                continue
+            relation = is_ancestor(runner, cwd, snapshot, anchor, candidate)
+            _preserve_fatal_errors(
+                snapshot,
+                ("is-ancestor", anchor, candidate),
+                relation["fatal_errors"],
+            )
+            fatal_errors.extend(relation["fatal_errors"])
+            if relation["value"] is not True:
+                continue
+            reverse = is_ancestor(runner, cwd, snapshot, candidate, anchor)
+            _preserve_fatal_errors(
+                snapshot,
+                ("is-ancestor", candidate, anchor),
+                reverse["fatal_errors"],
+            )
+            fatal_errors.extend(reverse["fatal_errors"])
+            if reverse["value"] is False:
+                to_drop.add(candidate)
+                break
+    return to_drop, fatal_errors
+
+
 def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
     """Select one ancestry-maximal historical fork point for a topic ref.
 
@@ -302,6 +342,8 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
     recovered_forks = set()
     publication_sides = set()
     ordinary_forks = set()
+    direct_lineage_forks = set()
+    divergent_ref_forks = set()
     needs_publication_recovery = False
     fatal_errors = []
     for ref in sorted(set(base_refs)):
@@ -340,6 +382,12 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
             ordinary_forks.update(candidates)
         for fork_sha in candidates:
             by_fork.setdefault(fork_sha, []).append(ref)
+            if fork_sha in recovered:
+                continue
+            if fork_sha == base_sha:
+                direct_lineage_forks.add(fork_sha)
+            else:
+                divergent_ref_forks.add(fork_sha)
 
     # Ref iteration order must not let an alias observed before its confirming
     # publication merge survive as an ordinary base candidate.
@@ -427,6 +475,29 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
     if current in publication_sides:
         topic_line_aliases.update(path)
     ordinary_forks.difference_update(topic_line_aliases)
+    direct_lineage_forks.intersection_update(ordinary_forks)
+    divergent_ref_forks.intersection_update(ordinary_forks)
+
+    # A connected ref is not automatically a historical base.  A side ref
+    # cut from topic content and then advanced has a later merge-base than the
+    # real trunk, but that only describes where the unrelated ref diverged.
+    #
+    # Direct lineage refs (their tip itself is the merge-base) and recovered
+    # publication forks are positive provenance.  A divergent ref candidate
+    # strictly above either anchor is therefore side-ref evidence, not a fork.
+    # When every base ref has advanced, the earliest comparable divergence is
+    # stable under adding/removing a later side ref; incomparable candidates
+    # remain ambiguous and fail closed.
+    provenance_anchors = direct_lineage_forks | recovered_minimal
+    divergent_to_drop, provenance_errors = _unproven_side_ref_forks(
+        runner,
+        cwd,
+        snapshot,
+        divergent_forks=divergent_ref_forks,
+        provenance_anchors=provenance_anchors,
+    )
+    fatal_errors.extend(provenance_errors)
+    ordinary_forks.difference_update(divergent_to_drop)
 
     selected_forks = ordinary_forks | recovered_minimal
     maximal = []

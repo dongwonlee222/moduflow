@@ -604,6 +604,89 @@ class ForkPointInvariantTests(unittest.TestCase):
             self.assertEqual(after["fork_point"], before["fork_point"])
             self.assertEqual(after["diagnostics"], [])
 
+    def test_incomparable_non_topic_side_ref_is_attribution_neutral(self):
+        """FH-040: an unrelated side ref cannot become topic-fork evidence."""
+        with GitRepo() as repo:
+            repo.commit("chore: base", belongs_to=None)
+            fork = repo.add_issue_file(ALPHA)
+            topic = repo.branch(f"codex/{ALPHA}")
+            a1 = repo.commit("feat: A1", belongs_to=ALPHA)
+            a2 = repo.commit("feat: A2", belongs_to=ALPHA)
+
+            def observe():
+                derived = derive_for_repo(repo, ALPHA)
+                built = cr.build_attribution(
+                    repo.runner,
+                    repo.path,
+                    target_issue_ids={ALPHA},
+                )
+                from_issue_result = cr.resolve_commits_for_issue(
+                    repo.runner,
+                    repo.path,
+                    ALPHA,
+                    index=built,
+                    target_issue_ids={ALPHA},
+                )
+                from_issue = {
+                    item["sha"] for item in from_issue_result["commits"]
+                }
+                from_commits = {
+                    sha: cr.resolve_issue_for_commit(
+                        repo.runner,
+                        repo.path,
+                        sha,
+                        attribution=built,
+                    )
+                    for sha in (a1, a2)
+                }
+                return {
+                    "fork": derived["fork_point"],
+                    "from_issue": from_issue,
+                    "from_commits": {
+                        sha: result["issue_id"]
+                        for sha, result in from_commits.items()
+                    },
+                    "surfaces": {
+                        "fork_diagnostics": derived["diagnostics"],
+                        "fork_fatal_errors": derived["fatal_errors"],
+                        "diagnostics": from_issue_result["diagnostics"],
+                        "fatal_errors": from_issue_result["fatal_errors"],
+                        "degraded": from_issue_result["degraded"],
+                        "errors": from_issue_result["errors"],
+                        "commit_diagnostics": {
+                            sha: result["diagnostics"]
+                            for sha, result in from_commits.items()
+                        },
+                    },
+                }
+
+            without_scratch = observe()
+            repo._git("branch", "scratch", a1)
+            repo.checkout("scratch")
+            repo.commit("chore: unrelated scratch", belongs_to=None)
+            repo.checkout(topic)
+            with_scratch = observe()
+            repo.delete_branch("scratch")
+            after_delete = observe()
+
+            self.assertEqual(without_scratch["fork"], fork)
+            self.assertEqual(without_scratch["from_issue"] & {a1, a2}, {a1, a2})
+            self.assertEqual(
+                without_scratch["from_commits"],
+                {a1: ALPHA, a2: ALPHA},
+            )
+            self.assertEqual(without_scratch["surfaces"], {
+                "fork_diagnostics": [],
+                "fork_fatal_errors": [],
+                "diagnostics": [],
+                "fatal_errors": [],
+                "degraded": [],
+                "errors": [],
+                "commit_diagnostics": {a1: [], a2: []},
+            })
+            self.assertEqual(with_scratch, without_scratch)
+            self.assertEqual(after_delete, without_scratch)
+
     def test_incomparable_maximal_forks_are_scoped_to_topic(self):
         """FH-006/FH-011/FH-017: incomparable remote histories fail closed per issue."""
         with GitRepo() as repo:

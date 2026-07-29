@@ -83,6 +83,7 @@ the architectural closure.
 | FH-037 | Full discovery loaded mutation tests under two module identities | Nested test execution must mutate and assert against one explicit module identity | regression captured |
 | FH-038 | Detached HEAD branch limitation was silently reported as an ordinary unmatched commit | Detached HEAD keeps trailer truth and reports branch attribution unavailability without degrading unrelated attached history | regression captured |
 | FH-039 | New HEAD-state Git boundaries lacked return-code regressions | Every HEAD-state command distinguishes ordinary negative, failure, termination, and malformed success | regression captured |
+| FH-040 | An unrelated non-topic side ref became fork evidence | Adding or removing an incomparable non-topic side ref cannot change a topic's ownership, fork, or diagnostics | open |
 
 ## Failure Records
 
@@ -1223,6 +1224,29 @@ the architectural closure.
   `34ca965` through the RED and remediation gates.
 - **Status**: regression captured.
 
+### FH-040 — Unrelated Non-Topic Side Ref Changed Topic Ownership
+
+- **Topology**: issue branch `A1 → A2` is cut from a trunk fork. A non-issue
+  `scratch` branch points at `A1`, adds an incomparable side commit, and remains
+  present as an unrelated ref.
+- **Observed failure**: whole-branch quality review at `bdfb70c` reproduced
+  that the present `scratch` ref silently dropped `A1` from the issue's
+  contribution. Deleting only `scratch` restored `A1`, while `errors`,
+  `degraded`, and structured diagnostics remained empty in both states.
+- **Invalid assumption**: every connected non-topic ref is evidence of a
+  topic's historical base merely because its tip has a merge base with the
+  topic.
+- **Derived invariant**: adding or removing an arbitrary incomparable
+  non-topic side ref cannot change either query direction's ownership, the
+  topic fork point, or diagnostics. Legitimate base lineage and publication
+  evidence remain topology-derived; no preferred branch name or repository-
+  global base election may be reintroduced.
+- **Reviewer reproduction evidence**: Important finding I1 at `bdfb70c`;
+  issue `A1 → A2`, unrelated non-issue `scratch` forked at `A1` and diverged.
+  `scratch` present omitted `A1`; deleting `scratch` restored it; all
+  diagnostic and failure surfaces were empty.
+- **Status**: open.
+
 ## T08 Executable Invariant Audit
 
 This append-only matrix records the executable reference and implementation
@@ -1319,5 +1343,6 @@ The redesign maps its requirements to this corpus:
 | Stable mutation injection across unittest module identities | FH-037 |
 | Detached-HEAD branch-attribution limitation projection | FH-038 |
 | HEAD-state ordinary-negative/failure/termination/malformed-success semantics | FH-039 |
+| Non-topic ref provenance and metamorphic add/remove stability | FH-040 |
 
 Future findings extend this table rather than replacing it.
