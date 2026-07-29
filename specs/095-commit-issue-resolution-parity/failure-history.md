@@ -83,7 +83,7 @@ the architectural closure.
 | FH-037 | Full discovery loaded mutation tests under two module identities | Nested test execution must mutate and assert against one explicit module identity | regression captured |
 | FH-038 | Detached HEAD branch limitation was silently reported as an ordinary unmatched commit | Detached HEAD keeps trailer truth and reports branch attribution unavailability without degrading unrelated attached history | regression captured |
 | FH-039 | New HEAD-state Git boundaries lacked return-code regressions | Every HEAD-state command distinguishes ordinary negative, failure, termination, and malformed success | regression captured |
-| FH-040 | An unrelated non-topic side ref became fork evidence | Uncorroborated divergent refs cannot silently elect a topic fork; multiple candidates fail closed | open |
+| FH-040 | An unrelated non-topic side ref became fork evidence | Uncorroborated divergent refs cannot silently elect a topic fork; multiple candidates fail closed | regression captured |
 
 ## Failure Records
 
@@ -1282,10 +1282,28 @@ the architectural closure.
   a scoped ambiguity unless publication history or issue-contribution
   topology corroborates one candidate. Ref names and repository-global base
   selection remain forbidden.
+- **Recurrence implementation evidence**: `704a813` removes the oldest-
+  divergence fallback. With no direct-lineage or publication anchor, one
+  divergent candidate remains usable; two or more distinct candidates now
+  return a scoped `ambiguous-topic-fork` and no ownership.
+- **Recurrence qualified executable evidence**:
+  `tests.test_commit_graph.ForkPointInvariantTests.test_multiple_unanchored_divergences_fail_closed_instead_of_electing_oldest`
+  exercises the exact `O → N`, advanced legitimate base, and advanced
+  `oldline` add/remove topology through fork derivation and both public query
+  directions;
+  `tests.test_commit_resolution.FailureInvariantMutationTests.test_fh040_composite_detects_unanchored_fork_guess`
+  proves accepting the unanchored guess turns the recurrence red.
+- **Recurrence GREEN evidence**: the exact recurrence, first FH-040
+  metamorphic case, mutation checks, advanced-trunk, publication, legitimate
+  develop lineage, and ambiguity regressions passed 10/10. Traceability and
+  required-component mutation checks passed 6/6 in 63.808 seconds. The six
+  Issue 095 suites reached terminal exit 0 with 368/368 tests passed in
+  413.849 seconds.
 - **Historical state (preserved)**: open from whole-branch quality review at
   `bdfb70c` through the first RED and implementation gate; regression captured
-  at `86b06d2` before the `0f10079` recurrence.
-- **Status**: open.
+  at `86b06d2` before the `0f10079` recurrence, then reopened until
+  `704a813`.
+- **Status**: regression captured.
 
 ## T08 Executable Invariant Audit
 
@@ -1330,7 +1348,7 @@ evidence rather than product behavior.
 | FH-030 | `SharedOwnershipTests.test_live_resolution_has_no_global_base_election_or_origin_head_probe` | `76e8f97` |
 | FH-031 | `TestRangeProjection.test_live_range_projects_only_target_topic` | `380e23e`, `fd08636` |
 | FH-032 | `DiagnosticProjectionTests.test_compatibility_errors_dedupe_in_first_seen_order` | `8221ea0` |
-| FH-040 | `ForkPointInvariantTests.test_incomparable_non_topic_side_ref_is_attribution_neutral` + provenance-filter mutation | `86b06d2` |
+| FH-040 | unrelated-side stability + unanchored-divergence fail-closed + both mutations | `86b06d2`, `704a813` |
 
 ## T08 I2 Composite Traceability Override
 
