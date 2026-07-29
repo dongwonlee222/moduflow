@@ -687,6 +687,84 @@ class ForkPointInvariantTests(unittest.TestCase):
             self.assertEqual(with_scratch, without_scratch)
             self.assertEqual(after_delete, without_scratch)
 
+    def test_multiple_unanchored_divergences_fail_closed_instead_of_electing_oldest(self):
+        """FH-040: uncorroborated divergent refs cannot elect each other."""
+        with GitRepo() as repo:
+            repo.commit("chore: root", belongs_to=None)
+            repo.add_issue_file(ALPHA)
+            old_fork = repo.commit("chore: base O", belongs_to=None)
+            real_fork = repo.commit("chore: base N", belongs_to=None)
+            topic = repo.branch(f"codex/{ALPHA}")
+            work = repo.commit("feat: topic work", belongs_to=ALPHA)
+            repo.checkout("main")
+            repo.commit("chore: legitimate base advances", belongs_to=None)
+            repo.checkout(topic)
+
+            def observe():
+                derived = derive_for_repo(repo, ALPHA)
+                built = cr.build_attribution(
+                    repo.runner,
+                    repo.path,
+                    target_issue_ids={ALPHA},
+                )
+                from_issue = cr.resolve_commits_for_issue(
+                    repo.runner,
+                    repo.path,
+                    ALPHA,
+                    index=built,
+                    target_issue_ids={ALPHA},
+                )
+                from_commit = cr.resolve_issue_for_commit(
+                    repo.runner,
+                    repo.path,
+                    work,
+                    attribution=built,
+                )
+                return derived, from_issue, from_commit
+
+            baseline_fork, baseline_issue, baseline_commit = observe()
+            repo._git("branch", "oldline", old_fork)
+            repo.checkout("oldline")
+            repo.commit("chore: unrelated oldline advances", belongs_to=None)
+            repo.checkout(topic)
+            ambiguous_fork, ambiguous_issue, ambiguous_commit = observe()
+            repo.delete_branch("oldline")
+            restored_fork, restored_issue, restored_commit = observe()
+
+            self.assertEqual(baseline_fork["fork_point"], real_fork)
+            self.assertEqual(
+                {item["sha"] for item in baseline_issue["commits"]} & {work},
+                {work},
+            )
+            self.assertEqual(baseline_commit["issue_id"], ALPHA)
+            self.assertEqual(baseline_issue["diagnostics"], [])
+            self.assertEqual(restored_fork, baseline_fork)
+            self.assertEqual(restored_issue, baseline_issue)
+            self.assertEqual(restored_commit, baseline_commit)
+
+            self.assertIsNone(ambiguous_fork["fork_point"])
+            self.assertEqual(ambiguous_fork["fatal_errors"], [])
+            self.assertEqual(
+                [item["code"] for item in ambiguous_fork["diagnostics"]],
+                ["ambiguous-topic-fork"],
+            )
+            self.assertEqual(ambiguous_issue["commits"], [])
+            self.assertEqual(ambiguous_commit["issue_id"], None)
+            self.assertEqual(ambiguous_issue["fatal_errors"], [])
+            self.assertEqual(
+                [item["code"] for item in ambiguous_issue["diagnostics"]],
+                ["ambiguous-topic-fork"],
+            )
+            self.assertEqual(
+                ambiguous_issue["degraded"],
+                [cr.DEGRADED_BRANCH_UNAVAILABLE, "ambiguous-topic-fork"],
+            )
+            self.assertEqual(len(ambiguous_issue["errors"]), 1)
+            self.assertEqual(ambiguous_commit["fatal_errors"], [])
+            self.assertEqual(ambiguous_commit["diagnostics"], [])
+            self.assertEqual(ambiguous_commit["degraded"], [])
+            self.assertEqual(ambiguous_commit["errors"], [])
+
     def test_incomparable_maximal_forks_are_scoped_to_topic(self):
         """FH-006/FH-011/FH-017: incomparable remote histories fail closed per issue."""
         with GitRepo() as repo:

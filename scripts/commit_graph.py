@@ -281,12 +281,12 @@ def _unproven_side_ref_forks(
     divergent_forks,
     provenance_anchors,
 ):
-    """Return later divergent candidates that have no base provenance."""
+    """Classify divergent candidates that have no base provenance."""
     to_drop = set()
     fatal_errors = []
-    comparison_anchors = (
-        provenance_anchors if provenance_anchors else divergent_forks
-    )
+    if not provenance_anchors:
+        return to_drop, fatal_errors, len(divergent_forks) > 1
+    comparison_anchors = provenance_anchors
     for candidate in sorted(divergent_forks):
         for anchor in sorted(comparison_anchors):
             if candidate == anchor:
@@ -310,7 +310,7 @@ def _unproven_side_ref_forks(
             if reverse["value"] is False:
                 to_drop.add(candidate)
                 break
-    return to_drop, fatal_errors
+    return to_drop, fatal_errors, False
 
 
 def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
@@ -485,11 +485,15 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
     # Direct lineage refs (their tip itself is the merge-base) and recovered
     # publication forks are positive provenance.  A divergent ref candidate
     # strictly above either anchor is therefore side-ref evidence, not a fork.
-    # When every base ref has advanced, the earliest comparable divergence is
-    # stable under adding/removing a later side ref; incomparable candidates
-    # remain ambiguous and fail closed.
+    # When every base ref has advanced, a single divergence is usable. Multiple
+    # distinct divergent candidates have no provenance that lets one elect the
+    # other, even when their commits happen to be ancestry-comparable.
     provenance_anchors = direct_lineage_forks | recovered_minimal
-    divergent_to_drop, provenance_errors = _unproven_side_ref_forks(
+    (
+        divergent_to_drop,
+        provenance_errors,
+        unanchored_ambiguity,
+    ) = _unproven_side_ref_forks(
         runner,
         cwd,
         snapshot,
@@ -498,6 +502,25 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
     )
     fatal_errors.extend(provenance_errors)
     ordinary_forks.difference_update(divergent_to_drop)
+    if unanchored_ambiguity:
+        return {
+            "issue_id": issue_id,
+            "topic_ref": topic_ref,
+            "fork_point": None,
+            "equivalent_base_refs": [],
+            "fatal_errors": fatal_errors,
+            "diagnostics": [
+                diagnostic(
+                    "ambiguous-topic-fork",
+                    (
+                        f"{topic_ref} has {len(divergent_ref_forks)} "
+                        "uncorroborated divergent fork candidates"
+                    ),
+                    issue_id=issue_id,
+                    ref=topic_ref,
+                )
+            ],
+        }
 
     selected_forks = ordinary_forks | recovered_minimal
     maximal = []

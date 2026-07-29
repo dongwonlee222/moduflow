@@ -276,8 +276,12 @@ FAILURE_INVARIANT_TESTS = {
     "FH-040": (
         "tests.test_commit_graph.ForkPointInvariantTests."
         "test_incomparable_non_topic_side_ref_is_attribution_neutral",
+        "tests.test_commit_graph.ForkPointInvariantTests."
+        "test_multiple_unanchored_divergences_fail_closed_instead_of_electing_oldest",
         "tests.test_commit_resolution.FailureInvariantMutationTests."
         "test_fh040_composite_detects_removed_side_ref_provenance",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh040_composite_detects_unanchored_fork_guess",
     ),
 }
 
@@ -614,8 +618,12 @@ REQUIRED_FAILURE_COMPONENTS.update({
         {
             "tests.test_commit_graph.ForkPointInvariantTests."
             "test_incomparable_non_topic_side_ref_is_attribution_neutral",
+            "tests.test_commit_graph.ForkPointInvariantTests."
+            "test_multiple_unanchored_divergences_fail_closed_instead_of_electing_oldest",
             "tests.test_commit_resolution.FailureInvariantMutationTests."
             "test_fh040_composite_detects_removed_side_ref_provenance",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh040_composite_detects_unanchored_fork_guess",
         }
     ),
 })
@@ -912,12 +920,32 @@ class FailureInvariantMutationTests(unittest.TestCase):
         original = cr.commit_graph._unproven_side_ref_forks
         try:
             cr.commit_graph._unproven_side_ref_forks = (
-                lambda *args, **kwargs: (set(), [])
+                lambda *args, **kwargs: (set(), [], False)
             )
             result = _run_named_tests(
                 (
                     "tests.test_commit_graph.ForkPointInvariantTests."
                     "test_incomparable_non_topic_side_ref_is_attribution_neutral",
+                )
+            )
+        finally:
+            cr.commit_graph._unproven_side_ref_forks = original
+
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(result.failures), 1)
+        self.assertFalse(result.wasSuccessful())
+
+    def test_fh040_composite_detects_unanchored_fork_guess(self):
+        """FH-040: accepting a no-anchor guess turns the recurrence red."""
+        original = cr.commit_graph._unproven_side_ref_forks
+        try:
+            cr.commit_graph._unproven_side_ref_forks = (
+                lambda *args, **kwargs: (set(), [], False)
+            )
+            result = _run_named_tests(
+                (
+                    "tests.test_commit_graph.ForkPointInvariantTests."
+                    "test_multiple_unanchored_divergences_fail_closed_instead_of_electing_oldest",
                 )
             )
         finally:

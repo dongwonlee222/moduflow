@@ -83,7 +83,7 @@ the architectural closure.
 | FH-037 | Full discovery loaded mutation tests under two module identities | Nested test execution must mutate and assert against one explicit module identity | regression captured |
 | FH-038 | Detached HEAD branch limitation was silently reported as an ordinary unmatched commit | Detached HEAD keeps trailer truth and reports branch attribution unavailability without degrading unrelated attached history | regression captured |
 | FH-039 | New HEAD-state Git boundaries lacked return-code regressions | Every HEAD-state command distinguishes ordinary negative, failure, termination, and malformed success | regression captured |
-| FH-040 | An unrelated non-topic side ref became fork evidence | Adding or removing an incomparable non-topic side ref cannot change a topic's ownership, fork, or diagnostics | regression captured |
+| FH-040 | An unrelated non-topic side ref became fork evidence | Uncorroborated divergent refs cannot silently elect a topic fork; multiple candidates fail closed | open |
 
 ## Failure Records
 
@@ -1267,9 +1267,25 @@ the architectural closure.
   reached terminal exit 0 with 366/366 tests passed in 248.137 seconds.
 - **Full-discovery evidence**: `python3 -m unittest discover -s tests`
   reached terminal exit 0 with 1030/1030 tests passed in 392.809 seconds.
+- **Recurrence evidence**: independent I1 re-review at `0f10079` built
+  `O → N` as the legitimate base, cut the topic at `N`, then advanced every
+  legitimate base ref. An unrelated `oldline` cut at `O` also advanced. With
+  `oldline` present, the no-anchor fallback selected `O` and silently
+  over-attributed `N`; deleting only `oldline` selected `N`. Diagnostics,
+  degraded state, and errors were empty in both states.
+- **Invalid fallback (recurrence)**:
+  `comparison_anchors = divergent_forks` eliminated every newer comparable
+  candidate and chose the oldest divergence without topology proof.
+- **Refined invariant**: when no direct-lineage or publication anchor exists,
+  one divergent candidate may identify the fork, but multiple distinct
+  divergent candidates cannot elect one another. The topic fails closed with
+  a scoped ambiguity unless publication history or issue-contribution
+  topology corroborates one candidate. Ref names and repository-global base
+  selection remain forbidden.
 - **Historical state (preserved)**: open from whole-branch quality review at
-  `bdfb70c` through the RED and implementation gate.
-- **Status**: regression captured.
+  `bdfb70c` through the first RED and implementation gate; regression captured
+  at `86b06d2` before the `0f10079` recurrence.
+- **Status**: open.
 
 ## T08 Executable Invariant Audit
 
