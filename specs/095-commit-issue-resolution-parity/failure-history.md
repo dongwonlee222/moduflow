@@ -80,6 +80,7 @@ the architectural closure.
 | FH-034 | Failure remediation overwrote prior state or omitted implementation evidence | Corrections preserve prior text and append fixing commit plus executable evidence | regression captured |
 | FH-035 | Line-wrapped terminal evidence failed a literal-string assertion | Process evidence assertions tolerate Markdown wrapping while preserving exact fields | regression captured |
 | FH-036 | Required-component manifest copied the mutable mapping | Every required component is declared independently and every deletion turns the audit red | regression captured |
+| FH-037 | Full discovery loaded mutation tests under two module identities | Nested test execution must mutate and assert against one explicit module identity | open |
 
 ## Failure Records
 
@@ -1052,6 +1053,31 @@ the architectural closure.
 - **Historical state (preserved)**: open during T08 remediation and review.
 - **Status**: regression captured.
 
+### FH-037 — Duplicate Module Identity Bypassed Mutation Injection
+
+- **Topology**: full unittest discovery loads `tests/test_commit_resolution.py`
+  as top-level module `test_commit_resolution`, while `_run_named_tests()`
+  resolves qualified names under the separate package module identity
+  `tests.test_commit_resolution`.
+- **Observed failure**: the mutation tests patched globals in the discovered
+  top-level module, but their nested named tests read unmodified globals from
+  the separately imported package module. The mutations therefore survived.
+  Full discovery exited 1 after 1016 tests in 301.944 seconds with two
+  failures:
+  `FailureInvariantMutationTests.test_fh026_current_audit_block_removal_is_detected`
+  and
+  `FailureInvariantMutationTests.test_fh033_required_manifest_detects_removed_fh001_commit_truth`.
+- **Invalid assumption**: the module that owns a running mutation test and the
+  module resolved from its hard-coded qualified nested test name are always the
+  same Python object.
+- **Derived invariant**: nested mutation-test loading must resolve the current
+  module identity, or inject mutations explicitly into the exact module object
+  that owns the nested assertions; both package invocation and full discovery
+  must make every mutation turn its target invariant red.
+- **Evidence**: T09 full `python3 -m unittest discover -s tests` at `46b0e9d`,
+  terminal exit 1; 1016 tests, 2 failures, 0 errors, 301.944 seconds.
+- **Status**: open.
+
 ## T08 Executable Invariant Audit
 
 This append-only matrix records the executable reference and implementation
@@ -1145,5 +1171,6 @@ The redesign maps its requirements to this corpus:
 | Append-only remediation evidence | FH-034 |
 | Markdown-wrap-tolerant terminal evidence | FH-035 |
 | Independently declared required-component completeness | FH-036 |
+| Stable mutation injection across unittest module identities | FH-037 |
 
 Future findings extend this table rather than replacing it.
