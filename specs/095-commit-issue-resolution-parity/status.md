@@ -1,6 +1,6 @@
 # Issue 095 Execution Status
 
-**Status: active** — started 2026-07-26. Corrective implementation is complete; final review gates are next. Earlier review rounds below are retained as history; the latest state is in “Corrective completion — 2026-07-27”.
+**Status: active** — started 2026-07-26. Redesign implementation and pre-review verification are complete; independent whole-branch review is next. Earlier review rounds below are retained as history.
 
 ## Progress
 
@@ -1136,3 +1136,47 @@ review approved with Critical 0 / Important 0 / Minor 0; independent quality
 review approved with Critical 0 / Important 0 / Minor 1. The non-blocking
 minor notes that terminal-evidence parsing should eventually reject zero
 tests or zero duration.
+
+## T09 pre-review verification — 2026-07-29
+
+The first full-discovery run at `46b0e9d` exposed `FH-037`: mutation tests
+loaded as `test_commit_resolution` while their nested named assertions loaded
+as `tests.test_commit_resolution`. The mutations reached a different module
+object and survived. That RED run reached terminal exit 1 after 1016 tests in
+301.944 seconds with two failures and zero errors.
+
+`5d1509a` made the nested loader accept the explicit owner module, and
+`a1616d5` added the append-only remediation evidence. Independent FH-037 spec
+and quality reviews both approved with Critical 0 / Important 0 / Minor 0.
+The historical open state is preserved in `failure-history.md`; its current
+state is `regression captured`.
+
+Fresh pre-review gates at `a1616d5`:
+
+| Gate | Result |
+| --- | --- |
+| Spec consistency | exit 0; findings 0/0/0; 9 requirements checked, 0 flagged |
+| Full unittest discovery | exit 0; 1018/1018 passed in 288.945 seconds; 0 failures, errors, skips, expected failures, unexpected successes |
+| Release check | exit 0; `valid: true`; `errors: []`; every named check `ok: true` |
+| Project validation | exit 0; `valid: true`; `errors: []`; lifecycle drift `[]`; only pre-existing optional/dependency/link warnings |
+| Lifecycle drift | exit 0; `[]` |
+| Diff check | exit 0 |
+
+Read-only `collect_evidence()` for Issue 093 returned `ok: true`, 56 commits,
+46 files, and included `scripts/project_issue_schema.py`. Diagnostics,
+`fatal_errors`, and `errors` were all empty; the repository snapshot examined
+428 commits with 48 unmatched.
+
+The unscoped attribution corpus retained three `merge-side-unresolved`
+diagnostics for historical octopus merge
+`777b04e6fe531d46a123aadbb236fcf3cb33e5c7` and its two affected side SHAs.
+The current release remained `valid: true` with `errors: []`, proving those
+diagnostics are outside its scope. Rebuilding with the historical merge in
+`target_shas` projected one diagnostic, one compatibility error, and
+`degraded: ["merge-side-unresolved"]`, proving the same ambiguity fails closed
+when it is in scope.
+
+This is a pre-review handoff only. F2 remains unchecked, phase remains
+`execute`, and the next command remains
+`product:execute 095-commit-issue-resolution-parity` until independent
+whole-branch review has no open Critical or Important finding.

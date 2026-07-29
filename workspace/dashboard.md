@@ -14,10 +14,9 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Priority Queue — 2026-07-25
 
-- Now: `095` attribution architecture redesign. Repeated reviews proved one
-  repository-wide base cannot represent every issue branch. Replace it with
-  per-issue fork points and caller-scoped diagnostics before returning to
-  review.
+- Now: `095` pre-review handoff. Redesign implementation and all fresh T09
+  verification gates pass; independent whole-branch review remains before F2
+  completion or any PR-readiness claim.
 - Next: `094` risk-based security/quality review gate (its blocker `089` is done).
 - Then: `086` project-aware production/playbook dashboard.
 - Also ready: `087` Korean GitHub PR review surface, `090` project knowledge registry — both independent.
@@ -138,6 +137,17 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   deletions are detected. The behavior gate passed 351/351 to terminal exit;
   independent spec and quality reviews approved with no Critical or Important
   finding. Current task is T09 full verification and whole-branch review.
+- Issue `095` T09 pre-review (2026-07-29 at `a1616d5`): the first full
+  discovery preserved `FH-037` after 1016 tests failed twice because mutation
+  injection crossed two unittest module identities. `5d1509a` fixed the owner
+  module boundary and independent FH-037 spec/quality reviews approved 0/0/0.
+  Fresh discovery passed 1018/1018 in 288.945 seconds; spec findings are
+  0/0/0, release/project are valid with empty errors, lifecycle drift is `[]`,
+  and diff check is clean. Read-only Issue 093 evidence is 56 commits/46 files
+  with the schema included and no diagnostics/fatal/errors. Historical
+  octopus ambiguity remains in the unscoped corpus, stays outside current
+  release errors, and fails closed when explicitly scoped. Whole-branch review
+  is still pending, so phase remains `execute`.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance

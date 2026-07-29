@@ -1,6 +1,6 @@
 # Issue 095: Commit-to-Issue Resolution Parity
 
-**Status: active** — created 2026-07-25, started 2026-07-26; attribution redesign plan complete and ready for guarded execution.
+**Status: active** — created 2026-07-25, started 2026-07-26; redesign implementation and pre-review gates complete, independent whole-branch review pending.
 **Priority: p1**
 **Blocked-by:**
 
@@ -150,6 +150,7 @@ existing history. Do not make converge gate the review verdict.
 - 2026-07-28: completed T06 release-SHA linkage scope at `d5da824`. Linkage now builds one result for behavior SHAs only; the same FH-018 ambiguity is ignored outside the release and fails closed inside it, while neutral-only ranges build no attribution. The cumulative gate passed 281/281 with clean independent reviews. T07 converge issue scope is next.
 - 2026-07-28: completed T07 converge issue scope at `94ca3d4`. Converge now requests the issue scope, preserves legacy payload keys, and exposes diagnostics/fatal fields. A prebuilt-index FH-018 leak was recorded and fixed before final 335/335 and clean reviews. Actual Issue 093 evidence remains 56 commits/46 files with the schema file included. T08 failure-corpus traceability is next.
 - 2026-07-29: completed T08 failure-corpus traceability through `8209855`. All 36 failure records map to an independent executable manifest; every one of 70 required-component deletions is detected. The behavior gate passed 351/351 to terminal exit, and independent spec and quality reviews approved with no Critical or Important finding. T09 full/release/project/lifecycle gates and whole-branch review are next.
+- 2026-07-29: T09's first full discovery exposed `FH-037`, where top-level and package-qualified module identities let two mutation injections miss their nested assertions. The RED result (1016 tests, 2 failures, exit 1) was preserved before `5d1509a`; independent FH-037 spec and quality reviews approved 0/0/0. Fresh pre-review gates at `a1616d5` passed 1018/1018 in 288.945 seconds, spec 0/0/0, release/project valid with empty errors, lifecycle drift `[]`, and clean diff. Read-only Issue 093 evidence remains 56 commits/46 files with the schema included and no diagnostics/fatal/errors. The historical octopus stays in the unscoped corpus, is absent from current release errors, and fails closed when explicitly scoped. F2 remains open until independent whole-branch review.
 
 ## Links
 

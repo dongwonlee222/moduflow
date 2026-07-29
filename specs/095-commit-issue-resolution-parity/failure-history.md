@@ -80,7 +80,7 @@ the architectural closure.
 | FH-034 | Failure remediation overwrote prior state or omitted implementation evidence | Corrections preserve prior text and append fixing commit plus executable evidence | regression captured |
 | FH-035 | Line-wrapped terminal evidence failed a literal-string assertion | Process evidence assertions tolerate Markdown wrapping while preserving exact fields | regression captured |
 | FH-036 | Required-component manifest copied the mutable mapping | Every required component is declared independently and every deletion turns the audit red | regression captured |
-| FH-037 | Full discovery loaded mutation tests under two module identities | Nested test execution must mutate and assert against one explicit module identity | open |
+| FH-037 | Full discovery loaded mutation tests under two module identities | Nested test execution must mutate and assert against one explicit module identity | regression captured |
 
 ## Failure Records
 
@@ -1094,7 +1094,12 @@ the architectural closure.
   invariant, the six Issue 095 suites reached terminal exit 0 with 354 tests
   passed in 205.991 seconds. Full `python3 -m unittest discover -s tests`
   reached final terminal exit 0: 1018 tests passed in 289.178 seconds.
-- **Status**: open.
+- **Independent review evidence**: FH-037 spec-compliance and code-quality
+  reviews both approved the remediation with Critical 0 / Important 0 /
+  Minor 0.
+- **Historical state (preserved)**: open after the T09 full-discovery gate at
+  `46b0e9d` and throughout FH-037 remediation and review.
+- **Status**: regression captured.
 
 ## T08 Executable Invariant Audit
 

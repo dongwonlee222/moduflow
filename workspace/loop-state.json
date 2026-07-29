@@ -29,8 +29,8 @@
     "last_changed_at": "2026-07-27"
   },
   "blocker": null,
-  "last_action": "completed T08 failure-corpus traceability with independent spec and quality approval; T09 full verification and whole-branch review is next",
-  "last_verification": "2026-07-29 T08 gate: 36 failure records and 70 required components independently traced; behavior suites passed 351/351 to terminal exit at d9cdb2d; final spec review 0/0/0 and quality review 0/0/1 with no blocking finding",
+  "last_action": "completed T09 pre-review verification after FH-037 remediation; independent whole-branch review remains before F2 completion",
+  "last_verification": "2026-07-29 at a1616d5: spec 0/0/0; full discovery 1018/1018 in 288.945s; release/project valid with errors []; lifecycle drift []; diff clean; Issue093 56 commits/46 files with schema and no diagnostics/fatal/errors; historical octopus scoped correctly",
   "updated_at": "2026-07-29",
   "git_binding": {
     "mode": "git-files",
@@ -98,7 +98,20 @@
       "d5da824",
       "f136e62",
       "efda995",
-      "94ca3d4"
+      "94ca3d4",
+      "ca1db61",
+      "e62d3fe",
+      "04bae8d",
+      "910a19c",
+      "45788df",
+      "d9cdb2d",
+      "b64b26e",
+      "c131b21",
+      "8209855",
+      "46b0e9d",
+      "720c797",
+      "5d1509a",
+      "a1616d5"
     ],
     "pull_request": null,
     "release": null,
