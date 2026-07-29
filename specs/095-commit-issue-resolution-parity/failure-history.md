@@ -1043,6 +1043,10 @@ the architectural closure.
 - **Final T08 review evidence**: the corrected focused gate passed 13/13 and
   the behavior gate passed 351/351 to terminal exit; independent spec and
   quality reviews approved T08.
+- **Final quality-review recurrence**: review at `fb62aad` found that the
+  whitespace-tolerant terminal-summary pattern accepted zero tests and zero
+  seconds, so a syntactically complete but non-positive process result could
+  still satisfy the evidence invariant.
 - **Historical state (preserved)**: open during T08 remediation and review.
 - **Status**: regression captured.
 

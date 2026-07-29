@@ -236,6 +236,8 @@ FAILURE_INVARIANT_TESTS = {
         "test_fh034_record_declares_append_only_remediation_contract",
         "tests.test_commit_resolution.FailureInvariantMutationTests."
         "test_fh026_current_audit_block_removal_is_detected",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh035_terminal_evidence_rejects_zero_count_and_duration",
     ),
     "FH-036": (
         "tests.test_commit_resolution.FailureInvariantMutationTests."
@@ -572,6 +574,8 @@ REQUIRED_FAILURE_COMPONENTS.update({
             "test_fh034_record_declares_append_only_remediation_contract",
             "tests.test_commit_resolution.FailureInvariantMutationTests."
             "test_fh026_current_audit_block_removal_is_detected",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh035_terminal_evidence_rejects_zero_count_and_duration",
         }
     ),
     "FH-036": frozenset(
@@ -893,11 +897,14 @@ class ProcessGateInvariantTests(unittest.TestCase):
         self.assertEqual(section.count(marker), 1)
         evidence = section.split(marker, 1)[1].split("\n- **", 1)[0]
         self.assertRegex(evidence, r"six\s+Issue\s+095\s+suites")
-        self.assertRegex(
+        summary = re.search(
+            r"terminal\s+exit\s+0:\s+(?P<count>\d+)\s+tests\s+passed\s+in\s+"
+            r"(?P<seconds>\d+(?:\.\d+)?)\s+seconds",
             evidence,
-            r"terminal\s+exit\s+0:\s+\d+\s+tests\s+passed\s+in\s+"
-            r"\d+(?:\.\d+)?\s+seconds",
         )
+        self.assertIsNotNone(summary)
+        self.assertGreater(int(summary.group("count")), 0)
+        self.assertGreater(float(summary.group("seconds")), 0)
 
 
 class FailureInvariantMutationTests(unittest.TestCase):
@@ -1097,6 +1104,48 @@ class FailureInvariantMutationTests(unittest.TestCase):
         self.assertEqual(result.errors, [])
         self.assertEqual(len(result.failures), 1)
         self.assertFalse(result.wasSuccessful())
+
+    def test_fh035_terminal_evidence_rejects_zero_count_and_duration(self):
+        """FH-035: terminal evidence must report positive work and duration."""
+        corpus = _failure_corpus()
+        marker = "- **T08 I3 terminal evidence**:"
+        start = corpus.index(marker)
+        end = corpus.index("\n- **", start + len(marker))
+        evidence = corpus[start:end]
+        mutations = {
+            "zero test count": re.sub(
+                r"(terminal\s+exit\s+0:\s+)\d+(\s+tests)",
+                r"\g<1>0\2",
+                evidence,
+                count=1,
+            ),
+            "zero duration": re.sub(
+                r"(\s+passed\s+in\s+)\d+(?:\.\d+)?(\s+seconds)",
+                r"\g<1>0\2",
+                evidence,
+                count=1,
+            ),
+        }
+
+        original = globals()["_failure_corpus"]
+        try:
+            for label, mutated_evidence in mutations.items():
+                with self.subTest(mutation=label):
+                    self.assertNotEqual(mutated_evidence, evidence)
+                    mutated = corpus[:start] + mutated_evidence + corpus[end:]
+                    globals()["_failure_corpus"] = lambda value=mutated: value
+                    result = _run_named_tests(
+                        (
+                            "tests.test_commit_resolution."
+                            "ProcessGateInvariantTests."
+                            "test_t08_audit_evidence_records_terminal_exit_and_summary",
+                        )
+                    )
+                    self.assertEqual(result.errors, [])
+                    self.assertEqual(len(result.failures), 1)
+                    self.assertFalse(result.wasSuccessful())
+        finally:
+            globals()["_failure_corpus"] = original
 
     def test_fh033_required_manifest_detects_removed_fh001_commit_truth(self):
         """FH-033: deleting a required FH-001 component turns the audit red."""
