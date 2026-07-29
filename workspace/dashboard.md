@@ -132,7 +132,12 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 - Issue `095` T07 (2026-07-28 at `94ca3d4`): converge requests one issue-scoped
   result, preserves legacy payloads, and carries structured diagnostics/fatal
   errors. Prebuilt indexes are safely reprojected without Git rebuild. The
-  six-module gate passed 335/335; current task is T08 failure-corpus mapping.
+  six-module gate passed 335/335.
+- Issue `095` T08 (2026-07-29 through `8209855`): all 36 failure records map
+  to an independent executable manifest and all 70 required-component
+  deletions are detected. The behavior gate passed 351/351 to terminal exit;
+  independent spec and quality reviews approved with no Critical or Important
+  finding. Current task is T09 full verification and whole-branch review.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance

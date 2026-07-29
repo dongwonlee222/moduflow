@@ -69,17 +69,17 @@ the architectural closure.
 | FH-023 | Ref movement mixed snapshot-time and query-time graph state | Graph queries use snapshot object IDs, not live ref names | regression captured |
 | FH-024 | One arbitrary criss-cross merge base became a unique fork | Fork selection consumes every best merge base or fails scoped ambiguity | regression captured |
 | FH-025 | Tests never exercised comparable fork candidates | Invariant tests must fail when ancestry-maximal selection is removed | regression captured |
-| FH-026 | A yielded long-running test was reported green before exit | Verification evidence includes the terminal process exit and summary | open |
+| FH-026 | A yielded long-running test was reported green before exit | Verification evidence includes the terminal process exit and summary | regression captured |
 | FH-027 | Fault-injection fixtures still matched the retired Git command | Boundary migrations update every direct failure fixture before review | regression captured |
 | FH-028 | Topic-fork diagnostics disappeared at live attribution | Every live consumer preserves scoped diagnostics through compatibility surfaces | regression captured |
 | FH-029 | Publication recovery probed Git per history record | Snapshot traversal must not make subprocess count grow with history length | regression captured |
 | FH-030 | A compatibility wrapper retained the retired global-base policy | Compatibility paths delegate per topic or are removed | regression captured |
 | FH-031 | Range-truncated snapshots rejected valid topology output | Topology inventory is complete and range projection is separate | regression captured |
 | FH-032 | Structured diagnostics duplicated flat compatibility errors | Compatibility messages are stable and deduplicated without losing diagnostic scope | regression captured |
-| FH-033 | Traceability accepted IDs without proving their invariants | Every mapping executes the complete derived invariant, not only a named test | open |
-| FH-034 | Failure remediation overwrote prior state or omitted implementation evidence | Corrections preserve prior text and append fixing commit plus executable evidence | open |
-| FH-035 | Line-wrapped terminal evidence failed a literal-string assertion | Process evidence assertions tolerate Markdown wrapping while preserving exact fields | open |
-| FH-036 | Required-component manifest copied the mutable mapping | Every required component is declared independently and every deletion turns the audit red | open |
+| FH-033 | Traceability accepted IDs without proving their invariants | Every mapping executes the complete derived invariant, not only a named test | regression captured |
+| FH-034 | Failure remediation overwrote prior state or omitted implementation evidence | Corrections preserve prior text and append fixing commit plus executable evidence | regression captured |
+| FH-035 | Line-wrapped terminal evidence failed a literal-string assertion | Process evidence assertions tolerate Markdown wrapping while preserving exact fields | regression captured |
+| FH-036 | Required-component manifest copied the mutable mapping | Every required component is declared independently and every deletion turns the audit red | regression captured |
 
 ## Failure Records
 
@@ -704,8 +704,12 @@ the architectural closure.
 - **T08 I3 terminal evidence**: after the second remediation, the six Issue
   095 suites were polled in the same session to terminal exit 0: 350 tests
   passed in 223.391 seconds.
-- **Status**: open until the process-gate test identifies the current T08
-  evidence specifically and fails when that evidence is removed.
+- **Final T08 review evidence**: independent spec review approved with
+  Critical 0 / Important 0 / Minor 0. Independent quality review approved
+  with Critical 0 / Important 0 / Minor 1 after verifying the current evidence,
+  exact-block-removal mutation, and terminal gate history.
+- **Historical state (preserved)**: open during T08 remediation and review.
+- **Status**: regression captured.
 
 ### FH-027 — Retired Git Command Left Stale Failure Fixtures
 
@@ -914,9 +918,11 @@ the architectural closure.
 - **T08 I3 green evidence**: the focused remediation set passed 12/12 in
   37.759 seconds, then the six-suite process reached terminal exit 0 with
   350/350 passing in 223.391 seconds.
-- **Status**: open until mutation-sensitive or composite invariant tests cover
-  each mapped requirement and the traceability audit fails when any component
-  is removed.
+- **Final T08 review evidence**: independent spec review removed every
+  declared component in turn and confirmed all 70/70 deletions were detected;
+  final spec review approved with no finding.
+- **Historical state (preserved)**: open during T08 remediation and review.
+- **Status**: regression captured.
 
 ### FH-034 — Non-Append-Only Failure Remediation
 
@@ -950,8 +956,11 @@ the architectural closure.
 - **Documentation remediation evidence**: `c131b21` adds a RED-first
   acceptance test and requires the exact FH-036 implementation commit plus
   both qualified executable names.
-- **Status**: open until historical status is restored append-only and fixing
-  commit plus executable evidence are recorded and validated.
+- **Final T08 review evidence**: independent spec review confirmed the
+  historical FH-026 state, exact remediation commits, and qualified executable
+  names; final spec review approved with no finding.
+- **Historical state (preserved)**: open during T08 remediation and review.
+- **Status**: regression captured.
 
 ### FH-035 — Line-Wrapped Terminal Evidence Rejected
 
@@ -983,8 +992,11 @@ the architectural closure.
 - **Green evidence**: the corrected focused set passed 12/12 in 36.576
   seconds. The final six-suite rerun was polled in the same session to terminal
   exit 0: 350 tests passed in 208.494 seconds.
-- **Status**: open until the focused and six-suite gates pass with terminal
-  exits after this correction.
+- **Final T08 review evidence**: the corrected focused gate passed 13/13 and
+  the behavior gate passed 351/351 to terminal exit; independent spec and
+  quality reviews approved T08.
+- **Historical state (preserved)**: open during T08 remediation and review.
+- **Status**: regression captured.
 
 ### FH-036 — Self-Derived Required-Component Manifest
 
@@ -1032,9 +1044,13 @@ the architectural closure.
   independently declared component-deletion mutation, and the complete
   executable mapping; resolver and consumer behavior are unchanged. The most
   recent behavior gate remains 351/351 at `d9cdb2d`.
-- **Status**: open until an exhaustive every-id/every-component mutation test
-  fails against the self-derived manifest and passes against an independent
-  literal manifest.
+- **Final T08 review evidence**: independent spec review confirmed an
+  independent literal manifest for all 36 failure ids, exact
+  mapping-to-manifest equality, and detection of all 70/70 single-component
+  deletions. Final quality review approved with no Critical or Important
+  finding.
+- **Historical state (preserved)**: open during T08 remediation and review.
+- **Status**: regression captured.
 
 ## T08 Executable Invariant Audit
 

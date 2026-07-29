@@ -29,9 +29,9 @@
     "last_changed_at": "2026-07-27"
   },
   "blocker": null,
-  "last_action": "completed T07 converge issue scope with independent spec and quality approval; T08 failure-corpus traceability is next",
-  "last_verification": "2026-07-28 T07 gate: graph, resolver, differential, parity, linkage, and converge suites passed 335/335 to terminal exit at 94ca3d4; independent spec and quality reviews reported no Critical, Important, or Minor findings; FH-018 prebuilt-index recurrence captured",
-  "updated_at": "2026-07-28",
+  "last_action": "completed T08 failure-corpus traceability with independent spec and quality approval; T09 full verification and whole-branch review is next",
+  "last_verification": "2026-07-29 T08 gate: 36 failure records and 70 required components independently traced; behavior suites passed 351/351 to terminal exit at d9cdb2d; final spec review 0/0/0 and quality review 0/0/1 with no blocking finding",
+  "updated_at": "2026-07-29",
   "git_binding": {
     "mode": "git-files",
     "branch": "codex/095-commit-issue-resolution-parity-fix",

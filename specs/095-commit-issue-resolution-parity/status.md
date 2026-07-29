@@ -1118,5 +1118,21 @@ degradation summaries. The controller six-module gate passed 335/335 in
 
 ## Current task
 
-T08 / F1 — trace every failure-history entry to executable invariant evidence
-and append implementation evidence without rewriting failure records.
+T09 / F2 — run full verification, reproduce the historical-octopus scope
+boundary, and complete independent whole-branch review.
+
+## T08 / F1 completion — 2026-07-29
+
+T08 maps all 36 append-only failure records to an independent executable
+manifest. Literal commit-direction truth, both query directions, caller scope,
+terminal evidence, and every required component are now mutation-tested.
+Review recurrences `FH-033`–`FH-036` preserve the false-green designs and their
+corrections instead of replacing them.
+
+The final behavior gate at `d9cdb2d` passed 351/351 in 230.595 seconds to
+terminal exit 0. The subsequent documentation-acceptance change at `c131b21`
+passed the focused evidence/mutation/traceability gate 13/13. Independent spec
+review approved with Critical 0 / Important 0 / Minor 0; independent quality
+review approved with Critical 0 / Important 0 / Minor 1. The non-blocking
+minor notes that terminal-evidence parsing should eventually reject zero
+tests or zero duration.
