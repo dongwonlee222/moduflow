@@ -99,6 +99,12 @@ In a detached-HEAD worktree, trailer resolution still works and branch resolutio
 resolver returns what it can and records that branch resolution was unavailable. It does not
 raise, and it does not silently behave as though no branch-linked commits exist.
 
+The limitation is a SHA-scoped structured diagnostic with code
+`detached-head-branch-unavailable`. It projects through the existing
+`branch-unavailable` degradation and compatibility-error surfaces only for the
+current detached HEAD. Attached unrelated commits and other SHAs read from a
+reused whole index remain ordinary unmatched results.
+
 ## Proposed Architecture
 
 A resolver module holding the rules, the precedence order, and the git access strategy.

@@ -81,7 +81,7 @@ the architectural closure.
 | FH-035 | Line-wrapped terminal evidence failed a literal-string assertion | Process evidence assertions tolerate Markdown wrapping while preserving exact fields | regression captured |
 | FH-036 | Required-component manifest copied the mutable mapping | Every required component is declared independently and every deletion turns the audit red | regression captured |
 | FH-037 | Full discovery loaded mutation tests under two module identities | Nested test execution must mutate and assert against one explicit module identity | regression captured |
-| FH-038 | Detached HEAD branch limitation was silently reported as an ordinary unmatched commit | Detached HEAD keeps trailer truth and reports branch attribution unavailability without degrading unrelated attached history | open |
+| FH-038 | Detached HEAD branch limitation was silently reported as an ordinary unmatched commit | Detached HEAD keeps trailer truth and reports branch attribution unavailability without degrading unrelated attached history | regression captured |
 
 ## Failure Records
 
@@ -1139,7 +1139,33 @@ the architectural closure.
   `fatal_errors=[]`, `diagnostics=[]`, `degraded=[]`, and `errors=[]`; a
   no-trailer detached commit returned `issue_id=None` with the same empty
   limitation surfaces.
-- **Status**: open.
+- **RED evidence**: the four-test actual-Git FH-038 set first ran with three
+  failures and one attached-history pass in 0.969 seconds. Both detached cases
+  lacked the required structured diagnostic, while the bare/indexed parity
+  case proved the same false negative reached both call shapes.
+- **Implementation evidence**: `193f334` records attached/detached HEAD state
+  once per graph snapshot, emits the SHA-scoped
+  `detached-head-branch-unavailable` diagnostic for the current detached HEAD,
+  and reprojects whole indexes per requested SHA. `94cbdda` and `9934d78`
+  migrate the linkage, converge, and release-check snapshot fixtures without
+  adding a per-commit Git probe.
+- **Qualified executable evidence**:
+  `tests.test_commit_resolution.TestDetachedHead.test_trailer_resolves_and_branch_gap_is_reported`,
+  `tests.test_commit_resolution.TestDetachedHead.test_untrailed_detached_commit_reports_branch_limitation`,
+  `tests.test_commit_resolution.TestDetachedHead.test_attached_unrelated_commit_has_no_detached_limitation`,
+  and
+  `tests.test_commit_resolution.TestDetachedHead.test_detached_limitation_has_bare_indexed_parity`.
+- **Focused GREEN evidence**: the four actual-Git FH-038 tests passed 4/4 in
+  1.079 seconds. The migrated linkage/converge/degraded consumer set passed
+  87/87 in 4.669 seconds, and the four release regressions passed 4/4 in
+  63.163 seconds.
+- **Terminal verification evidence**: the final six Issue 095 suites reached
+  terminal exit 0 with 357/357 tests passed in 241.452 seconds. Full
+  `python3 -m unittest discover -s tests` reached terminal exit 0 with
+  1021/1021 tests passed in 334.467 seconds.
+- **Historical state (preserved)**: open from whole-branch review at
+  `22e679f` through implementation and fixture remediation.
+- **Status**: regression captured.
 
 ## T08 Executable Invariant Audit
 

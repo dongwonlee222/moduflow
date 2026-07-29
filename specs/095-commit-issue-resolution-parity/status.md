@@ -1180,3 +1180,33 @@ This is a pre-review handoff only. F2 remains unchecked, phase remains
 `execute`, and the next command remains
 `product:execute 095-commit-issue-resolution-parity` until independent
 whole-branch review has no open Critical or Important finding.
+
+## T09 whole-branch FH-038 remediation — 2026-07-29
+
+Whole-branch spec review at `22e679f` found that detached HEAD resolution met
+trailer ownership but silently omitted the required branch-attribution
+limitation. The actual-Git RED set failed 3 of 4 tests: trailer and untrailed
+detached commits returned empty diagnostics/degradation/errors, while attached
+unrelated history remained correctly clean.
+
+`193f334` records HEAD state once per immutable graph snapshot, emits one
+SHA-scoped `detached-head-branch-unavailable` diagnostic for the current
+detached HEAD, and projects reused indexes per requested SHA. It preserves
+trailer ownership, adds no fatal error, leaves attached unrelated commits
+clean, and issues no per-commit Git probe. `94cbdda` and `9934d78` migrated the
+linkage, converge, and release-check fixture boundaries; both stale-fixture
+terminal failures remain preserved under `FH-027`.
+
+Final remediation gates:
+
+| Gate | Result |
+| --- | --- |
+| Actual-Git FH-038 focus | exit 0; 4/4 passed in 1.079 seconds |
+| Direct consumer remediation | exit 0; 87/87 passed in 4.669 seconds |
+| Release regression focus | exit 0; 4/4 passed in 63.163 seconds |
+| Six Issue 095 suites | exit 0; 357/357 passed in 241.452 seconds |
+| Full unittest discovery | exit 0; 1021/1021 passed in 334.467 seconds |
+
+FH-038 is `regression captured`, not closed. F2, lifecycle phase, and the next
+command remain unchanged until independent whole-branch review accepts the
+remediation.
