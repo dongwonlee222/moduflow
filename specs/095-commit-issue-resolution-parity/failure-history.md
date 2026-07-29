@@ -997,6 +997,14 @@ the architectural closure.
   single declared component must produce a nonempty gap for that failure id.
 - **Evidence**: T08 independent spec review at `45788df`, FH-035 component
   deletion/reload mutation.
+- **Implementation evidence**: `d9cdb2d` replaces the self-derived
+  comprehension with independent literal declarations for all 36 failure ids,
+  requires exact mapping-to-manifest equality, and exhaustively removes every
+  declared component.
+- **Focused green evidence**: the FH-036 mutation and traceability set passed
+  13/13 in 36.881 seconds with terminal exit 0.
+- **Terminal verification evidence**: the six Issue 095 suites were polled in
+  the same session to terminal exit 0: 351 tests passed in 230.595 seconds.
 - **Status**: open until an exhaustive every-id/every-component mutation test
   fails against the self-derived manifest and passes against an independent
   literal manifest.
