@@ -1265,6 +1265,8 @@ the architectural closure.
   legitimate develop lineage, and ambiguity protections passed 7/7. The
   executable traceability/mutation set passed 5/5. The six Issue 095 suites
   reached terminal exit 0 with 366/366 tests passed in 248.137 seconds.
+- **Full-discovery evidence**: `python3 -m unittest discover -s tests`
+  reached terminal exit 0 with 1030/1030 tests passed in 392.809 seconds.
 - **Historical state (preserved)**: open from whole-branch quality review at
   `bdfb70c` through the RED and implementation gate.
 - **Status**: regression captured.
