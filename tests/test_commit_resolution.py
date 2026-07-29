@@ -8,6 +8,7 @@ the batching constraint that converge must not fan out per commit.
 import importlib
 import re
 import sys
+import types
 import unittest
 from pathlib import Path
 
@@ -237,6 +238,10 @@ FAILURE_INVARIANT_TESTS = {
         "test_fh036_every_declared_component_deletion_is_detected",
         "tests.test_commit_resolution.FailureEvidenceInvariantTests."
         "test_fh036_record_names_qualified_manifest_acceptance",
+    ),
+    "FH-037": (
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh037_named_loader_uses_explicit_owner_module_globals",
     ),
 }
 
@@ -529,6 +534,12 @@ REQUIRED_FAILURE_COMPONENTS.update({
             "test_fh036_record_names_qualified_manifest_acceptance",
         }
     ),
+    "FH-037": frozenset(
+        {
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh037_named_loader_uses_explicit_owner_module_globals",
+        }
+    ),
 })
 
 
@@ -542,9 +553,23 @@ def _mapped_test_names(mapped):
     return (mapped,) if isinstance(mapped, str) else tuple(mapped)
 
 
-def _run_named_tests(names):
+def _run_named_tests(names, *, owner_module=None):
+    if owner_module is None:
+        owner_module = sys.modules[__name__]
+    owner_prefix = "tests.test_commit_resolution."
+    suite = unittest.TestSuite()
+    for name in names:
+        if name.startswith(owner_prefix):
+            suite.addTests(
+                unittest.defaultTestLoader.loadTestsFromName(
+                    name.removeprefix(owner_prefix),
+                    owner_module,
+                )
+            )
+        else:
+            suite.addTests(unittest.defaultTestLoader.loadTestsFromName(name))
     result = unittest.TestResult()
-    unittest.defaultTestLoader.loadTestsFromNames(tuple(names)).run(result)
+    suite.run(result)
     return result
 
 
@@ -726,7 +751,7 @@ class FailureEvidenceInvariantTests(unittest.TestCase):
         """FH-034/FH-036: manifest evidence names its executable proof."""
         section = self._failure_section(
             "FH-036",
-            "## T08 Executable Invariant Audit",
+            "### FH-037",
         )
 
         self.assertIn("`d9cdb2d`", section)
@@ -762,6 +787,28 @@ class ProcessGateInvariantTests(unittest.TestCase):
 
 
 class FailureInvariantMutationTests(unittest.TestCase):
+    def test_fh037_named_loader_uses_explicit_owner_module_globals(self):
+        """FH-037: nested tests execute against their supplied owner module."""
+        owner = types.ModuleType("discovered_test_commit_resolution")
+        owner.sentinel = "mutated"
+
+        class ProbeTests(unittest.TestCase):
+            def test_reads_owner_module_globals(self):
+                self.assertEqual(owner.sentinel, "original")
+
+        owner.ProbeTests = ProbeTests
+        result = _run_named_tests(
+            (
+                "tests.test_commit_resolution.ProbeTests."
+                "test_reads_owner_module_globals",
+            ),
+            owner_module=owner,
+        )
+
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(result.failures), 1)
+        self.assertFalse(result.wasSuccessful())
+
     def test_fh001_composite_detects_broken_issue_to_commits(self):
         """FH-033: FH-001 fails when issue-to-commits returns no ownership."""
         differential = importlib.import_module(
