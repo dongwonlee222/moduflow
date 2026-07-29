@@ -221,6 +221,8 @@ FAILURE_INVARIANT_TESTS = {
         "test_fh033_records_first_remediation_commit_and_qualified_evidence",
         "tests.test_commit_resolution.FailureEvidenceInvariantTests."
         "test_fh034_record_declares_append_only_remediation_contract",
+        "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+        "test_fh036_record_names_qualified_manifest_acceptance",
     ),
     "FH-035": (
         "tests.test_commit_resolution.ProcessGateInvariantTests."
@@ -233,6 +235,8 @@ FAILURE_INVARIANT_TESTS = {
     "FH-036": (
         "tests.test_commit_resolution.FailureInvariantMutationTests."
         "test_fh036_every_declared_component_deletion_is_detected",
+        "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+        "test_fh036_record_names_qualified_manifest_acceptance",
     ),
 }
 
@@ -359,6 +363,8 @@ REQUIRED_FAILURE_COMPONENTS.update({
             "test_fh033_records_first_remediation_commit_and_qualified_evidence",
             "tests.test_commit_resolution.FailureEvidenceInvariantTests."
             "test_fh034_record_declares_append_only_remediation_contract",
+            "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+            "test_fh036_record_names_qualified_manifest_acceptance",
         }
     ),
     "FH-002": frozenset(
@@ -519,6 +525,8 @@ REQUIRED_FAILURE_COMPONENTS.update({
         {
             "tests.test_commit_resolution.FailureInvariantMutationTests."
             "test_fh036_every_declared_component_deletion_is_detected",
+            "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+            "test_fh036_record_names_qualified_manifest_acceptance",
         }
     ),
 })
@@ -710,6 +718,26 @@ class FailureEvidenceInvariantTests(unittest.TestCase):
         )
         self.assertIn(
             "terminal exit 0: 350 tests passed in 223.391 seconds",
+            section,
+        )
+        self.assertEqual(section.count("- **Status**:"), 1)
+
+    def test_fh036_record_names_qualified_manifest_acceptance(self):
+        """FH-034/FH-036: manifest evidence names its executable proof."""
+        section = self._failure_section(
+            "FH-036",
+            "## T08 Executable Invariant Audit",
+        )
+
+        self.assertIn("`d9cdb2d`", section)
+        self.assertIn(
+            "`FailureInvariantMutationTests."
+            "test_fh036_every_declared_component_deletion_is_detected`",
+            section,
+        )
+        self.assertIn(
+            "`FailureHistoryTraceabilityTests."
+            "test_required_mapping_components_are_present`",
             section,
         )
         self.assertEqual(section.count("- **Status**:"), 1)

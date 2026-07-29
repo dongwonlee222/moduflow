@@ -944,6 +944,9 @@ the architectural closure.
   checks executable.
 - **Terminal verification evidence**: the six Issue 095 suites were polled in
   the same session to terminal exit 0: 350 tests passed in 223.391 seconds.
+- **Recurrence evidence**: T08 spec re-review at `b64b26e` found that FH-036
+  recorded the implementation commit and prose behavior but omitted the exact
+  qualified mutation and traceability test names required by this contract.
 - **Status**: open until historical status is restored append-only and fixing
   commit plus executable evidence are recorded and validated.
 
@@ -1005,6 +1008,18 @@ the architectural closure.
   13/13 in 36.881 seconds with terminal exit 0.
 - **Terminal verification evidence**: the six Issue 095 suites were polled in
   the same session to terminal exit 0: 351 tests passed in 230.595 seconds.
+- **Documentation recurrence evidence**: T08 spec re-review at `b64b26e`
+  confirmed the independent manifest and exhaustive mutation behavior, but
+  found that this record did not name either qualified executable acceptance
+  test. The omission kept FH-034's evidence contract open.
+- **Qualified executable evidence**:
+  `FailureInvariantMutationTests.test_fh036_every_declared_component_deletion_is_detected`
+  removes every independently declared component in turn, and
+  `FailureHistoryTraceabilityTests.test_required_mapping_components_are_present`
+  requires exact manifest-to-mapping equality with no missing components.
+- **Documentation acceptance evidence**:
+  `FailureEvidenceInvariantTests.test_fh036_record_names_qualified_manifest_acceptance`
+  requires `d9cdb2d` and both qualified executable names in this record.
 - **Status**: open until an exhaustive every-id/every-component mutation test
   fails against the self-derived manifest and passes against an independent
   literal manifest.
