@@ -835,6 +835,74 @@ class ForkPointInvariantTests(unittest.TestCase):
 
 
 class TopicDeltaTests(unittest.TestCase):
+    def test_repeated_publication_history_has_constant_git_call_budget(self):
+        """FH-029: publication count cannot add pairwise Git subprocesses."""
+        results = []
+        call_counts = []
+        merge_base_counts = []
+        ref_names = []
+
+        for publication_count in (1, 2, 4, 8):
+            with self.subTest(publication_count=publication_count), GitRepo() as repo:
+                repo.commit("chore: base", belongs_to=None)
+                repo.add_issue_file(ALPHA)
+                topic = repo.branch(f"codex/{ALPHA}")
+                topic_tips = [
+                    repo.commit(f"feat: alpha {index}", belongs_to=ALPHA)
+                    for index in range(1, 9)
+                ]
+                repo.checkout("main")
+                stride = len(topic_tips) // publication_count
+                for ordinal, tip_index in enumerate(
+                    range(stride - 1, len(topic_tips), stride),
+                    start=1,
+                ):
+                    publication_ref = f"publication-{ordinal}"
+                    repo._git("branch", publication_ref, topic_tips[tip_index])
+                    repo.merge(
+                        publication_ref,
+                        message=f"Merge branch '{topic}' publication {ordinal}",
+                        belongs_to=ALPHA,
+                    )
+                    repo.delete_branch(publication_ref)
+
+                ref_names.append(
+                    frozenset(
+                        repo._git(
+                            "for-each-ref",
+                            "--format=%(refname)",
+                            "refs/heads",
+                        ).splitlines()
+                    )
+                )
+                repo.call_log.clear()
+                result = delta_for_repo(repo, ALPHA)
+                results.append(
+                    frozenset(
+                        repo._git("show", "-s", "--format=%s", sha).strip()
+                        for sha in result["commits"]
+                    )
+                )
+                call_counts.append(len(repo.call_log))
+                merge_base_counts.append(
+                    sum(
+                        call[:3] == ["git", "merge-base", "--all"]
+                        for call in repo.call_log
+                    )
+                )
+
+                self.assertEqual(
+                    result["commits"],
+                    declared_content_truth(repo, ALPHA),
+                )
+                self.assertEqual(result["diagnostics"], [])
+                self.assertEqual(result["fatal_errors"], [])
+
+        self.assertEqual(len(set(ref_names)), 1)
+        self.assertEqual(len(set(results)), 1)
+        self.assertEqual(call_counts, [6, 6, 6, 6])
+        self.assertEqual(merge_base_counts, [1, 1, 1, 1])
+
     def test_publication_recovery_ignores_unrelated_history_for_command_count(self):
         """FH-029: unrelated snapshot records add no topic-delta Git probes."""
         with GitRepo() as small, GitRepo() as large:
@@ -898,7 +966,7 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertTrue(small_result["commits"])
             self.assertTrue(large_result["commits"])
             self.assertEqual(small_calls, large_calls)
-            self.assertEqual(small_calls, 7)
+            self.assertEqual(small_calls, 6)
             self.assertTrue(any(call[:3] == ["git", "merge-base", "--all"] for call in small.call_log))
             self.assertTrue(any(call[:2] == ["git", "rev-list"] for call in small.call_log))
 
@@ -1343,8 +1411,8 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertEqual(result["commits"], set())
             self.assertTrue(snapshot["fatal_errors"])
 
-    def test_cached_publication_recovery_failure_stays_closed(self):
-        """FH-010: cached recovery failures must close every later delta call."""
+    def test_publication_recovery_does_not_reissue_captured_pair_query(self):
+        """FH-029: publication bases come from the captured parent graph."""
         with GitRepo() as repo:
             base = repo.commit("chore: base", belongs_to=None)
             repo.add_issue_file(ALPHA)
@@ -1377,10 +1445,11 @@ class TopicDeltaTests(unittest.TestCase):
             first = commit_graph.topic_delta(failing, repo.path, snapshot, topic_ref, ALPHA, **kwargs)
             second = commit_graph.topic_delta(failing, repo.path, snapshot, topic_ref, ALPHA, **kwargs)
 
-            self.assertEqual(first["commits"], set())
-            self.assertEqual(second["commits"], set())
-            self.assertEqual(len(snapshot["fatal_errors"]), 1)
-            self.assertEqual(sum(call == failing_args for call in calls), 1)
+            expected = declared_content_truth(repo, ALPHA)
+            self.assertEqual(first["commits"], expected)
+            self.assertEqual(second["commits"], expected)
+            self.assertEqual(snapshot["fatal_errors"], [])
+            self.assertEqual(sum(call == failing_args for call in calls), 0)
 
     def test_cached_publication_topology_failure_stays_closed_with_good_base(self):
         """FH-010/FH-028: cached missing topology remains fatal for this topic."""

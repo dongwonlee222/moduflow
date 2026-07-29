@@ -220,6 +220,59 @@ def _record_ancestors(snapshot, start):
     return {"ancestors": cache[start][0], "fatal_errors": []}
 
 
+def _record_merge_bases(snapshot, left, right):
+    """Return ancestry-maximal common bases from the captured parent graph."""
+    key = tuple(sorted((left, right)))
+    cache = snapshot.setdefault("record_merge_bases_cache", {})
+    if key in cache:
+        shas, fatal_errors = cache[key]
+        return _result("shas", list(shas) if shas is not None else None, fatal_errors)
+
+    left_result = _record_ancestors(snapshot, left)
+    right_result = _record_ancestors(snapshot, right)
+    fatal_errors = (
+        *left_result["fatal_errors"],
+        *right_result["fatal_errors"],
+    )
+    if fatal_errors:
+        cache[key] = (None, fatal_errors)
+        return _result("shas", None, fatal_errors)
+
+    common = set(left_result["ancestors"] & right_result["ancestors"])
+    dominated = set()
+    for candidate in sorted(common):
+        ancestors = _record_ancestors(snapshot, candidate)
+        if ancestors["fatal_errors"]:
+            fatal_errors = tuple(ancestors["fatal_errors"])
+            cache[key] = (None, fatal_errors)
+            return _result("shas", None, fatal_errors)
+        dominated.update(
+            (ancestors["ancestors"] & common) - {candidate}
+        )
+    shas = tuple(sorted(common - dominated))
+    cache[key] = (shas, ())
+    return _result("shas", list(shas), ())
+
+
+def _record_is_ancestor(snapshot, older, newer):
+    """Answer ancestry from captured records without another Git process."""
+    key = (older, newer)
+    cache = snapshot.setdefault("record_is_ancestor_cache", {})
+    if key in cache:
+        value, fatal_errors = cache[key]
+        return _result("value", value, fatal_errors)
+
+    older_result = _record_ancestors(snapshot, older)
+    newer_result = _record_ancestors(snapshot, newer)
+    fatal_errors = (
+        *older_result["fatal_errors"],
+        *newer_result["fatal_errors"],
+    )
+    value = None if fatal_errors else older in newer_result["ancestors"]
+    cache[key] = (value, fatal_errors)
+    return _result("value", value, fatal_errors)
+
+
 def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
     """Recover no-ff publication forks without probing unrelated records."""
     base_result = _record_ancestors(snapshot, base_sha)
@@ -262,12 +315,7 @@ def _publication_forks(runner, cwd, snapshot, topic_sha, base_sha):
         for parent in record["parents"]:
             if parent in maximal_sides:
                 continue
-            bases = merge_bases(runner, cwd, snapshot, topic_sha, parent)
-            _preserve_fatal_errors(
-                snapshot,
-                ("merge-bases", tuple(sorted((topic_sha, parent)))),
-                bases["fatal_errors"],
-            )
+            bases = _record_merge_bases(snapshot, topic_sha, parent)
             fatal_errors.extend(bases["fatal_errors"])
             recovered.extend(bases["shas"] or [])
     return sorted(set(recovered)), publication_sides, fatal_errors
@@ -420,16 +468,10 @@ def derive_fork_point(runner, cwd, snapshot, topic_ref, issue_id, *, base_refs):
         for other_sha in sorted(recovered_forks):
             if fork_sha == other_sha:
                 continue
-            relation = is_ancestor(runner, cwd, snapshot, other_sha, fork_sha)
-            _preserve_fatal_errors(
-                snapshot, ("is-ancestor", other_sha, fork_sha), relation["fatal_errors"]
-            )
+            relation = _record_is_ancestor(snapshot, other_sha, fork_sha)
             fatal_errors.extend(relation["fatal_errors"])
             if relation["value"] is True:
-                reverse = is_ancestor(runner, cwd, snapshot, fork_sha, other_sha)
-                _preserve_fatal_errors(
-                    snapshot, ("is-ancestor", fork_sha, other_sha), reverse["fatal_errors"]
-                )
+                reverse = _record_is_ancestor(snapshot, fork_sha, other_sha)
                 fatal_errors.extend(reverse["fatal_errors"])
                 if reverse["value"] is False:
                     recovered_minimal.discard(fork_sha)

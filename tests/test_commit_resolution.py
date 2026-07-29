@@ -185,7 +185,11 @@ FAILURE_INVARIANT_TESTS = {
     ),
     "FH-029": (
         "tests.test_commit_graph.TopicDeltaTests."
-        "test_publication_recovery_ignores_unrelated_history_for_command_count"
+        "test_repeated_publication_history_has_constant_git_call_budget",
+        "tests.test_commit_graph.TopicDeltaTests."
+        "test_publication_recovery_ignores_unrelated_history_for_command_count",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh029_composite_detects_per_publication_git_probe",
     ),
     "FH-030": (
         "tests.test_commit_resolution_parity.SharedOwnershipTests."
@@ -541,7 +545,11 @@ REQUIRED_FAILURE_COMPONENTS.update({
     "FH-029": frozenset(
         {
             "tests.test_commit_graph.TopicDeltaTests."
+            "test_repeated_publication_history_has_constant_git_call_budget",
+            "tests.test_commit_graph.TopicDeltaTests."
             "test_publication_recovery_ignores_unrelated_history_for_command_count",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh029_composite_detects_per_publication_git_probe",
         }
     ),
     "FH-030": frozenset(
@@ -893,6 +901,42 @@ class ProcessGateInvariantTests(unittest.TestCase):
 
 
 class FailureInvariantMutationTests(unittest.TestCase):
+    def test_fh029_composite_detects_per_publication_git_probe(self):
+        """FH-029: restoring one Git probe per publication turns the gate red."""
+        graph_tests = importlib.import_module("tests.test_commit_graph")
+        graph_module = graph_tests.commit_graph
+        original = graph_module._publication_forks
+
+        def probing(runner, cwd, snapshot, topic_sha, base_sha):
+            recovered, publication_sides, fatal_errors = original(
+                runner,
+                cwd,
+                snapshot,
+                topic_sha,
+                base_sha,
+            )
+            for side in sorted(publication_sides):
+                runner(
+                    ["git", "merge-base", "--all", topic_sha, side],
+                    cwd,
+                )
+            return recovered, publication_sides, fatal_errors
+
+        try:
+            graph_module._publication_forks = probing
+            result = _run_named_tests(
+                (
+                    "tests.test_commit_graph.TopicDeltaTests."
+                    "test_repeated_publication_history_has_constant_git_call_budget",
+                )
+            )
+        finally:
+            graph_module._publication_forks = original
+
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(result.failures), 1)
+        self.assertFalse(result.wasSuccessful())
+
     def test_fh037_named_loader_uses_explicit_owner_module_globals(self):
         """FH-037: nested tests execute against their supplied owner module."""
         owner = types.ModuleType("discovered_test_commit_resolution")

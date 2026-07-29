@@ -72,7 +72,7 @@ the architectural closure.
 | FH-026 | A yielded long-running test was reported green before exit | Verification evidence includes the terminal process exit and summary | regression captured |
 | FH-027 | Fault-injection fixtures still matched the retired Git command | Boundary migrations update every direct failure fixture before review | regression captured |
 | FH-028 | Topic-fork diagnostics disappeared at live attribution | Every live consumer preserves scoped diagnostics through compatibility surfaces | regression captured |
-| FH-029 | Publication recovery probed Git per history record | Snapshot traversal must not make subprocess count grow with history length | regression captured |
+| FH-029 | Publication recovery probed Git per history record | Snapshot traversal must not make subprocess count grow with history length | open |
 | FH-030 | A compatibility wrapper retained the retired global-base policy | Compatibility paths delegate per topic or are removed | regression captured |
 | FH-031 | Range-truncated snapshots rejected valid topology output | Topology inventory is complete and range projection is separate | regression captured |
 | FH-032 | Structured diagnostics duplicated flat compatibility errors | Compatibility messages are stable and deduplicated without losing diagnostic scope | regression captured |
@@ -811,7 +811,13 @@ the architectural closure.
   recovery to bounded snapshot traversal and added unrelated-history and
   pre-topic long-lived-branch command-count metamorphic regressions. Final
   quality review confirmed live alias handling adds no Git subprocesses.
-- **Status**: regression captured.
+- **Historical state (preserved)**: regression captured.
+- **Recurrence evidence**: Issue 095 final whole-branch quality review at
+  `be86cdd` measured repeated publication histories with 1/2/4/8 no-ff merges.
+  The result and topic content stayed identical, but total external Git calls
+  grew 7/10/19/34 and `git merge-base --all` calls grew 2/3/5/9 because
+  `_publication_forks()` issued one pairwise query per publication merge.
+- **Status**: open.
 
 ### FH-030 — Retired Global-Base Compatibility Wrapper
 
