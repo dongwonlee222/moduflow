@@ -81,6 +81,7 @@ the architectural closure.
 | FH-035 | Line-wrapped terminal evidence failed a literal-string assertion | Process evidence assertions tolerate Markdown wrapping while preserving exact fields | regression captured |
 | FH-036 | Required-component manifest copied the mutable mapping | Every required component is declared independently and every deletion turns the audit red | regression captured |
 | FH-037 | Full discovery loaded mutation tests under two module identities | Nested test execution must mutate and assert against one explicit module identity | regression captured |
+| FH-038 | Detached HEAD branch limitation was silently reported as an ordinary unmatched commit | Detached HEAD keeps trailer truth and reports branch attribution unavailability without degrading unrelated attached history | open |
 
 ## Failure Records
 
@@ -1101,6 +1102,33 @@ the architectural closure.
   `46b0e9d` and throughout FH-037 remediation and review.
 - **Status**: regression captured.
 
+### FH-038 — Detached HEAD Attribution Limitation Was Silent
+
+- **Topology**: a real Git repository is checked out at detached HEAD. One
+  detached commit carries a registered `Issue:` trailer; a later detached
+  commit carries no trailer and has no branch ref.
+- **Observed failure**: whole-branch spec review at `22e679f` reproduced that
+  the trailer commit resolved correctly but returned empty `diagnostics`,
+  `degraded`, and compatibility `errors`. The untrailed detached commit was
+  likewise returned as an ordinary unmatched commit with all three limitation
+  surfaces empty, making unavailable branch attribution indistinguishable
+  from a legitimate unrelated commit.
+- **Invalid assumption**: an unmatched commit needs no diagnostic whenever
+  the immutable ref index itself loaded successfully, even when checkout state
+  proves that no current branch can provide positional attribution.
+- **Derived invariant**: detached-HEAD commits preserve intrinsic trailer
+  ownership and never invent a fatal Git error; when branch attribution is
+  unavailable, the shared index emits one stable SHA-scoped structured
+  diagnostic, projects `branch-unavailable` through `degraded`, and preserves
+  the compatibility message. An ordinary unmatched commit covered by attached
+  history receives no detached limitation.
+- **Reviewer reproduction evidence**: at `22e679f`,
+  `resolve_issue_for_commit()` returned the trailer owner with
+  `fatal_errors=[]`, `diagnostics=[]`, `degraded=[]`, and `errors=[]`; a
+  no-trailer detached commit returned `issue_id=None` with the same empty
+  limitation surfaces.
+- **Status**: open.
+
 ## T08 Executable Invariant Audit
 
 This append-only matrix records the executable reference and implementation
@@ -1195,5 +1223,6 @@ The redesign maps its requirements to this corpus:
 | Markdown-wrap-tolerant terminal evidence | FH-035 |
 | Independently declared required-component completeness | FH-036 |
 | Stable mutation injection across unittest module identities | FH-037 |
+| Detached-HEAD branch-attribution limitation projection | FH-038 |
 
 Future findings extend this table rather than replacing it.
