@@ -77,6 +77,7 @@ the architectural closure.
 | FH-031 | Range-truncated snapshots rejected valid topology output | Topology inventory is complete and range projection is separate | regression captured |
 | FH-032 | Structured diagnostics duplicated flat compatibility errors | Compatibility messages are stable and deduplicated without losing diagnostic scope | regression captured |
 | FH-033 | Traceability accepted IDs without proving their invariants | Every mapping executes the complete derived invariant, not only a named test | open |
+| FH-034 | Failure remediation overwrote prior state or omitted implementation evidence | Corrections preserve prior text and append fixing commit plus executable evidence | open |
 
 ## Failure Records
 
@@ -681,6 +682,9 @@ the architectural closure.
 - **Resolution evidence**: the controller polled the same process to terminal
   exit 0 at `2a000c0`: 231 tests passed in 204.678 seconds. Independent spec
   review repeated the full command with 231/231 and terminal exit 0.
+- **Historical state (preserved)**: regression captured. This was the current
+  state after the T03 terminal run and before the T08 recurrence below
+  reopened the failure; preserving it does not replace the current status.
 - **T08 audit evidence**: the six Issue 095 suites were polled in the same
   session to terminal exit 0: 338 tests passed in 173.165 seconds, including
   the three executable traceability checks.
@@ -884,9 +888,48 @@ the architectural closure.
   reviewer mutations were first reproduced as surviving the old mapping, all
   three new mutation probes caught their injected defect, and the six-suite
   terminal gate passed 343/343 in 226.614 seconds.
+- **Recurrence evidence**: T08 spec re-review at `04bae8d` forced
+  commit-to-issue resolution to return the same wrong issue in both bare and
+  indexed paths; all FH-001 components still passed because they asserted
+  agreement but not commit-direction truth. Removing the FH-001
+  commit-direction component also left the audit green because it validated
+  only that the remaining tuple was nonempty.
+- **T08 I3 remediation evidence**: the first remediation implementation
+  `04bae8d` is preserved as the exact commit that introduced executable
+  composites but left this recurrence. The follow-up adds
+  `CommitDirectionTruthTests.test_bare_and_indexed_resolution_match_declared_truth`
+  for literal commit-direction truth,
+  `FailureInvariantMutationTests.test_fh001_composite_detects_same_wrong_commit_issue`
+  for the same-wrong-result mutation, and
+  `FailureInvariantMutationTests.test_fh033_required_manifest_detects_removed_fh001_commit_truth`
+  for required-component deletion.
 - **Status**: open until mutation-sensitive or composite invariant tests cover
   each mapped requirement and the traceability audit fails when any component
   is removed.
+
+### FH-034 — Non-Append-Only Failure Remediation
+
+- **Topology**: a review reopens a previously regression-captured failure and
+  the remediation edits its status while adding a new failure record.
+- **Observed failure**: T08 replaced FH-026's prior `regression captured`
+  status text with `open` instead of preserving the historical state, and the
+  new FH-033 record omitted the fixing implementation commit `04bae8d`.
+- **Invalid assumption**: changing current status and adding review evidence
+  is sufficient when earlier state text disappears or implementation evidence
+  is incomplete.
+- **Derived invariant**: remediation preserves prior status text as history,
+  appends the current status, and records the exact fixing commit plus
+  qualified executable test evidence.
+- **Evidence**: T08 spec re-review at `04bae8d`, FH-026 and FH-033.
+- **Executable acceptance evidence**:
+  `FailureEvidenceInvariantTests.test_fh026_preserves_historical_regression_state`
+  requires the parser-safe historical state and exactly one current status;
+  `FailureEvidenceInvariantTests.test_fh033_records_first_remediation_commit_and_qualified_evidence`
+  requires the exact first-remediation commit and qualified proof names; and
+  `FailureEvidenceInvariantTests.test_fh034_record_declares_append_only_remediation_contract`
+  keeps this contract executable.
+- **Status**: open until historical status is restored append-only and fixing
+  commit plus executable evidence are recorded and validated.
 
 ## T08 Executable Invariant Audit
 
@@ -949,7 +992,8 @@ qualified test is executed by
 | FH-026 | current T08 terminal evidence + exact-block-removal mutation |
 | FH-027 | current snapshot fixture + real branch topology + structured consumer failure + consumer precedence |
 | FH-032 | first-seen flat dedupe + structured octopus multiplicity + structured multi-name multiplicity |
-| FH-033 | FH-001, FH-007, and FH-026 mutation probes |
+| FH-033 | FH-001 literal truth + same-wrong mutation + FH-007/FH-026 mutations + canonical component-removal mutation |
+| FH-034 | preserved FH-026 state + exact FH-033 remediation commit + qualified acceptance evidence |
 
 ## Required Design Traceability
 
@@ -975,5 +1019,6 @@ The redesign maps its requirements to this corpus:
 | Complete topology with separate range projection | FH-031 |
 | Stable flat compatibility messages over structured diagnostics | FH-032 |
 | Mutation-sensitive executable invariant coverage | FH-033 |
+| Append-only remediation evidence | FH-034 |
 
 Future findings extend this table rather than replacing it.

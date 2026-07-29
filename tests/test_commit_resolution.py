@@ -23,12 +23,16 @@ OTHER = "094-risk-based-security-and-quality-review-gate"
 
 FAILURE_INVARIANT_TESTS = {
     "FH-001": (
+        "tests.test_commit_resolution.CommitDirectionTruthTests."
+        "test_bare_and_indexed_resolution_match_declared_truth",
         "tests.test_commit_resolution_differential.CommitDirectionTests."
         "test_bare_and_full_result_resolution_use_same_policy",
         "tests.test_commit_resolution_differential.GroundTruthTests."
         "test_trailer_disagrees_with_branch",
         "tests.test_commit_resolution.FailureInvariantMutationTests."
         "test_fh001_composite_detects_broken_issue_to_commits",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh001_composite_detects_same_wrong_commit_issue",
     ),
     "FH-002": (
         "tests.test_commit_graph.TopicDeltaTests."
@@ -202,11 +206,155 @@ FAILURE_INVARIANT_TESTS = {
         "tests.test_commit_resolution.FailureInvariantMutationTests."
         "test_fh001_composite_detects_broken_issue_to_commits",
         "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh001_composite_detects_same_wrong_commit_issue",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
         "test_fh007_composite_detects_branch_first_precedence",
         "tests.test_commit_resolution.FailureInvariantMutationTests."
         "test_fh026_current_audit_block_removal_is_detected",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh033_required_manifest_detects_removed_fh001_commit_truth",
+    ),
+    "FH-034": (
+        "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+        "test_fh026_preserves_historical_regression_state",
+        "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+        "test_fh033_records_first_remediation_commit_and_qualified_evidence",
+        "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+        "test_fh034_record_declares_append_only_remediation_contract",
     ),
 }
+
+REQUIRED_FAILURE_COMPONENTS = {
+    failure_id: frozenset(
+        (mapped,) if isinstance(mapped, str) else mapped
+    )
+    for failure_id, mapped in FAILURE_INVARIANT_TESTS.items()
+}
+REQUIRED_FAILURE_COMPONENTS.update({
+    "FH-001": frozenset(
+        {
+            "tests.test_commit_resolution.CommitDirectionTruthTests."
+            "test_bare_and_indexed_resolution_match_declared_truth",
+            "tests.test_commit_resolution_differential.CommitDirectionTests."
+            "test_bare_and_full_result_resolution_use_same_policy",
+            "tests.test_commit_resolution_differential.GroundTruthTests."
+            "test_trailer_disagrees_with_branch",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh001_composite_detects_broken_issue_to_commits",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh001_composite_detects_same_wrong_commit_issue",
+        }
+    ),
+    "FH-007": frozenset(
+        {
+            "tests.test_commit_resolution.SourcePrecedenceInvariantTests."
+            "test_complete_precedence_chain",
+            "tests.test_commit_resolution_differential.CommitDirectionTests."
+            "test_bare_and_full_result_resolution_use_same_policy",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh007_composite_detects_branch_first_precedence",
+        }
+    ),
+    "FH-014": frozenset(
+        {
+            "tests.test_commit_resolution.DiagnosticProjectionTests."
+            "test_ref_inventory_failure_is_structured_and_fails_closed",
+            "tests.test_commit_resolution_parity.SharedOwnershipTests."
+            "test_live_resolution_has_no_global_base_election_or_origin_head_probe",
+        }
+    ),
+    "FH-019": frozenset(
+        {
+            "tests.test_commit_graph.SnapshotTests.test_loads_log_and_refs_once",
+            "tests.test_commit_resolution.DiagnosticProjectionTests."
+            "test_build_result_separates_fatal_errors_from_diagnostics",
+            "tests.test_commit_resolution.DiagnosticProjectionTests."
+            "test_ref_inventory_failure_is_structured_and_fails_closed",
+            "tests.test_commit_graph.SnapshotTests."
+            "test_merge_base_distinguishes_no_base_from_failure",
+            "tests.test_commit_graph.SnapshotTests."
+            "test_terminated_ancestry_query_is_a_failure",
+            "tests.test_commit_resolution.TestGraphQueryFailures."
+            "test_branch_membership_rejects_a_terminated_merge_base_query",
+            "tests.test_commit_resolution.TestGraphQueryFailures."
+            "test_rev_list_failure_surfaces_and_does_not_attribute",
+            "tests.test_commit_graph.SnapshotTests."
+            "test_merge_base_rejects_empty_or_multitoken_success_output",
+            "tests.test_commit_resolution.TestRangeProjection."
+            "test_range_projection_rejects_multi_token_success_output",
+            "tests.test_commit_resolution_differential.CommitDirectionTests."
+            "test_bare_and_full_result_resolution_use_same_policy",
+        }
+    ),
+    "FH-020": frozenset(
+        {
+            "tests.test_commit_resolution_differential.DeclarationCoverageTests."
+            "test_declared_trailer_disagrees_with_branch",
+            "tests.test_commit_resolution_differential.GroundTruthTests."
+            "test_trailer_disagrees_with_branch",
+            "tests.test_commit_resolution_differential.DeclarationSanityTests."
+            "test_some_shape_declares_real_work",
+            "tests.test_commit_resolution_differential.DeclarationSanityTests."
+            "test_no_reference_oracle_remains",
+            "tests.test_commit_resolution.MergeClaimInvariantTests."
+            "test_subject_token_order_does_not_change_content",
+        }
+    ),
+    "FH-026": frozenset(
+        {
+            "tests.test_commit_resolution.ProcessGateInvariantTests."
+            "test_t08_audit_evidence_records_terminal_exit_and_summary",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh026_current_audit_block_removal_is_detected",
+        }
+    ),
+    "FH-027": frozenset(
+        {
+            "tests.test_linkage_check.ResolveIssueForCommitTests."
+            "test_trailer_resolution",
+            "tests.test_linkage_check.ResolveIssueForCommitTests."
+            "test_branch_resolution",
+            "tests.test_linkage_check.ResolveIssueForCommitTests."
+            "test_snapshot_failure_surfaces_structured_fatal_error",
+            "tests.test_linkage_check.ResolveIssueForCommitTests."
+            "test_trailer_beats_branch_on_conflict",
+        }
+    ),
+    "FH-032": frozenset(
+        {
+            "tests.test_commit_resolution.DiagnosticProjectionTests."
+            "test_compatibility_errors_dedupe_in_first_seen_order",
+            "tests.test_commit_resolution.DiagnosticProjectionTests."
+            "test_octopus_duplicate_diagnostics_have_one_compatibility_error",
+            "tests.test_commit_resolution.DiagnosticProjectionTests."
+            "test_multi_name_duplicate_diagnostics_have_one_compatibility_error",
+        }
+    ),
+    "FH-033": frozenset(
+        {
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh001_composite_detects_broken_issue_to_commits",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh001_composite_detects_same_wrong_commit_issue",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh007_composite_detects_branch_first_precedence",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh026_current_audit_block_removal_is_detected",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh033_required_manifest_detects_removed_fh001_commit_truth",
+        }
+    ),
+    "FH-034": frozenset(
+        {
+            "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+            "test_fh026_preserves_historical_regression_state",
+            "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+            "test_fh033_records_first_remediation_commit_and_qualified_evidence",
+            "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+            "test_fh034_record_declares_append_only_remediation_contract",
+        }
+    ),
+})
 
 
 def _failure_corpus():
@@ -232,6 +380,16 @@ def _test_result_details(result):
     ]
     problems.extend(f"{test.id()}: skipped: {reason}" for test, reason in result.skipped)
     return "\n".join(problems)
+
+
+def _required_component_gaps(mapping):
+    gaps = {}
+    for failure_id, required in REQUIRED_FAILURE_COMPONENTS.items():
+        actual = set(_mapped_test_names(mapping.get(failure_id, ())))
+        missing = sorted(required - actual)
+        if missing:
+            gaps[failure_id] = missing
+    return gaps
 
 
 def resolve_shape(name):
@@ -294,6 +452,96 @@ class SourcePrecedenceInvariantTests(unittest.TestCase):
         )
 
 
+class CommitDirectionTruthTests(unittest.TestCase):
+    def test_bare_and_indexed_resolution_match_declared_truth(self):
+        """FH-001: both commit directions must match literal fixture truth."""
+        with GitRepo() as repo:
+            shapes.trailer_disagrees_with_branch(repo)
+            conflict = next(
+                sha
+                for sha, expected in repo.truth.items()
+                if expected == frozenset({shapes.BETA})
+            )
+            expected_issue = next(iter(repo.truth[conflict]))
+            built = cr.build_attribution(
+                repo.runner,
+                repo.path,
+                target_shas={conflict},
+            )
+            bare = cr.resolve_issue_for_commit(
+                repo.runner,
+                repo.path,
+                conflict,
+            )
+            indexed = cr.resolve_issue_for_commit(
+                repo.runner,
+                repo.path,
+                conflict,
+                attribution=built,
+            )
+
+        for label, result in (("bare", bare), ("indexed", indexed)):
+            with self.subTest(call_shape=label):
+                self.assertEqual(result["issue_id"], expected_issue)
+                self.assertEqual(result["source"], "trailer")
+
+
+class FailureEvidenceInvariantTests(unittest.TestCase):
+    def _failure_section(self, failure_id, next_heading):
+        return _failure_corpus().split(
+            f"### {failure_id}", 1
+        )[1].split(next_heading, 1)[0]
+
+    def test_fh026_preserves_historical_regression_state(self):
+        """FH-034: reopening FH-026 cannot erase its captured prior state."""
+        section = self._failure_section("FH-026", "### FH-027")
+
+        self.assertIn(
+            "**Historical state (preserved)**: regression captured.",
+            section,
+        )
+        self.assertEqual(section.count("- **Status**:"), 1)
+
+    def test_fh033_records_first_remediation_commit_and_qualified_evidence(self):
+        """FH-034: FH-033 names the exact prior fix and executable proof."""
+        section = self._failure_section("FH-033", "### FH-034")
+
+        self.assertIn("`04bae8d`", section)
+        self.assertIn(
+            "`CommitDirectionTruthTests."
+            "test_bare_and_indexed_resolution_match_declared_truth`",
+            section,
+        )
+        self.assertIn(
+            "`FailureInvariantMutationTests."
+            "test_fh033_required_manifest_detects_removed_fh001_commit_truth`",
+            section,
+        )
+        self.assertEqual(section.count("- **Status**:"), 1)
+
+    def test_fh034_record_declares_append_only_remediation_contract(self):
+        """FH-034: the corpus declares preservation plus exact fix evidence."""
+        section = self._failure_section(
+            "FH-034",
+            "## T08 Executable Invariant Audit",
+        )
+
+        self.assertIn("preserves prior status text as history", section)
+        self.assertIn("exact fixing commit", section)
+        self.assertIn("qualified executable test evidence", section)
+        self.assertIn(
+            "`FailureEvidenceInvariantTests."
+            "test_fh026_preserves_historical_regression_state`",
+            section,
+        )
+        self.assertIn(
+            "`FailureEvidenceInvariantTests."
+            "test_fh033_records_first_remediation_commit_and_qualified_evidence`",
+            section,
+        )
+        self.assertEqual(section.count("- **Status**:"), 1)
+
+
 class ProcessGateInvariantTests(unittest.TestCase):
     def test_t08_audit_evidence_records_terminal_exit_and_summary(self):
         """FH-026: the current T08 block must contain terminal gate evidence."""
@@ -333,6 +581,36 @@ class FailureInvariantMutationTests(unittest.TestCase):
 
         self.assertEqual(result.errors, [])
         self.assertEqual(len(result.failures), 1)
+        self.assertFalse(result.wasSuccessful())
+
+    def test_fh001_composite_detects_same_wrong_commit_issue(self):
+        """FH-033: FH-001 rejects matching bare/indexed wrong ownership."""
+        original = cr.resolve_issue_for_commit
+        try:
+            cr.resolve_issue_for_commit = lambda *args, **kwargs: {
+                "sha": args[2],
+                "issue_id": shapes.ALPHA,
+                "source": "branch",
+                "fatal_errors": [],
+                "diagnostics": [],
+                "degraded": [],
+                "errors": [],
+            }
+            result = _run_named_tests(
+                (
+                    "tests.test_commit_resolution.CommitDirectionTruthTests."
+                    "test_bare_and_indexed_resolution_match_declared_truth",
+                )
+            )
+        finally:
+            cr.resolve_issue_for_commit = original
+
+        self.assertEqual(result.errors, [])
+        self.assertEqual(
+            len(result.failures),
+            2,
+            "both bare and indexed truth assertions must reject the same wrong issue",
+        )
         self.assertFalse(result.wasSuccessful())
 
     def test_fh007_composite_detects_branch_first_precedence(self):
@@ -381,6 +659,36 @@ class FailureInvariantMutationTests(unittest.TestCase):
         self.assertEqual(len(result.failures), 1)
         self.assertFalse(result.wasSuccessful())
 
+    def test_fh033_required_manifest_detects_removed_fh001_commit_truth(self):
+        """FH-033: deleting a required FH-001 component turns the audit red."""
+        required = (
+            "tests.test_commit_resolution.CommitDirectionTruthTests."
+            "test_bare_and_indexed_resolution_match_declared_truth"
+        )
+        mutated = dict(FAILURE_INVARIANT_TESTS)
+        mutated["FH-001"] = tuple(
+            name
+            for name in _mapped_test_names(mutated["FH-001"])
+            if name != required
+        )
+        self.assertNotIn(required, mutated["FH-001"])
+
+        original = globals()["FAILURE_INVARIANT_TESTS"]
+        try:
+            globals()["FAILURE_INVARIANT_TESTS"] = mutated
+            result = _run_named_tests(
+                (
+                    "tests.test_commit_resolution.FailureHistoryTraceabilityTests."
+                    "test_required_mapping_components_are_present",
+                )
+            )
+        finally:
+            globals()["FAILURE_INVARIANT_TESTS"] = original
+
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(result.failures), 1)
+        self.assertFalse(result.wasSuccessful())
+
 
 class FailureHistoryTraceabilityTests(unittest.TestCase):
     def test_every_open_or_redesign_failure_has_a_test_reference(self):
@@ -419,6 +727,14 @@ class FailureHistoryTraceabilityTests(unittest.TestCase):
         self.assertEqual(result.testsRun, len(unique_test_names))
         self.assertTrue(result.wasSuccessful(), _test_result_details(result))
         self.assertEqual(result.skipped, [])
+
+    def test_required_mapping_components_are_present(self):
+        """FH-033: canonical components cannot disappear from a nonempty map."""
+        self.assertEqual(
+            set(REQUIRED_FAILURE_COMPONENTS),
+            set(FAILURE_INVARIANT_TESTS),
+        )
+        self.assertEqual(_required_component_gaps(FAILURE_INVARIANT_TESTS), {})
 
 
 class DiagnosticProjectionTests(unittest.TestCase):
