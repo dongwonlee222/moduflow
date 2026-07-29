@@ -105,6 +105,11 @@ The limitation is a SHA-scoped structured diagnostic with code
 current detached HEAD. Attached unrelated commits and other SHAs read from a
 reused whole index remain ordinary unmatched results.
 
+For HEAD-state Git boundaries, symbolic-ref rc=1 is the only ordinary
+detached result. Command failure, signal termination, and malformed successful
+output fail closed, and detached SHA output is trusted only when it names one
+known snapshot record.
+
 ## Proposed Architecture
 
 A resolver module holding the rules, the precedence order, and the git access strategy.

@@ -82,7 +82,7 @@ the architectural closure.
 | FH-036 | Required-component manifest copied the mutable mapping | Every required component is declared independently and every deletion turns the audit red | regression captured |
 | FH-037 | Full discovery loaded mutation tests under two module identities | Nested test execution must mutate and assert against one explicit module identity | regression captured |
 | FH-038 | Detached HEAD branch limitation was silently reported as an ordinary unmatched commit | Detached HEAD keeps trailer truth and reports branch attribution unavailability without degrading unrelated attached history | regression captured |
-| FH-039 | New HEAD-state Git boundaries lacked return-code regressions | Every HEAD-state command distinguishes ordinary negative, failure, termination, and malformed success | open |
+| FH-039 | New HEAD-state Git boundaries lacked return-code regressions | Every HEAD-state command distinguishes ordinary negative, failure, termination, and malformed success | regression captured |
 
 ## Failure Records
 
@@ -1189,7 +1189,39 @@ the architectural closure.
   `build_attribution()` and public commit lookup.
 - **Reviewer evidence**: Important whole-branch finding against redesign test
   strategy lines 212–213 at `34ca965`.
-- **Status**: open.
+- **RED evidence**: after the missing FH-039 traceability mapping first failed,
+  the eight-test focused boundary set found that an unknown rc=0 HEAD SHA
+  correctly raised a fatal error but was still stored in
+  `snapshot["head_sha"]`. The focused run reached terminal exit 1 with one
+  failure and seven passes.
+- **Implementation evidence**: `519301b` assigns a detached HEAD SHA only
+  after its successful output is one token and matches a snapshot record. The
+  same commit adds the independently declared eight-component traceability
+  mapping and every injected return-code regression.
+- **Qualified executable evidence**:
+  `tests.test_commit_graph.HeadStateBoundaryTests.test_symbolic_ref_rc1_is_detached_and_reads_valid_head_sha`,
+  `tests.test_commit_graph.HeadStateBoundaryTests.test_symbolic_ref_failure_and_termination_are_fatal`,
+  `tests.test_commit_graph.HeadStateBoundaryTests.test_symbolic_ref_malformed_success_fails_closed`,
+  `tests.test_commit_graph.HeadStateBoundaryTests.test_detached_head_sha_failure_and_termination_are_fatal`,
+  `tests.test_commit_graph.HeadStateBoundaryTests.test_detached_head_sha_malformed_success_fails_closed`,
+  `tests.test_commit_resolution.HeadStateBoundaryProjectionTests.test_symbolic_ref_failure_projects_fatal_without_detached_diagnostic`,
+  `tests.test_commit_resolution.HeadStateBoundaryProjectionTests.test_detached_sha_failure_projects_fatal_without_detached_diagnostic`,
+  and
+  `tests.test_commit_resolution.TestDetachedHead.test_trailer_resolves_and_branch_gap_is_reported`.
+- **Focused GREEN evidence**: the eight boundary/public projection tests
+  passed 8/8 in 0.792 seconds; full executable traceability passed 3/3 in
+  38.326 seconds; graph, detached, linkage, and converge consumers passed
+  144/144 in 27.369 seconds.
+- **Terminal verification evidence**: the six Issue 095 suites reached
+  terminal exit 0 with 364/364 tests passed in 216.423 seconds. Full
+  `python3 -m unittest discover -s tests` reached terminal exit 0 with
+  1028/1028 tests passed in 311.711 seconds. Release check returned
+  `valid: true` with `errors: []`; project validation was valid with no errors,
+  spec consistency reported 0/0/0, lifecycle drift was `[]`, and diff check
+  was clean.
+- **Historical state (preserved)**: open from whole-branch re-review at
+  `34ca965` through the RED and remediation gates.
+- **Status**: regression captured.
 
 ## T08 Executable Invariant Audit
 

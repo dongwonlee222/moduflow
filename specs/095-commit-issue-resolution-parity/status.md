@@ -1210,3 +1210,31 @@ Final remediation gates:
 FH-038 is `regression captured`, not closed. F2, lifecycle phase, and the next
 command remain unchanged until independent whole-branch review accepts the
 remediation.
+
+## T09 whole-branch FH-039 remediation — 2026-07-29
+
+Whole-branch re-review at `34ca965` found that the new HEAD-state Git commands
+had no executable ordinary-negative/failure/termination/malformed-success
+matrix. The missing traceability mapping first turned the audit RED, then the
+focused boundary set exposed a product-state defect: an unknown successful
+HEAD SHA produced a fatal error but remained stored in the snapshot.
+
+`519301b` stores a detached HEAD SHA only after one-token parsing and snapshot
+membership validation. Eight independently declared components now cover
+symbolic-ref rc=1, both commands' failures and signal termination, malformed
+successful output, public fatal projection without a fabricated detached
+diagnostic, and the valid detached path.
+
+Final remediation gates:
+
+| Gate | Result |
+| --- | --- |
+| HEAD boundary/public projection focus | exit 0; 8/8 passed in 0.792 seconds |
+| Complete executable traceability | exit 0; 3/3 passed in 38.326 seconds |
+| Graph and direct consumers | exit 0; 144/144 passed in 27.369 seconds |
+| Six Issue 095 suites | exit 0; 364/364 passed in 216.423 seconds |
+| Full unittest discovery | exit 0; 1028/1028 passed in 311.711 seconds |
+| Release/spec/project/lifecycle/diff | all exit 0; release and project errors empty; spec 0/0/0; drift `[]` |
+
+FH-039 is `regression captured`, not closed. F2, lifecycle phase, and the next
+command remain unchanged until independent whole-branch re-review accepts it.
