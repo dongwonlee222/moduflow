@@ -72,7 +72,7 @@ the architectural closure.
 | FH-026 | A yielded long-running test was reported green before exit | Verification evidence includes the terminal process exit and summary | regression captured |
 | FH-027 | Fault-injection fixtures still matched the retired Git command | Boundary migrations update every direct failure fixture before review | regression captured |
 | FH-028 | Topic-fork diagnostics disappeared at live attribution | Every live consumer preserves scoped diagnostics through compatibility surfaces | regression captured |
-| FH-029 | Publication recovery probed Git per history record | Snapshot traversal must not make subprocess count grow with history length | open |
+| FH-029 | Publication recovery probed Git per history record | Snapshot traversal must not make subprocess count grow with history length | regression captured |
 | FH-030 | A compatibility wrapper retained the retired global-base policy | Compatibility paths delegate per topic or are removed | regression captured |
 | FH-031 | Range-truncated snapshots rejected valid topology output | Topology inventory is complete and range projection is separate | regression captured |
 | FH-032 | Structured diagnostics duplicated flat compatibility errors | Compatibility messages are stable and deduplicated without losing diagnostic scope | regression captured |
@@ -817,7 +817,28 @@ the architectural closure.
   The result and topic content stayed identical, but total external Git calls
   grew 7/10/19/34 and `git merge-base --all` calls grew 2/3/5/9 because
   `_publication_forks()` issued one pairwise query per publication merge.
-- **Status**: open.
+- **Resolution evidence**: `82a6fd9` moved publication merge-base recovery and
+  recovered-fork ordering into the captured parent graph. Qualified executable
+  proof is
+  `tests.test_commit_graph.TopicDeltaTests.test_repeated_publication_history_has_constant_git_call_budget`
+  (actual Git, identical refs and semantic topic result; local RED
+  7/10/18/37 total calls, GREEN 6/6/6/6 with 1/1/1/1 external merge-base
+  calls) plus
+  `tests.test_commit_resolution.FailureInvariantMutationTests.test_fh029_composite_detects_per_publication_git_probe`.
+  `REQUIRED_FAILURE_COMPONENTS["FH-029"]` independently requires both
+  components, and
+  `tests.test_commit_resolution.FailureInvariantMutationTests.test_fh036_every_declared_component_deletion_is_detected`
+  proves their removal turns the audit red. The six Issue 095 suites reached
+  terminal exit 0: 370 tests passed in 369.521 seconds.
+- **Verification attempt preserved**: full discovery at implementation HEAD
+  `ee51962` ran 1,034 tests in 482.561 seconds and reported two release-check
+  fixture failures because the behavior commit was still HEAD with no version
+  bump. Direct release evidence isolated the only error to
+  `version_bump_gate`; validation, linkage, lint, security, tests, project
+  doctor, and release docs were all green. The canonical source manifest bump
+  amended into `82a6fd9` makes that implementation-HEAD condition historical
+  before the final rerun; no installed plugin, cache, or release was updated.
+- **Status**: regression captured.
 
 ### FH-030 — Retired Global-Base Compatibility Wrapper
 
@@ -1350,7 +1371,7 @@ evidence rather than product behavior.
 | FH-026 | `FailureHistoryTraceabilityTests.test_process_gate_records_terminal_exit_and_summary` | `2a000c0` and T08 terminal exit 0, 338 tests |
 | FH-027 | `ResolveIssueForCommitTests.test_trailer_resolution` | `a4065f6` |
 | FH-028 | `TopicDeltaTests.test_cached_topology_failure_reaches_membership_on_every_build` | `83913d9`, `414a81f` |
-| FH-029 | `TopicDeltaTests.test_publication_recovery_ignores_unrelated_history_for_command_count` | `b2ddde6`, `db7aee8` |
+| FH-029 | repeated-publication constant-budget + unrelated-history stability + per-publication-probe mutation | `b2ddde6`, `db7aee8`, `82a6fd9` |
 | FH-030 | `SharedOwnershipTests.test_live_resolution_has_no_global_base_election_or_origin_head_probe` | `76e8f97` |
 | FH-031 | `TestRangeProjection.test_live_range_projects_only_target_topic` | `380e23e`, `fd08636` |
 | FH-032 | `DiagnosticProjectionTests.test_compatibility_errors_dedupe_in_first_seen_order` | `8221ea0` |
@@ -1372,6 +1393,7 @@ qualified test is executed by
 | FH-020 | literal declaration coverage + ground truth + nonempty truth sanity + no oracle + metamorphic subject order |
 | FH-026 | current T08 terminal evidence + exact-block-removal mutation |
 | FH-027 | current snapshot fixture + real branch topology + structured consumer failure + consumer precedence |
+| FH-029 | actual Git 1/2/4/8 publication budget + per-publication subprocess mutation + independent required manifest |
 | FH-032 | first-seen flat dedupe + structured octopus multiplicity + structured multi-name multiplicity |
 | FH-033 | FH-001 literal truth + same-wrong mutation + FH-007/FH-026 mutations + canonical component-removal mutation |
 | FH-034 | preserved FH-026 state + exact FH-033 remediation commit + qualified acceptance evidence |
