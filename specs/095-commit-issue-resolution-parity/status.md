@@ -1,6 +1,6 @@
 # Issue 095 Execution Status
 
-**Status: active** — started 2026-07-26. Redesign implementation and pre-review verification are complete; independent whole-branch review is next. Earlier review rounds below are retained as history.
+**Status: active** — started 2026-07-26. T01–T09 implementation, final verification, and independent whole-branch review are complete; ready for PR preparation. Earlier review rounds below are retained as history.
 
 ## Progress
 
@@ -18,7 +18,7 @@
 | F | F1 fail-closed registry and graph handling | done | `21d1290`, `881d81d` |
 | F | F2 global precedence and safe base selection | done | `ef149a8`, `4f5d14a` |
 | F | F3 artifact and lifecycle reconciliation | done | this documentation commit |
-| F | F4 full verification and final review | pending | — |
+| F | F4 full verification and final review | done | `f19762d` |
 
 ## Stream A outcome
 
@@ -1118,8 +1118,7 @@ degradation summaries. The controller six-module gate passed 335/335 in
 
 ## Current task
 
-T09 / F2 — run full verification, reproduce the historical-octopus scope
-boundary, and complete independent whole-branch review.
+Prepare the Issue 095 PR handoff. Execution and review gates are complete.
 
 ## T08 / F1 completion — 2026-07-29
 
@@ -1238,3 +1237,42 @@ Final remediation gates:
 
 FH-039 is `regression captured`, not closed. F2, lifecycle phase, and the next
 command remain unchanged until independent whole-branch re-review accepts it.
+
+## T09 / F2 completion — 2026-07-29
+
+Whole-branch review subsequently found and closed three additional design
+boundaries without deleting their failed approaches:
+
+- `FH-040`: unrelated non-issue side refs could silently move the topic fork.
+  `86b06d2` fixed the original under-collection; `704a813` removed the
+  unproven no-anchor fallback and fails closed on multiple divergent
+  candidates.
+- `FH-029`: publication recovery still issued a merge-base subprocess per
+  historical publication. `82a6fd9` derives publication forks from the single
+  captured parent graph; publication counts 1/2/4/8 now use total external Git
+  calls 6/6/6/6 and merge-base calls 1/1/1/1.
+- `FH-035`: terminal evidence accepted zero tests or zero duration.
+  `13c4c54` parses both values and requires each to be positive.
+
+Independent final whole-branch spec and quality reviews both approved with
+Critical 0 / Important 0 / Minor 0. The final controller verification at
+`f19762d` produced:
+
+| Gate | Result |
+| --- | --- |
+| Full unittest discovery | exit 0; 1035/1035 passed in 417.627 seconds; no failures or errors |
+| Spec consistency | exit 0; findings 0/0/0; coverage 9 checked, 0 flagged |
+| Release check | exit 0; `valid: true`; `errors: []`; every named check passed |
+| Project validation | exit 0; `valid: true`; `errors: []`; only pre-existing warnings |
+| Lifecycle drift | exit 0; `[]` |
+| Diff and worktree | clean |
+
+Read-only Issue 093 evidence remains 56 commits and 46 files with
+`scripts/project_issue_schema.py` included and no diagnostics, fatal errors,
+or compatibility errors. Historical octopus
+`777b04e6fe531d46a123aadbb236fcf3cb33e5c7` remains in the unscoped diagnostic
+corpus, stays outside current release errors, and fails closed when explicitly
+included in the caller scope.
+
+F2 is complete. Lifecycle phase is `review`; the next command is
+`product:pr 095-commit-issue-resolution-parity`.

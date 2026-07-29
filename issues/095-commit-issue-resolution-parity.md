@@ -1,6 +1,6 @@
 # Issue 095: Commit-to-Issue Resolution Parity
 
-**Status: active** — created 2026-07-25, started 2026-07-26; redesign implementation and pre-review gates complete, independent whole-branch review pending.
+**Status: active** — created 2026-07-25, started 2026-07-26; implementation and independent review complete, ready for PR preparation.
 **Priority: p1**
 **Blocked-by:**
 
@@ -120,7 +120,7 @@ existing history. Do not make converge gate the review verdict.
 - [x] failure history → `specs/095-commit-issue-resolution-parity/failure-history.md`
 - [x] implementation readiness → `specs/095-commit-issue-resolution-parity/implementation-readiness.json`
 - [x] workers → `specs/095-commit-issue-resolution-parity/worker-plan.md` + `worker-plan.json`
-- [ ] review → review notes
+- [x] review → independent whole-branch spec and quality reviews approved 0/0/0
 
 ## Related Issues
 
@@ -153,6 +153,7 @@ existing history. Do not make converge gate the review verdict.
 - 2026-07-29: T09's first full discovery exposed `FH-037`, where top-level and package-qualified module identities let two mutation injections miss their nested assertions. The RED result (1016 tests, 2 failures, exit 1) was preserved before `5d1509a`; independent FH-037 spec and quality reviews approved 0/0/0. Fresh pre-review gates at `a1616d5` passed 1018/1018 in 288.945 seconds, spec 0/0/0, release/project valid with empty errors, lifecycle drift `[]`, and clean diff. Read-only Issue 093 evidence remains 56 commits/46 files with the schema included and no diagnostics/fatal/errors. The historical octopus stays in the unscoped corpus, is absent from current release errors, and fails closed when explicitly scoped. F2 remains open until independent whole-branch review.
 - 2026-07-29: whole-branch review opened `FH-038`: detached HEAD trailer resolution found the owner but silently omitted the required branch-attribution limitation, and an untrailed detached commit was indistinguishable from ordinary unmatched history. `193f334` added a current-HEAD SHA-scoped `detached-head-branch-unavailable` diagnostic with existing degraded/compatibility projection; `94cbdda` and `9934d78` migrated every direct consumer fixture. The actual-Git set passed 4/4, the six Issue 095 suites passed 357/357, and full discovery passed 1021/1021. F2 remains open pending independent re-review.
 - 2026-07-29: whole-branch re-review opened `FH-039` because the new HEAD-state commands lacked ordinary-negative/failure/termination/malformed-success regressions. The RED set additionally found that an unknown successful HEAD SHA remained stored despite a fatal error. `519301b` now validates before assignment and adds an independent eight-component boundary manifest. Focused consumers passed 144/144, the six Issue 095 suites passed 364/364, full discovery passed 1028/1028, and release/spec/project/lifecycle/diff gates passed. F2 remains open pending independent re-review.
+- 2026-07-29: completed T09 and final whole-branch review. Review-discovered side-ref provenance (`FH-040`), publication-history subprocess growth (`FH-029` recurrence), and zero-valued terminal evidence (`FH-035` recurrence) were preserved before correction. Final independent spec and quality reviews both approved 0/0/0. Controller verification at `f19762d` passed 1035/1035 in 417.627 seconds; spec findings are 0/0/0, release/project are valid with empty errors, lifecycle drift is `[]`, and diff/worktree are clean. Issue 093 remains 56 commits/46 files with the schema included and no diagnostics/fatal/errors. Phase advanced to review; PR preparation is next.
 
 ## Links
 
@@ -166,4 +167,4 @@ existing history. Do not make converge gate the review verdict.
 
 ## Next Command
 
-`product:execute 095-commit-issue-resolution-parity`
+`product:pr 095-commit-issue-resolution-parity`

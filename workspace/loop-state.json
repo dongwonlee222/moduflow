@@ -17,20 +17,20 @@
     "087-korean-github-pr-review-surface"
   ],
   "active_issue_id": "095-commit-issue-resolution-parity",
-  "phase": "execute",
+  "phase": "review",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:execute 095-commit-issue-resolution-parity",
+  "next_command": "product:pr 095-commit-issue-resolution-parity",
   "attempts": {
-    "command": "product:execute 095-commit-issue-resolution-parity",
+    "command": "product:pr 095-commit-issue-resolution-parity",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-07-27"
+    "last_changed_at": "2026-07-29"
   },
   "blocker": null,
-  "last_action": "completed T09 pre-review verification after FH-037 remediation; independent whole-branch review remains before F2 completion",
-  "last_verification": "2026-07-29 at a1616d5: spec 0/0/0; full discovery 1018/1018 in 288.945s; release/project valid with errors []; lifecycle drift []; diff clean; Issue093 56 commits/46 files with schema and no diagnostics/fatal/errors; historical octopus scoped correctly",
+  "last_action": "completed T09 full verification and independent whole-branch spec/quality review; Issue 095 is ready for PR preparation",
+  "last_verification": "2026-07-29 at f19762d: controller full discovery 1035/1035 in 417.627s; spec 0/0/0; release/project valid with errors []; lifecycle drift []; diff/status clean; final whole-branch spec and quality reviews both approved 0/0/0; Issue093 56 commits/46 files with schema and no diagnostics/fatal/errors; historical octopus scoped correctly",
   "updated_at": "2026-07-29",
   "git_binding": {
     "mode": "git-files",
@@ -111,14 +111,33 @@
       "46b0e9d",
       "720c797",
       "5d1509a",
-      "a1616d5"
+      "a1616d5",
+      "22e679f",
+      "f27e113",
+      "193f334",
+      "94cbdda",
+      "9934d78",
+      "34ca965",
+      "eff8a85",
+      "519301b",
+      "bdfb70c",
+      "86b06d2",
+      "1febab9",
+      "0f10079",
+      "704a813",
+      "be86cdd",
+      "82a6fd9",
+      "0486915",
+      "fb62aad",
+      "13c4c54",
+      "f19762d"
     ],
     "pull_request": null,
     "release": null,
     "execution_backend": {
       "type": "host-subagent",
-      "status": "executing",
-      "reason": "Dongwon Lee selected the recommended subagent-driven workflow; the worker plan requires sequential T01 through T09 execution",
+      "status": "completed",
+      "reason": "Sequential T01 through T09 execution and independent whole-branch spec/quality review completed with no open finding",
       "session": "codex-2026-07-27"
     }
   }
