@@ -756,6 +756,11 @@ the architectural closure.
   `git rev-parse --verify HEAD` as unexpected; 19 downstream failures shared
   that stale fixture cause. The remaining failure was the earlier detached
   semantic assertion that incorrectly required empty degradation.
+- **Full-discovery recurrence evidence**: after the first direct-consumer
+  migration, full discovery reached terminal exit 1 with 1021 tests and four
+  failures in 336.303 seconds. The release-check FakeRunner still omitted the
+  HEAD snapshot boundary, causing its two linkage tests to fail and both
+  current-repository release assertions to fail transitively.
 - **Status**: regression captured.
 
 ### FH-028 — Topic Diagnostics Disappeared at Live Attribution

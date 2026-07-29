@@ -15,7 +15,10 @@ class FakeRunner:
     fail first and succeed later (shallow-clone fetch recovery)."""
 
     def __init__(self, responses):
-        self.responses = responses
+        self.responses = {
+            HEAD_REF_ARGS: "refs/heads/main\n",
+            **responses,
+        }
         self.calls = []
 
     def __call__(self, args, cwd, timeout=None):
@@ -35,6 +38,7 @@ MERGE_BASE_ARGS = ("git", "merge-base", "HEAD", "origin/main")
 FETCH_ARGS = ("git", "fetch", "origin", "main", "--depth=200")
 BRANCH_REF_ARGS = tuple(linkage_check.commit_resolution.BRANCH_REF_ARGS)
 ISSUE_HISTORY_ARGS = tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS)
+HEAD_REF_ARGS = tuple(linkage_check.commit_resolution.HEAD_REF_ARGS)
 
 HUMANS = [{"name": "Dongwon Lee", "email": "webn77@gmail.com"}]
 
