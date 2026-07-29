@@ -1047,6 +1047,17 @@ the architectural closure.
   whitespace-tolerant terminal-summary pattern accepted zero tests and zero
   seconds, so a syntactically complete but non-positive process result could
   still satisfy the evidence invariant.
+- **Positive-terminal remediation evidence**: `13c4c54` changes
+  `tests.test_commit_resolution.ProcessGateInvariantTests.test_t08_audit_evidence_records_terminal_exit_and_summary`
+  to parse the captured count and duration and require both to be greater than
+  zero.
+  `tests.test_commit_resolution.FailureInvariantMutationTests.test_fh035_terminal_evidence_rejects_zero_count_and_duration`
+  independently replaces each field with zero and requires both mutations to
+  turn the invariant red. The positive evidence plus both mutations and the
+  traceability audit passed 4/4 in 75.459 seconds with terminal exit 0.
+- **Positive-terminal full focused evidence**: after the remediation, the six
+  Issue 095 suites reached terminal exit 0 with 371/371 tests passed in
+  352.056 seconds.
 - **Historical state (preserved)**: open during T08 remediation and review.
 - **Status**: regression captured.
 
@@ -1406,7 +1417,7 @@ qualified test is executed by
 | FH-032 | first-seen flat dedupe + structured octopus multiplicity + structured multi-name multiplicity |
 | FH-033 | FH-001 literal truth + same-wrong mutation + FH-007/FH-026 mutations + canonical component-removal mutation |
 | FH-034 | preserved FH-026 state + exact FH-033 remediation commit + qualified acceptance evidence |
-| FH-035 | whitespace-tolerant current terminal evidence + exact-block-removal mutation |
+| FH-035 | whitespace-tolerant positive terminal evidence + zero-count/zero-duration mutations + exact-block-removal mutation |
 | FH-036 | independent required manifest + exhaustive every-component deletion mutation |
 
 ## Required Design Traceability
