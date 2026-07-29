@@ -222,6 +222,14 @@ FAILURE_INVARIANT_TESTS = {
         "tests.test_commit_resolution.FailureEvidenceInvariantTests."
         "test_fh034_record_declares_append_only_remediation_contract",
     ),
+    "FH-035": (
+        "tests.test_commit_resolution.ProcessGateInvariantTests."
+        "test_t08_audit_evidence_records_terminal_exit_and_summary",
+        "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+        "test_fh034_record_declares_append_only_remediation_contract",
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh026_current_audit_block_removal_is_detected",
+    ),
 }
 
 REQUIRED_FAILURE_COMPONENTS = {
@@ -507,6 +515,7 @@ class FailureEvidenceInvariantTests(unittest.TestCase):
         section = self._failure_section("FH-033", "### FH-034")
 
         self.assertIn("`04bae8d`", section)
+        self.assertIn("`910a19c`", section)
         self.assertIn(
             "`CommitDirectionTruthTests."
             "test_bare_and_indexed_resolution_match_declared_truth`",
@@ -523,12 +532,13 @@ class FailureEvidenceInvariantTests(unittest.TestCase):
         """FH-034: the corpus declares preservation plus exact fix evidence."""
         section = self._failure_section(
             "FH-034",
-            "## T08 Executable Invariant Audit",
+            "### FH-035",
         )
 
         self.assertIn("preserves prior status text as history", section)
         self.assertIn("exact fixing commit", section)
         self.assertIn("qualified executable test evidence", section)
+        self.assertIn("`910a19c`", section)
         self.assertIn(
             "`FailureEvidenceInvariantTests."
             "test_fh026_preserves_historical_regression_state`",
@@ -537,6 +547,10 @@ class FailureEvidenceInvariantTests(unittest.TestCase):
         self.assertIn(
             "`FailureEvidenceInvariantTests."
             "test_fh033_records_first_remediation_commit_and_qualified_evidence`",
+            section,
+        )
+        self.assertIn(
+            "terminal exit 0: 350 tests passed in 223.391 seconds",
             section,
         )
         self.assertEqual(section.count("- **Status**:"), 1)
@@ -548,14 +562,15 @@ class ProcessGateInvariantTests(unittest.TestCase):
         section = _failure_corpus().split(
             "### FH-026", 1
         )[1].split("### FH-027", 1)[0]
-        marker = "- **T08 audit evidence**:"
+        marker = "- **T08 I3 terminal evidence**:"
 
         self.assertEqual(section.count(marker), 1)
         evidence = section.split(marker, 1)[1].split("\n- **", 1)[0]
-        self.assertIn("six Issue 095 suites", evidence)
+        self.assertRegex(evidence, r"six\s+Issue\s+095\s+suites")
         self.assertRegex(
             evidence,
-            r"terminal exit 0: \d+ tests passed in \d+(?:\.\d+)? seconds",
+            r"terminal\s+exit\s+0:\s+\d+\s+tests\s+passed\s+in\s+"
+            r"\d+(?:\.\d+)?\s+seconds",
         )
 
 
@@ -635,7 +650,7 @@ class FailureInvariantMutationTests(unittest.TestCase):
         """FH-033: FH-026 fails when the current T08 evidence is removed."""
         corpus = _failure_corpus()
         mutated = re.sub(
-            r"\n- \*\*T08 audit evidence\*\*:.*?(?=\n- \*\*)",
+            r"\n- \*\*T08 I3 terminal evidence\*\*:.*?(?=\n- \*\*)",
             "",
             corpus,
             count=1,

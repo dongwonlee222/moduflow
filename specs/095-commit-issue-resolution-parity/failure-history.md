@@ -78,6 +78,7 @@ the architectural closure.
 | FH-032 | Structured diagnostics duplicated flat compatibility errors | Compatibility messages are stable and deduplicated without losing diagnostic scope | regression captured |
 | FH-033 | Traceability accepted IDs without proving their invariants | Every mapping executes the complete derived invariant, not only a named test | open |
 | FH-034 | Failure remediation overwrote prior state or omitted implementation evidence | Corrections preserve prior text and append fixing commit plus executable evidence | open |
+| FH-035 | Line-wrapped terminal evidence failed a literal-string assertion | Process evidence assertions tolerate Markdown wrapping while preserving exact fields | open |
 
 ## Failure Records
 
@@ -699,6 +700,9 @@ the architectural closure.
   removes that exact block and proves the process invariant turns red.
 - **T08 I2 green evidence**: the remediated six-suite command was polled in
   the same session to terminal exit 0: 343 tests passed in 226.614 seconds.
+- **T08 I3 terminal evidence**: after the second remediation, the six Issue
+  095 suites were polled in the same session to terminal exit 0: 350 tests
+  passed in 223.391 seconds.
 - **Status**: open until the process-gate test identifies the current T08
   evidence specifically and fails when that evidence is removed.
 
@@ -903,6 +907,12 @@ the architectural closure.
   for the same-wrong-result mutation, and
   `FailureInvariantMutationTests.test_fh033_required_manifest_detects_removed_fh001_commit_truth`
   for required-component deletion.
+- **T08 I3 implementation evidence**: `910a19c` adds the literal truth
+  assertion, same-wrong-result mutation, canonical required-component
+  manifest, and component-removal mutation.
+- **T08 I3 green evidence**: the focused remediation set passed 12/12 in
+  37.759 seconds, then the six-suite process reached terminal exit 0 with
+  350/350 passing in 223.391 seconds.
 - **Status**: open until mutation-sensitive or composite invariant tests cover
   each mapped requirement and the traceability audit fails when any component
   is removed.
@@ -928,8 +938,46 @@ the architectural closure.
   requires the exact first-remediation commit and qualified proof names; and
   `FailureEvidenceInvariantTests.test_fh034_record_declares_append_only_remediation_contract`
   keeps this contract executable.
+- **Resolution candidate evidence**: `910a19c` restores the preserved FH-026
+  state, records `04bae8d` in FH-033, and makes the append-only acceptance
+  checks executable.
+- **Terminal verification evidence**: the six Issue 095 suites were polled in
+  the same session to terminal exit 0: 350 tests passed in 223.391 seconds.
 - **Status**: open until historical status is restored append-only and fixing
   commit plus executable evidence are recorded and validated.
+
+### FH-035 — Line-Wrapped Terminal Evidence Rejected
+
+- **Topology**: a terminal-evidence sentence wraps between `Issue` and `095`
+  under the repository's Markdown line length.
+- **Observed failure**: after the six-suite process passed 350/350, the focused
+  evidence run exited 1 with two failures because
+  `ProcessGateInvariantTests.test_t08_audit_evidence_records_terminal_exit_and_summary`
+  required the contiguous literal `six Issue 095 suites`.
+- **Invalid assumption**: semantic evidence fields remain contiguous in the
+  Markdown source after normal line wrapping.
+- **Derived invariant**: process evidence assertions tolerate whitespace
+  wrapping between semantic tokens while continuing to require the exact
+  suite label, terminal exit code, test count, and duration.
+- **Evidence**: T08 I3 focused evidence run after `910a19c`: 12 tests, two
+  failures, terminal exit 1.
+- **Recurrence evidence**: the first whitespace fix covered only the suite
+  label. The next 12-test focused run still exited 1 with three failures:
+  count/duration wrapping remained literal-sensitive, and the new FH-035
+  heading exposed FH-034's next-heading delimiter as incomplete.
+- **Executable remediation evidence**:
+  `ProcessGateInvariantTests.test_t08_audit_evidence_records_terminal_exit_and_summary`
+  uses whitespace-tolerant suite-label and summary patterns,
+  `FailureEvidenceInvariantTests.test_fh034_record_declares_append_only_remediation_contract`
+  isolates FH-034 at the next failure heading, while
+  `FailureInvariantMutationTests.test_fh026_current_audit_block_removal_is_detected`
+  still proves that deleting the complete current evidence block turns the
+  invariant red.
+- **Green evidence**: the corrected focused set passed 12/12 in 36.576
+  seconds. The final six-suite rerun was polled in the same session to terminal
+  exit 0: 350 tests passed in 208.494 seconds.
+- **Status**: open until the focused and six-suite gates pass with terminal
+  exits after this correction.
 
 ## T08 Executable Invariant Audit
 
@@ -994,6 +1042,7 @@ qualified test is executed by
 | FH-032 | first-seen flat dedupe + structured octopus multiplicity + structured multi-name multiplicity |
 | FH-033 | FH-001 literal truth + same-wrong mutation + FH-007/FH-026 mutations + canonical component-removal mutation |
 | FH-034 | preserved FH-026 state + exact FH-033 remediation commit + qualified acceptance evidence |
+| FH-035 | whitespace-tolerant current terminal evidence + exact-block-removal mutation |
 
 ## Required Design Traceability
 
@@ -1020,5 +1069,6 @@ The redesign maps its requirements to this corpus:
 | Stable flat compatibility messages over structured diagnostics | FH-032 |
 | Mutation-sensitive executable invariant coverage | FH-033 |
 | Append-only remediation evidence | FH-034 |
+| Markdown-wrap-tolerant terminal evidence | FH-035 |
 
 Future findings extend this table rather than replacing it.
