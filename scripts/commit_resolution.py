@@ -75,9 +75,13 @@ ISSUE_HISTORY_ARGS = (
 SOURCE_PRECEDENCE = ("trailer", "branch", "merge-subject")
 
 DEGRADED_BRANCH_UNAVAILABLE = "branch-unavailable"
+DIAGNOSTIC_DETACHED_HEAD_BRANCH_UNAVAILABLE = (
+    "detached-head-branch-unavailable"
+)
 BRANCH_AVAILABILITY_DIAGNOSTICS = frozenset(
     {
         "ambiguous-topic-fork",
+        DIAGNOSTIC_DETACHED_HEAD_BRANCH_UNAVAILABLE,
         "topic-publication-fork-unresolved",
         "topic-ref-missing",
     }
@@ -905,6 +909,21 @@ def build_attribution(
         attribution = {
             sha: attribution[sha] for sha in order if sha in attribution
         }
+    detached_head_sha = snapshot.get("head_sha")
+    if (
+        snapshot.get("head_detached")
+        and detached_head_sha in order
+    ):
+        diagnostics.append(
+            commit_graph.diagnostic(
+                DIAGNOSTIC_DETACHED_HEAD_BRANCH_UNAVAILABLE,
+                (
+                    f"commit {detached_head_sha} is checked out at detached "
+                    "HEAD; branch attribution is unavailable"
+                ),
+                sha=detached_head_sha,
+            )
+        )
     unmatched = [sha for sha in order if sha not in attribution]
     projected_diagnostics = project_diagnostics(
         diagnostics,
@@ -972,7 +991,25 @@ def _resolution_result(sha, *, built=None):
 
 
 def _from_index_result(sha, built):
-    result = _resolution_result(sha, built=built)
+    projected_diagnostics = project_diagnostics(
+        built.get("diagnostics", []),
+        target_shas={sha},
+    )
+    fatal_errors = list(built.get("fatal_errors", []))
+    projected = {
+        **built,
+        "fatal_errors": fatal_errors,
+        "diagnostics": projected_diagnostics,
+        "degraded": _project_degraded(
+            fatal_errors,
+            projected_diagnostics,
+        ),
+        "errors": compatibility_errors(
+            fatal_errors,
+            projected_diagnostics,
+        ),
+    }
+    result = _resolution_result(sha, built=projected)
     return _from_index(result, built["attribution"], sha)
 
 

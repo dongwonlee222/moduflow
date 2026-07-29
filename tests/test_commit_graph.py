@@ -35,9 +35,14 @@ def disconnected_runner_with_stdout(returncode, stdout):
 
 
 def results_runner(log_result, ref_result):
-    """Route the snapshot's two inventory commands to fixed results."""
+    """Route snapshot inventory commands to fixed attached-HEAD results."""
     def runner(args, cwd=None):
-        result = log_result if args[:2] == ["git", "log"] else ref_result
+        if args[:2] == ["git", "log"]:
+            result = log_result
+        elif args[:2] == ["git", "for-each-ref"]:
+            result = ref_result
+        else:
+            result = (0, "refs/heads/main\n", "")
         return subprocess.CompletedProcess(args, *result)
 
     return runner
@@ -607,7 +612,7 @@ class TopicDeltaTests(unittest.TestCase):
             self.assertTrue(small_result["commits"])
             self.assertTrue(large_result["commits"])
             self.assertEqual(small_calls, large_calls)
-            self.assertEqual(small_calls, 6)
+            self.assertEqual(small_calls, 7)
             self.assertTrue(any(call[:3] == ["git", "merge-base", "--all"] for call in small.call_log))
             self.assertTrue(any(call[:2] == ["git", "rev-list"] for call in small.call_log))
 

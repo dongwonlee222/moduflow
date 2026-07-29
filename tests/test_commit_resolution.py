@@ -245,6 +245,16 @@ FAILURE_INVARIANT_TESTS = {
         "tests.test_commit_resolution.FailureEvidenceInvariantTests."
         "test_fh037_record_names_qualified_module_identity_evidence",
     ),
+    "FH-038": (
+        "tests.test_commit_resolution.TestDetachedHead."
+        "test_trailer_resolves_and_branch_gap_is_reported",
+        "tests.test_commit_resolution.TestDetachedHead."
+        "test_untrailed_detached_commit_reports_branch_limitation",
+        "tests.test_commit_resolution.TestDetachedHead."
+        "test_attached_unrelated_commit_has_no_detached_limitation",
+        "tests.test_commit_resolution.TestDetachedHead."
+        "test_detached_limitation_has_bare_indexed_parity",
+    ),
 }
 
 REQUIRED_FAILURE_COMPONENTS = {}
@@ -544,6 +554,18 @@ REQUIRED_FAILURE_COMPONENTS.update({
             "test_fh037_record_names_qualified_module_identity_evidence",
         }
     ),
+    "FH-038": frozenset(
+        {
+            "tests.test_commit_resolution.TestDetachedHead."
+            "test_trailer_resolves_and_branch_gap_is_reported",
+            "tests.test_commit_resolution.TestDetachedHead."
+            "test_untrailed_detached_commit_reports_branch_limitation",
+            "tests.test_commit_resolution.TestDetachedHead."
+            "test_attached_unrelated_commit_has_no_detached_limitation",
+            "tests.test_commit_resolution.TestDetachedHead."
+            "test_detached_limitation_has_bare_indexed_parity",
+        }
+    ),
 })
 
 
@@ -775,7 +797,7 @@ class FailureEvidenceInvariantTests(unittest.TestCase):
         """FH-037: the corpus names the exact fix, proof, and full gate."""
         section = self._failure_section(
             "FH-037",
-            "## T08 Executable Invariant Audit",
+            "### FH-038",
         )
 
         self.assertIn("`5d1509a`", section)
@@ -1599,7 +1621,32 @@ class TestIssueToCommits(unittest.TestCase):
 
 
 class TestDetachedHead(unittest.TestCase):
+    @staticmethod
+    def _expected_limitation(sha):
+        return {
+            "code": "detached-head-branch-unavailable",
+            "message": (
+                f"commit {sha} is checked out at detached HEAD; "
+                "branch attribution is unavailable"
+            ),
+            "sha": sha,
+        }
+
+    def _assert_detached_limitation(self, out, sha):
+        expected = self._expected_limitation(sha)
+        self.assertEqual(out["fatal_errors"], [])
+        self.assertEqual(out["diagnostics"], [expected])
+        self.assertEqual(
+            out["degraded"],
+            [
+                cr.DEGRADED_BRANCH_UNAVAILABLE,
+                "detached-head-branch-unavailable",
+            ],
+        )
+        self.assertEqual(out["errors"], [expected["message"]])
+
     def test_trailer_resolves_and_branch_gap_is_reported(self):
+        """FH-038: intrinsic trailer truth survives a detached checkout."""
         with GitRepo() as repo:
             repo.commit("chore: base")
             repo.add_issue_file(ISSUE)
@@ -1608,7 +1655,72 @@ class TestDetachedHead(unittest.TestCase):
             out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
             self.assertEqual(out["issue_id"], ISSUE)
             self.assertEqual(out["source"], "trailer")
-            self.assertEqual(out["errors"], [], "degraded resolution must not raise")
+            self._assert_detached_limitation(out, sha)
+
+    def test_untrailed_detached_commit_reports_branch_limitation(self):
+        """FH-038: detached unmatched is not silently ordinary unmatched."""
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.detach()
+            sha = repo.commit("feat: detached work without trailer")
+
+            out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
+
+        self.assertIsNone(out["issue_id"])
+        self.assertIsNone(out["source"])
+        self._assert_detached_limitation(out, sha)
+
+    def test_attached_unrelated_commit_has_no_detached_limitation(self):
+        """FH-038: ordinary attached unmatched history is not degraded."""
+        with GitRepo() as repo:
+            sha = repo.commit("chore: unrelated")
+            out = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
+
+        self.assertIsNone(out["issue_id"])
+        self.assertEqual(out["fatal_errors"], [])
+        self.assertEqual(out["diagnostics"], [])
+        self.assertEqual(out["degraded"], [])
+        self.assertEqual(out["errors"], [])
+
+    def test_detached_limitation_has_bare_indexed_parity(self):
+        """FH-038: both public commit call shapes project one index signal."""
+        with GitRepo() as repo:
+            base = repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.detach()
+            sha = repo.commit("feat: detached work without trailer")
+            built = cr.build_attribution(repo.runner, repo.path)
+            calls_after_build = repo.call_count
+
+            indexed = cr.resolve_issue_for_commit(
+                repo.runner,
+                repo.path,
+                sha,
+                attribution=built,
+            )
+            self.assertEqual(
+                repo.call_count,
+                calls_after_build,
+                "a supplied index must not add a per-commit Git probe",
+            )
+            indexed_base = cr.resolve_issue_for_commit(
+                repo.runner,
+                repo.path,
+                base,
+                attribution=built,
+            )
+            bare = cr.resolve_issue_for_commit(repo.runner, repo.path, sha)
+
+        self.assertEqual(indexed, bare)
+        self._assert_detached_limitation(indexed, sha)
+        self.assertEqual(
+            indexed_base["diagnostics"],
+            [],
+            "a whole index must scope the detached limitation to HEAD",
+        )
+        self.assertEqual(indexed_base["degraded"], [])
+        self.assertEqual(indexed_base["errors"], [])
 
     def test_commit_orphaned_by_branch_deletion_resolves_to_nothing(self):
         """A known limitation, asserted rather than hidden.

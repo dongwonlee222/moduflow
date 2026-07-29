@@ -16,6 +16,8 @@ BRANCH_REF_ARGS = (
     "refs/heads",
     "refs/remotes",
 )
+HEAD_REF_ARGS = ("git", "symbolic-ref", "-q", "HEAD")
+HEAD_SHA_ARGS = ("git", "rev-parse", "--verify", "HEAD")
 
 
 def diagnostic(code, message, *, sha=None, issue_id=None, ref=None):
@@ -747,6 +749,15 @@ def _parse_refs(stdout, fatal_errors):
     return refs
 
 
+def _single_token(stdout):
+    """Return one nonempty whitespace-free token, or None if malformed."""
+    lines = (stdout or "").splitlines()
+    if len(lines) != 1:
+        return None
+    tokens = lines[0].split()
+    return tokens[0] if len(tokens) == 1 else None
+
+
 def load_snapshot(runner, cwd, *, rev_range=None):
     """Read commit records and refs once into one reusable graph snapshot."""
     # Topology must remain complete even when a consumer later projects a
@@ -766,10 +777,41 @@ def load_snapshot(runner, cwd, *, rev_range=None):
         refs = {}
     else:
         refs = _parse_refs(ref_result.stdout, fatal_errors)
+    head_ref = None
+    head_sha = None
+    head_detached = False
+    if not fatal_errors:
+        head_ref_args = list(HEAD_REF_ARGS)
+        head_ref_result = runner(head_ref_args, cwd)
+        if head_ref_result.returncode == 0:
+            head_ref = _single_token(head_ref_result.stdout)
+            if head_ref is None:
+                fatal_errors.append(
+                    "git symbolic-ref -q HEAD produced malformed output "
+                    "(expected exactly one nonempty ref token)"
+                )
+        elif head_ref_result.returncode == 1:
+            head_detached = True
+            head_sha_args = list(HEAD_SHA_ARGS)
+            head_sha_result = runner(head_sha_args, cwd)
+            if head_sha_result.returncode != 0:
+                fatal_errors.append(_failure(head_sha_args, head_sha_result))
+            else:
+                head_sha = _single_token(head_sha_result.stdout)
+                if head_sha is None or head_sha not in records:
+                    fatal_errors.append(
+                        "git rev-parse --verify HEAD produced malformed output "
+                        "(expected exactly one SHA present in the snapshot)"
+                    )
+        else:
+            fatal_errors.append(_failure(head_ref_args, head_ref_result))
     return {
         "records": records,
         "order": order,
         "refs": refs,
+        "head_ref": head_ref,
+        "head_sha": head_sha,
+        "head_detached": head_detached,
         "merge_base_cache": {},
         "merge_bases_cache": {},
         "ancestor_cache": {},
