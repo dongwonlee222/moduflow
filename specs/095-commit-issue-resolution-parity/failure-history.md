@@ -1076,6 +1076,24 @@ the architectural closure.
   must make every mutation turn its target invariant red.
 - **Evidence**: T09 full `python3 -m unittest discover -s tests` at `46b0e9d`,
   terminal exit 1; 1016 tests, 2 failures, 0 errors, 301.944 seconds.
+- **Implementation evidence**: `5d1509a` changed `_run_named_tests()` to load
+  nested tests owned by this file from the explicitly supplied module object,
+  defaulting to the module object at `sys.modules[__name__]`. It does not add
+  or rewrite any `sys.modules` alias.
+- **Qualified executable evidence**:
+  `tests.test_commit_resolution.FailureInvariantMutationTests.test_fh037_named_loader_uses_explicit_owner_module_globals`
+  injects a synthetic owner module and requires the nested assertion to read
+  that exact module's globals. The package-qualified and top-level
+  discovery-style invocations each passed the FH-037/FH-026/FH-033 mutation
+  set 3/3.
+- **Terminal verification evidence**: the six Issue 095 suites reached
+  terminal exit 0 with 353 tests passed in 185.908 seconds. Full
+  `python3 -m unittest discover -s tests` reached
+  terminal exit 0: 1017 tests passed in 279.504 seconds.
+- **Final acceptance rerun evidence**: after adding the evidence acceptance
+  invariant, the six Issue 095 suites reached terminal exit 0 with 354 tests
+  passed in 205.991 seconds. Full `python3 -m unittest discover -s tests`
+  reached final terminal exit 0: 1018 tests passed in 289.178 seconds.
 - **Status**: open.
 
 ## T08 Executable Invariant Audit

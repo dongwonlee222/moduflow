@@ -242,6 +242,8 @@ FAILURE_INVARIANT_TESTS = {
     "FH-037": (
         "tests.test_commit_resolution.FailureInvariantMutationTests."
         "test_fh037_named_loader_uses_explicit_owner_module_globals",
+        "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+        "test_fh037_record_names_qualified_module_identity_evidence",
     ),
 }
 
@@ -538,6 +540,8 @@ REQUIRED_FAILURE_COMPONENTS.update({
         {
             "tests.test_commit_resolution.FailureInvariantMutationTests."
             "test_fh037_named_loader_uses_explicit_owner_module_globals",
+            "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+            "test_fh037_record_names_qualified_module_identity_evidence",
         }
     ),
 })
@@ -763,6 +767,26 @@ class FailureEvidenceInvariantTests(unittest.TestCase):
         self.assertIn(
             "`FailureHistoryTraceabilityTests."
             "test_required_mapping_components_are_present`",
+            section,
+        )
+        self.assertEqual(section.count("- **Status**:"), 1)
+
+    def test_fh037_record_names_qualified_module_identity_evidence(self):
+        """FH-037: the corpus names the exact fix, proof, and full gate."""
+        section = self._failure_section(
+            "FH-037",
+            "## T08 Executable Invariant Audit",
+        )
+
+        self.assertIn("`5d1509a`", section)
+        self.assertIn(
+            "`tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh037_named_loader_uses_explicit_owner_module_globals`",
+            section,
+        )
+        self.assertIn("`python3 -m unittest discover -s tests`", section)
+        self.assertIn(
+            "final terminal exit 0: 1018 tests passed in 289.178 seconds",
             section,
         )
         self.assertEqual(section.count("- **Status**:"), 1)
