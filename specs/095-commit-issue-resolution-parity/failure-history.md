@@ -947,6 +947,9 @@ the architectural closure.
 - **Recurrence evidence**: T08 spec re-review at `b64b26e` found that FH-036
   recorded the implementation commit and prose behavior but omitted the exact
   qualified mutation and traceability test names required by this contract.
+- **Documentation remediation evidence**: `c131b21` adds a RED-first
+  acceptance test and requires the exact FH-036 implementation commit plus
+  both qualified executable names.
 - **Status**: open until historical status is restored append-only and fixing
   commit plus executable evidence are recorded and validated.
 
@@ -1020,6 +1023,15 @@ the architectural closure.
 - **Documentation acceptance evidence**:
   `FailureEvidenceInvariantTests.test_fh036_record_names_qualified_manifest_acceptance`
   requires `d9cdb2d` and both qualified executable names in this record.
+- **Documentation remediation evidence**: `c131b21` first reproduced the
+  omission as one failing acceptance test, then passed the focused
+  evidence/mutation/traceability gate 13/13 in 39.857 seconds.
+- **Verification scope rationale**: no six-suite rerun was required because
+  `c131b21` changes only document acceptance evidence and its traceability
+  registration. The focused gate executes the new acceptance test, every
+  independently declared component-deletion mutation, and the complete
+  executable mapping; resolver and consumer behavior are unchanged. The most
+  recent behavior gate remains 351/351 at `d9cdb2d`.
 - **Status**: open until an exhaustive every-id/every-component mutation test
   fails against the self-derived manifest and passes against an independent
   literal manifest.
