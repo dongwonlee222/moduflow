@@ -230,14 +230,13 @@ FAILURE_INVARIANT_TESTS = {
         "tests.test_commit_resolution.FailureInvariantMutationTests."
         "test_fh026_current_audit_block_removal_is_detected",
     ),
+    "FH-036": (
+        "tests.test_commit_resolution.FailureInvariantMutationTests."
+        "test_fh036_every_declared_component_deletion_is_detected",
+    ),
 }
 
-REQUIRED_FAILURE_COMPONENTS = {
-    failure_id: frozenset(
-        (mapped,) if isinstance(mapped, str) else mapped
-    )
-    for failure_id, mapped in FAILURE_INVARIANT_TESTS.items()
-}
+REQUIRED_FAILURE_COMPONENTS = {}
 REQUIRED_FAILURE_COMPONENTS.update({
     "FH-001": frozenset(
         {
@@ -360,6 +359,166 @@ REQUIRED_FAILURE_COMPONENTS.update({
             "test_fh033_records_first_remediation_commit_and_qualified_evidence",
             "tests.test_commit_resolution.FailureEvidenceInvariantTests."
             "test_fh034_record_declares_append_only_remediation_contract",
+        }
+    ),
+    "FH-002": frozenset(
+        {
+            "tests.test_commit_graph.TopicDeltaTests."
+            "test_base_history_is_not_topic_work",
+        }
+    ),
+    "FH-003": frozenset(
+        {
+            "tests.test_commit_graph.TopicDeltaTests."
+            "test_published_no_ff_topic_recovers_pre_publication_fork",
+        }
+    ),
+    "FH-004": frozenset(
+        {
+            "tests.test_commit_resolution.MergeClaimInvariantTests."
+            "test_subject_token_order_does_not_change_content",
+        }
+    ),
+    "FH-005": frozenset(
+        {
+            "tests.test_commit_graph.TopicDeltaTests."
+            "test_stacked_issue_excludes_inner_content",
+        }
+    ),
+    "FH-006": frozenset(
+        {
+            "tests.test_commit_graph.ForkPointInvariantTests."
+            "test_advancing_trunk_does_not_change_fork_point",
+        }
+    ),
+    "FH-008": frozenset(
+        {
+            "tests.test_commit_resolution_differential.CommitDirectionTests."
+            "test_bare_and_full_result_resolution_use_same_policy",
+        }
+    ),
+    "FH-009": frozenset(
+        {
+            "tests.test_commit_resolution.TestHistoricalIssueRegistry."
+            "test_issue_on_another_checkout_is_registered",
+        }
+    ),
+    "FH-010": frozenset(
+        {
+            "tests.test_commit_graph.SnapshotTests."
+            "test_merge_base_distinguishes_no_base_from_failure",
+        }
+    ),
+    "FH-011": frozenset(
+        {
+            "tests.test_commit_graph.ForkPointInvariantTests."
+            "test_disconnected_ref_does_not_change_connected_topic",
+        }
+    ),
+    "FH-012": frozenset(
+        {
+            "tests.test_commit_graph.ForkPointInvariantTests."
+            "test_same_tail_slash_ref_stays_a_distinct_equivalent_base_ref",
+        }
+    ),
+    "FH-013": frozenset(
+        {
+            "tests.test_commit_graph.ForkPointInvariantTests."
+            "test_incomparable_maximal_forks_are_scoped_to_topic",
+        }
+    ),
+    "FH-015": frozenset(
+        {
+            "tests.test_commit_resolution.MergeClaimInvariantTests."
+            "test_deleted_refs_keep_boundary_but_not_unproven_content",
+        }
+    ),
+    "FH-016": frozenset(
+        {
+            "tests.test_commit_resolution.MergeClaimInvariantTests."
+            "test_two_parent_multi_name_subject_does_not_relabel_side",
+        }
+    ),
+    "FH-017": frozenset(
+        {
+            "tests.test_commit_graph.ForkPointInvariantTests."
+            "test_advancing_trunk_does_not_change_fork_point",
+        }
+    ),
+    "FH-018": frozenset(
+        {
+            "tests.test_linkage_check.FindUnlinkedBehaviorCommitsTests."
+            "test_out_of_range_ambiguity_does_not_fail_release_linkage",
+        }
+    ),
+    "FH-021": frozenset(
+        {
+            "tests.test_linkage_check.ResolveIssueForCommitTests."
+            "test_trailer_resolution",
+        }
+    ),
+    "FH-022": frozenset(
+        {
+            "tests.test_commit_graph.SnapshotTests."
+            "test_merge_base_rejects_empty_or_multitoken_success_output",
+        }
+    ),
+    "FH-023": frozenset(
+        {
+            "tests.test_commit_graph.ForkPointInvariantTests."
+            "test_snapshot_ref_movement_uses_captured_object_ids",
+        }
+    ),
+    "FH-024": frozenset(
+        {
+            "tests.test_commit_graph.ForkPointInvariantTests."
+            "test_criss_cross_best_bases_fail_closed_as_ambiguous",
+        }
+    ),
+    "FH-025": frozenset(
+        {
+            "tests.test_commit_graph.ForkPointInvariantTests."
+            "test_newer_comparable_candidate_is_the_unique_maximal_fork",
+        }
+    ),
+    "FH-028": frozenset(
+        {
+            "tests.test_commit_graph.TopicDeltaTests."
+            "test_cached_topology_failure_reaches_membership_on_every_build",
+        }
+    ),
+    "FH-029": frozenset(
+        {
+            "tests.test_commit_graph.TopicDeltaTests."
+            "test_publication_recovery_ignores_unrelated_history_for_command_count",
+        }
+    ),
+    "FH-030": frozenset(
+        {
+            "tests.test_commit_resolution_parity.SharedOwnershipTests."
+            "test_live_resolution_has_no_global_base_election_or_origin_head_probe",
+        }
+    ),
+    "FH-031": frozenset(
+        {
+            "tests.test_commit_resolution.TestRangeProjection."
+            "test_live_range_projects_only_target_topic",
+        }
+    ),
+    "FH-035": frozenset(
+        {
+            "tests.test_commit_resolution.ProcessGateInvariantTests."
+            "test_t08_audit_evidence_records_terminal_exit_and_summary",
+            "tests.test_commit_resolution.FailureEvidenceInvariantTests."
+            "test_fh034_record_declares_append_only_remediation_contract",
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh026_current_audit_block_removal_is_detected",
+        }
+    ),
+    "FH-036": frozenset(
+        {
+            "tests.test_commit_resolution.FailureInvariantMutationTests."
+            "test_fh036_every_declared_component_deletion_is_detected",
         }
     ),
 })
@@ -704,6 +863,35 @@ class FailureInvariantMutationTests(unittest.TestCase):
         self.assertEqual(len(result.failures), 1)
         self.assertFalse(result.wasSuccessful())
 
+    def test_fh036_every_declared_component_deletion_is_detected(self):
+        """FH-036: every canonical component is independent and mandatory."""
+        source = Path(__file__).read_text(encoding="utf-8")
+        manifest_source = source.split(
+            "REQUIRED_FAILURE_COMPONENTS =", 1
+        )[1].split("\n\ndef _failure_corpus", 1)[0]
+        self.assertNotIn(
+            "FAILURE_INVARIANT_TESTS",
+            manifest_source,
+            "the canonical manifest must not be derived from the mutable map",
+        )
+
+        for failure_id, required in REQUIRED_FAILURE_COMPONENTS.items():
+            for component in required:
+                with self.subTest(
+                    failure_id=failure_id,
+                    removed=component,
+                ):
+                    mutated = dict(FAILURE_INVARIANT_TESTS)
+                    mutated[failure_id] = tuple(
+                        name
+                        for name in _mapped_test_names(mutated[failure_id])
+                        if name != component
+                    )
+                    self.assertEqual(
+                        _required_component_gaps(mutated),
+                        {failure_id: [component]},
+                    )
+
 
 class FailureHistoryTraceabilityTests(unittest.TestCase):
     def test_every_open_or_redesign_failure_has_a_test_reference(self):
@@ -748,6 +936,13 @@ class FailureHistoryTraceabilityTests(unittest.TestCase):
         self.assertEqual(
             set(REQUIRED_FAILURE_COMPONENTS),
             set(FAILURE_INVARIANT_TESTS),
+        )
+        self.assertEqual(
+            {
+                failure_id: frozenset(_mapped_test_names(mapped))
+                for failure_id, mapped in FAILURE_INVARIANT_TESTS.items()
+            },
+            REQUIRED_FAILURE_COMPONENTS,
         )
         self.assertEqual(_required_component_gaps(FAILURE_INVARIANT_TESTS), {})
 

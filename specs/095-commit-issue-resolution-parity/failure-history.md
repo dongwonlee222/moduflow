@@ -79,6 +79,7 @@ the architectural closure.
 | FH-033 | Traceability accepted IDs without proving their invariants | Every mapping executes the complete derived invariant, not only a named test | open |
 | FH-034 | Failure remediation overwrote prior state or omitted implementation evidence | Corrections preserve prior text and append fixing commit plus executable evidence | open |
 | FH-035 | Line-wrapped terminal evidence failed a literal-string assertion | Process evidence assertions tolerate Markdown wrapping while preserving exact fields | open |
+| FH-036 | Required-component manifest copied the mutable mapping | Every required component is declared independently and every deletion turns the audit red | open |
 
 ## Failure Records
 
@@ -979,6 +980,27 @@ the architectural closure.
 - **Status**: open until the focused and six-suite gates pass with terminal
   exits after this correction.
 
+### FH-036 — Self-Derived Required-Component Manifest
+
+- **Topology**: `REQUIRED_FAILURE_COMPONENTS` is initialized by copying every
+  entry from mutable `FAILURE_INVARIANT_TESTS`, then only selected failure ids
+  are independently overridden.
+- **Observed failure**: T08 spec review at `45788df` removed one FH-035
+  component and reloaded the module; both the mapping and its supposed
+  canonical manifest lost the same component, so `_required_component_gaps()`
+  returned `{}`.
+- **Invalid assumption**: a snapshot comprehension over the mutable mapping is
+  an independent oracle merely because later runtime mutation of the already
+  loaded mapping is detectable.
+- **Derived invariant**: every failure id and every required qualified test is
+  declared independently from the mutable execution mapping, and removing any
+  single declared component must produce a nonempty gap for that failure id.
+- **Evidence**: T08 independent spec review at `45788df`, FH-035 component
+  deletion/reload mutation.
+- **Status**: open until an exhaustive every-id/every-component mutation test
+  fails against the self-derived manifest and passes against an independent
+  literal manifest.
+
 ## T08 Executable Invariant Audit
 
 This append-only matrix records the executable reference and implementation
@@ -1043,6 +1065,7 @@ qualified test is executed by
 | FH-033 | FH-001 literal truth + same-wrong mutation + FH-007/FH-026 mutations + canonical component-removal mutation |
 | FH-034 | preserved FH-026 state + exact FH-033 remediation commit + qualified acceptance evidence |
 | FH-035 | whitespace-tolerant current terminal evidence + exact-block-removal mutation |
+| FH-036 | independent required manifest + exhaustive every-component deletion mutation |
 
 ## Required Design Traceability
 
@@ -1070,5 +1093,6 @@ The redesign maps its requirements to this corpus:
 | Mutation-sensitive executable invariant coverage | FH-033 |
 | Append-only remediation evidence | FH-034 |
 | Markdown-wrap-tolerant terminal evidence | FH-035 |
+| Independently declared required-component completeness | FH-036 |
 
 Future findings extend this table rather than replacing it.
