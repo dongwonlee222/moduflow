@@ -838,6 +838,11 @@ the architectural closure.
   doctor, and release docs were all green. The canonical source manifest bump
   amended into `82a6fd9` makes that implementation-HEAD condition historical
   before the final rerun; no installed plugin, cache, or release was updated.
+- **Final verification evidence**: at `0486915`,
+  `python3 scripts/release_check.py .` reached terminal exit 0 with
+  `valid: true`, `errors: []`, and every named sub-gate green. The required
+  post-fix `python3 -m unittest discover -s tests` rerun reached terminal exit
+  0: 1,034 tests passed in 457.736 seconds.
 - **Status**: regression captured.
 
 ### FH-030 — Retired Global-Base Compatibility Wrapper
