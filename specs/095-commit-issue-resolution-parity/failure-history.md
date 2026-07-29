@@ -749,6 +749,13 @@ the architectural closure.
   snapshot-contract trailer fixture, a real-repository branch fixture,
   structured snapshot failure projection, and trailer-versus-branch
   precedence through the direct linkage consumer.
+- **FH-038 recurrence evidence**: the first six-suite run after `193f334`
+  reached terminal exit 1 with 357 tests and 20 failures in 215.077 seconds.
+  Linkage and converge fake runners treated the new constant-cost
+  `git symbolic-ref -q HEAD` snapshot boundary as detached, then rejected
+  `git rev-parse --verify HEAD` as unexpected; 19 downstream failures shared
+  that stale fixture cause. The remaining failure was the earlier detached
+  semantic assertion that incorrectly required empty degradation.
 - **Status**: regression captured.
 
 ### FH-028 — Topic Diagnostics Disappeared at Live Attribution

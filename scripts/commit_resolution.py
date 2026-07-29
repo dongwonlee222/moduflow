@@ -57,6 +57,8 @@ BRANCH_ISSUE_RE = re.compile(rf"^codex/({ISSUE_ID_PATTERN})$")
 GIT_LOG_FORMAT = commit_graph.GIT_LOG_FORMAT
 GIT_LOG_ARGS = commit_graph.GIT_LOG_ARGS
 BRANCH_REF_ARGS = commit_graph.BRANCH_REF_ARGS
+HEAD_REF_ARGS = commit_graph.HEAD_REF_ARGS
+HEAD_SHA_ARGS = commit_graph.HEAD_SHA_ARGS
 # Kept empty only for legacy test harness imports; live resolution never asks
 # Git to elect a repository-wide base or to inspect origin/HEAD.
 ORIGIN_HEAD_ARGS = ()

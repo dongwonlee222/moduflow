@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from git_repo_builder import GitRepo  # noqa: E402
 
 
-SYMBOLIC_REF_ARGS = tuple(linkage_check.commit_resolution.ORIGIN_HEAD_ARGS)
+HEAD_REF_ARGS = tuple(linkage_check.commit_resolution.HEAD_REF_ARGS)
 BRANCH_REF_ARGS = tuple(linkage_check.commit_resolution.BRANCH_REF_ARGS)
 ALPHA = "101-alpha"
 BETA = "102-beta"
@@ -70,11 +70,10 @@ def ambiguous_release_repo(*, ambiguity_in_range):
 
 class FakeRunner:
     def __init__(self, responses):
-        # Issue 095: base_ref asks the repository which branch is the trunk
-        # instead of guessing from a name list. These scenarios have no remote
-        # HEAD, so it falls through to the containment scoring below.
+        # Snapshot state is explicitly attached unless a detached-head fixture
+        # overrides this boundary.
         self.responses = {
-            SYMBOLIC_REF_ARGS: linkage_check.CommandResult(1, "", ""),
+            HEAD_REF_ARGS: "refs/heads/main\n",
             **responses,
         }
         self.calls = []

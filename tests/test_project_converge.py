@@ -18,6 +18,7 @@ LOG_ARGS = tuple(project_converge.GIT_LOG_ARGS)
 # historically registered issue ids alongside the log.
 BRANCH_REF_ARGS = tuple(project_converge.commit_resolution.BRANCH_REF_ARGS)
 ISSUE_HISTORY_ARGS = tuple(project_converge.commit_resolution.ISSUE_HISTORY_ARGS)
+HEAD_REF_ARGS = tuple(project_converge.commit_resolution.HEAD_REF_ARGS)
 
 
 class FakeRunner:
@@ -25,6 +26,7 @@ class FakeRunner:
         self.responses = {
             BRANCH_REF_ARGS: "",
             ISSUE_HISTORY_ARGS: f"issues/{ISSUE}.md\n",
+            HEAD_REF_ARGS: "refs/heads/main\n",
             **responses,
         }
         self.calls = []

@@ -2485,8 +2485,7 @@ class TestDegradedMeaning(unittest.TestCase):
             )
 
     def test_detached_commits_reach_the_index(self):
-        """Once the log covers `--all`, a detached commit is visible and its
-        lack of a branch is a fact about it, not a degradation."""
+        """FH-038: detached commits stay visible and report their limitation."""
         with GitRepo() as repo:
             repo.commit("chore: base")
             repo.add_issue_file(ISSUE)
@@ -2498,7 +2497,27 @@ class TestDegradedMeaning(unittest.TestCase):
 
             index = cr.build_attribution(repo.runner, repo.path)
             self.assertIn(detached, index["records"])
-            self.assertEqual(index["degraded"], [])
+            self.assertEqual(index["fatal_errors"], [])
+            self.assertEqual(
+                index["diagnostics"],
+                [
+                    {
+                        "code": "detached-head-branch-unavailable",
+                        "message": (
+                            f"commit {detached} is checked out at detached "
+                            "HEAD; branch attribution is unavailable"
+                        ),
+                        "sha": detached,
+                    }
+                ],
+            )
+            self.assertEqual(
+                index["degraded"],
+                [
+                    cr.DEGRADED_BRANCH_UNAVAILABLE,
+                    "detached-head-branch-unavailable",
+                ],
+            )
 
 
 class TestRangeProjection(unittest.TestCase):
