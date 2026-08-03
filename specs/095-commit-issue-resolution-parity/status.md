@@ -1,6 +1,6 @@
 # Issue 095 Execution Status
 
-**Status: active** — started 2026-07-26. T01–T09 implementation, final verification, and independent whole-branch review are complete; ready for PR preparation. Earlier review rounds below are retained as history.
+**Status: active** — started 2026-07-26. T01–T09 implementation and independent review are complete; Draft PR #33 awaits human approval and required checks. Earlier review rounds below are retained as history.
 
 ## Progress
 
@@ -1118,7 +1118,8 @@ degradation summaries. The controller six-module gate passed 335/335 in
 
 ## Current task
 
-Prepare the Issue 095 PR handoff. Execution and review gates are complete.
+Review Draft PR #33. Execution and independent review gates are complete;
+merge still requires human approval and required checks.
 
 ## T08 / F1 completion — 2026-07-29
 
@@ -1275,4 +1276,15 @@ corpus, stays outside current release errors, and fails closed when explicitly
 included in the caller scope.
 
 F2 is complete. Lifecycle phase is `review`; the next command is
-`product:pr 095-commit-issue-resolution-parity`.
+`product:review 095-commit-issue-resolution-parity`.
+
+## Draft PR handoff — 2026-08-03
+
+GitHub preflight approved repository identity and write capability. Branch
+`codex/095-commit-issue-resolution-parity-fix` was pushed and Draft PR #33 was
+opened: `https://github.com/dongwonlee222/moduflow/pull/33`.
+
+The PR handoff and Korean review packet carry the final controller 1035/1035,
+release/project/lifecycle evidence and independent whole-branch 0/0/0 review.
+Post-handoff release check remains `valid: true` with `errors: []`. No merge,
+release, installed-plugin/cache update, or Issue 096 change was performed.

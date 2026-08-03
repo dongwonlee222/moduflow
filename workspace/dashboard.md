@@ -14,8 +14,9 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Priority Queue — 2026-07-25
 
-- Now: `095` PR preparation. T01–T09, fresh final verification, and independent
-  whole-branch spec/quality review are complete with no open finding.
+- Now: `095` Draft PR #33 human review. T01–T09, fresh final verification, and
+  independent whole-branch spec/quality review are complete with no open
+  finding.
 - Next: `094` risk-based security/quality review gate (its blocker `089` is done).
 - Then: `086` project-aware production/playbook dashboard.
 - Also ready: `087` Korean GitHub PR review surface, `090` project knowledge registry — both independent.
@@ -145,8 +146,8 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   and diff check is clean. Read-only Issue 093 evidence is 56 commits/46 files
   with the schema included and no diagnostics/fatal/errors. Historical
   octopus ambiguity remains in the unscoped corpus, stays outside current
-  release errors, and fails closed when explicitly scoped. Whole-branch review
-  is still pending, so phase remains `execute`.
+  release errors, and fails closed when explicitly scoped. This was the
+  pre-review checkpoint before the final whole-branch approval below.
 - Issue `095` T09 final (2026-07-29 at `f19762d`): whole-branch review findings
   `FH-038`–`FH-040` and the FH-029/FH-035 recurrences were preserved and
   corrected. Publication recovery now uses the captured graph with constant
@@ -155,6 +156,10 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   spec and quality reviews both approved 0/0/0. Controller verification passed
   1035/1035 in 417.627 seconds; spec is 0/0/0, release/project are valid with
   empty errors, lifecycle drift is `[]`, and diff/status are clean.
+- Issue `095` Draft PR (2026-08-03): verified branch pushed and Draft PR #33
+  opened at `https://github.com/dongwonlee222/moduflow/pull/33`. Korean review
+  packet and PR handoff are current; merge still requires human approval and
+  required checks.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance
@@ -174,4 +179,4 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Next Command
 
-`product:pr 095-commit-issue-resolution-parity`
+`product:review 095-commit-issue-resolution-parity`

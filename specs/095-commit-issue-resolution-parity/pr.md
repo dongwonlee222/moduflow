@@ -8,7 +8,7 @@ per-issue graph model shared by release linkage and project convergence.
 ## Draft PR
 
 - Branch: `codex/095-commit-issue-resolution-parity-fix`
-- PR: pending GitHub Draft PR creation
+- PR: `https://github.com/dongwonlee222/moduflow/pull/33` (Draft)
 - Reviewer: `Reviewer`
 - GitHub preflight: passed for `dongwonlee222/moduflow`; mode `github-draft-pr`.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
@@ -21,7 +21,7 @@ python3 scripts/project_pr.py . --issue-id 095-commit-issue-resolution-parity --
 ```
 
 ```bash
-python3 scripts/project_workflow.py . --pr-state --issue-id 095-commit-issue-resolution-parity --pr "<github-pr-url>" --reviewer "Reviewer"
+python3 scripts/project_workflow.py . --pr-state --issue-id 095-commit-issue-resolution-parity --pr "https://github.com/dongwonlee222/moduflow/pull/33" --reviewer "Reviewer"
 ```
 
 - Continue review: `product:review 095-commit-issue-resolution-parity`

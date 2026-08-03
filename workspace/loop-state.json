@@ -21,17 +21,17 @@
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:pr 095-commit-issue-resolution-parity",
+  "next_command": "product:review 095-commit-issue-resolution-parity",
   "attempts": {
-    "command": "product:pr 095-commit-issue-resolution-parity",
+    "command": "product:review 095-commit-issue-resolution-parity",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-07-29"
+    "last_changed_at": "2026-08-03"
   },
   "blocker": null,
-  "last_action": "completed T09 full verification and independent whole-branch spec/quality review; Issue 095 is ready for PR preparation",
+  "last_action": "pushed the verified Issue 095 branch and opened Draft PR #33 for human review",
   "last_verification": "2026-07-29 at f19762d: controller full discovery 1035/1035 in 417.627s; spec 0/0/0; release/project valid with errors []; lifecycle drift []; diff/status clean; final whole-branch spec and quality reviews both approved 0/0/0; Issue093 56 commits/46 files with schema and no diagnostics/fatal/errors; historical octopus scoped correctly",
-  "updated_at": "2026-07-29",
+  "updated_at": "2026-08-03",
   "git_binding": {
     "mode": "git-files",
     "branch": "codex/095-commit-issue-resolution-parity-fix",
@@ -130,14 +130,16 @@
       "0486915",
       "fb62aad",
       "13c4c54",
-      "f19762d"
+      "f19762d",
+      "935ded0",
+      "6e632d6"
     ],
-    "pull_request": null,
+    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/33",
     "release": null,
     "execution_backend": {
       "type": "host-subagent",
-      "status": "completed",
-      "reason": "Sequential T01 through T09 execution and independent whole-branch spec/quality review completed with no open finding",
+      "status": "reviewing",
+      "reason": "Implementation and independent reviews are complete; Draft PR #33 awaits human review and required checks",
       "session": "codex-2026-07-27"
     }
   }

@@ -6,7 +6,7 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-095-commit-issue-resolution-parity.html`
-- PR: 생성 후 이 문서에 GitHub URL 반영
+- PR: `https://github.com/dongwonlee222/moduflow/pull/33` (Draft)
 - 브랜치: `codex/095-commit-issue-resolution-parity-fix`
 - 리뷰어: `Reviewer`
 
