@@ -6,7 +6,7 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-095-commit-issue-resolution-parity.html`
-- PR: `https://github.com/dongwonlee222/moduflow/pull/33` (Draft)
+- PR: `https://github.com/dongwonlee222/moduflow/pull/33` (Ready for review)
 - 브랜치: `codex/095-commit-issue-resolution-parity-fix`
 - 리뷰어: `Reviewer`
 
@@ -41,6 +41,7 @@
 - 최종 Issue 095 집중 게이트: `371/371 PASS`
 - 스펙 일관성: `0/0/0`, 9개 요구사항 중 누락 0
 - release check: `valid: true`, `errors: []`
+- GitHub CI: `test PASS`; PR 상태 `CLEAN`, `MERGEABLE`
 - project validation: `valid: true`, `errors: []`
 - lifecycle drift: `[]`, diff/worktree clean
 - Issue 093 실증: 56 commits, 46 files, schema 포함,

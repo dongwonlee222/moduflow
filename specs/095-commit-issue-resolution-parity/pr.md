@@ -5,10 +5,10 @@
 Replace repository-global commit attribution guesses with one evidence-backed,
 per-issue graph model shared by release linkage and project convergence.
 
-## Draft PR
+## Pull Request
 
 - Branch: `codex/095-commit-issue-resolution-parity-fix`
-- PR: `https://github.com/dongwonlee222/moduflow/pull/33` (Draft)
+- PR: `https://github.com/dongwonlee222/moduflow/pull/33` (Ready for review)
 - Reviewer: `Reviewer`
 - GitHub preflight: passed for `dongwonlee222/moduflow`; mode `github-draft-pr`.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
@@ -45,6 +45,7 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 095-commit-issue-res
 - Issue 095 six-suite gate: `371/371 PASS` after final evidence hardening.
 - Spec consistency: findings `0/0/0`; 9 requirements checked, 0 flagged.
 - Release check: `valid: true`, `errors: []`; every named subgate passed.
+- GitHub CI: `test PASS`; merge state `CLEAN`, `MERGEABLE`.
 - Project validation: `valid: true`, `errors: []`.
 - Lifecycle drift: `[]`; `git diff --check` and worktree clean.
 - Issue 093 live evidence: 56 commits, 46 files, schema file included,

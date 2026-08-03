@@ -1,6 +1,6 @@
 # Issue 095 Execution Status
 
-**Status: active** — started 2026-07-26. T01–T09 implementation and independent review are complete; Draft PR #33 awaits human approval and required checks. Earlier review rounds below are retained as history.
+**Status: active** — started 2026-07-26. T01–T09 implementation and review gates are complete; PR #33 passed CI and is ready for human approval. Earlier review rounds below are retained as history.
 
 ## Progress
 
@@ -1278,13 +1278,14 @@ included in the caller scope.
 F2 is complete. Lifecycle phase is `review`; the next command is
 `product:review 095-commit-issue-resolution-parity`.
 
-## Draft PR handoff — 2026-08-03
+## PR review handoff — 2026-08-03
 
 GitHub preflight approved repository identity and write capability. Branch
-`codex/095-commit-issue-resolution-parity-fix` was pushed and Draft PR #33 was
-opened: `https://github.com/dongwonlee222/moduflow/pull/33`.
+`codex/095-commit-issue-resolution-parity-fix` was pushed and PR #33 is ready
+for review: `https://github.com/dongwonlee222/moduflow/pull/33`.
 
 The PR handoff and Korean review packet carry the final controller 1035/1035,
 release/project/lifecycle evidence and independent whole-branch 0/0/0 review.
-Post-handoff release check remains `valid: true` with `errors: []`. No merge,
-release, installed-plugin/cache update, or Issue 096 change was performed.
+Fresh release check remains `valid: true` with `errors: []`; GitHub CI `test`
+passed and the PR merge state is `CLEAN`/`MERGEABLE`. No merge, release,
+installed-plugin/cache update, or Issue 096 change was performed.

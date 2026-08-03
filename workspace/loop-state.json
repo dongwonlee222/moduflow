@@ -24,13 +24,13 @@
   "next_command": "product:review 095-commit-issue-resolution-parity",
   "attempts": {
     "command": "product:review 095-commit-issue-resolution-parity",
-    "count": 0,
+    "count": 1,
     "max": 3,
     "last_changed_at": "2026-08-03"
   },
   "blocker": null,
-  "last_action": "pushed the verified Issue 095 branch and opened Draft PR #33 for human review",
-  "last_verification": "2026-07-29 at f19762d: controller full discovery 1035/1035 in 417.627s; spec 0/0/0; release/project valid with errors []; lifecycle drift []; diff/status clean; final whole-branch spec and quality reviews both approved 0/0/0; Issue093 56 commits/46 files with schema and no diagnostics/fatal/errors; historical octopus scoped correctly",
+  "last_action": "completed the Issue 095 PR review gate; PR #33 is ready for human approval with CI passing",
+  "last_verification": "2026-08-03 at d3ce327: fresh release check valid with errors []; all named subgates passed; GitHub CI test passed; PR merge state CLEAN and MERGEABLE; dashboard, issue detail, failure corpus, and diff check verified",
   "updated_at": "2026-08-03",
   "git_binding": {
     "mode": "git-files",
@@ -132,14 +132,15 @@
       "13c4c54",
       "f19762d",
       "935ded0",
-      "6e632d6"
+      "6e632d6",
+      "d3ce327"
     ],
     "pull_request": "https://github.com/dongwonlee222/moduflow/pull/33",
     "release": null,
     "execution_backend": {
       "type": "host-subagent",
       "status": "reviewing",
-      "reason": "Implementation and independent reviews are complete; Draft PR #33 awaits human review and required checks",
+      "reason": "Implementation and review gates are complete; PR #33 has passing CI and awaits human approval",
       "session": "codex-2026-07-27"
     }
   }
