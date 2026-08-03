@@ -16,25 +16,25 @@
     "092-project-home-dashboard",
     "087-korean-github-pr-review-surface"
   ],
-  "active_issue_id": "095-commit-issue-resolution-parity",
-  "phase": "review",
+  "active_issue_id": "",
+  "phase": "select",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:review 095-commit-issue-resolution-parity",
+  "next_command": "product:status",
   "attempts": {
-    "command": "product:review 095-commit-issue-resolution-parity",
-    "count": 1,
+    "command": "product:status",
+    "count": 0,
     "max": 3,
     "last_changed_at": "2026-08-03"
   },
   "blocker": null,
-  "last_action": "completed the Issue 095 PR review gate; PR #33 is ready for human approval with CI passing",
-  "last_verification": "2026-08-03 at d3ce327: fresh release check valid with errors []; all named subgates passed; GitHub CI test passed; PR merge state CLEAN and MERGEABLE; dashboard, issue detail, failure corpus, and diff check verified",
+  "last_action": "released Issue 095 repository source via merged PR #33 at f4029f3; plugin publication remains held for Issue 096",
+  "last_verification": "2026-08-03 at merged main f4029f3: post-merge release check valid with errors []; all named subgates passed",
   "updated_at": "2026-08-03",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/095-commit-issue-resolution-parity-fix",
+    "branch": "",
     "base_branch": "main",
     "commits": [
       "f980aef",
@@ -133,14 +133,15 @@
       "f19762d",
       "935ded0",
       "6e632d6",
-      "d3ce327"
+      "d3ce327",
+      "f4029f3"
     ],
-    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/33",
-    "release": null,
+    "pull_request": null,
+    "release": "repository source on main at f4029f3; no plugin publish",
     "execution_backend": {
       "type": "host-subagent",
-      "status": "reviewing",
-      "reason": "Implementation and review gates are complete; PR #33 has passing CI and awaits human approval",
+      "status": "ready",
+      "reason": "Issue 095 is released on main; Issue 094 specification is next",
       "session": "codex-2026-07-27"
     }
   }

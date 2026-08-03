@@ -8,7 +8,7 @@ per-issue graph model shared by release linkage and project convergence.
 ## Pull Request
 
 - Branch: `codex/095-commit-issue-resolution-parity-fix`
-- PR: `https://github.com/dongwonlee222/moduflow/pull/33` (Ready for review)
+- PR: `https://github.com/dongwonlee222/moduflow/pull/33` (Merged as `f4029f3`)
 - Reviewer: `Reviewer`
 - GitHub preflight: passed for `dongwonlee222/moduflow`; mode `github-draft-pr`.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
@@ -85,10 +85,11 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 095-commit-issue-res
 
 ## Approval Record
 
-- Dashboard reviewer: `Reviewer` or assigned reviewer before merge.
-- PR diff reviewer: `Reviewer` or assigned reviewer before merge.
-- Merge approver: human approval required; not granted by this handoff.
-- Deployment approver: required only when a protected deployment environment is configured.
+- Technical surfaces: Codex verified dashboard, issue detail, PR scope, failure corpus, release check, CI, and merge state.
+- Human merge approver: Dongwon Lee replied `진행해줘` in the Korean Codex review flow on 2026-08-03.
+- GitHub evidence: `https://github.com/dongwonlee222/moduflow/pull/33#issuecomment-5161987654`.
+- Merge: PR #33 merged as `f4029f37934002066ab02a4c5475e3fef81421da`.
+- Deployment: repository source only; no external deployment or plugin publish approved.
 
 ## Human Checkpoints
 

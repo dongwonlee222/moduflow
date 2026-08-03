@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "review",
+  "phase": "select",
   "active_goal": "trustworthy-execution-and-project-knowledge",
-  "active_issue": "095-commit-issue-resolution-parity",
-  "last_command": "product:review 095-commit-issue-resolution-parity",
-  "next_command": "product:review 095-commit-issue-resolution-parity",
+  "active_issue": "",
+  "last_command": "product:release 095-commit-issue-resolution-parity",
+  "next_command": "product:status",
   "blockers": [],
   "updated_at": "2026-08-03"
 }

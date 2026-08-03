@@ -4,14 +4,15 @@
 
 ### Now
 
-- `093-frontmatter-issue-schema-readiness-gate` — active; implementation and E2 release/lifecycle verification passed on 2026-07-25. Next: `product:review 093-frontmatter-issue-schema-readiness-gate`.
+- `094-risk-based-security-and-quality-review-gate` — dependency 089 is done; start with `product:spec 094-risk-based-security-and-quality-review-gate`.
 
 ### Next
 
-- `094-risk-based-security-and-quality-review-gate` — convert approved findings into preventive checks; blocked by 089.
+- `086-project-aware-production-library-dashboard` — continue the approved project-scoped production/playbook dashboard design and implementation.
 
 ### Recently Shipped
 
+- `095-commit-issue-resolution-parity` — merged via PR #33 as `f4029f3`; post-merge release check passed, failure history remains preserved, and plugin publication stays held for Issue 096.
 - `088-canonical-repository-remote-identity-gate` and `089-verified-code-review-intake-and-remediation-routing` — merged, reviewed, approved, and packaged in v0.3.26.
 - Legacy `030-project-memory-layer` audit — prototype foundation retained; delivered extensions mapped to 034/040/043/085 and remaining registry/migration scope transferred to 090 on 2026-07-21.
 
