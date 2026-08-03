@@ -1,6 +1,6 @@
 # Issue 095: Commit-to-Issue Resolution Parity
 
-**Status: active** — created 2026-07-25, started 2026-07-26; PR #33 passed CI and the review gate and is ready for human approval.
+**Status: done** — created 2026-07-25, started 2026-07-26, reviewed and merged via PR #33 as `f4029f3` on 2026-08-03; post-merge release check passed.
 **Priority: p1**
 **Blocked-by:**
 
@@ -155,6 +155,7 @@ existing history. Do not make converge gate the review verdict.
 - 2026-07-29: whole-branch re-review opened `FH-039` because the new HEAD-state commands lacked ordinary-negative/failure/termination/malformed-success regressions. The RED set additionally found that an unknown successful HEAD SHA remained stored despite a fatal error. `519301b` now validates before assignment and adds an independent eight-component boundary manifest. Focused consumers passed 144/144, the six Issue 095 suites passed 364/364, full discovery passed 1028/1028, and release/spec/project/lifecycle/diff gates passed. F2 remains open pending independent re-review.
 - 2026-07-29: completed T09 and final whole-branch review. Review-discovered side-ref provenance (`FH-040`), publication-history subprocess growth (`FH-029` recurrence), and zero-valued terminal evidence (`FH-035` recurrence) were preserved before correction. Final independent spec and quality reviews both approved 0/0/0. Controller verification at `f19762d` passed 1035/1035 in 417.627 seconds; spec findings are 0/0/0, release/project are valid with empty errors, lifecycle drift is `[]`, and diff/worktree are clean. Issue 093 remains 56 commits/46 files with the schema included and no diagnostics/fatal/errors. Phase advanced to review; PR preparation is next.
 - 2026-08-03: pushed `codex/095-commit-issue-resolution-parity-fix`, opened PR #33, and completed the PR review gate. Fresh release check passed with every named subgate, GitHub CI passed, and the PR is clean/mergeable. `pr.md` and `human-review.ko.md` carry the final 1035/1035 and whole-branch 0/0/0 evidence. Installed plugin/cache, Issue 096, release, and merge remain untouched. Human approval is next.
+- 2026-08-03: Dongwon Lee approved proceeding in the Korean Codex review flow. PR #33 was merged as `f4029f3`; a fresh post-merge release check on `origin/main` returned `valid: true`, `errors: []`. Repository-source integration is complete. Plugin/cache publishing and Issue 096 remain separate.
 
 ## Links
 
@@ -164,9 +165,10 @@ existing history. Do not make converge gate the review verdict.
 - Implementation readiness: `specs/095-commit-issue-resolution-parity/implementation-readiness.json`
 - Worker plan: `specs/095-commit-issue-resolution-parity/worker-plan.md`
 - Status: `specs/095-commit-issue-resolution-parity/status.md`
+- Release: `specs/095-commit-issue-resolution-parity/release.md`
 - Roadmap: `workspace/roadmap.md`
 - PR: `https://github.com/dongwonlee222/moduflow/pull/33`
 
 ## Next Command
 
-`product:review 095-commit-issue-resolution-parity`
+`product:status`

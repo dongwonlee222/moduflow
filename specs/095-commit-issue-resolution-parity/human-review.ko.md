@@ -6,7 +6,7 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-095-commit-issue-resolution-parity.html`
-- PR: `https://github.com/dongwonlee222/moduflow/pull/33` (Ready for review)
+- PR: `https://github.com/dongwonlee222/moduflow/pull/33` (Merged as `f4029f3`)
 - 브랜치: `codex/095-commit-issue-resolution-parity-fix`
 - 리뷰어: `Reviewer`
 
@@ -84,3 +84,11 @@
 
 - 승인 가능하면 PR에서 approve 또는 로컬에 승인 기록을 남깁니다.
 - 보류하면 `product:review 095-commit-issue-resolution-parity`로 되돌려 수정합니다.
+
+## 승인 기록 — 2026-08-03
+
+- 사람 승인자: Dongwon Lee — 한국어 Codex 검토 흐름에서 `진행해줘`로 병합 진행을 승인했습니다.
+- 기술 검토: Codex가 대시보드 항목, 이슈 상세, PR 변경 범위, 실패 이력, release check, GitHub CI와 merge 상태를 확인했습니다.
+- 승인 근거: `https://github.com/dongwonlee222/moduflow/pull/33#issuecomment-5161987654`
+- 결과: PR #33은 `f4029f3`으로 병합됐고 post-merge release check가 통과했습니다.
+- 제한: 앱은 사용자가 각 링크를 직접 열었는지 관찰할 수 없으므로, 확인하지 못한 클릭 이력을 승인 사실로 기록하지 않습니다.

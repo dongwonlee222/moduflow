@@ -10,14 +10,13 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Active Issue
 
-- `095-commit-issue-resolution-parity` (phase: review). Canonical: `issues/095-commit-issue-resolution-parity.md`.
+- None active. Run `product:status` to pick the next issue.
 
 ## Priority Queue — 2026-07-25
 
-- Now: `095` PR #33 human approval. T01–T09, fresh final verification, and
-  independent whole-branch spec/quality review are complete with no open
-  finding.
-- Next: `094` risk-based security/quality review gate (its blocker `089` is done).
+- Now: `094` risk-based security/quality review gate. Its blocker `089` is done;
+  the next command is `product:spec 094-risk-based-security-and-quality-review-gate`.
+- Shipped: `095` merged via PR #33 as `f4029f3`; post-merge release check passed.
 - Then: `086` project-aware production/playbook dashboard.
 - Also ready: `087` Korean GitHub PR review surface, `090` project knowledge registry — both independent.
 - Later: `090` → `091` → `092`; `082` before `083`/`084` (081's review found worker prompts carry OpenAI guidance on every host).
@@ -161,6 +160,10 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
   Fresh release check and GitHub CI passed; the merge state is clean/mergeable.
   Korean review packet and PR handoff are current; merge still requires human
   approval.
+- Issue `095` release (2026-08-03): Dongwon Lee approved proceeding in the
+  Korean Codex review flow. PR #33 merged as `f4029f3`; a fresh release check
+  on merged `main` returned `valid: true`, `errors: []`. Repository-source
+  integration is complete; plugin/cache publication remains held for Issue 096.
 - Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
   repo-external symlinks, and write announcements. Issue 095 does not modify
   Issue 096; before execution its canonical issue must add these acceptance
@@ -180,4 +183,4 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Next Command
 
-`product:review 095-commit-issue-resolution-parity`
+`product:status`

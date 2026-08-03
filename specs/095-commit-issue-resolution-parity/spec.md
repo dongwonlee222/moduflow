@@ -1,7 +1,7 @@
 # Spec: Commit-to-Issue Resolution Parity
 
 Issue: `095-commit-issue-resolution-parity`
-Prev: `093-frontmatter-issue-schema-readiness-gate` · Next: `product:review`
+Prev: `093-frontmatter-issue-schema-readiness-gate` · Next: `product:status`
 
 ## Problem
 

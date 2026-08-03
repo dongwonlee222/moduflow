@@ -1,6 +1,6 @@
 # Issue 095 Execution Status
 
-**Status: active** — started 2026-07-26. T01–T09 implementation and review gates are complete; PR #33 passed CI and is ready for human approval. Earlier review rounds below are retained as history.
+**Status: done** — started 2026-07-26, reviewed and merged via PR #33 as `f4029f3` on 2026-08-03; post-merge release check passed. Earlier review rounds below are retained as history.
 
 ## Progress
 
@@ -1289,3 +1289,18 @@ release/project/lifecycle evidence and independent whole-branch 0/0/0 review.
 Fresh release check remains `valid: true` with `errors: []`; GitHub CI `test`
 passed and the PR merge state is `CLEAN`/`MERGEABLE`. No merge, release,
 installed-plugin/cache update, or Issue 096 change was performed.
+
+## Release completion — 2026-08-03
+
+Dongwon Lee approved proceeding in the Korean Codex review flow after the
+Korean review packet and verification summary were provided. The approval and
+its observable limits are recorded in PR #33. GitHub merged the PR as
+`f4029f37934002066ab02a4c5475e3fef81421da`.
+
+A fresh `python3 scripts/release_check.py .` on merged `origin/main` returned
+`valid: true`, `errors: []`; every named gate passed. This completes the
+repository-source release only. No tag, marketplace publish, installed
+plugin/cache update, hosted deployment, or Issue 096 change was performed.
+
+Release notes: `specs/095-commit-issue-resolution-parity/release.md`.
+Next: `product:spec 094-risk-based-security-and-quality-review-gate`.
