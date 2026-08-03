@@ -2,17 +2,15 @@
 
 ## Purpose
 
-Make the pull request the visible review surface instead of waiting until all local review work is finished.
-Use a Draft PR or a local PR-ready marker early, then attach review, verification, and dashboard evidence to it as work progresses.
+Replace repository-global commit attribution guesses with one evidence-backed,
+per-issue graph model shared by release linkage and project convergence.
 
 ## Draft PR
 
 - Branch: `codex/095-commit-issue-resolution-parity-fix`
-- PR: `local:095-commit-issue-resolution-parity-fix:draft-pr-ready`
+- PR: pending GitHub Draft PR creation
 - Reviewer: `Reviewer`
-- Fallback reason: no GitHub Draft PR is claimed yet. This local marker records
-  the corrective handoff until GitHub sync creates a real PR.
-- Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
+- GitHub preflight: passed for `dongwonlee222/moduflow`; mode `github-draft-pr`.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
 - Commit mode: `local-git-write`
 
@@ -23,7 +21,7 @@ python3 scripts/project_pr.py . --issue-id 095-commit-issue-resolution-parity --
 ```
 
 ```bash
-python3 scripts/project_workflow.py . --pr-state --issue-id 095-commit-issue-resolution-parity --pr "local:095-commit-issue-resolution-parity-fix:draft-pr-ready" --reviewer "Reviewer"
+python3 scripts/project_workflow.py . --pr-state --issue-id 095-commit-issue-resolution-parity --pr "<github-pr-url>" --reviewer "Reviewer"
 ```
 
 - Continue review: `product:review 095-commit-issue-resolution-parity`
@@ -43,29 +41,46 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 095-commit-issue-res
 
 ### Verification
 
-- Task 1 focused suite: `92/92 PASS`.
-- Five-module focused suite: `195/195 PASS`.
-- Expected failures: `0`.
-- Artifact validation: `valid: true`, `errors: []`.
-- Lifecycle drift: `[]`.
-- `git diff --check`: clean.
-- Full unittest discovery, release check, and final whole-branch review remain
-  F4; this handoff does not claim they have passed on the corrective branch.
+- Controller full discovery: `1035/1035 PASS` in 417.627 seconds.
+- Issue 095 six-suite gate: `371/371 PASS` after final evidence hardening.
+- Spec consistency: findings `0/0/0`; 9 requirements checked, 0 flagged.
+- Release check: `valid: true`, `errors: []`; every named subgate passed.
+- Project validation: `valid: true`, `errors: []`.
+- Lifecycle drift: `[]`; `git diff --check` and worktree clean.
+- Issue 093 live evidence: 56 commits, 46 files, schema file included,
+  diagnostics/fatal/errors all empty.
 
 ### Review Findings
 
-- Task 1 independent spec review: pass.
-- Task 1 independent quality review: pass after terminated graph-query handling
-  was fixed in `881d81d`.
-- Task 2 independent spec review: pass.
-- Task 2 independent quality review: pass after two Important base-selection
-  findings were fixed and re-reviewed in `4f5d14a`.
-- Final whole-branch review remains F4.
+- Independent final whole-branch spec review: Critical/Important/Minor `0/0/0`.
+- Independent final whole-branch quality review: Critical/Important/Minor `0/0/0`.
+- Forty append-only failure families (`FH-001`–`FH-040`) map to independent
+  executable invariants and mutation-sensitive required components.
+- Historical octopus ambiguity remains recorded globally, is excluded from an
+  unrelated release scope, and fails closed when explicitly in scope.
 
 ### Visual Evidence
 
 - Dashboard: `memory/dashboard.html`.
 - Issue drill-down: `memory/issue-095-commit-issue-resolution-parity.html`.
+
+## Summary and Risk
+
+- One attribution snapshot and policy now serve both query directions and both
+  consumers.
+- Historical fork selection is per issue; stacked topics, deleted refs,
+  detached HEAD, complex merges, and unrelated side refs have explicit tests.
+- Fatal Git failures are separate from caller-scoped diagnostics; ambiguous
+  evidence fails closed instead of silently under-collecting.
+- Main risk is the breadth of Git-topology behavior. Mitigation is the 1,035
+  test full gate, actual-Git metamorphic fixtures, and independent whole-branch
+  review.
+
+## Rollout Notes
+
+- Canonical source manifest is `0.3.41`.
+- This PR does not update the installed plugin/cache and does not release.
+- Issue 096 evidence-write and path-safety work remains separate.
 
 ## Approval Record
 
@@ -81,22 +96,6 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 095-commit-issue-res
 - GitHub PR diff, conversation, and status checks before approval.
 - Merge and deployment approval through protected branch or environment gates.
 
-## Corrective Commit Set
-
-- `f980aef` — approved corrective design and execution plan.
-- `21d1290` — fail closed on historical issue discovery.
-- `881d81d` — reject failed or terminated graph queries.
-- `ef149a8` — apply one global attribution policy.
-- `4f5d14a` — fail closed on unusable branch bases.
-
-## Proposed Issue 096 Handoff
-
-Issue 095 does not modify Issue 096. The proposed handoff is explicit evidence
-writes, issue-id path traversal prevention, repo-external symlink rejection,
-and write announcements. Before Issue 096 execution, its canonical issue must
-add these acceptance criteria, its dependency on 095, and the installed-plugin
-update gate. Keep the plugin update on hold until both issues are safe.
-
 ## GitHub Gate Alignment
 
 - PR review can approve, comment, or request changes.
@@ -106,7 +105,7 @@ update gate. Keep the plugin update on hold until both issues are safe.
 
 ## Source Snapshot
 
-- Issue bytes: 7218
-- Spec bytes: 8248
-- Status bytes: 51598
+- Issue bytes: 15036
+- Spec bytes: 8842
+- Status bytes: 66633
 - Review bytes: 0
