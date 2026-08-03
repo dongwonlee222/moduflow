@@ -1,7 +1,7 @@
 # Spec: Commit-to-Issue Resolution Parity
 
 Issue: `095-commit-issue-resolution-parity`
-Prev: `093-frontmatter-issue-schema-readiness-gate` · Next: `product:plan`
+Prev: `093-frontmatter-issue-schema-readiness-gate` · Next: `product:review`
 
 ## Problem
 
@@ -99,6 +99,17 @@ In a detached-HEAD worktree, trailer resolution still works and branch resolutio
 resolver returns what it can and records that branch resolution was unavailable. It does not
 raise, and it does not silently behave as though no branch-linked commits exist.
 
+The limitation is a SHA-scoped structured diagnostic with code
+`detached-head-branch-unavailable`. It projects through the existing
+`branch-unavailable` degradation and compatibility-error surfaces only for the
+current detached HEAD. Attached unrelated commits and other SHAs read from a
+reused whole index remain ordinary unmatched results.
+
+For HEAD-state Git boundaries, symbolic-ref rc=1 is the only ordinary
+detached result. Command failure, signal termination, and malformed successful
+output fail closed, and detached SHA output is trusted only when it names one
+known snapshot record.
+
 ## Proposed Architecture
 
 A resolver module holding the rules, the precedence order, and the git access strategy.
@@ -128,21 +139,16 @@ batch path is what converge uses.
 
 ## Acceptance Criteria
 
-- `project_converge.py` and `linkage_check.py` never disagree about the same history, proven
-  by a parity test across every shape in `commit_resolution_shapes.py` that fails if either
-  module reintroduces a private rule.
-
-  *Refined 2026-07-26.* This was written as "resolve identical commit sets", which the
-  multi-attribution model makes unachievable and, on inspection, wrong to want. A commit
-  merged from one branch into another before reaching main belongs to both issues.
-  `resolve_commits_for_issue` answers "which commits are this issue's" and returns it for
-  each; `resolve_issue_for_commit` answers "which issue owns this commit" and must return
-  one. Identity between a set and a single value is not the right relation. The criterion is
-  consistency: the issue `linkage_check` names for a commit must be one the converge side
-  would claim it for, and any commit converge collects must resolve to something. Demanding
-  literal identity would have forced dropping multi-attribution and silently losing the
-  inner issue — the F9 defect, reintroduced as a spec requirement.
-- Converge evidence for issue 093 collects the full commit set, including
+- Both consumers query one attribution index and one precedence policy:
+  `trailer > branch > merge-subject`.
+- A content commit has exactly one owner under that global precedence. A merge
+  boundary may be attributed to multiple issues when it connects their
+  histories; precedence still applies within each issue's claim.
+- Parity across every declared shape proves consistency rather than literal set
+  identity: the owner returned by `linkage_check.py` is among the issues that
+  `project_converge.py` claims, and every commit collected by converge resolves
+  through the same index and policy.
+- Converge evidence for issue 093 includes
   `scripts/project_issue_schema.py` among the changed files.
 - The evidence payload carries an unmatched-commit count and a per-commit resolution source.
 - Resolution succeeds in a detached-HEAD worktree for trailer-bearing commits and reports that
@@ -163,11 +169,12 @@ Fixtures build throwaway git repositories; no test depends on this checkout's hi
 | Merge-subject only, branch deleted | Resolves; source `merge-subject` |
 | Detached HEAD | Trailer resolves; branch unavailable is reported |
 | Commits belonging to no issue | Counted as unmatched; `errors` stays empty |
-| Parity | Both modules return the same set for one range |
+| Global precedence | Content commits have one owner; merge boundaries may have multiple issue claims |
+| Parity | Both query directions are consistent with the same attribution index |
 
-## Dogfood Expectations
+## Dogfood Expectation
 
-Issues 086 and 092 are the motivating case and serve as live verification: design and
-prototype artifacts existed on branches for two weeks while the issues read `backlog`, and no
-gate surfaced the divergence. After this change, a converge run over that history reports the
-branch-resolved commits rather than only trailer-bearing ones.
+Issue 093 is the live verification target. Its converge evidence must include
+`scripts/project_issue_schema.py`; no exact historical commit count is part of
+the acceptance criterion because the reachable history changes as branches and
+merges evolve.

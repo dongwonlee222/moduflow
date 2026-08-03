@@ -10,11 +10,13 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Active Issue
 
-- `095-commit-issue-resolution-parity` (phase: execute). Canonical: `issues/095-commit-issue-resolution-parity.md`.
+- `095-commit-issue-resolution-parity` (phase: review). Canonical: `issues/095-commit-issue-resolution-parity.md`.
 
 ## Priority Queue — 2026-07-25
 
-- Now: `095` commit-to-issue resolution parity. Until it lands, converge collects only trailer-linked commits, so the review evidence step is unreliable for every issue.
+- Now: `095` PR #33 human approval. T01–T09, fresh final verification, and
+  independent whole-branch spec/quality review are complete with no open
+  finding.
 - Next: `094` risk-based security/quality review gate (its blocker `089` is done).
 - Then: `086` project-aware production/playbook dashboard.
 - Also ready: `087` Korean GitHub PR review surface, `090` project knowledge registry — both independent.
@@ -79,6 +81,91 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Verification
 
+- Issue `095` corrective implementation (2026-07-27 at `4f5d14a`): Task 1
+  focused suite `92/92 PASS`; five-module focused suite `195/195 PASS`; zero
+  expected failures. Independent Task 1/Task 2 spec and quality reviews passed
+  after two Important base-selection findings were fixed and re-reviewed in
+  `4f5d14a`. Artifact validation is `valid: true` with `errors: []`; lifecycle
+  drift is `[]`; `git diff --check` is clean. Full unittest discovery, release
+  check, and final whole-branch review remain F4.
+- Issue `095` redesign trigger (2026-07-27 at `bfa4157`): focused resolver
+  tests reached `221/221 PASS`, but full discovery failed 2 of 885 because an
+  unrelated historical octopus ambiguity reached the release gate. Independent
+  review separately reproduced a normal trunk advance being treated as an
+  ambiguous base. The approved fix is per-issue merge-base fork points plus
+  diagnostics projected to the caller's commit/issue range. Twenty failure
+  families are now preserved in an append-only corpus; future requirements,
+  invariant tests, and Critical/Important findings must trace to `FH-*` ids.
+- Issue `095` redesign plan (2026-07-27): six guarded TDD streams now replace
+  the global-base patch loop. Execution starts by isolating the Git graph
+  snapshot, then lands per-topic fork points before any consumer migration.
+- Issue `095` execution start (2026-07-27): repository identity and
+  implementation readiness passed. Worker analysis selected sequential
+  host-subagent execution T01→T09 due shared graph/resolver state.
+- Issue `095` T01 (2026-07-27 at `8068f98`): graph snapshot and Git failure
+  semantics completed. Four direct consumer suites passed 105/105; separate
+  spec and quality reviews approved with no open findings. `FH-021` and
+  `FH-022` are regression-captured.
+- Issue `095` T02 (2026-07-27 at `d25bbdd`): per-issue historical fork-point
+  derivation completed. Review caught and closed snapshot ref drift,
+  criss-cross incomplete merge bases, and a missing comparable-candidate
+  invariant as `FH-023`–`FH-025`. Four direct consumer suites passed 117/117;
+  final review has no open finding.
+- Issue `095` T03 (2026-07-28 at `2a000c0`): historical topic deltas, stacked
+  exclusions, publication recovery, cached diagnostic replay, and independent
+  range projection completed. The cumulative five-module gate passed 231/231
+  to terminal exit; independent spec and quality reviews have no open finding.
+- Issue `095` T04 (2026-07-28 at `24bfd3c`): merge boundary and content claims
+  are separate, complex side ownership requires graph corroboration, and
+  overlapping topic intervals are partitioned independently of subject,
+  parent, or issue-id order. The cumulative gate passed 267/267; final spec
+  and quality reviews have no open finding.
+- Issue `095` T05 (2026-07-28 at `8221ea0`): fatal errors and scoped
+  diagnostics are structured, compatibility errors are stable and deduplicated,
+  and bare/indexed lookups use one policy without per-commit `git show`.
+  The cumulative gate passed 279/279; final reviews have no open finding.
+- Issue `095` T06 (2026-07-28 at `d5da824`): release linkage scopes one shared
+  attribution result to behavior SHAs; out-of-range ambiguity is excluded,
+  in-range ambiguity remains fail-closed, and neutral-only ranges build no
+  attribution. The cumulative gate passed 281/281 with clean final reviews.
+- Issue `095` T07 (2026-07-28 at `94ca3d4`): converge requests one issue-scoped
+  result, preserves legacy payloads, and carries structured diagnostics/fatal
+  errors. Prebuilt indexes are safely reprojected without Git rebuild. The
+  six-module gate passed 335/335.
+- Issue `095` T08 (2026-07-29 through `8209855`): all 36 failure records map
+  to an independent executable manifest and all 70 required-component
+  deletions are detected. The behavior gate passed 351/351 to terminal exit;
+  independent spec and quality reviews approved with no Critical or Important
+  finding. Current task is T09 full verification and whole-branch review.
+- Issue `095` T09 pre-review (2026-07-29 at `a1616d5`): the first full
+  discovery preserved `FH-037` after 1016 tests failed twice because mutation
+  injection crossed two unittest module identities. `5d1509a` fixed the owner
+  module boundary and independent FH-037 spec/quality reviews approved 0/0/0.
+  Fresh discovery passed 1018/1018 in 288.945 seconds; spec findings are
+  0/0/0, release/project are valid with empty errors, lifecycle drift is `[]`,
+  and diff check is clean. Read-only Issue 093 evidence is 56 commits/46 files
+  with the schema included and no diagnostics/fatal/errors. Historical
+  octopus ambiguity remains in the unscoped corpus, stays outside current
+  release errors, and fails closed when explicitly scoped. This was the
+  pre-review checkpoint before the final whole-branch approval below.
+- Issue `095` T09 final (2026-07-29 at `f19762d`): whole-branch review findings
+  `FH-038`–`FH-040` and the FH-029/FH-035 recurrences were preserved and
+  corrected. Publication recovery now uses the captured graph with constant
+  external calls, unrelated side refs cannot silently move a topic fork, and
+  terminal evidence requires positive counts and duration. Independent final
+  spec and quality reviews both approved 0/0/0. Controller verification passed
+  1035/1035 in 417.627 seconds; spec is 0/0/0, release/project are valid with
+  empty errors, lifecycle drift is `[]`, and diff/status are clean.
+- Issue `095` PR review (2026-08-03): verified branch pushed and PR #33 is
+  ready for review at `https://github.com/dongwonlee222/moduflow/pull/33`.
+  Fresh release check and GitHub CI passed; the merge state is clean/mergeable.
+  Korean review packet and PR handoff are current; merge still requires human
+  approval.
+- Proposed Issue `096` handoff: explicit evidence writes, issue-id traversal,
+  repo-external symlinks, and write announcements. Issue 095 does not modify
+  Issue 096; before execution its canonical issue must add these acceptance
+  criteria, its dependency on 095, and the plugin-update gate. Installed plugin
+  update remains on hold until both issues are safe.
 - `python3 scripts/release_check.py` passed (exit 0) after each of issues 042/044/046/047/045/043/048/049.
 - `python3 -m unittest discover -s tests` passed (157 tests).
 - `python3 -m unittest tests.test_project_sync -v` passed (4 tests) for Issue 050 RED/GREEN coverage.
@@ -93,4 +180,4 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Next Command
 
-`product:review 093-frontmatter-issue-schema-readiness-gate`
+`product:review 095-commit-issue-resolution-parity`

@@ -204,6 +204,18 @@ class GitRepo:
         self._git("update-ref", f"refs/remotes/{remote}/{name}", name)
         return f"{remote}/{name}"
 
+    def create_orphan_ref(self, full_ref):
+        """Create a disconnected ref without changing HEAD or the worktree."""
+        tree = self._git("rev-parse", "HEAD^{tree}").strip()
+        sha = self._git(
+            "commit-tree",
+            tree,
+            "-m",
+            "chore: disconnected root",
+        ).strip()
+        self._git("update-ref", full_ref, sha)
+        return self.record(sha, None)
+
     def head(self):
         return self._git("rev-parse", "HEAD").strip()
 

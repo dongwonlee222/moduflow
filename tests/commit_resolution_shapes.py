@@ -26,6 +26,8 @@ the oracle kept agreeing with the bug. Two rules keep the declarations honest:
 """
 ALPHA = "101-alpha"
 BETA = "102-beta"
+GAMMA = "103-gamma"
+DELTA = "104-delta"
 
 
 def _seed(repo, *issue_ids):
@@ -118,6 +120,65 @@ def nested_merges(repo):
     return [ALPHA, BETA]
 
 
+def nested_merges_reversed_issue_order(repo):
+    """FH-005: inner ownership survives an outer merge regardless of id sort."""
+    _seed(repo, ALPHA, BETA)
+    inner = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta inner work", belongs_to=BETA)
+    repo.checkout("main")
+    outer = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha outer work", belongs_to=ALPHA)
+    repo.merge(
+        inner,
+        message=f"Merge branch 'codex/{BETA}'",
+        belongs_to=[ALPHA, BETA],
+    )
+    repo.checkout("main")
+    repo.merge(
+        outer,
+        message=f"Merge branch 'codex/{ALPHA}'",
+        belongs_to=ALPHA,
+    )
+    repo.delete_branch(inner)
+    repo.delete_branch(outer)
+    return [ALPHA, BETA]
+
+
+def stacked_parent_then_child_merge(repo):
+    """FH-005: live topic specificity beats a broad child merge side."""
+    _seed(repo, ALPHA, BETA)
+    alpha = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha parent work", belongs_to=ALPHA)
+    beta = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta child work", belongs_to=BETA)
+    repo.checkout(repo.default_branch)
+    repo.merge(
+        beta,
+        message=f"Merge branch 'codex/{BETA}'",
+        belongs_to=BETA,
+    )
+    return [ALPHA, BETA]
+
+
+def stacked_partial_ambiguity_conventional_merge(repo):
+    """FH-005: one ambiguous topic interval does not erase unique neighbors."""
+    _seed(repo, ALPHA, BETA, GAMMA, DELTA)
+    repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: unique alpha interval", belongs_to=ALPHA)
+    repo.branch(f"codex/{BETA}")
+    repo.commit("feat: ambiguous beta gamma interval", belongs_to=None)
+    repo._git("branch", f"codex/{GAMMA}")
+    delta = repo.branch(f"codex/{DELTA}")
+    repo.commit("feat: unique delta interval", belongs_to=DELTA)
+    repo.checkout(repo.default_branch)
+    repo.merge(
+        delta,
+        message=f"Merge branch 'codex/{DELTA}'",
+        belongs_to=DELTA,
+    )
+    return [ALPHA, BETA, GAMMA, DELTA]
+
+
 def branch_name_not_matching_issue(repo):
     """LIVE (codex/092-current-dashboard-korean vs 092-project-home-dashboard).
     A branch whose name is not the issue id it belongs to."""
@@ -128,6 +189,136 @@ def branch_name_not_matching_issue(repo):
     repo.commit("feat: work under a non-conforming branch", belongs_to=None)
     repo.publish(name)
     repo.checkout("main")
+    return [ALPHA]
+
+
+def disconnected_non_issue_base(repo):
+    """A disconnected non-issue ref is not a usable branch base.
+
+    With the real trunk deleted, selecting the orphan as base makes the issue
+    branch appear to contribute every commit in its disconnected history."""
+    _seed(repo, ALPHA)
+    issue_branch = repo.branch(f"codex/{ALPHA}")
+    repo.commit(
+        "feat: alpha work",
+        issue=ALPHA,
+        belongs_to=ALPHA,
+    )
+    repo.checkout("main")
+    repo._git("checkout", "-q", "--orphan", "orphan-base")
+    repo.commit("chore: disconnected root", belongs_to=None)
+    repo.checkout(issue_branch)
+    repo.delete_branch("main")
+    return [ALPHA]
+
+
+def local_slash_branch_is_not_remote(repo):
+    """A local `release/main` branch is not `main`'s remote counterpart."""
+    _seed(repo, ALPHA)
+    repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
+    repo._git("branch", "release/main")
+    repo.checkout("main")
+    return [ALPHA]
+
+
+def divergent_same_tail_remotes(repo):
+    """Choose the remote base whose ancestry the issue branch proves."""
+    _seed(repo, ALPHA)
+    origin_line = repo.branch("origin-line")
+    repo.commit("chore: origin diverged", belongs_to=None)
+    origin_tip = repo.head()
+    repo.checkout("main")
+    repo.commit("chore: upstream base moved", belongs_to=None)
+    upstream_tip = repo.head()
+    repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
+    repo._git("update-ref", "refs/remotes/origin/main", origin_tip)
+    repo._git("update-ref", "refs/remotes/upstream/main", upstream_tip)
+    repo.delete_branch(origin_line)
+    repo.delete_branch("main")
+    return [ALPHA]
+
+
+def ambiguous_same_tail_remotes(repo):
+    """Incomparable remote bases with equal issue ancestry must fail closed."""
+    _seed(repo, ALPHA)
+    origin_line = repo.branch("origin-line")
+    repo.commit("chore: origin diverged", belongs_to=None)
+    origin_tip = repo.head()
+    repo.checkout("main")
+    repo.commit("chore: upstream diverged", belongs_to=None)
+    upstream_tip = repo.head()
+    repo.merge(
+        origin_line,
+        message="Merge branch 'origin-line'",
+        belongs_to=None,
+    )
+    repo.branch(f"codex/{ALPHA}")
+    repo.commit(
+        "feat: alpha work",
+        issue=ALPHA,
+        belongs_to=ALPHA,
+    )
+    repo._git("update-ref", "refs/remotes/origin/main", origin_tip)
+    repo._git("update-ref", "refs/remotes/upstream/main", upstream_tip)
+    repo.delete_branch(origin_line)
+    repo.delete_branch("main")
+    return [ALPHA]
+
+
+def local_with_divergent_same_tail_remotes(repo):
+    """Local and equivalent upstream beat an unrelated same-tail origin."""
+    _seed(repo, ALPHA)
+    origin_line = repo.branch("origin-line")
+    repo.commit("chore: origin diverged", belongs_to=None)
+    origin_tip = repo.head()
+    repo.checkout("main")
+    repo.commit("chore: local upstream base", belongs_to=None)
+    local_tip = repo.head()
+    repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
+    repo._git("update-ref", "refs/remotes/origin/main", origin_tip)
+    repo._git("update-ref", "refs/remotes/upstream/main", local_tip)
+    repo.delete_branch(origin_line)
+    return [ALPHA]
+
+
+def local_with_ambiguous_same_tail_remotes(repo):
+    """Three incomparable same-tail bases must not be chosen arbitrarily."""
+    _seed(repo, ALPHA)
+    common = repo.head()
+    origin_line = repo.branch("origin-line")
+    repo.commit("chore: origin diverged", belongs_to=None)
+    origin_tip = repo.head()
+    repo.checkout("main")
+    repo.commit("chore: local diverged", belongs_to=None)
+    repo._git("checkout", "-q", "-b", "upstream-line", common)
+    repo.commit("chore: upstream diverged", belongs_to=None)
+    upstream_tip = repo.head()
+    repo.checkout("main")
+    integration = repo.branch("integration")
+    repo.merge(
+        origin_line,
+        message="Merge branch 'origin-line'",
+        belongs_to=None,
+    )
+    repo.merge(
+        "upstream-line",
+        message="Merge branch 'upstream-line'",
+        belongs_to=None,
+    )
+    repo.branch(f"codex/{ALPHA}")
+    repo.commit(
+        "feat: alpha work",
+        issue=ALPHA,
+        belongs_to=ALPHA,
+    )
+    repo._git("update-ref", "refs/remotes/origin/main", origin_tip)
+    repo._git("update-ref", "refs/remotes/upstream/main", upstream_tip)
+    repo.delete_branch(origin_line)
+    repo.delete_branch("upstream-line")
+    repo.delete_branch(integration)
     return [ALPHA]
 
 
@@ -248,6 +439,240 @@ def octopus_merge(repo):
     return [ALPHA, BETA]
 
 
+def octopus_subject_order_reversed(repo):
+    """Octopus subject token order is not evidence of parent order."""
+    _seed(repo, ALPHA, BETA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    second = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta work", belongs_to=BETA)
+    repo.checkout(repo.default_branch)
+    repo._git(
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        f"Merge branches 'codex/{BETA}' and 'codex/{ALPHA}'",
+        first,
+        second,
+    )
+    repo.record(repo.head(), [ALPHA, BETA])
+    return [ALPHA, BETA]
+
+
+def octopus_shared_ancestor_b_before_a(repo):
+    """FH-005: overlapping mapped sides keep shared work with parent topic."""
+    _seed(repo, ALPHA, BETA)
+    alpha = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: shared alpha work", belongs_to=ALPHA)
+    beta = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta stacked work", belongs_to=BETA)
+    repo.checkout(alpha)
+    repo.commit("feat: alpha advanced work", belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    repo._git(
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        f"Merge branches 'codex/{BETA}' and 'codex/{ALPHA}'",
+        beta,
+        alpha,
+    )
+    repo.record(repo.head(), [ALPHA, BETA])
+    return [ALPHA, BETA]
+
+
+def octopus_shared_ancestor_a_before_b(repo):
+    """FH-005: reversing mapped octopus parents changes no content owner."""
+    _seed(repo, ALPHA, BETA)
+    alpha = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: shared alpha work", belongs_to=ALPHA)
+    beta = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta stacked work", belongs_to=BETA)
+    repo.checkout(alpha)
+    repo.commit("feat: alpha advanced work", belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    repo._git(
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        f"Merge branches 'codex/{BETA}' and 'codex/{ALPHA}'",
+        alpha,
+        beta,
+    )
+    repo.record(repo.head(), [ALPHA, BETA])
+    return [ALPHA, BETA]
+
+
+def octopus_partial_unresolved_b_before_a(repo):
+    """FH-005: mapped overlap partitions despite an unresolved sibling side."""
+    _seed(repo, ALPHA, BETA, GAMMA)
+    alpha = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: partial shared alpha work", belongs_to=ALPHA)
+    beta = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: partial beta stacked work", belongs_to=BETA)
+    repo.checkout(alpha)
+    repo.commit("feat: partial alpha advanced work", belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    gamma = repo.branch(f"codex/{GAMMA}")
+    repo.commit("feat: unresolved gamma work", belongs_to=None)
+    repo.checkout(repo.default_branch)
+    repo._git(
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        (
+            f"Merge branches 'codex/{BETA}', 'codex/{ALPHA}', "
+            f"and 'codex/{GAMMA}'"
+        ),
+        beta,
+        alpha,
+        gamma,
+    )
+    repo.record(repo.head(), [ALPHA, BETA, GAMMA])
+    repo.delete_branch(gamma)
+    return [ALPHA, BETA, GAMMA]
+
+
+def octopus_partial_unresolved_a_before_b(repo):
+    """FH-005: unresolved sibling does not restore octopus parent ordering."""
+    _seed(repo, ALPHA, BETA, GAMMA)
+    alpha = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: partial shared alpha work", belongs_to=ALPHA)
+    beta = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: partial beta stacked work", belongs_to=BETA)
+    repo.checkout(alpha)
+    repo.commit("feat: partial alpha advanced work", belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    gamma = repo.branch(f"codex/{GAMMA}")
+    repo.commit("feat: unresolved gamma work", belongs_to=None)
+    repo.checkout(repo.default_branch)
+    repo._git(
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        (
+            f"Merge branches 'codex/{BETA}', 'codex/{ALPHA}', "
+            f"and 'codex/{GAMMA}'"
+        ),
+        alpha,
+        beta,
+        gamma,
+    )
+    repo.record(repo.head(), [ALPHA, BETA, GAMMA])
+    repo.delete_branch(gamma)
+    return [ALPHA, BETA, GAMMA]
+
+
+def octopus_mapping_ambiguous(repo):
+    """Without corroborating refs, octopus side ownership is unavailable."""
+    _seed(repo, ALPHA, BETA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", issue=ALPHA, belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    second = repo.branch(f"codex/{BETA}")
+    repo.commit("feat: beta work", issue=BETA, belongs_to=BETA)
+    repo.checkout(repo.default_branch)
+    repo._git(
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        f"Merge branches 'codex/{BETA}' and 'codex/{ALPHA}'",
+        first,
+        second,
+    )
+    repo.record(repo.head(), [ALPHA, BETA])
+    repo.delete_branch(first)
+    repo.delete_branch(second)
+    return [ALPHA, BETA]
+
+
+def two_parent_multi_name_subject(repo):
+    """Two-parent side ownership follows the parent ref, not token order."""
+    _seed(repo, ALPHA, BETA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit("feat: alpha work", belongs_to=ALPHA)
+    repo.checkout(repo.default_branch)
+    repo.merge(
+        first,
+        message=f"Merge codex/{BETA} and codex/{ALPHA}",
+        belongs_to=[ALPHA, BETA],
+    )
+    return [ALPHA, BETA]
+
+
+def two_parent_multi_name_ambiguous(repo):
+    """Two distinct issue refs at parent2 make side ownership ambiguous."""
+    _seed(repo, ALPHA, BETA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit(
+        "feat: alpha work",
+        issue=ALPHA,
+        belongs_to=ALPHA,
+    )
+    repo._git("branch", f"codex/{BETA}")
+    repo.checkout(repo.default_branch)
+    repo.merge(
+        first,
+        message=f"Merge codex/{BETA} and codex/{ALPHA}",
+        belongs_to=[ALPHA, BETA],
+    )
+    return [ALPHA, BETA]
+
+
+def two_parent_multi_name_ambiguous_no_trailer(repo):
+    """FH-016: unresolved same-tip refs cannot guess no-trailer content."""
+    _seed(repo, ALPHA, BETA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit(
+        "feat: ambiguous untrailed work",
+        belongs_to=None,
+    )
+    repo._git("branch", f"codex/{BETA}")
+    repo.checkout(repo.default_branch)
+    repo.merge(
+        first,
+        message=f"Merge codex/{ALPHA} and codex/{BETA}",
+        belongs_to=[ALPHA, BETA],
+    )
+    return [ALPHA, BETA]
+
+
+def nested_ambiguous_merge_into_outer(repo):
+    """FH-016: an inner unresolved side blocks broader outer ownership."""
+    _seed(repo, ALPHA, BETA, GAMMA)
+    first = repo.branch(f"codex/{ALPHA}")
+    repo.commit(
+        "feat: inner ambiguous work",
+        belongs_to=None,
+    )
+    repo._git("branch", f"codex/{BETA}")
+    repo.checkout(repo.default_branch)
+    outer = repo.branch(f"codex/{GAMMA}")
+    repo.commit("feat: gamma outer work", belongs_to=GAMMA)
+    repo.merge(
+        first,
+        message=f"Merge codex/{ALPHA} and codex/{BETA}",
+        belongs_to=[ALPHA, BETA, GAMMA],
+    )
+    repo.checkout(repo.default_branch)
+    repo.merge(
+        outer,
+        message=f"Merge branch 'codex/{GAMMA}'",
+        belongs_to=GAMMA,
+    )
+    repo.delete_branch(first)
+    repo.delete_branch(f"codex/{BETA}")
+    repo.delete_branch(outer)
+    return [ALPHA, BETA, GAMMA]
+
+
 ALL_SHAPES = {
     "happy_merge": happy_merge,
     "sync_merge_then_pr_merge": sync_merge_then_pr_merge,
@@ -255,7 +680,22 @@ ALL_SHAPES = {
     "single_branch_clone": single_branch_clone,
     "detached_before_commit": detached_before_commit,
     "nested_merges": nested_merges,
+    "nested_merges_reversed_issue_order": nested_merges_reversed_issue_order,
+    "stacked_parent_then_child_merge": stacked_parent_then_child_merge,
+    "stacked_partial_ambiguity_conventional_merge": (
+        stacked_partial_ambiguity_conventional_merge
+    ),
     "branch_name_not_matching_issue": branch_name_not_matching_issue,
+    "disconnected_non_issue_base": disconnected_non_issue_base,
+    "local_slash_branch_is_not_remote": local_slash_branch_is_not_remote,
+    "divergent_same_tail_remotes": divergent_same_tail_remotes,
+    "ambiguous_same_tail_remotes": ambiguous_same_tail_remotes,
+    "local_with_divergent_same_tail_remotes": (
+        local_with_divergent_same_tail_remotes
+    ),
+    "local_with_ambiguous_same_tail_remotes": (
+        local_with_ambiguous_same_tail_remotes
+    ),
     "trailer_outside_any_branch": trailer_outside_any_branch,
     "two_issues_interleaved": two_issues_interleaved,
     "empty_repository": empty_repository,
@@ -265,6 +705,22 @@ ALL_SHAPES = {
     "two_registered_stacked_issues": two_registered_stacked_issues,
     "trailer_disagrees_with_branch": trailer_disagrees_with_branch,
     "octopus_merge": octopus_merge,
+    "octopus_subject_order_reversed": octopus_subject_order_reversed,
+    "octopus_shared_ancestor_b_before_a": octopus_shared_ancestor_b_before_a,
+    "octopus_shared_ancestor_a_before_b": octopus_shared_ancestor_a_before_b,
+    "octopus_partial_unresolved_b_before_a": (
+        octopus_partial_unresolved_b_before_a
+    ),
+    "octopus_partial_unresolved_a_before_b": (
+        octopus_partial_unresolved_a_before_b
+    ),
+    "octopus_mapping_ambiguous": octopus_mapping_ambiguous,
+    "two_parent_multi_name_subject": two_parent_multi_name_subject,
+    "two_parent_multi_name_ambiguous": two_parent_multi_name_ambiguous,
+    "two_parent_multi_name_ambiguous_no_trailer": (
+        two_parent_multi_name_ambiguous_no_trailer
+    ),
+    "nested_ambiguous_merge_into_outer": nested_ambiguous_merge_into_outer,
 }
 
 

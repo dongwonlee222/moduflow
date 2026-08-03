@@ -15,7 +15,10 @@ class FakeRunner:
     fail first and succeed later (shallow-clone fetch recovery)."""
 
     def __init__(self, responses):
-        self.responses = responses
+        self.responses = {
+            HEAD_REF_ARGS: "refs/heads/main\n",
+            **responses,
+        }
         self.calls = []
 
     def __call__(self, args, cwd, timeout=None):
@@ -33,6 +36,9 @@ class FakeRunner:
 
 MERGE_BASE_ARGS = ("git", "merge-base", "HEAD", "origin/main")
 FETCH_ARGS = ("git", "fetch", "origin", "main", "--depth=200")
+BRANCH_REF_ARGS = tuple(linkage_check.commit_resolution.BRANCH_REF_ARGS)
+ISSUE_HISTORY_ARGS = tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS)
+HEAD_REF_ARGS = tuple(linkage_check.commit_resolution.HEAD_REF_ARGS)
 
 HUMANS = [{"name": "Dongwon Lee", "email": "webn77@gmail.com"}]
 
@@ -68,10 +74,9 @@ def unlinked_commit_responses(sha="badc0ffee", path="scripts/hotfix.py"):
         ("git", "rev-list", "mbsha..HEAD"): f"{sha}\n",
         ("git", "show", "--name-only", "--format=", sha): f"{path}\n",
         ("git", "show", "-s", "--format=%B", sha): "hotfix without issue\n",
-        ("git", "branch", "--contains", sha): "* main\n",
         tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "{sha}\x00hotfix without issue\x00\x00hotfix without issue\n\x01",
-        ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
-        ("git", "ls-files", "issues"): "",
+        BRANCH_REF_ARGS: "",
+        ISSUE_HISTORY_ARGS: "",
 
     }
 
@@ -106,12 +111,9 @@ class LinkageGateTests(unittest.TestCase):
                 ("git", "show", "--name-only", "--format=", "sha1"): (
                     "scripts/foo.py\nREADME.md\n"
                 ),
-                ("git", "show", "-s", "--format=%B", "sha1"): (
-                    "feat: foo\n\nIssue: 075-issue-less-context-capture\n"
-                ),
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "sha1\x00feat: thing\x00\x00feat: thing\n\nIssue: 070-spec-consistency-analyze\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
-                ("git", "ls-files", "issues"): "",
+                BRANCH_REF_ARGS: "",
+                ISSUE_HISTORY_ARGS: "issues/070-spec-consistency-analyze.md\n",
             }
         )
         with tempfile.TemporaryDirectory() as tmp:
@@ -122,6 +124,9 @@ class LinkageGateTests(unittest.TestCase):
         self.assertEqual(result["errors"], [])
         self.assertEqual(result["unlinked"], [])
         self.assertEqual(result["uncovered"], [])
+        per_commit_body_args = ("git", "show", "-s", "--format=%B", "sha1")
+        self.assertNotIn(per_commit_body_args, runner.responses)
+        self.assertNotIn(per_commit_body_args, runner.calls)
 
     def test_neutral_only_range_passes_without_declarations_file(self):
         # Missing releases/no-issue-declarations.md is fine when nothing is unlinked.
@@ -149,6 +154,9 @@ class LinkageGateTests(unittest.TestCase):
         joined = "\n".join(result["errors"])
         self.assertIn("badc0ffee", joined)
         self.assertIn("scripts/hotfix.py", joined)
+        per_commit_branch_args = ("git", "branch", "--contains", "badc0ffee")
+        self.assertNotIn(per_commit_branch_args, runner.responses)
+        self.assertNotIn(per_commit_branch_args, runner.calls)
 
     def test_unlinked_commit_with_valid_human_declaration_passes(self):
         responses = unlinked_commit_responses()

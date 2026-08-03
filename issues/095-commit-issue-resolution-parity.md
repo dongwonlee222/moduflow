@@ -1,6 +1,6 @@
 # Issue 095: Commit-to-Issue Resolution Parity
 
-**Status: active** — created 2026-07-25, started 2026-07-26; stream A implemented.
+**Status: active** — created 2026-07-25, started 2026-07-26; PR #33 passed CI and the review gate and is ready for human approval.
 **Priority: p1**
 **Blocked-by:**
 
@@ -78,10 +78,15 @@ rather than issues.
 
 ## Acceptance Criteria
 
-- `project_converge.py` and `linkage_check.py` resolve identical commit sets
-  for the same range, proven by a parity test.
-- Converge evidence on issue 093's branch collects all 44 commits and includes
-  `project_issue_schema.py`.
+- Both query directions use the same attribution index and policy:
+  `trailer > branch > merge-subject`.
+- A content commit has one owner under that precedence. A merge boundary may
+  be attributed to multiple issues when it connects their histories.
+- Cross-consumer parity proves that the commit named by `linkage_check.py` is
+  among the issues that `project_converge.py` claims, and that every commit
+  collected by converge resolves through the shared policy.
+- Converge evidence for issue 093 includes
+  `scripts/project_issue_schema.py`.
 - The evidence payload reports an unmatched-commit count; a run that drops
   commits cannot report an empty `errors` list with no other signal.
 - Resolution succeeds in a detached-HEAD worktree for trailer-bearing commits
@@ -109,9 +114,13 @@ existing history. Do not make converge gate the review verdict.
 ## Workflow Tasks
 
 - [x] spec → `specs/095-commit-issue-resolution-parity/spec.md`
-- [x] plan → `specs/095-commit-issue-resolution-parity/plan.md` + `tasks.md`
-- [x] execute → PR / commits (streams A–E; `scripts/commit_resolution.py` plus both consumer migrations)
-- [ ] review → review notes
+- [x] plan → active redesign `specs/095-commit-issue-resolution-parity/plan.md` + `tasks.md`; corrective history → `docs/superpowers/plans/2026-07-27-095-corrective-completion.md`
+- [x] execute → corrective branch `codex/095-commit-issue-resolution-parity-fix`; shared resolver plus both consumer migrations
+- [x] redesign → `docs/superpowers/specs/2026-07-27-095-attribution-architecture-redesign.md`
+- [x] failure history → `specs/095-commit-issue-resolution-parity/failure-history.md`
+- [x] implementation readiness → `specs/095-commit-issue-resolution-parity/implementation-readiness.json`
+- [x] workers → `specs/095-commit-issue-resolution-parity/worker-plan.md` + `worker-plan.json`
+- [x] review → independent whole-branch spec and quality reviews approved 0/0/0
 
 ## Related Issues
 
@@ -127,13 +136,37 @@ existing history. Do not make converge gate the review verdict.
 - 2026-07-25: found during the independent review of issue 093.
 - 2026-07-26: stream A landed. Implementing it surfaced a rule the spec had assumed away — branch containment is not branch authorship. `git rev-list <branch>` attributed 279 commits to issue 093 where the branch contributed 52, because a branch cut from main carries all of main as ancestors; `--not main` yields 0 once merged. Merged work is now delimited by the merge commit's second-parent side minus its first-parent side, computed from the log records already parsed, so it adds no subprocess. Converge-equivalent collection on 093 moved from 10 to 57 and includes `scripts/project_issue_schema.py`.
 - 2026-07-26: reproduced on `main` at `6bca2b4` after 093 merged — converge collects 10 commits (trailer 9, merge-subject 1) with `errors: []`, while `linkage_check` attributes 53 over the same window. Merging raised the count but did not close the gap, confirming the defect is structural rather than a branch-lifetime artifact. Spec and plan written.
+- 2026-07-27: corrective TDD removed the four Round 9 expected failures, made issue discovery and graph failures fail closed, and applied one global precedence policy. Task 1 passed 92/92 focused tests; the five-module focused suite passed 195/195 with zero expected failures. Independent spec and quality reviews passed after two Important base-selection findings were fixed in `4f5d14a`. Full-suite and release gates remain the final review step.
+- 2026-07-27: stopped the corrective patch loop after repeated review findings proved the global-base architecture unsound. The current branch reached 221/221 focused tests, but full discovery failed 2 of 885 because an unrelated historical octopus ambiguity leaked into the release gate; a separate review reproduced normal trunk advancement being misclassified as an ambiguous base. Approved redesign: per-issue fork points, graph-corroborated merge content, and caller-scoped diagnostics.
+- 2026-07-27: preserved twenty failure families as an append-only design corpus. Future architecture requirements, plans, invariant tests, and Critical/Important review findings must trace to its `FH-*` ids; focused tests alone cannot close an entry.
+- 2026-07-27: replaced the superseded global-base execution plan with six redesign streams: graph snapshot, per-topic fork points and stacked deltas, merge/content claims, scoped diagnostics, consumer scope integration, and invariant/full-gate review. Every stream names its failure-history inputs and RED/GREEN boundary.
+- 2026-07-27: implementation readiness reported `ready`; the worker plan found overlapping graph/resolver files and shared-state risk across every task, so execution is sequential T01→T09. Dongwon Lee selected the recommended host-subagent workflow with per-task spec and quality reviews.
+- 2026-07-27: completed T01 graph snapshot and failure-semantics boundary at `8068f98`. Review-discovered `FH-021` and `FH-022` now have executable regressions; the four direct consumer suites pass 105/105, and separate spec and quality reviews approved the result. T02 historical fork-point derivation is next.
+- 2026-07-27: completed T02 historical fork-point derivation at `d25bbdd`. Independent review found and closed snapshot-time ref drift, incomplete criss-cross merge bases, and a missing comparable-candidate invariant as `FH-023`–`FH-025`; the direct consumer gate passes 117/117 with no open review finding. T03 stacked topic deltas are next.
+- 2026-07-27: prepared an Issue 096 handoff proposing explicit `--evidence` writes, issue-id path traversal prevention, repo-external symlink rejection, and write-path announcements. Issue 095 does not modify Issue 096; its canonical issue must add these acceptance criteria, the dependency on 095, and the plugin-update gate before execution. The installed plugin remains on hold until both issues are safe.
+- 2026-07-28: completed T03 stacked topic deltas at `2a000c0`. Repeated publication/base/diagnostic/range failures were preserved as `FH-002`, `FH-003`, `FH-010`, `FH-022`, and `FH-026`–`FH-031`; the cumulative direct-consumer gate passed 231/231 to terminal exit, and independent spec and quality reviews reported no open finding. T04 merge-boundary/content-side claims are next.
+- 2026-07-28: completed T04 merge-boundary/content-side separation at `24bfd3c`. Review-discovered nested, unresolved, octopus-overlap, partial-side, and local-ambiguity failures were preserved under `FH-005` and `FH-016` before correction. The cumulative direct-consumer gate passed 267/267, and independent spec and quality reviews reported no open finding. T05 structured/scoped diagnostics are next.
+- 2026-07-28: completed T05 structured/scoped diagnostics at `8221ea0`. The retired bare resolver exposed stale linkage fixtures (`FH-027`), and review found fatal ownership leakage (`FH-010`) plus duplicated compatibility errors (`FH-032`); all were recorded before correction. The cumulative gate passed 279/279 with clean independent spec and quality reviews. T06 release-SHA linkage scope is next.
+- 2026-07-28: completed T06 release-SHA linkage scope at `d5da824`. Linkage now builds one result for behavior SHAs only; the same FH-018 ambiguity is ignored outside the release and fails closed inside it, while neutral-only ranges build no attribution. The cumulative gate passed 281/281 with clean independent reviews. T07 converge issue scope is next.
+- 2026-07-28: completed T07 converge issue scope at `94ca3d4`. Converge now requests the issue scope, preserves legacy payload keys, and exposes diagnostics/fatal fields. A prebuilt-index FH-018 leak was recorded and fixed before final 335/335 and clean reviews. Actual Issue 093 evidence remains 56 commits/46 files with the schema file included. T08 failure-corpus traceability is next.
+- 2026-07-29: completed T08 failure-corpus traceability through `8209855`. All 36 failure records map to an independent executable manifest; every one of 70 required-component deletions is detected. The behavior gate passed 351/351 to terminal exit, and independent spec and quality reviews approved with no Critical or Important finding. T09 full/release/project/lifecycle gates and whole-branch review are next.
+- 2026-07-29: T09's first full discovery exposed `FH-037`, where top-level and package-qualified module identities let two mutation injections miss their nested assertions. The RED result (1016 tests, 2 failures, exit 1) was preserved before `5d1509a`; independent FH-037 spec and quality reviews approved 0/0/0. Fresh pre-review gates at `a1616d5` passed 1018/1018 in 288.945 seconds, spec 0/0/0, release/project valid with empty errors, lifecycle drift `[]`, and clean diff. Read-only Issue 093 evidence remains 56 commits/46 files with the schema included and no diagnostics/fatal/errors. The historical octopus stays in the unscoped corpus, is absent from current release errors, and fails closed when explicitly scoped. F2 remains open until independent whole-branch review.
+- 2026-07-29: whole-branch review opened `FH-038`: detached HEAD trailer resolution found the owner but silently omitted the required branch-attribution limitation, and an untrailed detached commit was indistinguishable from ordinary unmatched history. `193f334` added a current-HEAD SHA-scoped `detached-head-branch-unavailable` diagnostic with existing degraded/compatibility projection; `94cbdda` and `9934d78` migrated every direct consumer fixture. The actual-Git set passed 4/4, the six Issue 095 suites passed 357/357, and full discovery passed 1021/1021. F2 remains open pending independent re-review.
+- 2026-07-29: whole-branch re-review opened `FH-039` because the new HEAD-state commands lacked ordinary-negative/failure/termination/malformed-success regressions. The RED set additionally found that an unknown successful HEAD SHA remained stored despite a fatal error. `519301b` now validates before assignment and adds an independent eight-component boundary manifest. Focused consumers passed 144/144, the six Issue 095 suites passed 364/364, full discovery passed 1028/1028, and release/spec/project/lifecycle/diff gates passed. F2 remains open pending independent re-review.
+- 2026-07-29: completed T09 and final whole-branch review. Review-discovered side-ref provenance (`FH-040`), publication-history subprocess growth (`FH-029` recurrence), and zero-valued terminal evidence (`FH-035` recurrence) were preserved before correction. Final independent spec and quality reviews both approved 0/0/0. Controller verification at `f19762d` passed 1035/1035 in 417.627 seconds; spec findings are 0/0/0, release/project are valid with empty errors, lifecycle drift is `[]`, and diff/worktree are clean. Issue 093 remains 56 commits/46 files with the schema included and no diagnostics/fatal/errors. Phase advanced to review; PR preparation is next.
+- 2026-08-03: pushed `codex/095-commit-issue-resolution-parity-fix`, opened PR #33, and completed the PR review gate. Fresh release check passed with every named subgate, GitHub CI passed, and the PR is clean/mergeable. `pr.md` and `human-review.ko.md` carry the final 1035/1035 and whole-branch 0/0/0 evidence. Installed plugin/cache, Issue 096, release, and merge remain untouched. Human approval is next.
 
 ## Links
 
 - Spec: `specs/095-commit-issue-resolution-parity/spec.md`
+- Redesign: `docs/superpowers/specs/2026-07-27-095-attribution-architecture-redesign.md`
+- Failure history: `specs/095-commit-issue-resolution-parity/failure-history.md`
+- Implementation readiness: `specs/095-commit-issue-resolution-parity/implementation-readiness.json`
+- Worker plan: `specs/095-commit-issue-resolution-parity/worker-plan.md`
 - Status: `specs/095-commit-issue-resolution-parity/status.md`
 - Roadmap: `workspace/roadmap.md`
+- PR: `https://github.com/dongwonlee222/moduflow/pull/33`
 
 ## Next Command
 
-`/product:review 095-commit-issue-resolution-parity`
+`product:review 095-commit-issue-resolution-parity`

@@ -300,6 +300,21 @@
       "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/31",
       "next_command": "product:review 093-frontmatter-issue-schema-readiness-gate",
       "updated_at": "2026-07-26"
+    },
+    {
+      "issue_id": "095-commit-issue-resolution-parity",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Reviewer",
+      "status": "review",
+      "branch": "",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/33",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for human approval with CI passing: https://github.com/dongwonlee222/moduflow/pull/33",
+      "next_command": "product:review 095-commit-issue-resolution-parity",
+      "updated_at": "2026-08-03"
     }
   ]
 }

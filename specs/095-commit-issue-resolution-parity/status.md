@@ -1,6 +1,6 @@
 # Issue 095 Execution Status
 
-**Status: active** — started 2026-07-26. Streams A through E implemented; review is the next gate.
+**Status: active** — started 2026-07-26. T01–T09 implementation and review gates are complete; PR #33 passed CI and is ready for human approval. Earlier review rounds below are retained as history.
 
 ## Progress
 
@@ -14,7 +14,11 @@
 | C | C1 surface unmatched count for reviewers | done | pending commit |
 | D | D1 extend the regression matrix | done | pending commit |
 | E | E1 cross-module parity proof | done | pending commit |
-| E | E2 completion gates | done | pending commit |
+| E | E2 historical completion gates | superseded by F4 | — |
+| F | F1 fail-closed registry and graph handling | done | `21d1290`, `881d81d` |
+| F | F2 global precedence and safe base selection | done | `ef149a8`, `4f5d14a` |
+| F | F3 artifact and lifecycle reconciliation | done | this documentation commit |
+| F | F4 full verification and final review | done | `f19762d` |
 
 ## Stream A outcome
 
@@ -913,3 +917,375 @@ Do not open a PR. F1, F2, F5, F6, and F7 are correctness defects in shipped code
 actively wrong in this repository's evidence bundles today. The fixture gaps that hid them
 need addressing as a class, not case by case — three rounds have now each fixed the instance
 they were handed.
+
+## Corrective completion — 2026-07-27
+
+Round 9's four expected failures are removed. The corrective branch is
+`codex/095-commit-issue-resolution-parity-fix`.
+
+| Area | Result | Evidence |
+| --- | --- | --- |
+| Historical issue registry | Fail closed; checkout-independent; unknown issue claims rejected | `21d1290` |
+| Git graph queries | Errors and terminated queries surface degradation instead of attribution | `881d81d` |
+| Global attribution | Content commits have one owner under `trailer > branch > merge-subject`; merge boundaries may carry multiple issue claims | `ef149a8` |
+| Base selection | Issue-shaped refs cannot become the base; unusable candidates fail closed | `4f5d14a` |
+
+### Verification recorded so far
+
+```text
+Task 1 focused suite: 92/92 PASS
+Five-module focused suite: 195/195 PASS
+Expected failures: 0
+```
+
+The five-module suite covers `test_commit_resolution`,
+`test_commit_resolution_differential`, `test_commit_resolution_parity`,
+`test_linkage_check`, and `test_project_converge`.
+
+Task 3 artifact validation reports `valid: true` and `errors: []`; lifecycle
+drift is `[]`, and `git diff --check` is clean. Only the current branch's full
+unittest suite, release check, and final whole-branch review remain F4 before a
+closure claim.
+
+### Independent review
+
+- Task 1 spec review: pass.
+- Task 1 quality review: pass after terminated graph-query handling was fixed
+  in `881d81d`.
+- Task 2 spec review: pass.
+- Task 2 quality review: pass after two Important base-selection findings were
+  fixed and re-reviewed in `4f5d14a`.
+
+Human approval is still required before merge. No GitHub PR is claimed by this
+status record.
+
+### Issue 096 proposed handoff
+
+Issue 095 does not modify Issue 096. Its proposed command-safety handoff is:
+
+- make `--evidence` read-only by default or require an explicit write flag;
+- validate issue ids so they cannot traverse paths;
+- reject symlinks that resolve outside the repository;
+- announce every write path.
+
+Before Issue 096 execution, its canonical issue must be expanded with these
+acceptance criteria, an explicit dependency on 095, and the installed-plugin
+update gate. The work then proceeds on a separate branch after 095 is approved
+and merged. The installed ModuFlow plugin remains on hold until both issues are
+safe.
+
+## Next gate
+
+Run F4 full verification and final independent review, then prepare a Draft PR
+for human approval.
+
+## Redesign implementation plan — 2026-07-27
+
+The preceding corrective next gate is superseded. Full-suite failures and the
+final independent review proved that extending one repository-wide base
+heuristic would continue the patch loop.
+
+The active plan is now
+`specs/095-commit-issue-resolution-parity/plan.md`. Its six streams replace the
+global-base path with:
+
+1. one injected Git graph snapshot and explicit failure semantics;
+2. per-issue historical fork points and stacked-issue exclusions;
+3. separate merge-boundary and content-side claims;
+4. one precedence pass plus caller-scoped diagnostics;
+5. release-SHA and converge-issue scope integration;
+6. failure-corpus traceability, full gates, and independent review.
+
+No implementation claim accompanies this planning artifact. The branch remains
+unfit for a PR until all Stream F gates pass.
+
+Planning validation: spec consistency reported 0 findings across 9 checked
+requirements; project validation returned `valid: true` with `errors: []`;
+lifecycle drift was `[]`; JSON and diff checks passed.
+
+## Next gate
+
+Execute Stream A1 with RED/GREEN evidence:
+`product:execute 095-commit-issue-resolution-parity`.
+
+## Execution start — 2026-07-27
+
+Repository identity allowed `execute`, implementation readiness is `ready`,
+and the generated worker plan is sequential because every task touches shared
+graph/resolver state or depends on the preceding task. Dongwon Lee selected
+the recommended host-subagent workflow.
+
+Each task uses one fresh implementer, then a separate spec-compliance reviewer,
+then a separate code-quality reviewer. No later task starts while either
+review has an open finding.
+
+## T01 / A1 completion — 2026-07-27
+
+RED exposed stale direct-consumer fixtures, malformed successful merge-base
+output, and file-mode module reuse. Those review findings were preserved as
+`FH-021` and `FH-022` before the fixes landed.
+
+GREEN is `8068f98` on top of `9356cb0`, `064ca05`, and `1ceb153`. The direct
+graph, resolver, parity, and linkage suites passed 105/105. Independent spec
+review and independent quality re-review both approved T01 with no open
+Critical, Important, or Minor findings.
+
+## T02 / B1 completion — 2026-07-27
+
+The initial implementation at `ccffbce` passed its declared invariants, but
+independent quality review reproduced three missing boundaries: snapshot ref
+movement, criss-cross multiple best merge bases, and an unexercised comparable
+candidate path. They were preserved as `FH-023`, `FH-024`, and `FH-025` before
+the fixes.
+
+`b711c06` moved graph queries to snapshot object IDs, consumed complete
+`merge-base --all` candidates, deduplicated repeated query diagnostics, and
+added actual-Git invariant fixtures. `d25bbdd` made the criss-cross merge truth
+explicit. The graph, resolver, parity, and linkage suites passed 117/117.
+Independent spec and final quality reviews approved with no open Critical,
+Important, or Minor findings.
+
+## T03 / B2 completion — 2026-07-28
+
+T03 replaced the live global-base path with per-topic deltas anchored to the
+historical fork and ancestry-maximal stacked-issue exclusions. Publication
+recovery now survives no-ff publication, repeated publication, ref-order
+aliases, intermediate aliases, and an unrepublished live topic tip without
+discarding a genuine ordinary base.
+
+The repeated review failures were preserved before each fix under `FH-002`,
+`FH-003`, `FH-010`, `FH-022`, and `FH-026`–`FH-031`. The implementation spans
+`4d20a19` through `2a000c0`; the controller's cumulative graph, resolver,
+differential, parity, and linkage gate reached terminal exit 0 with 231/231
+tests in 204.678 seconds. Independent spec review repeated 231/231, and final
+quality review reported no Critical, Important, or Minor findings.
+
+## T04 / C1 completion — 2026-07-28
+
+T04 split merge-boundary claims from content-side claims and moved source
+precedence into one final pass. Complex merge content now requires retained-ref
+graph corroboration; unresolved sides remain unowned with SHA/issue-scoped
+diagnostics. Overlapping stacked topic sides are partitioned by topology rather
+than issue id, subject order, or octopus parent order, and same-tip ambiguity
+is limited to its own ancestry interval.
+
+Independent review repeatedly exposed reversed-id nested ownership,
+live-membership reopening unresolved content, outer-merge under-suppression,
+overlapping mapped octopus sides, partial-unresolved siblings, and locally
+ambiguous topic intervals. Each was recorded under `FH-005` or `FH-016` before
+the fix. The implementation spans `59a4d69` through `24bfd3c`; the controller
+cumulative gate passed 267/267 in 180.284 seconds. Final independent spec and
+quality reviews reported no Critical, Important, or Minor findings.
+
+## T05 / D1 completion — 2026-07-28
+
+T05 introduced structured `fatal_errors`, caller-scoped diagnostics,
+order-preserving deduplicated compatibility errors, and one bare/indexed
+resolution policy. Bare commit lookup no longer uses a private `git show`
+trailer shortcut; whole-result and legacy mapping inputs remain supported.
+
+Implementation exposed stale linkage fixtures after the command-boundary
+migration (`FH-027`), then independent quality review found fatal attribution
+escaping through trailer candidates (`FH-010`) and duplicated flat messages
+over structured diagnostics (`FH-032`). Each was recorded before correction.
+The implementation spans `a4065f6` and `8221ea0`; the controller cumulative
+gate passed 279/279 in 206.813 seconds. Final independent spec and quality
+reviews reported no Critical, Important, or Minor findings.
+
+## T06 / E1 completion — 2026-07-28
+
+T06 refactored release linkage into two passes: changed paths identify behavior
+commits first, then one attribution result is built with exactly those SHAs and
+reused for every commit. Neutral-only ranges skip attribution entirely.
+
+The same deleted-ref ambiguity now produces zero projected diagnostics outside
+the release and remains fail-closed inside it (`FH-018`). `d5da824` passed the
+controller cumulative gate 281/281 in 146.958 seconds. Final independent spec
+and quality reviews reported no Critical, Important, or Minor findings.
+
+## T07 / E2 completion — 2026-07-28
+
+T07 made converge request `target_issue_ids={issue_id}`, preserved every legacy
+payload key, and exposed structured diagnostics/fatal errors in resolve and
+evidence JSON. Actual Issue 093 evidence remains valid with 56 commits, 46
+files, `scripts/project_issue_schema.py`, and zero diagnostics/fatal/errors.
+
+Independent quality review found that an unscoped prebuilt whole-result could
+bypass issue projection (`FH-018`). `94ca3d4` reprojects it without rebuilding,
+preserves fatal state, rejects incomplete indexes, and corrects merge
+degradation summaries. The controller six-module gate passed 335/335 in
+190.552 seconds; final reviews reported no finding.
+
+## Current task
+
+Review Draft PR #33. Execution and independent review gates are complete;
+merge still requires human approval and required checks.
+
+## T08 / F1 completion — 2026-07-29
+
+T08 maps all 36 append-only failure records to an independent executable
+manifest. Literal commit-direction truth, both query directions, caller scope,
+terminal evidence, and every required component are now mutation-tested.
+Review recurrences `FH-033`–`FH-036` preserve the false-green designs and their
+corrections instead of replacing them.
+
+The final behavior gate at `d9cdb2d` passed 351/351 in 230.595 seconds to
+terminal exit 0. The subsequent documentation-acceptance change at `c131b21`
+passed the focused evidence/mutation/traceability gate 13/13. Independent spec
+review approved with Critical 0 / Important 0 / Minor 0; independent quality
+review approved with Critical 0 / Important 0 / Minor 1. The non-blocking
+minor notes that terminal-evidence parsing should eventually reject zero
+tests or zero duration.
+
+## T09 pre-review verification — 2026-07-29
+
+The first full-discovery run at `46b0e9d` exposed `FH-037`: mutation tests
+loaded as `test_commit_resolution` while their nested named assertions loaded
+as `tests.test_commit_resolution`. The mutations reached a different module
+object and survived. That RED run reached terminal exit 1 after 1016 tests in
+301.944 seconds with two failures and zero errors.
+
+`5d1509a` made the nested loader accept the explicit owner module, and
+`a1616d5` added the append-only remediation evidence. Independent FH-037 spec
+and quality reviews both approved with Critical 0 / Important 0 / Minor 0.
+The historical open state is preserved in `failure-history.md`; its current
+state is `regression captured`.
+
+Fresh pre-review gates at `a1616d5`:
+
+| Gate | Result |
+| --- | --- |
+| Spec consistency | exit 0; findings 0/0/0; 9 requirements checked, 0 flagged |
+| Full unittest discovery | exit 0; 1018/1018 passed in 288.945 seconds; 0 failures, errors, skips, expected failures, unexpected successes |
+| Release check | exit 0; `valid: true`; `errors: []`; every named check `ok: true` |
+| Project validation | exit 0; `valid: true`; `errors: []`; lifecycle drift `[]`; only pre-existing optional/dependency/link warnings |
+| Lifecycle drift | exit 0; `[]` |
+| Diff check | exit 0 |
+
+Read-only `collect_evidence()` for Issue 093 returned `ok: true`, 56 commits,
+46 files, and included `scripts/project_issue_schema.py`. Diagnostics,
+`fatal_errors`, and `errors` were all empty; the repository snapshot examined
+428 commits with 48 unmatched.
+
+The unscoped attribution corpus retained three `merge-side-unresolved`
+diagnostics for historical octopus merge
+`777b04e6fe531d46a123aadbb236fcf3cb33e5c7` and its two affected side SHAs.
+The current release remained `valid: true` with `errors: []`, proving those
+diagnostics are outside its scope. Rebuilding with the historical merge in
+`target_shas` projected one diagnostic, one compatibility error, and
+`degraded: ["merge-side-unresolved"]`, proving the same ambiguity fails closed
+when it is in scope.
+
+This is a pre-review handoff only. F2 remains unchecked, phase remains
+`execute`, and the next command remains
+`product:execute 095-commit-issue-resolution-parity` until independent
+whole-branch review has no open Critical or Important finding.
+
+## T09 whole-branch FH-038 remediation — 2026-07-29
+
+Whole-branch spec review at `22e679f` found that detached HEAD resolution met
+trailer ownership but silently omitted the required branch-attribution
+limitation. The actual-Git RED set failed 3 of 4 tests: trailer and untrailed
+detached commits returned empty diagnostics/degradation/errors, while attached
+unrelated history remained correctly clean.
+
+`193f334` records HEAD state once per immutable graph snapshot, emits one
+SHA-scoped `detached-head-branch-unavailable` diagnostic for the current
+detached HEAD, and projects reused indexes per requested SHA. It preserves
+trailer ownership, adds no fatal error, leaves attached unrelated commits
+clean, and issues no per-commit Git probe. `94cbdda` and `9934d78` migrated the
+linkage, converge, and release-check fixture boundaries; both stale-fixture
+terminal failures remain preserved under `FH-027`.
+
+Final remediation gates:
+
+| Gate | Result |
+| --- | --- |
+| Actual-Git FH-038 focus | exit 0; 4/4 passed in 1.079 seconds |
+| Direct consumer remediation | exit 0; 87/87 passed in 4.669 seconds |
+| Release regression focus | exit 0; 4/4 passed in 63.163 seconds |
+| Six Issue 095 suites | exit 0; 357/357 passed in 241.452 seconds |
+| Full unittest discovery | exit 0; 1021/1021 passed in 334.467 seconds |
+
+FH-038 is `regression captured`, not closed. F2, lifecycle phase, and the next
+command remain unchanged until independent whole-branch review accepts the
+remediation.
+
+## T09 whole-branch FH-039 remediation — 2026-07-29
+
+Whole-branch re-review at `34ca965` found that the new HEAD-state Git commands
+had no executable ordinary-negative/failure/termination/malformed-success
+matrix. The missing traceability mapping first turned the audit RED, then the
+focused boundary set exposed a product-state defect: an unknown successful
+HEAD SHA produced a fatal error but remained stored in the snapshot.
+
+`519301b` stores a detached HEAD SHA only after one-token parsing and snapshot
+membership validation. Eight independently declared components now cover
+symbolic-ref rc=1, both commands' failures and signal termination, malformed
+successful output, public fatal projection without a fabricated detached
+diagnostic, and the valid detached path.
+
+Final remediation gates:
+
+| Gate | Result |
+| --- | --- |
+| HEAD boundary/public projection focus | exit 0; 8/8 passed in 0.792 seconds |
+| Complete executable traceability | exit 0; 3/3 passed in 38.326 seconds |
+| Graph and direct consumers | exit 0; 144/144 passed in 27.369 seconds |
+| Six Issue 095 suites | exit 0; 364/364 passed in 216.423 seconds |
+| Full unittest discovery | exit 0; 1028/1028 passed in 311.711 seconds |
+| Release/spec/project/lifecycle/diff | all exit 0; release and project errors empty; spec 0/0/0; drift `[]` |
+
+FH-039 is `regression captured`, not closed. F2, lifecycle phase, and the next
+command remain unchanged until independent whole-branch re-review accepts it.
+
+## T09 / F2 completion — 2026-07-29
+
+Whole-branch review subsequently found and closed three additional design
+boundaries without deleting their failed approaches:
+
+- `FH-040`: unrelated non-issue side refs could silently move the topic fork.
+  `86b06d2` fixed the original under-collection; `704a813` removed the
+  unproven no-anchor fallback and fails closed on multiple divergent
+  candidates.
+- `FH-029`: publication recovery still issued a merge-base subprocess per
+  historical publication. `82a6fd9` derives publication forks from the single
+  captured parent graph; publication counts 1/2/4/8 now use total external Git
+  calls 6/6/6/6 and merge-base calls 1/1/1/1.
+- `FH-035`: terminal evidence accepted zero tests or zero duration.
+  `13c4c54` parses both values and requires each to be positive.
+
+Independent final whole-branch spec and quality reviews both approved with
+Critical 0 / Important 0 / Minor 0. The final controller verification at
+`f19762d` produced:
+
+| Gate | Result |
+| --- | --- |
+| Full unittest discovery | exit 0; 1035/1035 passed in 417.627 seconds; no failures or errors |
+| Spec consistency | exit 0; findings 0/0/0; coverage 9 checked, 0 flagged |
+| Release check | exit 0; `valid: true`; `errors: []`; every named check passed |
+| Project validation | exit 0; `valid: true`; `errors: []`; only pre-existing warnings |
+| Lifecycle drift | exit 0; `[]` |
+| Diff and worktree | clean |
+
+Read-only Issue 093 evidence remains 56 commits and 46 files with
+`scripts/project_issue_schema.py` included and no diagnostics, fatal errors,
+or compatibility errors. Historical octopus
+`777b04e6fe531d46a123aadbb236fcf3cb33e5c7` remains in the unscoped diagnostic
+corpus, stays outside current release errors, and fails closed when explicitly
+included in the caller scope.
+
+F2 is complete. Lifecycle phase is `review`; the next command is
+`product:review 095-commit-issue-resolution-parity`.
+
+## PR review handoff — 2026-08-03
+
+GitHub preflight approved repository identity and write capability. Branch
+`codex/095-commit-issue-resolution-parity-fix` was pushed and PR #33 is ready
+for review: `https://github.com/dongwonlee222/moduflow/pull/33`.
+
+The PR handoff and Korean review packet carry the final controller 1035/1035,
+release/project/lifecycle evidence and independent whole-branch 0/0/0 review.
+Fresh release check remains `valid: true` with `errors: []`; GitHub CI `test`
+passed and the PR merge state is `CLEAN`/`MERGEABLE`. No merge, release,
+installed-plugin/cache update, or Issue 096 change was performed.

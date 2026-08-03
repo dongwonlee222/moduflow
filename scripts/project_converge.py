@@ -195,17 +195,24 @@ def resolve_commits(runner, cwd, issue_id):
     57 after, with the branch-only commits — including every change to
     `scripts/project_issue_schema.py` — previously invisible.
 
-    Returns {commits: [{sha, subject, source, is_merge}], unmatched_count,
-    examined_count, errors}. `unmatched_count` reports commits in the examined
-    range attributed to no issue, so a run that drops commits can no longer
-    present an empty `errors` list as the only signal (GC5: descriptive, never
-    an error, never blocking)."""
-    resolved = commit_resolution.resolve_commits_for_issue(runner, cwd, issue_id)
+    Returns the compatibility payload plus structured diagnostics and fatal
+    errors. `repo_unmatched_count` reports commits in the examined range
+    attributed to no issue, so a run that drops commits can no longer present
+    an empty `errors` list as the only signal (GC5: descriptive, never an
+    error, never blocking)."""
+    resolved = commit_resolution.resolve_commits_for_issue(
+        runner,
+        cwd,
+        issue_id,
+        target_issue_ids={issue_id},
+    )
     return {
         "commits": resolved["commits"],
         "repo_unmatched_count": resolved["repo_unmatched_count"],
         "repo_examined_count": resolved["repo_examined_count"],
         "coverage": resolved["coverage"],
+        "diagnostics": resolved["diagnostics"],
+        "fatal_errors": resolved["fatal_errors"],
         "degraded": resolved["degraded"],
         "errors": resolved["errors"],
     }
@@ -336,6 +343,8 @@ def collect_evidence(
         "repo_unmatched_count": resolution["repo_unmatched_count"],
         "repo_examined_count": resolution["repo_examined_count"],
         "coverage": resolution["coverage"],
+        "diagnostics": resolution["diagnostics"],
+        "fatal_errors": resolution["fatal_errors"],
         "degraded": resolution["degraded"],
         "errors": errors,
     }

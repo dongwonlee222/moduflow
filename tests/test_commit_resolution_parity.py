@@ -12,6 +12,7 @@ one gains a source the other does not. They run against real temporary git
 repositories rather than stubs, so a divergence in git access strategy shows up
 here too.
 """
+import ast
 import sys
 import unittest
 from pathlib import Path
@@ -19,6 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from scripts import linkage_check, project_converge  # noqa: E402
+import commit_resolution_shapes as shapes  # noqa: E402
 from git_repo_builder import GitRepo  # noqa: E402
 
 ISSUE = "095-commit-issue-resolution-parity"
@@ -57,6 +59,7 @@ class CrossModuleParityTests(unittest.TestCase):
     def test_trailer_only_history(self):
         with GitRepo() as repo:
             repo.commit("chore: unrelated")
+            repo.add_issue_file(ISSUE)
             mine = repo.commit("feat: work", issue=ISSUE)
             self.assertEqual(self.assertParity(repo), {mine})
 
@@ -105,11 +108,39 @@ class CrossModuleParityTests(unittest.TestCase):
     def test_other_issue_commits_are_not_claimed(self):
         with GitRepo() as repo:
             repo.commit("chore: base")
+            repo.add_issue_file(ISSUE)
+            repo.add_issue_file(OTHER)
             theirs = repo.commit("feat: theirs", issue=OTHER)
             mine = repo.commit("feat: mine", issue=ISSUE)
 
             self.assertEqual(self.assertParity(repo, ISSUE), {mine})
             self.assertEqual(self.assertParity(repo, OTHER), {theirs})
+
+    def test_converge_projects_real_ambiguity_by_requested_issue(self):
+        """FH-018: the consumer keeps only the requested issue's diagnostics."""
+        with GitRepo() as repo:
+            shapes.ambiguous_same_tail_remotes(repo)
+
+            requested = project_converge.resolve_commits(
+                repo.runner,
+                repo.path,
+                shapes.ALPHA,
+            )
+            unrelated = project_converge.resolve_commits(
+                repo.runner,
+                repo.path,
+                OTHER,
+            )
+
+        self.assertTrue(requested["diagnostics"])
+        self.assertTrue(requested["errors"])
+        self.assertEqual(
+            {item["issue_id"] for item in requested["diagnostics"]},
+            {shapes.ALPHA},
+        )
+        self.assertEqual(unrelated["diagnostics"], [])
+        self.assertEqual(unrelated["fatal_errors"], [])
+        self.assertEqual(unrelated["errors"], [])
 
 
 class SharedOwnershipTests(unittest.TestCase):
@@ -154,6 +185,31 @@ class SharedOwnershipTests(unittest.TestCase):
             "project_converge reintroduced a private trailer pattern",
         )
 
+    def test_live_resolution_has_no_global_base_election_or_origin_head_probe(self):
+        """FH-030: live topics derive forks independently, without origin/HEAD."""
+        source = Path("scripts/commit_resolution.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        functions = {
+            node.name for node in tree.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertNotIn("base_ref", functions)
+        self.assertNotIn("symbolic-ref", source)
+
+    def test_bare_resolver_has_no_private_trailer_shortcut(self):
+        """FH-001/FH-007/FH-008/FH-009: bare and indexed share one policy."""
+        source = Path("scripts/commit_resolution.py").read_text(encoding="utf-8")
+        tree = ast.parse(source)
+        resolver = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "resolve_issue_for_commit"
+        )
+        resolver_source = ast.get_source_segment(source, resolver)
+
+        self.assertNotIn('git", "show', resolver_source)
+        self.assertNotIn("TRAILER_RE.search", resolver_source)
+
     def test_coverage_facts_reach_the_converge_payload(self):
         """The per-issue half of the payload. The repo-wide counts cannot tell
         a reviewer whether *this* bundle is complete — they are identical for
@@ -161,11 +217,12 @@ class SharedOwnershipTests(unittest.TestCase):
         with GitRepo() as repo:
             repo.commit("chore: one")
             repo.commit("chore: two")
+            repo.add_issue_file(ISSUE)
             repo.commit("feat: mine", issue=ISSUE)
             result = project_converge.resolve_commits(repo.runner, repo.path, ISSUE)
             self.assertEqual(result["coverage"]["sources"], {"trailer": 1})
-            self.assertEqual(result["repo_unmatched_count"], 2)
-            self.assertEqual(result["repo_examined_count"], 3)
+            self.assertEqual(result["repo_unmatched_count"], 3)
+            self.assertEqual(result["repo_examined_count"], 4)
             self.assertEqual(
                 result["errors"], [], "coverage is descriptive, never an error"
             )

@@ -1,3 +1,4 @@
+import contextlib
 import json
 import sys
 import tempfile
@@ -10,16 +11,69 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from git_repo_builder import GitRepo  # noqa: E402
 
 
-SYMBOLIC_REF_ARGS = ("git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+HEAD_REF_ARGS = tuple(linkage_check.commit_resolution.HEAD_REF_ARGS)
+BRANCH_REF_ARGS = tuple(linkage_check.commit_resolution.BRANCH_REF_ARGS)
+ALPHA = "101-alpha"
+BETA = "102-beta"
+
+
+@contextlib.contextmanager
+def ambiguous_release_repo(*, ambiguity_in_range):
+    """FH-018: the same ambiguity, inside or outside the release range."""
+    with GitRepo() as repo:
+        repo.commit("chore: base", belongs_to=None)
+        repo.add_issue_file(ALPHA)
+        repo.add_issue_file(BETA)
+        base = repo.head()
+
+        first = repo.branch(f"codex/{ALPHA}")
+        (repo.path / "scripts").mkdir()
+        repo.commit(
+            "feat: alpha",
+            filename="scripts/alpha.py",
+            belongs_to=ALPHA,
+        )
+        repo.checkout("main")
+        second = repo.branch(f"codex/{BETA}")
+        (repo.path / "scripts").mkdir(exist_ok=True)
+        repo.commit(
+            "feat: beta",
+            filename="scripts/beta.py",
+            belongs_to=BETA,
+        )
+        repo.checkout("main")
+        repo._git(
+            "merge",
+            "-q",
+            "--no-ff",
+            "-m",
+            f"Merge branches 'codex/{BETA}' and 'codex/{ALPHA}'",
+            first,
+            second,
+        )
+        repo.record(repo.head(), [ALPHA, BETA])
+        repo.delete_branch(first)
+        repo.delete_branch(second)
+
+        if ambiguity_in_range:
+            repo.release_base = base
+        else:
+            repo.release_base = repo.head()
+            repo.commit(
+                "fix: current linked change",
+                issue=ALPHA,
+                filename="scripts/current.py",
+                belongs_to=ALPHA,
+            )
+        yield repo
 
 
 class FakeRunner:
     def __init__(self, responses):
-        # Issue 095: base_ref asks the repository which branch is the trunk
-        # instead of guessing from a name list. These scenarios have no remote
-        # HEAD, so it falls through to the containment scoring below.
+        # Snapshot state is explicitly attached unless a detached-head fixture
+        # overrides this boundary.
         self.responses = {
-            SYMBOLIC_REF_ARGS: linkage_check.CommandResult(128, "", "not a symbolic ref"),
+            HEAD_REF_ARGS: "refs/heads/main\n",
             **responses,
         }
         self.calls = []
@@ -49,8 +103,8 @@ def attribution_stubs(entries, issue_files=()):
     )
     stubs = {
         tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): log,
-        ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
-        ("git", "ls-files", "issues"): "".join(
+        BRANCH_REF_ARGS: "",
+        tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "".join(
             f"issues/{issue_id}.md\n" for issue_id in issue_files
         ),
     }
@@ -60,7 +114,7 @@ def attribution_stubs(entries, issue_files=()):
 def branch_stubs(branch_name, shas, issue_files=()):
     """Stub for-each-ref plus the branch-exclusive rev-list for one branch."""
     return {
-        ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): (
+        BRANCH_REF_ARGS: (
             f"{branch_name}\n"
         ),
         (
@@ -72,7 +126,7 @@ def branch_stubs(branch_name, shas, issue_files=()):
             "--branches",
             "--remotes",
         ): "".join(f"{sha}\n" for sha in shas),
-        ("git", "ls-files", "issues"): "".join(
+        tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "".join(
             f"issues/{issue_id}.md\n" for issue_id in issue_files
         ),
     }
@@ -80,22 +134,31 @@ def branch_stubs(branch_name, shas, issue_files=()):
 
 class ResolveIssueForCommitTests(unittest.TestCase):
     def test_trailer_resolution(self):
+        """FH-021/FH-027: the direct consumer uses the shared snapshot contract."""
+        issue_id = "074-sync-fetch-sandbox-handling"
         runner = FakeRunner(
-            {
-                ("git", "show", "-s", "--format=%B", "abc123"): (
-                    "fix: handle sandboxed fetch\n\nIssue: 074-sync-fetch-sandbox-handling\n"
-                ),
-            }
+            attribution_stubs(
+                {
+                    "abc123": (
+                        "fix: handle sandboxed fetch",
+                        "",
+                        f"fix: handle sandboxed fetch\n\nIssue: {issue_id}\n",
+                    ),
+                },
+                issue_files=(issue_id,),
+            )
         )
 
         result = linkage_check.resolve_issue_for_commit(runner, Path("."), "abc123")
 
         self.assertEqual(result["sha"], "abc123")
-        self.assertEqual(result["issue_id"], "074-sync-fetch-sandbox-handling")
+        self.assertEqual(result["issue_id"], issue_id)
         self.assertEqual(result["source"], "trailer")
         self.assertEqual(result["errors"], [])
-        # Trailer short-circuits: no branch lookups.
-        self.assertNotIn(("git", "branch", "-r", "--contains", "abc123"), runner.calls)
+        self.assertIn(
+            tuple(linkage_check.commit_resolution.GIT_LOG_ARGS),
+            runner.calls,
+        )
 
     # Branch resolution is exercised against real temporary repositories
     # rather than stubbed command sequences. These three used to pin the exact
@@ -146,23 +209,23 @@ class ResolveIssueForCommitTests(unittest.TestCase):
             self.assertEqual(result["source"], "branch")
 
     def test_trailer_beats_branch_on_conflict(self):
-        runner = FakeRunner(
-            {
-                ("git", "show", "-s", "--format=%B", "abc123"): (
-                    "fix: thing\n\nIssue: 070-spec-consistency-analyze\n"
-                ),
-                # A conflicting branch exists but must not be consulted/win.
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "main\norigin/codex/074-sync-fetch-sandbox-handling\n",
-                ("git", "ls-files", "issues"): (
-                    "issues/070-spec-consistency-analyze.md\n"
-                    "issues/074-sync-fetch-sandbox-handling.md\n"
-                ),
-            }
-        )
+        """FH-027: precedence is exercised through the full attribution path."""
+        trailer_issue = "070-spec-consistency-analyze"
+        branch_issue = "074-sync-fetch-sandbox-handling"
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file(trailer_issue)
+            repo.add_issue_file(branch_issue)
+            repo.branch(f"codex/{branch_issue}")
+            sha = repo.commit("fix: thing", issue=trailer_issue)
 
-        result = linkage_check.resolve_issue_for_commit(runner, Path("."), "abc123")
+            result = linkage_check.resolve_issue_for_commit(
+                repo.runner,
+                repo.path,
+                sha,
+            )
 
-        self.assertEqual(result["issue_id"], "070-spec-consistency-analyze")
+        self.assertEqual(result["issue_id"], trailer_issue)
         self.assertEqual(result["source"], "trailer")
 
     def test_no_trailer_no_issue_branch_resolves_none(self):
@@ -170,8 +233,10 @@ class ResolveIssueForCommitTests(unittest.TestCase):
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "chore: misc\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00chore: misc\x00\x00chore: misc\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "origin/main\nmain\n",
-                ("git", "ls-files", "issues"): "",
+                BRANCH_REF_ARGS: (
+                    "refs/remotes/origin/main abc123\nrefs/heads/main abc123\n"
+                ),
+                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "",
                 ("git", "branch", "--contains", "abc123"): "* main\n",
             }
         )
@@ -182,29 +247,40 @@ class ResolveIssueForCommitTests(unittest.TestCase):
         self.assertIsNone(result["source"])
         self.assertEqual(result["errors"], [])
 
-    def test_git_show_failure_surfaces_error(self):
+    def test_snapshot_failure_surfaces_structured_fatal_error(self):
+        """FH-010/FH-027: fatal graph failure survives SHA projection."""
         runner = FakeRunner(
             {
-                ("git", "show", "-s", "--format=%B", "deadbeef"): linkage_check.CommandResult(
-                    128, "", "fatal: bad object deadbeef"
+                tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): (
+                    linkage_check.CommandResult(
+                        128,
+                        "",
+                        "fatal: snapshot unavailable",
+                    )
                 ),
+                BRANCH_REF_ARGS: "",
             }
         )
 
-        result = linkage_check.resolve_issue_for_commit(runner, Path("."), "deadbeef")
+        result = linkage_check.commit_resolution.resolve_issue_for_commit(
+            runner,
+            Path("."),
+            "deadbeef",
+        )
 
         self.assertIsNone(result["issue_id"])
         self.assertIsNone(result["source"])
         self.assertEqual(len(result["errors"]), 1)
-        self.assertIn("fatal: bad object deadbeef", result["errors"][0])
+        self.assertIn("fatal: snapshot unavailable", result["errors"][0])
+        self.assertEqual(result["fatal_errors"], result["errors"])
 
     def test_branch_listing_failure_surfaces_error(self):
         runner = FakeRunner(
             {
                 ("git", "show", "-s", "--format=%B", "abc123"): "fix: thing\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "abc123\x00fix: thing\x00\x00fix: thing\n\x01",
-                ("git", "ls-files", "issues"): "",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): linkage_check.CommandResult(
+                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "",
+                BRANCH_REF_ARGS: linkage_check.CommandResult(
                     128, "", "fatal: malformed object name"
                 ),
             }
@@ -277,13 +353,41 @@ class ClassifyChangedPathsTests(unittest.TestCase):
 
 
 class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
+    def test_out_of_range_ambiguity_does_not_fail_release_linkage(self):
+        """FH-018: diagnostics outside the behavior range stay out of errors."""
+        with ambiguous_release_repo(ambiguity_in_range=False) as repo:
+            result = linkage_check.find_unlinked_behavior_commits(
+                repo.runner,
+                repo.path,
+                repo.release_base,
+                repo.head(),
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["errors"], [])
+
+    def test_in_range_ambiguity_fails_closed(self):
+        """FH-018: a diagnostic touching a release behavior SHA is fatal."""
+        with ambiguous_release_repo(ambiguity_in_range=True) as repo:
+            result = linkage_check.find_unlinked_behavior_commits(
+                repo.runner,
+                repo.path,
+                repo.release_base,
+                repo.head(),
+            )
+
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["errors"])
+
     def test_linked_behavior_commit_passes(self):
         runner = FakeRunner(
             {
                 ("git", "rev-list", "base..head"): "sha1\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "sha1\x00feat: foo\x00\x00feat: foo\n\nIssue: 070-spec-consistency-analyze\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
-                ("git", "ls-files", "issues"): "",
+                BRANCH_REF_ARGS: "",
+                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): (
+                    "issues/070-spec-consistency-analyze.md\n"
+                ),
                 ("git", "show", "--name-only", "--format=", "sha1"): (
                     "scripts/foo.py\nREADME.md\n"
                 ),
@@ -315,8 +419,8 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
             {
                 ("git", "rev-list", "base..head"): "sha2\n",
                 tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): "sha2\x00docs tweak\x00\x00docs tweak\n\x01",
-                ("git", "for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"): "",
-                ("git", "ls-files", "issues"): "",
+                BRANCH_REF_ARGS: "",
+                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): "",
                 ("git", "show", "--name-only", "--format=", "sha2"): "commands/product-x.md\n",
                 ("git", "show", "-s", "--format=%B", "sha2"): "docs tweak\n",
                 ("git", "branch", "--contains", "sha2"): "* main\n",
@@ -331,6 +435,59 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
         self.assertEqual(result["unlinked"][0]["sha"], "sha2")
         self.assertIsNone(result["unlinked"][0]["issue_id"])
         self.assertEqual(result["unlinked"][0]["behavior_paths"], ["commands/product-x.md"])
+
+    def test_unknown_trailer_does_not_link_against_an_empty_registry(self):
+        with GitRepo() as repo:
+            base = repo.commit("chore: base")
+            (repo.path / "scripts").mkdir()
+            sha = repo.commit(
+                "feat: behavior under a phantom issue",
+                issue="321-no-issues-tracked",
+                filename="scripts/thing.py",
+            )
+
+            result = linkage_check.find_unlinked_behavior_commits(
+                repo.runner, repo.path, base, sha
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual([entry["sha"] for entry in result["unlinked"]], [sha])
+            self.assertIsNone(result["unlinked"][0]["issue_id"])
+
+    def test_graph_failure_is_reported_and_branch_commit_stays_unlinked(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            repo.add_issue_file("074-sync-fetch-sandbox-handling")
+            base = repo.head()
+            repo.branch("codex/074-sync-fetch-sandbox-handling")
+            (repo.path / "scripts").mkdir()
+            sha = repo.commit(
+                "feat: behavior change",
+                filename="scripts/thing.py",
+            )
+
+            def failing(args, cwd=None, timeout=None):
+                if args[:2] == ["git", "rev-list"] and ".." not in args[2]:
+                    return linkage_check.CommandResult(
+                        128, "", "fatal: graph unavailable"
+                    )
+                return repo.runner(args, cwd)
+
+            result = linkage_check.find_unlinked_behavior_commits(
+                failing, repo.path, base, sha
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual([entry["sha"] for entry in result["unlinked"]], [sha])
+            self.assertIsNone(result["unlinked"][0]["issue_id"])
+            self.assertIn(
+                linkage_check.commit_resolution.DEGRADED_BRANCH_UNAVAILABLE,
+                result["degraded"],
+            )
+            self.assertTrue(
+                any("rev-list" in error and "graph unavailable" in error
+                    for error in result["errors"])
+            )
 
     def test_neutral_only_commit_ignored(self):
         runner = FakeRunner(
@@ -352,6 +509,16 @@ class FindUnlinkedBehaviorCommitsTests(unittest.TestCase):
         runner = FakeRunner(
             {
                 ("git", "rev-list", "base..head"): "sha1\nsha2\nsha3\n",
+                tuple(linkage_check.commit_resolution.GIT_LOG_ARGS): (
+                    "sha1\x00feat: foo\x00\x00"
+                    "feat: foo\n\nIssue: 070-spec-consistency-analyze\n\x01"
+                    "sha2\x00tweak\x00\x00tweak\n\x01"
+                    "sha3\x00docs\x00\x00docs\n\x01"
+                ),
+                tuple(linkage_check.commit_resolution.ISSUE_HISTORY_ARGS): (
+                    "issues/070-spec-consistency-analyze.md\n"
+                ),
+                BRANCH_REF_ARGS: "",
                 ("git", "show", "--name-only", "--format=", "sha1"): "scripts/foo.py\n",
                 ("git", "show", "-s", "--format=%B", "sha1"): (
                     "feat: foo\n\nIssue: 070-spec-consistency-analyze\n"
