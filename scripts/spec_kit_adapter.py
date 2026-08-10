@@ -10,9 +10,28 @@ from pathlib import Path
 
 CONFIG_SCHEMA = "moduflow.capabilities.v1"
 HANDOFF_SCHEMA = "moduflow.spec-kit-handoff.v1"
+MANIFEST_SCHEMA = "moduflow.spec-kit-manifest.v1"
 APPROVED_VERSION = "0.16.1"
 APPROVED_SHA = "684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5"
 FUNCTIONS = ("clarify", "analyze", "checklist", "converge")
+TEMPLATE_HASHES = {
+    "clarify": "9fce9b3dfe037b67f52486df112f89377ff6c0c598698131cde65cec610b5bba",
+    "analyze": "79f5334bce9b249d4c1a5e6949dee3f3532db89a0a97f3d2eb55c1a1c2fe06f6",
+    "checklist": "0a862264b9b358138d6049590d42b392ee4dadb69d32811d460620f077924d4e",
+    "converge": "aafba511dea42334373c7ffb9f58e2fb6d82889ea94ec86c1367dbb6a531ca36",
+}
+FUNCTION_INPUTS = {
+    "clarify": ["issue.md", "spec.md"],
+    "analyze": ["spec.md", "plan.md", "tasks.md", "constitution.md"],
+    "checklist": ["issue.md", "spec.md"],
+    "converge": [
+        "spec.md",
+        "plan.md",
+        "tasks.md",
+        "constitution.md",
+        "bounded-code-scope",
+    ],
+}
 FUNCTION_PHRASES = {
     "clarify": ("clarify", "clarification", "명확화", "핵심 질문"),
     "analyze": ("analyze", "analysis", "분석", "정합성"),
@@ -118,22 +137,94 @@ def _manifest_path(package_root):
     return Path(package_root).resolve() / "vendor" / "spec-kit" / APPROVED_VERSION / "manifest.json"
 
 
+def _validate_manifest(manifest):
+    if not isinstance(manifest, dict):
+        _error("invalid_manifest", "Spec Kit manifest must be an object")
+    _only_keys(manifest, {"schema", "source", "functions"}, "manifest")
+    if manifest.get("schema") != MANIFEST_SCHEMA:
+        _error("invalid_manifest", f"schema must be {MANIFEST_SCHEMA}")
+    source = manifest.get("source")
+    if not isinstance(source, dict):
+        _error("invalid_manifest", "manifest source must be an object")
+    _only_keys(source, {"repository", "version", "sha"}, "manifest source")
+    if source != {
+        "repository": "github/spec-kit",
+        "version": APPROVED_VERSION,
+        "sha": APPROVED_SHA,
+    }:
+        _error("unapproved_source", "manifest source is not approved")
+    functions = manifest.get("functions")
+    if not isinstance(functions, dict) or set(functions) != set(FUNCTIONS):
+        _error("invalid_manifest", "manifest must contain exactly four approved functions")
+    for function in FUNCTIONS:
+        entry = functions[function]
+        if not isinstance(entry, dict):
+            _error("invalid_manifest", "manifest function must be an object")
+        _only_keys(entry, {"template", "sha256", "fallback"}, "manifest function")
+        if set(entry) != {"template", "sha256", "fallback"}:
+            _error("invalid_manifest", "manifest function is missing required fields")
+        if entry["template"] != f"commands/{function}.md":
+            _error("unsafe_path", "template path is not an approved command path")
+        if entry["sha256"] != TEMPLATE_HASHES[function]:
+            _error("invalid_manifest", "template hash is not approved")
+        if not isinstance(entry["fallback"], str) or not entry["fallback"]:
+            _error("invalid_manifest", "manifest fallback must be a non-empty string")
+    return manifest
+
+
 def load_manifest(package_root):
-    """Load the future Task 2 asset manifest; never download or execute assets."""
+    """Load the approved asset manifest; never download or execute assets."""
     path = _manifest_path(package_root)
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise SpecKitAdapterError("assets_unavailable", "approved Spec Kit assets are unavailable") from exc
-    if not isinstance(payload, dict):
-        _error("invalid_manifest", "Spec Kit manifest must be an object")
-    return payload
+    return _validate_manifest(payload)
 
 
-def verify_assets(package_root, function):
-    """Task 2 will extend this to hash-gate the one selected template."""
-    load_manifest(package_root)
-    _error("assets_unavailable", "approved Spec Kit assets are unavailable")
+def _template_path(package_root, template):
+    package_root = Path(package_root).resolve()
+    manifest_dir = _manifest_path(package_root).parent
+    candidate = manifest_dir / template
+    command_dir = manifest_dir / "commands"
+    try:
+        candidate.relative_to(command_dir)
+    except ValueError as exc:
+        raise SpecKitAdapterError("unsafe_path", "template path escapes commands") from exc
+    current = manifest_dir
+    for part in Path(template).parts:
+        current = current / part
+        if current.is_symlink():
+            _error("unsafe_path", "template path must not contain symlinks")
+    try:
+        candidate.resolve().relative_to(command_dir.resolve())
+    except ValueError as exc:
+        raise SpecKitAdapterError("unsafe_path", "template path escapes commands") from exc
+    return candidate
+
+
+def verify_assets(package_root, manifest):
+    """Return four approved asset hashes without reading template contents into context."""
+    manifest = _validate_manifest(manifest)
+    package_root = Path(package_root).resolve()
+    records = []
+    for function in FUNCTIONS:
+        entry = manifest["functions"][function]
+        template = _template_path(package_root, entry["template"])
+        try:
+            actual_sha256 = hashlib.sha256(template.read_bytes()).hexdigest()
+        except OSError:
+            actual_sha256 = None
+        records.append(
+            {
+                "function": function,
+                "path": str(template.relative_to(package_root)),
+                "expected_sha256": entry["sha256"],
+                "actual_sha256": actual_sha256,
+                "valid": actual_sha256 == entry["sha256"],
+            }
+        )
+    return records
 
 
 def _native_fallback(function, outcome):
@@ -152,7 +243,8 @@ def _native_fallback(function, outcome):
     return "Spec Kit request was blocked; use native validation after correcting the request or config."
 
 
-def _handoff(issue_id, function, outcome, request, output_artifact=None):
+def _handoff(issue_id, function, outcome, request, output_artifact=None, asset=None):
+    ready = outcome == "ready"
     return {
         "schema": HANDOFF_SCHEMA,
         "outcome": outcome,
@@ -161,14 +253,14 @@ def _handoff(issue_id, function, outcome, request, output_artifact=None):
         "source": {
             "version": APPROVED_VERSION,
             "sha": APPROVED_SHA,
-            "template": None,
-            "template_sha256": None,
+            "template": asset["path"] if ready else None,
+            "template_sha256": asset["actual_sha256"] if ready else None,
         },
-        "permission": "advisory",
-        "inputs": {"request": str(request or "")},
+        "permission": "read",
+        "inputs": list(FUNCTION_INPUTS[function]) if function else ["request"],
         "output_artifact": output_artifact,
         "limitations": ["Advisory only; no project artifacts or state are modified."],
-        "fallback": _native_fallback(function, outcome),
+        "fallback": None if ready else _native_fallback(function, outcome),
     }
 
 
@@ -200,7 +292,12 @@ def build_handoff(package_root, project_root, issue_id, request, host_available)
             return _handoff(issue_id, function, "unsupported", request, output_artifact)
         if not host_available:
             return _handoff(issue_id, function, "unavailable", request, output_artifact)
-        verify_assets(package_root, function)
+        manifest = load_manifest(package_root)
+        assets = verify_assets(package_root, manifest)
+        if not all(asset["valid"] for asset in assets):
+            _error("assets_unavailable", "approved Spec Kit assets are unavailable")
+        asset = next(asset for asset in assets if asset["function"] == function)
+        return _handoff(issue_id, function, "ready", request, output_artifact, asset)
     except SpecKitAdapterError as exc:
         return _handoff(
             issue_id if isinstance(issue_id, str) else None,

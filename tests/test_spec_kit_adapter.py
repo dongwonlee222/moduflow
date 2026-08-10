@@ -72,18 +72,29 @@ class SpecKitConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(self.ska.SpecKitAdapterError, "ambiguous_function"):
             self.ska.select_function("스펙킷으로 분석하고 체크리스트도 만들어줘")
 
-    def test_valid_opt_in_is_unavailable_until_assets_are_installed(self):
+    def test_valid_opt_in_with_verified_assets_returns_one_ready_template(self):
         self.write_config(opted_in_config(("analyze",)))
 
         result = self.ska.build_handoff(
             ROOT, self.project, ISSUE_ID, "analyze", host_available=True
         )
 
-        self.assertEqual(result["outcome"], "unavailable")
+        self.assertEqual(result["outcome"], "ready")
         self.assertEqual(result["function"], "analyze")
-        self.assertEqual(result["source"]["template"], None)
-        self.assertEqual(result["source"]["template_sha256"], None)
-        self.assertTrue(result["fallback"])
+        self.assertEqual(
+            result["source"]["template"],
+            "vendor/spec-kit/0.16.1/commands/analyze.md",
+        )
+        self.assertEqual(
+            result["source"]["template_sha256"],
+            "79f5334bce9b249d4c1a5e6949dee3f3532db89a0a97f3d2eb55c1a1c2fe06f6",
+        )
+        self.assertEqual(result["permission"], "read")
+        self.assertEqual(
+            result["inputs"],
+            ["spec.md", "plan.md", "tasks.md", "constitution.md"],
+        )
+        self.assertIsNone(result["fallback"])
 
     def test_unknown_config_field_is_blocked_without_exposing_a_template(self):
         payload = opted_in_config()

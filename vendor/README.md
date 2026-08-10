@@ -1,13 +1,23 @@
 # Vendor Sources
 
-Keep upstream repositories or exported plugin snapshots here when needed.
+`vendor/spec-kit/0.16.1/` contains only four byte-exact command-template
+snapshots from `github/spec-kit` commit
+`684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5`:
 
-Recommended model:
+- `commands/clarify.md`
+- `commands/analyze.md`
+- `commands/checklist.md`
+- `commands/converge.md`
 
-1. Track source metadata in `../vendor.lock.json`.
-2. Place upstream checkouts under `vendor/<source-id>/`.
-3. Keep local Dongwon-specific rules in `../overlays/`.
-4. Keep mapping logic in `../adapters/`.
+`manifest.json` is the executable source/hash contract. Verify or refresh the
+snapshot only through the explicit command below; it downloads all four files,
+checks every SHA-256 before replacing any destination, and writes nothing
+without `--write`.
 
-Do not edit upstream files directly unless intentionally forking.
+```bash
+python3 scripts/sync_spec_kit_templates.py . --write
+```
 
+The Markdown files are upstream bytes, not local policy. Do not edit, import,
+or execute them. ModuFlow safety and ownership rules live in
+`adapters/spec-kit.yaml` and the selective-validation overlay.

@@ -1,21 +1,38 @@
 id: spec-kit
-source: github-spec-kit
+source: github/spec-kit
 source_url: https://github.com/github/spec-kit
 docs_url: https://github.github.com/spec-kit/
 role: spec_plan_task_structure
+manifest: vendor/spec-kit/0.16.1/manifest.json
+approved_version: 0.16.1
+approved_sha: 684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5
+permission: read
+allowed_functions:
+  - clarify
+  - analyze
+  - checklist
+  - converge
+native_fallbacks:
+  clarify: moduflow_short_clarification
+  analyze: scripts/spec_consistency.py
+  checklist: moduflow_acceptance_readiness
+  converge: scripts/project_converge.py --report-only
 moduflow_use:
-  - spec structure
-  - implementation plan structure
-  - task breakdown
+  - advisory selective validation only
 source_of_truth: git
 reads:
   - issues/*.md
   - specs/*/spec.md
-writes:
-  - specs/*/spec.md
   - specs/*/plan.md
   - specs/*/tasks.md
-swap_policy: Replaceable if spec, plan, and tasks remain deterministic files.
+  - constitution.md
+writes: []
+ownership_exclusions:
+  - no .specify installation or Spec Kit runtime import
+  - no upstream scripts, hooks, helpers, Git operations, or implementation commands
+  - no mutation of specs, plans, tasks, code, lifecycle, review, PR, release, or deployment state
+  - one verified template is loaded only after project opt-in and host availability pass
+swap_policy: Replaceable if the manifest/hash gate and advisory-only ownership boundary remain intact.
 reviewed:
   sha: 684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5
   date: 2026-08-10
@@ -25,5 +42,6 @@ reviewed:
     Git extensions, plus security hardening. ModuFlow already owns equivalent
     Git-native analyze, converge, hooks, constitution, and execution gates, so
     those runtimes are intentionally not copied. The deterministic
-    spec/plan/tasks file contract remains compatible; no template migration is
-    required.
+    spec/plan/tasks file contract remains compatible. Only four exact command
+    snapshots are vendored for read-only advisory use; the upstream runtime is
+    not imported.
