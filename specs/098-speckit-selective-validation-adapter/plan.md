@@ -240,7 +240,7 @@ All commands print JSON to stdout. Failures use `moduflow.spec-kit-error.v1`, ne
 
 ### Stream A — Config and Handoff Contract
 
-#### Task A1: Fail-Closed Config, Function Selection, and Handoff Skeleton
+#### Task 1 (A1): Fail-Closed Config, Function Selection, and Handoff Skeleton
 
 **Files:**
 - Create: `scripts/spec_kit_adapter.py`
@@ -313,7 +313,7 @@ git commit -m "feat(098): add fail-closed Spec Kit adapter contract" -m "Issue: 
 
 ### Stream B — Pinned Upstream Assets
 
-#### Task B1: Pin and Verify the Four Official Templates
+#### Task 2 (B1): Pin and Verify the Four Official Templates
 
 **Files:**
 - Create: `scripts/sync_spec_kit_templates.py`
@@ -393,7 +393,7 @@ git commit -m "feat(098): pin selective Spec Kit templates" -m "Issue: 098-speck
 
 ### Stream C — Safety and Persistence
 
-#### Task C1: Add the Safety Overlay and Append-Only Result Persistence
+#### Task 3 (C1): Add the Safety Overlay and Append-Only Result Persistence
 
 **Files:**
 - Create: `overlays/spec-kit/selective-validation-policy.md`
@@ -470,7 +470,7 @@ git commit -m "feat(098): enforce advisory Spec Kit result safety" -m "Issue: 09
 
 ### Stream D — Entrypoint and Bridge
 
-#### Task D1: Connect One-Function Bridge to the Existing ModuFlow Router
+#### Task 4 (D1): Connect One-Function Bridge to the Existing ModuFlow Router
 
 **Files:**
 - Create: `skills/spec-kit-validation-bridge/SKILL.md`
@@ -555,7 +555,7 @@ git commit -m "feat(098): connect selective Spec Kit validation bridge" -m "Issu
 
 ### Stream E — Pilot and Release
 
-#### Task E1: Prove the Pilot, Package the Surface, and Prepare Review
+#### Task 5 (E1): Prove the Pilot, Package the Surface, and Prepare Review
 
 **Files:**
 - Create: `scripts/spec_kit_pilot.py`
