@@ -16,4 +16,7 @@ writes:
   - specs/*/metrics.md
   - workspace/dashboard.md
 swap_policy: Replaceable if metric definitions, source caveats, and decisions are preserved.
-
+reviewed:
+  version: 0.2.8-13ceeea1f599
+  date: 2026-08-10
+  note: Active Codex plugin inspected; metric provenance and decision contracts remain compatible.

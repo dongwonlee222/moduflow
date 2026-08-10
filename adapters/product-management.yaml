@@ -19,11 +19,10 @@ writes:
   - specs/*/stakeholder-update.md
 swap_policy: Replaceable if it preserves problem, outcome, acceptance, and decision fields.
 reviewed:
-  sha: 6f13415be2a18d0fd9fa652e29a616cf7e3617a5
-  date: 2026-07-05
+  sha: e9753d75a43d2cdd3292d7db4b718668165dd0a1
+  date: 2026-08-10
   note: >-
-    product-management/ plugin tree has zero commits since 2026-06-12
-    (path-filtered history). All upstream activity was bot submodule bumps,
-    unrelated third-party marketplace registrations, and CI/policy work.
-    Nothing to absorb.
-
+    No product-management/ files changed since the prior review. Upstream
+    activity was marketplace registration churn, a Productivity dashboard
+    security fix, and an unrelated small-business MCP update. Nothing to
+    absorb into the PM artifact contract.

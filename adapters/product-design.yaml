@@ -15,4 +15,7 @@ writes:
   - specs/*/design-brief.md
   - specs/*/prototype.md
 swap_policy: Replaceable if issue/spec linkage and UX states remain preserved.
-
+reviewed:
+  version: 0.1.52
+  date: 2026-08-10
+  note: Active Codex plugin inspected; adapter reads/writes remain compatible.

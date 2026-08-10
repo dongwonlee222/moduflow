@@ -15,4 +15,16 @@ reads:
 writes:
   - generated docx/xlsx/pptx artifacts when requested
 swap_policy: Replaceable if generated artifacts link back to issue IDs.
-
+reviewed:
+  version: 26.805.11740
+  date: 2026-08-10
+  note: Active Documents, Presentations, and Spreadsheets runtime versions inspected and compatible.
+reference_reviews:
+  - source: anthropic-skills
+    sha: f17010c9bb483898c1d9c9f42dde2b3a98889434
+    date: 2026-08-10
+    note: >-
+      Reviewed the office-skill refresh: safer archive extraction, per-run
+      LibreOffice profiles, stricter redline validation, template-format
+      support, and safer spreadsheet recalculation. These capabilities are
+      supplied by the active primary runtime rather than copied into ModuFlow.

@@ -21,21 +21,13 @@ writes:
   - code changes through normal project workflow
 swap_policy: Replaceable if execution gates and verification evidence remain explicit.
 reviewed:
-  sha: d884ae04edebef577e82ff7c4e143debd0bbec99
-  date: 2026-07-05
+  sha: 44c9b2d6e889982ac18c27d05a19fefe335194e1
+  date: 2026-08-10
   note: >-
-    Superpowers v6.0.0-v6.1.1 (2026-06-16+) rewrote subagent-driven-development:
-    single dual-verdict task reviewer (spec compliance + quality, "can't verify"
-    allowed), read-only reviewers, controller banned from suppressing/pre-rating
-    findings, file-based handoffs (.superpowers/sdd/), explicit model per
-    dispatch, pre-flight plan review, whole-branch final review. writing-plans
-    gained Global Constraints + per-task Interfaces + task right-sizing.
-    ABSORBED into commands/product-review.md (review integrity rules),
-    commands/product-plan.md (plan structure), and commands/product-execute.md
-    (explicit model tier per dispatch — initially skipped as harness-specific,
-    reversed same day per user direction: main model orchestrates/judges,
-    cheaper subagents research/implement/verify). SKIPPED: SDD's file-handoff
-    scripts (harness-specific mechanics). Brainstorming/TDD/verification
-    unchanged upstream. Issue 089 also adopts receiving-code-review's
-    evidence-first intake discipline while keeping final disposition under
-    ModuFlow's independent Router/Verifier policy.
+    Reviewed v6.2.0. It adds plan-scoped SDD workspaces, durable task ledgers,
+    resume-based re-review loops with a five-round breaker, compressed skill
+    guidance, and Windows/Codex portability fixes. The installed Superpowers
+    checkout is updated so these disciplines are consumed directly. ModuFlow
+    does not duplicate .superpowers/sdd state because worker-plan.json,
+    status.md, review handoffs, and its independent verification gates remain
+    canonical.
