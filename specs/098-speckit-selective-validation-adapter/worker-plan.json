@@ -1,0 +1,234 @@
+{
+  "schema": "moduflow.worker-plan.v1",
+  "issue_id": "098-speckit-selective-validation-adapter",
+  "project_root": "/Users/dongwon.lee/.config/superpowers/worktrees/moduflow/097-single-entry-capability-routing-contract",
+  "workers": {
+    "configured": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "files": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "dead_workers": []
+  },
+  "parallel": {
+    "eligible": false,
+    "mode": "sequential",
+    "risks": [
+      "Task 1 touches shared state: A1 Implement strict project opt-in, deterministic function selection, path containment, host availability, configuration dry-run/write, and stable handoff outcomes.",
+      "Task 2 touches shared state: B1 Pin the four official 0.16.1 templates at SHA `684b3d8e`, add the exact-hash manifest and atomic sync tool, and document the selective adapter policy.",
+      "Task 3 touches shared state: C1 Add the higher-priority safety overlay, strict host-result schema, deterministic run IDs, advisory Markdown rendering, and append-only duplicate-safe `validation.md` persistence.",
+      "Task 4 touches shared state: D1 Connect one-function bridge consumption to Issue 097 routing while preserving lifecycle aliases, native fallbacks, default-unavailable behavior, and all implementation/Git/review/release ownership boundaries.",
+      "Task 5 touches shared state: E1 Add at least 13 successful/fallback/ownership fixtures, deterministic value/cost/overlap/safety metrics, the pilot report, package inventory, patch version bump, full verification, lifecycle evidence, and review handoff.",
+      "scripts/spec_kit_adapter.py is expected by T01 and T03",
+      "tests/test_spec_kit_adapter.py is expected by T01 and T03",
+      "tests/test_validation_distribution.py is expected by T04 and T05"
+    ],
+    "merge_order": [
+      "T01",
+      "T02",
+      "T03",
+      "T04",
+      "T05"
+    ],
+    "fallback": "sequential",
+    "criteria": [
+      "separate worker domains",
+      "non-overlapping expected files",
+      "no shared-state risk",
+      "dependency-aware merge order"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "text": "A1 Implement strict project opt-in, deterministic function selection, path containment, host availability, configuration dry-run/write, and stable handoff outcomes.",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [
+        "scripts/spec_kit_adapter.py",
+        "tests/test_spec_kit_adapter.py",
+        "templates/moduflow-capabilities.json"
+      ],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/098-speckit-selective-validation-adapter-t01",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: A1 Implement strict project opt-in, deterministic function selection, path containment, host availability, configuration dry-run/write, and stable handoff outcomes.\nExpected files: scripts/spec_kit_adapter.py, tests/test_spec_kit_adapter.py, templates/moduflow-capabilities.json\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T02",
+      "text": "B1 Pin the four official 0.16.1 templates at SHA `684b3d8e`, add the exact-hash manifest and atomic sync tool, and document the selective adapter policy.",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [
+        "scripts/sync_spec_kit_templates.py",
+        "tests/test_spec_kit_vendor_assets.py",
+        "vendor/spec-kit/0.16.1/manifest.json",
+        "vendor/spec-kit/0.16.1/commands/clarify.md",
+        "vendor/spec-kit/0.16.1/commands/analyze.md",
+        "vendor/spec-kit/0.16.1/commands/checklist.md",
+        "vendor/spec-kit/0.16.1/commands/converge.md",
+        "adapters/spec-kit.yaml",
+        "vendor/README.md"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "A1"
+      ],
+      "isolation": {
+        "worktree": "codex/098-speckit-selective-validation-adapter-t02",
+        "merge_after": [
+          "A1"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: B1 Pin the four official 0.16.1 templates at SHA `684b3d8e`, add the exact-hash manifest and atomic sync tool, and document the selective adapter policy.\nExpected files: scripts/sync_spec_kit_templates.py, tests/test_spec_kit_vendor_assets.py, vendor/spec-kit/0.16.1/manifest.json, vendor/spec-kit/0.16.1/commands/clarify.md, vendor/spec-kit/0.16.1/commands/analyze.md, vendor/spec-kit/0.16.1/commands/checklist.md, vendor/spec-kit/0.16.1/commands/converge.md, adapters/spec-kit.yaml, vendor/README.md\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T03",
+      "text": "C1 Add the higher-priority safety overlay, strict host-result schema, deterministic run IDs, advisory Markdown rendering, and append-only duplicate-safe `validation.md` persistence.",
+      "status": "ready",
+      "worker": "roadmap-planner",
+      "worker_file": "workers/roadmap-planner.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [
+        "overlays/spec-kit/selective-validation-policy.md",
+        "scripts/spec_kit_adapter.py",
+        "tests/test_spec_kit_adapter.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "B1"
+      ],
+      "isolation": {
+        "worktree": "codex/098-speckit-selective-validation-adapter-t03",
+        "merge_after": [
+          "B1"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow roadmap-planner",
+        "CognitiveDemand": "fast",
+        "Workspace": "share",
+        "Prompt": "Implement task: C1 Add the higher-priority safety overlay, strict host-result schema, deterministic run IDs, advisory Markdown rendering, and append-only duplicate-safe `validation.md` persistence.\nExpected files: overlays/spec-kit/selective-validation-policy.md, scripts/spec_kit_adapter.py, tests/test_spec_kit_adapter.py\nCognitive demand: fast — use your lightest, fastest model. If using OpenAI GPT-5.6, prefer gpt-5.6-luna with low or no reasoning for latency-sensitive or high-volume work."
+      }
+    },
+    {
+      "id": "T04",
+      "text": "D1 Connect one-function bridge consumption to Issue 097 routing while preserving lifecycle aliases, native fallbacks, default-unavailable behavior, and all implementation/Git/review/release ownership boundaries.",
+      "status": "ready",
+      "worker": "release-manager",
+      "worker_file": "workers/release-manager.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [
+        "skills/spec-kit-validation-bridge/SKILL.md",
+        "adapters/capability-routing.json",
+        "commands/moduflow.md",
+        "skills/index/SKILL.md",
+        "skills/pm-execution-router/SKILL.md",
+        "tests/test_capability_routing.py",
+        "tests/test_validation_distribution.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "C1"
+      ],
+      "isolation": {
+        "worktree": "codex/098-speckit-selective-validation-adapter-t04",
+        "merge_after": [
+          "C1"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow release-manager",
+        "CognitiveDemand": "fast",
+        "Workspace": "share",
+        "Prompt": "Implement task: D1 Connect one-function bridge consumption to Issue 097 routing while preserving lifecycle aliases, native fallbacks, default-unavailable behavior, and all implementation/Git/review/release ownership boundaries.\nExpected files: skills/spec-kit-validation-bridge/SKILL.md, adapters/capability-routing.json, commands/moduflow.md, skills/index/SKILL.md, skills/pm-execution-router/SKILL.md, tests/test_capability_routing.py, tests/test_validation_distribution.py\nCognitive demand: fast — use your lightest, fastest model. If using OpenAI GPT-5.6, prefer gpt-5.6-luna with low or no reasoning for latency-sensitive or high-volume work."
+      }
+    },
+    {
+      "id": "T05",
+      "text": "E1 Add at least 13 successful/fallback/ownership fixtures, deterministic value/cost/overlap/safety metrics, the pilot report, package inventory, patch version bump, full verification, lifecycle evidence, and review handoff.",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [
+        "scripts/spec_kit_pilot.py",
+        "tests/test_spec_kit_pilot.py",
+        "tests/fixtures/spec-kit-selective-validation/cases.json",
+        "tests/fixtures/spec-kit-selective-validation/results",
+        "scripts/validate_moduflow.py",
+        "tests/test_validation_distribution.py",
+        ".claude-plugin/plugin.json",
+        ".codex-plugin/plugin.json",
+        "specs/098-speckit-selective-validation-adapter/implementation-readiness.json",
+        "specs/098-speckit-selective-validation-adapter/pilot-report.md",
+        "specs/098-speckit-selective-validation-adapter/status.md",
+        "issues/098-speckit-selective-validation-adapter.md",
+        ".moduflow/state.json",
+        "workspace/goal.md",
+        "workspace/loop-state.json",
+        "workspace/dashboard.md",
+        "workspace/roadmap.md"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "D1"
+      ],
+      "isolation": {
+        "worktree": "codex/098-speckit-selective-validation-adapter-t05",
+        "merge_after": [
+          "D1"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: E1 Add at least 13 successful/fallback/ownership fixtures, deterministic value/cost/overlap/safety metrics, the pilot report, package inventory, patch version bump, full verification, lifecycle evidence, and review handoff.\nExpected files: scripts/spec_kit_pilot.py, tests/test_spec_kit_pilot.py, tests/fixtures/spec-kit-selective-validation/cases.json, tests/fixtures/spec-kit-selective-validation/results, scripts/validate_moduflow.py, tests/test_validation_distribution.py, .claude-plugin/plugin.json, .codex-plugin/plugin.json, specs/098-speckit-selective-validation-adapter/implementation-readiness.json, specs/098-speckit-selective-validation-adapter/pilot-report.md, specs/098-speckit-selective-validation-adapter/status.md, issues/098-speckit-selective-validation-adapter.md, .moduflow/state.json, workspace/goal.md, workspace/loop-state.json, workspace/dashboard.md, workspace/roadmap.md\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    }
+  ],
+  "next_command": "product:execute 098-speckit-selective-validation-adapter"
+}
