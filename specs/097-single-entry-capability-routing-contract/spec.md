@@ -25,6 +25,8 @@ implementations into ModuFlow.
 4. Return delegated work to the canonical ModuFlow issue and artifact chain.
 5. Preserve replaceable adapters so future source or plugin changes do not rewrite the product
    workflow.
+6. Prove routing behavior with repeatable offline simulations before accepting adapter or prompt
+   changes.
 
 ## Non-Goals
 
@@ -106,6 +108,47 @@ Tests cover at least:
 - genuine multi-stage requests with stable ordering and artifact handoffs
 - semantically equivalent Korean and English requests
 
+### Offline routing simulation
+
+Add a fixture-driven simulation harness around the routing contract. A fixture contains:
+
+- request text and locale
+- available and unavailable capability IDs
+- permission context and whether approval is present
+- expected outcome: `none`, `delegate`, `sequence`, or `clarify`
+- expected adapter or ordered adapters
+- expected permission result and destination artifact
+- semantic-pair ID when another fixture expresses the same intent differently
+
+The harness evaluates routing only. It must not invoke a specialist, load an external runtime,
+or perform local or external mutations. This keeps the suite fast, safe, and reproducible while
+separating route quality from specialist output quality.
+
+The initial committed corpus contains at least 24 cases across eight boundary classes:
+
+1. ordinary lifecycle work
+2. bounded analytics
+3. bounded product design
+4. bounded implementation
+5. overlapping or ambiguous domains
+6. unavailable capability
+7. external-write permission boundary
+8. explicit multi-stage work
+
+Each run emits machine-readable case results and a concise summary with:
+
+- expected-route and expected-adapter agreement
+- unwanted fan-out count
+- permission violation count
+- false capability claim count
+- missing handoff-field count
+- Korean/English and paraphrase consistency
+
+Safety failures are release blockers: unwanted fan-out, permission violations, false capability
+claims, and missing required handoff fields must all be zero. Product-boundary fixtures must
+exactly match the expected route, adapter, sequence order, and permission result. A changed
+expectation requires an intentional fixture review rather than silently updating snapshots.
+
 ## Alternatives Considered
 
 ### Keep documentation-only routing
@@ -140,6 +183,13 @@ to make it trustworthy.
   artifact.
 - Missing capability availability results in a truthful fallback or setup recommendation.
 - Representative Korean and English routing fixtures are deterministic and regression-tested.
+- At least 24 committed offline simulation fixtures cover all eight boundary classes and include
+  semantically equivalent Korean and English pairs.
+- The simulation reports expected route, adapter, order, permission, and artifact handoff per
+  case plus aggregate safety and consistency metrics.
+- Simulation produces zero unwanted fan-out, permission violations, false capability claims,
+  and missing required handoff fields.
+- Simulation never invokes a specialist or performs an external mutation.
 - Existing direct commands and Git-native artifacts remain compatible.
 - No new mandatory runtime, database, or plugin is introduced.
 

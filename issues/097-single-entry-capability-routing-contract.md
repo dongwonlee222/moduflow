@@ -42,6 +42,10 @@ replaceable, and every delegated result returns to the canonical issue and artif
   potentially relevant specialist at once.
 - Add representative positive, negative, ambiguous, unavailable-capability, and permission
   regression cases.
+- Add an offline routing simulation harness with committed golden scenarios that vary request
+  wording, locale, capability availability, and permission context without executing specialists.
+- Report route agreement, unwanted fan-out, permission violations, false capability claims,
+  handoff metadata completeness, and semantic-pair consistency as release-gate metrics.
 - Keep `/moduflow` and natural-language aliases as the user-facing entry point while preserving
   direct `product:*` commands as a power-user escape hatch.
 
@@ -67,6 +71,13 @@ replaceable, and every delegated result returns to the canonical issue and artif
 - An unavailable specialist produces a safe fallback or a clear setup recommendation; it never
   silently pretends the capability ran.
 - Equivalent representative requests produce stable routing results in automated tests.
+- At least 24 committed simulation cases cover lifecycle, analytics, design, implementation,
+  overlap, unavailable capability, external write, and multi-stage classes, including equivalent
+  Korean and English request pairs.
+- The simulation report has zero unwanted fan-out, permission violations, false capability
+  claims, or missing handoff fields; boundary fixtures exactly match their expected route,
+  adapter, ordering, and permission result.
+- Simulation runs offline and never invokes a specialist or performs an external write.
 - No new runtime, database, or mandatory external plugin is added.
 - `python3 scripts/release_check.py .` passes.
 
@@ -114,6 +125,8 @@ Every artifact-producing step is tracked here.
 - 2026-08-10: User chose a single ModuFlow entry point with replaceable specialist engines,
   default on-demand use, and minimal context/permission overhead. Approved the thin routing
   contract before any specialist activation work.
+- 2026-08-10: User approved scenario simulation as part of issue 097. The contract must be
+  proven against offline golden requests and safety metrics before implementation is accepted.
 
 ## Links
 
