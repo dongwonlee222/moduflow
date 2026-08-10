@@ -136,7 +136,13 @@ def matched_positions(text, phrases):
     matches = []
     for phrase in phrases:
         normalized = normalize_text(phrase)
-        position = text.find(normalized)
+        if normalized.isascii():
+            prefix = r"(?<![a-z0-9])" if normalized[0].isalnum() else ""
+            suffix = r"(?![a-z0-9])" if normalized[-1].isalnum() else ""
+            match = re.search(prefix + re.escape(normalized) + suffix, text)
+            position = match.start() if match else -1
+        else:
+            position = text.find(normalized)
         if position >= 0:
             matches.append((position, normalized))
     return sorted(set(matches))

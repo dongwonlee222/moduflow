@@ -1,0 +1,257 @@
+{
+  "schema": "moduflow.capability-routing-cases.v1",
+  "cases": [
+    {
+      "id": "L01-ko-status",
+      "class": "lifecycle",
+      "request": "현재 이슈 상태 보여줘",
+      "locale": "ko-KR",
+      "semantic_pair_id": "lifecycle-status",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "none", "adapters": [], "permissions": [], "permission_states": [], "availability": [], "artifacts": []}
+    },
+    {
+      "id": "L02-en-status",
+      "class": "lifecycle",
+      "request": "Show the current issue status",
+      "locale": "en-US",
+      "semantic_pair_id": "lifecycle-status",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "none", "adapters": [], "permissions": [], "permission_states": [], "availability": [], "artifacts": []}
+    },
+    {
+      "id": "L03-ko-roadmap",
+      "class": "lifecycle",
+      "request": "로드맵 보여줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "none", "adapters": [], "permissions": [], "permission_states": [], "availability": [], "artifacts": []}
+    },
+    {
+      "id": "A01-ko-conversion",
+      "class": "analytics",
+      "request": "전환율 하락 원인을 분석해줘",
+      "locale": "ko-KR",
+      "semantic_pair_id": "analytics-conversion",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["read"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
+    },
+    {
+      "id": "A02-en-conversion",
+      "class": "analytics",
+      "request": "Analyze why conversion declined",
+      "locale": "en-US",
+      "semantic_pair_id": "analytics-conversion",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["read"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
+    },
+    {
+      "id": "A03-ko-kpi",
+      "class": "analytics",
+      "request": "활성 사용자 KPI를 정의해줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["read"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
+    },
+    {
+      "id": "D01-ko-onboarding",
+      "class": "design",
+      "request": "온보딩 화면 디자인을 개선해줘",
+      "locale": "ko-KR",
+      "semantic_pair_id": "design-onboarding",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["product-design"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/design-brief.md"]}
+    },
+    {
+      "id": "D02-en-onboarding",
+      "class": "design",
+      "request": "Improve the onboarding screen design",
+      "locale": "en-US",
+      "semantic_pair_id": "design-onboarding",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["product-design"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/design-brief.md"]}
+    },
+    {
+      "id": "D03-ko-prototype",
+      "class": "design",
+      "request": "결제 프로토타입을 만들어줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["product-design"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/design-brief.md"]}
+    },
+    {
+      "id": "I01-ko-api",
+      "class": "implementation",
+      "request": "결제 API를 구현해줘",
+      "locale": "ko-KR",
+      "semantic_pair_id": "implementation-api",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["superpowers"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/status.md"]}
+    },
+    {
+      "id": "I02-en-api",
+      "class": "implementation",
+      "request": "Implement the payment API",
+      "locale": "en-US",
+      "semantic_pair_id": "implementation-api",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["superpowers"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/status.md"]}
+    },
+    {
+      "id": "I03-ko-login-test",
+      "class": "implementation",
+      "request": "로그인 버그 테스트를 추가해줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["superpowers"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/status.md"]}
+    },
+    {
+      "id": "O01-ko-analysis-design",
+      "class": "overlap",
+      "request": "데이터 분석과 온보딩 디자인 개선안 부탁해",
+      "locale": "ko-KR",
+      "semantic_pair_id": "overlap-analysis-design",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "clarify", "adapters": [], "permissions": [], "permission_states": [], "availability": [], "artifacts": []}
+    },
+    {
+      "id": "O02-en-analysis-design",
+      "class": "overlap",
+      "request": "Give me data analysis and onboarding design improvements",
+      "locale": "en-US",
+      "semantic_pair_id": "overlap-analysis-design",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "clarify", "adapters": [], "permissions": [], "permission_states": [], "availability": [], "artifacts": []}
+    },
+    {
+      "id": "O03-ko-dashboard-report",
+      "class": "overlap",
+      "request": "지표 대시보드 분석 리포트를 만들어줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["read"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
+    },
+    {
+      "id": "U01-ko-speckit",
+      "class": "unavailable",
+      "request": "스펙킷으로 스펙을 검증해줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["spec-kit"], "permissions": ["read"], "permission_states": ["allowed"], "availability": ["unavailable"], "artifacts": ["specs/097-single-entry-capability-routing-contract/validation.md"]}
+    },
+    {
+      "id": "U02-en-analytics",
+      "class": "unavailable",
+      "request": "Analyze conversion decline",
+      "locale": "en-US",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {"data-analytics": false},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["read"], "permission_states": ["allowed"], "availability": ["unavailable"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
+    },
+    {
+      "id": "U03-ko-design",
+      "class": "unavailable",
+      "request": "온보딩 화면을 디자인해줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {"product-design": false},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["product-design"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["unavailable"], "artifacts": ["specs/097-single-entry-capability-routing-contract/design-brief.md"]}
+    },
+    {
+      "id": "P01-ko-posthog",
+      "class": "external-write",
+      "request": "분석 결과를 posthog에 반영해줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["write-external"], "permission_states": ["requires_approval"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
+    },
+    {
+      "id": "P02-en-posthog-approved",
+      "class": "external-write",
+      "request": "Analyze conversion and publish to PostHog",
+      "locale": "en-US",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": ["write-external"],
+      "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["write-external"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
+    },
+    {
+      "id": "P03-ko-drive-upload",
+      "class": "external-write",
+      "request": "발표자료를 만들어 google drive에 업로드해줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "delegate", "adapters": ["documents"], "permissions": ["write-external"], "permission_states": ["requires_approval"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/deliverables.md"]}
+    },
+    {
+      "id": "M01-ko-analysis-build",
+      "class": "multi-stage",
+      "request": "전환율을 분석한 후 대시보드를 구현해줘",
+      "locale": "ko-KR",
+      "semantic_pair_id": "sequence-analysis-build",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "sequence", "adapters": ["data-analytics", "superpowers"], "permissions": ["read", "write-local"], "permission_states": ["allowed", "allowed"], "availability": ["available", "available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md", "specs/097-single-entry-capability-routing-contract/status.md"]}
+    },
+    {
+      "id": "M02-en-analysis-build",
+      "class": "multi-stage",
+      "request": "Analyze conversion, then build the dashboard",
+      "locale": "en-US",
+      "semantic_pair_id": "sequence-analysis-build",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "sequence", "adapters": ["data-analytics", "superpowers"], "permissions": ["read", "write-local"], "permission_states": ["allowed", "allowed"], "availability": ["available", "available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md", "specs/097-single-entry-capability-routing-contract/status.md"]}
+    },
+    {
+      "id": "M03-ko-design-build",
+      "class": "multi-stage",
+      "request": "화면을 디자인하고 그다음 구현해줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {},
+      "approved_permissions": [],
+      "expected": {"outcome": "sequence", "adapters": ["product-design", "superpowers"], "permissions": ["write-local", "write-local"], "permission_states": ["allowed", "allowed"], "availability": ["available", "available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/design-brief.md", "specs/097-single-entry-capability-routing-contract/status.md"]}
+    }
+  ]
+}
