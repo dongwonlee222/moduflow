@@ -1,10 +1,10 @@
 # ModuFlow Roadmap
 
-## Priority Refresh — 2026-08-10
+## Priority Refresh — 2026-08-11
 
 ### Now
 
-- `098-speckit-selective-validation-adapter` — selective-template spec approved; next is `product:plan`.
+- `098-speckit-selective-validation-adapter` — selective-template spec and five-stream TDD plan approved; next is `product:execute`.
 
 ### Next
 

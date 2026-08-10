@@ -1,6 +1,6 @@
 # Issue 098: Spec Kit Selective Validation Adapter
 
-**Status: active** — created and specified 2026-08-10.
+**Status: active** — created and specified 2026-08-10; planned 2026-08-11.
 **Priority: p2**
 **Blocked-by:**
 
@@ -80,7 +80,7 @@ extensions, or route build/release ownership away from ModuFlow and Superpowers.
 
 - [x] spec → `specs/098-speckit-selective-validation-adapter/spec.md`; Korean sidecar → `specs/098-speckit-selective-validation-adapter/spec.ko.md`
 - [ ] benchmark → compare selected Spec Kit functions against native ModuFlow checks
-- [ ] plan → pending user approval of the written spec
+- [x] plan → `specs/098-speckit-selective-validation-adapter/plan.md`; tasks → `specs/098-speckit-selective-validation-adapter/tasks.md`
 - [ ] execute → PR / commits
 - [ ] review → review notes
 
@@ -100,12 +100,19 @@ extensions, or route build/release ownership away from ModuFlow and Superpowers.
 - 2026-08-10: User approved the recommended selective-template adapter. Official upstream at
   `684b3d8e` confirms the four capabilities are command templates rather than standalone CLI
   subcommands. The design pins only those templates and forbids upstream scripts/hooks/Git.
+- 2026-08-11: User approved proceeding. The implementation plan defines five sequential TDD
+  streams, exact upstream hashes, append-only result persistence, and a human pilot-decision gate.
+- 2026-08-11: Plan consistency passed with zero findings and the report-only implementation
+  readiness gate is `ready` across all seven checks.
 
 ## Links
 
 - Spec: `specs/098-speckit-selective-validation-adapter/spec.md`
+- Plan: `specs/098-speckit-selective-validation-adapter/plan.md`
+- Tasks: `specs/098-speckit-selective-validation-adapter/tasks.md`
+- Readiness: `specs/098-speckit-selective-validation-adapter/implementation-readiness.json`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:plan 098-speckit-selective-validation-adapter`
+`/product:execute 098-speckit-selective-validation-adapter`

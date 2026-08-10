@@ -94,8 +94,9 @@ flowchart LR
 | --- | --- |
 | `.moduflow/capabilities.json` | Project-scoped opt-in and allowed-function list; absent means disabled |
 | `vendor/spec-kit/0.16.1/commands/` | Exact reviewed snapshots of the four official command templates |
+| `vendor/spec-kit/0.16.1/manifest.json` | Stdlib-readable source/version/function/hash/fallback contract; avoids a YAML runtime dependency |
 | `overlays/spec-kit/selective-validation-policy.md` | Non-negotiable ModuFlow path, permission, mutation, and output rules |
-| `adapters/spec-kit.yaml` | Source/version/function mapping, fallback map, ownership exclusions |
+| `adapters/spec-kit.yaml` | Human-reviewable adapter role, manifest pointer, and ownership exclusions |
 | `scripts/spec_kit_adapter.py` | Validate config and paths; emit deterministic status/handoff/normalization metadata |
 | `skills/spec-kit-validation-bridge/SKILL.md` | Load exactly one selected template plus the overlay and return advisory output |
 | `specs/<issue>/validation.md` | Append-only, human-reviewable canonical record of accepted runs |

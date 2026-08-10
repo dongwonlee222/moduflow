@@ -19,21 +19,21 @@
     "098-speckit-selective-validation-adapter"
   ],
   "active_issue_id": "098-speckit-selective-validation-adapter",
-  "phase": "plan",
+  "phase": "execute",
   "mode": "recommend",
-  "delegation_level": "planning_required",
+  "delegation_level": "implementation_ready",
   "status": "active",
-  "next_command": "product:plan 098-speckit-selective-validation-adapter",
+  "next_command": "product:execute 098-speckit-selective-validation-adapter",
   "attempts": {
-    "command": "product:plan 098-speckit-selective-validation-adapter",
+    "command": "product:execute 098-speckit-selective-validation-adapter",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-08-10"
+    "last_changed_at": "2026-08-11"
   },
   "blocker": null,
-  "last_action": "merged Issue 097 via PR #36 and specified the user-approved selective-template design for Issue 098",
-  "last_verification": "2026-08-10: Issue 098 baseline unittest 1077/1077 on origin/main; upstream Spec Kit command surface verified at 684b3d8e",
-  "updated_at": "2026-08-10",
+  "last_action": "completed the user-approved Issue 098 implementation plan and task graph with five sequential TDD streams",
+  "last_verification": "2026-08-11: approved upstream SHA and four template SHA-256 values verified; spec consistency 0 findings; implementation readiness ready 7/7",
+  "updated_at": "2026-08-11",
   "git_binding": {
     "mode": "git-files",
     "branch": "codex/098-speckit-selective-validation-adapter",
@@ -142,9 +142,9 @@
     "release": "repository source on main at f4029f3; no plugin publish",
     "execution_backend": {
       "type": "host-subagent",
-        "status": "planning",
-        "reason": "Issue 098 selective-template spec is ready for user review and implementation planning",
-        "session": "codex-2026-08-10"
+        "status": "planned",
+        "reason": "Issue 098 uses five sequential shared-state streams; implementation readiness must run before execution",
+        "session": "codex-2026-08-11"
       }
   }
 }
