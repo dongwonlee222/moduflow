@@ -7,10 +7,10 @@
       "url": "https://github.com/anthropics/skills",
       "type": "github",
       "pin": "main",
-      "role": "official reusable skill patterns",
+      "role": "reference-only office artifact skill patterns; runtime supplied by the Codex primary plugins",
       "last_synced": {
-        "sha": "9d2f1ae187231d8199c64b5b762e1bdf2244733d",
-        "date": "2026-07-01T18:11:23Z"
+        "sha": "f17010c9bb483898c1d9c9f42dde2b3a98889434",
+        "date": "2026-08-07T17:14:14Z"
       }
     },
     {
@@ -21,8 +21,8 @@
       "pin": "main",
       "role": "productivity and product-management plugin patterns",
       "last_synced": {
-        "sha": "6f13415be2a18d0fd9fa652e29a616cf7e3617a5",
-        "date": "2026-07-04T18:06:53Z"
+        "sha": "e9753d75a43d2cdd3292d7db4b718668165dd0a1",
+        "date": "2026-08-09T18:08:12Z"
       }
     },
     {
@@ -33,8 +33,8 @@
       "pin": "main",
       "role": "spec, plan, and task workflow",
       "last_synced": {
-        "sha": "bba473c223dc298fb76ecf8f87f86d5d2b8ed11c",
-        "date": "2026-07-02T13:49:53Z"
+        "sha": "684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5",
+        "date": "2026-08-07T17:55:55Z"
       }
     },
     {
@@ -45,8 +45,8 @@
       "pin": "main",
       "role": "execution, subagent, review, and verification practices",
       "last_synced": {
-        "sha": "d884ae04edebef577e82ff7c4e143debd0bbec99",
-        "date": "2026-07-02T21:56:55Z"
+        "sha": "44c9b2d6e889982ac18c27d05a19fefe335194e1",
+        "date": "2026-07-28T19:25:36Z"
       }
     },
     {
@@ -54,7 +54,7 @@
       "name": "Codex Product Design",
       "url": "local:codex-plugin/product-design",
       "type": "local-plugin",
-      "pin": "0.1.44",
+      "pin": "0.1.52",
       "role": "design brief, ideation, prototype, image-to-code bridge"
     },
     {
@@ -62,7 +62,7 @@
       "name": "Codex Data Analytics",
       "url": "local:codex-plugin/data-analytics",
       "type": "local-plugin",
-      "pin": "0.1.41-cf2b8b6c00d3",
+      "pin": "0.2.8-13ceeea1f599",
       "role": "metrics, diagnostics, dashboards, reports"
     },
     {
@@ -70,8 +70,8 @@
       "name": "Codex Documents / Presentations / Spreadsheets",
       "url": "local:codex-plugin/documents-presentations-spreadsheets",
       "type": "local-plugin",
-      "pin": "unpinned",
-      "role": "docx/xlsx/pptx artifact output bridge (referenced by adapters/documents.yaml; was missing from this lock until 2026-07-05)"
+      "pin": "26.805.11740",
+      "role": "docx/xlsx/pptx artifact output bridge"
     },
     {
       "id": "codex-github",

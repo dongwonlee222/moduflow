@@ -15,3 +15,7 @@ writes:
   - none by default
 write_policy: Reply, resolve, review submission, and issue publication require an explicit separate user-approved GitHub action.
 swap_policy: Replaceable if thread identity, resolution state, file anchors, reviewer provenance, and write safety remain explicit.
+reviewed:
+  version: 0.1.8-2841cf9749ae
+  date: 2026-08-10
+  note: Active Codex GitHub plugin matches the lock and preserves the review-source contract.
