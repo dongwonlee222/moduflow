@@ -63,26 +63,57 @@ def _unwanted_fanout(actual):
     return int(stage_count != 0)
 
 
-def _permission_violations(case, actual):
+def _permission_violations(case, actual, registry):
     approved = set(case.get("approved_permissions") or [])
-    return sum(
-        1
-        for stage in actual.get("stages") or []
-        if stage.get("permission") == "write-external"
-        and stage.get("permission_state") == "allowed"
-        and "write-external" not in approved
+    external = bool(
+        capability_routing.matched_positions(
+            capability_routing.normalize_text(case.get("request")),
+            registry["external_write_triggers"],
+        )
     )
+    descriptors = {item["id"]: item for item in registry["capabilities"]}
+    text = capability_routing.normalize_text(case.get("request"))
+    requested_adapters = {
+        descriptor["id"]
+        for index, descriptor in enumerate(registry["capabilities"])
+        if capability_routing._candidate(text, descriptor, index)
+    }
+    violations = 0
+    for stage in actual.get("stages") or []:
+        descriptor = descriptors.get(stage.get("adapter_id"))
+        if descriptor is None:
+            continue
+        required_permission = (
+            "write-external"
+            if external and descriptor["id"] in requested_adapters
+            else descriptor["permission"]
+        )
+        required_state = (
+            "requires_approval"
+            if required_permission == "write-external"
+            and "write-external" not in approved
+            else "allowed"
+        )
+        if (
+            stage.get("permission") != required_permission
+            or stage.get("permission_state") != required_state
+        ):
+            violations += 1
+    return violations
 
 
-def _false_capability_claims(case, actual):
-    expected = case.get("expected") or {}
-    expected_availability = dict(
-        zip(expected.get("adapters") or [], expected.get("availability") or [])
-    )
+def _false_capability_claims(case, actual, registry):
+    availability = case.get("availability") or {}
+    descriptors = {item["id"]: item for item in registry["capabilities"]}
     false_claims = 0
     for stage in actual.get("stages") or []:
-        expected_state = expected_availability.get(stage.get("adapter_id"))
-        if expected_state == "unavailable" and (
+        descriptor = descriptors.get(stage.get("adapter_id"))
+        if descriptor is None:
+            continue
+        host_available = availability.get(
+            descriptor["id"], descriptor["default_available"]
+        )
+        if not host_available and (
             stage.get("availability") != "unavailable" or not actual.get("fallback")
         ):
             false_claims += 1
@@ -97,7 +128,7 @@ def _missing_handoff_fields(actual):
     )
 
 
-def evaluate_case(case, actual):
+def evaluate_case(case, actual, registry):
     expected = case["expected"]
     projected = _projection(actual)
     mismatches = []
@@ -120,8 +151,8 @@ def evaluate_case(case, actual):
             )
 
     metrics["unwanted_fanout"] = _unwanted_fanout(actual)
-    metrics["permission_violations"] = _permission_violations(case, actual)
-    metrics["false_capability_claims"] = _false_capability_claims(case, actual)
+    metrics["permission_violations"] = _permission_violations(case, actual, registry)
+    metrics["false_capability_claims"] = _false_capability_claims(case, actual, registry)
     metrics["missing_handoff_fields"] = _missing_handoff_fields(actual)
     safety_failures = sum(metrics[key] for key in METRIC_KEYS if key != "semantic_pair_inconsistencies")
     return {
@@ -147,21 +178,26 @@ def evaluate_case(case, actual):
     }
 
 
-def _semantic_pair_inconsistencies(results):
+def _semantic_pair_findings(results):
     pairs = {}
     for result in results:
         pair_id = result.get("semantic_pair_id")
         if pair_id:
             pairs.setdefault(pair_id, []).append(result)
-    count = 0
-    for members in pairs.values():
+    findings = []
+    for pair_id, members in sorted(pairs.items()):
         fingerprints = {
             json.dumps(member["fingerprint"], ensure_ascii=False, sort_keys=True)
             for member in members
         }
         if len(fingerprints) > 1:
-            count += 1
-    return count
+            findings.append(
+                {
+                    "pair_id": pair_id,
+                    "case_ids": sorted(member["id"] for member in members),
+                }
+            )
+    return findings
 
 
 def simulate_cases(root, cases):
@@ -173,16 +209,26 @@ def simulate_cases(root, cases):
             case["request"],
             registry,
             issue_id=case["issue_id"],
+            target_root=root,
             availability=case.get("availability") or {},
             approved_permissions=set(case.get("approved_permissions") or []),
         )
-        results.append(evaluate_case(case, actual))
+        results.append(evaluate_case(case, actual, registry))
+
+    pair_findings = _semantic_pair_findings(results)
+    results_by_id = {result["id"]: result for result in results}
+    for finding in pair_findings:
+        message = f"semantic pair {finding['pair_id']!r} differs"
+        for case_id in finding["case_ids"]:
+            member = results_by_id[case_id]
+            member["passed"] = False
+            member["mismatches"].append(message)
 
     metrics = {key: 0 for key in METRIC_KEYS}
     for result in results:
         for key in METRIC_KEYS:
             metrics[key] += result["metrics"][key]
-    metrics["semantic_pair_inconsistencies"] = _semantic_pair_inconsistencies(results)
+    metrics["semantic_pair_inconsistencies"] = len(pair_findings)
     failed = sum(1 for result in results if not result["passed"])
     return {
         "schema": SIMULATION_SCHEMA,
@@ -190,6 +236,7 @@ def simulate_cases(root, cases):
         "passed": len(results) - failed,
         "failed": failed,
         "metrics": metrics,
+        "semantic_pair_findings": pair_findings,
         "cases": results,
     }
 

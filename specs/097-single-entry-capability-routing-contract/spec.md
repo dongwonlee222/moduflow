@@ -60,7 +60,7 @@ Each specialist exposes only routing metadata required by ModuFlow:
 
 - stable adapter ID and human-readable purpose
 - positive triggers and explicit exclusions
-- availability check
+- host-confirmed availability check that defaults fail-closed when omitted
 - permission class: `read`, `write-local`, or `write-external`
 - expected input and returned ModuFlow artifact type
 - optional ordering constraints for multi-stage work
@@ -79,6 +79,11 @@ A request resolves to one of three outcomes:
 Every delegated outcome includes the selected adapter, selection reason, required permission,
 availability result, issue ID, and destination artifact. Ambiguity that changes scope or
 permission asks one concise clarification instead of selecting multiple specialists.
+
+The installed/bundled ModuFlow package owns the registry and router executable; the target
+project is a separate input and only receives contained `specs/<issue-id>/...` artifact paths.
+For a sequence, verified predecessor artifact paths are fed back into routing so the result can
+advance one stage or report `ready`, `blocked`, or `complete` without activating stages together.
 
 ```mermaid
 flowchart TD
@@ -182,6 +187,8 @@ to make it trustworthy.
 - Every delegated route records adapter, reason, permission, availability, issue ID, and output
   artifact.
 - Missing capability availability results in a truthful fallback or setup recommendation.
+- Omitted capability availability is treated as unavailable until the host explicitly confirms
+  it; unknown/non-boolean host availability and unsafe issue/artifact paths fail closed.
 - Representative Korean and English routing fixtures are deterministic and regression-tested.
 - At least 24 committed offline simulation fixtures cover all eight boundary classes and include
   semantically equivalent Korean and English pairs.

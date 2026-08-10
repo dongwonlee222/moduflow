@@ -9,6 +9,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "scripts" / "capability_routing.py"
+HOST_AVAILABLE = {
+    "data-analytics": True,
+    "product-design": True,
+    "superpowers": True,
+    "documents": True,
+    "spec-kit": False,
+}
 
 
 def load_module(testcase):
@@ -34,8 +41,9 @@ def valid_registry(root):
                 "adapter_path": "adapters/data-analytics.yaml",
                 "purpose": "product and business data analysis",
                 "triggers": ["analytics", "분석"],
+                "explicit_triggers": ["data analytics", "데이터 분석"],
                 "exclusions": ["issue status"],
-                "default_available": True,
+                "default_available": False,
                 "permission": "read",
                 "output_artifact": "specs/{issue_id}/analysis.md",
                 "setup_recommendation": "Enable Data Analytics in the current host.",
@@ -122,10 +130,13 @@ class CapabilityRoutingTests(unittest.TestCase):
             hasattr(self.routing, "route_request"),
             "route_request must implement the routing contract",
         )
+        availability = kwargs.pop("availability", HOST_AVAILABLE)
         return self.routing.route_request(
             request,
             self.registry,
             issue_id="097-single-entry-capability-routing-contract",
+            target_root=ROOT,
+            availability=availability,
             **kwargs,
         )
 
@@ -223,6 +234,25 @@ class CapabilityRoutingTests(unittest.TestCase):
         self.assertEqual(result["stages"][0]["availability"], "unavailable")
         self.assertIn("098-speckit", result["fallback"])
 
+    def test_explicit_spec_kit_intent_beats_generic_lifecycle_words(self):
+        result = self.route("스펙킷으로 스펙을 검사해줘")
+
+        self.assertEqual(result["outcome"], "delegate")
+        self.assertEqual(result["stages"][0]["adapter_id"], "spec-kit")
+        self.assertEqual(result["stages"][0]["reason_code"], "explicit_adapter")
+
+    def test_availability_defaults_fail_closed_without_host_confirmation(self):
+        result = self.route("전환율을 분석해줘", availability={})
+
+        self.assertEqual(result["stages"][0]["availability"], "unavailable")
+        self.assertIsNone(result["current_stage"])
+
+    def test_unknown_or_non_boolean_availability_is_rejected(self):
+        with self.assertRaisesRegex(self.routing.RegistryError, "unknown capability"):
+            self.route("전환율을 분석해줘", availability={"ghost": True})
+        with self.assertRaisesRegex(self.routing.RegistryError, "boolean"):
+            self.route("전환율을 분석해줘", availability={"data-analytics": "yes"})
+
     def test_external_write_requires_explicit_approval(self):
         result = self.route("분석 결과를 posthog에 반영해줘")
 
@@ -249,6 +279,61 @@ class CapabilityRoutingTests(unittest.TestCase):
         self.assertEqual(result["outcome"], "delegate")
         self.assertEqual(result["stages"][0]["adapter_id"], "data-analytics")
 
+    def test_sequence_advances_only_after_predecessor_artifact(self):
+        initial = self.route("전환율을 분석한 후 대시보드를 구현해줘")
+        first_artifact = initial["stages"][0]["output_artifact"]
+        advanced = self.route(
+            "전환율을 분석한 후 대시보드를 구현해줘",
+            completed_artifacts={first_artifact},
+        )
+        completed = self.route(
+            "전환율을 분석한 후 대시보드를 구현해줘",
+            completed_artifacts={stage["output_artifact"] for stage in initial["stages"]},
+        )
+
+        self.assertEqual(initial["sequence_state"], "ready")
+        self.assertEqual(initial["current_stage"], 0)
+        self.assertEqual(advanced["sequence_state"], "ready")
+        self.assertEqual(advanced["current_stage"], 1)
+        self.assertEqual(completed["sequence_state"], "complete")
+        self.assertIsNone(completed["current_stage"])
+
+    def test_sequence_reports_blocked_when_next_stage_is_not_eligible(self):
+        initial = self.route("전환율을 분석한 후 대시보드를 구현해줘")
+        result = self.route(
+            "전환율을 분석한 후 대시보드를 구현해줘",
+            availability={**HOST_AVAILABLE, "superpowers": False},
+            completed_artifacts={initial["stages"][0]["output_artifact"]},
+        )
+
+        self.assertEqual(result["sequence_state"], "blocked")
+        self.assertIsNone(result["current_stage"])
+
+    def test_issue_id_cannot_escape_target_specs_directory(self):
+        for issue_id in ("../../outside", "bad/name", ".."):
+            with self.subTest(issue_id=issue_id):
+                with self.assertRaisesRegex(self.routing.RegistryError, "issue_id"):
+                    self.routing.route_request(
+                        "전환율을 분석해줘",
+                        self.registry,
+                        issue_id=issue_id,
+                        target_root=ROOT,
+                        availability=HOST_AVAILABLE,
+                    )
+
+    def test_output_template_cannot_escape_target_specs_directory(self):
+        registry = json.loads(json.dumps(self.registry))
+        registry["capabilities"][0]["output_artifact"] = "../outside/{issue_id}.md"
+
+        with self.assertRaisesRegex(self.routing.RegistryError, "output_artifact"):
+            self.routing.route_request(
+                "전환율을 분석해줘",
+                registry,
+                issue_id="001-conversion",
+                target_root=ROOT,
+                availability=HOST_AVAILABLE,
+            )
+
     def test_cli_prints_read_only_routing_json(self):
         completed = subprocess.run(
             [
@@ -258,6 +343,8 @@ class CapabilityRoutingTests(unittest.TestCase):
                 str(ROOT),
                 "--issue-id",
                 "097-single-entry-capability-routing-contract",
+                "--available",
+                "data-analytics",
             ],
             check=False,
             capture_output=True,
@@ -269,6 +356,43 @@ class CapabilityRoutingTests(unittest.TestCase):
         payload = json.loads(completed.stdout)
         self.assertEqual(payload["outcome"], "delegate")
         self.assertEqual(payload["stages"][0]["adapter_id"], "data-analytics")
+
+    def test_cli_uses_bundled_registry_for_lightweight_target_project(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "target"
+            target.mkdir()
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(MODULE_PATH),
+                    "전환율을 분석해줘",
+                    str(target),
+                    "--issue-id",
+                    "001-conversion",
+                    "--available",
+                    "data-analytics",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["stages"][0]["output_artifact"], "specs/001-conversion/analysis.md")
+
+    def test_cli_reports_structured_errors_without_traceback(self):
+        completed = subprocess.run(
+            [sys.executable, str(MODULE_PATH), "분석해줘", str(ROOT), "--available", "ghost"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(completed.returncode, 2)
+        self.assertNotIn("Traceback", completed.stderr)
+        payload = json.loads(completed.stderr)
+        self.assertEqual(payload["schema"], "moduflow.capability-routing-error.v1")
 
 
 if __name__ == "__main__":

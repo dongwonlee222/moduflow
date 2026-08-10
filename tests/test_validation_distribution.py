@@ -591,6 +591,9 @@ next_command: {next_command}
         ).read_text(encoding="utf-8")
 
         self.assertIn("capability_routing.py", moduflow)
+        self.assertIn("bundled", moduflow.lower())
+        self.assertIn("--available", moduflow)
+        self.assertIn("--completed-artifact", moduflow)
         for outcome in ("none", "delegate", "sequence", "clarify"):
             self.assertIn(f"`{outcome}`", moduflow)
         self.assertIn("at most one specialist", moduflow)
@@ -598,6 +601,7 @@ next_command: {next_command}
         self.assertIn("availability", index.lower())
         self.assertIn("permission", router.lower())
         self.assertIn("availability", router.lower())
+        self.assertIn("fail-closed", router.lower())
 
     def test_review_upstreams_and_policy_are_registered(self):
         vendor = json.loads((ROOT / "vendor.lock.json").read_text(encoding="utf-8"))

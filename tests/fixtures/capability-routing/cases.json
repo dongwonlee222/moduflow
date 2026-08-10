@@ -40,7 +40,7 @@
       "locale": "ko-KR",
       "semantic_pair_id": "analytics-conversion",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"data-analytics": true},
       "approved_permissions": [],
       "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["read"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
     },
@@ -51,7 +51,7 @@
       "locale": "en-US",
       "semantic_pair_id": "analytics-conversion",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"data-analytics": true},
       "approved_permissions": [],
       "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["read"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
     },
@@ -61,7 +61,7 @@
       "request": "활성 사용자 KPI를 정의해줘",
       "locale": "ko-KR",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"data-analytics": true},
       "approved_permissions": [],
       "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["read"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
     },
@@ -72,7 +72,7 @@
       "locale": "ko-KR",
       "semantic_pair_id": "design-onboarding",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"product-design": true},
       "approved_permissions": [],
       "expected": {"outcome": "delegate", "adapters": ["product-design"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/design-brief.md"]}
     },
@@ -83,7 +83,7 @@
       "locale": "en-US",
       "semantic_pair_id": "design-onboarding",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"product-design": true},
       "approved_permissions": [],
       "expected": {"outcome": "delegate", "adapters": ["product-design"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/design-brief.md"]}
     },
@@ -93,7 +93,7 @@
       "request": "결제 프로토타입을 만들어줘",
       "locale": "ko-KR",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"product-design": true},
       "approved_permissions": [],
       "expected": {"outcome": "delegate", "adapters": ["product-design"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/design-brief.md"]}
     },
@@ -104,7 +104,7 @@
       "locale": "ko-KR",
       "semantic_pair_id": "implementation-api",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"superpowers": true},
       "approved_permissions": [],
       "expected": {"outcome": "delegate", "adapters": ["superpowers"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/status.md"]}
     },
@@ -115,7 +115,7 @@
       "locale": "en-US",
       "semantic_pair_id": "implementation-api",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"superpowers": true},
       "approved_permissions": [],
       "expected": {"outcome": "delegate", "adapters": ["superpowers"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/status.md"]}
     },
@@ -125,7 +125,7 @@
       "request": "로그인 버그 테스트를 추가해줘",
       "locale": "ko-KR",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"superpowers": true},
       "approved_permissions": [],
       "expected": {"outcome": "delegate", "adapters": ["superpowers"], "permissions": ["write-local"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/status.md"]}
     },
@@ -157,7 +157,7 @@
       "request": "지표 대시보드 분석 리포트를 만들어줘",
       "locale": "ko-KR",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"data-analytics": true},
       "approved_permissions": [],
       "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["read"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
     },
@@ -197,7 +197,7 @@
       "request": "분석 결과를 posthog에 반영해줘",
       "locale": "ko-KR",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"data-analytics": true},
       "approved_permissions": [],
       "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["write-external"], "permission_states": ["requires_approval"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
     },
@@ -207,7 +207,7 @@
       "request": "Analyze conversion and publish to PostHog",
       "locale": "en-US",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"data-analytics": true},
       "approved_permissions": ["write-external"],
       "expected": {"outcome": "delegate", "adapters": ["data-analytics"], "permissions": ["write-external"], "permission_states": ["allowed"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md"]}
     },
@@ -217,7 +217,7 @@
       "request": "발표자료를 만들어 google drive에 업로드해줘",
       "locale": "ko-KR",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"documents": true},
       "approved_permissions": [],
       "expected": {"outcome": "delegate", "adapters": ["documents"], "permissions": ["write-external"], "permission_states": ["requires_approval"], "availability": ["available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/deliverables.md"]}
     },
@@ -228,7 +228,7 @@
       "locale": "ko-KR",
       "semantic_pair_id": "sequence-analysis-build",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"data-analytics": true, "superpowers": true},
       "approved_permissions": [],
       "expected": {"outcome": "sequence", "adapters": ["data-analytics", "superpowers"], "permissions": ["read", "write-local"], "permission_states": ["allowed", "allowed"], "availability": ["available", "available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md", "specs/097-single-entry-capability-routing-contract/status.md"]}
     },
@@ -239,7 +239,7 @@
       "locale": "en-US",
       "semantic_pair_id": "sequence-analysis-build",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"data-analytics": true, "superpowers": true},
       "approved_permissions": [],
       "expected": {"outcome": "sequence", "adapters": ["data-analytics", "superpowers"], "permissions": ["read", "write-local"], "permission_states": ["allowed", "allowed"], "availability": ["available", "available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/analysis.md", "specs/097-single-entry-capability-routing-contract/status.md"]}
     },
@@ -249,7 +249,7 @@
       "request": "화면을 디자인하고 그다음 구현해줘",
       "locale": "ko-KR",
       "issue_id": "097-single-entry-capability-routing-contract",
-      "availability": {},
+      "availability": {"product-design": true, "superpowers": true},
       "approved_permissions": [],
       "expected": {"outcome": "sequence", "adapters": ["product-design", "superpowers"], "permissions": ["write-local", "write-local"], "permission_states": ["allowed", "allowed"], "availability": ["available", "available"], "artifacts": ["specs/097-single-entry-capability-routing-contract/design-brief.md", "specs/097-single-entry-capability-routing-contract/status.md"]}
     }

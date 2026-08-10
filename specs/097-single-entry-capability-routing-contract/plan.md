@@ -98,8 +98,9 @@ The matrix guides execution and does not replace the Issue 077 readiness gate.
             "adapter_path": "adapters/data-analytics.yaml",
             "purpose": "product and business data analysis",
             "triggers": ["analytics", "metric", "kpi", "분석", "지표"],
+            "explicit_triggers": ["data analytics", "데이터 분석"],
             "exclusions": ["issue status", "이슈 상태"],
-            "default_available": True,
+            "default_available": False,
             "permission": "read",
             "output_artifact": "specs/{issue_id}/analysis.md",
             "setup_recommendation": "Enable the Data Analytics capability in the current host."
@@ -109,7 +110,7 @@ The matrix guides execution and does not replace the Issue 077 readiness gate.
 ```
 
 The committed registry includes `data-analytics`, `product-design`, `superpowers`,
-`documents`, and `spec-kit`. `spec-kit.default_available` is `false`; its setup
+`documents`, and `spec-kit`. Every `default_available` is `false`; Spec Kit's setup
 recommendation points to `098-speckit-selective-validation-adapter`.
 
 Use these reviewed descriptor values; phrase lists may only change through a fixture-backed
@@ -117,10 +118,10 @@ review:
 
 | ID | Triggers | Exclusions | Default | Permission | Output artifact |
 | --- | --- | --- | --- | --- | --- |
-| `data-analytics` | `analytics`, `analyze`, `metric`, `kpi`, `dashboard`, `data`, `분석`, `지표`, `데이터`, `대시보드` | `issue status`, `이슈 상태`, `status dashboard`, `상태 대시보드` | available | `read` | `specs/{issue_id}/analysis.md` |
-| `product-design` | `design`, `ux`, `ui`, `prototype`, `wireframe`, `screen`, `onboarding`, `디자인`, `프로토타입`, `와이어프레임`, `화면`, `온보딩` | `design issue status`, `디자인 이슈 상태` | available | `write-local` | `specs/{issue_id}/design-brief.md` |
-| `superpowers` | `implement`, `build`, `code`, `test`, `bug`, `api`, `구현`, `개발`, `코드`, `테스트`, `버그` | `implementation plan`, `구현 계획` | available | `write-local` | `specs/{issue_id}/status.md` |
-| `documents` | `docx`, `pptx`, `xlsx`, `presentation`, `slides`, `발표자료`, `슬라이드`, `문서 파일` | `report metric`, `리포트 지표` | available | `write-local` | `specs/{issue_id}/deliverables.md` |
+| `data-analytics` | `analytics`, `analyze`, `metric`, `kpi`, `dashboard`, `data`, `분석`, `지표`, `데이터`, `대시보드` | `issue status`, `이슈 상태`, `status dashboard`, `상태 대시보드` | unavailable until host-confirmed | `read` | `specs/{issue_id}/analysis.md` |
+| `product-design` | `design`, `ux`, `ui`, `prototype`, `wireframe`, `screen`, `onboarding`, `디자인`, `프로토타입`, `와이어프레임`, `화면`, `온보딩` | `design issue status`, `디자인 이슈 상태` | unavailable until host-confirmed | `write-local` | `specs/{issue_id}/design-brief.md` |
+| `superpowers` | `implement`, `build`, `code`, `test`, `bug`, `api`, `구현`, `개발`, `코드`, `테스트`, `버그` | `implementation plan`, `구현 계획` | unavailable until host-confirmed | `write-local` | `specs/{issue_id}/status.md` |
+| `documents` | `docx`, `pptx`, `xlsx`, `presentation`, `slides`, `발표자료`, `슬라이드`, `문서 파일` | `report metric`, `리포트 지표` | unavailable until host-confirmed | `write-local` | `specs/{issue_id}/deliverables.md` |
 | `spec-kit` | `spec kit`, `speckit`, `스펙 킷`, `스펙킷` | `product:spec`, `스펙 상태` | unavailable | `read` | `specs/{issue_id}/validation.md` |
 
 The registry-level lifecycle phrases are `product:`, `current status`, `issue status`,
@@ -139,8 +140,10 @@ route_request(
     registry: dict,
     *,
     issue_id: str = "unassigned",
+    target_root: Path = Path("."),
     availability: dict[str, bool] | None = None,
     approved_permissions: set[str] | None = None,
+    completed_artifacts: set[str] | None = None,
 ) -> dict
 ```
 
@@ -164,6 +167,7 @@ The result shape is:
         }
     ],
     "current_stage": 0,
+    "sequence_state": "not_applicable",
     "clarification": None,
     "fallback": None
 }
@@ -174,12 +178,20 @@ Outcome invariants:
 - `none`: `stages == []`, `current_stage is None`.
 - `delegate`: exactly one stage.
 - `sequence`: two or more ordered stages; only index `current_stage` is eligible
-  and every earlier stage's `output_artifact` is the next-stage gate.
+  and every earlier stage's `output_artifact` is the next-stage gate. Verified
+  `completed_artifacts` advance the route and `sequence_state` reports `ready`, `blocked`, or
+  `complete`.
 - `clarify`: no stages and one concise `clarification`.
 - unavailable delegation keeps the matching stage with
   `availability: unavailable`, `current_stage: null`, and a truthful `fallback`.
 - `write-external` uses `permission_state: requires_approval` unless
   `write-external` appears in `approved_permissions`.
+
+Review amendment: the CLI always resolves its registry from its installed/bundled package root,
+while `project_path` is used only as the target artifact root. All capability defaults are
+fail-closed; the host must pass confirmed availability explicitly. Canonical issue IDs and
+resolved output paths are contained under target `specs/`, and CLI failures use a stable JSON
+error envelope rather than a traceback.
 
 ### Simulation call
 

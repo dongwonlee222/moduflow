@@ -24,12 +24,17 @@ Exact `product:*` input (direct product command) is a direct command and should 
 After direct aliases and lifecycle ownership are resolved, route specialist-capable natural
 language through `scripts/capability_routing.py`.
 
+Resolve that helper from the installed/bundled ModuFlow package and pass the target project as a
+separate argument. Capability availability is fail-closed: the host must add
+`--available <adapter-id>` only after confirming the capability exists in the current session.
+
 - Default to `none` for ordinary status, issue, goal, roadmap, loop, doctor, review, PR,
   release, and Git-native artifact work.
 - `delegate` selects at most one specialist and records reason, permission, availability,
   issue ID, and output artifact before the host loads it.
 - `sequence` is valid only for explicit multi-stage language. Run one stage at a time and
-  require the declared artifact before advancing.
+  require the declared artifact before advancing; provide verified predecessor paths through
+  `--completed-artifact` and honor `sequence_state: ready | blocked | complete`.
 - `clarify` asks one concise question instead of fanning out.
 - Unavailable or permission-blocked stages report the fallback or approval requirement and do
   not claim execution.

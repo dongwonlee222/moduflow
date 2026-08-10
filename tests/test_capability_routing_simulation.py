@@ -26,6 +26,10 @@ def load_simulation(testcase):
     return module
 
 
+def registry_for(simulation):
+    return simulation.capability_routing.load_registry(ROOT)
+
+
 def fixture_cases():
     return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))["cases"]
 
@@ -101,7 +105,7 @@ class CapabilityRoutingSimulationTests(unittest.TestCase):
             "fallback": None
         }
 
-        result = simulation.evaluate_case(case, actual)
+        result = simulation.evaluate_case(case, actual, registry_for(simulation))
 
         self.assertEqual(result["metrics"]["unwanted_fanout"], 1)
         self.assertEqual(result["metrics"]["permission_violations"], 1)
@@ -124,9 +128,33 @@ class CapabilityRoutingSimulationTests(unittest.TestCase):
             "fallback": None
         }
 
-        result = simulation.evaluate_case(case, actual)
+        case["expected"]["availability"] = ["available"]
+        result = simulation.evaluate_case(case, actual, registry_for(simulation))
 
         self.assertEqual(result["metrics"]["false_capability_claims"], 1)
+
+    def test_permission_metric_ignores_mutated_expected_and_actual_labels(self):
+        simulation = load_simulation(self)
+        case = copy.deepcopy(next(item for item in fixture_cases() if item["id"] == "P01-ko-posthog"))
+        case["expected"]["permissions"] = ["read"]
+        case["expected"]["permission_states"] = ["allowed"]
+        actual = {
+            "outcome": "delegate",
+            "stages": [{
+                "adapter_id": "data-analytics",
+                "reason_code": "trigger_match",
+                "permission": "read",
+                "permission_state": "allowed",
+                "availability": "available",
+                "output_artifact": "specs/097-single-entry-capability-routing-contract/analysis.md",
+                "gate_after": None,
+            }],
+            "fallback": None,
+        }
+
+        result = simulation.evaluate_case(case, actual, registry_for(simulation))
+
+        self.assertEqual(result["metrics"]["permission_violations"], 1)
 
     def test_semantic_pair_drift_is_reported(self):
         simulation = load_simulation(self)
@@ -137,6 +165,17 @@ class CapabilityRoutingSimulationTests(unittest.TestCase):
         report = simulation.simulate_cases(ROOT, cases)
 
         self.assertEqual(report["metrics"]["semantic_pair_inconsistencies"], 1)
+        self.assertEqual(
+            report["semantic_pair_findings"],
+            [{
+                "pair_id": "analytics-conversion",
+                "case_ids": ["A01-ko-conversion", "A02-en-conversion"],
+            }],
+        )
+        self.assertEqual(report["failed"], 2)
+        by_id = {case["id"]: case for case in report["cases"]}
+        self.assertFalse(by_id["A01-ko-conversion"]["passed"])
+        self.assertFalse(by_id["A02-en-conversion"]["passed"])
 
     def test_report_write_is_byte_stable(self):
         simulation = load_simulation(self)

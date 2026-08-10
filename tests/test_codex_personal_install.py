@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -96,6 +98,38 @@ class CodexPersonalInstallTests(unittest.TestCase):
             )
             validation = validator.validate_moduflow(cache)
             self.assertTrue(validation["valid"], validation["errors"])
+
+    def test_cached_router_uses_cache_registry_with_lightweight_target(self):
+        installer = load_module(
+            "register_codex_personal_marketplace_routing",
+            "scripts/register_codex_personal_marketplace.py",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache = installer.copy_plugin_cache(ROOT, root / "home", "0.0.0+codex.test")
+            target = root / "target-project"
+            target.mkdir()
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(cache / "scripts" / "capability_routing.py"),
+                    "Analyze conversion",
+                    str(target),
+                    "--issue-id",
+                    "001-conversion",
+                    "--available",
+                    "data-analytics",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            payload = json.loads(completed.stdout)
+            self.assertEqual(payload["outcome"], "delegate")
+            self.assertEqual(payload["stages"][0]["adapter_id"], "data-analytics")
 
 
 if __name__ == "__main__":

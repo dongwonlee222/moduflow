@@ -4,12 +4,15 @@
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 
 REGISTRY_SCHEMA = "moduflow.capability-registry.v1"
 PERMISSIONS = {"read", "write-local", "write-external"}
 ROUTING_SCHEMA = "moduflow.capability-routing.v1"
+ERROR_SCHEMA = "moduflow.capability-routing-error.v1"
+ISSUE_ID_PATTERN = re.compile(r"^[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)*$")
 REQUIRED_HANDOFF_FIELDS = {
     "adapter_id",
     "reason_code",
@@ -29,6 +32,7 @@ CAPABILITY_FIELDS = (
     "adapter_path",
     "purpose",
     "triggers",
+    "explicit_triggers",
     "exclusions",
     "default_available",
     "permission",
@@ -103,6 +107,10 @@ def validate_registry(payload, root):
         _adapter_path(root, descriptor["adapter_path"])
         if not _nonempty_strings(descriptor["triggers"]):
             raise RegistryError(f"{capability_id}.triggers must be a non-empty string list")
+        if not _nonempty_strings(descriptor["explicit_triggers"]):
+            raise RegistryError(
+                f"{capability_id}.explicit_triggers must be a non-empty string list"
+            )
         if not _string_list(descriptor["exclusions"]):
             raise RegistryError(f"{capability_id}.exclusions must be a string list")
         if not isinstance(descriptor["default_available"], bool):
@@ -151,7 +159,9 @@ def matched_positions(text, phrases):
 def _candidate(text, descriptor, registry_index):
     if matched_positions(text, descriptor.get("exclusions", [])):
         return None
-    explicit = matched_positions(text, [descriptor["id"]])
+    explicit = matched_positions(
+        text, [descriptor["id"], *descriptor["explicit_triggers"]]
+    )
     triggers = matched_positions(text, descriptor["triggers"])
     matches = explicit or triggers
     if not matches:
@@ -192,14 +202,24 @@ def _build_stage(
     permission,
     permission_state,
     available,
+    target_root,
 ):
+    output_artifact = descriptor["output_artifact"].format(issue_id=issue_id)
+    specs_root = (Path(target_root).resolve() / "specs").resolve()
+    output_path = (Path(target_root).resolve() / output_artifact).resolve()
+    try:
+        output_path.relative_to(specs_root)
+    except ValueError as exc:
+        raise RegistryError(
+            f"output_artifact escapes target specs/: {output_artifact}"
+        ) from exc
     return {
         "adapter_id": descriptor["id"],
         "reason_code": reason_code,
         "permission": permission,
         "permission_state": permission_state,
         "availability": "available" if available else "unavailable",
-        "output_artifact": descriptor["output_artifact"].format(issue_id=issue_id),
+        "output_artifact": output_path.relative_to(Path(target_root).resolve()).as_posix(),
         "gate_after": None,
     }
 
@@ -212,6 +232,7 @@ def _base_result(request, issue_id, outcome):
         "outcome": outcome,
         "stages": [],
         "current_stage": None,
+        "sequence_state": "not_applicable",
         "clarification": None,
         "fallback": None,
     }
@@ -222,15 +243,36 @@ def route_request(
     registry,
     *,
     issue_id="unassigned",
+    target_root=".",
     availability=None,
     approved_permissions=None,
+    completed_artifacts=None,
 ):
     """Resolve routing metadata without loading or invoking a specialist."""
     text = normalize_text(request)
+    if not isinstance(issue_id, str) or not ISSUE_ID_PATTERN.fullmatch(issue_id):
+        raise RegistryError(f"invalid issue_id: {issue_id!r}")
     availability = dict(availability or {})
     approved_permissions = set(approved_permissions or set())
+    completed_artifacts = set(completed_artifacts or set())
 
-    if matched_positions(text, registry["lifecycle_triggers"]):
+    capability_ids = {item["id"] for item in registry["capabilities"]}
+    unknown_availability = set(availability) - capability_ids
+    if unknown_availability:
+        raise RegistryError(
+            f"unknown capability availability: {sorted(unknown_availability)}"
+        )
+    for capability_id, available in availability.items():
+        if not isinstance(available, bool):
+            raise RegistryError(f"{capability_id} availability must be boolean")
+
+    explicit_candidates = []
+    for index, descriptor in enumerate(registry["capabilities"]):
+        candidate = _candidate(text, descriptor, index)
+        if candidate and candidate["reason_code"] == "explicit_adapter":
+            explicit_candidates.append(candidate)
+
+    if matched_positions(text, registry["lifecycle_triggers"]) and not explicit_candidates:
         return _base_result(request, issue_id, "none")
 
     candidates = []
@@ -268,6 +310,7 @@ def route_request(
             permission=permission,
             permission_state=permission_state,
             available=available,
+            target_root=target_root,
         )
         result["stages"].append(stage)
         if not available:
@@ -276,10 +319,31 @@ def route_request(
     if outcome == "sequence":
         for stage in result["stages"][:-1]:
             stage["gate_after"] = stage["output_artifact"]
-
-    first = result["stages"][0]
-    if first["availability"] == "available" and first["permission_state"] == "allowed":
-        result["current_stage"] = 0
+        pending_indexes = [
+            index
+            for index, stage in enumerate(result["stages"])
+            if stage["output_artifact"] not in completed_artifacts
+        ]
+        if not pending_indexes:
+            result["sequence_state"] = "complete"
+        else:
+            candidate_index = pending_indexes[0]
+            predecessor_artifacts = {
+                stage["output_artifact"] for stage in result["stages"][:candidate_index]
+            }
+            candidate_stage = result["stages"][candidate_index]
+            eligible = (
+                predecessor_artifacts <= completed_artifacts
+                and candidate_stage["availability"] == "available"
+                and candidate_stage["permission_state"] == "allowed"
+            )
+            result["sequence_state"] = "ready" if eligible else "blocked"
+            if eligible:
+                result["current_stage"] = candidate_index
+    else:
+        first = result["stages"][0]
+        if first["availability"] == "available" and first["permission_state"] == "allowed":
+            result["current_stage"] = 0
     if unavailable_recommendations:
         result["fallback"] = " ".join(unavailable_recommendations)
     return result
@@ -292,21 +356,39 @@ def main():
     parser.add_argument("request")
     parser.add_argument("project_path", nargs="?", default=".")
     parser.add_argument("--issue-id", default="unassigned")
+    parser.add_argument("--available", action="append", default=[])
     parser.add_argument("--unavailable", action="append", default=[])
+    parser.add_argument("--completed-artifact", action="append", default=[])
     parser.add_argument(
         "--approve", action="append", choices=sorted(PERMISSIONS), default=[]
     )
     args = parser.parse_args()
 
-    registry = load_registry(args.project_path)
-    availability = {capability_id: False for capability_id in args.unavailable}
-    result = route_request(
-        args.request,
-        registry,
-        issue_id=args.issue_id,
-        availability=availability,
-        approved_permissions=set(args.approve),
-    )
+    try:
+        overlap = set(args.available) & set(args.unavailable)
+        if overlap:
+            raise RegistryError(f"conflicting availability: {sorted(overlap)}")
+        package_root = Path(__file__).resolve().parents[1]
+        registry = load_registry(package_root)
+        availability = {capability_id: True for capability_id in args.available}
+        availability.update(
+            {capability_id: False for capability_id in args.unavailable}
+        )
+        result = route_request(
+            args.request,
+            registry,
+            issue_id=args.issue_id,
+            target_root=args.project_path,
+            availability=availability,
+            approved_permissions=set(args.approve),
+            completed_artifacts=set(args.completed_artifact),
+        )
+    except (RegistryError, OSError, ValueError) as exc:
+        print(
+            json.dumps({"schema": ERROR_SCHEMA, "error": str(exc)}, ensure_ascii=False),
+            file=sys.stderr,
+        )
+        return 2
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 

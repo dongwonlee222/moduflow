@@ -51,7 +51,8 @@ Exact `product:*` input (direct product command) is the power-user escape hatch.
 ## Capability Routing Contract
 
 For natural-language work outside direct aliases, use
-`scripts/capability_routing.py` and consume its
+the installed/bundled ModuFlow package's `scripts/capability_routing.py` (never a copy assumed
+inside the target project) and consume its
 `moduflow.capability-routing.v1` result before loading any specialist.
 
 - `none`: keep lifecycle work inside ModuFlow.
@@ -64,6 +65,11 @@ and output artifact. An unavailable capability uses its truthful fallback. A
 `write-external` stage with `requires_approval` is routing information, not permission to act.
 Direct `product:*` commands bypass this broad natural-language classification and preserve
 their existing ownership and gates.
+
+The host must inject each confirmed capability with `--available <adapter-id>`; availability is
+fail-closed when omitted. Pass the target project separately for safe artifact containment. When
+re-routing a sequence, pass each verified predecessor with `--completed-artifact <relative-path>`
+and stop when `sequence_state` is `blocked` or `complete`.
 
 ## Natural Language Invocation
 
