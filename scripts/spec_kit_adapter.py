@@ -134,7 +134,25 @@ def select_function(request):
 
 
 def _manifest_path(package_root):
-    return Path(package_root).resolve() / "vendor" / "spec-kit" / APPROVED_VERSION / "manifest.json"
+    return _contained_package_path(
+        package_root, "vendor", "spec-kit", APPROVED_VERSION, "manifest.json"
+    )
+
+
+def _contained_package_path(package_root, *parts):
+    root = Path(package_root).resolve()
+    candidate = root
+    for part in parts:
+        candidate = candidate / part
+        if candidate.is_symlink():
+            _error("unsafe_path", "approved Spec Kit asset path must not contain symlinks")
+    try:
+        candidate.resolve().relative_to(root)
+    except ValueError as exc:
+        raise SpecKitAdapterError(
+            "unsafe_path", "approved Spec Kit asset path escapes package root"
+        ) from exc
+    return candidate
 
 
 def _validate_manifest(manifest):
@@ -185,19 +203,18 @@ def load_manifest(package_root):
 def _template_path(package_root, template):
     package_root = Path(package_root).resolve()
     manifest_dir = _manifest_path(package_root).parent
-    candidate = manifest_dir / template
-    command_dir = manifest_dir / "commands"
+    command_dir = _contained_package_path(
+        package_root, "vendor", "spec-kit", APPROVED_VERSION, "commands"
+    )
+    candidate = _contained_package_path(
+        package_root,
+        "vendor",
+        "spec-kit",
+        APPROVED_VERSION,
+        *Path(template).parts,
+    )
     try:
         candidate.relative_to(command_dir)
-    except ValueError as exc:
-        raise SpecKitAdapterError("unsafe_path", "template path escapes commands") from exc
-    current = manifest_dir
-    for part in Path(template).parts:
-        current = current / part
-        if current.is_symlink():
-            _error("unsafe_path", "template path must not contain symlinks")
-    try:
-        candidate.resolve().relative_to(command_dir.resolve())
     except ValueError as exc:
         raise SpecKitAdapterError("unsafe_path", "template path escapes commands") from exc
     return candidate

@@ -2,6 +2,8 @@ import copy
 import hashlib
 import importlib.util
 import json
+import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -24,6 +26,14 @@ def load_module(path, name):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def version_tree_bytes(version_root):
+    return {
+        path.relative_to(version_root).as_posix(): path.read_bytes()
+        for path in sorted(version_root.rglob("*"))
+        if path.is_file()
+    }
 
 
 class SpecKitVendorAssetTests(unittest.TestCase):
@@ -73,6 +83,17 @@ class SpecKitVendorAssetTests(unittest.TestCase):
 
             with self.assertRaisesRegex(self.ska.SpecKitAdapterError, "unsafe_path"):
                 self.ska.verify_assets(package, self.ska.load_manifest(package))
+
+    def test_manifest_rejects_a_symlinked_vendor_ancestor_before_reading_assets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "package"
+            outside = Path(directory) / "outside"
+            package.mkdir()
+            shutil.copytree(ROOT / "vendor", outside / "vendor")
+            (package / "vendor").symlink_to(outside / "vendor", target_is_directory=True)
+
+            with self.assertRaisesRegex(self.ska.SpecKitAdapterError, "unsafe_path"):
+                self.ska.load_manifest(package)
 
     def test_one_byte_template_drift_makes_a_handoff_unavailable_without_a_template(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -148,6 +169,48 @@ class SpecKitTemplateSyncTests(unittest.TestCase):
                 hashlib.sha256((commands / "converge.md").read_bytes()).hexdigest(),
                 EXPECTED["converge"],
             )
+            self.assertTrue((commands.parent / "manifest.json").is_file())
+
+    def test_sync_rejects_a_symlinked_vendor_ancestor_without_writing_outside_package(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "package"
+            outside = Path(directory) / "outside"
+            package.mkdir()
+            outside.mkdir()
+            (package / "vendor").symlink_to(outside, target_is_directory=True)
+
+            with self.assertRaisesRegex(self.sync.SpecKitSyncError, "unsafe_path"):
+                self.sync.sync_templates(package, self.downloader, write=True)
+
+            self.assertFalse((outside / "spec-kit/0.16.1").exists())
+
+    def test_commit_failure_restores_the_entire_previous_version_tree(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory)
+            version = package / "vendor/spec-kit/0.16.1"
+            commands = version / "commands"
+            commands.mkdir(parents=True)
+            (version / "manifest.json").write_bytes(b"old manifest\n")
+            for function in EXPECTED:
+                (commands / f"{function}.md").write_bytes(
+                    f"old {function}\n".encode("utf-8")
+                )
+            before = version_tree_bytes(version)
+            calls = 0
+
+            def fail_second_replacement(source, destination):
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError("injected replacement failure")
+                return os.replace(source, destination)
+
+            with self.assertRaisesRegex(self.sync.SpecKitSyncError, "commit_failed"):
+                self.sync.sync_templates(
+                    package, self.downloader, write=True, replacer=fail_second_replacement
+                )
+
+            self.assertEqual(version_tree_bytes(version), before)
 
     def test_network_failure_creates_no_partial_destination(self):
         def failed_downloader(url):
