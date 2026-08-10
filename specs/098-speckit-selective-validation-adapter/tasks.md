@@ -5,7 +5,7 @@ Plan: `specs/098-speckit-selective-validation-adapter/plan.md`
 
 ## Stream A
 
-- [ ] A1 Implement strict project opt-in, deterministic function selection, path containment, host availability, configuration dry-run/write, and stable handoff outcomes. [files: scripts/spec_kit_adapter.py, tests/test_spec_kit_adapter.py, templates/moduflow-capabilities.json] [shared_state: true]
+- [x] A1 Implement strict project opt-in, deterministic function selection, path containment, host availability, configuration dry-run/write, and stable handoff outcomes. [files: scripts/spec_kit_adapter.py, tests/test_spec_kit_adapter.py, templates/moduflow-capabilities.json] [shared_state: true]
 
 ## Stream B
 
