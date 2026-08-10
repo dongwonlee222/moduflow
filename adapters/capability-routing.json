@@ -1,0 +1,162 @@
+{
+  "schema": "moduflow.capability-registry.v1",
+  "lifecycle_triggers": [
+    "product:",
+    "current status",
+    "issue status",
+    "show issues",
+    "roadmap status",
+    "현재 상태",
+    "이슈 상태",
+    "이슈 목록",
+    "로드맵 보여",
+    "현재 목표",
+    "다음 단계"
+  ],
+  "sequence_markers": [
+    "and then",
+    "한 다음",
+    "그다음",
+    "then",
+    "after",
+    "하고",
+    "후"
+  ],
+  "external_write_triggers": [
+    "publish to posthog",
+    "upload to google drive",
+    "posthog에 반영",
+    "google drive에 업로드",
+    "외부에 저장",
+    "게시해"
+  ],
+  "capabilities": [
+    {
+      "id": "data-analytics",
+      "adapter_path": "adapters/data-analytics.yaml",
+      "purpose": "product and business data analysis",
+      "triggers": [
+        "analytics",
+        "analyze",
+        "metric",
+        "kpi",
+        "dashboard",
+        "data",
+        "분석",
+        "지표",
+        "데이터",
+        "대시보드"
+      ],
+      "explicit_triggers": ["data analytics", "데이터 분석", "데이터 애널리틱스"],
+      "exclusions": [
+        "issue status",
+        "이슈 상태",
+        "status dashboard",
+        "상태 대시보드"
+      ],
+      "default_available": false,
+      "permission": "read",
+      "output_artifact": "specs/{issue_id}/analysis.md",
+      "setup_recommendation": "Enable the Data Analytics capability in the current host."
+    },
+    {
+      "id": "product-design",
+      "adapter_path": "adapters/product-design.yaml",
+      "purpose": "product design and prototype work",
+      "triggers": [
+        "design",
+        "ux",
+        "ui",
+        "prototype",
+        "wireframe",
+        "screen",
+        "onboarding",
+        "디자인",
+        "프로토타입",
+        "와이어프레임",
+        "화면",
+        "온보딩"
+      ],
+      "explicit_triggers": ["product design", "제품 디자인", "프로덕트 디자인"],
+      "exclusions": [
+        "design issue status",
+        "디자인 이슈 상태"
+      ],
+      "default_available": false,
+      "permission": "write-local",
+      "output_artifact": "specs/{issue_id}/design-brief.md",
+      "setup_recommendation": "Enable the Product Design capability in the current host."
+    },
+    {
+      "id": "superpowers",
+      "adapter_path": "adapters/superpowers.yaml",
+      "purpose": "disciplined implementation and verification",
+      "triggers": [
+        "implement",
+        "build",
+        "code",
+        "test",
+        "bug",
+        "api",
+        "구현",
+        "개발",
+        "코드",
+        "테스트",
+        "버그"
+      ],
+      "explicit_triggers": ["superpowers", "슈퍼파워", "슈퍼파워즈"],
+      "exclusions": [
+        "implementation plan",
+        "구현 계획"
+      ],
+      "default_available": false,
+      "permission": "write-local",
+      "output_artifact": "specs/{issue_id}/status.md",
+      "setup_recommendation": "Enable the Superpowers execution disciplines in the current host."
+    },
+    {
+      "id": "documents",
+      "adapter_path": "adapters/documents.yaml",
+      "purpose": "document, presentation, and spreadsheet deliverables",
+      "triggers": [
+        "docx",
+        "pptx",
+        "xlsx",
+        "presentation",
+        "slides",
+        "발표자료",
+        "슬라이드",
+        "문서 파일"
+      ],
+      "explicit_triggers": ["documents", "문서 도구"],
+      "exclusions": [
+        "report metric",
+        "리포트 지표"
+      ],
+      "default_available": false,
+      "permission": "write-local",
+      "output_artifact": "specs/{issue_id}/deliverables.md",
+      "setup_recommendation": "Enable the Documents capability in the current host."
+    },
+    {
+      "id": "spec-kit",
+      "adapter_path": "adapters/spec-kit.yaml",
+      "purpose": "selective spec validation",
+      "triggers": [
+        "spec kit",
+        "speckit",
+        "스펙 킷",
+        "스펙킷"
+      ],
+      "explicit_triggers": ["spec kit", "speckit", "스펙 킷", "스펙킷"],
+      "exclusions": [
+        "product:spec",
+        "스펙 상태"
+      ],
+      "default_available": false,
+      "permission": "read",
+      "output_artifact": "specs/{issue_id}/validation.md",
+      "setup_recommendation": "Complete Issue 098-speckit-selective-validation-adapter before enabling Spec Kit routing."
+    }
+  ]
+}

@@ -1,0 +1,1765 @@
+{
+  "cases": [
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": null,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "none",
+        "request": "현재 이슈 상태 보여줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": []
+      },
+      "class": "lifecycle",
+      "expected": {
+        "adapters": [],
+        "artifacts": [],
+        "availability": [],
+        "outcome": "none",
+        "permission_states": [],
+        "permissions": []
+      },
+      "fingerprint": {
+        "adapters": [],
+        "availability": [],
+        "outcome": "none",
+        "permission_states": [],
+        "permissions": []
+      },
+      "id": "L01-ko-status",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": "lifecycle-status"
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": null,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "none",
+        "request": "Show the current issue status",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": []
+      },
+      "class": "lifecycle",
+      "expected": {
+        "adapters": [],
+        "artifacts": [],
+        "availability": [],
+        "outcome": "none",
+        "permission_states": [],
+        "permissions": []
+      },
+      "fingerprint": {
+        "adapters": [],
+        "availability": [],
+        "outcome": "none",
+        "permission_states": [],
+        "permissions": []
+      },
+      "id": "L02-en-status",
+      "locale": "en-US",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": "lifecycle-status"
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": null,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "none",
+        "request": "로드맵 보여줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": []
+      },
+      "class": "lifecycle",
+      "expected": {
+        "adapters": [],
+        "artifacts": [],
+        "availability": [],
+        "outcome": "none",
+        "permission_states": [],
+        "permissions": []
+      },
+      "fingerprint": {
+        "adapters": [],
+        "availability": [],
+        "outcome": "none",
+        "permission_states": [],
+        "permissions": []
+      },
+      "id": "L03-ko-roadmap",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": null,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "none",
+        "request": "데이터 분석 프로젝트 현재 상태 보여줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": []
+      },
+      "class": "lifecycle",
+      "expected": {
+        "adapters": [],
+        "artifacts": [],
+        "availability": [],
+        "outcome": "none",
+        "permission_states": [],
+        "permissions": []
+      },
+      "fingerprint": {
+        "adapters": [],
+        "availability": [],
+        "outcome": "none",
+        "permission_states": [],
+        "permissions": []
+      },
+      "id": "L04-ko-analytics-status",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": null,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "none",
+        "request": "제품 디자인 다음 단계 알려줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": []
+      },
+      "class": "lifecycle",
+      "expected": {
+        "adapters": [],
+        "artifacts": [],
+        "availability": [],
+        "outcome": "none",
+        "permission_states": [],
+        "permissions": []
+      },
+      "fingerprint": {
+        "adapters": [],
+        "availability": [],
+        "outcome": "none",
+        "permission_states": [],
+        "permissions": []
+      },
+      "id": "L05-ko-design-next",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": null,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "none",
+        "request": "superpowers 이슈 상태 보여줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": []
+      },
+      "class": "lifecycle",
+      "expected": {
+        "adapters": [],
+        "artifacts": [],
+        "availability": [],
+        "outcome": "none",
+        "permission_states": [],
+        "permissions": []
+      },
+      "fingerprint": {
+        "adapters": [],
+        "availability": [],
+        "outcome": "none",
+        "permission_states": [],
+        "permissions": []
+      },
+      "id": "L06-ko-superpowers-issue-status",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "전환율 하락 원인을 분석해줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "data-analytics",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/analysis.md",
+            "permission": "read",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "analytics",
+      "expected": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/analysis.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "read"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "read"
+        ]
+      },
+      "id": "A01-ko-conversion",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": "analytics-conversion"
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "Analyze why conversion declined",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "data-analytics",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/analysis.md",
+            "permission": "read",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "analytics",
+      "expected": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/analysis.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "read"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "read"
+        ]
+      },
+      "id": "A02-en-conversion",
+      "locale": "en-US",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": "analytics-conversion"
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "활성 사용자 KPI를 정의해줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "data-analytics",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/analysis.md",
+            "permission": "read",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "analytics",
+      "expected": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/analysis.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "read"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "read"
+        ]
+      },
+      "id": "A03-ko-kpi",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "온보딩 화면 디자인을 개선해줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "product-design",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/design-brief.md",
+            "permission": "write-local",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "design",
+      "expected": {
+        "adapters": [
+          "product-design"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/design-brief.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "product-design"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "id": "D01-ko-onboarding",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": "design-onboarding"
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "Improve the onboarding screen design",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "product-design",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/design-brief.md",
+            "permission": "write-local",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "design",
+      "expected": {
+        "adapters": [
+          "product-design"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/design-brief.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "product-design"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "id": "D02-en-onboarding",
+      "locale": "en-US",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": "design-onboarding"
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "결제 프로토타입을 만들어줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "product-design",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/design-brief.md",
+            "permission": "write-local",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "design",
+      "expected": {
+        "adapters": [
+          "product-design"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/design-brief.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "product-design"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "id": "D03-ko-prototype",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "결제 API를 구현해줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "superpowers",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/status.md",
+            "permission": "write-local",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "implementation",
+      "expected": {
+        "adapters": [
+          "superpowers"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/status.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "superpowers"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "id": "I01-ko-api",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": "implementation-api"
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "Implement the payment API",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "superpowers",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/status.md",
+            "permission": "write-local",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "implementation",
+      "expected": {
+        "adapters": [
+          "superpowers"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/status.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "superpowers"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "id": "I02-en-api",
+      "locale": "en-US",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": "implementation-api"
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "로그인 버그 테스트를 추가해줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "superpowers",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/status.md",
+            "permission": "write-local",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "implementation",
+      "expected": {
+        "adapters": [
+          "superpowers"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/status.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "superpowers"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "id": "I03-ko-login-test",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": "어느 결과를 먼저 만들까요?",
+        "current_stage": null,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "clarify",
+        "request": "데이터 분석과 온보딩 디자인 개선안 부탁해",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": []
+      },
+      "class": "overlap",
+      "expected": {
+        "adapters": [],
+        "artifacts": [],
+        "availability": [],
+        "outcome": "clarify",
+        "permission_states": [],
+        "permissions": []
+      },
+      "fingerprint": {
+        "adapters": [],
+        "availability": [],
+        "outcome": "clarify",
+        "permission_states": [],
+        "permissions": []
+      },
+      "id": "O01-ko-analysis-design",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": "overlap-analysis-design"
+    },
+    {
+      "actual": {
+        "clarification": "어느 결과를 먼저 만들까요?",
+        "current_stage": null,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "clarify",
+        "request": "Give me data analysis and onboarding design improvements",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": []
+      },
+      "class": "overlap",
+      "expected": {
+        "adapters": [],
+        "artifacts": [],
+        "availability": [],
+        "outcome": "clarify",
+        "permission_states": [],
+        "permissions": []
+      },
+      "fingerprint": {
+        "adapters": [],
+        "availability": [],
+        "outcome": "clarify",
+        "permission_states": [],
+        "permissions": []
+      },
+      "id": "O02-en-analysis-design",
+      "locale": "en-US",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": "overlap-analysis-design"
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "지표 대시보드 분석 리포트를 만들어줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "data-analytics",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/analysis.md",
+            "permission": "read",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "overlap",
+      "expected": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/analysis.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "read"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "read"
+        ]
+      },
+      "id": "O03-ko-dashboard-report",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": null,
+        "fallback": "Complete Issue 098-speckit-selective-validation-adapter before enabling Spec Kit routing.",
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "스펙킷으로 스펙을 검증해줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "spec-kit",
+            "availability": "unavailable",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/validation.md",
+            "permission": "read",
+            "permission_state": "allowed",
+            "reason_code": "explicit_adapter"
+          }
+        ]
+      },
+      "class": "unavailable",
+      "expected": {
+        "adapters": [
+          "spec-kit"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/validation.md"
+        ],
+        "availability": [
+          "unavailable"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "read"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "spec-kit"
+        ],
+        "availability": [
+          "unavailable"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "read"
+        ]
+      },
+      "id": "U01-ko-speckit",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": null,
+        "fallback": "Enable the Data Analytics capability in the current host.",
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "Analyze conversion decline",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "data-analytics",
+            "availability": "unavailable",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/analysis.md",
+            "permission": "read",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "unavailable",
+      "expected": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/analysis.md"
+        ],
+        "availability": [
+          "unavailable"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "read"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "availability": [
+          "unavailable"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "read"
+        ]
+      },
+      "id": "U02-en-analytics",
+      "locale": "en-US",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": null,
+        "fallback": "Enable the Product Design capability in the current host.",
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "온보딩 화면을 디자인해줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "product-design",
+            "availability": "unavailable",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/design-brief.md",
+            "permission": "write-local",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "unavailable",
+      "expected": {
+        "adapters": [
+          "product-design"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/design-brief.md"
+        ],
+        "availability": [
+          "unavailable"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "product-design"
+        ],
+        "availability": [
+          "unavailable"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-local"
+        ]
+      },
+      "id": "U03-ko-design",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": null,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "분석 결과를 posthog에 반영해줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "data-analytics",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/analysis.md",
+            "permission": "write-external",
+            "permission_state": "requires_approval",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "external-write",
+      "expected": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/analysis.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "requires_approval"
+        ],
+        "permissions": [
+          "write-external"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "requires_approval"
+        ],
+        "permissions": [
+          "write-external"
+        ]
+      },
+      "id": "P01-ko-posthog",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "Analyze conversion and publish to PostHog",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "data-analytics",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/analysis.md",
+            "permission": "write-external",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "external-write",
+      "expected": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/analysis.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-external"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "data-analytics"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "allowed"
+        ],
+        "permissions": [
+          "write-external"
+        ]
+      },
+      "id": "P02-en-posthog-approved",
+      "locale": "en-US",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": null,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "delegate",
+        "request": "발표자료를 만들어 google drive에 업로드해줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "not_applicable",
+        "stages": [
+          {
+            "adapter_id": "documents",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/deliverables.md",
+            "permission": "write-external",
+            "permission_state": "requires_approval",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "external-write",
+      "expected": {
+        "adapters": [
+          "documents"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/deliverables.md"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "requires_approval"
+        ],
+        "permissions": [
+          "write-external"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "documents"
+        ],
+        "availability": [
+          "available"
+        ],
+        "outcome": "delegate",
+        "permission_states": [
+          "requires_approval"
+        ],
+        "permissions": [
+          "write-external"
+        ]
+      },
+      "id": "P03-ko-drive-upload",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "sequence",
+        "request": "전환율을 분석한 후 대시보드를 구현해줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "ready",
+        "stages": [
+          {
+            "adapter_id": "data-analytics",
+            "availability": "available",
+            "gate_after": "specs/097-single-entry-capability-routing-contract/analysis.md",
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/analysis.md",
+            "permission": "read",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          },
+          {
+            "adapter_id": "superpowers",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/status.md",
+            "permission": "write-local",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "multi-stage",
+      "expected": {
+        "adapters": [
+          "data-analytics",
+          "superpowers"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/analysis.md",
+          "specs/097-single-entry-capability-routing-contract/status.md"
+        ],
+        "availability": [
+          "available",
+          "available"
+        ],
+        "outcome": "sequence",
+        "permission_states": [
+          "allowed",
+          "allowed"
+        ],
+        "permissions": [
+          "read",
+          "write-local"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "data-analytics",
+          "superpowers"
+        ],
+        "availability": [
+          "available",
+          "available"
+        ],
+        "outcome": "sequence",
+        "permission_states": [
+          "allowed",
+          "allowed"
+        ],
+        "permissions": [
+          "read",
+          "write-local"
+        ]
+      },
+      "id": "M01-ko-analysis-build",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": "sequence-analysis-build"
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "sequence",
+        "request": "Analyze conversion, then build the dashboard",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "ready",
+        "stages": [
+          {
+            "adapter_id": "data-analytics",
+            "availability": "available",
+            "gate_after": "specs/097-single-entry-capability-routing-contract/analysis.md",
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/analysis.md",
+            "permission": "read",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          },
+          {
+            "adapter_id": "superpowers",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/status.md",
+            "permission": "write-local",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "multi-stage",
+      "expected": {
+        "adapters": [
+          "data-analytics",
+          "superpowers"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/analysis.md",
+          "specs/097-single-entry-capability-routing-contract/status.md"
+        ],
+        "availability": [
+          "available",
+          "available"
+        ],
+        "outcome": "sequence",
+        "permission_states": [
+          "allowed",
+          "allowed"
+        ],
+        "permissions": [
+          "read",
+          "write-local"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "data-analytics",
+          "superpowers"
+        ],
+        "availability": [
+          "available",
+          "available"
+        ],
+        "outcome": "sequence",
+        "permission_states": [
+          "allowed",
+          "allowed"
+        ],
+        "permissions": [
+          "read",
+          "write-local"
+        ]
+      },
+      "id": "M02-en-analysis-build",
+      "locale": "en-US",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": "sequence-analysis-build"
+    },
+    {
+      "actual": {
+        "clarification": null,
+        "current_stage": 0,
+        "fallback": null,
+        "issue_id": "097-single-entry-capability-routing-contract",
+        "outcome": "sequence",
+        "request": "화면을 디자인하고 그다음 구현해줘",
+        "schema": "moduflow.capability-routing.v1",
+        "sequence_state": "ready",
+        "stages": [
+          {
+            "adapter_id": "product-design",
+            "availability": "available",
+            "gate_after": "specs/097-single-entry-capability-routing-contract/design-brief.md",
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/design-brief.md",
+            "permission": "write-local",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          },
+          {
+            "adapter_id": "superpowers",
+            "availability": "available",
+            "gate_after": null,
+            "output_artifact": "specs/097-single-entry-capability-routing-contract/status.md",
+            "permission": "write-local",
+            "permission_state": "allowed",
+            "reason_code": "trigger_match"
+          }
+        ]
+      },
+      "class": "multi-stage",
+      "expected": {
+        "adapters": [
+          "product-design",
+          "superpowers"
+        ],
+        "artifacts": [
+          "specs/097-single-entry-capability-routing-contract/design-brief.md",
+          "specs/097-single-entry-capability-routing-contract/status.md"
+        ],
+        "availability": [
+          "available",
+          "available"
+        ],
+        "outcome": "sequence",
+        "permission_states": [
+          "allowed",
+          "allowed"
+        ],
+        "permissions": [
+          "write-local",
+          "write-local"
+        ]
+      },
+      "fingerprint": {
+        "adapters": [
+          "product-design",
+          "superpowers"
+        ],
+        "availability": [
+          "available",
+          "available"
+        ],
+        "outcome": "sequence",
+        "permission_states": [
+          "allowed",
+          "allowed"
+        ],
+        "permissions": [
+          "write-local",
+          "write-local"
+        ]
+      },
+      "id": "M03-ko-design-build",
+      "locale": "ko-KR",
+      "metrics": {
+        "adapter_mismatches": 0,
+        "false_capability_claims": 0,
+        "missing_handoff_fields": 0,
+        "permission_violations": 0,
+        "route_mismatches": 0,
+        "semantic_pair_inconsistencies": 0,
+        "unwanted_fanout": 0
+      },
+      "mismatches": [],
+      "passed": true,
+      "semantic_pair_id": null
+    }
+  ],
+  "failed": 0,
+  "metrics": {
+    "adapter_mismatches": 0,
+    "false_capability_claims": 0,
+    "missing_handoff_fields": 0,
+    "permission_violations": 0,
+    "route_mismatches": 0,
+    "semantic_pair_inconsistencies": 0,
+    "unwanted_fanout": 0
+  },
+  "passed": 27,
+  "schema": "moduflow.capability-routing-simulation.v1",
+  "semantic_pair_findings": [],
+  "total": 27
+}

@@ -14,27 +14,29 @@
     "090-project-knowledge-and-artifact-registry",
     "091-reproducible-analysis-runs-and-template-pack",
     "092-project-home-dashboard",
-    "087-korean-github-pr-review-surface"
+    "087-korean-github-pr-review-surface",
+    "097-single-entry-capability-routing-contract",
+    "098-speckit-selective-validation-adapter"
   ],
-  "active_issue_id": "",
-  "phase": "select",
+  "active_issue_id": "097-single-entry-capability-routing-contract",
+  "phase": "pr",
   "mode": "recommend",
-  "delegation_level": "review_required",
+  "delegation_level": "human_merge_required",
   "status": "active",
-  "next_command": "product:status",
+  "next_command": "product:pr 097-single-entry-capability-routing-contract",
   "attempts": {
-    "command": "product:status",
+    "command": "product:pr 097-single-entry-capability-routing-contract",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-08-03"
+    "last_changed_at": "2026-08-10"
   },
   "blocker": null,
-  "last_action": "released Issue 095 repository source via merged PR #33 at f4029f3; plugin publication remains held for Issue 096",
-  "last_verification": "2026-08-03 at merged main f4029f3: post-merge release check valid with errors []; all named subgates passed",
-  "updated_at": "2026-08-03",
+  "last_action": "completed Issue 097 implementation and independent review after two remediation rounds; final verdict Ready with no findings",
+  "last_verification": "2026-08-10: unittest 1077/1077; simulation 27/27 with all seven metrics zero; focused review 43/43; release check valid; spec consistency 13/13; lifecycle drift []",
+  "updated_at": "2026-08-10",
   "git_binding": {
     "mode": "git-files",
-    "branch": "",
+    "branch": "codex/097-single-entry-capability-routing-contract",
     "base_branch": "main",
     "commits": [
       "f980aef",
@@ -140,9 +142,9 @@
     "release": "repository source on main at f4029f3; no plugin publish",
     "execution_backend": {
       "type": "host-subagent",
-      "status": "ready",
-      "reason": "Issue 095 is released on main; Issue 094 specification is next",
-      "session": "codex-2026-07-27"
-    }
+        "status": "reviewed",
+        "reason": "Issue 097 implementation, verification, and independent review passed; PR preparation is next",
+        "session": "codex-2026-08-10"
+      }
   }
 }

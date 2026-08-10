@@ -315,6 +315,21 @@
       "last_handoff": "Merged via PR #33 as f4029f3; post-merge release check passed",
       "next_command": "product:status",
       "updated_at": "2026-08-03"
+    },
+    {
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Dongwon Lee",
+      "status": "review",
+      "branch": "",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/36",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/36",
+      "next_command": "product:review 097-single-entry-capability-routing-contract",
+      "updated_at": "2026-08-10"
     }
   ]
 }

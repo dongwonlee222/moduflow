@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "select",
+  "phase": "pr",
   "active_goal": "trustworthy-execution-and-project-knowledge",
-  "active_issue": "",
-  "last_command": "product:release 095-commit-issue-resolution-parity",
-  "next_command": "product:status",
+  "active_issue": "097-single-entry-capability-routing-contract",
+  "last_command": "product:review 097-single-entry-capability-routing-contract",
+  "next_command": "product:pr 097-single-entry-capability-routing-contract",
   "blockers": [],
-  "updated_at": "2026-08-03"
+  "updated_at": "2026-08-10"
 }

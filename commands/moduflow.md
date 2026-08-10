@@ -33,6 +33,36 @@ Request: $ARGUMENTS
    - `003 시작`, `003 완료` → issue lifecycle action on issue `003`
    - anything else → pick the closest `product:*` command; if ambiguous, ask one concise clarification before mutating files.
 
+   Preserve exact `product:*` commands and the aliases above as ModuFlow-owned lifecycle work.
+   For any other natural-language request that may need a specialist, obtain the executable
+   routing result before loading a specialist:
+
+   ```bash
+   python3 <bundled-moduflow-root>/scripts/capability_routing.py "$ARGUMENTS" <target-project-path> \
+     --issue-id <active-issue-or-unassigned> \
+     --available <host-confirmed-capability-id> \
+     --completed-artifact <already-produced-stage-artifact>
+   ```
+
+   Resolve the script and registry from the installed/bundled ModuFlow package, not from the
+   target project. Pass `--available` once per capability the current host has actually confirmed;
+   omitted capabilities are fail-closed as unavailable. On a later sequence pass, add one
+   `--completed-artifact` per verified predecessor output. Omit either repeatable flag when empty.
+
+   Consume `moduflow.capability-routing.v1` as follows:
+
+   - `none` → continue in ModuFlow and load no specialist.
+   - `delegate` → load at most one specialist, and only when its availability is `available`
+     and its permission state is `allowed`; otherwise show the returned fallback or approval need.
+   - `sequence` → run only `current_stage`, save its declared output artifact, then re-route with
+     that path as `--completed-artifact`. `sequence_state` is `ready`, `blocked`, or `complete`;
+     never activate all stages together.
+   - `clarify` → ask the returned single question and load no specialist.
+
+   Every non-`none` handoff reports adapter ID, selection reason, permission, availability,
+   issue ID, and output artifact. The helper is read-only routing metadata; it does not invoke,
+   install, or mutate a specialist.
+
 3. Always end by showing the **next recommended action and command** so the user can chain without asking "what next?" or memorizing names. This is required after every completed action, including spec, plan, execute, review, release, or issue lifecycle updates. Exact `product:*` input is a power-user escape hatch and should be honored directly.
 4. If a workflow resumes after a long task, context compaction, approval pause, or validation loop, show a short resume banner before continuing so the user can see that ModuFlow is continuing from durable state rather than restarting.
 

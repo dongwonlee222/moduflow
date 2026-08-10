@@ -48,6 +48,29 @@ Resolve these broad user intents before exposing workflow internals:
 
 Exact `product:*` input (direct product command) is the power-user escape hatch. Honor it directly instead of re-routing through a broad alias.
 
+## Capability Routing Contract
+
+For natural-language work outside direct aliases, use
+the installed/bundled ModuFlow package's `scripts/capability_routing.py` (never a copy assumed
+inside the target project) and consume its
+`moduflow.capability-routing.v1` result before loading any specialist.
+
+- `none`: keep lifecycle work inside ModuFlow.
+- `delegate`: load exactly one available specialist only when its permission state allows it.
+- `sequence`: load only the current stage and require its output artifact before the next stage.
+- `clarify`: ask the returned question without loading a specialist.
+
+For every delegated stage, surface its adapter ID, reason, permission, availability, issue ID,
+and output artifact. An unavailable capability uses its truthful fallback. A
+`write-external` stage with `requires_approval` is routing information, not permission to act.
+Direct `product:*` commands bypass this broad natural-language classification and preserve
+their existing ownership and gates.
+
+The host must inject each confirmed capability with `--available <adapter-id>`; availability is
+fail-closed when omitted. Pass the target project separately for safe artifact containment. When
+re-routing a sequence, pass each verified predecessor with `--completed-artifact <relative-path>`
+and stop when `sequence_state` is `blocked` or `complete`.
+
 ## Natural Language Invocation
 
 Accept Korean natural language after `@ModuFlow` and route to the smallest useful command or lifecycle action.
@@ -165,3 +188,4 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 8. Always end with the next recommended ModuFlow command.
 9. Keep the loop wired. `product:start` MUST create `workspace/loop-state.json`. On any command, if `loop-state.json` is missing, treat it as a setup defect and recreate it from `templates/workspace/loop-state.json` before proceeding. Every mutating workflow updates `loop-state.json` (`next_command`, `status`, `last_action`, `updated`) so the next loop step is never lost.
 10. Track every artifact as work. No spec, plan, design, or review is produced off the books. Each artifact-producing step is a checked task under the owning issue's **Workflow Tasks** checklist, linked to its file. One issue = one deliverable; workflow steps are tasks inside it, not separate top-level issues (avoids the regress where a "write spec" issue needs its own spec). When you run `product:spec`/`product:plan`/`product:design`/`product:review`, update the corresponding task box + artifact link in the issue.
+11. For specialist-capable natural language, obey the capability routing contract: zero specialists for `none`/`clarify`, exactly one for `delegate`, and one artifact-gated stage at a time for `sequence`. Never convert availability or permission metadata into an execution claim.
