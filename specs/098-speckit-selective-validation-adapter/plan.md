@@ -316,6 +316,8 @@ git commit -m "feat(098): add fail-closed Spec Kit adapter contract" -m "Issue: 
 #### Task 2 (B1): Pin and Verify the Four Official Templates
 
 **Files:**
+- Modify: `scripts/spec_kit_adapter.py`
+- Modify: `tests/test_spec_kit_adapter.py`
 - Create: `scripts/sync_spec_kit_templates.py`
 - Create: `tests/test_spec_kit_vendor_assets.py`
 - Create: `vendor/spec-kit/0.16.1/manifest.json`
@@ -387,7 +389,7 @@ Expected: exact asset/hash tests PASS; a valid config plus `host_available=True`
 - [ ] **Step 5: Commit Task B1**
 
 ```bash
-git add adapters/spec-kit.yaml vendor/README.md vendor/spec-kit/0.16.1 scripts/sync_spec_kit_templates.py tests/test_spec_kit_vendor_assets.py tests/test_spec_kit_adapter.py
+git add scripts/spec_kit_adapter.py tests/test_spec_kit_adapter.py adapters/spec-kit.yaml vendor/README.md vendor/spec-kit/0.16.1 scripts/sync_spec_kit_templates.py tests/test_spec_kit_vendor_assets.py
 git commit -m "feat(098): pin selective Spec Kit templates" -m "Issue: 098-speckit-selective-validation-adapter"
 ```
 
