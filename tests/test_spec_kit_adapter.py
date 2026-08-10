@@ -98,6 +98,20 @@ class SpecKitConfigTests(unittest.TestCase):
         self.assertEqual(result["source"]["template"], None)
         self.assertTrue(result["fallback"])
 
+    def test_output_path_escape_returns_a_blocked_handoff(self):
+        with tempfile.TemporaryDirectory() as outside:
+            (self.project / "specs").symlink_to(outside, target_is_directory=True)
+
+            result = self.ska.build_handoff(
+                ROOT, self.project, ISSUE_ID, "analyze", host_available=True
+            )
+
+        self.assertEqual(result["outcome"], "blocked")
+        self.assertEqual(result["output_artifact"], None)
+        self.assertEqual(result["source"]["template"], None)
+        self.assertEqual(result["source"]["template_sha256"], None)
+        self.assertTrue(result["fallback"])
+
     def test_handoff_has_only_the_public_contract_keys(self):
         result = self.ska.build_handoff(
             ROOT, self.project, ISSUE_ID, "not a spec kit request", host_available=True
@@ -119,4 +133,3 @@ class SpecKitConfigTests(unittest.TestCase):
                 "fallback",
             },
         )
-

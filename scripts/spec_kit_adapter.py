@@ -185,6 +185,7 @@ def _output_path(project_root, issue_id):
 def build_handoff(package_root, project_root, issue_id, request, host_available):
     """Return a complete, non-executing handoff envelope for one request."""
     function = None
+    output_artifact = None
     try:
         if not isinstance(issue_id, str) or not ISSUE_ID_PATTERN.fullmatch(issue_id):
             _error("unsafe_issue_id", "issue_id is invalid")
@@ -206,9 +207,7 @@ def build_handoff(package_root, project_root, issue_id, request, host_available)
             function,
             "unavailable" if exc.code == "assets_unavailable" else "blocked",
             request,
-            _output_path(project_root, issue_id)
-            if isinstance(issue_id, str) and ISSUE_ID_PATTERN.fullmatch(issue_id)
-            else None,
+            output_artifact,
         )
 
 
