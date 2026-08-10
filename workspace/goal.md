@@ -23,6 +23,8 @@ Repository sync, review handoff, production records, and dashboard foundations a
 - `091-reproducible-analysis-runs-and-template-pack` — P1; reproducible analysis history and templates.
 - `092-project-home-dashboard` — P2; final project home; blocked by 086, 090, and 091.
 - `087-korean-github-pr-review-surface` — P1; Korean-first GitHub review publication.
+- `097-single-entry-capability-routing-contract` — P2; predictable single-entry specialist routing with offline safety simulation.
+- `098-speckit-selective-validation-adapter` — P2; selectively activate Spec Kit validation after Issue 097 proves the routing boundary.
 
 ## Completion Criteria
 
@@ -46,4 +48,4 @@ Repository sync, review handoff, production records, and dashboard foundations a
 
 ## Next Command
 
-`product:pr 088-canonical-repository-remote-identity-gate`
+`product:execute 097-single-entry-capability-routing-contract`

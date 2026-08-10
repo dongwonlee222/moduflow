@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: repository identity safety first, followed by evidence-backed review, readiness/security gates, project-scoped production views, and reproducible project knowledge.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 097 now makes specialist routing predictable and simulation-gated before selective Spec Kit activation in Issue 098.
 
 ## Active Goal
 
@@ -10,12 +10,14 @@ Goal `trustworthy-execution-and-project-knowledge`: repository identity safety f
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `097-single-entry-capability-routing-contract` — plan complete; execute the JSON registry, pure router, 24-case simulation, and entrypoint integration.
 
-## Priority Queue — 2026-07-25
+## Priority Queue — 2026-08-10
 
-- Now: `094` risk-based security/quality review gate. Its blocker `089` is done;
-  the next command is `product:spec 094-risk-based-security-and-quality-review-gate`.
+- Now: `097` single-entry capability routing contract; next command is
+  `product:execute 097-single-entry-capability-routing-contract`.
+- Next: `098` selective Spec Kit validation adapter after 097 passes simulation and review.
+- Then: `094` risk-based security/quality review gate; blocker `089` is done.
 - Shipped: `095` merged via PR #33 as `f4029f3`; post-merge release check passed.
 - Then: `086` project-aware production/playbook dashboard.
 - Also ready: `087` Korean GitHub PR review surface, `090` project knowledge registry — both independent.

@@ -1,14 +1,14 @@
 # ModuFlow Roadmap
 
-## Priority Refresh — 2026-07-16
+## Priority Refresh — 2026-08-10
 
 ### Now
 
-- `094-risk-based-security-and-quality-review-gate` — dependency 089 is done; start with `product:spec 094-risk-based-security-and-quality-review-gate`.
+- `097-single-entry-capability-routing-contract` — plan complete; implement the routing contract and pass at least 24 offline simulations with zero safety violations.
 
 ### Next
 
-- `086-project-aware-production-library-dashboard` — continue the approved project-scoped production/playbook dashboard design and implementation.
+- `098-speckit-selective-validation-adapter` — activate selected Spec Kit validation functions only after Issue 097 passes review.
 
 ### Recently Shipped
 
@@ -19,6 +19,7 @@
 ### Then
 
 - `086-project-aware-production-library-dashboard` — approved design/prototype; implement global project selector plus Production Records and Playbooks tabs.
+- `094-risk-based-security-and-quality-review-gate` — dependency 089 is done; resume after the routing-contract sequence.
 
 ### Later
 

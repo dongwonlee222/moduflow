@@ -1,6 +1,6 @@
 # Issue 097: Single-Entry Capability Routing Contract
 
-**Status: backlog** — created 2026-08-10.
+**Status: active** — created 2026-08-10, started and planned 2026-08-10.
 **Priority: p2**
 **Blocked-by:**
 
@@ -107,7 +107,7 @@ runtime code, or broaden external write permissions in this issue.
 Every artifact-producing step is tracked here.
 
 - [x] spec → `specs/097-single-entry-capability-routing-contract/spec.md`
-- [ ] plan → `specs/097-single-entry-capability-routing-contract/plan.md`
+- [x] plan → `specs/097-single-entry-capability-routing-contract/plan.md`; tasks → `specs/097-single-entry-capability-routing-contract/tasks.md`
 - [ ] execute → PR / commits
 - [ ] review → review notes
 
@@ -127,6 +127,8 @@ Every artifact-producing step is tracked here.
   contract before any specialist activation work.
 - 2026-08-10: User approved scenario simulation as part of issue 097. The contract must be
   proven against offline golden requests and safety metrics before implementation is accepted.
+- 2026-08-10: Implementation plan approved for execution preparation: one JSON descriptor
+  registry, one pure router, at least 24 offline simulations, and zero-tolerance safety gates.
 
 ## Links
 
@@ -136,4 +138,4 @@ Every artifact-producing step is tracked here.
 
 ## Next Command
 
-`/product:plan 097-single-entry-capability-routing-contract`
+`/product:execute 097-single-entry-capability-routing-contract`

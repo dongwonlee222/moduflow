@@ -14,27 +14,29 @@
     "090-project-knowledge-and-artifact-registry",
     "091-reproducible-analysis-runs-and-template-pack",
     "092-project-home-dashboard",
-    "087-korean-github-pr-review-surface"
+    "087-korean-github-pr-review-surface",
+    "097-single-entry-capability-routing-contract",
+    "098-speckit-selective-validation-adapter"
   ],
-  "active_issue_id": "",
-  "phase": "select",
+  "active_issue_id": "097-single-entry-capability-routing-contract",
+  "phase": "execute",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:status",
+  "next_command": "product:execute 097-single-entry-capability-routing-contract",
   "attempts": {
-    "command": "product:status",
+    "command": "product:execute 097-single-entry-capability-routing-contract",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-08-03"
+    "last_changed_at": "2026-08-10"
   },
   "blocker": null,
-  "last_action": "released Issue 095 repository source via merged PR #33 at f4029f3; plugin publication remains held for Issue 096",
-  "last_verification": "2026-08-03 at merged main f4029f3: post-merge release check valid with errors []; all named subgates passed",
-  "updated_at": "2026-08-03",
+  "last_action": "planned Issue 097 capability routing contract with 24-case offline simulation and zero-tolerance safety gates",
+  "last_verification": "2026-08-10: Issue 097 spec and plan validation pending fresh plan-stage gates",
+  "updated_at": "2026-08-10",
   "git_binding": {
     "mode": "git-files",
-    "branch": "",
+    "branch": "codex/097-single-entry-capability-routing-contract",
     "base_branch": "main",
     "commits": [
       "f980aef",
@@ -141,8 +143,8 @@
     "execution_backend": {
       "type": "host-subagent",
       "status": "ready",
-      "reason": "Issue 095 is released on main; Issue 094 specification is next",
-      "session": "codex-2026-07-27"
-    }
+        "reason": "Issue 097 plan is complete; execute the routing contract sequentially because the router and simulation share interfaces",
+        "session": "codex-2026-08-10"
+      }
   }
 }
