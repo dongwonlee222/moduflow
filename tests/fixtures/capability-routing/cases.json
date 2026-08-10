@@ -34,6 +34,36 @@
       "expected": {"outcome": "none", "adapters": [], "permissions": [], "permission_states": [], "availability": [], "artifacts": []}
     },
     {
+      "id": "L04-ko-analytics-status",
+      "class": "lifecycle",
+      "request": "데이터 분석 프로젝트 현재 상태 보여줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {"data-analytics": true},
+      "approved_permissions": [],
+      "expected": {"outcome": "none", "adapters": [], "permissions": [], "permission_states": [], "availability": [], "artifacts": []}
+    },
+    {
+      "id": "L05-ko-design-next",
+      "class": "lifecycle",
+      "request": "제품 디자인 다음 단계 알려줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {"product-design": true},
+      "approved_permissions": [],
+      "expected": {"outcome": "none", "adapters": [], "permissions": [], "permission_states": [], "availability": [], "artifacts": []}
+    },
+    {
+      "id": "L06-ko-superpowers-issue-status",
+      "class": "lifecycle",
+      "request": "superpowers 이슈 상태 보여줘",
+      "locale": "ko-KR",
+      "issue_id": "097-single-entry-capability-routing-contract",
+      "availability": {"superpowers": true},
+      "approved_permissions": [],
+      "expected": {"outcome": "none", "adapters": [], "permissions": [], "permission_states": [], "availability": [], "artifacts": []}
+    },
+    {
       "id": "A01-ko-conversion",
       "class": "analytics",
       "request": "전환율 하락 원인을 분석해줘",

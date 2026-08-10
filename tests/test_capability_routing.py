@@ -152,6 +152,18 @@ class CapabilityRoutingTests(unittest.TestCase):
 
         self.assertEqual(result["outcome"], "none")
 
+    def test_lifecycle_intent_beats_explicit_capability_names(self):
+        requests = (
+            "데이터 분석 프로젝트 현재 상태 보여줘",
+            "제품 디자인 다음 단계 알려줘",
+            "superpowers 이슈 상태 보여줘",
+        )
+        for request in requests:
+            with self.subTest(request=request):
+                result = self.route(request)
+                self.assertEqual(result["outcome"], "none")
+                self.assertEqual(result["stages"], [])
+
     def test_bounded_analytics_selects_exactly_one_adapter(self):
         result = self.route("전환율 하락 원인을 분석해줘")
 

@@ -126,7 +126,9 @@ review:
 
 The registry-level lifecycle phrases are `product:`, `current status`, `issue status`,
 `show issues`, `roadmap status`, `현재 상태`, `이슈 상태`, `이슈 목록`, `로드맵 보여`,
-`현재 목표`, `다음 단계`, and `검사해줘`. Sequence markers are `then`, `after`,
+`현재 목표`, and `다음 단계`. The broad doctor alias `검사해줘` is resolved before this
+router and is intentionally not a registry lifecycle phrase, so an explicit request such as
+`스펙킷으로 스펙을 검사해줘` can still select Spec Kit. Sequence markers are `then`, `after`,
 `and then`, `그다음`, `후`, `한 다음`, and `하고`; a marker counts only when it lies
 between two different matched adapters. External-write phrases are `publish to posthog`,
 `upload to google drive`, `posthog에 반영`, `google drive에 업로드`, `외부에 저장`,

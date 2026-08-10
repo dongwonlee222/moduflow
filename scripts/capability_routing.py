@@ -266,13 +266,7 @@ def route_request(
         if not isinstance(available, bool):
             raise RegistryError(f"{capability_id} availability must be boolean")
 
-    explicit_candidates = []
-    for index, descriptor in enumerate(registry["capabilities"]):
-        candidate = _candidate(text, descriptor, index)
-        if candidate and candidate["reason_code"] == "explicit_adapter":
-            explicit_candidates.append(candidate)
-
-    if matched_positions(text, registry["lifecycle_triggers"]) and not explicit_candidates:
+    if matched_positions(text, registry["lifecycle_triggers"]):
         return _base_result(request, issue_id, "none")
 
     candidates = []
