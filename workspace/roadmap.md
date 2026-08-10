@@ -4,14 +4,15 @@
 
 ### Now
 
-- `097-single-entry-capability-routing-contract` — implementation and independent review complete with 27/27 simulations, zero safety violations, and no open review findings; next is `product:pr`.
+- `098-speckit-selective-validation-adapter` — selective-template spec approved; next is `product:plan`.
 
 ### Next
 
-- `098-speckit-selective-validation-adapter` — activate selected Spec Kit validation functions after Issue 097 is merged.
+- `094-risk-based-security-and-quality-review-gate` — resume after the Spec Kit adapter pilot is bounded.
 
 ### Recently Shipped
 
+- `097-single-entry-capability-routing-contract` — merged via PR #36 as `46f98c0`; 27/27 routing simulations, 1,077/1,077 local tests, and CI passed.
 - `095-commit-issue-resolution-parity` — merged via PR #33 as `f4029f3`; post-merge release check passed, failure history remains preserved, and plugin publication stays held for Issue 096.
 - `088-canonical-repository-remote-identity-gate` and `089-verified-code-review-intake-and-remediation-routing` — merged, reviewed, approved, and packaged in v0.3.26.
 - Legacy `030-project-memory-layer` audit — prototype foundation retained; delivered extensions mapped to 034/040/043/085 and remaining registry/migration scope transferred to 090 on 2026-07-21.

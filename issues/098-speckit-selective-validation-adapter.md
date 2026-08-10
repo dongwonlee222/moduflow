@@ -1,8 +1,8 @@
 # Issue 098: Spec Kit Selective Validation Adapter
 
-**Status: backlog** — created 2026-08-10.
+**Status: active** — created and specified 2026-08-10.
 **Priority: p2**
-**Blocked-by:** `097-single-entry-capability-routing-contract`
+**Blocked-by:**
 
 ## Summary
 
@@ -78,9 +78,9 @@ extensions, or route build/release ownership away from ModuFlow and Superpowers.
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/098-speckit-selective-validation-adapter/spec.md`
+- [x] spec → `specs/098-speckit-selective-validation-adapter/spec.md`; Korean sidecar → `specs/098-speckit-selective-validation-adapter/spec.ko.md`
 - [ ] benchmark → compare selected Spec Kit functions against native ModuFlow checks
-- [ ] plan → `specs/098-speckit-selective-validation-adapter/plan.md`
+- [ ] plan → pending user approval of the written spec
 - [ ] execute → PR / commits
 - [ ] review → review notes
 
@@ -97,6 +97,9 @@ extensions, or route build/release ownership away from ModuFlow and Superpowers.
 
 - 2026-08-10: User requested access to useful new Spec Kit capabilities without making
   ModuFlow heavy. Split from issue 097 so capability activation remains optional.
+- 2026-08-10: User approved the recommended selective-template adapter. Official upstream at
+  `684b3d8e` confirms the four capabilities are command templates rather than standalone CLI
+  subcommands. The design pins only those templates and forbids upstream scripts/hooks/Git.
 
 ## Links
 
@@ -105,4 +108,4 @@ extensions, or route build/release ownership away from ModuFlow and Superpowers.
 
 ## Next Command
 
-`/product:plan 097-single-entry-capability-routing-contract`
+`/product:plan 098-speckit-selective-validation-adapter`

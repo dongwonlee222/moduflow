@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issue 097 now makes specialist routing predictable and simulation-gated before selective Spec Kit activation in Issue 098.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 097 is merged and Issue 098 is specifying the on-demand Spec Kit validation adapter.
 
 ## Active Goal
 
@@ -10,13 +10,13 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 097 now makes speciali
 
 ## Active Issue
 
-- `097-single-entry-capability-routing-contract` — implementation, verification, and independent review complete; 27/27 simulations and 1,077/1,077 full tests passed, every safety metric is zero, and final review has no findings.
+- `098-speckit-selective-validation-adapter` — selective-template design approved and specified; full Spec Kit initialization is excluded.
 
 ## Priority Queue — 2026-08-10
 
-- Now: `097` single-entry capability routing contract; next command is
-  `product:pr 097-single-entry-capability-routing-contract`.
-- Next: `098` selective Spec Kit validation adapter after 097 passes simulation and review.
+- Now: `098` selective Spec Kit validation adapter; next command is
+  `product:plan 098-speckit-selective-validation-adapter`.
+- Shipped: `097` merged via PR #36 as `46f98c0`; routing simulation and CI passed.
 - Then: `094` risk-based security/quality review gate; blocker `089` is done.
 - Shipped: `095` merged via PR #33 as `f4029f3`; post-merge release check passed.
 - Then: `086` project-aware production/playbook dashboard.

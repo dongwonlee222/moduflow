@@ -18,25 +18,25 @@
     "097-single-entry-capability-routing-contract",
     "098-speckit-selective-validation-adapter"
   ],
-  "active_issue_id": "097-single-entry-capability-routing-contract",
-  "phase": "pr",
+  "active_issue_id": "098-speckit-selective-validation-adapter",
+  "phase": "plan",
   "mode": "recommend",
-  "delegation_level": "human_merge_required",
+  "delegation_level": "planning_required",
   "status": "active",
-  "next_command": "product:pr 097-single-entry-capability-routing-contract",
+  "next_command": "product:plan 098-speckit-selective-validation-adapter",
   "attempts": {
-    "command": "product:pr 097-single-entry-capability-routing-contract",
+    "command": "product:plan 098-speckit-selective-validation-adapter",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-08-10"
   },
   "blocker": null,
-  "last_action": "completed Issue 097 implementation and independent review after two remediation rounds; final verdict Ready with no findings",
-  "last_verification": "2026-08-10: unittest 1077/1077; simulation 27/27 with all seven metrics zero; focused review 43/43; release check valid; spec consistency 13/13; lifecycle drift []",
+  "last_action": "merged Issue 097 via PR #36 and specified the user-approved selective-template design for Issue 098",
+  "last_verification": "2026-08-10: Issue 098 baseline unittest 1077/1077 on origin/main; upstream Spec Kit command surface verified at 684b3d8e",
   "updated_at": "2026-08-10",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/097-single-entry-capability-routing-contract",
+    "branch": "codex/098-speckit-selective-validation-adapter",
     "base_branch": "main",
     "commits": [
       "f980aef",
@@ -142,8 +142,8 @@
     "release": "repository source on main at f4029f3; no plugin publish",
     "execution_backend": {
       "type": "host-subagent",
-        "status": "reviewed",
-        "reason": "Issue 097 implementation, verification, and independent review passed; PR preparation is next",
+        "status": "planning",
+        "reason": "Issue 098 selective-template spec is ready for user review and implementation planning",
         "session": "codex-2026-08-10"
       }
   }

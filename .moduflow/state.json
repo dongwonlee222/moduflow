@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "pr",
+  "phase": "plan",
   "active_goal": "trustworthy-execution-and-project-knowledge",
-  "active_issue": "097-single-entry-capability-routing-contract",
-  "last_command": "product:review 097-single-entry-capability-routing-contract",
-  "next_command": "product:pr 097-single-entry-capability-routing-contract",
+  "active_issue": "098-speckit-selective-validation-adapter",
+  "last_command": "product:spec 098-speckit-selective-validation-adapter",
+  "next_command": "product:plan 098-speckit-selective-validation-adapter",
   "blockers": [],
   "updated_at": "2026-08-10"
 }
