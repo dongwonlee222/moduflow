@@ -488,27 +488,32 @@ git commit -m "feat(098): enforce advisory Spec Kit result safety" -m "Issue: 09
 - [ ] **Step 1: Write failing routing and bridge-contract tests**
 
 ```python
-def test_available_spec_kit_routes_one_stage_then_project_gate_decides(self):
-    result = self.route("스펙킷으로 요구사항 체크리스트 만들어줘", availability={"spec-kit": True})
-    self.assertEqual(result["outcome"], "delegate")
-    self.assertEqual([s["adapter_id"] for s in result["stages"]], ["spec-kit"])
-    self.assertEqual(result["current_stage"], 0)
+def test_available_spec_kit_routes_one_stage_then_adapter_selects_one_template(self):
+    request = "스펙킷으로 요구사항 체크리스트 만들어줘"
+    route = self.route(request, availability={"spec-kit": True})
+    self.assertEqual(route["outcome"], "delegate")
+    self.assertEqual([s["adapter_id"] for s in route["stages"]], ["spec-kit"])
+    function = ska.select_function(request)
+    handoff = ska.build_handoff(ROOT, self.opted_in_project, self.issue_id, function, host_available=True)
+    self.assertEqual(handoff["outcome"], "ready")
+    self.assertEqual(handoff["function"], "checklist")
+    self.assertTrue(handoff["source"]["template"].endswith("/commands/checklist.md"))
+    self.assertFalse((self.opted_in_project / "specs" / self.issue_id / "validation.md").exists())
 
-def test_bridge_guidance_forbids_upstream_execution_and_fanout(self):
-    bridge = (ROOT / "skills/spec-kit-validation-bridge/SKILL.md").read_text(encoding="utf-8")
-    self.assertIn("exactly one", bridge.lower())
-    self.assertIn("never execute upstream", bridge.lower())
-    self.assertIn("moduflow.spec-kit-result.v1", bridge)
+def test_implementation_language_cannot_select_a_spec_kit_function(self):
+    route = self.route("스펙킷으로 코드를 구현하고 릴리즈해줘", availability={"spec-kit": True})
+    self.assertEqual(route["outcome"], "delegate")
+    self.assertIsNone(ska.select_function(route["request"]))
 ```
 
-Distribution tests must also assert that direct `product:*`, implementation, Git, review, PR, release, and deployment language remains outside Spec Kit ownership.
+Distribution tests assert that the bridge and command files are packaged. Ownership is proved through executable routing/adapter outcomes rather than source-text matching: direct `product:*` remains local, ordinary implementation selects Superpowers, and explicit Spec Kit implementation/Git/review/PR/release/deployment requests select no Spec Kit function and create no artifact.
 
 - [ ] **Step 2: Run the RED bridge tests**
 
 Run:
 
 ```bash
-python3 -m unittest tests.test_capability_routing.CapabilityRoutingTests.test_available_spec_kit_routes_one_stage_then_project_gate_decides -v
+python3 -m unittest tests.test_capability_routing.CapabilityRoutingTests.test_available_spec_kit_routes_one_stage_then_adapter_selects_one_template -v
 python3 -m unittest tests.test_validation_distribution.ValidationDistributionTests.test_validate_moduflow_requires_spec_kit_selective_surface -v
 ```
 
