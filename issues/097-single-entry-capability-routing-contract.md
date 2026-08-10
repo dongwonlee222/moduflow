@@ -108,8 +108,8 @@ Every artifact-producing step is tracked here.
 
 - [x] spec → `specs/097-single-entry-capability-routing-contract/spec.md`
 - [x] plan → `specs/097-single-entry-capability-routing-contract/plan.md`; tasks → `specs/097-single-entry-capability-routing-contract/tasks.md`
-- [ ] execute → PR / commits
-- [ ] review → review notes
+- [x] execute → commits `2e71b92`, `2a11110`, `659f0c2`, `685fdeb`, `e8b1d70`, `430f054`; simulation report → `specs/097-single-entry-capability-routing-contract/simulation-report.json`
+- [x] review → `specs/097-single-entry-capability-routing-contract/status.md`; final verdict `Ready: Yes`, no open findings
 
 ## Related Issues
 
@@ -129,6 +129,13 @@ Every artifact-producing step is tracked here.
   proven against offline golden requests and safety metrics before implementation is accepted.
 - 2026-08-10: Implementation plan approved for execution preparation: one JSON descriptor
   registry, one pure router, at least 24 offline simulations, and zero-tolerance safety gates.
+- 2026-08-10: Implementation completed. All 24 simulations passed with every safety metric
+  at zero; fresh full discovery passed 1,065/1,065 after the cache-copy fixture boundary was
+  regression-fixed. Independent review remains open.
+- 2026-08-10: Independent review reproduced eight routing-boundary defects and one follow-up
+  lifecycle-precedence regression. Both remediation rounds passed re-review. The final corpus is
+  27/27 with all seven safety metrics at zero, plugin version is 0.3.43, release check is valid,
+  and the branch is ready for PR preparation.
 
 ## Links
 
@@ -138,4 +145,4 @@ Every artifact-producing step is tracked here.
 
 ## Next Command
 
-`/product:execute 097-single-entry-capability-routing-contract`
+`/product:pr 097-single-entry-capability-routing-contract`

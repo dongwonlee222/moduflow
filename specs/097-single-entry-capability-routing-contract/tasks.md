@@ -5,20 +5,20 @@ Plan: `specs/097-single-entry-capability-routing-contract/plan.md`
 
 ## Stream A
 
-- [ ] A1 Add `adapters/capability-routing.json`, fail-closed stdlib loading, descriptor validation, and focused registry tests. [files: adapters/capability-routing.json, scripts/capability_routing.py, tests/test_capability_routing.py] [shared_state: true]
+- [x] A1 Add `adapters/capability-routing.json`, fail-closed stdlib loading, descriptor validation, and focused registry tests. [files: adapters/capability-routing.json, scripts/capability_routing.py, tests/test_capability_routing.py] [shared_state: true]
 
 ## Stream B
 
-- [ ] B1 Implement deterministic `none | delegate | sequence | clarify` routing, one-specialist default, ordered artifact gates, availability fallback, permission projection, read-only CLI, and focused tests. [files: scripts/capability_routing.py, tests/test_capability_routing.py] [depends: A1] [shared_state: true]
+- [x] B1 Implement deterministic `none | delegate | sequence | clarify` routing, one-specialist default, ordered artifact gates, availability fallback, permission projection, read-only CLI, and focused tests. [files: scripts/capability_routing.py, tests/test_capability_routing.py] [depends: A1] [shared_state: true]
 
 ## Stream C
 
-- [ ] C1 Add at least 24 golden fixtures across eight boundary classes, Korean/English semantic pairs, independent safety metrics, deterministic report/write behavior, non-zero failure exit, and mutation tests. [files: tests/fixtures/capability-routing/cases.json, scripts/capability_routing_simulation.py, tests/test_capability_routing_simulation.py] [depends: B1] [shared_state: true]
+- [x] C1 Add at least 24 golden fixtures across eight boundary classes, Korean/English semantic pairs, independent safety metrics, deterministic report/write behavior, non-zero failure exit, and mutation tests. [files: tests/fixtures/capability-routing/cases.json, scripts/capability_routing_simulation.py, tests/test_capability_routing_simulation.py] [depends: B1] [shared_state: true]
 
 ## Stream D
 
-- [ ] D1 Wire `/moduflow`, index, and PM router guidance to the executable result; register all new files in package validation and distribution tests. [files: commands/moduflow.md, skills/index/SKILL.md, skills/pm-execution-router/SKILL.md, scripts/validate_moduflow.py, tests/test_validation_distribution.py] [depends: B1,C1] [shared_state: true]
-- [ ] D2 Generate readiness and simulation reports; run focused/full/consistency/project/lifecycle/release gates; record status and complete staged review with no open Critical or Important findings. [files: specs/097-single-entry-capability-routing-contract/implementation-readiness.json, specs/097-single-entry-capability-routing-contract/simulation-report.json, specs/097-single-entry-capability-routing-contract/status.md, issues/097-single-entry-capability-routing-contract.md, .moduflow/state.json, workspace/goal.md, workspace/loop-state.json, workspace/dashboard.md, workspace/roadmap.md] [depends: D1] [shared_state: true]
+- [x] D1 Wire `/moduflow`, index, and PM router guidance to the executable result; register all new files in package validation and distribution tests. [files: commands/moduflow.md, skills/index/SKILL.md, skills/pm-execution-router/SKILL.md, scripts/validate_moduflow.py, tests/test_validation_distribution.py] [depends: B1,C1] [shared_state: true]
+- [x] D2 Generate readiness and simulation reports; run focused/full/consistency/project/lifecycle/release gates; record status and complete staged review with no open Critical or Important findings. [files: specs/097-single-entry-capability-routing-contract/implementation-readiness.json, specs/097-single-entry-capability-routing-contract/simulation-report.json, specs/097-single-entry-capability-routing-contract/status.md, issues/097-single-entry-capability-routing-contract.md, .moduflow/state.json, workspace/goal.md, workspace/loop-state.json, workspace/dashboard.md, workspace/roadmap.md] [depends: D1] [shared_state: true]
 
 ## Acceptance Coverage
 
@@ -34,4 +34,4 @@ Plan: `specs/097-single-entry-capability-routing-contract/plan.md`
 
 ## Next
 
-`product:execute 097-single-entry-capability-routing-contract`
+`product:pr 097-single-entry-capability-routing-contract`

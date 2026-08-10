@@ -4,11 +4,11 @@
 
 ### Now
 
-- `097-single-entry-capability-routing-contract` — plan complete; implement the routing contract and pass at least 24 offline simulations with zero safety violations.
+- `097-single-entry-capability-routing-contract` — implementation and independent review complete with 27/27 simulations, zero safety violations, and no open review findings; next is `product:pr`.
 
 ### Next
 
-- `098-speckit-selective-validation-adapter` — activate selected Spec Kit validation functions only after Issue 097 passes review.
+- `098-speckit-selective-validation-adapter` — activate selected Spec Kit validation functions after Issue 097 is merged.
 
 ### Recently Shipped
 

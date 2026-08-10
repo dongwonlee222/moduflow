@@ -19,20 +19,20 @@
     "098-speckit-selective-validation-adapter"
   ],
   "active_issue_id": "097-single-entry-capability-routing-contract",
-  "phase": "execute",
+  "phase": "pr",
   "mode": "recommend",
-  "delegation_level": "review_required",
+  "delegation_level": "human_merge_required",
   "status": "active",
-  "next_command": "product:execute 097-single-entry-capability-routing-contract",
+  "next_command": "product:pr 097-single-entry-capability-routing-contract",
   "attempts": {
-    "command": "product:execute 097-single-entry-capability-routing-contract",
+    "command": "product:pr 097-single-entry-capability-routing-contract",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-08-10"
   },
   "blocker": null,
-  "last_action": "planned Issue 097 capability routing contract with 24-case offline simulation and zero-tolerance safety gates",
-  "last_verification": "2026-08-10: Issue 097 spec and plan validation pending fresh plan-stage gates",
+  "last_action": "completed Issue 097 implementation and independent review after two remediation rounds; final verdict Ready with no findings",
+  "last_verification": "2026-08-10: unittest 1077/1077; simulation 27/27 with all seven metrics zero; focused review 43/43; release check valid; spec consistency 13/13; lifecycle drift []",
   "updated_at": "2026-08-10",
   "git_binding": {
     "mode": "git-files",
@@ -142,8 +142,8 @@
     "release": "repository source on main at f4029f3; no plugin publish",
     "execution_backend": {
       "type": "host-subagent",
-      "status": "ready",
-        "reason": "Issue 097 plan is complete; execute the routing contract sequentially because the router and simulation share interfaces",
+        "status": "reviewed",
+        "reason": "Issue 097 implementation, verification, and independent review passed; PR preparation is next",
         "session": "codex-2026-08-10"
       }
   }

@@ -10,12 +10,12 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 097 now makes speciali
 
 ## Active Issue
 
-- `097-single-entry-capability-routing-contract` — plan complete; execute the JSON registry, pure router, 24-case simulation, and entrypoint integration.
+- `097-single-entry-capability-routing-contract` — implementation, verification, and independent review complete; 27/27 simulations and 1,077/1,077 full tests passed, every safety metric is zero, and final review has no findings.
 
 ## Priority Queue — 2026-08-10
 
 - Now: `097` single-entry capability routing contract; next command is
-  `product:execute 097-single-entry-capability-routing-contract`.
+  `product:pr 097-single-entry-capability-routing-contract`.
 - Next: `098` selective Spec Kit validation adapter after 097 passes simulation and review.
 - Then: `094` risk-based security/quality review gate; blocker `089` is done.
 - Shipped: `095` merged via PR #33 as `f4029f3`; post-merge release check passed.
