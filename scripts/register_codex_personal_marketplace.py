@@ -22,6 +22,7 @@ RUNTIME_TEST_FIXTURES = (
     "tests/fixtures/issue-schema/BIZ-039.md",
     "tests/fixtures/issue-schema/BIZ-040.md",
     "tests/fixtures/issue-schema/legacy-markdown.md",
+    "tests/fixtures/capability-routing/cases.json",
 )
 
 

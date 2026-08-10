@@ -571,6 +571,34 @@ next_command: {next_command}
 
         self.assertTrue(required.issubset(set(validator.REQUIRED_FILES)))
 
+    def test_validate_moduflow_requires_capability_routing_surface(self):
+        validator = load_module(
+            "validate_moduflow_capability_routing", "scripts/validate_moduflow.py"
+        )
+        required = {
+            "adapters/capability-routing.json",
+            "scripts/capability_routing.py",
+            "scripts/capability_routing_simulation.py",
+            "tests/fixtures/capability-routing/cases.json",
+        }
+
+        self.assertTrue(required.issubset(set(validator.REQUIRED_FILES)))
+
+        moduflow = (ROOT / "commands" / "moduflow.md").read_text(encoding="utf-8")
+        index = (ROOT / "skills" / "index" / "SKILL.md").read_text(encoding="utf-8")
+        router = (
+            ROOT / "skills" / "pm-execution-router" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("capability_routing.py", moduflow)
+        for outcome in ("none", "delegate", "sequence", "clarify"):
+            self.assertIn(f"`{outcome}`", moduflow)
+        self.assertIn("at most one specialist", moduflow)
+        self.assertIn("permission", index.lower())
+        self.assertIn("availability", index.lower())
+        self.assertIn("permission", router.lower())
+        self.assertIn("availability", router.lower())
+
     def test_review_upstreams_and_policy_are_registered(self):
         vendor = json.loads((ROOT / "vendor.lock.json").read_text(encoding="utf-8"))
         source_ids = {source["id"] for source in vendor["sources"]}

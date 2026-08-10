@@ -60,7 +60,7 @@ class CodexPersonalInstallTests(unittest.TestCase):
             self.assertIn("enabled = true", config)
             self.assertEqual(result["plugin"], "moduflow@personal")
 
-    def test_cache_copy_ships_only_runtime_issue_schema_fixtures(self):
+    def test_cache_copy_ships_only_runtime_validation_fixtures(self):
         installer = load_module(
             "register_codex_personal_marketplace_distribution",
             "scripts/register_codex_personal_marketplace.py",
@@ -76,6 +76,7 @@ class CodexPersonalInstallTests(unittest.TestCase):
                 "tests/fixtures/issue-schema/BIZ-039.md",
                 "tests/fixtures/issue-schema/BIZ-040.md",
                 "tests/fixtures/issue-schema/legacy-markdown.md",
+                "tests/fixtures/capability-routing/cases.json",
             }
             self.assertTrue((cache / "scripts" / "project_issue_schema.py").is_file())
             self.assertTrue(all((cache / path).is_file() for path in expected))

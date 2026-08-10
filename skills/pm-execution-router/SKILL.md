@@ -19,6 +19,24 @@ Prefer these aliases for broad user intent before asking the user to choose amon
 
 Exact `product:*` input (direct product command) is a direct command and should bypass broad alias routing.
 
+## Executable Capability Routing
+
+After direct aliases and lifecycle ownership are resolved, route specialist-capable natural
+language through `scripts/capability_routing.py`.
+
+- Default to `none` for ordinary status, issue, goal, roadmap, loop, doctor, review, PR,
+  release, and Git-native artifact work.
+- `delegate` selects at most one specialist and records reason, permission, availability,
+  issue ID, and output artifact before the host loads it.
+- `sequence` is valid only for explicit multi-stage language. Run one stage at a time and
+  require the declared artifact before advancing.
+- `clarify` asks one concise question instead of fanning out.
+- Unavailable or permission-blocked stages report the fallback or approval requirement and do
+  not claim execution.
+
+This contract chooses a capability; existing product commands and specialist skills still own
+their execution behavior.
+
 ## Fast Path Shaping Router
 
 Before creating new product work, choose the smallest useful path:

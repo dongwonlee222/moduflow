@@ -1,6 +1,6 @@
 {
   "name": "moduflow",
-  "version": "0.3.41+codex.20260810050613",
+  "version": "0.3.42+codex.20260810101430",
   "description": "Git-native PM execution orchestrator for issues, specs, roadmaps, subagents, analysis, design, PRs, and releases.",
   "author": {
     "name": "Dongwon Lee",
@@ -37,7 +37,7 @@
       "start",
       "product:start",
       "product:status",
-      "모두플로우 시작"
+      "\ubaa8\ub450\ud50c\ub85c\uc6b0 \uc2dc\uc791"
     ],
     "brandColor": "#2563EB",
     "composerIcon": "./assets/composerIcon.png",
