@@ -11,6 +11,7 @@ from pathlib import Path
 CONFIG_SCHEMA = "moduflow.capabilities.v1"
 HANDOFF_SCHEMA = "moduflow.spec-kit-handoff.v1"
 MANIFEST_SCHEMA = "moduflow.spec-kit-manifest.v1"
+RESULT_SCHEMA = "moduflow.spec-kit-result.v1"
 APPROVED_VERSION = "0.16.1"
 APPROVED_SHA = "684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5"
 FUNCTIONS = ("clarify", "analyze", "checklist", "converge")
@@ -47,6 +48,25 @@ CONFIG_SPEC_KIT_LEVEL = {
     "source_sha",
     "functions",
 }
+RESULT_TOP_LEVEL = {
+    "schema",
+    "run_id",
+    "input_hash",
+    "issue_id",
+    "function",
+    "source_version",
+    "source_sha",
+    "template_sha256",
+    "permission",
+    "findings",
+    "limitations",
+    "native_overlap",
+    "elapsed_ms",
+    "loaded_context_chars",
+    "user_decision",
+    "next_command",
+}
+RESULT_HASH_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 class SpecKitAdapterError(ValueError):
@@ -291,6 +311,178 @@ def _output_path(project_root, issue_id):
     return str(candidate.relative_to(root))
 
 
+def _validation_relative_path(issue_id):
+    return f"specs/{issue_id}/validation.md"
+
+
+def _json_safe(value):
+    if value is None or isinstance(value, (str, bool)):
+        return True
+    if isinstance(value, int) and not isinstance(value, bool):
+        return True
+    if isinstance(value, float):
+        return value == value and value not in (float("inf"), float("-inf"))
+    if isinstance(value, list):
+        return all(_json_safe(item) for item in value)
+    if isinstance(value, dict):
+        return all(isinstance(key, str) and _json_safe(item) for key, item in value.items())
+    return False
+
+
+def _result_hash(payload):
+    canonical = json.dumps(
+        {
+            "source_sha": payload["source_sha"],
+            "template_sha256": payload["template_sha256"],
+            "function": payload["function"],
+            "issue_id": payload["issue_id"],
+            "input_hash": payload["input_hash"],
+            "findings": payload["findings"],
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return "sha256:" + hashlib.sha256(canonical).hexdigest()
+
+
+def validate_result_shape(payload):
+    """Strictly validate one advisory Spec Kit result and return an isolated copy."""
+    if not isinstance(payload, dict):
+        _error("invalid_result", "result must be an object")
+    unknown = set(payload) - RESULT_TOP_LEVEL
+    if unknown:
+        _error("unknown_result_field", "result contains unsupported fields")
+    missing = RESULT_TOP_LEVEL - set(payload)
+    if missing:
+        _error("invalid_result", "result is missing required fields")
+    if payload["schema"] != RESULT_SCHEMA:
+        _error("invalid_result", f"schema must be {RESULT_SCHEMA}")
+    if not isinstance(payload["issue_id"], str) or not ISSUE_ID_PATTERN.fullmatch(payload["issue_id"]):
+        _error("unsafe_issue_id", "issue_id is invalid")
+    if payload["function"] not in FUNCTIONS:
+        _error("function_mismatch", "function is not approved")
+    if payload["source_version"] != APPROVED_VERSION or payload["source_sha"] != APPROVED_SHA:
+        _error("source_mismatch", "result source is not approved")
+    if payload["template_sha256"] != TEMPLATE_HASHES[payload["function"]]:
+        _error("template_mismatch", "result template hash is not approved")
+    if payload["permission"] != "read":
+        _error("permission_mismatch", "result permission must be read")
+    for field in ("run_id", "input_hash"):
+        if not isinstance(payload[field], str) or not RESULT_HASH_PATTERN.fullmatch(payload[field]):
+            _error("invalid_result", f"{field} must be a sha256 digest")
+    for field in ("findings", "limitations", "native_overlap"):
+        if not isinstance(payload[field], list) or not _json_safe(payload[field]):
+            _error("invalid_result", f"{field} must be a JSON-safe list")
+    for field in ("elapsed_ms", "loaded_context_chars"):
+        if (
+            not isinstance(payload[field], int)
+            or isinstance(payload[field], bool)
+            or payload[field] < 0
+        ):
+            _error("invalid_result", f"{field} must be a non-negative integer")
+    for field in ("user_decision", "next_command"):
+        if not isinstance(payload[field], str) or not payload[field]:
+            _error("invalid_result", f"{field} must be a non-empty string")
+    if payload["function"] == "clarify" and len(payload["findings"]) > 1:
+        _error("clarify_findings_limit", "clarify accepts at most one question")
+    expected_run_id = _result_hash(payload)
+    if payload["run_id"] != expected_run_id:
+        _error("run_id_mismatch", "run_id does not match the advisory result")
+    return json.loads(json.dumps(payload, ensure_ascii=False, allow_nan=False))
+
+
+def validate_host_result(payload, handoff):
+    """Require a ready, matching handoff before a host result becomes evidence."""
+    validated = validate_result_shape(payload)
+    if not isinstance(handoff, dict) or handoff.get("outcome") != "ready":
+        _error("handoff_not_ready", "a ready handoff is required")
+    if handoff.get("schema") != HANDOFF_SCHEMA:
+        _error("handoff_not_ready", "handoff schema is invalid")
+    if handoff.get("issue_id") != validated["issue_id"]:
+        _error("issue_mismatch", "handoff issue does not match result")
+    if handoff.get("function") != validated["function"]:
+        _error("function_mismatch", "handoff function does not match result")
+    expected_source = {
+        "version": validated["source_version"],
+        "sha": validated["source_sha"],
+        "template": f"vendor/spec-kit/{APPROVED_VERSION}/commands/{validated['function']}.md",
+        "template_sha256": validated["template_sha256"],
+    }
+    if handoff.get("source") != expected_source:
+        _error("source_mismatch", "handoff source does not match result")
+    if handoff.get("permission") != validated["permission"]:
+        _error("permission_mismatch", "handoff permission does not match result")
+    if handoff.get("output_artifact") != _validation_relative_path(validated["issue_id"]):
+        _error("output_mismatch", "handoff output does not match result issue")
+    return validated
+
+
+def _contained_validation_path(project_root, issue_id):
+    if not isinstance(issue_id, str) or not ISSUE_ID_PATTERN.fullmatch(issue_id):
+        _error("unsafe_issue_id", "issue_id is invalid")
+    root = Path(project_root).resolve()
+    candidate = root
+    for part in ("specs", issue_id, "validation.md"):
+        candidate = candidate / part
+        if candidate.is_symlink():
+            _error("unsafe_path", "validation output path must not contain symlinks")
+    try:
+        candidate.resolve().relative_to(root)
+    except ValueError as exc:
+        raise SpecKitAdapterError(
+            "unsafe_path", "validation output path escapes target project"
+        ) from exc
+    return candidate
+
+
+def render_validation_entry(validated_result):
+    """Render one human-readable result without allowing marker injection from JSON text."""
+    marker = f"<!-- moduflow-spec-kit-run:{validated_result['run_id']} -->"
+    details = json.dumps(
+        validated_result, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False
+    ).replace("<", "\\u003c")
+    return (
+        f"{marker}\n"
+        f"## Spec Kit advisory validation — {validated_result['function']}\n\n"
+        "<details>\n<summary>Verified advisory result</summary>\n\n"
+        "```json\n"
+        f"{details}\n"
+        "```\n\n"
+        "</details>\n"
+    )
+
+
+def persist_validation(project_root, validated_result, *, write=False):
+    """Preview or append a shape-validated result; host provenance is checked by the bridge."""
+    validated = validate_result_shape(validated_result)
+    target = _contained_validation_path(project_root, validated["issue_id"])
+    marker = f"<!-- moduflow-spec-kit-run:{validated['run_id']} -->"
+    try:
+        existing = target.read_bytes() if target.exists() else b""
+    except OSError as exc:
+        raise SpecKitAdapterError("output_unavailable", "validation output cannot be read") from exc
+    if marker.encode("utf-8") in existing:
+        return {"changed": False, "path": target, "run_id": validated["run_id"], "preview": ""}
+    rendered = render_validation_entry(validated).encode("utf-8")
+    prefix = b"" if not existing else (b"\n" if existing.endswith(b"\n") else b"\n\n")
+    preview = (prefix + rendered).decode("utf-8")
+    if write:
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with target.open("ab") as handle:
+                handle.write(prefix + rendered)
+        except OSError as exc:
+            raise SpecKitAdapterError("output_unavailable", "validation output cannot be written") from exc
+    return {
+        "changed": bool(write),
+        "path": target,
+        "run_id": validated["run_id"],
+        "preview": preview,
+    }
+
+
 def build_handoff(package_root, project_root, issue_id, request, host_available):
     """Return a complete, non-executing handoff envelope for one request."""
     function = None
@@ -344,19 +536,48 @@ def main(argv=None):
     parser.add_argument("project_root")
     parser.add_argument("--configure", action="store_true")
     parser.add_argument("--functions")
+    parser.add_argument("--issue-id")
+    parser.add_argument("--accept-result")
     parser.add_argument("--write", action="store_true")
     args = parser.parse_args(argv)
-    if not args.configure or args.functions is None:
-        parser.error("--configure and --functions are required")
-    functions = args.functions.split(",")
-    _function_list(functions)
-    payload = _config_payload(functions)
-    if args.write:
-        path = Path(args.project_root).resolve() / ".moduflow" / "capabilities.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(json.dumps(payload, indent=2, ensure_ascii=False))
-    return 0
+    if args.configure:
+        if args.functions is None or args.accept_result is not None:
+            parser.error("--configure requires --functions and cannot accept a result")
+        functions = args.functions.split(",")
+        _function_list(functions)
+        payload = _config_payload(functions)
+        if args.write:
+            path = Path(args.project_root).resolve() / ".moduflow" / "capabilities.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0
+    if args.accept_result is None or args.issue_id is None:
+        parser.error("--issue-id and --accept-result are required unless --configure is used")
+    try:
+        payload = json.loads(args.accept_result)
+        validated = validate_result_shape(payload)
+        if validated["issue_id"] != args.issue_id:
+            _error("issue_mismatch", "--issue-id must match result issue_id")
+        result = persist_validation(args.project_root, validated, write=args.write)
+        envelope = {
+            "ok": True,
+            "result": {**result, "path": str(result["path"])},
+        }
+        print(json.dumps(envelope, ensure_ascii=False, sort_keys=True))
+        return 0
+    except json.JSONDecodeError:
+        envelope = {
+            "ok": False,
+            "error": {"code": "invalid_result", "message": "result must be valid JSON"},
+        }
+    except SpecKitAdapterError as exc:
+        envelope = {
+            "ok": False,
+            "error": {"code": exc.code, "message": exc.safe_message},
+        }
+    print(json.dumps(envelope, ensure_ascii=False, sort_keys=True))
+    return 2
 
 
 if __name__ == "__main__":
