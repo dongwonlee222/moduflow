@@ -338,6 +338,56 @@ class CapabilityRoutingTests(unittest.TestCase):
                 )
                 self.assertEqual(spec_kit.select_function(route["request"]), expected_function)
 
+    def test_explicit_spec_kit_beats_every_general_capability_trigger_for_each_function(self):
+        spec_kit = load_spec_kit_module(self)
+        capability_subjects = {
+            "data-analytics": "KPI requirements",
+            "product-design": "UI requirements",
+            "superpowers": "API requirements",
+            "documents": "PPTX requirements",
+        }
+        function_requests = {
+            "clarify": "Spec Kit clarify the {subject}",
+            "analyze": "Spec Kit analyze the {subject}",
+            "checklist": "Spec Kit checklist for {subject}",
+            "converge": "Spec Kit converge the {subject}",
+        }
+
+        for capability, subject in capability_subjects.items():
+            for expected_function, request_template in function_requests.items():
+                with self.subTest(capability=capability, function=expected_function):
+                    request = request_template.format(subject=subject)
+                    route = self.route(
+                        request,
+                        availability={key: True for key in HOST_AVAILABLE},
+                    )
+
+                    self.assertEqual(route["outcome"], "delegate")
+                    self.assertEqual(
+                        [stage["adapter_id"] for stage in route["stages"]],
+                        ["spec-kit"],
+                    )
+                    self.assertEqual(
+                        spec_kit.select_function(route["request"]), expected_function
+                    )
+
+    def test_ordinary_general_capability_requests_keep_their_native_routes(self):
+        requests = {
+            "KPI를 분석해줘": "data-analytics",
+            "UI 화면을 디자인해줘": "product-design",
+            "API를 구현해줘": "superpowers",
+            "PPTX 발표자료를 만들어줘": "documents",
+        }
+
+        for request, expected_adapter in requests.items():
+            with self.subTest(adapter=expected_adapter):
+                route = self.route(request)
+                self.assertEqual(route["outcome"], "delegate")
+                self.assertEqual(
+                    [stage["adapter_id"] for stage in route["stages"]],
+                    [expected_adapter],
+                )
+
     def test_ownership_language_overrides_spec_kit_function_selection(self):
         spec_kit = load_spec_kit_module(self)
         requests = (
