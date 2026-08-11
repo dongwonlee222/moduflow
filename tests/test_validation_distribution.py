@@ -603,6 +603,19 @@ next_command: {next_command}
         self.assertIn("availability", router.lower())
         self.assertIn("fail-closed", router.lower())
 
+    def test_validate_moduflow_requires_spec_kit_selective_surface(self):
+        packaged_paths = {
+            "skills/spec-kit-validation-bridge/SKILL.md",
+            "adapters/capability-routing.json",
+            "commands/moduflow.md",
+            "skills/index/SKILL.md",
+            "skills/pm-execution-router/SKILL.md",
+        }
+
+        missing = sorted(path for path in packaged_paths if not (ROOT / path).is_file())
+
+        self.assertEqual(missing, [])
+
     def test_review_upstreams_and_policy_are_registered(self):
         vendor = json.loads((ROOT / "vendor.lock.json").read_text(encoding="utf-8"))
         source_ids = {source["id"] for source in vendor["sources"]}

@@ -71,6 +71,13 @@ fail-closed when omitted. Pass the target project separately for safe artifact c
 re-routing a sequence, pass each verified predecessor with `--completed-artifact <relative-path>`
 and stop when `sequence_state` is `blocked` or `complete`.
 
+When the sole current stage is `spec-kit`, consume it through
+`spec-kit-validation-bridge` only if availability is `available`, permission is `read`, and
+permission state is `allowed`. That bridge checks project opt-in before loading the safety
+overlay and exactly one approved template. A non-ready handoff uses its native fallback and
+loads or writes nothing. Advisory output is shown first and persists only after explicit
+ModuFlow approval; it never advances lifecycle state.
+
 ## Natural Language Invocation
 
 Accept Korean natural language after `@ModuFlow` and route to the smallest useful command or lifecycle action.

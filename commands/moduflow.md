@@ -63,6 +63,13 @@ Request: $ARGUMENTS
    issue ID, and output artifact. The helper is read-only routing metadata; it does not invoke,
    install, or mutate a specialist.
 
+   For a sole current `spec-kit` stage, load `skills/spec-kit-validation-bridge/SKILL.md` only
+   when availability is `available`, permission is `read`, and permission state is `allowed`.
+   The bridge checks project opt-in, loads the safety overlay before exactly one approved
+   template, and returns advisory output. On any non-ready handoff, show its native fallback and
+   stop. Never persist automatically; only explicit ModuFlow approval may use the adapter's
+   `--write` path.
+
 3. Always end by showing the **next recommended action and command** so the user can chain without asking "what next?" or memorizing names. This is required after every completed action, including spec, plan, execute, review, release, or issue lifecycle updates. Exact `product:*` input is a power-user escape hatch and should be honored directly.
 4. If a workflow resumes after a long task, context compaction, approval pause, or validation loop, show a short resume banner before continuing so the user can see that ModuFlow is continuing from durable state rather than restarting.
 

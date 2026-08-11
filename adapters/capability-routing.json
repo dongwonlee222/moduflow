@@ -107,7 +107,11 @@
       "explicit_triggers": ["superpowers", "슈퍼파워", "슈퍼파워즈"],
       "exclusions": [
         "implementation plan",
-        "구현 계획"
+        "구현 계획",
+        "spec kit",
+        "speckit",
+        "스펙 킷",
+        "스펙킷"
       ],
       "default_available": false,
       "permission": "write-local",
@@ -156,7 +160,7 @@
       "default_available": false,
       "permission": "read",
       "output_artifact": "specs/{issue_id}/validation.md",
-      "setup_recommendation": "Complete Issue 098-speckit-selective-validation-adapter before enabling Spec Kit routing."
+      "setup_recommendation": "Enable the selective Spec Kit validation bridge in the current host and opt in the target project."
     }
   ]
 }

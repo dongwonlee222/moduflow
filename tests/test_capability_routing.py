@@ -9,6 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "scripts" / "capability_routing.py"
+SPEC_KIT_MODULE_PATH = ROOT / "scripts" / "spec_kit_adapter.py"
+SPEC_KIT_ISSUE_ID = "098-speckit-selective-validation-adapter"
 HOST_AVAILABLE = {
     "data-analytics": True,
     "product-design": True,
@@ -24,6 +26,40 @@ def load_module(testcase):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def load_spec_kit_module(testcase):
+    testcase.assertTrue(
+        SPEC_KIT_MODULE_PATH.exists(), "scripts/spec_kit_adapter.py must exist"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "spec_kit_adapter_for_routing", SPEC_KIT_MODULE_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def write_spec_kit_opt_in(project_root):
+    config = project_root / ".moduflow" / "capabilities.json"
+    config.parent.mkdir(parents=True)
+    config.write_text(
+        json.dumps(
+            {
+                "schema": "moduflow.capabilities.v1",
+                "capabilities": {
+                    "spec-kit": {
+                        "enabled": True,
+                        "source_version": "0.16.1",
+                        "source_sha": "684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5",
+                        "functions": ["clarify", "analyze", "checklist", "converge"],
+                    }
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
 
 def valid_registry(root):
@@ -244,7 +280,8 @@ class CapabilityRoutingTests(unittest.TestCase):
         self.assertEqual(result["outcome"], "delegate")
         self.assertEqual(result["stages"][0]["adapter_id"], "spec-kit")
         self.assertEqual(result["stages"][0]["availability"], "unavailable")
-        self.assertIn("098-speckit", result["fallback"])
+        self.assertIn("Spec Kit", result["fallback"])
+        self.assertIn("opt in", result["fallback"])
 
     def test_explicit_spec_kit_intent_beats_generic_lifecycle_words(self):
         result = self.route("스펙킷으로 스펙을 검사해줘")
@@ -252,6 +289,87 @@ class CapabilityRoutingTests(unittest.TestCase):
         self.assertEqual(result["outcome"], "delegate")
         self.assertEqual(result["stages"][0]["adapter_id"], "spec-kit")
         self.assertEqual(result["stages"][0]["reason_code"], "explicit_adapter")
+
+    def test_available_spec_kit_routes_one_stage_then_adapter_selects_one_template(self):
+        spec_kit = load_spec_kit_module(self)
+        request = "스펙킷으로 요구사항 체크리스트 만들어줘"
+        route = self.route(request, availability={"spec-kit": True})
+
+        self.assertEqual(route["outcome"], "delegate")
+        self.assertEqual([stage["adapter_id"] for stage in route["stages"]], ["spec-kit"])
+        self.assertEqual(route["stages"][0]["permission"], "read")
+        self.assertEqual(route["stages"][0]["permission_state"], "allowed")
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            write_spec_kit_opt_in(project)
+            handoff = spec_kit.build_handoff(
+                ROOT, project, SPEC_KIT_ISSUE_ID, route["request"], host_available=True
+            )
+
+            self.assertEqual(handoff["outcome"], "ready")
+            self.assertEqual(handoff["function"], "checklist")
+            self.assertEqual(
+                handoff["source"]["template"],
+                "vendor/spec-kit/0.16.1/commands/checklist.md",
+            )
+            self.assertFalse(
+                (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
+            )
+
+    def test_implementation_language_cannot_select_a_spec_kit_function(self):
+        spec_kit = load_spec_kit_module(self)
+        requests = (
+            "스펙킷으로 구현해줘",
+            "스펙킷으로 코드를 작성해줘",
+            "스펙킷으로 Git 작업해줘",
+            "스펙킷으로 commit 해줘",
+            "스펙킷으로 review 해줘",
+            "스펙킷으로 PR 만들어줘",
+            "스펙킷으로 release 해줘",
+            "스펙킷으로 deployment 해줘",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            write_spec_kit_opt_in(project)
+            for request in requests:
+                with self.subTest(request=request):
+                    route = self.route(
+                        request, availability={**HOST_AVAILABLE, "spec-kit": True}
+                    )
+
+                    self.assertEqual(route["outcome"], "delegate")
+                    self.assertEqual(
+                        [stage["adapter_id"] for stage in route["stages"]],
+                        ["spec-kit"],
+                    )
+                    self.assertIsNone(spec_kit.select_function(route["request"]))
+                    handoff = spec_kit.build_handoff(
+                        ROOT,
+                        project,
+                        SPEC_KIT_ISSUE_ID,
+                        route["request"],
+                        host_available=True,
+                    )
+
+                    self.assertEqual(handoff["outcome"], "unsupported")
+                    self.assertIsNotNone(handoff["fallback"])
+            self.assertFalse(
+                (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
+            )
+
+    def test_product_commands_stay_local_and_ordinary_implementation_uses_superpowers(self):
+        for request in ("product:spec", "product:review", "product:pr", "product:release"):
+            with self.subTest(request=request):
+                result = self.route(request)
+                self.assertEqual(result["outcome"], "none")
+                self.assertEqual(result["stages"], [])
+
+        implementation = self.route("API를 구현하고 테스트해줘")
+        self.assertEqual(implementation["outcome"], "delegate")
+        self.assertEqual(
+            [stage["adapter_id"] for stage in implementation["stages"]],
+            ["superpowers"],
+        )
 
     def test_availability_defaults_fail_closed_without_host_confirmation(self):
         result = self.route("전환율을 분석해줘", availability={})
