@@ -572,6 +572,7 @@ git commit -m "feat(098): connect selective Spec Kit validation bridge" -m "Issu
 - Create: `tests/fixtures/spec-kit-selective-validation/results/*.json`
 - Create: `specs/098-speckit-selective-validation-adapter/pilot-report.md`
 - Create: `specs/098-speckit-selective-validation-adapter/status.md`
+- Create: `specs/098-speckit-selective-validation-adapter/review-handoff.md`
 - Modify: `scripts/validate_moduflow.py`
 - Modify: `tests/test_validation_distribution.py`
 - Modify: `.claude-plugin/plugin.json`
