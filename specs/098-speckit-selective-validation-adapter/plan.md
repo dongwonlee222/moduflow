@@ -480,7 +480,9 @@ git commit -m "feat(098): enforce advisory Spec Kit result safety" -m "Issue: 09
 - Modify: `commands/moduflow.md`
 - Modify: `skills/index/SKILL.md`
 - Modify: `skills/pm-execution-router/SKILL.md`
+- Modify: `scripts/spec_kit_adapter.py`
 - Modify: `tests/test_capability_routing.py`
+- Modify: `tests/test_spec_kit_adapter.py`
 - Modify: `tests/test_validation_distribution.py`
 
 **Interfaces:**
@@ -509,6 +511,10 @@ def test_implementation_language_cannot_select_a_spec_kit_function(self):
 ```
 
 Distribution tests assert that the bridge and command files are packaged. Ownership is proved through executable routing/adapter outcomes rather than source-text matching: direct `product:*` remains local, ordinary implementation selects Superpowers, and explicit Spec Kit implementation/Git/review/PR/release/deployment requests select no Spec Kit function and create no artifact.
+
+Integration review may harden `select_function()` and its adapter tests when ownership-boundary
+language is combined with an otherwise valid validation-function trigger. This fail-closed check
+belongs to bridge integration because routing and function selection must agree on the same request.
 
 - [ ] **Step 2: Run the RED bridge tests**
 
