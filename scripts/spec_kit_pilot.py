@@ -301,6 +301,31 @@ def _validate_matrix(cases):
         )
 
 
+def _validate_result_provenance(cases, result_base):
+    """Reload every success snapshot from an explicit trusted fixture directory."""
+    if result_base is None:
+        _error(
+            "result_base_required",
+            "success evidence requires an explicit result fixture directory",
+        )
+    for case in cases:
+        if case["class"] != "success":
+            continue
+        result = _load_result(result_base, case["result_file"])
+        if result["issue_id"] != ISSUE_ID or result["function"] != case["function"]:
+            _error("invalid_result_snapshot", "result issue/function does not match its case")
+        if (
+            result["findings"],
+            result["elapsed_ms"],
+            result["loaded_context_chars"],
+        ) != (
+            case["findings"],
+            case["elapsed_ms"],
+            case["loaded_context_chars"],
+        ):
+            _error("invalid_result_snapshot", "case metrics must match the result snapshot")
+
+
 def _function_metrics(cases):
     per_function = {}
     for function in sorted(FUNCTIONS):
@@ -328,7 +353,7 @@ def _function_metrics(cases):
     return per_function
 
 
-def evaluate_cases(cases):
+def evaluate_cases(cases, result_base=None):
     if not isinstance(cases, list):
         _error("invalid_cases", "cases must be a list")
     normalized = [_normalize_case(case) for case in cases]
@@ -336,6 +361,7 @@ def evaluate_cases(cases):
     if len(ids) != len(set(ids)):
         _error("duplicate_case_id", "case ids must be unique")
     _validate_matrix(normalized)
+    _validate_result_provenance(normalized, result_base)
     normalized.sort(key=lambda case: case["id"])
     findings = [finding for case in normalized for finding in case["findings"]]
     total_findings = len(findings)
@@ -487,10 +513,10 @@ def _report_target(root):
     return _contained_under_root(root, root / REPORT_RELATIVE_PATH, "unsafe_output_path")
 
 
-def write_report(root, report):
+def write_report(root, report, result_base=None):
     if not isinstance(report, dict) or "cases" not in report:
         _error("invalid_report", "pilot report must contain evaluated cases")
-    validated_report = evaluate_cases(report["cases"])
+    validated_report = evaluate_cases(report["cases"], result_base=result_base)
     if report != validated_report:
         _error("invalid_report", "pilot report metrics must match its canonical case matrix")
     report = validated_report
@@ -528,9 +554,12 @@ def main(argv=None):
     try:
         root = Path(args.project_root).resolve()
         fixtures = _contained_fixture_path(root, args.fixtures)
-        report = evaluate_cases(load_cases(fixtures)["cases"])
+        result_base = fixtures.parent
+        report = evaluate_cases(load_cases(fixtures)["cases"], result_base=result_base)
         if args.write and report["passed"]:
-            report["report_path"] = str(write_report(root, report).relative_to(root))
+            report["report_path"] = str(
+                write_report(root, report, result_base=result_base).relative_to(root)
+            )
             report["written"] = True
         else:
             report["written"] = False
