@@ -12,6 +12,7 @@ CONFIG_SCHEMA = "moduflow.capabilities.v1"
 HANDOFF_SCHEMA = "moduflow.spec-kit-handoff.v1"
 MANIFEST_SCHEMA = "moduflow.spec-kit-manifest.v1"
 RESULT_SCHEMA = "moduflow.spec-kit-result.v1"
+ERROR_SCHEMA = "moduflow.spec-kit-error.v1"
 APPROVED_VERSION = "0.16.1"
 APPROVED_SHA = "684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5"
 FUNCTIONS = ("clarify", "analyze", "checklist", "converge")
@@ -553,7 +554,16 @@ def main(argv=None):
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return 0
     if args.accept_result is None or args.issue_id is None:
-        parser.error("--issue-id and --accept-result are required unless --configure is used")
+        envelope = {
+            "schema": ERROR_SCHEMA,
+            "ok": False,
+            "error": {
+                "code": "invalid_arguments",
+                "message": "--issue-id and --accept-result are required unless --configure is used",
+            },
+        }
+        print(json.dumps(envelope, ensure_ascii=False, sort_keys=True))
+        return 2
     try:
         payload = json.loads(args.accept_result)
         validated = validate_result_shape(payload)
@@ -568,11 +578,13 @@ def main(argv=None):
         return 0
     except json.JSONDecodeError:
         envelope = {
+            "schema": ERROR_SCHEMA,
             "ok": False,
             "error": {"code": "invalid_result", "message": "result must be valid JSON"},
         }
     except SpecKitAdapterError as exc:
         envelope = {
+            "schema": ERROR_SCHEMA,
             "ok": False,
             "error": {"code": exc.code, "message": exc.safe_message},
         }

@@ -370,5 +370,18 @@ class SpecKitPersistenceTests(unittest.TestCase):
 
         bad = subprocess.run(command[:-1] + ["not-json"], capture_output=True, text=True, check=False)
         self.assertNotEqual(bad.returncode, 0)
-        self.assertFalse(json.loads(bad.stdout)["ok"])
+        bad_payload = json.loads(bad.stdout)
+        self.assertFalse(bad_payload["ok"])
+        self.assertEqual(bad_payload["schema"], "moduflow.spec-kit-error.v1")
         self.assertNotIn("Traceback", bad.stderr)
+
+        missing_issue = subprocess.run(
+            [sys.executable, str(MODULE_PATH), str(self.project), "--accept-result", json.dumps(result)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(missing_issue.returncode, 0)
+        self.assertEqual(
+            json.loads(missing_issue.stdout)["schema"], "moduflow.spec-kit-error.v1"
+        )
