@@ -83,6 +83,22 @@ def _error(code, message):
     raise SpecKitAdapterError(code, message)
 
 
+def _error_envelope(code, message):
+    return {
+        "schema": ERROR_SCHEMA,
+        "ok": False,
+        "error": {"code": code, "message": message},
+    }
+
+
+class JsonErrorArgumentParser(argparse.ArgumentParser):
+    """Keep all command-line parse failures on the stable JSON error boundary."""
+
+    def error(self, message):
+        print(json.dumps(_error_envelope("invalid_arguments", message), ensure_ascii=False, sort_keys=True))
+        self.exit(2)
+
+
 def _only_keys(payload, allowed, level):
     unknown = set(payload) - allowed
     if unknown:
@@ -533,7 +549,7 @@ def _config_payload(functions):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Configure project-local Spec Kit opt-in")
+    parser = JsonErrorArgumentParser(description="Configure project-local Spec Kit opt-in")
     parser.add_argument("project_root")
     parser.add_argument("--configure", action="store_true")
     parser.add_argument("--functions")
@@ -554,15 +570,10 @@ def main(argv=None):
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return 0
     if args.accept_result is None or args.issue_id is None:
-        envelope = {
-            "schema": ERROR_SCHEMA,
-            "ok": False,
-            "error": {
-                "code": "invalid_arguments",
-                "message": "--issue-id and --accept-result are required unless --configure is used",
-            },
-        }
-        print(json.dumps(envelope, ensure_ascii=False, sort_keys=True))
+        print(json.dumps(_error_envelope(
+            "invalid_arguments",
+            "--issue-id and --accept-result are required unless --configure is used",
+        ), ensure_ascii=False, sort_keys=True))
         return 2
     try:
         payload = json.loads(args.accept_result)
@@ -577,17 +588,9 @@ def main(argv=None):
         print(json.dumps(envelope, ensure_ascii=False, sort_keys=True))
         return 0
     except json.JSONDecodeError:
-        envelope = {
-            "schema": ERROR_SCHEMA,
-            "ok": False,
-            "error": {"code": "invalid_result", "message": "result must be valid JSON"},
-        }
+        envelope = _error_envelope("invalid_result", "result must be valid JSON")
     except SpecKitAdapterError as exc:
-        envelope = {
-            "schema": ERROR_SCHEMA,
-            "ok": False,
-            "error": {"code": exc.code, "message": exc.safe_message},
-        }
+        envelope = _error_envelope(exc.code, exc.safe_message)
     print(json.dumps(envelope, ensure_ascii=False, sort_keys=True))
     return 2
 

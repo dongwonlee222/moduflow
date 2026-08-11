@@ -385,3 +385,42 @@ class SpecKitPersistenceTests(unittest.TestCase):
         self.assertEqual(
             json.loads(missing_issue.stdout)["schema"], "moduflow.spec-kit-error.v1"
         )
+
+    def test_cli_missing_accept_result_value_is_json_error(self):
+        """Leaving argparse's missing-option branch intact would emit usage text to stderr."""
+        result = subprocess.run(
+            [sys.executable, str(MODULE_PATH), str(self.project), "--accept-result"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(json.loads(result.stdout)["schema"], "moduflow.spec-kit-error.v1")
+        self.assertEqual(result.stderr, "")
+
+    def test_cli_missing_project_root_is_json_error(self):
+        """Leaving argparse's missing-positional branch intact would emit usage text to stderr."""
+        result = subprocess.run(
+            [sys.executable, str(MODULE_PATH), "--accept-result", "{}"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(json.loads(result.stdout)["schema"], "moduflow.spec-kit-error.v1")
+        self.assertEqual(result.stderr, "")
+
+    def test_cli_unknown_option_is_json_error(self):
+        """Leaving argparse's unknown-option branch intact would emit usage text to stderr."""
+        result = subprocess.run(
+            [sys.executable, str(MODULE_PATH), str(self.project), "--not-an-option"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(json.loads(result.stdout)["schema"], "moduflow.spec-kit-error.v1")
+        self.assertEqual(result.stderr, "")
