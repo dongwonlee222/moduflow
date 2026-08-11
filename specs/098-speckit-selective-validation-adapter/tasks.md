@@ -9,7 +9,7 @@ Plan: `specs/098-speckit-selective-validation-adapter/plan.md`
 
 ## Stream B
 
-- [ ] B1 Pin the four official 0.16.1 templates at SHA `684b3d8e`, add the exact-hash manifest and atomic sync tool, complete manifest/hash handoff verification, and document the selective adapter policy. [files: scripts/spec_kit_adapter.py, tests/test_spec_kit_adapter.py, scripts/sync_spec_kit_templates.py, tests/test_spec_kit_vendor_assets.py, vendor/spec-kit/0.16.1/manifest.json, vendor/spec-kit/0.16.1/commands/clarify.md, vendor/spec-kit/0.16.1/commands/analyze.md, vendor/spec-kit/0.16.1/commands/checklist.md, vendor/spec-kit/0.16.1/commands/converge.md, adapters/spec-kit.yaml, vendor/README.md] [depends: A1] [shared_state: true]
+- [x] B1 Pin the four official 0.16.1 templates at SHA `684b3d8e`, add the exact-hash manifest and atomic sync tool, complete manifest/hash handoff verification, and document the selective adapter policy. [files: scripts/spec_kit_adapter.py, tests/test_spec_kit_adapter.py, scripts/sync_spec_kit_templates.py, tests/test_spec_kit_vendor_assets.py, vendor/spec-kit/0.16.1/manifest.json, vendor/spec-kit/0.16.1/commands/clarify.md, vendor/spec-kit/0.16.1/commands/analyze.md, vendor/spec-kit/0.16.1/commands/checklist.md, vendor/spec-kit/0.16.1/commands/converge.md, adapters/spec-kit.yaml, vendor/README.md] [depends: A1] [shared_state: true]
 
 ## Stream C
 
