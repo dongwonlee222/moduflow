@@ -41,7 +41,9 @@ template, or project artifact.
 
 Direct `product:*` commands remain local. Implementation, code, Git, commit, review, PR,
 release, and deployment requests are unsupported by this bridge and fall back to native
-ModuFlow/Superpowers. Never edit `spec.md`, `plan.md`, `tasks.md`, code, Git, issue state,
+ModuFlow/Superpowers. This ownership boundary wins before function selection even when the same
+request also says clarify, analyze, checklist, or converge. Never edit `spec.md`, `plan.md`,
+`tasks.md`, code, Git, issue state,
 roadmap, review, PR, release, or deployment state.
 
 ## Quick Reference

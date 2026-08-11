@@ -52,7 +52,11 @@
         "issue status",
         "이슈 상태",
         "status dashboard",
-        "상태 대시보드"
+        "상태 대시보드",
+        "spec kit",
+        "speckit",
+        "스펙 킷",
+        "스펙킷"
       ],
       "default_available": false,
       "permission": "read",

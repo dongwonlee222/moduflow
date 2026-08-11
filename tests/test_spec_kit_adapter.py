@@ -75,6 +75,26 @@ class SpecKitConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(self.ska.SpecKitAdapterError, "ambiguous_function"):
             self.ska.select_function("스펙킷으로 분석하고 체크리스트도 만들어줘")
 
+    def test_ownership_language_blocks_function_selection_before_template_handoff(self):
+        self.write_config(opted_in_config())
+        requests = (
+            "스펙킷으로 코드를 분석해줘",
+            "Spec Kit analyze the Git changes",
+            "스펙킷으로 PR 리뷰를 분석해줘",
+            "Spec Kit checklist for the deployment",
+            "스펙킷으로 릴리즈 요구사항을 명확화해줘",
+        )
+
+        for request in requests:
+            with self.subTest(request=request):
+                self.assertIsNone(self.ska.select_function(request))
+                handoff = self.ska.build_handoff(
+                    ROOT, self.project, ISSUE_ID, request, host_available=True
+                )
+                self.assertEqual(handoff["outcome"], "unsupported")
+                self.assertIsNone(handoff["function"])
+                self.assertIsNone(handoff["source"]["template"])
+
     def test_valid_opt_in_with_verified_assets_returns_one_ready_template(self):
         self.write_config(opted_in_config(("analyze",)))
 

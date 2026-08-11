@@ -40,6 +40,12 @@ FUNCTION_PHRASES = {
     "checklist": ("checklist", "체크리스트", "요구사항 점검"),
     "converge": ("converge", "convergence", "수렴", "남은 작업"),
 }
+OWNERSHIP_PATTERN = re.compile(
+    r"\b(?:implement(?:ation|ed|ing)?|code|git|commit(?:ted|ting|s)?|"
+    r"review(?:ed|ing|s)?|pr|pull\s+request|release(?:d|s|ing)?|"
+    r"deploy(?:ment|ed|ing|s)?)\b"
+)
+OWNERSHIP_PHRASES = ("구현", "개발", "코드", "깃", "커밋", "리뷰", "피알", "릴리즈", "배포")
 ISSUE_ID_PATTERN = re.compile(r"^[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)*$")
 CONFIG_TOP_LEVEL = {"schema", "capabilities"}
 CONFIG_CAPABILITY_LEVEL = {"spec-kit"}
@@ -160,6 +166,8 @@ def load_project_config(project_root):
 
 def select_function(request):
     text = " ".join(str(request or "").lower().split())
+    if OWNERSHIP_PATTERN.search(text) or any(phrase in text for phrase in OWNERSHIP_PHRASES):
+        return None
     matches = [
         name
         for name, phrases in FUNCTION_PHRASES.items()

@@ -316,6 +316,49 @@ class CapabilityRoutingTests(unittest.TestCase):
                 (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
             )
 
+    def test_available_spec_kit_functions_each_route_only_spec_kit_with_all_capabilities(self):
+        spec_kit = load_spec_kit_module(self)
+        requests = {
+            "clarify": "스펙킷으로 요구사항 명확화해줘",
+            "analyze": "Spec Kit analyze the requirements",
+            "checklist": "스펙킷으로 요구사항 체크리스트 만들어줘",
+            "converge": "Spec Kit converge the remaining work",
+        }
+
+        for expected_function, request in requests.items():
+            with self.subTest(function=expected_function):
+                route = self.route(
+                    request, availability={capability: True for capability in HOST_AVAILABLE}
+                )
+
+                self.assertEqual(route["outcome"], "delegate")
+                self.assertEqual(
+                    [stage["adapter_id"] for stage in route["stages"]],
+                    ["spec-kit"],
+                )
+                self.assertEqual(spec_kit.select_function(route["request"]), expected_function)
+
+    def test_ownership_language_overrides_spec_kit_function_selection(self):
+        spec_kit = load_spec_kit_module(self)
+        requests = (
+            "스펙킷으로 코드를 분석해줘",
+            "Spec Kit analyze the Git changes",
+            "스펙킷으로 PR 리뷰를 분석해줘",
+        )
+
+        for request in requests:
+            with self.subTest(request=request):
+                route = self.route(
+                    request, availability={capability: True for capability in HOST_AVAILABLE}
+                )
+
+                self.assertEqual(route["outcome"], "delegate")
+                self.assertEqual(
+                    [stage["adapter_id"] for stage in route["stages"]],
+                    ["spec-kit"],
+                )
+                self.assertIsNone(spec_kit.select_function(route["request"]))
+
     def test_implementation_language_cannot_select_a_spec_kit_function(self):
         spec_kit = load_spec_kit_module(self)
         requests = (
