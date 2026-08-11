@@ -78,6 +78,8 @@ REQUIRED_FILES = [
     "scripts/capability_routing_simulation.py",
     "scripts/spec_kit_adapter.py",
     "scripts/spec_kit_pilot.py",
+    "scripts/sync_spec_kit_templates.py",
+    "templates/moduflow-capabilities.json",
     "tests/fixtures/capability-routing/cases.json",
     "tests/fixtures/spec-kit-selective-validation/cases.json",
     "tests/fixtures/spec-kit-selective-validation/results/clarify.json",

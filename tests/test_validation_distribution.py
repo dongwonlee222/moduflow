@@ -617,6 +617,8 @@ next_command: {next_command}
             "skills/pm-execution-router/SKILL.md",
             "scripts/spec_kit_adapter.py",
             "scripts/spec_kit_pilot.py",
+            "scripts/sync_spec_kit_templates.py",
+            "templates/moduflow-capabilities.json",
             "vendor/spec-kit/0.16.1/manifest.json",
             "vendor/spec-kit/0.16.1/commands/clarify.md",
             "vendor/spec-kit/0.16.1/commands/analyze.md",

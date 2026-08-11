@@ -25,24 +25,11 @@ class SpecKitPilotTests(unittest.TestCase):
     def setUpClass(cls):
         cls.pilot = load_module()
 
-    def minimal_case(self, **updates):
-        case = {
-            "id": "ownership-git-negative",
-            "class": "ownership",
-            "function": None,
-            "boundary": "git",
-            "passed": True,
-            "findings": [],
-            "elapsed_ms": 0,
-            "loaded_context_chars": 0,
-            "boundary_violation": False,
-            "unauthorized_write": False,
-            "fanout": 0,
-            "false_execution_claim": False,
-            "output_artifact": None,
-        }
-        case.update(updates)
-        return case
+    def canonical_cases(self):
+        return json.loads(json.dumps(self.pilot.load_cases(FIXTURES)["cases"]))
+
+    def case(self, cases, case_id):
+        return next(case for case in cases if case["id"] == case_id)
 
     def copy_fixtures(self, root):
         destination = root / "tests" / "fixtures" / "spec-kit-selective-validation"
@@ -76,49 +63,46 @@ class SpecKitPilotTests(unittest.TestCase):
         )
 
     def test_pilot_fails_when_any_boundary_metric_is_nonzero(self):
-        case = self.minimal_case(
+        cases = self.canonical_cases()
+        case = self.case(cases, "ownership-git")
+        case.update(
             passed=False,
             boundary_violation=True,
             unauthorized_write=True,
-            fanout=2,
             false_execution_claim=True,
         )
 
-        report = self.pilot.evaluate_cases([case])
+        report = self.pilot.evaluate_cases(cases)
 
         self.assertEqual(report["metrics"]["boundary_violations"], 1)
         self.assertEqual(report["metrics"]["unauthorized_writes"], 1)
-        self.assertEqual(report["metrics"]["unwanted_fanout"], 1)
+        self.assertEqual(report["metrics"]["unwanted_fanout"], 0)
         self.assertEqual(report["metrics"]["false_execution_claims"], 1)
         self.assertFalse(report["passed"])
 
     def test_metrics_use_total_finding_denominator_and_sum_cost(self):
-        cases = [
-            self.minimal_case(
-                id="success-analyze",
-                function="analyze",
-                boundary=None,
-                findings=[
-                    {
-                        "id": "finding-a",
-                        "summary": "Unique useful finding",
-                        "reviewer_disposition": "useful_unique",
-                        "native_overlap": False,
-                    },
-                    {
-                        "id": "finding-b",
-                        "summary": "Invalid finding",
-                        "reviewer_disposition": "rejected_invalid",
-                        "native_overlap": True,
-                    },
-                ],
-                elapsed_ms=25,
-                loaded_context_chars=401,
-                fanout=1,
-                output_artifact="specs/098-speckit-selective-validation-adapter/validation.md",
-                **{"class": "success"},
-            )
-        ]
+        cases = self.canonical_cases()
+        for case in cases:
+            if case["class"] == "success":
+                case.update(findings=[], elapsed_ms=0, loaded_context_chars=0)
+        self.case(cases, "success-analyze").update(
+            findings=[
+                {
+                    "id": "finding-a",
+                    "summary": "Unique useful finding",
+                    "reviewer_disposition": "useful_unique",
+                    "native_overlap": False,
+                },
+                {
+                    "id": "finding-b",
+                    "summary": "Invalid finding",
+                    "reviewer_disposition": "rejected_invalid",
+                    "native_overlap": True,
+                },
+            ],
+            elapsed_ms=25,
+            loaded_context_chars=401,
+        )
 
         report = self.pilot.evaluate_cases(cases)
 
@@ -130,7 +114,11 @@ class SpecKitPilotTests(unittest.TestCase):
         self.assertEqual(report["metrics"]["estimated_loaded_tokens"], 101)
 
     def test_zero_findings_have_zero_rates(self):
-        report = self.pilot.evaluate_cases([self.minimal_case()])
+        cases = self.canonical_cases()
+        for case in cases:
+            if case["class"] == "success":
+                case["findings"] = []
+        report = self.pilot.evaluate_cases(cases)
 
         self.assertEqual(report["metrics"]["false_positive_rate"], 0.0)
         self.assertEqual(report["metrics"]["native_overlap_rate"], 0.0)
@@ -146,39 +134,32 @@ class SpecKitPilotTests(unittest.TestCase):
         self.assertTrue(all(case["loaded_context_chars"] > 0 for case in success))
 
     def test_unknown_case_field_is_rejected(self):
-        case = self.minimal_case(shell_command="git status")
+        cases = self.canonical_cases()
+        cases[0]["shell_command"] = "git status"
 
         with self.assertRaisesRegex(self.pilot.PilotError, "unknown_case_field"):
-            self.pilot.evaluate_cases([case])
+            self.pilot.evaluate_cases(cases)
 
     def test_malformed_class_function_and_finding_are_rejected(self):
+        cases = self.canonical_cases()
+        cases[0]["class"] = "executed"
         with self.assertRaisesRegex(self.pilot.PilotError, "invalid_class"):
-            self.pilot.evaluate_cases([self.minimal_case(**{"class": "executed"})])
+            self.pilot.evaluate_cases(cases)
+
+        cases = self.canonical_cases()
+        self.case(cases, "success-analyze")["function"] = "implement"
         with self.assertRaisesRegex(self.pilot.PilotError, "invalid_function"):
-            self.pilot.evaluate_cases(
-                [self.minimal_case(**{"class": "success", "function": "implement", "boundary": None})]
-            )
+            self.pilot.evaluate_cases(cases)
         finding = {
             "id": "finding-a",
             "summary": "Finding",
             "reviewer_disposition": "approved_without_review",
             "native_overlap": False,
         }
+        cases = self.canonical_cases()
+        self.case(cases, "success-analyze")["findings"] = [finding]
         with self.assertRaisesRegex(self.pilot.PilotError, "invalid_finding"):
-            self.pilot.evaluate_cases(
-                [
-                    self.minimal_case(
-                        **{
-                            "class": "success",
-                            "function": "analyze",
-                            "boundary": None,
-                            "findings": [finding],
-                            "fanout": 1,
-                            "output_artifact": "specs/098-speckit-selective-validation-adapter/validation.md",
-                        }
-                    )
-                ]
-            )
+            self.pilot.evaluate_cases(cases)
 
     def test_bool_negative_and_non_numeric_costs_are_rejected(self):
         for field, value in (
@@ -188,27 +169,59 @@ class SpecKitPilotTests(unittest.TestCase):
             ("fanout", False),
         ):
             with self.subTest(field=field, value=value):
+                cases = self.canonical_cases()
+                cases[0][field] = value
                 with self.assertRaisesRegex(self.pilot.PilotError, "invalid_metric"):
-                    self.pilot.evaluate_cases([self.minimal_case(**{field: value})])
+                    self.pilot.evaluate_cases(cases)
 
     def test_duplicate_ids_and_unsafe_output_paths_are_rejected(self):
-        case = self.minimal_case()
+        cases = self.canonical_cases()
         with self.assertRaisesRegex(self.pilot.PilotError, "duplicate_case_id"):
-            self.pilot.evaluate_cases([case, dict(case)])
+            self.pilot.evaluate_cases(cases + [dict(cases[0])])
+        cases = self.canonical_cases()
+        self.case(cases, "success-analyze")["output_artifact"] = "../../outside.md"
         with self.assertRaisesRegex(self.pilot.PilotError, "unsafe_output_path"):
-            self.pilot.evaluate_cases(
-                [
-                    self.minimal_case(
-                        **{
-                            "class": "success",
-                            "function": "analyze",
-                            "boundary": None,
-                            "fanout": 1,
-                            "output_artifact": "../../outside.md",
-                        }
-                    )
-                ]
-            )
+            self.pilot.evaluate_cases(cases)
+
+    def test_reduced_matrix_is_rejected_before_evaluation(self):
+        cases = self.canonical_cases()
+
+        with self.assertRaisesRegex(self.pilot.PilotError, "invalid_matrix"):
+            self.pilot.evaluate_cases(cases[:-1])
+
+    def test_success_matrix_requires_one_result_for_each_function(self):
+        cases = self.canonical_cases()
+        self.case(cases, "success-clarify")["result_file"] = None
+        with self.assertRaisesRegex(self.pilot.PilotError, "invalid_matrix"):
+            self.pilot.evaluate_cases(cases)
+
+        cases = [case for case in self.canonical_cases() if case["id"] != "success-clarify"]
+        with self.assertRaisesRegex(self.pilot.PilotError, "invalid_matrix"):
+            self.pilot.evaluate_cases(cases)
+
+    def test_fallback_matrix_covers_all_functions_without_result_or_fanout(self):
+        cases = [
+            case
+            for case in self.canonical_cases()
+            if case["id"] != "unavailable-checklist"
+        ]
+        with self.assertRaisesRegex(self.pilot.PilotError, "invalid_matrix"):
+            self.pilot.evaluate_cases(cases)
+
+        cases = self.canonical_cases()
+        self.case(cases, "disabled-analyze")["fanout"] = 1
+        with self.assertRaisesRegex(self.pilot.PilotError, "invalid_matrix"):
+            self.pilot.evaluate_cases(cases)
+
+    def test_ownership_matrix_covers_all_boundaries_without_result_or_fanout(self):
+        cases = [case for case in self.canonical_cases() if case["id"] != "ownership-git"]
+        with self.assertRaisesRegex(self.pilot.PilotError, "invalid_matrix"):
+            self.pilot.evaluate_cases(cases)
+
+        cases = self.canonical_cases()
+        self.case(cases, "ownership-review")["fanout"] = 1
+        with self.assertRaisesRegex(self.pilot.PilotError, "invalid_matrix"):
+            self.pilot.evaluate_cases(cases)
 
     def test_report_and_per_function_evidence_are_deterministically_sorted(self):
         cases = self.pilot.load_cases(FIXTURES)["cases"]
@@ -258,6 +271,36 @@ class SpecKitPilotTests(unittest.TestCase):
             result = self.run_cli(root, fixtures, "--write")
 
             self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(target.read_bytes(), b"preserve-me\n")
+
+    def test_reduced_matrix_cli_exits_nonzero_without_replacing_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fixtures = self.copy_fixtures(root)
+            payload = json.loads(fixtures.read_text(encoding="utf-8"))
+            payload["cases"] = payload["cases"][:-1]
+            fixtures.write_text(json.dumps(payload), encoding="utf-8")
+            target = root / "specs" / "098-speckit-selective-validation-adapter" / "pilot-report.md"
+            target.parent.mkdir(parents=True)
+            target.write_bytes(b"preserve-me\n")
+
+            result = self.run_cli(root, fixtures, "--write")
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(target.read_bytes(), b"preserve-me\n")
+
+    def test_direct_write_revalidates_matrix_before_replacing_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "specs" / "098-speckit-selective-validation-adapter" / "pilot-report.md"
+            target.parent.mkdir(parents=True)
+            target.write_bytes(b"preserve-me\n")
+            report = self.pilot.evaluate_cases(self.canonical_cases())
+            report["cases"] = report["cases"][:-1]
+
+            with self.assertRaisesRegex(self.pilot.PilotError, "invalid_matrix"):
+                self.pilot.write_report(root, report)
+
             self.assertEqual(target.read_bytes(), b"preserve-me\n")
 
     def test_symlinked_output_ancestor_is_rejected_without_external_write(self):

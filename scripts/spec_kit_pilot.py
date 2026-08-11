@@ -240,7 +240,65 @@ def load_cases(path):
     ids = [case["id"] for case in cases]
     if len(ids) != len(set(ids)):
         _error("duplicate_case_id", "case ids must be unique")
+    _validate_matrix(cases)
     return {"schema": CASES_SCHEMA, "cases": cases}
+
+
+def _validate_matrix(cases):
+    """Require the complete approved pilot matrix before metrics or writes."""
+    if len(cases) < 13:
+        _error("invalid_matrix", "pilot matrix must contain at least 13 cases")
+
+    success = [case for case in cases if case["class"] == "success"]
+    success_functions = [case["function"] for case in success]
+    if len(success) != len(FUNCTIONS) or any(
+        success_functions.count(function) != 1 for function in FUNCTIONS
+    ):
+        _error(
+            "invalid_matrix",
+            "pilot matrix requires exactly one success for each approved function",
+        )
+    if any(
+        not isinstance(case["result_file"], str)
+        or not case["result_file"].strip()
+        or case["fanout"] != 1
+        for case in success
+    ):
+        _error(
+            "invalid_matrix",
+            "success cases require one result snapshot and exactly one loaded template",
+        )
+
+    fallbacks = [
+        case for case in cases if case["class"] in {"disabled", "unavailable"}
+    ]
+    if len(fallbacks) < 4 or {case["function"] for case in fallbacks} != FUNCTIONS:
+        _error(
+            "invalid_matrix",
+            "fallback cases must cover all four approved functions",
+        )
+    if any(case["result_file"] is not None or case["fanout"] != 0 for case in fallbacks):
+        _error(
+            "invalid_matrix",
+            "disabled and unavailable cases cannot claim results or template fan-out",
+        )
+
+    ownership = [case for case in cases if case["class"] == "ownership"]
+    if {case["boundary"] for case in ownership} != BOUNDARIES:
+        _error(
+            "invalid_matrix",
+            "ownership cases must cover implementation, lifecycle, Git, review, and release",
+        )
+    if any(
+        case["function"] is not None
+        or case["result_file"] is not None
+        or case["fanout"] != 0
+        for case in ownership
+    ):
+        _error(
+            "invalid_matrix",
+            "ownership cases cannot claim a function, result, or template fan-out",
+        )
 
 
 def _function_metrics(cases):
@@ -277,6 +335,7 @@ def evaluate_cases(cases):
     ids = [case["id"] for case in normalized]
     if len(ids) != len(set(ids)):
         _error("duplicate_case_id", "case ids must be unique")
+    _validate_matrix(normalized)
     normalized.sort(key=lambda case: case["id"])
     findings = [finding for case in normalized for finding in case["findings"]]
     total_findings = len(findings)
@@ -429,6 +488,12 @@ def _report_target(root):
 
 
 def write_report(root, report):
+    if not isinstance(report, dict) or "cases" not in report:
+        _error("invalid_report", "pilot report must contain evaluated cases")
+    validated_report = evaluate_cases(report["cases"])
+    if report != validated_report:
+        _error("invalid_report", "pilot report metrics must match its canonical case matrix")
+    report = validated_report
     target = _report_target(root)
     rendered = render_report(report).encode("utf-8")
     try:
