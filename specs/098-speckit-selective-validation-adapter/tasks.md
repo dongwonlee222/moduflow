@@ -17,7 +17,7 @@ Plan: `specs/098-speckit-selective-validation-adapter/plan.md`
 
 ## Stream D
 
-- [ ] D1 Connect one-function bridge consumption to Issue 097 routing while preserving lifecycle aliases, native fallbacks, default-unavailable behavior, and all implementation/Git/review/release ownership boundaries. [files: skills/spec-kit-validation-bridge/SKILL.md, adapters/capability-routing.json, commands/moduflow.md, skills/index/SKILL.md, skills/pm-execution-router/SKILL.md, scripts/spec_kit_adapter.py, tests/test_capability_routing.py, tests/test_spec_kit_adapter.py, tests/test_validation_distribution.py] [depends: C1] [shared_state: true]
+- [x] D1 Connect one-function bridge consumption to Issue 097 routing while preserving lifecycle aliases, native fallbacks, default-unavailable behavior, and all implementation/Git/review/release ownership boundaries. [files: skills/spec-kit-validation-bridge/SKILL.md, adapters/capability-routing.json, commands/moduflow.md, skills/index/SKILL.md, skills/pm-execution-router/SKILL.md, scripts/spec_kit_adapter.py, tests/test_capability_routing.py, tests/test_spec_kit_adapter.py, tests/test_validation_distribution.py] [depends: C1] [shared_state: true]
 
 ## Stream E
 
