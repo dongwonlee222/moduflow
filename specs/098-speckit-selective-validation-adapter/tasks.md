@@ -13,7 +13,7 @@ Plan: `specs/098-speckit-selective-validation-adapter/plan.md`
 
 ## Stream C
 
-- [ ] C1 Add the higher-priority safety overlay, strict host-result schema, deterministic run IDs, advisory Markdown rendering, and append-only duplicate-safe `validation.md` persistence. [files: overlays/spec-kit/selective-validation-policy.md, scripts/spec_kit_adapter.py, tests/test_spec_kit_adapter.py] [depends: B1] [shared_state: true]
+- [x] C1 Add the higher-priority safety overlay, strict host-result schema, deterministic run IDs, advisory Markdown rendering, and append-only duplicate-safe `validation.md` persistence. [files: overlays/spec-kit/selective-validation-policy.md, scripts/spec_kit_adapter.py, tests/test_spec_kit_adapter.py] [depends: B1] [shared_state: true]
 
 ## Stream D
 
