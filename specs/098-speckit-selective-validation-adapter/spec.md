@@ -177,6 +177,10 @@ The overlay has higher priority than upstream template text and must state:
    feature branch or `.specify` directory.
 2. Ignore and never execute upstream frontmatter scripts, prerequisite helpers, extension hooks,
    handoff commands, Git operations, or implementation commands.
+   Lifecycle start/begin/pause/stop/resume/continue/finish/complete/close aliases and mutations of
+   status, issue, goal, roadmap, or memory remain native. Git add/stage/stash/fetch/pull/push/
+   merge/rebase/reset/restore/checkout/switch/branch/tag/cherry-pick/revert/clone/commit operations
+   and their Korean equivalents also remain native before function selection.
 3. Read only declared canonical artifacts contained under the target project.
 4. Treat upstream mutation instructions as advisory candidates. Only ModuFlow may write, after
    its existing permission and lifecycle gates.
@@ -202,7 +206,13 @@ The overlay has higher priority than upstream template text and must state:
     "template": "vendor/spec-kit/0.16.1/commands/analyze.md"
   },
   "permission": "read",
-  "inputs": ["spec.md", "plan.md", "tasks.md", "constitution.md"],
+  "inputs": [
+    "specs/098-speckit-selective-validation-adapter/spec.md",
+    "specs/098-speckit-selective-validation-adapter/plan.md",
+    "specs/098-speckit-selective-validation-adapter/tasks.md",
+    "workspace/constitution.md"
+  ],
+  "input_hash": "sha256:<canonical-path-and-byte-digest>",
   "output_artifact": "specs/098-speckit-selective-validation-adapter/validation.md",
   "limitations": ["advisory-only", "no upstream scripts or hooks"],
   "fallback": null
@@ -210,7 +220,14 @@ The overlay has higher priority than upstream template text and must state:
 ```
 
 Allowed outcomes are `ready`, `disabled`, `unavailable`, `unsupported`, and `blocked`.
-Every non-ready outcome sets `fallback` and leaves `output_artifact` unchanged.
+Every non-ready outcome sets `fallback` and exposes no eligible template. Missing, non-regular, or
+symlinked canonical inputs use the explicit native prerequisite fallback and set
+`output_artifact: null`; config/output containment failures remain distinct blocked outcomes.
+
+The CLI has three mutually exclusive modes: configure, read-only handoff, and accepted-result.
+Read-only handoff is selected by `PROJECT_ROOT --issue-id ID --request TEXT [--host-available]`
+without `--accept-result`; it calls `build_handoff`, emits the stable handoff JSON, and never
+writes. Accepted-result still requires the original request and explicit host-availability proof.
 
 An accepted host result appended to `validation.md` records:
 
@@ -225,23 +242,30 @@ An accepted host result appended to `validation.md` records:
 
 ## Data Flow
 
-1. ModuFlow resolves lifecycle aliases before specialist routing.
+1. ModuFlow normalizes the request, splits punctuation/sequence-delimited clauses, and resolves
+   lifecycle and Git ownership inside each clause before Spec Kit function selection. Token-level
+   action/resource and operation/object relationships claim native ownership; unmistakable Git
+   operations remain intrinsic, arbitrary modifiers do not weaken ownership, and words from
+   separate clauses do not combine.
 2. The capability router detects an explicit Spec Kit request.
-3. The adapter validates target containment, opt-in config, allowed function, pinned assets, and
-   host availability.
+3. The adapter validates no-follow target containment, opt-in config, allowed function, pinned
+   assets, host availability, required canonical regular inputs, and their deterministic byte
+   identity.
 4. If any gate fails, it returns the mapped native fallback and loads no template.
 5. If ready, the bridge loads the safety overlay and exactly one function template.
 6. The host produces an advisory result; no upstream script or command is executed.
 7. ModuFlow shows the result and asks for any mutation approval required by its native workflow.
-8. Accepted evidence is appended to `validation.md`; rejected findings are still recorded with
-   their disposition when the user requests a durable record.
+8. Preview or accepted persistence rebuilds that ready handoff from current disk state; accepted
+   evidence is serialized under a lock and atomically appended to `validation.md`. Rejected
+   findings are still recorded with their disposition when the user requests a durable record.
 
 ## Error Handling
 
-- Invalid JSON, unknown fields, unsafe paths, version drift, asset hash mismatch, unsupported
-  functions, or unavailable host capability fail closed with structured JSON errors.
-- Missing `plan.md`/`tasks.md` for `analyze` or `converge` returns a prerequisite fallback rather
-  than a partial or falsely complete result.
+- Invalid JSON/UTF-8, missing CLI arguments, unknown fields, unsafe paths, version drift, asset
+  hash mismatch, unsupported functions, or unavailable host capability fail closed with
+  `moduflow.spec-kit-error.v1` JSON and no traceback or argparse usage stderr.
+- Any missing, non-regular, or symlinked required canonical input returns a prerequisite fallback
+  rather than a partial or falsely complete result.
 - A bridge result missing source/version/issue/function/permission/output/limitations is rejected
   before persistence.
 - A failed or interrupted run does not create an empty `validation.md` section.
@@ -249,9 +273,12 @@ An accepted host result appended to `validation.md` records:
 
 ## Pilot and Measurement
 
-The pilot includes at least eight committed cases: one successful and one disabled/unavailable
-case for each function, plus negative ownership cases covering implementation, lifecycle, Git,
-review, and release language.
+The pilot includes 13 request-driven committed cases: one successful case for each function, four
+disabled/unavailable cases, plus negative ownership cases covering implementation, lifecycle,
+Git, review, and release language. It also executes 69 canonical ownership probes, 19 adjacent
+phrase-family probes, 14 metamorphic modifier-insertion probes, and 14 ordinary/domain-validation
+positive probes. Outcomes and safety metrics come from executing the real router and adapter in
+isolated contained projects rather than fixture-declared pass booleans.
 
 The pilot report records per function:
 
@@ -281,16 +308,39 @@ pilot has zero boundary-safety violations and documents positive value beyond na
   limitations, fallback, and contained output artifact.
 - `clarify` asks at most five questions; `analyze` is read-only; `checklist` produces advisory
   requirement checks; `converge` produces candidate work without mutating tasks or code.
-- Implementation, lifecycle, Git, review, PR, release, and deployment requests remain owned by
-  ModuFlow/Superpowers and route to no Spec Kit function.
+- Implementation, the complete English/Korean lifecycle alias/mutation vocabulary, every explicit
+  Git operation, review, PR, release, and deployment request remain owned by ModuFlow/Superpowers
+  and route to no Spec Kit function.
+- Ambiguous Git operations (`add`, `stage`, `restore`, `switch`, `branch`, `tag`) claim ownership
+  through token-level verb/object semantics within one clause when an explicit Git context exists
+  or changed/staged/tracked/modified/untracked files, changes, or hunks are targeted. Domain targets
+  such as requirements, acceptance criteria, spec, plan, tasks, validation, coverage, and inputs
+  override generic changes/files unless explicit Git context is present. Plural `stages` remains a
+  noun. Advisory `whether to`, `which ... to`, and `where to` complements remain eligible when the
+  operation targets domain artifacts.
+- Lifecycle action/resource semantics operate anywhere inside one clause across arbitrary
+  auxiliaries/adverbs. A direct validation/requirements/spec domain object stays eligible even if
+  a lifecycle noun appears later; otherwise issue/status/roadmap/goal/memory/project/work-item
+  action↔resource intent is native. Korean resource particles and lifecycle actions in one clause
+  remain native regardless of intervening modifiers.
+- Configure, read-only handoff, and accepted-result CLI modes are mutually exclusive; handoff
+  emits stable JSON without writes, while accepted-result requires request and host proof.
+- Pilot cases/result UTF-8 failures and missing `--fixtures` stay on the shared structured JSON
+  error boundary without traceback or usage stderr.
 - Accepted results append to canonical `validation.md`; duplicate runs are byte-stable no-ops.
-- At least eight function/fallback fixtures and negative ownership fixtures pass offline.
+- Two concurrent duplicate writers serialize to exactly one marker, and persistence rejects stale
+  handoffs, changed inputs/assets/config, or absent host proof before creating output.
+- At least eight function/fallback fixtures, 69 canonical ownership probes, 19 adjacent
+  phrase-family probes, 14 metamorphic insertion probes, and 14 ordinary/domain-validation probes
+  pass offline.
 - Pilot evidence reports value, latency, context cost, false positives, native overlap, and
   boundary safety for all four functions.
 - Boundary violations, unauthorized writes, unwanted fan-out, and false execution claims are all
   zero.
 - No mandatory runtime, database, community extension, or second source of truth is introduced.
-- `python3 -m unittest discover -s tests` and `python3 scripts/release_check.py .` pass.
+- `python3 -m unittest discover -s tests` and `python3 scripts/release_check.py .` pass; release
+  check explicitly re-evaluates the canonical pilot fixture matrix so stale input hashes, context
+  costs, or run IDs fail the release.
 
 ## Risks
 

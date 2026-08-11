@@ -1147,6 +1147,8 @@ issue_id: BIZ-ADVISORY
         self.assertTrue(result["valid"])
         self.assertEqual(result["errors"], [])
         self.assertIn("validate_moduflow", result["checks"])
+        self.assertIn("spec_kit_pilot_provenance", result["checks"])
+        self.assertTrue(result["checks"]["spec_kit_pilot_provenance"]["ok"])
 
     def test_release_check_uses_importable_validation_for_safe_checks(self):
         release_check = load_module("release_check", "scripts/release_check.py")

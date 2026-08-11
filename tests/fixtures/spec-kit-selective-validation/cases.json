@@ -6,160 +6,108 @@
       "class": "disabled",
       "function": "analyze",
       "boundary": null,
-      "passed": true,
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 0,
-      "false_execution_claim": false,
-      "output_artifact": null
+      "request": "Spec Kit analyze the requirements",
+      "expected_outcome": "disabled"
     },
     {
       "id": "disabled-clarify",
       "class": "disabled",
       "function": "clarify",
       "boundary": null,
-      "passed": true,
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 0,
-      "false_execution_claim": false,
-      "output_artifact": null
+      "request": "Spec Kit clarify the requirements",
+      "expected_outcome": "disabled"
     },
     {
       "id": "ownership-git",
       "class": "ownership",
       "function": null,
       "boundary": "git",
-      "passed": true,
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 0,
-      "false_execution_claim": false,
-      "output_artifact": null
+      "request": "Spec Kit analyze then add, stage, stash, fetch, pull, push, merge, rebase, reset, restore, checkout, switch, branch, tag, cherry-pick, revert, clone, and commit repository changes",
+      "expected_outcome": "unsupported"
     },
     {
       "id": "ownership-implementation",
       "class": "ownership",
       "function": null,
       "boundary": "implementation",
-      "passed": true,
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 0,
-      "false_execution_claim": false,
-      "output_artifact": null
+      "request": "Spec Kit analyze the requirements then implement the code",
+      "expected_outcome": "unsupported"
     },
     {
       "id": "ownership-lifecycle",
       "class": "ownership",
       "function": null,
       "boundary": "lifecycle",
-      "passed": true,
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 0,
-      "false_execution_claim": false,
-      "output_artifact": null
+      "request": "Spec Kit analyze then start, begin, pause, stop, resume, continue, finish, complete, and close the issue, then update status, goal, roadmap, and memory",
+      "expected_outcome": "unsupported"
     },
     {
       "id": "ownership-release",
       "class": "ownership",
       "function": null,
       "boundary": "release",
-      "passed": true,
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 0,
-      "false_execution_claim": false,
-      "output_artifact": null
+      "request": "Spec Kit checklist the requirements then release",
+      "expected_outcome": "unsupported"
     },
     {
       "id": "ownership-review",
       "class": "ownership",
       "function": null,
       "boundary": "review",
-      "passed": true,
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 0,
-      "false_execution_claim": false,
-      "output_artifact": null
+      "request": "Spec Kit clarify the requirements then review the PR",
+      "expected_outcome": "unsupported"
     },
     {
       "id": "success-analyze",
       "class": "success",
       "function": "analyze",
       "boundary": null,
-      "passed": true,
-      "result_file": "results/analyze.json",
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 1,
-      "false_execution_claim": false,
-      "output_artifact": "specs/098-speckit-selective-validation-adapter/validation.md"
+      "request": "Spec Kit analyze the requirements",
+      "expected_outcome": "ready",
+      "result_file": "results/analyze.json"
     },
     {
       "id": "success-checklist",
       "class": "success",
       "function": "checklist",
       "boundary": null,
-      "passed": true,
-      "result_file": "results/checklist.json",
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 1,
-      "false_execution_claim": false,
-      "output_artifact": "specs/098-speckit-selective-validation-adapter/validation.md"
+      "request": "Spec Kit checklist the requirements",
+      "expected_outcome": "ready",
+      "result_file": "results/checklist.json"
     },
     {
       "id": "success-clarify",
       "class": "success",
       "function": "clarify",
       "boundary": null,
-      "passed": true,
-      "result_file": "results/clarify.json",
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 1,
-      "false_execution_claim": false,
-      "output_artifact": "specs/098-speckit-selective-validation-adapter/validation.md"
+      "request": "Spec Kit clarify the requirements",
+      "expected_outcome": "ready",
+      "result_file": "results/clarify.json"
     },
     {
       "id": "success-converge",
       "class": "success",
       "function": "converge",
       "boundary": null,
-      "passed": true,
-      "result_file": "results/converge.json",
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 1,
-      "false_execution_claim": false,
-      "output_artifact": "specs/098-speckit-selective-validation-adapter/validation.md"
+      "request": "Spec Kit converge the remaining work",
+      "expected_outcome": "ready",
+      "result_file": "results/converge.json"
     },
     {
       "id": "unavailable-checklist",
       "class": "unavailable",
       "function": "checklist",
       "boundary": null,
-      "passed": true,
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 0,
-      "false_execution_claim": false,
-      "output_artifact": null
+      "request": "Spec Kit checklist the requirements",
+      "expected_outcome": "unavailable"
     },
     {
       "id": "unavailable-converge",
       "class": "unavailable",
       "function": "converge",
       "boundary": null,
-      "passed": true,
-      "boundary_violation": false,
-      "unauthorized_write": false,
-      "fanout": 0,
-      "false_execution_claim": false,
-      "output_artifact": null
+      "request": "Spec Kit converge the remaining work",
+      "expected_outcome": "unavailable"
     }
   ]
 }

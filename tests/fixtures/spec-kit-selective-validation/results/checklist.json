@@ -1,7 +1,7 @@
 {
   "schema": "moduflow.spec-kit-result.v1",
-  "run_id": "sha256:c6894c4418619c33e3c3ab896a26e995dd17a3e9f31b2e899ab7d672ff763828",
-  "input_hash": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "run_id": "sha256:56f9c07ffe4946ccf47e123ce72b86b1ce6872d5c4fb0c34945c95c250cd5221",
+  "input_hash": "sha256:aac64b6d351c7836bc72b814bc658cec4caa3f3d3ee261729d2ea6c9844519cd",
   "issue_id": "098-speckit-selective-validation-adapter",
   "function": "checklist",
   "source_version": "0.16.1",
@@ -24,8 +24,8 @@
   ],
   "limitations": ["Deterministic offline reviewed evidence; no live model or Spec Kit CLI executed."],
   "native_overlap": [],
-  "elapsed_ms": 16,
-  "loaded_context_chars": 1600,
+  "elapsed_ms": 0,
+  "loaded_context_chars": 49723,
   "user_decision": "Human decision pending.",
   "next_command": "product:review 098-speckit-selective-validation-adapter"
 }

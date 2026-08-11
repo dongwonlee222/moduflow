@@ -2,19 +2,23 @@
 """Evaluate deterministic, offline evidence for the selective Spec Kit pilot."""
 
 import argparse
+import html
 import json
 import math
 import os
+import re
 import sys
+import tempfile
 from pathlib import Path
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts import spec_kit_adapter
+from scripts import capability_routing, spec_kit_adapter
 
 
 PILOT_SCHEMA = "moduflow.spec-kit-pilot.v1"
+ERROR_SCHEMA = "moduflow.spec-kit-error.v1"
 CASES_SCHEMA = "moduflow.spec-kit-pilot-cases.v1"
 ISSUE_ID = "098-speckit-selective-validation-adapter"
 FUNCTIONS = {"clarify", "analyze", "checklist", "converge"}
@@ -26,31 +30,15 @@ CASE_KEYS = {
     "class",
     "function",
     "boundary",
-    "passed",
+    "request",
+    "expected_outcome",
     "result_file",
-    "findings",
-    "elapsed_ms",
-    "loaded_context_chars",
-    "boundary_violation",
-    "unauthorized_write",
-    "fanout",
-    "false_execution_claim",
-    "output_artifact",
 }
-CASE_REQUIRED = {
-    "id",
-    "class",
-    "function",
-    "boundary",
-    "passed",
-    "boundary_violation",
-    "unauthorized_write",
-    "fanout",
-    "false_execution_claim",
-    "output_artifact",
-}
+CASE_REQUIRED = {"id", "class", "function", "boundary", "request", "expected_outcome"}
 FINDING_KEYS = {"id", "summary", "reviewer_disposition", "native_overlap"}
 REPORT_RELATIVE_PATH = Path("specs") / ISSUE_ID / "pilot-report.md"
+SAFE_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+EXPECTED_OUTCOMES = {"ready", "disabled", "unavailable", "unsupported"}
 
 
 class PilotError(ValueError):
@@ -60,6 +48,24 @@ class PilotError(ValueError):
         self.code = code
         self.safe_message = message
         super().__init__(f"{code}: {message}")
+
+
+class JsonErrorArgumentParser(argparse.ArgumentParser):
+    """Keep pilot argument failures on the shared Spec Kit JSON boundary."""
+
+    def error(self, message):
+        print(
+            json.dumps(
+                {
+                    "schema": ERROR_SCHEMA,
+                    "ok": False,
+                    "error": {"code": "invalid_arguments", "message": message},
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+        self.exit(2)
 
 
 def _error(code, message):
@@ -119,24 +125,13 @@ def _load_result(base_dir, relative_name):
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
         return spec_kit_adapter.validate_result_shape(payload)
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PilotError("invalid_result_snapshot", "result snapshot cannot be read") from exc
     except spec_kit_adapter.SpecKitAdapterError as exc:
         raise PilotError("invalid_result_snapshot", exc.safe_message) from exc
 
 
-def _validate_output_path(value, case_class):
-    if case_class != "success":
-        if value is not None:
-            _error("unsafe_output_path", "only success evidence may name an advisory output")
-        return None
-    expected = f"specs/{ISSUE_ID}/validation.md"
-    if value != expected:
-        _error("unsafe_output_path", f"success output_artifact must be {expected}")
-    return value
-
-
-def _normalize_case(case, result_base=None):
+def _normalize_case(case):
     if not isinstance(case, dict):
         _error("invalid_case", "each case must be an object")
     unknown = set(case) - CASE_KEYS
@@ -147,8 +142,8 @@ def _normalize_case(case, result_base=None):
         _error("invalid_case", "case is missing required fields")
 
     case_id = case["id"]
-    if not isinstance(case_id, str) or not case_id.strip():
-        _error("invalid_case", "case id must be a non-empty string")
+    if not isinstance(case_id, str) or not SAFE_ID_PATTERN.fullmatch(case_id):
+        _error("invalid_case", "case id must be a strict lowercase Markdown-safe identifier")
     case_class = case["class"]
     if case_class not in CLASSES:
         _error("invalid_class", "case class is unsupported")
@@ -161,68 +156,27 @@ def _normalize_case(case, result_base=None):
         if function not in FUNCTIONS or boundary is not None:
             _error("invalid_function", "function cases require one approved function and no boundary")
 
-    for field in ("passed", "boundary_violation", "unauthorized_write", "false_execution_claim"):
-        if not isinstance(case[field], bool):
-            _error("invalid_case", f"{field} must be boolean")
-    fanout = _strict_non_negative_int(case["fanout"], "fanout")
-    output_artifact = _validate_output_path(case["output_artifact"], case_class)
-
+    request = case["request"]
+    if not isinstance(request, str) or not request.strip():
+        _error("invalid_case", "case request must be a non-empty string")
+    expected_outcome = case["expected_outcome"]
+    if expected_outcome not in EXPECTED_OUTCOMES:
+        _error("invalid_case", "case expected_outcome is unsupported")
     result_file = case.get("result_file")
-    findings = case.get("findings")
-    elapsed_ms = case.get("elapsed_ms")
-    loaded_context_chars = case.get("loaded_context_chars")
-    if result_file is not None:
-        if case_class != "success":
-            _error("invalid_result_snapshot", "only success cases may reference a result snapshot")
-        if result_base is not None:
-            result = _load_result(result_base, result_file)
-            if result["issue_id"] != ISSUE_ID or result["function"] != function:
-                _error("invalid_result_snapshot", "result issue/function does not match its case")
-            snapshot_values = (
-                result["findings"],
-                result["elapsed_ms"],
-                result["loaded_context_chars"],
-            )
-            supplied_values = (findings, elapsed_ms, loaded_context_chars)
-            if any(value is not None for value in supplied_values) and supplied_values != snapshot_values:
-                _error("invalid_result_snapshot", "case metrics must match the result snapshot")
-            findings, elapsed_ms, loaded_context_chars = snapshot_values
-        elif findings is None or elapsed_ms is None or loaded_context_chars is None:
-            _error("invalid_result_snapshot", "loaded result evidence is incomplete")
-
-    findings = [] if findings is None else findings
-    elapsed_ms = 0 if elapsed_ms is None else elapsed_ms
-    loaded_context_chars = 0 if loaded_context_chars is None else loaded_context_chars
-    if not isinstance(findings, list):
-        _error("invalid_finding", "findings must be a list")
-    normalized_findings = [_validate_finding(finding) for finding in findings]
-    finding_ids = [finding["id"] for finding in normalized_findings]
-    if len(finding_ids) != len(set(finding_ids)):
-        _error("invalid_finding", "finding ids must be unique within a case")
-    elapsed_ms = _strict_non_negative_int(elapsed_ms, "elapsed_ms")
-    loaded_context_chars = _strict_non_negative_int(
-        loaded_context_chars, "loaded_context_chars"
-    )
-    if case_class != "success" and (
-        normalized_findings or elapsed_ms or loaded_context_chars or result_file is not None
-    ):
-        _error("invalid_case", "fallback and ownership cases cannot claim model results or cost")
+    if case_class == "success":
+        if not isinstance(result_file, str) or not result_file.strip():
+            _error("invalid_result_snapshot", "success cases require a result snapshot")
+    elif result_file is not None:
+        _error("invalid_result_snapshot", "only success cases may reference a result snapshot")
 
     return {
         "id": case_id,
         "class": case_class,
         "function": function,
         "boundary": boundary,
-        "passed": case["passed"],
+        "request": request,
+        "expected_outcome": expected_outcome,
         "result_file": result_file,
-        "findings": normalized_findings,
-        "elapsed_ms": elapsed_ms,
-        "loaded_context_chars": loaded_context_chars,
-        "boundary_violation": case["boundary_violation"],
-        "unauthorized_write": case["unauthorized_write"],
-        "fanout": fanout,
-        "false_execution_claim": case["false_execution_claim"],
-        "output_artifact": output_artifact,
     }
 
 
@@ -230,13 +184,13 @@ def load_cases(path):
     path = Path(path)
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PilotError("invalid_cases", "case matrix cannot be read") from exc
     if not isinstance(payload, dict) or set(payload) != {"schema", "cases"}:
         _error("invalid_cases", "case matrix must contain exactly schema and cases")
     if payload["schema"] != CASES_SCHEMA or not isinstance(payload["cases"], list):
         _error("invalid_cases", "case matrix schema or cases is invalid")
-    cases = [_normalize_case(case, path.parent) for case in payload["cases"]]
+    cases = [_normalize_case(case) for case in payload["cases"]]
     ids = [case["id"] for case in cases]
     if len(ids) != len(set(ids)):
         _error("duplicate_case_id", "case ids must be unique")
@@ -258,15 +212,10 @@ def _validate_matrix(cases):
             "invalid_matrix",
             "pilot matrix requires exactly one success for each approved function",
         )
-    if any(
-        not isinstance(case["result_file"], str)
-        or not case["result_file"].strip()
-        or case["fanout"] != 1
-        for case in success
-    ):
+    if any(not isinstance(case["result_file"], str) or not case["result_file"].strip() for case in success):
         _error(
             "invalid_matrix",
-            "success cases require one result snapshot and exactly one loaded template",
+            "success cases require one result snapshot",
         )
 
     fallbacks = [
@@ -277,10 +226,10 @@ def _validate_matrix(cases):
             "invalid_matrix",
             "fallback cases must cover all four approved functions",
         )
-    if any(case["result_file"] is not None or case["fanout"] != 0 for case in fallbacks):
+    if any(case["result_file"] is not None for case in fallbacks):
         _error(
             "invalid_matrix",
-            "disabled and unavailable cases cannot claim results or template fan-out",
+            "disabled and unavailable cases cannot claim results",
         )
 
     ownership = [case for case in cases if case["class"] == "ownership"]
@@ -289,41 +238,372 @@ def _validate_matrix(cases):
             "invalid_matrix",
             "ownership cases must cover implementation, lifecycle, Git, review, and release",
         )
-    if any(
-        case["function"] is not None
-        or case["result_file"] is not None
-        or case["fanout"] != 0
-        for case in ownership
-    ):
+    if any(case["function"] is not None or case["result_file"] is not None for case in ownership):
         _error(
             "invalid_matrix",
-            "ownership cases cannot claim a function, result, or template fan-out",
+            "ownership cases cannot claim a function or result",
         )
 
 
-def _validate_result_provenance(cases, result_base):
-    """Reload every success snapshot from an explicit trusted fixture directory."""
+def _copy_canonical_project(package_root, target):
+    relative_paths = sorted(
+        {
+            relative
+            for function in FUNCTIONS
+            for relative in spec_kit_adapter.canonical_input_paths(ISSUE_ID, function)
+        }
+    )
+    for relative in relative_paths:
+        source = spec_kit_adapter._project_path(package_root, relative, require_regular=True)
+        content = spec_kit_adapter._read_regular_file(source, "pilot canonical input")
+        destination = target / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(content)
+
+
+def _write_opt_in(target):
+    path = target / ".moduflow" / "capabilities.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "schema": spec_kit_adapter.CONFIG_SCHEMA,
+                "capabilities": {
+                    "spec-kit": {
+                        "enabled": True,
+                        "source_version": spec_kit_adapter.APPROVED_VERSION,
+                        "source_sha": spec_kit_adapter.APPROVED_SHA,
+                        "functions": list(spec_kit_adapter.FUNCTIONS),
+                    }
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def _derived_context_chars(package_root, project_root, handoff):
+    overlay = spec_kit_adapter._contained_package_path(
+        package_root, "overlays", "spec-kit", "selective-validation-policy.md"
+    )
+    template = spec_kit_adapter._contained_package_path(
+        package_root, *Path(handoff["source"]["template"]).parts
+    )
+    payloads = [
+        spec_kit_adapter._read_regular_file(overlay, "Spec Kit safety overlay"),
+        spec_kit_adapter._read_regular_file(template, "Spec Kit template"),
+        *[
+            record["content"]
+            for record in spec_kit_adapter.read_canonical_inputs(
+                project_root, handoff["issue_id"], handoff["function"]
+            )
+        ],
+    ]
+    try:
+        return sum(len(payload.decode("utf-8")) for payload in payloads)
+    except UnicodeDecodeError as exc:
+        raise PilotError("invalid_context", "pilot context must be UTF-8 text") from exc
+
+
+def _load_success_result(result_base, case, handoff, package_root, project_root):
     if result_base is None:
         _error(
             "result_base_required",
             "success evidence requires an explicit result fixture directory",
         )
-    for case in cases:
-        if case["class"] != "success":
-            continue
-        result = _load_result(result_base, case["result_file"])
-        if result["issue_id"] != ISSUE_ID or result["function"] != case["function"]:
-            _error("invalid_result_snapshot", "result issue/function does not match its case")
-        if (
-            result["findings"],
-            result["elapsed_ms"],
-            result["loaded_context_chars"],
-        ) != (
-            case["findings"],
-            case["elapsed_ms"],
-            case["loaded_context_chars"],
-        ):
-            _error("invalid_result_snapshot", "case metrics must match the result snapshot")
+    result = _load_result(result_base, case["result_file"])
+    if result["issue_id"] != ISSUE_ID or result["function"] != case["function"]:
+        _error("invalid_result_snapshot", "result issue/function does not match its case")
+    try:
+        spec_kit_adapter.validate_host_result(result, handoff)
+    except spec_kit_adapter.SpecKitAdapterError as exc:
+        raise PilotError("invalid_result_snapshot", exc.safe_message) from exc
+    expected_chars = _derived_context_chars(package_root, project_root, handoff)
+    if result["loaded_context_chars"] != expected_chars:
+        _error("invalid_result_snapshot", "result context cost is not derived from current inputs")
+    if result["elapsed_ms"] != 0:
+        _error("invalid_result_snapshot", "synthetic fixture latency must be zero")
+    return result
+
+
+def _execute_case(case, package_root, registry, result_base):
+    with tempfile.TemporaryDirectory(prefix="moduflow-spec-kit-pilot-") as tmp:
+        project = Path(tmp)
+        _copy_canonical_project(package_root, project)
+        if case["class"] != "disabled":
+            _write_opt_in(project)
+        host_available = case["class"] != "unavailable"
+        availability = {
+            descriptor["id"]: True for descriptor in registry["capabilities"]
+        }
+        availability["spec-kit"] = host_available
+        route = capability_routing.route_request(
+            case["request"],
+            registry,
+            issue_id=ISSUE_ID,
+            target_root=project,
+            availability=availability,
+        )
+        selected = spec_kit_adapter.select_function(case["request"])
+        handoff = spec_kit_adapter.build_handoff(
+            package_root,
+            project,
+            ISSUE_ID,
+            case["request"],
+            host_available=host_available,
+        )
+        target = project / REPORT_RELATIVE_PATH.with_name("validation.md")
+        artifact_created = target.exists()
+        spec_stages = [stage for stage in route["stages"] if stage["adapter_id"] == "spec-kit"]
+        ready_stage = (
+            len(spec_stages) == 1
+            and spec_stages[0]["availability"] == "available"
+            and spec_stages[0]["permission"] == "read"
+            and spec_stages[0]["permission_state"] == "allowed"
+        )
+        template_loaded = bool(handoff["outcome"] == "ready" and handoff["source"]["template"])
+        fanout = int(template_loaded)
+        boundary_violation = bool(
+            case["class"] == "ownership"
+            and (selected is not None or handoff["outcome"] == "ready" or template_loaded)
+        )
+        false_execution_claim = bool(handoff["outcome"] != "ready" and handoff["source"]["template"])
+        if case["class"] == "success":
+            passed = bool(
+                route["outcome"] == "delegate"
+                and len(route["stages"]) == 1
+                and ready_stage
+                and selected == case["function"]
+                and handoff["outcome"] == case["expected_outcome"] == "ready"
+                and handoff["function"] == case["function"]
+                and fanout == 1
+                and not artifact_created
+            )
+            result = _load_success_result(
+                result_base, case, handoff, package_root, project
+            )
+            findings = [_validate_finding(finding) for finding in result["findings"]]
+            elapsed_ms = result["elapsed_ms"]
+            loaded_context_chars = result["loaded_context_chars"]
+        elif case["class"] in {"disabled", "unavailable"}:
+            passed = bool(
+                handoff["outcome"] == case["expected_outcome"]
+                and handoff["source"]["template"] is None
+                and fanout == 0
+                and not artifact_created
+            )
+            findings, elapsed_ms, loaded_context_chars = [], 0, 0
+        else:
+            passed = bool(
+                selected is None
+                and handoff["outcome"] == case["expected_outcome"] == "unsupported"
+                and handoff["source"]["template"] is None
+                and fanout == 0
+                and not artifact_created
+                and not boundary_violation
+            )
+            findings, elapsed_ms, loaded_context_chars = [], 0, 0
+        return {
+            **case,
+            "passed": passed,
+            "route_outcome": route["outcome"],
+            "adapter_outcome": handoff["outcome"],
+            "selected_function": selected,
+            "findings": findings,
+            "elapsed_ms": elapsed_ms,
+            "loaded_context_chars": loaded_context_chars,
+            "boundary_violation": boundary_violation,
+            "unauthorized_write": artifact_created,
+            "fanout": fanout,
+            "false_execution_claim": false_execution_claim,
+            "artifact_created": artifact_created,
+            "output_artifact": handoff["output_artifact"] if handoff["outcome"] == "ready" else None,
+        }
+
+
+def _ownership_probe_cases():
+    probes = []
+
+    def append(boundary, request):
+        probes.append(
+            {
+                "id": f"ownership-{boundary}-probe-{len(probes) + 1}",
+                "class": "ownership",
+                "function": None,
+                "boundary": boundary,
+                "request": request,
+                "expected_outcome": "unsupported",
+                "result_file": None,
+            }
+        )
+
+    for alias in spec_kit_adapter.LIFECYCLE_ACTION_ALIASES:
+        append("lifecycle", f"Spec Kit analyze then {alias} the issue")
+    for resource in spec_kit_adapter.LIFECYCLE_RESOURCE_ALIASES:
+        append("lifecycle", f"Spec Kit checklist then update {resource}")
+    for alias in spec_kit_adapter.KOREAN_LIFECYCLE_ACTION_ALIASES:
+        append("lifecycle", f"스펙킷으로 분석한 다음 이슈를 {alias}")
+    for resource in spec_kit_adapter.KOREAN_LIFECYCLE_RESOURCE_ALIASES:
+        append("lifecycle", f"스펙킷으로 체크리스트 만든 뒤 {resource}를 수정해줘")
+    for operation in spec_kit_adapter.GIT_OPERATION_ALIASES:
+        append("git", f"Spec Kit converge then {operation} repository changes")
+    for operation in spec_kit_adapter.KOREAN_GIT_OPERATION_ALIASES:
+        if operation in spec_kit_adapter.KOREAN_INTRINSIC_GIT_ALIASES:
+            append("git", f"스펙킷으로 분석한 뒤 {operation}해줘")
+        else:
+            append("git", f"스펙킷으로 명확화한 뒤 저장소에 {operation}해줘")
+    return probes
+
+
+def _evaluate_ownership_probes(package_root, registry, result_base):
+    observed = [
+        _execute_case(case, package_root, registry, result_base)
+        for case in _ownership_probe_cases()
+    ]
+    failed = [case["id"] for case in observed if not case["passed"]]
+    return {
+        "total": len(observed),
+        "passed": len(observed) - len(failed),
+        "failed": failed,
+    }
+
+
+def _adjacent_ownership_probe_cases():
+    requests = (
+        ("git", "Spec Kit analyze then add files to the index"),
+        ("git", "Spec Kit checklist then stage changed files"),
+        ("git", "Spec Kit clarify then restore files from the working tree"),
+        ("lifecycle", "Spec Kit analyze then start work on the issue"),
+        ("lifecycle", "Spec Kit checklist because the issue should be started"),
+        ("lifecycle", "스펙킷으로 분석한 뒤 이슈를 다시 시작해줘"),
+        ("lifecycle", "스펙킷으로 체크리스트 만든 뒤 이슈를 잠시 멈춰줘"),
+        ("git", "Spec Kit converge then switch to the current branch"),
+        ("git", "Spec Kit analyze then tag the modified commit"),
+        ("git", "Spec Kit checklist then branch the repo"),
+        ("git", "Spec Kit clarify then add tracked hunks to the index"),
+        ("git", "Spec Kit analyze then restore staged changes in the working tree"),
+        ("git", "Spec Kit checklist then stage untracked files"),
+        ("lifecycle", "Spec Kit checklist then continue work on the roadmap"),
+        ("lifecycle", "Spec Kit clarify because the project must be paused"),
+        ("lifecycle", "Spec Kit analyze because this work item can be completed"),
+        ("lifecycle", "스펙킷으로 분석한 뒤 프로젝트를 이제 재개해줘"),
+        ("lifecycle", "스펙킷으로 체크리스트 만든 뒤 로드맵을 바로 완료해줘"),
+        ("lifecycle", "스펙킷으로 명확화한 뒤 이슈를 계속 이어줘"),
+    )
+    return [
+        {
+            "id": f"ownership-adjacent-probe-{index}",
+            "class": "ownership",
+            "function": None,
+            "boundary": boundary,
+            "request": request,
+            "expected_outcome": "unsupported",
+            "result_file": None,
+        }
+        for index, (boundary, request) in enumerate(requests, start=1)
+    ]
+
+
+def _evaluate_adjacent_ownership_probes(package_root, registry, result_base):
+    observed = [
+        _execute_case(case, package_root, registry, result_base)
+        for case in _adjacent_ownership_probe_cases()
+    ]
+    failed = [case["id"] for case in observed if not case["passed"]]
+    return {
+        "total": len(observed),
+        "passed": len(observed) - len(failed),
+        "failed": failed,
+    }
+
+
+def _metamorphic_ownership_probe_cases():
+    requests = (
+        ("git", "Spec Kit checklist then stage the recently changed files"),
+        ("git", "Spec Kit analyze then add all changed files to the index"),
+        ("git", "Spec Kit clarify then restore selected files from the working tree"),
+        ("lifecycle", "Spec Kit checklist because the issue should really be paused"),
+        ("lifecycle", "Spec Kit analyze then start working on the issue"),
+        ("lifecycle", "스펙킷으로 분석한 뒤 이슈를 잠깐 다시 시작해줘"),
+        ("lifecycle", "스펙킷으로 체크리스트 만든 뒤 프로젝트를 먼저 천천히 완료해줘"),
+        ("git", "Spec Kit checklist then stage the very recently modified files"),
+        ("git", "Spec Kit clarify then add every carefully reviewed changed hunk to the index"),
+        ("git", "Spec Kit analyze then restore only those selected archived files from the working tree"),
+        ("lifecycle", "Spec Kit checklist because the roadmap should eventually be carefully resumed"),
+        ("lifecycle", "Spec Kit analyze then carefully start seriously working on the current issue"),
+        ("lifecycle", "스펙킷으로 분석한 뒤 이슈를 아주 잠깐 먼저 멈춰줘"),
+        ("lifecycle", "스펙킷으로 체크리스트 만든 뒤 로드맵을 먼저 천천히 다시 재개해줘"),
+    )
+    return [
+        {
+            "id": f"ownership-metamorphic-probe-{index}",
+            "class": "ownership",
+            "function": None,
+            "boundary": boundary,
+            "request": request,
+            "expected_outcome": "unsupported",
+            "result_file": None,
+        }
+        for index, (boundary, request) in enumerate(requests, start=1)
+    ]
+
+
+def _evaluate_metamorphic_ownership_probes(package_root, registry, result_base):
+    observed = [
+        _execute_case(case, package_root, registry, result_base)
+        for case in _metamorphic_ownership_probe_cases()
+    ]
+    failed = [case["id"] for case in observed if not case["passed"]]
+    return {
+        "total": len(observed),
+        "passed": len(observed) - len(failed),
+        "failed": failed,
+    }
+
+
+def _positive_probe_cases():
+    requests = (
+        ("Spec Kit clarify which acceptance criteria to add", "clarify"),
+        ("Spec Kit analyze the stages in the plan", "analyze"),
+        ("Spec Kit checklist where to start validation", "checklist"),
+        ("Spec Kit converge candidates to restore requirement coverage", "converge"),
+        ("스펙킷으로 분석해서 요구사항을 계속 명확히 해줘", "analyze"),
+        ("스펙킷으로 체크리스트에 태그 요구사항을 추가해줘", "checklist"),
+        ("Spec Kit clarify which changes to add to the requirements", "clarify"),
+        ("Spec Kit analyze which stages changed in the spec files", "analyze"),
+        ("Spec Kit clarify how to add changes to requirements", "clarify"),
+        ("Spec Kit analyze which files to add to spec inputs", "analyze"),
+        ("Spec Kit converge where to restore changes to requirement coverage", "converge"),
+        ("Spec Kit checklist where to start validation for this issue", "checklist"),
+        ("Spec Kit analyze which requirements to continue in the issue spec", "analyze"),
+        ("스펙킷으로 스테이징된 요구사항 파일을 분석해줘", "analyze"),
+    )
+    return [
+        {
+            "id": f"positive-probe-{index}",
+            "class": "success",
+            "function": function,
+            "boundary": None,
+            "request": request,
+            "expected_outcome": "ready",
+            "result_file": f"results/{function}.json",
+        }
+        for index, (request, function) in enumerate(requests, start=1)
+    ]
+
+
+def _evaluate_positive_probes(package_root, registry, result_base):
+    observed = [
+        _execute_case(case, package_root, registry, result_base)
+        for case in _positive_probe_cases()
+    ]
+    failed = [case["id"] for case in observed if not case["passed"]]
+    return {
+        "total": len(observed),
+        "passed": len(observed) - len(failed),
+        "failed": failed,
+    }
 
 
 def _function_metrics(cases):
@@ -353,7 +633,7 @@ def _function_metrics(cases):
     return per_function
 
 
-def evaluate_cases(cases, result_base=None):
+def evaluate_cases(cases, result_base=None, package_root=None):
     if not isinstance(cases, list):
         _error("invalid_cases", "cases must be a list")
     normalized = [_normalize_case(case) for case in cases]
@@ -361,22 +641,43 @@ def evaluate_cases(cases, result_base=None):
     if len(ids) != len(set(ids)):
         _error("duplicate_case_id", "case ids must be unique")
     _validate_matrix(normalized)
-    _validate_result_provenance(normalized, result_base)
-    normalized.sort(key=lambda case: case["id"])
-    findings = [finding for case in normalized for finding in case["findings"]]
+    package_root = Path(package_root or Path(__file__).resolve().parents[1]).resolve()
+    try:
+        registry = capability_routing.load_registry(package_root)
+    except capability_routing.RegistryError as exc:
+        raise PilotError("invalid_router", "capability router registry is unavailable") from exc
+    observed = [
+        _execute_case(case, package_root, registry, result_base) for case in normalized
+    ]
+    observed.sort(key=lambda case: case["id"])
+    ownership_probes = _evaluate_ownership_probes(package_root, registry, result_base)
+    adjacent_ownership_probes = _evaluate_adjacent_ownership_probes(
+        package_root, registry, result_base
+    )
+    metamorphic_ownership_probes = _evaluate_metamorphic_ownership_probes(
+        package_root, registry, result_base
+    )
+    positive_probes = _evaluate_positive_probes(package_root, registry, result_base)
+    findings = [finding for case in observed for finding in case["findings"]]
     total_findings = len(findings)
-    loaded_chars = sum(case["loaded_context_chars"] for case in normalized)
+    loaded_chars = sum(case["loaded_context_chars"] for case in observed)
     safety = {
-        "boundary_violations": sum(case["boundary_violation"] for case in normalized),
-        "unauthorized_writes": sum(case["unauthorized_write"] for case in normalized),
-        "unwanted_fanout": sum(case["fanout"] > 1 for case in normalized),
-        "false_execution_claims": sum(case["false_execution_claim"] for case in normalized),
+        "boundary_violations": sum(case["boundary_violation"] for case in observed)
+        + ownership_probes["total"]
+        - ownership_probes["passed"]
+        + adjacent_ownership_probes["total"]
+        - adjacent_ownership_probes["passed"]
+        + metamorphic_ownership_probes["total"]
+        - metamorphic_ownership_probes["passed"],
+        "unauthorized_writes": sum(case["unauthorized_write"] for case in observed),
+        "unwanted_fanout": sum(case["fanout"] > 1 for case in observed),
+        "false_execution_claims": sum(case["false_execution_claim"] for case in observed),
     }
     metrics = {
         "actionable_value": sum(
             finding["reviewer_disposition"] == "useful_unique" for finding in findings
         ),
-        "elapsed_ms": sum(case["elapsed_ms"] for case in normalized),
+        "elapsed_ms": sum(case["elapsed_ms"] for case in observed),
         "loaded_context_chars": loaded_chars,
         "estimated_loaded_tokens": math.ceil(loaded_chars / 4),
         "false_positive_rate": safe_ratio(
@@ -388,16 +689,33 @@ def evaluate_cases(cases, result_base=None):
         ),
         **safety,
     }
-    passed_cases = sum(case["passed"] for case in normalized)
+    passed_cases = sum(case["passed"] for case in observed)
     return {
         "schema": PILOT_SCHEMA,
-        "total_cases": len(normalized),
+        "total_cases": len(observed),
         "passed_cases": passed_cases,
-        "passed": passed_cases == len(normalized) and not any(safety.values()),
+        "passed": passed_cases == len(observed)
+        and ownership_probes["passed"] == ownership_probes["total"]
+        and adjacent_ownership_probes["passed"] == adjacent_ownership_probes["total"]
+        and metamorphic_ownership_probes["passed"] == metamorphic_ownership_probes["total"]
+        and positive_probes["passed"] == positive_probes["total"]
+        and not any(safety.values()),
         "metrics": metrics,
-        "per_function": _function_metrics(normalized),
-        "cases": normalized,
+        "per_function": _function_metrics(observed),
+        "ownership_probes": ownership_probes,
+        "adjacent_ownership_probes": adjacent_ownership_probes,
+        "metamorphic_ownership_probes": metamorphic_ownership_probes,
+        "positive_probes": positive_probes,
+        "cases": observed,
     }
+
+
+def _markdown_cell(value):
+    text = "".join(
+        " " if ord(character) < 32 or ord(character) == 127 else character
+        for character in str(value)
+    )
+    return html.escape(text, quote=True).replace("\\", "\\\\").replace("|", "\\|")
 
 
 def render_report(report):
@@ -406,7 +724,8 @@ def render_report(report):
         "# Spec Kit Selective Validation Pilot Report",
         "",
         "Issue: `098-speckit-selective-validation-adapter`",
-        "Evidence type: deterministic offline evidence snapshots; no live model or Spec Kit CLI execution.",
+        "Evidence type: deterministic offline evidence from the real router and adapter; no live model or Spec Kit CLI execution.",
+        "Synthetic fixture latency: `0 ms`; it is not presented as live performance.",
         "Human decision: pending",
         "Wider/default activation: prohibited",
         "",
@@ -414,6 +733,10 @@ def render_report(report):
         "",
         f"- Pilot passed: `{'yes' if report['passed'] else 'no'}`",
         f"- Cases: `{report['passed_cases']}/{report['total_cases']}` passed",
+        f"- Ordinary validation probes: `{report['positive_probes']['passed']}/{report['positive_probes']['total']}` passed",
+        f"- Canonical lifecycle/Git ownership probes: `{report['ownership_probes']['passed']}/{report['ownership_probes']['total']}` passed",
+        f"- Adjacent lifecycle/Git phrase probes: `{report['adjacent_ownership_probes']['passed']}/{report['adjacent_ownership_probes']['total']}` passed",
+        f"- Metamorphic lifecycle/Git insertion probes: `{report['metamorphic_ownership_probes']['passed']}/{report['metamorphic_ownership_probes']['total']}` passed",
         "",
         "## Aggregate Metrics",
         "",
@@ -437,10 +760,21 @@ def render_report(report):
     ]
     for function, evidence in report["per_function"].items():
         lines.append(
-            f"| {function} | {evidence['findings']} | {evidence['actionable_value']} | "
-            f"{evidence['elapsed_ms']} | {evidence['loaded_context_chars']} | "
-            f"{evidence['estimated_loaded_tokens']} | {evidence['false_positive_rate']:.4f} | "
-            f"{evidence['native_overlap_rate']:.4f} |"
+            "| "
+            + " | ".join(
+                _markdown_cell(value)
+                for value in (
+                    function,
+                    evidence["findings"],
+                    evidence["actionable_value"],
+                    evidence["elapsed_ms"],
+                    evidence["loaded_context_chars"],
+                    evidence["estimated_loaded_tokens"],
+                    f"{evidence['false_positive_rate']:.4f}",
+                    f"{evidence['native_overlap_rate']:.4f}",
+                )
+            )
+            + " |"
         )
     lines.extend(
         [
@@ -454,8 +788,17 @@ def render_report(report):
     for case in report["cases"]:
         subject = case["function"] or case["boundary"]
         lines.append(
-            f"| {case['id']} | {case['class']} | {subject} | "
-            f"{'yes' if case['passed'] else 'no'} |"
+            "| "
+            + " | ".join(
+                _markdown_cell(value)
+                for value in (
+                    case["id"],
+                    case["class"],
+                    subject,
+                    "yes" if case["passed"] else "no",
+                )
+            )
+            + " |"
         )
     lines.extend(
         [
@@ -513,10 +856,18 @@ def _report_target(root):
     return _contained_under_root(root, root / REPORT_RELATIVE_PATH, "unsafe_output_path")
 
 
-def write_report(root, report, result_base=None):
+def write_report(root, report, result_base=None, package_root=None):
     if not isinstance(report, dict) or "cases" not in report:
         _error("invalid_report", "pilot report must contain evaluated cases")
-    validated_report = evaluate_cases(report["cases"], result_base=result_base)
+    declarations = [
+        {key: case[key] for key in CASE_KEYS if key in case}
+        for case in report["cases"]
+    ]
+    validated_report = evaluate_cases(
+        declarations,
+        result_base=result_base,
+        package_root=package_root,
+    )
     if report != validated_report:
         _error("invalid_report", "pilot report metrics must match its canonical case matrix")
     report = validated_report
@@ -539,26 +890,38 @@ def write_report(root, report, result_base=None):
 
 def _error_envelope(error):
     return {
-        "schema": PILOT_SCHEMA,
-        "passed": False,
+        "schema": ERROR_SCHEMA,
+        "ok": False,
         "error": {"code": error.code, "message": error.safe_message},
     }
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Evaluate the offline selective Spec Kit pilot")
+    parser = JsonErrorArgumentParser(
+        description="Evaluate the offline selective Spec Kit pilot"
+    )
     parser.add_argument("project_root", nargs="?", default=".")
     parser.add_argument("--fixtures", required=True)
     parser.add_argument("--write", action="store_true")
     args = parser.parse_args(argv)
     try:
         root = Path(args.project_root).resolve()
+        package_root = Path(__file__).resolve().parents[1]
         fixtures = _contained_fixture_path(root, args.fixtures)
         result_base = fixtures.parent
-        report = evaluate_cases(load_cases(fixtures)["cases"], result_base=result_base)
+        report = evaluate_cases(
+            load_cases(fixtures)["cases"],
+            result_base=result_base,
+            package_root=package_root,
+        )
         if args.write and report["passed"]:
             report["report_path"] = str(
-                write_report(root, report, result_base=result_base).relative_to(root)
+                write_report(
+                    root,
+                    report,
+                    result_base=result_base,
+                    package_root=package_root,
+                ).relative_to(root)
             )
             report["written"] = True
         else:

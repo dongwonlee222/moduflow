@@ -81,7 +81,7 @@ extensions, or route build/release ownership away from ModuFlow and Superpowers.
 - [x] spec → `specs/098-speckit-selective-validation-adapter/spec.md`; Korean sidecar → `specs/098-speckit-selective-validation-adapter/spec.ko.md`
 - [x] benchmark → compare selected Spec Kit functions against native ModuFlow checks
 - [x] plan → `specs/098-speckit-selective-validation-adapter/plan.md`; tasks → `specs/098-speckit-selective-validation-adapter/tasks.md`
-- [x] execute → implementation and deterministic offline pilot commits
+- [x] execute → implementation and deterministic request-driven pilot commits
 - [ ] review → review notes
 
 ## Related Issues
@@ -110,6 +110,35 @@ extensions, or route build/release ownership away from ModuFlow and Superpowers.
 - 2026-08-11: Task 5 verification passed 131/131 focused tests and 1,133/1,133 full tests;
   spec consistency is 0/0/0, lifecycle drift is empty, package/project validation is valid,
   and the release check is green.
+- 2026-08-11: Whole-branch remediation replaced shape-only persistence with current-handoff
+  revalidation and locked atomic append, enforced no-follow config/input/output containment,
+  derived canonical input/context evidence through the real router/adapter pilot, and kept the
+  human activation decision pending with default availability false. The first remediation-pass focused
+  matrix passed 146/146 in 62.199 seconds, fresh full discovery passed 1,145/1,145 in 308.012
+  seconds, and package validation checked 174 required files.
+- 2026-08-11: Final re-review closed the remaining ownership-vocabulary, documented handoff CLI,
+  pilot JSON error-boundary, and canonical-prerequisite fallback gaps with RED/GREEN coverage;
+  13/13 pilot cases and 69/69 canonical ownership probes passed, the focused matrix passed
+  152/152 in 67.582 seconds, and fresh full discovery passed 1,151/1,151 in 308.004 seconds.
+  Phase remains review, default activation remains false, and the human decision remains pending.
+- 2026-08-11: Final ownership re-review replaced global single-word blocking with lifecycle-resource
+  and ambiguous-Git context while retaining unmistakable Git and explicit lifecycle ownership.
+  Six ordinary English/Korean validation probes now cross adapter, router, and pilot paths without
+  weakening the 69 canonical negative probes; activation and human decision remain unchanged.
+- 2026-08-11: Phrase-level follow-up removed the remaining bag-of-words coupling: generic changes/
+  files and plural stages no longer manufacture Git intent, while intrinsic Korean staging and
+  other unmistakable operations remain context-free ownership boundaries. Eight positive probes
+  and all 69 canonical negatives now execute through the real router/adapter pilot.
+- 2026-08-11: Adjacent phrase-family follow-up extended the bounded classifier to direct Git
+  files/changes/hunks/index/working-tree objects with optional state modifiers/prepositions and to
+  lifecycle auxiliaries/adverbs/Korean modifiers. Nineteen table-driven adjacent negatives now run
+  through adapter, router, and pilot while all eight positives and 69 canonical negatives remain
+  protected; the focused matrix passed 161/161 and fresh full discovery passed 1,160/1,160.
+- 2026-08-11: Clause/token follow-up replaced bounded filler/modifier enumeration with
+  punctuation/sequence clause splitting and token-level Git operation/object plus lifecycle
+  action/resource semantics. Metamorphic modifier insertion and domain-target advisory probes now
+  protect the boundary, and release has a named canonical pilot-provenance gate that rejects stale
+  input hashes, context costs, or run IDs.
 
 ## Links
 

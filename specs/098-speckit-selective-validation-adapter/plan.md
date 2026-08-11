@@ -154,10 +154,10 @@ The public call signatures are:
 - `load_project_config(project_root: Path) -> dict` returns a validated or normalized-disabled config.
 - `load_manifest(package_root: Path) -> dict` returns the exact approved manifest.
 - `verify_assets(package_root: Path, manifest: dict) -> list[dict]` returns four integrity records.
-- `build_handoff(package_root: Path, project_root: Path, issue_id: str, function: str, *, host_available: bool) -> dict` returns the stable handoff envelope.
+- `build_handoff(package_root: Path, project_root: Path, issue_id: str, request: str, host_available: bool) -> dict` returns the stable handoff envelope after complete ownership classification.
 - `validate_result_shape(payload: dict) -> dict` returns a deep-copied canonical result shape.
 - `validate_host_result(payload: dict, handoff: dict) -> dict` additionally proves the result matches its ready handoff.
-- `persist_validation(project_root: Path, result: dict, *, write: bool = False) -> dict` previews or appends one validated run.
+- `persist_validation(package_root: Path, project_root: Path, issue_id: str, request: str, result: dict, *, host_available: bool, write: bool = False) -> dict` rebuilds a current ready handoff, then previews or serializes one validated run.
 
 `verify_assets` returns one record per approved function with `function`, `path`, `expected_sha256`, `actual_sha256`, and `valid`; it raises on containment or manifest-schema errors. `build_handoff` never invokes a model or writes a file.
 
@@ -178,14 +178,15 @@ Ready and fallback handoffs use one stable envelope:
     "template_sha256": "79f5334bce9b249d4c1a5e6949dee3f3532db89a0a97f3d2eb55c1a1c2fe06f6"
   },
   "permission": "read",
-  "inputs": ["spec.md", "plan.md", "tasks.md", "constitution.md"],
+  "inputs": ["specs/<issue>/spec.md", "specs/<issue>/plan.md", "specs/<issue>/tasks.md", "workspace/constitution.md"],
+  "input_hash": "sha256:64-lowercase-hex",
   "output_artifact": "specs/098-speckit-selective-validation-adapter/validation.md",
   "limitations": ["advisory-only", "no upstream scripts or hooks"],
   "fallback": null
 }
 ```
 
-Allowed outcomes are `ready`, `disabled`, `unavailable`, `unsupported`, and `blocked`. Every non-ready result has `source.template: null`, `fallback` set, and no eligible template path.
+Allowed outcomes are `ready`, `disabled`, `unavailable`, `unsupported`, and `blocked`. Every non-ready result has `source.template: null`, `fallback` set, and no eligible template path. Canonical input absence/non-regularity/symlinks use the exact native prerequisite fallback and hide `output_artifact`; config/output containment stays a distinct blocked condition.
 
 ### Accepted host result
 
@@ -216,15 +217,37 @@ The bridge returns, and `validate_host_result` validates, this shape:
 
 ### CLI
 
+The three modes are mutually exclusive: `--configure`; inferred read-only handoff without
+`--accept-result`; and accepted-result. Handoff never permits `--write`. Accepted-result requires
+`--issue-id`, the original `--request`, and `--host-available`. Adapter and pilot parse/decode
+failures use `moduflow.spec-kit-error.v1` on stdout with no traceback or usage stderr.
+
 ```text
 python3 scripts/spec_kit_adapter.py PROJECT_ROOT --issue-id ISSUE_ID --request "스펙킷으로 분석해줘" [--host-available]
 python3 scripts/spec_kit_adapter.py PROJECT_ROOT --configure --functions clarify,analyze,checklist,converge --write
-python3 scripts/spec_kit_adapter.py PROJECT_ROOT --issue-id ISSUE_ID --accept-result RESULT_JSON [--write]
+python3 scripts/spec_kit_adapter.py PROJECT_ROOT --issue-id ISSUE_ID --request ORIGINAL_REQUEST --host-available --accept-result RESULT_JSON [--write]
 python3 scripts/sync_spec_kit_templates.py . [--write]
 python3 scripts/spec_kit_pilot.py . --fixtures tests/fixtures/spec-kit-selective-validation/cases.json [--write]
 ```
 
 All commands print JSON to stdout. Failures use `moduflow.spec-kit-error.v1`, never a traceback. Configuration, sync, result acceptance, and pilot report writes occur only with `--write`.
+
+`select_function` is the single ownership-policy source. It encodes the complete canonical
+English/Korean lifecycle action and resource-mutation aliases plus Git add/stage/stash/fetch/pull/
+push/merge/rebase/reset/restore/checkout/switch/branch/tag/cherry-pick/revert/clone/commit families
+and inflections. The classifier normalizes and splits punctuation/sequence-delimited clauses,
+tokenizes each clause, and resolves action/resource or operation/object relationships without a
+bounded filler regex or modifier allowlist. `_has_lifecycle_ownership()` relates lifecycle actions
+to issue/status/roadmap/goal/memory/project/work-item resources anywhere inside a clause while
+allowing advisory operations whose direct object is a domain artifact. Korean resource particles
+and lifecycle actions remain native regardless of arbitrary intervening tokens. `_has_git_ownership()`
+treats unmistakable English/Korean operations as intrinsic and resolves ambiguous add/stage/
+restore/tag/branch/switch verbs against explicit Git contexts or state-qualified files/changes/
+hunks. Requirement/spec/plan/task/validation/coverage/input targets override generic changes/files
+without overriding an explicit Git context, and plural `stages` is never the verb `stage`.
+Adapter, router integration, and real pilot-path tests enumerate 69 canonical negatives, 19
+adjacent phrase-family negatives, 14 metamorphic insertion negatives, and 14 ordinary/domain
+positive contexts.
 
 ## Implementation Readiness Inputs
 
@@ -234,7 +257,7 @@ All commands print JSON to stdout. Failures use `moduflow.spec-kit-error.v1`, ne
 - **MSW fixture baseline:** not applicable; no HTTP API or API-backed UI.
 - **Playwright smoke matrix:** not applicable; no browser-visible flow.
 - **Permission/role model:** handoff is read-only; `--configure --write`, sync `--write`, and accepted-result `--write` are explicit local mutations. No role permits upstream scripts, Git, implementation, review, release, or external writes.
-- **Release/rollback verification:** Release requires focused tests, full discovery, zero pilot boundary violations, package/project validation, spec consistency, lifecycle drift `[]`, and `release_check.py` pass. Rollback reverts Issue 098 commits and version bump; target projects with an opt-in file safely fall back because missing package assets make the adapter unavailable, and existing `validation.md` history remains readable.
+- **Release/rollback verification:** Release requires focused tests, full discovery, zero pilot boundary violations, package/project validation, spec consistency, lifecycle drift `[]`, and `release_check.py` pass. The release check contains a named `spec_kit_pilot_provenance` gate that evaluates canonical fixtures against current issue/spec/plan/tasks/constitution bytes and rejects stale input hashes, context costs, or run IDs. Rollback reverts Issue 098 commits and version bump; target projects with an opt-in file safely fall back because missing package assets make the adapter unavailable, and existing `validation.md` history remains readable.
 
 ---
 
@@ -454,6 +477,10 @@ def persist_validation(project_root, result, *, write=False):
             handle.write(rendered)
     return {"changed": bool(write), "path": target, "run_id": validated["run_id"], "preview": rendered}
 ```
+
+Integration remediation supersedes this initial illustrative append API: production persistence
+uses the binding public signature above, rebuilds current readiness from config/assets/canonical
+inputs, rechecks it under an OS lock, and atomically replaces the complete append result.
 
 The overlay must explicitly override upstream frontmatter/scripts/hooks/handoffs/mutations, restrict inputs/output, prohibit fan-out and false execution claims, and require the exact result schema. Rendering preserves findings, limitations, native overlap, timing/context metrics, user disposition, and next command.
 

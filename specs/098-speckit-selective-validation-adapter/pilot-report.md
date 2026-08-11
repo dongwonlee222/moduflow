@@ -1,7 +1,8 @@
 # Spec Kit Selective Validation Pilot Report
 
 Issue: `098-speckit-selective-validation-adapter`
-Evidence type: deterministic offline evidence snapshots; no live model or Spec Kit CLI execution.
+Evidence type: deterministic offline evidence from the real router and adapter; no live model or Spec Kit CLI execution.
+Synthetic fixture latency: `0 ms`; it is not presented as live performance.
 Human decision: pending
 Wider/default activation: prohibited
 
@@ -9,15 +10,19 @@ Wider/default activation: prohibited
 
 - Pilot passed: `yes`
 - Cases: `13/13` passed
+- Ordinary validation probes: `14/14` passed
+- Canonical lifecycle/Git ownership probes: `69/69` passed
+- Adjacent lifecycle/Git phrase probes: `19/19` passed
+- Metamorphic lifecycle/Git insertion probes: `14/14` passed
 
 ## Aggregate Metrics
 
 | Metric | Value |
 | --- | ---: |
 | Actionable unique findings | 4 |
-| Elapsed time (ms) | 72 |
-| Loaded context (characters) | 8000 |
-| Estimated loaded context (tokens) | 2000 |
+| Elapsed time (ms) | 0 |
+| Loaded context (characters) | 266018 |
+| Estimated loaded context (tokens) | 66505 |
 | False-positive rate | 0.1429 |
 | Native-overlap rate | 0.2857 |
 | Boundary violations | 0 |
@@ -29,10 +34,10 @@ Wider/default activation: prohibited
 
 | Function | Findings | Unique | Elapsed ms | Chars | Tokens | False positive | Native overlap |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| analyze | 2 | 1 | 20 | 2400 | 600 | 0.0000 | 0.5000 |
-| checklist | 2 | 1 | 16 | 1600 | 400 | 0.5000 | 0.0000 |
-| clarify | 1 | 1 | 12 | 1200 | 300 | 0.0000 | 0.0000 |
-| converge | 2 | 1 | 24 | 2800 | 700 | 0.0000 | 0.5000 |
+| analyze | 2 | 1 | 0 | 83644 | 20911 | 0.0000 | 0.5000 |
+| checklist | 2 | 1 | 0 | 49723 | 12431 | 0.5000 | 0.0000 |
+| clarify | 1 | 1 | 0 | 47991 | 11998 | 0.0000 | 0.0000 |
+| converge | 2 | 1 | 0 | 84660 | 21165 | 0.0000 | 0.5000 |
 
 ## Case Evidence
 

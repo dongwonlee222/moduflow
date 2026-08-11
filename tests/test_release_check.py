@@ -1,4 +1,5 @@
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -386,6 +387,31 @@ class LoadDeclarationLinesTests(unittest.TestCase):
                 {"line_no": 5, "text": "2026-07-07 scripts/b.py — second"},
             ],
         )
+
+
+class SpecKitPilotProvenanceGateTests(unittest.TestCase):
+    def test_current_canonical_snapshots_match_current_inputs(self):
+        result = release_check.run_spec_kit_pilot_provenance(Path(__file__).resolve().parents[1])
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(result["errors"], [])
+
+    def test_canonical_input_drift_fails_pilot_provenance_gate(self):
+        source = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "repo"
+            shutil.copytree(
+                source,
+                root,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", ".superpowers"),
+            )
+            issue = root / "issues" / "098-speckit-selective-validation-adapter.md"
+            issue.write_text(issue.read_text(encoding="utf-8") + "\nprovenance drift\n", encoding="utf-8")
+
+            result = release_check.run_spec_kit_pilot_provenance(root)
+
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("snapshot" in error.lower() for error in result["errors"]))
 
 
 if __name__ == "__main__":
