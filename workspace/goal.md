@@ -48,4 +48,4 @@ Repository sync, review handoff, production records, and dashboard foundations a
 
 ## Next Command
 
-`product:execute 098-speckit-selective-validation-adapter`
+`product:review 098-speckit-selective-validation-adapter`

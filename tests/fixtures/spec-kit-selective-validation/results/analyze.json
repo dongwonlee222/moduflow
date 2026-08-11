@@ -1,0 +1,31 @@
+{
+  "schema": "moduflow.spec-kit-result.v1",
+  "run_id": "sha256:391ff67960d3484c37e77d5369cdef500bba64cfd4dd19a74eed1cd43368ac74",
+  "input_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "issue_id": "098-speckit-selective-validation-adapter",
+  "function": "analyze",
+  "source_version": "0.16.1",
+  "source_sha": "684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5",
+  "template_sha256": "79f5334bce9b249d4c1a5e6949dee3f3532db89a0a97f3d2eb55c1a1c2fe06f6",
+  "permission": "read",
+  "findings": [
+    {
+      "id": "analyze-f1",
+      "summary": "Separate deterministic safety evidence from the pending human value decision.",
+      "reviewer_disposition": "useful_unique",
+      "native_overlap": false
+    },
+    {
+      "id": "analyze-f2",
+      "summary": "The native consistency gate already covers structural acceptance mapping.",
+      "reviewer_disposition": "accepted_native",
+      "native_overlap": true
+    }
+  ],
+  "limitations": ["Deterministic offline reviewed evidence; no live model or Spec Kit CLI executed."],
+  "native_overlap": ["analyze-f2"],
+  "elapsed_ms": 20,
+  "loaded_context_chars": 2400,
+  "user_decision": "Human decision pending.",
+  "next_command": "product:review 098-speckit-selective-validation-adapter"
+}

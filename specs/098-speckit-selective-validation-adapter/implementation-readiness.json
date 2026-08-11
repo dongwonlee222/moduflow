@@ -61,5 +61,5 @@
       "recommendation": ""
     }
   ],
-  "next_command": "product:execute 098-speckit-selective-validation-adapter"
+  "next_command": "product:review 098-speckit-selective-validation-adapter"
 }

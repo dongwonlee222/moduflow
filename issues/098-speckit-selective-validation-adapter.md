@@ -79,9 +79,9 @@ extensions, or route build/release ownership away from ModuFlow and Superpowers.
 ## Workflow Tasks
 
 - [x] spec → `specs/098-speckit-selective-validation-adapter/spec.md`; Korean sidecar → `specs/098-speckit-selective-validation-adapter/spec.ko.md`
-- [ ] benchmark → compare selected Spec Kit functions against native ModuFlow checks
+- [x] benchmark → compare selected Spec Kit functions against native ModuFlow checks
 - [x] plan → `specs/098-speckit-selective-validation-adapter/plan.md`; tasks → `specs/098-speckit-selective-validation-adapter/tasks.md`
-- [ ] execute → PR / commits
+- [x] execute → implementation and deterministic offline pilot commits
 - [ ] review → review notes
 
 ## Related Issues
@@ -104,6 +104,12 @@ extensions, or route build/release ownership away from ModuFlow and Superpowers.
   streams, exact upstream hashes, append-only result persistence, and a human pilot-decision gate.
 - 2026-08-11: Plan consistency passed with zero findings and the report-only implementation
   readiness gate is `ready` across all seven checks.
+- 2026-08-11: The selective adapter, pinned templates, safety overlay, bridge, and 13-case
+  offline pilot are prepared for review. Safety counters are zero; the human value/activation
+  decision remains pending and wider/default activation is prohibited.
+- 2026-08-11: Task 5 verification passed 131/131 focused tests and 1,133/1,133 full tests;
+  spec consistency is 0/0/0, lifecycle drift is empty, package/project validation is valid,
+  and the release check is green.
 
 ## Links
 
@@ -111,8 +117,10 @@ extensions, or route build/release ownership away from ModuFlow and Superpowers.
 - Plan: `specs/098-speckit-selective-validation-adapter/plan.md`
 - Tasks: `specs/098-speckit-selective-validation-adapter/tasks.md`
 - Readiness: `specs/098-speckit-selective-validation-adapter/implementation-readiness.json`
+- Pilot: `specs/098-speckit-selective-validation-adapter/pilot-report.md`
+- Status: `specs/098-speckit-selective-validation-adapter/status.md`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command
 
-`/product:execute 098-speckit-selective-validation-adapter`
+`/product:review 098-speckit-selective-validation-adapter`

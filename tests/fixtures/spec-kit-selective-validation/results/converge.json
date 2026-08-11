@@ -1,0 +1,31 @@
+{
+  "schema": "moduflow.spec-kit-result.v1",
+  "run_id": "sha256:f16db30e44ede791feb9fabaf43243c04ffda60f68ae53f66d307c85e0fea171",
+  "input_hash": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "issue_id": "098-speckit-selective-validation-adapter",
+  "function": "converge",
+  "source_version": "0.16.1",
+  "source_sha": "684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5",
+  "template_sha256": "aafba511dea42334373c7ffb9f58e2fb6d82889ea94ec86c1367dbb6a531ca36",
+  "permission": "read",
+  "findings": [
+    {
+      "id": "converge-w1",
+      "summary": "Keep the wider-activation decision as explicit future work after review.",
+      "reviewer_disposition": "useful_unique",
+      "native_overlap": false
+    },
+    {
+      "id": "converge-w2",
+      "summary": "Native project convergence already reports unimplemented canonical tasks.",
+      "reviewer_disposition": "accepted_native",
+      "native_overlap": true
+    }
+  ],
+  "limitations": ["Deterministic offline reviewed evidence; no live model or Spec Kit CLI executed."],
+  "native_overlap": ["converge-w2"],
+  "elapsed_ms": 24,
+  "loaded_context_chars": 2800,
+  "user_decision": "Human decision pending.",
+  "next_command": "product:review 098-speckit-selective-validation-adapter"
+}

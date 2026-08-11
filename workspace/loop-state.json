@@ -19,20 +19,20 @@
     "098-speckit-selective-validation-adapter"
   ],
   "active_issue_id": "098-speckit-selective-validation-adapter",
-  "phase": "execute",
-  "mode": "recommend",
-  "delegation_level": "implementation_ready",
+  "phase": "review",
+  "mode": "review",
+  "delegation_level": "review_ready",
   "status": "active",
-  "next_command": "product:execute 098-speckit-selective-validation-adapter",
+  "next_command": "product:review 098-speckit-selective-validation-adapter",
   "attempts": {
-    "command": "product:execute 098-speckit-selective-validation-adapter",
+    "command": "product:review 098-speckit-selective-validation-adapter",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-08-11"
   },
   "blocker": null,
-  "last_action": "completed the user-approved Issue 098 implementation plan and task graph with five sequential TDD streams",
-  "last_verification": "2026-08-11: approved upstream SHA and four template SHA-256 values verified; spec consistency 0 findings; implementation readiness ready 7/7",
+  "last_action": "prepared the Issue 098 selective adapter and 13-case deterministic offline pilot for review; human activation decision remains pending",
+  "last_verification": "2026-08-11: pilot 13/13; focused 131/131; full 1133/1133; spec 0/0/0; lifecycle []; package/project/release valid; four safety counters zero",
   "updated_at": "2026-08-11",
   "git_binding": {
     "mode": "git-files",
@@ -142,8 +142,8 @@
     "release": "repository source on main at f4029f3; no plugin publish",
     "execution_backend": {
       "type": "host-subagent",
-        "status": "planned",
-        "reason": "Issue 098 uses five sequential shared-state streams; implementation readiness must run before execution",
+        "status": "review_ready",
+        "reason": "Issue 098 implementation and offline pilot are prepared; human value and activation decisions remain pending",
         "session": "codex-2026-08-11"
       }
   }

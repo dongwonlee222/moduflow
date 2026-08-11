@@ -4,7 +4,7 @@
 
 ### Now
 
-- `098-speckit-selective-validation-adapter` — selective-template spec and five-stream TDD plan approved; next is `product:execute`.
+- `098-speckit-selective-validation-adapter` — implementation and 13-case offline pilot ready for `product:review`; human value/activation decision pending, wider/default activation prohibited.
 
 ### Next
 

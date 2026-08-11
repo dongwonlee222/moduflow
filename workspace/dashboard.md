@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issue 098 has an approved, sequential implementation plan for the on-demand Spec Kit validation adapter.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 098 implementation and its 13-case offline safety/value pilot are ready for review; wider activation remains prohibited.
 
 ## Active Goal
 
@@ -10,12 +10,12 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 098 has an approved, s
 
 ## Active Issue
 
-- `098-speckit-selective-validation-adapter` — spec and five-stream sequential TDD plan complete; implementation readiness is `ready` and execution is next.
+- `098-speckit-selective-validation-adapter` — phase `review`; 13/13 offline cases passed with zero safety counters, while the human value/activation decision remains pending.
 
 ## Priority Queue — 2026-08-10
 
-- Now: `098` selective Spec Kit validation adapter; next command is
-  `product:execute 098-speckit-selective-validation-adapter`.
+- Now: `098` selective Spec Kit validation adapter review; next command is
+  `product:review 098-speckit-selective-validation-adapter`.
 - Shipped: `097` merged via PR #36 as `46f98c0`; routing simulation and CI passed.
 - Then: `094` risk-based security/quality review gate; blocker `089` is done.
 - Shipped: `095` merged via PR #33 as `f4029f3`; post-merge release check passed.
