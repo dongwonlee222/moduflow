@@ -29,7 +29,8 @@ This is intentionally conservative:
 The selector accepts exactly one approved function and an optional approved validation target.
 
 ```text
-<spec-kit-prefix> <function> [<validation-target>]
+English: <spec-kit-prefix> <function> [<validation-target>]
+Korean:  <spec-kit-prefix> [<validation-target>] <function>
 ```
 
 Approved prefixes:
