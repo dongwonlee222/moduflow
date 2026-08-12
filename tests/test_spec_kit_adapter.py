@@ -9,6 +9,7 @@ import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -232,9 +233,81 @@ class SpecKitConfigTests(unittest.TestCase):
         path.parent.mkdir()
         path.write_text(json.dumps(payload), encoding="utf-8")
 
+    def test_canonical_request_grammar(self):
+        requests = {
+            "Spec Kit clarify requirements": "clarify",
+            "Spec Kit analyze acceptance criteria": "analyze",
+            "Spec Kit checklist spec": "checklist",
+            "Spec Kit converge tasks": "converge",
+            "스펙킷 요구사항 명확화": "clarify",
+            "스펙킷 승인 기준 분석": "analyze",
+            "스펙킷 요구사항 체크리스트": "checklist",
+            "스펙킷 남은 작업 수렴": "converge",
+        }
+
+        for request, expected_function in requests.items():
+            with self.subTest(request=request):
+                classification = self.ska.classify_request(request)
+                self.assertEqual(classification["outcome"], "selected")
+                self.assertEqual(classification["function"], expected_function)
+                self.assertEqual(classification["reason_code"], "explicit_validation")
+                self.assertIsNone(classification["retry"])
+                self.assertEqual(self.ska.select_function(request), expected_function)
+
+    def test_noncanonical_requests_return_structured_fallback(self):
+        requests = {
+            "Spec Kit analyze then stage files": "ambiguous_request",
+            "Spec Kit clarify which changes to add to requirements": "ambiguous_request",
+            "Spec Kit analyze checklist requirements": "multiple_functions",
+            "Spec Kit analyze requirements, then continue issue": "ambiguous_request",
+            "스펙킷 요구사항 분석하고 이슈를 완료해줘": "ambiguous_request",
+            "Spec Kit analyze unknown target": "unsupported_request",
+        }
+
+        for request, expected_reason in requests.items():
+            with self.subTest(request=request):
+                classification = self.ska.classify_request(request)
+                self.assertEqual(classification["outcome"], "fallback")
+                self.assertIsNone(classification["function"])
+                self.assertEqual(classification["reason_code"], expected_reason)
+                self.assertTrue(classification["retry"].startswith("Spec Kit "))
+                self.assertIsNone(self.ska.select_function(request))
+
+    def test_only_one_terminal_punctuation_mark_is_normalized(self):
+        self.assertEqual(
+            self.ska.select_function("Spec Kit analyze requirements?"), "analyze"
+        )
+        classification = self.ska.classify_request("Spec Kit analyze requirements??")
+        self.assertEqual(classification["outcome"], "fallback")
+        self.assertIsNone(classification["function"])
+
+    def test_noncanonical_handoff_reads_no_prerequisites(self):
+        request = "Spec Kit analyze then stage files"
+        prerequisite_names = (
+            "load_project_config",
+            "load_manifest",
+            "verify_assets",
+            "read_canonical_inputs",
+        )
+
+        with mock.patch.multiple(
+            self.ska,
+            **{name: mock.DEFAULT for name in prerequisite_names},
+        ) as prerequisites:
+            handoff = self.ska.build_handoff(
+                ROOT, self.project, ISSUE_ID, request, host_available=True
+            )
+
+        self.assertEqual(handoff["outcome"], "unsupported")
+        self.assertIsNone(handoff["function"])
+        self.assertIsNone(handoff["source"]["template"])
+        self.assertIn("Spec Kit analyze requirements", handoff["fallback"])
+        for name in prerequisite_names:
+            prerequisites[name].assert_not_called()
+
     def test_missing_config_is_disabled_without_creating_a_file(self):
         result = self.ska.build_handoff(
-            ROOT, self.project, ISSUE_ID, "analyze", host_available=True
+            ROOT, self.project, ISSUE_ID, "Spec Kit analyze requirements", host_available=True
         )
 
         self.assertEqual(result["outcome"], "disabled")
@@ -242,16 +315,18 @@ class SpecKitConfigTests(unittest.TestCase):
 
     def test_explicit_korean_request_selects_one_function(self):
         self.assertEqual(
-            self.ska.select_function("스펙킷으로 요구사항 체크리스트 만들어줘"),
+            self.ska.select_function("스펙킷 요구사항 체크리스트"),
             "checklist",
         )
         self.assertEqual(
-            self.ska.select_function("스펙킷으로 남은 작업을 수렴해줘"), "converge"
+            self.ska.select_function("스펙킷 남은 작업 수렴"), "converge"
         )
 
     def test_multiple_functions_do_not_fan_out(self):
-        with self.assertRaisesRegex(self.ska.SpecKitAdapterError, "ambiguous_function"):
-            self.ska.select_function("스펙킷으로 분석하고 체크리스트도 만들어줘")
+        result = self.ska.classify_request("스펙킷 분석 체크리스트")
+        self.assertEqual(result["outcome"], "fallback")
+        self.assertEqual(result["reason_code"], "multiple_functions")
+        self.assertIsNone(self.ska.select_function("스펙킷 분석 체크리스트"))
 
     def test_ownership_language_blocks_function_selection_before_template_handoff(self):
         self.write_config(opted_in_config())
@@ -359,21 +434,18 @@ class SpecKitConfigTests(unittest.TestCase):
                 self.assertIsNone(handoff["source"]["template"])
         self.assertFalse((self.project / "specs" / ISSUE_ID / "validation.md").exists())
 
-    def test_ordinary_validation_words_require_ownership_context_before_blocking(self):
+    def test_old_free_form_validation_requests_now_fall_back(self):
         self.write_config(opted_in_config())
 
-        for request, expected_function in ORDINARY_VALIDATION_REQUESTS:
+        for request, _expected_function in ORDINARY_VALIDATION_REQUESTS:
             with self.subTest(request=request):
-                self.assertEqual(self.ska.select_function(request), expected_function)
+                self.assertIsNone(self.ska.select_function(request))
                 handoff = self.ska.build_handoff(
                     ROOT, self.project, ISSUE_ID, request, host_available=True
                 )
-                self.assertEqual(handoff["outcome"], "ready")
-                self.assertEqual(handoff["function"], expected_function)
-                self.assertEqual(
-                    handoff["source"]["template"],
-                    f"vendor/spec-kit/0.16.1/commands/{expected_function}.md",
-                )
+                self.assertEqual(handoff["outcome"], "unsupported")
+                self.assertIsNone(handoff["function"])
+                self.assertIsNone(handoff["source"]["template"])
         self.assertFalse((self.project / "specs" / ISSUE_ID / "validation.md").exists())
 
     def test_intrinsic_korean_git_action_blocks_without_repository_context(self):
@@ -403,7 +475,7 @@ class SpecKitConfigTests(unittest.TestCase):
                 self.assertIsNone(handoff["source"]["template"])
         self.assertFalse((self.project / "specs" / ISSUE_ID / "validation.md").exists())
 
-    def test_clause_token_ownership_handles_arbitrary_insertions_and_domain_overrides(self):
+    def test_noncanonical_domain_and_modifier_phrases_fall_back(self):
         self.write_config(opted_in_config())
         for request in METAMORPHIC_OWNERSHIP_REQUESTS:
             with self.subTest(kind="ownership", request=request):
@@ -413,17 +485,17 @@ class SpecKitConfigTests(unittest.TestCase):
                 )
                 self.assertEqual(handoff["outcome"], "unsupported")
                 self.assertIsNone(handoff["source"]["template"])
-        for request, function in DOMAIN_TARGET_POSITIVE_REQUESTS:
-            with self.subTest(kind="domain", request=request):
-                self.assertEqual(self.ska.select_function(request), function)
+        for request, _function in DOMAIN_TARGET_POSITIVE_REQUESTS:
+            with self.subTest(kind="domain-fallback", request=request):
+                self.assertIsNone(self.ska.select_function(request))
                 handoff = self.ska.build_handoff(
                     ROOT, self.project, ISSUE_ID, request, host_available=True
                 )
-                self.assertEqual(handoff["outcome"], "ready")
-                self.assertEqual(handoff["function"], function)
+                self.assertEqual(handoff["outcome"], "unsupported")
+                self.assertIsNone(handoff["function"])
         self.assertFalse((self.project / "specs" / ISSUE_ID / "validation.md").exists())
 
-    def test_strong_clause_roles_bind_each_verb_to_its_nearest_target(self):
+    def test_punctuation_and_modifier_variants_all_fall_back(self):
         self.write_config(opted_in_config())
         negatives, positives = semantic_role_requests()
         for request in negatives:
@@ -434,21 +506,21 @@ class SpecKitConfigTests(unittest.TestCase):
                 )
                 self.assertEqual(handoff["outcome"], "unsupported")
                 self.assertIsNone(handoff["source"]["template"])
-        for request, function in positives:
-            with self.subTest(kind="advisory", request=request):
-                self.assertEqual(self.ska.select_function(request), function)
+        for request, _function in positives:
+            with self.subTest(kind="noncanonical", request=request):
+                self.assertIsNone(self.ska.select_function(request))
                 handoff = self.ska.build_handoff(
                     ROOT, self.project, ISSUE_ID, request, host_available=True
                 )
-                self.assertEqual(handoff["outcome"], "ready")
-                self.assertEqual(handoff["function"], function)
+                self.assertEqual(handoff["outcome"], "unsupported")
+                self.assertIsNone(handoff["function"])
         self.assertFalse((self.project / "specs" / ISSUE_ID / "validation.md").exists())
 
     def test_valid_opt_in_with_verified_assets_returns_one_ready_template(self):
         self.write_config(opted_in_config(("analyze",)))
 
         result = self.ska.build_handoff(
-            ROOT, self.project, ISSUE_ID, "analyze", host_available=True
+            ROOT, self.project, ISSUE_ID, "Spec Kit analyze requirements", host_available=True
         )
 
         self.assertEqual(result["outcome"], "ready")
@@ -494,8 +566,9 @@ class SpecKitConfigTests(unittest.TestCase):
         self.write_config(opted_in_config())
 
         for function, paths in required.items():
+            request = f"Spec Kit {function} requirements"
             ready = self.ska.build_handoff(
-                ROOT, self.project, ISSUE_ID, function, host_available=True
+                ROOT, self.project, ISSUE_ID, request, host_available=True
             )
             self.assertEqual(ready["outcome"], "ready")
             self.assertEqual(ready["inputs"], paths)
@@ -505,7 +578,7 @@ class SpecKitConfigTests(unittest.TestCase):
                     original = path.read_bytes()
                     path.unlink()
                     handoff = self.ska.build_handoff(
-                        ROOT, self.project, ISSUE_ID, function, host_available=True
+                        ROOT, self.project, ISSUE_ID, request, host_available=True
                     )
                     self.assertNotEqual(handoff["outcome"], "ready")
                     self.assertIsNone(handoff["source"]["template"])
@@ -515,14 +588,14 @@ class SpecKitConfigTests(unittest.TestCase):
     def test_input_hash_is_derived_from_canonical_paths_and_bytes(self):
         self.write_config(opted_in_config(("analyze",)))
         before = self.ska.build_handoff(
-            ROOT, self.project, ISSUE_ID, "analyze", host_available=True
+            ROOT, self.project, ISSUE_ID, "Spec Kit analyze requirements", host_available=True
         )
 
         (self.project / "specs" / ISSUE_ID / "plan.md").write_text(
             "# Changed canonical plan\n", encoding="utf-8"
         )
         after = self.ska.build_handoff(
-            ROOT, self.project, ISSUE_ID, "analyze", host_available=True
+            ROOT, self.project, ISSUE_ID, "Spec Kit analyze requirements", host_available=True
         )
 
         self.assertNotEqual(before["input_hash"], after["input_hash"])
@@ -537,7 +610,7 @@ class SpecKitConfigTests(unittest.TestCase):
             config_dir.symlink_to(outside, target_is_directory=True)
 
             handoff = self.ska.build_handoff(
-                ROOT, self.project, ISSUE_ID, "analyze", host_available=True
+                ROOT, self.project, ISSUE_ID, "Spec Kit analyze requirements", host_available=True
             )
             self.assertEqual(handoff["outcome"], "blocked")
             self.assertIsNone(handoff["source"]["template"])
@@ -556,7 +629,7 @@ class SpecKitConfigTests(unittest.TestCase):
             outside_input.write_text("outside plan\n", encoding="utf-8")
             canonical_input.symlink_to(outside_input)
             handoff = self.ska.build_handoff(
-                ROOT, self.project, ISSUE_ID, "analyze", host_available=True
+                ROOT, self.project, ISSUE_ID, "Spec Kit analyze requirements", host_available=True
             )
             self.assertNotEqual(handoff["outcome"], "ready")
             self.assertIsNone(handoff["source"]["template"])
@@ -610,7 +683,7 @@ class SpecKitConfigTests(unittest.TestCase):
         self.write_config(payload)
 
         result = self.ska.build_handoff(
-            ROOT, self.project, ISSUE_ID, "analyze", host_available=True
+            ROOT, self.project, ISSUE_ID, "Spec Kit analyze requirements", host_available=True
         )
 
         self.assertEqual(result["outcome"], "blocked")
@@ -623,7 +696,7 @@ class SpecKitConfigTests(unittest.TestCase):
             (self.project / "specs").symlink_to(outside, target_is_directory=True)
 
             result = self.ska.build_handoff(
-                ROOT, self.project, ISSUE_ID, "analyze", host_available=True
+                ROOT, self.project, ISSUE_ID, "Spec Kit analyze requirements", host_available=True
             )
 
         self.assertEqual(result["outcome"], "blocked")
@@ -675,7 +748,13 @@ class SpecKitPersistenceTests(unittest.TestCase):
         self.tempdir.cleanup()
 
     def ready_handoff(self, function):
-        return self.ska.build_handoff(ROOT, self.project, ISSUE_ID, function, host_available=True)
+        return self.ska.build_handoff(
+            ROOT,
+            self.project,
+            ISSUE_ID,
+            f"Spec Kit {function} requirements",
+            host_available=True,
+        )
 
     def valid_result(self, handoff, findings=None):
         findings = ["Requirements are internally consistent."] if findings is None else findings
@@ -821,7 +900,7 @@ class SpecKitPersistenceTests(unittest.TestCase):
             ROOT,
             self.project,
             ISSUE_ID,
-            "Spec Kit converge the remaining work",
+            "Spec Kit converge tasks",
             validated,
             host_available=True,
             write=True,
@@ -861,7 +940,7 @@ class SpecKitPersistenceTests(unittest.TestCase):
         config.parent.mkdir()
         config.write_text(json.dumps(opted_in_config()), encoding="utf-8")
         empty_handoff = self.ska.build_handoff(
-            ROOT, empty_project, ISSUE_ID, "analyze", host_available=True
+            ROOT, empty_project, ISSUE_ID, "Spec Kit analyze requirements", host_available=True
         )
         empty_result = self.valid_result(empty_handoff)
         self.assertFalse(

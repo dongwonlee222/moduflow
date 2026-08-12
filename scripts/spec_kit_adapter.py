@@ -9,6 +9,7 @@ import os
 import re
 import stat
 import tempfile
+import unicodedata
 from pathlib import Path
 
 
@@ -32,176 +33,37 @@ FUNCTION_PHRASES = {
     "checklist": ("checklist", "체크리스트", "요구사항 점검"),
     "converge": ("converge", "convergence", "수렴", "남은 작업"),
 }
-LIFECYCLE_ACTION_ALIASES = (
-    "start",
-    "begin",
-    "pause",
-    "stop",
-    "resume",
-    "continue",
-    "finish",
-    "complete",
-    "close",
-)
-KOREAN_LIFECYCLE_ACTION_ALIASES = (
-    "시작",
-    "착수",
-    "일시정지",
-    "멈춰",
-    "중지",
-    "재개",
-    "계속",
-    "이어",
-    "마무리",
-    "끝내",
-    "완료",
-    "닫아",
-    "종료",
-)
-LIFECYCLE_RESOURCE_ALIASES = ("status", "issue", "goal", "roadmap", "memory")
-KOREAN_LIFECYCLE_RESOURCE_ALIASES = ("상태", "이슈", "목표", "로드맵", "메모리", "기억")
-GIT_OPERATION_ALIASES = (
-    "add",
-    "stage",
-    "stash",
-    "fetch",
-    "pull",
-    "push",
-    "merge",
-    "rebase",
-    "reset",
-    "restore",
-    "checkout",
-    "switch",
-    "branch",
-    "tag",
-    "cherry-pick",
-    "revert",
-    "clone",
-    "commit",
-)
-KOREAN_GIT_OPERATION_ALIASES = (
-    "깃 추가",
-    "스테이징",
-    "스태시",
-    "페치",
-    "풀",
-    "푸시",
-    "병합",
-    "리베이스",
-    "리셋",
-    "복원",
-    "체크아웃",
-    "스위치",
-    "브랜치",
-    "태그",
-    "체리픽",
-    "리버트",
-    "클론",
-    "커밋",
-)
-NON_GIT_OWNERSHIP_PATTERN = re.compile(
-    r"\b(?:implement(?:ation|ed|ing)?|code|review(?:ed|ing|s)?|pr|"
-    r"pull\s+request|release(?:d|s|ing)?|deploy(?:ment|ed|ing|s)?)\b"
-)
-KOREAN_NON_GIT_OWNERSHIP_PHRASES = (
-    "구현", "개발", "코드", "리뷰", "피알", "릴리즈", "배포"
-)
-KOREAN_INTRINSIC_GIT_ALIASES = (
-    "스테이징",
-    "스태시",
-    "페치",
-    "푸시",
-    "병합",
-    "머지",
-    "리베이스",
-    "리셋",
-    "체크아웃",
-    "체리픽",
-    "리버트",
-    "클론",
-    "커밋",
-)
-CLAUSE_SPLIT_PATTERN = re.compile(
-    r"(?:\b(?:and\s+then|then|after|before|because|once|afterwards)\b|"
-    r"(?:한\s*뒤|\s+뒤\s+|\s+다음\s+|\s+후\s+|하고\s+|해서\s+))",
-    re.IGNORECASE,
-)
-TOKEN_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*|[가-힣]+")
-ENGLISH_INTRINSIC_GIT_FORMS = {
-    "stash", "stashed", "stashes", "stashing",
-    "fetch", "fetched", "fetches", "fetching",
-    "pull", "pulled", "pulls", "pulling",
-    "push", "pushed", "pushes", "pushing",
-    "merge", "merged", "merges", "merging",
-    "rebase", "rebased", "rebases", "rebasing",
-    "reset", "resets", "resetting",
-    "checkout", "checkouts", "checked-out", "checking-out",
-    "cherry-pick", "cherry-picked", "cherry-picks", "cherry-picking",
-    "revert", "reverted", "reverts", "reverting",
-    "clone", "cloned", "clones", "cloning",
-    "commit", "committed", "commits", "committing",
+REQUEST_PREFIXES = ("spec kit", "speckit", "스펙 킷", "스펙킷")
+CANONICAL_RETRY = {
+    "clarify": "Spec Kit clarify requirements",
+    "analyze": "Spec Kit analyze requirements",
+    "checklist": "Spec Kit checklist acceptance criteria",
+    "converge": "Spec Kit converge tasks",
 }
-ENGLISH_AMBIGUOUS_GIT_FORMS = {
-    "add", "added", "adds", "adding",
-    "stage", "staged", "staging",
-    "restore", "restored", "restores", "restoring",
-    "switch", "switched", "switches", "switching",
-    "tag", "tagged", "tags", "tagging",
-    "branch", "branched", "branches", "branching",
-}
-ENGLISH_GIT_CONTEXT = {"git", "repository", "repo", "remote", "commit", "index", "branch"}
-ENGLISH_GIT_STATE = {"changed", "staged", "tracked", "modified", "untracked"}
-ENGLISH_GENERIC_GIT_OBJECT = {"file", "files", "change", "changes", "hunk", "hunks"}
-ENGLISH_DOMAIN_TARGET = {
-    "requirement", "requirements", "acceptance", "criteria", "spec", "specification",
-    "plan", "task", "tasks", "validation", "coverage", "input", "inputs",
-}
-ENGLISH_LIFECYCLE_ACTION_FORMS = {
-    "start", "started", "starts", "starting",
-    "begin", "began", "begins", "beginning",
-    "pause", "paused", "pauses", "pausing",
-    "stop", "stopped", "stops", "stopping",
-    "resume", "resumed", "resumes", "resuming",
-    "continue", "continued", "continues", "continuing",
-    "finish", "finished", "finishes", "finishing",
-    "complete", "completed", "completes", "completing",
-    "close", "closed", "closes", "closing",
-    "mark", "marked", "marks", "marking",
-    "set", "sets", "setting",
-    "update", "updated", "updates", "updating",
-    "change", "changed", "changes", "changing",
-    "reopen", "reopened", "reopens", "reopening",
-    "create", "created", "creates", "creating",
-    "edit", "edited", "edits", "editing",
-    "delete", "deleted", "deletes", "deleting",
-    "move", "moved", "moves", "moving",
-    "advance", "advanced", "advances", "advancing",
-    "transition", "transitioned", "transitions", "transitioning",
-    "archive", "archived", "archives", "archiving",
-    "save", "saved", "saves", "saving",
-    "record", "recorded", "records", "recording",
-    "remember", "remembered", "remembers", "remembering",
-    "forget", "forgets", "forgetting", "forgot", "done",
-}
-ENGLISH_LIFECYCLE_RESOURCE = {"issue", "status", "goal", "roadmap", "memory", "lifecycle", "project"}
-ADVISORY_COMPLEMENT = {"whether", "which", "where"}
-KOREAN_INTRINSIC_GIT_STEMS = tuple(KOREAN_INTRINSIC_GIT_ALIASES) + ("머지",)
-KOREAN_AMBIGUOUS_GIT_STEMS = ("추가", "풀", "복원", "스위치", "브랜치", "태그")
-KOREAN_GIT_CONTEXT_STEMS = (
-    "깃", "저장소", "리포지토리", "원격", "리모트", "커밋", "인덱스", "브랜치"
+ENGLISH_TARGETS = (
+    "requirements",
+    "requirement",
+    "spec",
+    "specification",
+    "plan",
+    "tasks",
+    "task",
+    "acceptance criteria",
+    "consistency",
+    "validation coverage",
 )
-KOREAN_GIT_STATE_STEMS = ("변경", "스테이징", "추적", "수정", "미추적")
-KOREAN_GENERIC_GIT_OBJECT_STEMS = ("파일", "변경사항", "변경", "헝크")
-KOREAN_DOMAIN_TARGET_STEMS = (
-    "요구사항", "수용기준", "인수기준", "스펙", "명세", "계획", "태스크", "검증", "커버리지", "입력"
-)
-KOREAN_LIFECYCLE_RESOURCE_STEMS = (
-    "상태", "이슈", "목표", "로드맵", "메모리", "기억", "라이프사이클", "프로젝트"
-)
-KOREAN_LIFECYCLE_ACTION_STEMS = (
-    "시작", "착수", "일시정지", "멈춰", "중지", "재개", "계속", "이어", "마무리", "끝내",
-    "완료", "닫아", "종료", "변경", "수정", "업데이트", "닫", "생성", "삭제", "이동", "저장", "기록", "기억",
+KOREAN_TARGETS = (
+    "요구사항",
+    "요구 사항",
+    "명세",
+    "스펙",
+    "계획",
+    "작업",
+    "남은 작업",
+    "승인 기준",
+    "수락 기준",
+    "정합성",
+    "검증 범위",
 )
 ISSUE_ID_PATTERN = re.compile(r"^[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)*$")
 CONFIG_TOP_LEVEL = {"schema", "capabilities"}
@@ -443,352 +305,100 @@ def load_project_config(project_root):
     return {**spec_kit, "functions": functions}
 
 
-def _request_clauses(text):
-    return [clause.strip() for clause in CLAUSE_SPLIT_PATTERN.split(text) if clause.strip()]
+def _normalize_request(request):
+    if not isinstance(request, str):
+        return ""
+    text = unicodedata.normalize("NFKC", request).casefold()
+    text = " ".join(text.split())
+    return text[:-1] if text.endswith((".", "?", "!")) else text
 
 
-def _clause_tokens(clause):
-    return TOKEN_PATTERN.findall(clause.lower())
-
-
-def _ownership_clause_tokens(text):
-    """Keep punctuation in a clause and split only coordinated actions."""
-    action_forms = (
-        ENGLISH_INTRINSIC_GIT_FORMS
-        | ENGLISH_AMBIGUOUS_GIT_FORMS
-        | ENGLISH_LIFECYCLE_ACTION_FORMS
+def _canonical_requests():
+    accepted = {}
+    english_targets = ("",) + tuple(
+        f"{determiner}{target}"
+        for target in ENGLISH_TARGETS
+        for determiner in ("", "the ", "current ")
     )
-    clauses = []
-    for raw_clause in _request_clauses(text):
-        tokens = _clause_tokens(raw_clause)
-        start = 0
-        for index, token in enumerate(tokens):
-            if token != "and":
-                continue
-            tail = tokens[index + 1 :]
-            next_action = next(
-                (offset for offset, candidate in enumerate(tail) if candidate in action_forms),
-                None,
-            )
-            next_and = next(
-                (offset for offset, candidate in enumerate(tail) if candidate == "and"),
-                None,
-            )
-            if next_action is None or (next_and is not None and next_and < next_action):
-                continue
-            if tokens[start:index]:
-                clauses.append(tokens[start:index])
-            start = index + 1
-        if tokens[start:]:
-            clauses.append(tokens[start:])
-    return clauses
-
-
-def _token_starts_with(token, stems):
-    return any(token.startswith(stem) for stem in stems)
-
-
-def _korean_domain_token(token):
-    return not token.startswith("스펙킷") and _token_starts_with(
-        token, KOREAN_DOMAIN_TARGET_STEMS
+    korean_targets = ("",) + tuple(
+        variant
+        for target in KOREAN_TARGETS
+        for variant in (target, f"{target}을", f"{target}를", f"{target}의")
     )
+    for prefix in REQUEST_PREFIXES[:2]:
+        for function, synonyms in FUNCTION_PHRASES.items():
+            for synonym in synonyms[:2] if function != "checklist" else synonyms[:1]:
+                for target in english_targets:
+                    accepted[" ".join(part for part in (prefix, synonym, target) if part)] = function
+    korean_synonyms = {
+        "clarify": ("명확화", "핵심 질문"),
+        "analyze": ("분석", "정합성"),
+        "checklist": ("체크리스트", "요구사항 점검"),
+        "converge": ("수렴",),
+    }
+    for prefix in REQUEST_PREFIXES[2:]:
+        for function, synonyms in korean_synonyms.items():
+            for synonym in synonyms:
+                for target in korean_targets:
+                    accepted[" ".join(part for part in (prefix, target, synonym) if part)] = function
+    return accepted
 
 
-def _korean_resource_noun(token):
-    for stem in KOREAN_LIFECYCLE_RESOURCE_STEMS:
-        if not token.startswith(stem):
-            continue
-        suffix = token[len(stem) :]
-        return not suffix or suffix.startswith(
-            ("을", "를", "은", "는", "이", "가", "의", "에", "로", "별")
-        )
-    return False
+CANONICAL_REQUESTS = _canonical_requests()
 
 
-def _korean_intrinsic_git_operation(token):
-    for stem in KOREAN_INTRINSIC_GIT_STEMS:
-        if not token.startswith(stem):
-            continue
-        suffix = token[len(stem) :]
-        if not suffix or suffix in {"을", "를"}:
-            return True
-        return suffix.startswith(("하", "해", "했", "할", "합", "하세요"))
-    return False
-
-
-def _positions(tokens, predicate):
-    return [index for index, token in enumerate(tokens) if predicate(token)]
-
-
-def _has_korean_working_tree(tokens):
-    return any(
-        token.startswith("작업트리")
-        or (token.startswith("작업") and index + 1 < len(tokens) and tokens[index + 1].startswith("트리"))
-        for index, token in enumerate(tokens)
-    )
-
-
-def _english_domain_positions(tokens):
-    return _positions(tokens, lambda token: token in ENGLISH_DOMAIN_TARGET)
-
-
-def _english_lifecycle_resource_positions(tokens):
-    positions = _positions(tokens, lambda token: token in ENGLISH_LIFECYCLE_RESOURCE)
-    positions.extend(
-        index
-        for index in range(len(tokens) - 1)
-        if tokens[index] == "work" and tokens[index + 1] == "item"
-    )
-    positions.extend(
-        index
-        for index, token in enumerate(tokens)
-        if re.fullmatch(r"\d{3}(?:-[a-z0-9]+)+", token)
-    )
-    return sorted(set(positions))
-
-
-def _advisory_domain_before_action(tokens, action_index, domain_positions):
-    marker_positions = [
-        index
-        for index, token in enumerate(tokens[:action_index])
-        if token in ADVISORY_COMPLEMENT
-    ]
-    if not marker_positions or "to" not in tokens[marker_positions[-1] : action_index]:
-        return False
-    marker = marker_positions[-1]
-    return any(marker < position < action_index for position in domain_positions)
-
-
-def _english_target_kind(tokens, index):
-    token = tokens[index]
-    if token in ENGLISH_DOMAIN_TARGET:
-        return "domain"
-    if token in ENGLISH_GENERIC_GIT_OBJECT:
-        return "generic-git"
-    if token in ENGLISH_GIT_CONTEXT:
-        return "explicit-git"
-    if token == "working" and index + 1 < len(tokens) and tokens[index + 1] == "tree":
-        return "explicit-git"
-    if token in ENGLISH_LIFECYCLE_RESOURCE:
-        return "resource"
-    if token == "work" and index + 1 < len(tokens) and tokens[index + 1] == "item":
-        return "resource"
-    if re.fullmatch(r"\d{3}(?:-[a-z0-9]+)+", token):
-        return "resource"
+def _request_body(text):
+    for prefix in sorted(REQUEST_PREFIXES, key=len, reverse=True):
+        if text == prefix:
+            return ""
+        if text.startswith(prefix + " "):
+            return text[len(prefix) + 1 :]
     return None
 
 
-def _nearest_english_target(tokens, action_index):
-    for index in range(action_index + 1, len(tokens)):
-        kind = _english_target_kind(tokens, index)
-        if kind:
-            return index, kind
-    return None
+def _matched_functions(body):
+    return {
+        function
+        for function, phrases in FUNCTION_PHRASES.items()
+        if any(phrase in body for phrase in phrases)
+    }
 
 
-def _generic_git_domain_complement(tokens, object_index):
-    """A generic object is advisory only when its own complement is a domain."""
-    saw_domain_preposition = False
-    for index in range(object_index + 1, len(tokens)):
-        token = tokens[index]
-        if token in {"to", "in", "for"}:
-            saw_domain_preposition = True
-            continue
-        kind = _english_target_kind(tokens, index)
-        if kind == "explicit-git":
-            return False
-        if kind == "domain" and saw_domain_preposition:
-            return True
-    return False
+def classify_request(request):
+    """Classify only the complete, documented Spec Kit validation grammar."""
+    text = _normalize_request(request)
+    selected = CANONICAL_REQUESTS.get(text)
+    if selected:
+        return {
+            "outcome": "selected",
+            "function": selected,
+            "reason_code": "explicit_validation",
+            "retry": None,
+        }
 
-
-def _intrinsic_git_is_domain_adjective(tokens, index):
-    token = tokens[index]
-    return (
-        token.endswith("ed")
-        and index + 1 < len(tokens)
-        and tokens[index + 1] in ENGLISH_DOMAIN_TARGET
-    )
-
-
-def _english_git_clause_owned(tokens):
-    if "git" in tokens:
-        return True
-    for index, token in enumerate(tokens):
-        if token not in ENGLISH_INTRINSIC_GIT_FORMS:
-            continue
-        if not _intrinsic_git_is_domain_adjective(tokens, index):
-            return True
-    if any(
-        tokens[index] in {"checked", "checking"} and tokens[index + 1] == "out"
-        for index in range(len(tokens) - 1)
+    body = _request_body(text)
+    functions = _matched_functions(body or "")
+    if len(functions) > 1:
+        reason = "multiple_functions"
+    elif body is not None and functions and (
+        any(marker in body for marker in (",", ";", ":", " then ", " and ", " which ", " how ", " where "))
+        or any(target in body for target in ENGLISH_TARGETS + KOREAN_TARGETS)
     ):
-        return True
-
-    domain_positions = _english_domain_positions(tokens)
-    for verb_index, verb in enumerate(tokens):
-        if verb not in ENGLISH_AMBIGUOUS_GIT_FORMS:
-            continue
-        target = _nearest_english_target(tokens, verb_index)
-        if target is None:
-            if _advisory_domain_before_action(tokens, verb_index, domain_positions):
-                continue
-            continue
-        target_index, target_kind = target
-        if target_kind == "explicit-git":
-            return True
-        if target_kind == "domain":
-            continue
-        if target_kind == "generic-git":
-            if verb in {
-                "add", "added", "adds", "adding",
-                "restore", "restored", "restores", "restoring",
-            }:
-                if _generic_git_domain_complement(tokens, target_index):
-                    continue
-            return True
-    return False
-
-
-def _korean_git_clause_owned(tokens):
-    if any(token.startswith("깃") for token in tokens):
-        return True
-    if any(_korean_intrinsic_git_operation(token) for token in tokens):
-        return True
-    domains = _positions(tokens, _korean_domain_token)
-    explicit_git = _positions(
-        tokens,
-        lambda token: _token_starts_with(token, KOREAN_GIT_CONTEXT_STEMS),
-    )
-    generic_git = _positions(
-        tokens,
-        lambda token: _token_starts_with(token, KOREAN_GENERIC_GIT_OBJECT_STEMS),
-    )
-    state_tokens = _positions(
-        tokens, lambda token: _token_starts_with(token, KOREAN_GIT_STATE_STEMS)
-    )
-    for verb_index, token in enumerate(tokens):
-        if not _token_starts_with(token, KOREAN_AMBIGUOUS_GIT_STEMS):
-            continue
-        candidates = sorted(
-            [(position, "domain") for position in domains if position != verb_index]
-            + [(position, "explicit-git") for position in explicit_git if position != verb_index]
-            + [(position, "generic-git") for position in generic_git if position != verb_index],
-            key=lambda item: (abs(item[0] - verb_index), item[0] < verb_index),
-        )
-        if not candidates:
-            if _has_korean_working_tree(tokens):
-                return True
-            continue
-        target_index, target_kind = candidates[0]
-        if target_kind == "explicit-git" or _has_korean_working_tree(tokens):
-            return True
-        if target_kind == "generic-git" and any(
-            min(verb_index, target_index) < state_index < max(verb_index, target_index)
-            for state_index in state_tokens
-        ):
-            return True
-    return False
-
-
-def _has_git_ownership(text):
-    return any(
-        _english_git_clause_owned(tokens) or _korean_git_clause_owned(tokens)
-        for tokens in _ownership_clause_tokens(text)
-    )
-
-
-def _english_lifecycle_clause_owned(tokens):
-    resources = _english_lifecycle_resource_positions(tokens)
-    if not resources:
-        return False
-    domains = _english_domain_positions(tokens)
-    for action_index, token in enumerate(tokens):
-        if token not in ENGLISH_LIFECYCLE_ACTION_FORMS:
-            continue
-        target = _nearest_english_target(tokens, action_index)
-        if target is not None and target[1] == "domain":
-            continue
-        if _advisory_domain_before_action(tokens, action_index, domains):
-            continue
-        return True
-    return False
-
-
-def _korean_lifecycle_clause_owned(tokens):
-    resources = _positions(
-        tokens,
-        lambda token: _token_starts_with(token, KOREAN_LIFECYCLE_RESOURCE_STEMS),
-    )
-    resources.extend(
-        index
-        for index, token in enumerate(tokens[:-1])
-        if (token.startswith("작업") and tokens[index + 1].startswith("항목"))
-        or (token.startswith("워크") and tokens[index + 1].startswith("아이템"))
-    )
-    if not resources:
-        return False
-    domains = _positions(
-        tokens, _korean_domain_token
-    )
-    actions = _positions(
-        tokens,
-        lambda token: _token_starts_with(token, KOREAN_LIFECYCLE_ACTION_STEMS)
-        and not _korean_resource_noun(token),
-    )
-    semantic_positions = sorted(set(resources + domains + actions))
-    for action_index in actions:
-        next_target = next(
-            (
-                position
-                for position in semantic_positions
-                if position > action_index and position not in actions
-            ),
-            None,
-        )
-        if next_target in domains:
-            continue
-        previous_target = next(
-            (
-                position
-                for position in reversed(semantic_positions)
-                if position < action_index and position not in actions
-            ),
-            None,
-        )
-        if previous_target in domains and (
-            next_target is None or action_index - previous_target <= next_target - action_index
-        ):
-            continue
-        return True
-    return False
-
-
-def _has_lifecycle_ownership(text):
-    return any(
-        _english_lifecycle_clause_owned(tokens) or _korean_lifecycle_clause_owned(tokens)
-        for tokens in _ownership_clause_tokens(text)
-    )
+        reason = "ambiguous_request"
+    else:
+        reason = "unsupported_request"
+    retry_function = next(iter(functions), "analyze")
+    return {
+        "outcome": "fallback",
+        "function": None,
+        "reason_code": reason,
+        "retry": CANONICAL_RETRY[retry_function],
+    }
 
 
 def select_function(request):
-    text = " ".join(str(request or "").lower().split())
-    if (
-        "product:" in text
-        or NON_GIT_OWNERSHIP_PATTERN.search(text)
-        or any(phrase in text for phrase in KOREAN_NON_GIT_OWNERSHIP_PHRASES)
-        or _has_git_ownership(text)
-        or _has_lifecycle_ownership(text)
-    ):
-        return None
-    matches = [
-        name
-        for name, phrases in FUNCTION_PHRASES.items()
-        if any(phrase in text for phrase in phrases)
-    ]
-    if len(matches) > 1:
-        _error("ambiguous_function", "request selects more than one Spec Kit function")
-    return matches[0] if matches else None
+    classification = classify_request(request)
+    return classification["function"] if classification["outcome"] == "selected" else None
 
 
 def _manifest_path(package_root):
@@ -1303,9 +913,20 @@ def build_handoff(package_root, project_root, issue_id, request, host_available)
         if not isinstance(issue_id, str) or not ISSUE_ID_PATTERN.fullmatch(issue_id):
             _error("unsafe_issue_id", "issue_id is invalid")
         output_artifact = _output_path(project_root, issue_id)
-        function = select_function(request)
-        if function is None:
-            return _handoff(issue_id, None, "unsupported", request, output_artifact)
+        classification = classify_request(request)
+        function = classification["function"]
+        if classification["outcome"] == "fallback":
+            return _handoff(
+                issue_id,
+                None,
+                "unsupported",
+                request,
+                output_artifact,
+                fallback_override=(
+                    f"{classification['reason_code']}; use native ModuFlow validation or retry: "
+                    f"{classification['retry']}"
+                ),
+            )
         config = load_project_config(project_root)
         if not config["enabled"]:
             return _handoff(issue_id, function, "disabled", request, output_artifact)
