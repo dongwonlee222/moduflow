@@ -1,7 +1,7 @@
 {
   "schema": "moduflow.spec-kit-result.v1",
-  "run_id": "sha256:9f9241ceb46fe403b611a76c8e66c76f8f51c0746a4f684e07ec88f3d84abb5d",
-  "input_hash": "sha256:624df321ae8e0e6012e694a28e57ee4fca4bae3796c731a6d43fee6bc1d4fd66",
+  "run_id": "sha256:9bfe4362dc95ba02af2ef01ee64b98a3521215a49748bce138b1a6656e2535fd",
+  "input_hash": "sha256:e73a859aabaede9e647b8c1befc66b94b59b7970eef3cee69c849ca1a2a60ca3",
   "issue_id": "098-speckit-selective-validation-adapter",
   "function": "converge",
   "source_version": "0.16.1",
@@ -25,7 +25,7 @@
   "limitations": ["Deterministic offline reviewed evidence; no live model or Spec Kit CLI executed."],
   "native_overlap": ["converge-w2"],
   "elapsed_ms": 0,
-  "loaded_context_chars": 84660,
+  "loaded_context_chars": 82214,
   "user_decision": "Human decision pending.",
   "next_command": "product:review 098-speckit-selective-validation-adapter"
 }

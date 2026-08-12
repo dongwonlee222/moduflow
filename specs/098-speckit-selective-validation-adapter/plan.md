@@ -223,7 +223,7 @@ The three modes are mutually exclusive: `--configure`; inferred read-only handof
 failures use `moduflow.spec-kit-error.v1` on stdout with no traceback or usage stderr.
 
 ```text
-python3 scripts/spec_kit_adapter.py PROJECT_ROOT --issue-id ISSUE_ID --request "스펙킷으로 분석해줘" [--host-available]
+python3 scripts/spec_kit_adapter.py PROJECT_ROOT --issue-id ISSUE_ID --request "스펙킷 요구사항 분석" [--host-available]
 python3 scripts/spec_kit_adapter.py PROJECT_ROOT --configure --functions clarify,analyze,checklist,converge --write
 python3 scripts/spec_kit_adapter.py PROJECT_ROOT --issue-id ISSUE_ID --request ORIGINAL_REQUEST --host-available --accept-result RESULT_JSON [--write]
 python3 scripts/sync_spec_kit_templates.py . [--write]
@@ -232,22 +232,12 @@ python3 scripts/spec_kit_pilot.py . --fixtures tests/fixtures/spec-kit-selective
 
 All commands print JSON to stdout. Failures use `moduflow.spec-kit-error.v1`, never a traceback. Configuration, sync, result acceptance, and pilot report writes occur only with `--write`.
 
-`select_function` is the single ownership-policy source. It encodes the complete canonical
-English/Korean lifecycle action and resource-mutation aliases plus Git add/stage/stash/fetch/pull/
-push/merge/rebase/reset/restore/checkout/switch/branch/tag/cherry-pick/revert/clone/commit families
-and inflections. The classifier normalizes and splits punctuation/sequence-delimited clauses,
-tokenizes each clause, and resolves action/resource or operation/object relationships without a
-bounded filler regex or modifier allowlist. `_has_lifecycle_ownership()` relates lifecycle actions
-to issue/status/roadmap/goal/memory/project/work-item resources anywhere inside a clause while
-allowing advisory operations whose direct object is a domain artifact. Korean resource particles
-and lifecycle actions remain native regardless of arbitrary intervening tokens. `_has_git_ownership()`
-treats unmistakable English/Korean operations as intrinsic and resolves ambiguous add/stage/
-restore/tag/branch/switch verbs against explicit Git contexts or state-qualified files/changes/
-hunks. Requirement/spec/plan/task/validation/coverage/input targets override generic changes/files
-without overriding an explicit Git context, and plural `stages` is never the verb `stage`.
-Adapter, router integration, and real pilot-path tests enumerate 69 canonical negatives, 19
-adjacent phrase-family negatives, 14 metamorphic insertion negatives, and 14 ordinary/domain
-positive contexts.
+`classify_request` is the single finite selection source. It NFKC-normalizes case and whitespace,
+accepts only the documented English prefix → function → optional-target or Korean prefix →
+optional-target → function shape, and returns `selected` or structured `fallback` with a canonical
+retry. `select_function` is a compatibility wrapper. Noncanonical candidates stop before config,
+overlay, template, project input, or output access. Adapter, router, and pilot tests cover eight
+English/Korean canonical successes, four availability fallbacks, and twelve grammar fallbacks.
 
 ## Implementation Readiness Inputs
 
@@ -312,11 +302,8 @@ FUNCTION_PHRASES = {
 }
 
 def select_function(request):
-    text = " ".join(str(request or "").lower().split())
-    matches = [name for name, phrases in FUNCTION_PHRASES.items() if any(phrase in text for phrase in phrases)]
-    if len(matches) > 1:
-        raise SpecKitAdapterError("ambiguous_function", "request selects more than one Spec Kit function")
-    return matches[0] if matches else None
+    classification = classify_request(request)
+    return classification["function"] if classification["outcome"] == "selected" else None
 ```
 
 Implement exact-key validation, missing-config normalization, contained issue/output paths, disabled/unavailable/unsupported/blocked envelopes, and an explicit configure dry-run/write path. Until Task B1 installs a valid manifest, ready requests must report `unavailable` rather than claim execution.

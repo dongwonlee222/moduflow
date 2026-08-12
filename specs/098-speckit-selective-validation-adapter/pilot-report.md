@@ -20,8 +20,8 @@ Wider/default activation: prohibited
 | --- | ---: |
 | Actionable unique findings | 8 |
 | Elapsed time (ms) | 0 |
-| Loaded context (characters) | 532036 |
-| Estimated loaded context (tokens) | 133009 |
+| Loaded context (characters) | 512940 |
+| Estimated loaded context (tokens) | 128235 |
 | False-positive rate | 0.1429 |
 | Native-overlap rate | 0.2857 |
 | Ownership escapes | 0 |
@@ -33,10 +33,10 @@ Wider/default activation: prohibited
 
 | Function | Findings | Unique | Elapsed ms | Chars | Tokens | False positive | Native overlap |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| analyze | 4 | 2 | 0 | 167288 | 41822 | 0.0000 | 0.5000 |
-| checklist | 4 | 2 | 0 | 99446 | 24862 | 0.5000 | 0.0000 |
-| clarify | 2 | 2 | 0 | 95982 | 23996 | 0.0000 | 0.0000 |
-| converge | 4 | 2 | 0 | 169320 | 42330 | 0.0000 | 0.5000 |
+| analyze | 4 | 2 | 0 | 162396 | 40599 | 0.0000 | 0.5000 |
+| checklist | 4 | 2 | 0 | 94790 | 23698 | 0.5000 | 0.0000 |
+| clarify | 2 | 2 | 0 | 91326 | 22832 | 0.0000 | 0.0000 |
+| converge | 4 | 2 | 0 | 164428 | 41107 | 0.0000 | 0.5000 |
 
 ## Case Evidence
 

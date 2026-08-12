@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issue 098 remediation, including strong-clause nearest-target ownership semantics, and its 13-case real-router/adapter safety/value pilot plus 14 ordinary/domain-validation, 69 canonical ownership, 19 adjacent, and 14 metamorphic insertion probes are ready for review; canonical pilot provenance is release-gated and wider activation remains prohibited.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 098 now uses a conservative finite English/Korean request grammar, and its fixed 24-case real-router/adapter safety/value pilot is ready for review; canonical pilot provenance is release-gated and wider activation remains prohibited.
 
 ## Active Goal
 
@@ -10,7 +10,7 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 098 remediation, inclu
 
 ## Active Issue
 
-- `098-speckit-selective-validation-adapter` — phase `review`; 13/13 request-driven cases, 14/14 ordinary/domain-validation, 69/69 canonical ownership, 19/19 adjacent, and 14/14 metamorphic lifecycle/Git probes passed with derived input/context evidence and zero safety counters; release now rejects stale snapshots, while the human value/activation decision remains pending.
+- `098-speckit-selective-validation-adapter` — phase `review`; the fixed 24-case pilot passed 8 canonical English/Korean successes, 4 availability fallbacks, and 12 conservative grammar fallbacks with derived input/context evidence and zero safety counters; release rejects stale snapshots, while the human value/activation decision remains pending.
 
 ## Priority Queue — 2026-08-10
 

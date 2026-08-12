@@ -121,7 +121,11 @@ class SpecKitVendorAssetTests(unittest.TestCase):
             }), encoding="utf-8")
 
             result = self.ska.build_handoff(
-                package, project, "098-speckit-selective-validation-adapter", "analyze", True
+                package,
+                project,
+                "098-speckit-selective-validation-adapter",
+                "Spec Kit analyze requirements",
+                True,
             )
 
         self.assertEqual(result["outcome"], "unavailable")

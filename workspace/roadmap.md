@@ -4,7 +4,7 @@
 
 ### Now
 
-- `098-speckit-selective-validation-adapter` — remediation with strong-clause nearest-target ownership semantics and a 13-case real-router/adapter pilot plus 14/14 ordinary/domain-validation, 69/69 canonical ownership, 19/19 adjacent, and 14/14 metamorphic lifecycle/Git probes ready for `product:review`; canonical provenance is release-gated, human value/activation decision pending, and wider/default activation prohibited.
+- `098-speckit-selective-validation-adapter` — conservative finite English/Korean request grammar and a fixed 24-case real-router/adapter pilot (8 canonical successes, 4 availability fallbacks, 12 grammar fallbacks) ready for `product:review`; canonical provenance is release-gated, human value/activation decision pending, and wider/default activation prohibited.
 
 ### Next
 

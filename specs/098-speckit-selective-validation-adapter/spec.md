@@ -242,12 +242,11 @@ An accepted host result appended to `validation.md` records:
 
 ## Data Flow
 
-1. ModuFlow normalizes the request, splits punctuation/sequence-delimited clauses, and resolves
-   lifecycle and Git ownership inside each clause before Spec Kit function selection. Token-level
-   action/resource and operation/object relationships claim native ownership; unmistakable Git
-   operations remain intrinsic, arbitrary modifiers do not weaken ownership, and words from
-   separate clauses do not combine.
-2. The capability router detects an explicit Spec Kit request.
+1. The capability router treats an explicit `spec kit`, `speckit`, `스펙킷`, or `스펙 킷`
+   prefix as a candidate stage; direct `product:*` and lifecycle aliases remain local.
+2. The adapter matches the complete request against the finite English prefix → function →
+   optional-target grammar or Korean prefix → optional-target → function grammar. Anything else
+   returns structured fallback before config, template, project input, or output access.
 3. The adapter validates no-follow target containment, opt-in config, allowed function, pinned
    assets, host availability, required canonical regular inputs, and their deterministic byte
    identity.
@@ -273,12 +272,11 @@ An accepted host result appended to `validation.md` records:
 
 ## Pilot and Measurement
 
-The pilot includes 13 request-driven committed cases: one successful case for each function, four
-disabled/unavailable cases, plus negative ownership cases covering implementation, lifecycle,
-Git, review, and release language. It also executes 69 canonical ownership probes, 19 adjacent
-phrase-family probes, 14 metamorphic modifier-insertion probes, and 14 ordinary/domain-validation
-positive probes. Outcomes and safety metrics come from executing the real router and adapter in
-isolated contained projects rather than fixture-declared pass booleans.
+The pilot includes 24 request-driven committed cases: eight canonical successes covering all four
+functions in English and Korean, four disabled/unavailable fallbacks, and twelve conservative
+grammar fallbacks covering unknown targets, multiple functions, punctuation, implementation,
+lifecycle, Git, review, release, and mixed intent. Outcomes and safety metrics come from executing
+the real router and adapter in isolated contained projects rather than fixture-declared booleans.
 
 The pilot report records per function:
 
@@ -298,7 +296,8 @@ pilot has zero boundary-safety violations and documents positive value beyond na
 
 - A project with no capability config behaves exactly as before and receives a truthful native
   fallback without loading a Spec Kit template.
-- An opted-in project can request each of the four functions through ModuFlow natural language.
+- An opted-in project can request each function through the documented finite English/Korean
+  grammar and receives a canonical retry for every noncanonical request.
 - Only the requested function template is loaded; bounded requests never fan out.
 - All four pinned templates match the approved upstream SHA/version and are validated by manifest
   hashes.
@@ -308,21 +307,11 @@ pilot has zero boundary-safety violations and documents positive value beyond na
   limitations, fallback, and contained output artifact.
 - `clarify` asks at most five questions; `analyze` is read-only; `checklist` produces advisory
   requirement checks; `converge` produces candidate work without mutating tasks or code.
-- Implementation, the complete English/Korean lifecycle alias/mutation vocabulary, every explicit
-  Git operation, review, PR, release, and deployment request remain owned by ModuFlow/Superpowers
-  and route to no Spec Kit function.
-- Ambiguous Git operations (`add`, `stage`, `restore`, `switch`, `branch`, `tag`) claim ownership
-  through token-level verb/object semantics within one clause when an explicit Git context exists
-  or changed/staged/tracked/modified/untracked files, changes, or hunks are targeted. Domain targets
-  such as requirements, acceptance criteria, spec, plan, tasks, validation, coverage, and inputs
-  override generic changes/files unless explicit Git context is present. Plural `stages` remains a
-  noun. Advisory `whether to`, `which ... to`, and `where to` complements remain eligible when the
-  operation targets domain artifacts.
-- Lifecycle action/resource semantics operate anywhere inside one clause across arbitrary
-  auxiliaries/adverbs. A direct validation/requirements/spec domain object stays eligible even if
-  a lifecycle noun appears later; otherwise issue/status/roadmap/goal/memory/project/work-item
-  action↔resource intent is native. Korean resource particles and lifecycle actions in one clause
-  remain native regardless of intervening modifiers.
+- Only the documented prefixes, one approved function synonym, and one bounded validation target
+  may select a function. Unknown words, multiple functions, action clauses, Git/lifecycle,
+  implementation, review, PR, release, or deployment language route to no Spec Kit function.
+- Noncanonical fallback is side-effect free and occurs before config, overlay, template, canonical
+  input, validation output, or lifecycle access.
 - Configure, read-only handoff, and accepted-result CLI modes are mutually exclusive; handoff
   emits stable JSON without writes, while accepted-result requires request and host proof.
 - Pilot cases/result UTF-8 failures and missing `--fixtures` stay on the shared structured JSON
@@ -330,9 +319,8 @@ pilot has zero boundary-safety violations and documents positive value beyond na
 - Accepted results append to canonical `validation.md`; duplicate runs are byte-stable no-ops.
 - Two concurrent duplicate writers serialize to exactly one marker, and persistence rejects stale
   handoffs, changed inputs/assets/config, or absent host proof before creating output.
-- At least eight function/fallback fixtures, 69 canonical ownership probes, 19 adjacent
-  phrase-family probes, 14 metamorphic insertion probes, and 14 ordinary/domain-validation probes
-  pass offline.
+- Eight English/Korean canonical successes, four availability fallbacks, and twelve grammar
+  fallbacks pass through the real router and adapter offline.
 - Pilot evidence reports value, latency, context cost, false positives, native overlap, and
   boundary safety for all four functions.
 - Boundary violations, unauthorized writes, unwanted fan-out, and false execution claims are all
