@@ -79,9 +79,21 @@ class CodexPersonalInstallTests(unittest.TestCase):
                 "tests/fixtures/issue-schema/BIZ-040.md",
                 "tests/fixtures/issue-schema/legacy-markdown.md",
                 "tests/fixtures/capability-routing/cases.json",
+                "tests/fixtures/spec-kit-selective-validation/cases.json",
+                "tests/fixtures/spec-kit-selective-validation/results/clarify.json",
+                "tests/fixtures/spec-kit-selective-validation/results/analyze.json",
+                "tests/fixtures/spec-kit-selective-validation/results/checklist.json",
+                "tests/fixtures/spec-kit-selective-validation/results/converge.json",
+            }
+            runtime_evidence = {
+                "specs/098-speckit-selective-validation-adapter/pilot-report.md",
+                "specs/098-speckit-selective-validation-adapter/status.md",
             }
             self.assertTrue((cache / "scripts" / "project_issue_schema.py").is_file())
+            self.assertTrue((cache / "scripts" / "sync_spec_kit_templates.py").is_file())
+            self.assertTrue((cache / "templates" / "moduflow-capabilities.json").is_file())
             self.assertTrue(all((cache / path).is_file() for path in expected))
+            self.assertTrue(all((cache / path).is_file() for path in runtime_evidence))
             self.assertFalse((cache / "tests" / "test_issue_generator.py").exists())
             self.assertEqual(
                 {

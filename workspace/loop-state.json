@@ -18,25 +18,25 @@
     "097-single-entry-capability-routing-contract",
     "098-speckit-selective-validation-adapter"
   ],
-  "active_issue_id": "097-single-entry-capability-routing-contract",
-  "phase": "pr",
-  "mode": "recommend",
-  "delegation_level": "human_merge_required",
+  "active_issue_id": "098-speckit-selective-validation-adapter",
+  "phase": "review",
+  "mode": "review",
+  "delegation_level": "review_ready",
   "status": "active",
-  "next_command": "product:pr 097-single-entry-capability-routing-contract",
+  "next_command": "product:review 098-speckit-selective-validation-adapter",
   "attempts": {
-    "command": "product:pr 097-single-entry-capability-routing-contract",
+    "command": "product:review 098-speckit-selective-validation-adapter",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-08-10"
+    "last_changed_at": "2026-08-11"
   },
   "blocker": null,
-  "last_action": "completed Issue 097 implementation and independent review after two remediation rounds; final verdict Ready with no findings",
-  "last_verification": "2026-08-10: unittest 1077/1077; simulation 27/27 with all seven metrics zero; focused review 43/43; release check valid; spec consistency 13/13; lifecycle drift []",
-  "updated_at": "2026-08-10",
+  "last_action": "closed the Issue 098 selective-adapter integration gaps with strong-clause nearest-target ownership semantics and release-gated canonical pilot provenance; human activation decision remains pending",
+  "last_verification": "2026-08-11: pilot 13/13 plus ordinary/domain validation 14/14, canonical ownership 69/69, adjacent phrase 19/19, metamorphic insertion 14/14; focused 167/167; full 1168/1168; spec 0/0/0 with 19/19 coverage; lifecycle []; package 174/project/release including provenance valid; four safety counters zero",
+  "updated_at": "2026-08-11",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/097-single-entry-capability-routing-contract",
+    "branch": "codex/098-speckit-selective-validation-adapter",
     "base_branch": "main",
     "commits": [
       "f980aef",
@@ -142,9 +142,9 @@
     "release": "repository source on main at f4029f3; no plugin publish",
     "execution_backend": {
       "type": "host-subagent",
-        "status": "reviewed",
-        "reason": "Issue 097 implementation, verification, and independent review passed; PR preparation is next",
-        "session": "codex-2026-08-10"
+        "status": "review_ready",
+        "reason": "Issue 098 remediation and request-driven pilot are prepared; human value and activation decisions remain pending",
+        "session": "codex-2026-08-11"
       }
   }
 }

@@ -1,0 +1,16 @@
+{
+  "schema": "moduflow.capabilities.v1",
+  "capabilities": {
+    "spec-kit": {
+      "enabled": false,
+      "source_version": "0.16.1",
+      "source_sha": "684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5",
+      "functions": [
+        "clarify",
+        "analyze",
+        "checklist",
+        "converge"
+      ]
+    }
+  }
+}

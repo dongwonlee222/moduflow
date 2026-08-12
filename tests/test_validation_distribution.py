@@ -603,6 +603,41 @@ next_command: {next_command}
         self.assertIn("availability", router.lower())
         self.assertIn("fail-closed", router.lower())
 
+    def test_validate_moduflow_requires_spec_kit_selective_surface(self):
+        validator = load_module(
+            "validate_moduflow_spec_kit_selective", "scripts/validate_moduflow.py"
+        )
+        packaged_paths = {
+            "skills/spec-kit-validation-bridge/SKILL.md",
+            "overlays/spec-kit/selective-validation-policy.md",
+            "adapters/spec-kit.yaml",
+            "adapters/capability-routing.json",
+            "commands/moduflow.md",
+            "skills/index/SKILL.md",
+            "skills/pm-execution-router/SKILL.md",
+            "scripts/spec_kit_adapter.py",
+            "scripts/spec_kit_pilot.py",
+            "scripts/sync_spec_kit_templates.py",
+            "templates/moduflow-capabilities.json",
+            "vendor/spec-kit/0.16.1/manifest.json",
+            "vendor/spec-kit/0.16.1/commands/clarify.md",
+            "vendor/spec-kit/0.16.1/commands/analyze.md",
+            "vendor/spec-kit/0.16.1/commands/checklist.md",
+            "vendor/spec-kit/0.16.1/commands/converge.md",
+            "tests/fixtures/spec-kit-selective-validation/cases.json",
+            "tests/fixtures/spec-kit-selective-validation/results/clarify.json",
+            "tests/fixtures/spec-kit-selective-validation/results/analyze.json",
+            "tests/fixtures/spec-kit-selective-validation/results/checklist.json",
+            "tests/fixtures/spec-kit-selective-validation/results/converge.json",
+            "specs/098-speckit-selective-validation-adapter/pilot-report.md",
+            "specs/098-speckit-selective-validation-adapter/status.md",
+        }
+
+        missing = sorted(path for path in packaged_paths if not (ROOT / path).is_file())
+
+        self.assertEqual(missing, [])
+        self.assertTrue(packaged_paths.issubset(set(validator.REQUIRED_FILES)))
+
     def test_review_upstreams_and_policy_are_registered(self):
         vendor = json.loads((ROOT / "vendor.lock.json").read_text(encoding="utf-8"))
         source_ids = {source["id"] for source in vendor["sources"]}
@@ -1112,6 +1147,8 @@ issue_id: BIZ-ADVISORY
         self.assertTrue(result["valid"])
         self.assertEqual(result["errors"], [])
         self.assertIn("validate_moduflow", result["checks"])
+        self.assertIn("spec_kit_pilot_provenance", result["checks"])
+        self.assertTrue(result["checks"]["spec_kit_pilot_provenance"]["ok"])
 
     def test_release_check_uses_importable_validation_for_safe_checks(self):
         release_check = load_module("release_check", "scripts/release_check.py")

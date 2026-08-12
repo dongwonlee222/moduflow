@@ -1,6 +1,6 @@
 # Issue 097: Single-Entry Capability Routing Contract
 
-**Status: active** — created 2026-08-10, started and planned 2026-08-10.
+**Status: done** — created, implemented, reviewed, and merged via PR #36 on 2026-08-10.
 **Priority: p2**
 **Blocked-by:**
 
@@ -136,6 +136,7 @@ Every artifact-producing step is tracked here.
   lifecycle-precedence regression. Both remediation rounds passed re-review. The final corpus is
   27/27 with all seven safety metrics at zero, plugin version is 0.3.43, release check is valid,
   and the branch is ready for PR preparation.
+- 2026-08-10: PR #36 passed CI and merged to `main` as `46f98c0`; Issue 098 is now unblocked.
 
 ## Links
 
@@ -145,4 +146,4 @@ Every artifact-producing step is tracked here.
 
 ## Next Command
 
-`/product:pr 097-single-entry-capability-routing-contract`
+`/product:plan 098-speckit-selective-validation-adapter`

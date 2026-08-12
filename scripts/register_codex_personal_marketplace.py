@@ -23,6 +23,15 @@ RUNTIME_TEST_FIXTURES = (
     "tests/fixtures/issue-schema/BIZ-040.md",
     "tests/fixtures/issue-schema/legacy-markdown.md",
     "tests/fixtures/capability-routing/cases.json",
+    "tests/fixtures/spec-kit-selective-validation/cases.json",
+    "tests/fixtures/spec-kit-selective-validation/results/clarify.json",
+    "tests/fixtures/spec-kit-selective-validation/results/analyze.json",
+    "tests/fixtures/spec-kit-selective-validation/results/checklist.json",
+    "tests/fixtures/spec-kit-selective-validation/results/converge.json",
+)
+RUNTIME_EVIDENCE_FILES = (
+    "specs/098-speckit-selective-validation-adapter/pilot-report.md",
+    "specs/098-speckit-selective-validation-adapter/status.md",
 )
 
 
@@ -131,7 +140,7 @@ def copy_plugin_cache(source: Path, home: Path, version: str) -> Path:
         return ignored
 
     shutil.copytree(source, destination, ignore=ignore)
-    for relative_path in RUNTIME_TEST_FIXTURES:
+    for relative_path in (*RUNTIME_TEST_FIXTURES, *RUNTIME_EVIDENCE_FILES):
         source_file = source / relative_path
         if not source_file.is_file():
             continue

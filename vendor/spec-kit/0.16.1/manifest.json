@@ -1,0 +1,30 @@
+{
+  "schema": "moduflow.spec-kit-manifest.v1",
+  "source": {
+    "repository": "github/spec-kit",
+    "version": "0.16.1",
+    "sha": "684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5"
+  },
+  "functions": {
+    "clarify": {
+      "template": "commands/clarify.md",
+      "sha256": "9fce9b3dfe037b67f52486df112f89377ff6c0c598698131cde65cec610b5bba",
+      "fallback": "moduflow_short_clarification"
+    },
+    "analyze": {
+      "template": "commands/analyze.md",
+      "sha256": "79f5334bce9b249d4c1a5e6949dee3f3532db89a0a97f3d2eb55c1a1c2fe06f6",
+      "fallback": "scripts/spec_consistency.py"
+    },
+    "checklist": {
+      "template": "commands/checklist.md",
+      "sha256": "0a862264b9b358138d6049590d42b392ee4dadb69d32811d460620f077924d4e",
+      "fallback": "moduflow_acceptance_readiness"
+    },
+    "converge": {
+      "template": "commands/converge.md",
+      "sha256": "aafba511dea42334373c7ffb9f58e2fb6d82889ea94ec86c1367dbb6a531ca36",
+      "fallback": "scripts/project_converge.py --report-only"
+    }
+  }
+}

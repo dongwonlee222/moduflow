@@ -1,0 +1,31 @@
+{
+  "schema": "moduflow.spec-kit-result.v1",
+  "run_id": "sha256:ebc5194dc7573ced2d751d89ed76c6d6f43ef79474213d9d4c8f99188dca60d6",
+  "input_hash": "sha256:b34663f8960207cd989a932f65d60c32a70532f1290c73dfb79c2d6539b617d1",
+  "issue_id": "098-speckit-selective-validation-adapter",
+  "function": "checklist",
+  "source_version": "0.16.1",
+  "source_sha": "684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5",
+  "template_sha256": "0a862264b9b358138d6049590d42b392ee4dadb69d32811d460620f077924d4e",
+  "permission": "read",
+  "findings": [
+    {
+      "id": "checklist-c1",
+      "summary": "Require each pilot function to expose cost and safety evidence.",
+      "reviewer_disposition": "useful_unique",
+      "native_overlap": false
+    },
+    {
+      "id": "checklist-c2",
+      "summary": "Require a live Spec Kit CLI execution receipt.",
+      "reviewer_disposition": "rejected_invalid",
+      "native_overlap": false
+    }
+  ],
+  "limitations": ["Deterministic offline reviewed evidence; no live model or Spec Kit CLI executed."],
+  "native_overlap": [],
+  "elapsed_ms": 0,
+  "loaded_context_chars": 47395,
+  "user_decision": "Human decision pending.",
+  "next_command": "product:review 098-speckit-selective-validation-adapter"
+}

@@ -52,7 +52,11 @@
         "issue status",
         "이슈 상태",
         "status dashboard",
-        "상태 대시보드"
+        "상태 대시보드",
+        "spec kit",
+        "speckit",
+        "스펙 킷",
+        "스펙킷"
       ],
       "default_available": false,
       "permission": "read",
@@ -80,7 +84,11 @@
       "explicit_triggers": ["product design", "제품 디자인", "프로덕트 디자인"],
       "exclusions": [
         "design issue status",
-        "디자인 이슈 상태"
+        "디자인 이슈 상태",
+        "spec kit",
+        "speckit",
+        "스펙 킷",
+        "스펙킷"
       ],
       "default_available": false,
       "permission": "write-local",
@@ -107,7 +115,11 @@
       "explicit_triggers": ["superpowers", "슈퍼파워", "슈퍼파워즈"],
       "exclusions": [
         "implementation plan",
-        "구현 계획"
+        "구현 계획",
+        "spec kit",
+        "speckit",
+        "스펙 킷",
+        "스펙킷"
       ],
       "default_available": false,
       "permission": "write-local",
@@ -131,7 +143,11 @@
       "explicit_triggers": ["documents", "문서 도구"],
       "exclusions": [
         "report metric",
-        "리포트 지표"
+        "리포트 지표",
+        "spec kit",
+        "speckit",
+        "스펙 킷",
+        "스펙킷"
       ],
       "default_available": false,
       "permission": "write-local",
@@ -156,7 +172,7 @@
       "default_available": false,
       "permission": "read",
       "output_artifact": "specs/{issue_id}/validation.md",
-      "setup_recommendation": "Complete Issue 098-speckit-selective-validation-adapter before enabling Spec Kit routing."
+      "setup_recommendation": "Enable the selective Spec Kit validation bridge in the current host and opt in the target project."
     }
   ]
 }

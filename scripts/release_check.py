@@ -44,6 +44,48 @@ SECRET_RE = re.compile(
     re.IGNORECASE
 )
 
+SPEC_KIT_PILOT_FIXTURES = Path(
+    "tests/fixtures/spec-kit-selective-validation/cases.json"
+)
+
+
+def run_spec_kit_pilot_provenance(root, runner=None):
+    """Evaluate committed Spec Kit snapshots against current canonical bytes."""
+    root = Path(root).resolve()
+    runner = runner or run_command
+    args = [
+        sys.executable,
+        str(root / "scripts" / "spec_kit_pilot.py"),
+        str(root),
+        "--fixtures",
+        str(SPEC_KIT_PILOT_FIXTURES),
+    ]
+    result = runner(args, root)
+    if isinstance(result, dict):
+        returncode = result["returncode"]
+        stdout = result.get("stdout", "")
+        stderr = result.get("stderr", "")
+    else:
+        returncode = result.returncode
+        stdout = result.stdout
+        stderr = result.stderr
+    errors = []
+    payload = None
+    try:
+        payload = json.loads(stdout)
+    except (TypeError, json.JSONDecodeError):
+        errors.append("Spec Kit pilot snapshot provenance returned invalid JSON")
+    if returncode != 0:
+        detail = stderr or stdout or f"exit {returncode}"
+        errors.append(f"Spec Kit pilot snapshot provenance failed: {detail}")
+    elif not isinstance(payload, dict) or not payload.get("passed"):
+        errors.append("Spec Kit pilot snapshot provenance did not pass")
+    return {
+        "ok": not errors,
+        "returncode": returncode,
+        "errors": errors,
+    }
+
 
 def get_modified_python_files(root, runner=None, diff_base=None):
     """Collect modified .py files for targeted lint checks.
@@ -314,6 +356,13 @@ def run_release_check(path):
         }
         if not result["ok"]:
             errors.append(f"{name} failed: {'; '.join(result['errors'])}")
+
+    pilot_provenance = run_spec_kit_pilot_provenance(root)
+    checks["spec_kit_pilot_provenance"] = {
+        "returncode": pilot_provenance["returncode"],
+        "ok": pilot_provenance["ok"],
+    }
+    errors.extend(pilot_provenance["errors"])
 
     linkage_gate = run_linkage_gate(root)
     checks["linkage_gate"] = {

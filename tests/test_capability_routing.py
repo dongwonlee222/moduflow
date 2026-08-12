@@ -9,6 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "scripts" / "capability_routing.py"
+SPEC_KIT_MODULE_PATH = ROOT / "scripts" / "spec_kit_adapter.py"
+SPEC_KIT_ISSUE_ID = "098-speckit-selective-validation-adapter"
 HOST_AVAILABLE = {
     "data-analytics": True,
     "product-design": True,
@@ -16,6 +18,113 @@ HOST_AVAILABLE = {
     "documents": True,
     "spec-kit": False,
 }
+LIFECYCLE_ACTIONS = (
+    "start", "begin", "pause", "stop", "resume", "continue", "finish", "complete", "close"
+)
+KOREAN_LIFECYCLE_ACTIONS = (
+    "시작", "착수", "일시정지", "멈춰", "중지", "재개", "계속", "이어", "마무리", "끝내", "완료", "닫아", "종료"
+)
+LIFECYCLE_RESOURCES = ("status", "issue", "goal", "roadmap", "memory")
+KOREAN_LIFECYCLE_RESOURCES = ("상태", "이슈", "목표", "로드맵", "메모리", "기억")
+GIT_OPERATIONS = (
+    "add", "stage", "stash", "fetch", "pull", "push", "merge", "rebase", "reset",
+    "restore", "checkout", "switch", "branch", "tag", "cherry-pick", "revert", "clone", "commit",
+)
+KOREAN_GIT_OPERATIONS = (
+    "깃 추가", "스테이징", "스태시", "페치", "풀", "푸시", "병합", "리베이스", "리셋",
+    "복원", "체크아웃", "스위치", "브랜치", "태그", "체리픽", "리버트", "클론", "커밋",
+)
+KOREAN_INTRINSIC_GIT_OPERATIONS = {
+    "스테이징", "스태시", "페치", "푸시", "병합", "리베이스", "리셋",
+    "체크아웃", "체리픽", "리버트", "클론", "커밋",
+}
+ORDINARY_VALIDATION_REQUESTS = (
+    ("Spec Kit clarify which acceptance criteria to add", "clarify"),
+    ("Spec Kit analyze the stages in the plan", "analyze"),
+    ("Spec Kit checklist where to start validation", "checklist"),
+    ("Spec Kit converge candidates to restore requirement coverage", "converge"),
+    ("스펙킷으로 분석해서 요구사항을 계속 명확히 해줘", "analyze"),
+    ("스펙킷으로 체크리스트에 태그 요구사항을 추가해줘", "checklist"),
+    ("Spec Kit clarify which changes to add to the requirements", "clarify"),
+    ("Spec Kit analyze which stages changed in the spec files", "analyze"),
+)
+ADJACENT_OWNERSHIP_REQUESTS = (
+    "Spec Kit analyze then add files to the index",
+    "Spec Kit checklist then stage changed files",
+    "Spec Kit clarify then restore files from the working tree",
+    "Spec Kit analyze then start work on the issue",
+    "Spec Kit checklist because the issue should be started",
+    "스펙킷으로 분석한 뒤 이슈를 다시 시작해줘",
+    "스펙킷으로 체크리스트 만든 뒤 이슈를 잠시 멈춰줘",
+    "Spec Kit converge then switch to the current branch",
+    "Spec Kit analyze then tag the modified commit",
+    "Spec Kit checklist then branch the repo",
+    "Spec Kit clarify then add tracked hunks to the index",
+    "Spec Kit analyze then restore staged changes in the working tree",
+    "Spec Kit checklist then stage untracked files",
+    "Spec Kit checklist then continue work on the roadmap",
+    "Spec Kit clarify because the project must be paused",
+    "Spec Kit analyze because this work item can be completed",
+    "스펙킷으로 분석한 뒤 프로젝트를 이제 재개해줘",
+    "스펙킷으로 체크리스트 만든 뒤 로드맵을 바로 완료해줘",
+    "스펙킷으로 분석한 뒤 이슈를 계속 이어줘",
+)
+METAMORPHIC_OWNERSHIP_REQUESTS = (
+    "Spec Kit checklist then stage the recently changed files",
+    "Spec Kit analyze then add all changed files to the index",
+    "Spec Kit clarify then restore selected files from the working tree",
+    "Spec Kit checklist because the issue should really be paused",
+    "Spec Kit analyze then start working on the issue",
+    "스펙킷으로 분석한 뒤 이슈를 잠깐 다시 시작해줘",
+    "스펙킷으로 체크리스트 만든 뒤 프로젝트를 먼저 천천히 완료해줘",
+    "Spec Kit checklist then stage the very recently modified files",
+    "Spec Kit clarify then add every carefully reviewed changed hunk to the index",
+    "Spec Kit analyze then restore only those selected archived files from the working tree",
+    "Spec Kit checklist because the roadmap should eventually be carefully resumed",
+    "Spec Kit analyze then carefully start seriously working on the current issue",
+    "스펙킷으로 분석한 뒤 이슈를 아주 잠깐 먼저 멈춰줘",
+    "스펙킷으로 체크리스트 만든 뒤 로드맵을 먼저 천천히 다시 재개해줘",
+)
+DOMAIN_TARGET_POSITIVE_REQUESTS = (
+    ("Spec Kit clarify how to add changes to requirements", "clarify"),
+    ("Spec Kit analyze which files to add to spec inputs", "analyze"),
+    ("Spec Kit converge where to restore changes to requirement coverage", "converge"),
+    ("Spec Kit checklist where to start validation for this issue", "checklist"),
+    ("Spec Kit analyze which requirements to continue in the issue spec", "analyze"),
+    ("스펙킷으로 스테이징된 요구사항 파일을 분석해줘", "analyze"),
+)
+
+
+def semantic_role_requests():
+    negatives = [
+        "Spec Kit checklist then stage, please, changed files",
+        "Spec Kit checklist because the issue should, really, be paused",
+        "스펙킷으로 분석한 뒤 이슈를, 잠깐, 먼저 멈춰줘",
+        "Spec Kit analyze then stage files while preserving requirements",
+        "Spec Kit clarify then add tracked files and update requirements",
+    ]
+    positives = [
+        ("Spec Kit checklist which issue to start validation with", "checklist"),
+        ("Spec Kit checklist issue to begin validation with", "checklist"),
+        ("스펙킷으로 이슈별 시작 검증 기준을 체크리스트해줘", "checklist"),
+        ("Spec Kit analyze committed requirements", "analyze"),
+    ]
+    for punctuation in (", {modifier},", " ({modifier}) ", " -- {modifier} -- "):
+        for modifier in ("politely", "very carefully", "without any unnecessary delay"):
+            insertion = punctuation.format(modifier=modifier)
+            negatives.append(f"Spec Kit checklist then stage{insertion}changed files")
+            negatives.append(
+                f"Spec Kit checklist because the issue should{insertion}be paused"
+            )
+            positives.append(
+                (f"Spec Kit checklist which issue to start{insertion}validation with", "checklist")
+            )
+    for modifier in (", 잠깐, 먼저 ", " (조심스럽게) 아주 잠깐 ", " 우선 천천히 "):
+        negatives.append(f"스펙킷으로 분석한 뒤 이슈를{modifier}멈춰줘")
+        positives.append(
+            (f"스펙킷으로 이슈별 시작{modifier}검증 기준을 체크리스트해줘", "checklist")
+        )
+    return tuple(negatives), tuple(positives)
 
 
 def load_module(testcase):
@@ -24,6 +133,51 @@ def load_module(testcase):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def load_spec_kit_module(testcase):
+    testcase.assertTrue(
+        SPEC_KIT_MODULE_PATH.exists(), "scripts/spec_kit_adapter.py must exist"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "spec_kit_adapter_for_routing", SPEC_KIT_MODULE_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def write_spec_kit_opt_in(project_root):
+    config = project_root / ".moduflow" / "capabilities.json"
+    config.parent.mkdir(parents=True)
+    config.write_text(
+        json.dumps(
+            {
+                "schema": "moduflow.capabilities.v1",
+                "capabilities": {
+                    "spec-kit": {
+                        "enabled": True,
+                        "source_version": "0.16.1",
+                        "source_sha": "684b3d8e05263a7c1948d3d0699ab1cb4f77c3d5",
+                        "functions": ["clarify", "analyze", "checklist", "converge"],
+                    }
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    canonical = {
+        Path("issues") / f"{SPEC_KIT_ISSUE_ID}.md": "# Canonical issue\n",
+        Path("specs") / SPEC_KIT_ISSUE_ID / "spec.md": "# Canonical spec\n",
+        Path("specs") / SPEC_KIT_ISSUE_ID / "plan.md": "# Canonical plan\n",
+        Path("specs") / SPEC_KIT_ISSUE_ID / "tasks.md": "# Canonical tasks\n",
+        Path("workspace") / "constitution.md": "# Canonical constitution\n",
+    }
+    for relative, content in canonical.items():
+        path = project_root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
 
 
 def valid_registry(root):
@@ -244,7 +398,8 @@ class CapabilityRoutingTests(unittest.TestCase):
         self.assertEqual(result["outcome"], "delegate")
         self.assertEqual(result["stages"][0]["adapter_id"], "spec-kit")
         self.assertEqual(result["stages"][0]["availability"], "unavailable")
-        self.assertIn("098-speckit", result["fallback"])
+        self.assertIn("Spec Kit", result["fallback"])
+        self.assertIn("opt in", result["fallback"])
 
     def test_explicit_spec_kit_intent_beats_generic_lifecycle_words(self):
         result = self.route("스펙킷으로 스펙을 검사해줘")
@@ -252,6 +407,404 @@ class CapabilityRoutingTests(unittest.TestCase):
         self.assertEqual(result["outcome"], "delegate")
         self.assertEqual(result["stages"][0]["adapter_id"], "spec-kit")
         self.assertEqual(result["stages"][0]["reason_code"], "explicit_adapter")
+
+    def test_available_spec_kit_routes_one_stage_then_adapter_selects_one_template(self):
+        spec_kit = load_spec_kit_module(self)
+        request = "스펙킷 요구사항 체크리스트"
+        route = self.route(request, availability={"spec-kit": True})
+
+        self.assertEqual(route["outcome"], "delegate")
+        self.assertEqual([stage["adapter_id"] for stage in route["stages"]], ["spec-kit"])
+        self.assertEqual(route["stages"][0]["permission"], "read")
+        self.assertEqual(route["stages"][0]["permission_state"], "allowed")
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            write_spec_kit_opt_in(project)
+            handoff = spec_kit.build_handoff(
+                ROOT, project, SPEC_KIT_ISSUE_ID, route["request"], host_available=True
+            )
+
+            self.assertEqual(handoff["outcome"], "ready")
+            self.assertEqual(handoff["function"], "checklist")
+            self.assertEqual(
+                handoff["source"]["template"],
+                "vendor/spec-kit/0.16.1/commands/checklist.md",
+            )
+            self.assertFalse(
+                (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
+            )
+
+    def test_available_spec_kit_functions_each_route_only_spec_kit_with_all_capabilities(self):
+        spec_kit = load_spec_kit_module(self)
+        requests = {
+            "clarify": "스펙킷 요구사항 명확화",
+            "analyze": "Spec Kit analyze the requirements",
+            "checklist": "스펙킷 요구사항 체크리스트",
+            "converge": "Spec Kit converge tasks",
+        }
+
+        for expected_function, request in requests.items():
+            with self.subTest(function=expected_function):
+                route = self.route(
+                    request, availability={capability: True for capability in HOST_AVAILABLE}
+                )
+
+                self.assertEqual(route["outcome"], "delegate")
+                self.assertEqual(
+                    [stage["adapter_id"] for stage in route["stages"]],
+                    ["spec-kit"],
+                )
+                self.assertEqual(spec_kit.select_function(route["request"]), expected_function)
+
+    def test_old_free_form_validation_routes_to_adapter_fallback(self):
+        spec_kit = load_spec_kit_module(self)
+
+        for request, _expected_function in ORDINARY_VALIDATION_REQUESTS:
+            with self.subTest(request=request):
+                route = self.route(
+                    request,
+                    availability={capability: True for capability in HOST_AVAILABLE},
+                )
+                self.assertEqual(route["outcome"], "delegate")
+                self.assertEqual(
+                    [stage["adapter_id"] for stage in route["stages"]],
+                    ["spec-kit"],
+                )
+                self.assertIsNone(spec_kit.select_function(request))
+
+    def test_intrinsic_korean_git_action_crosses_router_but_not_adapter_boundary(self):
+        spec_kit = load_spec_kit_module(self)
+        request = "스펙킷으로 분석한 뒤 스테이징해줘"
+
+        route = self.route(
+            request,
+            availability={capability: True for capability in HOST_AVAILABLE},
+        )
+        self.assertEqual(route["outcome"], "delegate")
+        self.assertEqual(
+            [stage["adapter_id"] for stage in route["stages"]], ["spec-kit"]
+        )
+        self.assertIsNone(spec_kit.select_function(request))
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            write_spec_kit_opt_in(project)
+            handoff = spec_kit.build_handoff(
+                ROOT, project, SPEC_KIT_ISSUE_ID, request, host_available=True
+            )
+            self.assertEqual(handoff["outcome"], "unsupported")
+            self.assertIsNone(handoff["source"]["template"])
+            self.assertFalse(
+                (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
+            )
+
+    def test_adjacent_ownership_phrase_families_cross_router_not_adapter(self):
+        spec_kit = load_spec_kit_module(self)
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            write_spec_kit_opt_in(project)
+            for request in ADJACENT_OWNERSHIP_REQUESTS:
+                with self.subTest(request=request):
+                    route = self.route(
+                        request,
+                        availability={capability: True for capability in HOST_AVAILABLE},
+                    )
+                    self.assertEqual(route["outcome"], "delegate")
+                    self.assertEqual(
+                        [stage["adapter_id"] for stage in route["stages"]],
+                        ["spec-kit"],
+                    )
+                    self.assertIsNone(spec_kit.select_function(request))
+                    handoff = spec_kit.build_handoff(
+                        ROOT, project, SPEC_KIT_ISSUE_ID, request, host_available=True
+                    )
+                    self.assertEqual(handoff["outcome"], "unsupported")
+                    self.assertIsNone(handoff["source"]["template"])
+            self.assertFalse(
+                (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
+            )
+
+    def test_noncanonical_domain_and_modifier_phrases_cross_to_adapter_fallback(self):
+        spec_kit = load_spec_kit_module(self)
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            write_spec_kit_opt_in(project)
+            for request in METAMORPHIC_OWNERSHIP_REQUESTS:
+                with self.subTest(kind="ownership", request=request):
+                    route = self.route(
+                        request,
+                        availability={capability: True for capability in HOST_AVAILABLE},
+                    )
+                    self.assertEqual(route["outcome"], "delegate")
+                    self.assertEqual(
+                        [stage["adapter_id"] for stage in route["stages"]], ["spec-kit"]
+                    )
+                    self.assertIsNone(spec_kit.select_function(request))
+                    handoff = spec_kit.build_handoff(
+                        ROOT, project, SPEC_KIT_ISSUE_ID, request, host_available=True
+                    )
+                    self.assertEqual(handoff["outcome"], "unsupported")
+            for request, _function in DOMAIN_TARGET_POSITIVE_REQUESTS:
+                with self.subTest(kind="domain-fallback", request=request):
+                    route = self.route(
+                        request,
+                        availability={capability: True for capability in HOST_AVAILABLE},
+                    )
+                    self.assertEqual(route["outcome"], "delegate")
+                    self.assertEqual(
+                        [stage["adapter_id"] for stage in route["stages"]], ["spec-kit"]
+                    )
+                    self.assertIsNone(spec_kit.select_function(request))
+                    handoff = spec_kit.build_handoff(
+                        ROOT, project, SPEC_KIT_ISSUE_ID, request, host_available=True
+                    )
+                    self.assertEqual(handoff["outcome"], "unsupported")
+                    self.assertIsNone(handoff["function"])
+            self.assertFalse(
+                (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
+            )
+
+    def test_punctuation_and_modifier_requests_cross_to_adapter_fallback(self):
+        spec_kit = load_spec_kit_module(self)
+        negatives, positives = semantic_role_requests()
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            write_spec_kit_opt_in(project)
+            for request in negatives:
+                with self.subTest(kind="ownership", request=request):
+                    route = self.route(
+                        request,
+                        availability={capability: True for capability in HOST_AVAILABLE},
+                    )
+                    self.assertEqual(route["outcome"], "delegate")
+                    self.assertEqual(
+                        [stage["adapter_id"] for stage in route["stages"]], ["spec-kit"]
+                    )
+                    self.assertIsNone(spec_kit.select_function(request))
+                    handoff = spec_kit.build_handoff(
+                        ROOT, project, SPEC_KIT_ISSUE_ID, request, host_available=True
+                    )
+                    self.assertEqual(handoff["outcome"], "unsupported")
+            for request, _function in positives:
+                with self.subTest(kind="noncanonical", request=request):
+                    route = self.route(
+                        request,
+                        availability={capability: True for capability in HOST_AVAILABLE},
+                    )
+                    self.assertEqual(route["outcome"], "delegate")
+                    self.assertEqual(
+                        [stage["adapter_id"] for stage in route["stages"]], ["spec-kit"]
+                    )
+                    self.assertIsNone(spec_kit.select_function(request))
+                    handoff = spec_kit.build_handoff(
+                        ROOT, project, SPEC_KIT_ISSUE_ID, request, host_available=True
+                    )
+                    self.assertEqual(handoff["outcome"], "unsupported")
+                    self.assertIsNone(handoff["function"])
+            self.assertFalse(
+                (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
+            )
+
+    def test_explicit_spec_kit_candidate_beats_general_triggers_but_extra_words_fall_back(self):
+        spec_kit = load_spec_kit_module(self)
+        capability_subjects = {
+            "data-analytics": "KPI requirements",
+            "product-design": "UI requirements",
+            "superpowers": "API requirements",
+            "documents": "PPTX requirements",
+        }
+        function_requests = {
+            "clarify": "Spec Kit clarify the {subject}",
+            "analyze": "Spec Kit analyze the {subject}",
+            "checklist": "Spec Kit checklist for {subject}",
+            "converge": "Spec Kit converge the {subject}",
+        }
+
+        for capability, subject in capability_subjects.items():
+            for expected_function, request_template in function_requests.items():
+                with self.subTest(capability=capability, function=expected_function):
+                    request = request_template.format(subject=subject)
+                    route = self.route(
+                        request,
+                        availability={key: True for key in HOST_AVAILABLE},
+                    )
+
+                    self.assertEqual(route["outcome"], "delegate")
+                    self.assertEqual(
+                        [stage["adapter_id"] for stage in route["stages"]],
+                        ["spec-kit"],
+                    )
+                    self.assertIsNone(spec_kit.select_function(route["request"]))
+
+    def test_ordinary_general_capability_requests_keep_their_native_routes(self):
+        requests = {
+            "KPI를 분석해줘": "data-analytics",
+            "UI 화면을 디자인해줘": "product-design",
+            "API를 구현해줘": "superpowers",
+            "PPTX 발표자료를 만들어줘": "documents",
+        }
+
+        for request, expected_adapter in requests.items():
+            with self.subTest(adapter=expected_adapter):
+                route = self.route(request)
+                self.assertEqual(route["outcome"], "delegate")
+                self.assertEqual(
+                    [stage["adapter_id"] for stage in route["stages"]],
+                    [expected_adapter],
+                )
+
+    def test_ownership_language_overrides_spec_kit_function_selection(self):
+        spec_kit = load_spec_kit_module(self)
+        requests = (
+            "스펙킷으로 코드를 분석해줘",
+            "Spec Kit analyze the Git changes",
+            "스펙킷으로 PR 리뷰를 분석해줘",
+        )
+
+        for request in requests:
+            with self.subTest(request=request):
+                route = self.route(
+                    request, availability={capability: True for capability in HOST_AVAILABLE}
+                )
+
+                self.assertEqual(route["outcome"], "delegate")
+                self.assertEqual(
+                    [stage["adapter_id"] for stage in route["stages"]],
+                    ["spec-kit"],
+                )
+                self.assertIsNone(spec_kit.select_function(route["request"]))
+
+    def test_complete_lifecycle_and_git_mutations_win_before_spec_kit_selection(self):
+        spec_kit = load_spec_kit_module(self)
+        requests = (
+            "Spec Kit analyze this then mark issue done",
+            "Spec Kit checklist then update roadmap status",
+            "Spec Kit clarify then update the goal and memory",
+            "Spec Kit analyze then merge, push, pull, and rebase the branch",
+            "Spec Kit converge then tag and cherry-pick the release branch",
+            "Spec Kit checklist then reset and checkout the branch",
+            "스펙킷으로 분석한 다음 이슈 상태를 완료로 변경해줘",
+            "스펙킷으로 체크리스트 만든 뒤 로드맵과 목표를 수정해줘",
+            "스펙킷으로 수렴한 뒤 브랜치를 병합하고 푸시해줘",
+            "스펙킷으로 명확화한 다음 리베이스하고 태그해줘",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            write_spec_kit_opt_in(project)
+            for request in requests:
+                with self.subTest(request=request):
+                    route = self.route(
+                        request,
+                        availability={capability: True for capability in HOST_AVAILABLE},
+                    )
+                    self.assertIn(route["outcome"], {"none", "delegate"})
+                    self.assertIsNone(spec_kit.select_function(request))
+                    handoff = spec_kit.build_handoff(
+                        ROOT,
+                        project,
+                        SPEC_KIT_ISSUE_ID,
+                        request,
+                        host_available=True,
+                    )
+                    self.assertEqual(handoff["outcome"], "unsupported")
+                    self.assertIsNone(handoff["source"]["template"])
+            self.assertFalse(
+                (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
+            )
+
+    def test_every_canonical_ownership_alias_crosses_router_but_not_adapter_boundary(self):
+        spec_kit = load_spec_kit_module(self)
+        requests = [
+            *(f"Spec Kit analyze then {alias} the issue" for alias in LIFECYCLE_ACTIONS),
+            *(f"Spec Kit checklist then update {resource}" for resource in LIFECYCLE_RESOURCES),
+            *(f"스펙킷으로 분석한 다음 이슈를 {alias}" for alias in KOREAN_LIFECYCLE_ACTIONS),
+            *(
+                f"스펙킷으로 체크리스트 만든 뒤 {resource}를 수정해줘"
+                for resource in KOREAN_LIFECYCLE_RESOURCES
+            ),
+            *(f"Spec Kit converge then {operation} repository changes" for operation in GIT_OPERATIONS),
+            *(
+                (
+                    f"스펙킷으로 분석한 뒤 {operation}해줘"
+                    if operation in KOREAN_INTRINSIC_GIT_OPERATIONS
+                    else f"스펙킷으로 명확화한 뒤 저장소에 {operation}해줘"
+                )
+                for operation in KOREAN_GIT_OPERATIONS
+            ),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            write_spec_kit_opt_in(project)
+            for request in requests:
+                with self.subTest(request=request):
+                    route = self.route(
+                        request,
+                        availability={capability: True for capability in HOST_AVAILABLE},
+                    )
+                    self.assertIn(route["outcome"], {"none", "delegate"})
+                    self.assertIsNone(spec_kit.select_function(route["request"]))
+                    handoff = spec_kit.build_handoff(
+                        ROOT, project, SPEC_KIT_ISSUE_ID, request, True
+                    )
+                    self.assertEqual(handoff["outcome"], "unsupported")
+                    self.assertIsNone(handoff["source"]["template"])
+            self.assertFalse(
+                (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
+            )
+
+    def test_implementation_language_cannot_select_a_spec_kit_function(self):
+        spec_kit = load_spec_kit_module(self)
+        requests = (
+            "스펙킷으로 구현해줘",
+            "스펙킷으로 코드를 작성해줘",
+            "스펙킷으로 Git 작업해줘",
+            "스펙킷으로 commit 해줘",
+            "스펙킷으로 review 해줘",
+            "스펙킷으로 PR 만들어줘",
+            "스펙킷으로 release 해줘",
+            "스펙킷으로 deployment 해줘",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            write_spec_kit_opt_in(project)
+            for request in requests:
+                with self.subTest(request=request):
+                    route = self.route(
+                        request, availability={**HOST_AVAILABLE, "spec-kit": True}
+                    )
+
+                    self.assertEqual(route["outcome"], "delegate")
+                    self.assertEqual(
+                        [stage["adapter_id"] for stage in route["stages"]],
+                        ["spec-kit"],
+                    )
+                    self.assertIsNone(spec_kit.select_function(route["request"]))
+                    handoff = spec_kit.build_handoff(
+                        ROOT,
+                        project,
+                        SPEC_KIT_ISSUE_ID,
+                        route["request"],
+                        host_available=True,
+                    )
+
+                    self.assertEqual(handoff["outcome"], "unsupported")
+                    self.assertIsNotNone(handoff["fallback"])
+            self.assertFalse(
+                (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
+            )
+
+    def test_product_commands_stay_local_and_ordinary_implementation_uses_superpowers(self):
+        for request in ("product:spec", "product:review", "product:pr", "product:release"):
+            with self.subTest(request=request):
+                result = self.route(request)
+                self.assertEqual(result["outcome"], "none")
+                self.assertEqual(result["stages"], [])
+
+        implementation = self.route("API를 구현하고 테스트해줘")
+        self.assertEqual(implementation["outcome"], "delegate")
+        self.assertEqual(
+            [stage["adapter_id"] for stage in implementation["stages"]],
+            ["superpowers"],
+        )
 
     def test_availability_defaults_fail_closed_without_host_confirmation(self):
         result = self.route("전환율을 분석해줘", availability={})

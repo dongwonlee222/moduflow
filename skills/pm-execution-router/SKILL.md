@@ -39,6 +39,17 @@ separate argument. Capability availability is fail-closed: the host must add
 - Unavailable or permission-blocked stages report the fallback or approval requirement and do
   not claim execution.
 
+For a sole current `spec-kit` stage, load `spec-kit-validation-bridge` only when availability is
+`available`, permission is `read`, and permission state is `allowed`. The bridge validates
+project opt-in without `--write`, loads the safety overlay before exactly one approved template,
+and returns advisory output. Non-ready handoffs stop at their native fallback. Persistence needs
+separate explicit ModuFlow approval and never changes lifecycle state automatically.
+
+Treat the router's explicit `spec-kit` match as a candidate, not proof that a function was
+selected. Only the bridge's complete English/Korean canonical grammar may select one function;
+extra words, a second function, or mixed action language return fallback with a canonical retry
+before any config, template, project input, or output read.
+
 This contract chooses a capability; existing product commands and specialist skills still own
 their execution behavior.
 

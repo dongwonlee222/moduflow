@@ -321,14 +321,14 @@
       "owner": "",
       "assignee": "",
       "reviewer": "Dongwon Lee",
-      "status": "review",
+      "status": "done",
       "branch": "",
       "pr": "https://github.com/dongwonlee222/moduflow/pull/36",
-      "lock_state": "active",
+      "lock_state": "released",
       "locked_by": "",
       "blocker": "",
-      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/36",
-      "next_command": "product:review 097-single-entry-capability-routing-contract",
+      "last_handoff": "PR #36 passed CI and merged to main as 46f98c0.",
+      "next_command": "product:plan 098-speckit-selective-validation-adapter",
       "updated_at": "2026-08-10"
     }
   ]
