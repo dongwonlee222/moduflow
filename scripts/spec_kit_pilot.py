@@ -22,8 +22,18 @@ ERROR_SCHEMA = "moduflow.spec-kit-error.v1"
 CASES_SCHEMA = "moduflow.spec-kit-pilot-cases.v1"
 ISSUE_ID = "098-speckit-selective-validation-adapter"
 FUNCTIONS = {"clarify", "analyze", "checklist", "converge"}
-CLASSES = {"success", "disabled", "unavailable", "ownership"}
-BOUNDARIES = {"implementation", "lifecycle", "git", "review", "release"}
+CLASSES = {"success", "disabled", "unavailable", "grammar"}
+BOUNDARIES = {
+    "unknown",
+    "multiple-functions",
+    "punctuation",
+    "implementation",
+    "lifecycle",
+    "git",
+    "review",
+    "release",
+    "mixed",
+}
 DISPOSITIONS = {"useful_unique", "accepted_native", "rejected_invalid"}
 CASE_KEYS = {
     "id",
@@ -149,9 +159,9 @@ def _normalize_case(case):
         _error("invalid_class", "case class is unsupported")
     function = case["function"]
     boundary = case["boundary"]
-    if case_class == "ownership":
+    if case_class == "grammar":
         if function is not None or boundary not in BOUNDARIES:
-            _error("invalid_function", "ownership cases require one approved boundary and no function")
+            _error("invalid_function", "grammar cases require one approved boundary and no function")
     else:
         if function not in FUNCTIONS or boundary is not None:
             _error("invalid_function", "function cases require one approved function and no boundary")
@@ -200,17 +210,17 @@ def load_cases(path):
 
 def _validate_matrix(cases):
     """Require the complete approved pilot matrix before metrics or writes."""
-    if len(cases) < 13:
-        _error("invalid_matrix", "pilot matrix must contain at least 13 cases")
+    if len(cases) < 24:
+        _error("invalid_matrix", "pilot matrix must contain at least 24 cases")
 
     success = [case for case in cases if case["class"] == "success"]
     success_functions = [case["function"] for case in success]
-    if len(success) != len(FUNCTIONS) or any(
-        success_functions.count(function) != 1 for function in FUNCTIONS
+    if len(success) != len(FUNCTIONS) * 2 or any(
+        success_functions.count(function) != 2 for function in FUNCTIONS
     ):
         _error(
             "invalid_matrix",
-            "pilot matrix requires exactly one success for each approved function",
+            "pilot matrix requires English and Korean success for each approved function",
         )
     if any(not isinstance(case["result_file"], str) or not case["result_file"].strip() for case in success):
         _error(
@@ -232,16 +242,18 @@ def _validate_matrix(cases):
             "disabled and unavailable cases cannot claim results",
         )
 
-    ownership = [case for case in cases if case["class"] == "ownership"]
-    if {case["boundary"] for case in ownership} != BOUNDARIES:
+    grammar = [case for case in cases if case["class"] == "grammar"]
+    if len(grammar) < 12 or not BOUNDARIES.issubset(
+        {case["boundary"] for case in grammar}
+    ):
         _error(
             "invalid_matrix",
-            "ownership cases must cover implementation, lifecycle, Git, review, and release",
+            "grammar cases must cover every approved fallback boundary",
         )
-    if any(case["function"] is not None or case["result_file"] is not None for case in ownership):
+    if any(case["function"] is not None or case["result_file"] is not None for case in grammar):
         _error(
             "invalid_matrix",
-            "ownership cases cannot claim a function or result",
+            "grammar cases cannot claim a function or result",
         )
 
 
@@ -365,7 +377,7 @@ def _execute_case(case, package_root, registry, result_base):
         template_loaded = bool(handoff["outcome"] == "ready" and handoff["source"]["template"])
         fanout = int(template_loaded)
         boundary_violation = bool(
-            case["class"] == "ownership"
+            case["class"] == "grammar"
             and (selected is not None or handoff["outcome"] == "ready" or template_loaded)
         )
         false_execution_claim = bool(handoff["outcome"] != "ready" and handoff["source"]["template"])
@@ -422,190 +434,6 @@ def _execute_case(case, package_root, registry, result_base):
         }
 
 
-def _ownership_probe_cases():
-    probes = []
-
-    def append(boundary, request):
-        probes.append(
-            {
-                "id": f"ownership-{boundary}-probe-{len(probes) + 1}",
-                "class": "ownership",
-                "function": None,
-                "boundary": boundary,
-                "request": request,
-                "expected_outcome": "unsupported",
-                "result_file": None,
-            }
-        )
-
-    for alias in spec_kit_adapter.LIFECYCLE_ACTION_ALIASES:
-        append("lifecycle", f"Spec Kit analyze then {alias} the issue")
-    for resource in spec_kit_adapter.LIFECYCLE_RESOURCE_ALIASES:
-        append("lifecycle", f"Spec Kit checklist then update {resource}")
-    for alias in spec_kit_adapter.KOREAN_LIFECYCLE_ACTION_ALIASES:
-        append("lifecycle", f"스펙킷으로 분석한 다음 이슈를 {alias}")
-    for resource in spec_kit_adapter.KOREAN_LIFECYCLE_RESOURCE_ALIASES:
-        append("lifecycle", f"스펙킷으로 체크리스트 만든 뒤 {resource}를 수정해줘")
-    for operation in spec_kit_adapter.GIT_OPERATION_ALIASES:
-        append("git", f"Spec Kit converge then {operation} repository changes")
-    for operation in spec_kit_adapter.KOREAN_GIT_OPERATION_ALIASES:
-        if operation in spec_kit_adapter.KOREAN_INTRINSIC_GIT_ALIASES:
-            append("git", f"스펙킷으로 분석한 뒤 {operation}해줘")
-        else:
-            append("git", f"스펙킷으로 명확화한 뒤 저장소에 {operation}해줘")
-    return probes
-
-
-def _evaluate_ownership_probes(package_root, registry, result_base):
-    observed = [
-        _execute_case(case, package_root, registry, result_base)
-        for case in _ownership_probe_cases()
-    ]
-    failed = [case["id"] for case in observed if not case["passed"]]
-    return {
-        "total": len(observed),
-        "passed": len(observed) - len(failed),
-        "failed": failed,
-    }
-
-
-def _adjacent_ownership_probe_cases():
-    requests = (
-        ("git", "Spec Kit analyze then add files to the index"),
-        ("git", "Spec Kit checklist then stage changed files"),
-        ("git", "Spec Kit clarify then restore files from the working tree"),
-        ("lifecycle", "Spec Kit analyze then start work on the issue"),
-        ("lifecycle", "Spec Kit checklist because the issue should be started"),
-        ("lifecycle", "스펙킷으로 분석한 뒤 이슈를 다시 시작해줘"),
-        ("lifecycle", "스펙킷으로 체크리스트 만든 뒤 이슈를 잠시 멈춰줘"),
-        ("git", "Spec Kit converge then switch to the current branch"),
-        ("git", "Spec Kit analyze then tag the modified commit"),
-        ("git", "Spec Kit checklist then branch the repo"),
-        ("git", "Spec Kit clarify then add tracked hunks to the index"),
-        ("git", "Spec Kit analyze then restore staged changes in the working tree"),
-        ("git", "Spec Kit checklist then stage untracked files"),
-        ("lifecycle", "Spec Kit checklist then continue work on the roadmap"),
-        ("lifecycle", "Spec Kit clarify because the project must be paused"),
-        ("lifecycle", "Spec Kit analyze because this work item can be completed"),
-        ("lifecycle", "스펙킷으로 분석한 뒤 프로젝트를 이제 재개해줘"),
-        ("lifecycle", "스펙킷으로 체크리스트 만든 뒤 로드맵을 바로 완료해줘"),
-        ("lifecycle", "스펙킷으로 명확화한 뒤 이슈를 계속 이어줘"),
-    )
-    return [
-        {
-            "id": f"ownership-adjacent-probe-{index}",
-            "class": "ownership",
-            "function": None,
-            "boundary": boundary,
-            "request": request,
-            "expected_outcome": "unsupported",
-            "result_file": None,
-        }
-        for index, (boundary, request) in enumerate(requests, start=1)
-    ]
-
-
-def _evaluate_adjacent_ownership_probes(package_root, registry, result_base):
-    observed = [
-        _execute_case(case, package_root, registry, result_base)
-        for case in _adjacent_ownership_probe_cases()
-    ]
-    failed = [case["id"] for case in observed if not case["passed"]]
-    return {
-        "total": len(observed),
-        "passed": len(observed) - len(failed),
-        "failed": failed,
-    }
-
-
-def _metamorphic_ownership_probe_cases():
-    requests = (
-        ("git", "Spec Kit checklist then stage the recently changed files"),
-        ("git", "Spec Kit analyze then add all changed files to the index"),
-        ("git", "Spec Kit clarify then restore selected files from the working tree"),
-        ("lifecycle", "Spec Kit checklist because the issue should really be paused"),
-        ("lifecycle", "Spec Kit analyze then start working on the issue"),
-        ("lifecycle", "스펙킷으로 분석한 뒤 이슈를 잠깐 다시 시작해줘"),
-        ("lifecycle", "스펙킷으로 체크리스트 만든 뒤 프로젝트를 먼저 천천히 완료해줘"),
-        ("git", "Spec Kit checklist then stage the very recently modified files"),
-        ("git", "Spec Kit clarify then add every carefully reviewed changed hunk to the index"),
-        ("git", "Spec Kit analyze then restore only those selected archived files from the working tree"),
-        ("lifecycle", "Spec Kit checklist because the roadmap should eventually be carefully resumed"),
-        ("lifecycle", "Spec Kit analyze then carefully start seriously working on the current issue"),
-        ("lifecycle", "스펙킷으로 분석한 뒤 이슈를 아주 잠깐 먼저 멈춰줘"),
-        ("lifecycle", "스펙킷으로 체크리스트 만든 뒤 로드맵을 먼저 천천히 다시 재개해줘"),
-    )
-    return [
-        {
-            "id": f"ownership-metamorphic-probe-{index}",
-            "class": "ownership",
-            "function": None,
-            "boundary": boundary,
-            "request": request,
-            "expected_outcome": "unsupported",
-            "result_file": None,
-        }
-        for index, (boundary, request) in enumerate(requests, start=1)
-    ]
-
-
-def _evaluate_metamorphic_ownership_probes(package_root, registry, result_base):
-    observed = [
-        _execute_case(case, package_root, registry, result_base)
-        for case in _metamorphic_ownership_probe_cases()
-    ]
-    failed = [case["id"] for case in observed if not case["passed"]]
-    return {
-        "total": len(observed),
-        "passed": len(observed) - len(failed),
-        "failed": failed,
-    }
-
-
-def _positive_probe_cases():
-    requests = (
-        ("Spec Kit clarify which acceptance criteria to add", "clarify"),
-        ("Spec Kit analyze the stages in the plan", "analyze"),
-        ("Spec Kit checklist where to start validation", "checklist"),
-        ("Spec Kit converge candidates to restore requirement coverage", "converge"),
-        ("스펙킷으로 분석해서 요구사항을 계속 명확히 해줘", "analyze"),
-        ("스펙킷으로 체크리스트에 태그 요구사항을 추가해줘", "checklist"),
-        ("Spec Kit clarify which changes to add to the requirements", "clarify"),
-        ("Spec Kit analyze which stages changed in the spec files", "analyze"),
-        ("Spec Kit clarify how to add changes to requirements", "clarify"),
-        ("Spec Kit analyze which files to add to spec inputs", "analyze"),
-        ("Spec Kit converge where to restore changes to requirement coverage", "converge"),
-        ("Spec Kit checklist where to start validation for this issue", "checklist"),
-        ("Spec Kit analyze which requirements to continue in the issue spec", "analyze"),
-        ("스펙킷으로 스테이징된 요구사항 파일을 분석해줘", "analyze"),
-    )
-    return [
-        {
-            "id": f"positive-probe-{index}",
-            "class": "success",
-            "function": function,
-            "boundary": None,
-            "request": request,
-            "expected_outcome": "ready",
-            "result_file": f"results/{function}.json",
-        }
-        for index, (request, function) in enumerate(requests, start=1)
-    ]
-
-
-def _evaluate_positive_probes(package_root, registry, result_base):
-    observed = [
-        _execute_case(case, package_root, registry, result_base)
-        for case in _positive_probe_cases()
-    ]
-    failed = [case["id"] for case in observed if not case["passed"]]
-    return {
-        "total": len(observed),
-        "passed": len(observed) - len(failed),
-        "failed": failed,
-    }
-
-
 def _function_metrics(cases):
     per_function = {}
     for function in sorted(FUNCTIONS):
@@ -650,27 +478,13 @@ def evaluate_cases(cases, result_base=None, package_root=None):
         _execute_case(case, package_root, registry, result_base) for case in normalized
     ]
     observed.sort(key=lambda case: case["id"])
-    ownership_probes = _evaluate_ownership_probes(package_root, registry, result_base)
-    adjacent_ownership_probes = _evaluate_adjacent_ownership_probes(
-        package_root, registry, result_base
-    )
-    metamorphic_ownership_probes = _evaluate_metamorphic_ownership_probes(
-        package_root, registry, result_base
-    )
-    positive_probes = _evaluate_positive_probes(package_root, registry, result_base)
     findings = [finding for case in observed for finding in case["findings"]]
     total_findings = len(findings)
     loaded_chars = sum(case["loaded_context_chars"] for case in observed)
     safety = {
-        "boundary_violations": sum(case["boundary_violation"] for case in observed)
-        + ownership_probes["total"]
-        - ownership_probes["passed"]
-        + adjacent_ownership_probes["total"]
-        - adjacent_ownership_probes["passed"]
-        + metamorphic_ownership_probes["total"]
-        - metamorphic_ownership_probes["passed"],
-        "unauthorized_writes": sum(case["unauthorized_write"] for case in observed),
-        "unwanted_fanout": sum(case["fanout"] > 1 for case in observed),
+        "ownership_escape_count": sum(case["boundary_violation"] for case in observed),
+        "unauthorized_write_count": sum(case["unauthorized_write"] for case in observed),
+        "template_fanout_violations": sum(case["fanout"] > 1 for case in observed),
         "false_execution_claims": sum(case["false_execution_claim"] for case in observed),
     }
     metrics = {
@@ -690,22 +504,21 @@ def evaluate_cases(cases, result_base=None, package_root=None):
         **safety,
     }
     passed_cases = sum(case["passed"] for case in observed)
+    evidence_counts = {
+        "canonical_success_count": sum(case["class"] == "success" for case in observed),
+        "availability_fallback_count": sum(
+            case["class"] in {"disabled", "unavailable"} for case in observed
+        ),
+        "grammar_fallback_count": sum(case["class"] == "grammar" for case in observed),
+    }
     return {
         "schema": PILOT_SCHEMA,
         "total_cases": len(observed),
         "passed_cases": passed_cases,
-        "passed": passed_cases == len(observed)
-        and ownership_probes["passed"] == ownership_probes["total"]
-        and adjacent_ownership_probes["passed"] == adjacent_ownership_probes["total"]
-        and metamorphic_ownership_probes["passed"] == metamorphic_ownership_probes["total"]
-        and positive_probes["passed"] == positive_probes["total"]
-        and not any(safety.values()),
+        "passed": passed_cases == len(observed) and not any(safety.values()),
+        "evidence_counts": evidence_counts,
         "metrics": metrics,
         "per_function": _function_metrics(observed),
-        "ownership_probes": ownership_probes,
-        "adjacent_ownership_probes": adjacent_ownership_probes,
-        "metamorphic_ownership_probes": metamorphic_ownership_probes,
-        "positive_probes": positive_probes,
         "cases": observed,
     }
 
@@ -733,10 +546,9 @@ def render_report(report):
         "",
         f"- Pilot passed: `{'yes' if report['passed'] else 'no'}`",
         f"- Cases: `{report['passed_cases']}/{report['total_cases']}` passed",
-        f"- Ordinary validation probes: `{report['positive_probes']['passed']}/{report['positive_probes']['total']}` passed",
-        f"- Canonical lifecycle/Git ownership probes: `{report['ownership_probes']['passed']}/{report['ownership_probes']['total']}` passed",
-        f"- Adjacent lifecycle/Git phrase probes: `{report['adjacent_ownership_probes']['passed']}/{report['adjacent_ownership_probes']['total']}` passed",
-        f"- Metamorphic lifecycle/Git insertion probes: `{report['metamorphic_ownership_probes']['passed']}/{report['metamorphic_ownership_probes']['total']}` passed",
+        f"- Canonical English/Korean successes: `{report['evidence_counts']['canonical_success_count']}`",
+        f"- Availability fallbacks: `{report['evidence_counts']['availability_fallback_count']}`",
+        f"- Conservative grammar fallbacks: `{report['evidence_counts']['grammar_fallback_count']}`",
         "",
         "## Aggregate Metrics",
         "",
@@ -748,9 +560,9 @@ def render_report(report):
         f"| Estimated loaded context (tokens) | {metrics['estimated_loaded_tokens']} |",
         f"| False-positive rate | {metrics['false_positive_rate']:.4f} |",
         f"| Native-overlap rate | {metrics['native_overlap_rate']:.4f} |",
-        f"| Boundary violations | {metrics['boundary_violations']} |",
-        f"| Unauthorized writes | {metrics['unauthorized_writes']} |",
-        f"| Unwanted fan-out | {metrics['unwanted_fanout']} |",
+        f"| Ownership escapes | {metrics['ownership_escape_count']} |",
+        f"| Unauthorized writes | {metrics['unauthorized_write_count']} |",
+        f"| Template fan-out violations | {metrics['template_fanout_violations']} |",
         f"| False execution claims | {metrics['false_execution_claims']} |",
         "",
         "## Per-Function Evidence",

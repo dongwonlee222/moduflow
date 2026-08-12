@@ -9,35 +9,34 @@ Wider/default activation: prohibited
 ## Outcome
 
 - Pilot passed: `yes`
-- Cases: `13/13` passed
-- Ordinary validation probes: `14/14` passed
-- Canonical lifecycle/Git ownership probes: `69/69` passed
-- Adjacent lifecycle/Git phrase probes: `19/19` passed
-- Metamorphic lifecycle/Git insertion probes: `14/14` passed
+- Cases: `24/24` passed
+- Canonical English/Korean successes: `8`
+- Availability fallbacks: `4`
+- Conservative grammar fallbacks: `12`
 
 ## Aggregate Metrics
 
 | Metric | Value |
 | --- | ---: |
-| Actionable unique findings | 4 |
+| Actionable unique findings | 8 |
 | Elapsed time (ms) | 0 |
-| Loaded context (characters) | 266018 |
-| Estimated loaded context (tokens) | 66505 |
+| Loaded context (characters) | 532036 |
+| Estimated loaded context (tokens) | 133009 |
 | False-positive rate | 0.1429 |
 | Native-overlap rate | 0.2857 |
-| Boundary violations | 0 |
+| Ownership escapes | 0 |
 | Unauthorized writes | 0 |
-| Unwanted fan-out | 0 |
+| Template fan-out violations | 0 |
 | False execution claims | 0 |
 
 ## Per-Function Evidence
 
 | Function | Findings | Unique | Elapsed ms | Chars | Tokens | False positive | Native overlap |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| analyze | 2 | 1 | 0 | 83644 | 20911 | 0.0000 | 0.5000 |
-| checklist | 2 | 1 | 0 | 49723 | 12431 | 0.5000 | 0.0000 |
-| clarify | 1 | 1 | 0 | 47991 | 11998 | 0.0000 | 0.0000 |
-| converge | 2 | 1 | 0 | 84660 | 21165 | 0.0000 | 0.5000 |
+| analyze | 4 | 2 | 0 | 167288 | 41822 | 0.0000 | 0.5000 |
+| checklist | 4 | 2 | 0 | 99446 | 24862 | 0.5000 | 0.0000 |
+| clarify | 2 | 2 | 0 | 95982 | 23996 | 0.0000 | 0.0000 |
+| converge | 4 | 2 | 0 | 169320 | 42330 | 0.0000 | 0.5000 |
 
 ## Case Evidence
 
@@ -45,15 +44,26 @@ Wider/default activation: prohibited
 | --- | --- | --- | --- |
 | disabled-analyze | disabled | analyze | yes |
 | disabled-clarify | disabled | clarify | yes |
-| ownership-git | ownership | git | yes |
-| ownership-implementation | ownership | implementation | yes |
-| ownership-lifecycle | ownership | lifecycle | yes |
-| ownership-release | ownership | release | yes |
-| ownership-review | ownership | review | yes |
-| success-analyze | success | analyze | yes |
-| success-checklist | success | checklist | yes |
-| success-clarify | success | clarify | yes |
-| success-converge | success | converge | yes |
+| grammar-git | grammar | git | yes |
+| grammar-implementation | grammar | implementation | yes |
+| grammar-korean-git | grammar | git | yes |
+| grammar-korean-mixed | grammar | mixed | yes |
+| grammar-lifecycle | grammar | lifecycle | yes |
+| grammar-mixed | grammar | mixed | yes |
+| grammar-multiple-functions | grammar | multiple-functions | yes |
+| grammar-no-prefix | grammar | unknown | yes |
+| grammar-punctuation | grammar | punctuation | yes |
+| grammar-release | grammar | release | yes |
+| grammar-review | grammar | review | yes |
+| grammar-unknown-target | grammar | unknown | yes |
+| success-analyze-en | success | analyze | yes |
+| success-analyze-ko | success | analyze | yes |
+| success-checklist-en | success | checklist | yes |
+| success-checklist-ko | success | checklist | yes |
+| success-clarify-en | success | clarify | yes |
+| success-clarify-ko | success | clarify | yes |
+| success-converge-en | success | converge | yes |
+| success-converge-ko | success | converge | yes |
 | unavailable-checklist | unavailable | checklist | yes |
 | unavailable-converge | unavailable | converge | yes |
 

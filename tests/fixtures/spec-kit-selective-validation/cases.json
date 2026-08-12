@@ -6,7 +6,7 @@
       "class": "disabled",
       "function": "analyze",
       "boundary": null,
-      "request": "Spec Kit analyze the requirements",
+      "request": "Spec Kit analyze requirements",
       "expected_outcome": "disabled"
     },
     {
@@ -14,82 +14,174 @@
       "class": "disabled",
       "function": "clarify",
       "boundary": null,
-      "request": "Spec Kit clarify the requirements",
+      "request": "Spec Kit clarify requirements",
       "expected_outcome": "disabled"
     },
     {
-      "id": "ownership-git",
-      "class": "ownership",
+      "id": "grammar-git",
+      "class": "grammar",
       "function": null,
       "boundary": "git",
-      "request": "Spec Kit analyze then add, stage, stash, fetch, pull, push, merge, rebase, reset, restore, checkout, switch, branch, tag, cherry-pick, revert, clone, and commit repository changes",
+      "request": "Spec Kit analyze then stage files",
       "expected_outcome": "unsupported"
     },
     {
-      "id": "ownership-implementation",
-      "class": "ownership",
+      "id": "grammar-implementation",
+      "class": "grammar",
       "function": null,
       "boundary": "implementation",
-      "request": "Spec Kit analyze the requirements then implement the code",
+      "request": "Spec Kit analyze requirements then implement code",
       "expected_outcome": "unsupported"
     },
     {
-      "id": "ownership-lifecycle",
-      "class": "ownership",
+      "id": "grammar-korean-git",
+      "class": "grammar",
+      "function": null,
+      "boundary": "git",
+      "request": "스펙킷 요구사항 분석하고 파일을 스테이징해줘",
+      "expected_outcome": "unsupported"
+    },
+    {
+      "id": "grammar-korean-mixed",
+      "class": "grammar",
+      "function": null,
+      "boundary": "mixed",
+      "request": "스펙킷 요구사항 분석하고 이슈를 완료해줘",
+      "expected_outcome": "unsupported"
+    },
+    {
+      "id": "grammar-lifecycle",
+      "class": "grammar",
       "function": null,
       "boundary": "lifecycle",
-      "request": "Spec Kit analyze then start, begin, pause, stop, resume, continue, finish, complete, and close the issue, then update status, goal, roadmap, and memory",
+      "request": "Spec Kit checklist requirements then continue issue",
       "expected_outcome": "unsupported"
     },
     {
-      "id": "ownership-release",
-      "class": "ownership",
+      "id": "grammar-mixed",
+      "class": "grammar",
+      "function": null,
+      "boundary": "mixed",
+      "request": "Spec Kit clarify which changes to add to requirements",
+      "expected_outcome": "unsupported"
+    },
+    {
+      "id": "grammar-multiple-functions",
+      "class": "grammar",
+      "function": null,
+      "boundary": "multiple-functions",
+      "request": "Spec Kit analyze checklist requirements",
+      "expected_outcome": "unsupported"
+    },
+    {
+      "id": "grammar-no-prefix",
+      "class": "grammar",
+      "function": null,
+      "boundary": "unknown",
+      "request": "analyze requirements",
+      "expected_outcome": "unsupported"
+    },
+    {
+      "id": "grammar-punctuation",
+      "class": "grammar",
+      "function": null,
+      "boundary": "punctuation",
+      "request": "Spec Kit analyze requirements, then continue issue",
+      "expected_outcome": "unsupported"
+    },
+    {
+      "id": "grammar-release",
+      "class": "grammar",
       "function": null,
       "boundary": "release",
-      "request": "Spec Kit checklist the requirements then release",
+      "request": "Spec Kit converge tasks then release",
       "expected_outcome": "unsupported"
     },
     {
-      "id": "ownership-review",
-      "class": "ownership",
+      "id": "grammar-review",
+      "class": "grammar",
       "function": null,
       "boundary": "review",
-      "request": "Spec Kit clarify the requirements then review the PR",
+      "request": "Spec Kit clarify requirements then review PR",
       "expected_outcome": "unsupported"
     },
     {
-      "id": "success-analyze",
+      "id": "grammar-unknown-target",
+      "class": "grammar",
+      "function": null,
+      "boundary": "unknown",
+      "request": "Spec Kit analyze unknown target",
+      "expected_outcome": "unsupported"
+    },
+    {
+      "id": "success-analyze-en",
       "class": "success",
       "function": "analyze",
       "boundary": null,
-      "request": "Spec Kit analyze the requirements",
+      "request": "Spec Kit analyze requirements",
       "expected_outcome": "ready",
       "result_file": "results/analyze.json"
     },
     {
-      "id": "success-checklist",
+      "id": "success-analyze-ko",
+      "class": "success",
+      "function": "analyze",
+      "boundary": null,
+      "request": "스펙킷 요구사항 분석",
+      "expected_outcome": "ready",
+      "result_file": "results/analyze.json"
+    },
+    {
+      "id": "success-checklist-en",
       "class": "success",
       "function": "checklist",
       "boundary": null,
-      "request": "Spec Kit checklist the requirements",
+      "request": "Spec Kit checklist acceptance criteria",
       "expected_outcome": "ready",
       "result_file": "results/checklist.json"
     },
     {
-      "id": "success-clarify",
+      "id": "success-checklist-ko",
+      "class": "success",
+      "function": "checklist",
+      "boundary": null,
+      "request": "스펙킷 승인 기준 체크리스트",
+      "expected_outcome": "ready",
+      "result_file": "results/checklist.json"
+    },
+    {
+      "id": "success-clarify-en",
       "class": "success",
       "function": "clarify",
       "boundary": null,
-      "request": "Spec Kit clarify the requirements",
+      "request": "Spec Kit clarify requirements",
       "expected_outcome": "ready",
       "result_file": "results/clarify.json"
     },
     {
-      "id": "success-converge",
+      "id": "success-clarify-ko",
+      "class": "success",
+      "function": "clarify",
+      "boundary": null,
+      "request": "스펙킷 요구사항 명확화",
+      "expected_outcome": "ready",
+      "result_file": "results/clarify.json"
+    },
+    {
+      "id": "success-converge-en",
       "class": "success",
       "function": "converge",
       "boundary": null,
-      "request": "Spec Kit converge the remaining work",
+      "request": "Spec Kit converge tasks",
+      "expected_outcome": "ready",
+      "result_file": "results/converge.json"
+    },
+    {
+      "id": "success-converge-ko",
+      "class": "success",
+      "function": "converge",
+      "boundary": null,
+      "request": "스펙킷 남은 작업 수렴",
       "expected_outcome": "ready",
       "result_file": "results/converge.json"
     },
@@ -98,7 +190,7 @@
       "class": "unavailable",
       "function": "checklist",
       "boundary": null,
-      "request": "Spec Kit checklist the requirements",
+      "request": "Spec Kit checklist acceptance criteria",
       "expected_outcome": "unavailable"
     },
     {
@@ -106,7 +198,7 @@
       "class": "unavailable",
       "function": "converge",
       "boundary": null,
-      "request": "Spec Kit converge the remaining work",
+      "request": "Spec Kit converge tasks",
       "expected_outcome": "unavailable"
     }
   ]

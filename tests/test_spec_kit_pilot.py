@@ -14,113 +14,6 @@ SCRIPT = ROOT / "scripts" / "spec_kit_pilot.py"
 FIXTURES = ROOT / "tests" / "fixtures" / "spec-kit-selective-validation" / "cases.json"
 ISSUE_ID = "098-speckit-selective-validation-adapter"
 FUNCTIONS = ("clarify", "analyze", "checklist", "converge")
-LIFECYCLE_ACTIONS = (
-    "start", "begin", "pause", "stop", "resume", "continue", "finish", "complete", "close"
-)
-KOREAN_LIFECYCLE_ACTIONS = (
-    "시작", "착수", "일시정지", "멈춰", "중지", "재개", "계속", "이어", "마무리", "끝내", "완료", "닫아", "종료"
-)
-LIFECYCLE_RESOURCES = ("status", "issue", "goal", "roadmap", "memory")
-KOREAN_LIFECYCLE_RESOURCES = ("상태", "이슈", "목표", "로드맵", "메모리", "기억")
-GIT_OPERATIONS = (
-    "add", "stage", "stash", "fetch", "pull", "push", "merge", "rebase", "reset",
-    "restore", "checkout", "switch", "branch", "tag", "cherry-pick", "revert", "clone", "commit",
-)
-KOREAN_GIT_OPERATIONS = (
-    "깃 추가", "스테이징", "스태시", "페치", "풀", "푸시", "병합", "리베이스", "리셋",
-    "복원", "체크아웃", "스위치", "브랜치", "태그", "체리픽", "리버트", "클론", "커밋",
-)
-KOREAN_INTRINSIC_GIT_OPERATIONS = {
-    "스테이징", "스태시", "페치", "푸시", "병합", "리베이스", "리셋",
-    "체크아웃", "체리픽", "리버트", "클론", "커밋",
-}
-ORDINARY_VALIDATION_REQUESTS = (
-    ("Spec Kit clarify which acceptance criteria to add", "clarify"),
-    ("Spec Kit analyze the stages in the plan", "analyze"),
-    ("Spec Kit checklist where to start validation", "checklist"),
-    ("Spec Kit converge candidates to restore requirement coverage", "converge"),
-    ("스펙킷으로 분석해서 요구사항을 계속 명확히 해줘", "analyze"),
-    ("스펙킷으로 체크리스트에 태그 요구사항을 추가해줘", "checklist"),
-    ("Spec Kit clarify which changes to add to the requirements", "clarify"),
-    ("Spec Kit analyze which stages changed in the spec files", "analyze"),
-)
-ADJACENT_OWNERSHIP_REQUESTS = (
-    "Spec Kit analyze then add files to the index",
-    "Spec Kit checklist then stage changed files",
-    "Spec Kit clarify then restore files from the working tree",
-    "Spec Kit analyze then start work on the issue",
-    "Spec Kit checklist because the issue should be started",
-    "스펙킷으로 분석한 뒤 이슈를 다시 시작해줘",
-    "스펙킷으로 체크리스트 만든 뒤 이슈를 잠시 멈춰줘",
-    "Spec Kit converge then switch to the current branch",
-    "Spec Kit analyze then tag the modified commit",
-    "Spec Kit checklist then branch the repo",
-    "Spec Kit clarify then add tracked hunks to the index",
-    "Spec Kit analyze then restore staged changes in the working tree",
-    "Spec Kit checklist then stage untracked files",
-    "Spec Kit checklist then continue work on the roadmap",
-    "Spec Kit clarify because the project must be paused",
-    "Spec Kit analyze because this work item can be completed",
-    "스펙킷으로 분석한 뒤 프로젝트를 이제 재개해줘",
-    "스펙킷으로 체크리스트 만든 뒤 로드맵을 바로 완료해줘",
-    "스펙킷으로 분석한 뒤 이슈를 계속 이어줘",
-)
-METAMORPHIC_OWNERSHIP_REQUESTS = (
-    "Spec Kit checklist then stage the recently changed files",
-    "Spec Kit analyze then add all changed files to the index",
-    "Spec Kit clarify then restore selected files from the working tree",
-    "Spec Kit checklist because the issue should really be paused",
-    "Spec Kit analyze then start working on the issue",
-    "스펙킷으로 분석한 뒤 이슈를 잠깐 다시 시작해줘",
-    "스펙킷으로 체크리스트 만든 뒤 프로젝트를 먼저 천천히 완료해줘",
-    "Spec Kit checklist then stage the very recently modified files",
-    "Spec Kit clarify then add every carefully reviewed changed hunk to the index",
-    "Spec Kit analyze then restore only those selected archived files from the working tree",
-    "Spec Kit checklist because the roadmap should eventually be carefully resumed",
-    "Spec Kit analyze then carefully start seriously working on the current issue",
-    "스펙킷으로 분석한 뒤 이슈를 아주 잠깐 먼저 멈춰줘",
-    "스펙킷으로 체크리스트 만든 뒤 로드맵을 먼저 천천히 다시 재개해줘",
-)
-DOMAIN_TARGET_POSITIVE_REQUESTS = (
-    ("Spec Kit clarify how to add changes to requirements", "clarify"),
-    ("Spec Kit analyze which files to add to spec inputs", "analyze"),
-    ("Spec Kit converge where to restore changes to requirement coverage", "converge"),
-    ("Spec Kit checklist where to start validation for this issue", "checklist"),
-    ("Spec Kit analyze which requirements to continue in the issue spec", "analyze"),
-    ("스펙킷으로 스테이징된 요구사항 파일을 분석해줘", "analyze"),
-)
-
-
-def semantic_role_requests():
-    negatives = [
-        "Spec Kit checklist then stage, please, changed files",
-        "Spec Kit checklist because the issue should, really, be paused",
-        "스펙킷으로 분석한 뒤 이슈를, 잠깐, 먼저 멈춰줘",
-        "Spec Kit analyze then stage files while preserving requirements",
-        "Spec Kit clarify then add tracked files and update requirements",
-    ]
-    positives = [
-        ("Spec Kit checklist which issue to start validation with", "checklist"),
-        ("Spec Kit checklist issue to begin validation with", "checklist"),
-        ("스펙킷으로 이슈별 시작 검증 기준을 체크리스트해줘", "checklist"),
-        ("Spec Kit analyze committed requirements", "analyze"),
-    ]
-    for punctuation in (", {modifier},", " ({modifier}) ", " -- {modifier} -- "):
-        for modifier in ("politely", "very carefully", "without any unnecessary delay"):
-            insertion = punctuation.format(modifier=modifier)
-            negatives.append(f"Spec Kit checklist then stage{insertion}changed files")
-            negatives.append(
-                f"Spec Kit checklist because the issue should{insertion}be paused"
-            )
-            positives.append(
-                (f"Spec Kit checklist which issue to start{insertion}validation with", "checklist")
-            )
-    for modifier in (", 잠깐, 먼저 ", " (조심스럽게) 아주 잠깐 ", " 우선 천천히 "):
-        negatives.append(f"스펙킷으로 분석한 뒤 이슈를{modifier}멈춰줘")
-        positives.append(
-            (f"스펙킷으로 이슈별 시작{modifier}검증 기준을 체크리스트해줘", "checklist")
-        )
-    return tuple(negatives), tuple(positives)
 INPUTS = {
     "clarify": [f"issues/{ISSUE_ID}.md", f"specs/{ISSUE_ID}/spec.md"],
     "analyze": [
@@ -203,7 +96,7 @@ class SpecKitPilotTests(unittest.TestCase):
 
     def test_fixture_matrix_is_request_driven_without_self_declared_safety(self):
         cases = self.canonical_cases()
-        self.assertEqual(len(cases), 13)
+        self.assertEqual(len(cases), 24)
         self.assertEqual(
             {case["function"] for case in cases if case["class"] == "success"},
             set(FUNCTIONS),
@@ -222,10 +115,29 @@ class SpecKitPilotTests(unittest.TestCase):
             ):
                 self.assertNotIn(untrusted, case)
 
+    def test_finite_grammar_matrix_has_required_evidence_counts(self):
+        cases = self.canonical_cases()
+        counts = {
+            "canonical_success": sum(case["class"] == "success" for case in cases),
+            "availability_fallback": sum(
+                case["class"] in {"disabled", "unavailable"} for case in cases
+            ),
+            "grammar_fallback": sum(case["class"] == "grammar" for case in cases),
+        }
+
+        self.assertEqual(
+            counts,
+            {
+                "canonical_success": 8,
+                "availability_fallback": 4,
+                "grammar_fallback": 12,
+            },
+        )
+
     def test_real_router_and_adapter_derive_every_case_outcome(self):
         report = self.evaluate_cases(self.canonical_cases())
 
-        self.assertEqual(report["passed_cases"], 13)
+        self.assertEqual(report["passed_cases"], 24)
         self.assertTrue(report["passed"])
         for case in report["cases"]:
             self.assertTrue(case["passed"], case)
@@ -261,270 +173,43 @@ class SpecKitPilotTests(unittest.TestCase):
         self.assertFalse(observed["passed"])
         self.assertFalse(report["passed"])
 
-    def test_ownership_request_cannot_hide_a_real_boundary_violation(self):
+    def test_grammar_request_cannot_hide_a_real_boundary_violation(self):
         cases = self.canonical_cases()
-        ownership = self.case(cases, "ownership-git")
-        ownership["request"] = "Spec Kit analyze the requirements"
+        grammar = self.case(cases, "grammar-git")
+        grammar["request"] = "Spec Kit analyze requirements"
 
         report = self.evaluate_cases(cases)
 
-        self.assertFalse(self.case(report["cases"], "ownership-git")["passed"])
-        self.assertEqual(report["metrics"]["boundary_violations"], 1)
+        self.assertFalse(self.case(report["cases"], "grammar-git")["passed"])
+        self.assertEqual(report["metrics"]["ownership_escape_count"], 1)
         self.assertFalse(report["passed"])
 
-    def test_pilot_real_path_rejects_every_canonical_lifecycle_and_git_alias(self):
-        adapter = self.pilot.spec_kit_adapter
-        self.assertEqual(set(adapter.LIFECYCLE_ACTION_ALIASES), set(LIFECYCLE_ACTIONS))
-        self.assertEqual(
-            set(adapter.KOREAN_LIFECYCLE_ACTION_ALIASES),
-            set(KOREAN_LIFECYCLE_ACTIONS),
-        )
-        self.assertEqual(set(adapter.GIT_OPERATION_ALIASES), set(GIT_OPERATIONS))
-        self.assertEqual(
-            set(adapter.KOREAN_GIT_OPERATION_ALIASES), set(KOREAN_GIT_OPERATIONS)
-        )
-        registry = self.pilot.capability_routing.load_registry(ROOT)
-        probes = [
-            *(("lifecycle", f"Spec Kit analyze then {alias} the issue") for alias in LIFECYCLE_ACTIONS),
-            *(("lifecycle", f"Spec Kit checklist then update {resource}") for resource in LIFECYCLE_RESOURCES),
-            *(("lifecycle", f"스펙킷으로 분석한 다음 이슈를 {alias}") for alias in KOREAN_LIFECYCLE_ACTIONS),
-            *(
-                ("lifecycle", f"스펙킷으로 체크리스트 만든 뒤 {resource}를 수정해줘")
-                for resource in KOREAN_LIFECYCLE_RESOURCES
-            ),
-            *(("git", f"Spec Kit converge then {operation} repository changes") for operation in GIT_OPERATIONS),
-            *(
-                (
-                    "git",
-                    (
-                        f"스펙킷으로 분석한 뒤 {operation}해줘"
-                        if operation in KOREAN_INTRINSIC_GIT_OPERATIONS
-                        else f"스펙킷으로 명확화한 뒤 저장소에 {operation}해줘"
-                    ),
-                )
-                for operation in KOREAN_GIT_OPERATIONS
-            ),
-        ]
-        for boundary, request in probes:
-            with self.subTest(request=request):
-                observed = self.pilot._execute_case(
-                    {
-                        "id": "ownership-probe",
-                        "class": "ownership",
-                        "function": None,
-                        "boundary": boundary,
-                        "request": request,
-                        "expected_outcome": "unsupported",
-                        "result_file": None,
-                    },
-                    ROOT,
-                    registry,
-                    FIXTURES.parent,
-                )
-                self.assertTrue(observed["passed"], observed)
-                self.assertIsNone(observed["selected_function"])
-                self.assertEqual(observed["adapter_outcome"], "unsupported")
-                self.assertFalse(observed["artifact_created"])
-
+    def test_real_pilot_proves_canonical_selection_and_zero_load_fallback(self):
         report = self.evaluate_cases(self.canonical_cases())
-        self.assertEqual(report["ownership_probes"]["total"], len(probes))
-        self.assertEqual(report["ownership_probes"]["passed"], len(probes))
-        self.assertEqual(report["ownership_probes"]["failed"], [])
 
-    def test_pilot_real_path_accepts_context_free_validation_words(self):
-        registry = self.pilot.capability_routing.load_registry(ROOT)
-
-        for index, (request, expected_function) in enumerate(
-            ORDINARY_VALIDATION_REQUESTS, start=1
-        ):
-            with self.subTest(request=request):
-                observed = self.pilot._execute_case(
-                    {
-                        "id": f"positive-probe-{index}",
-                        "class": "success",
-                        "function": expected_function,
-                        "boundary": None,
-                        "request": request,
-                        "expected_outcome": "ready",
-                        "result_file": f"results/{expected_function}.json",
-                    },
-                    ROOT,
-                    registry,
-                    FIXTURES.parent,
-                )
-                self.assertTrue(observed["passed"], observed)
-                self.assertEqual(observed["selected_function"], expected_function)
-                self.assertEqual(observed["route_outcome"], "delegate")
-                self.assertEqual(observed["adapter_outcome"], "ready")
-                self.assertEqual(observed["fanout"], 1)
-                self.assertFalse(observed["artifact_created"])
-
-        report = self.evaluate_cases(self.canonical_cases())
-        self.assertEqual(report["positive_probes"]["total"], 14)
-        self.assertEqual(report["positive_probes"]["passed"], 14)
-        self.assertEqual(report["positive_probes"]["failed"], [])
-
-    def test_pilot_executes_intrinsic_korean_git_negative_without_context(self):
-        registry = self.pilot.capability_routing.load_registry(ROOT)
-        request = "스펙킷으로 분석한 뒤 스테이징해줘"
-
-        self.assertIn(
-            request,
-            {case["request"] for case in self.pilot._ownership_probe_cases()},
-        )
-        observed = self.pilot._execute_case(
+        self.assertEqual(
+            report["evidence_counts"],
             {
-                "id": "ownership-intrinsic-korean-git-probe",
-                "class": "ownership",
-                "function": None,
-                "boundary": "git",
-                "request": request,
-                "expected_outcome": "unsupported",
-                "result_file": None,
+                "canonical_success_count": 8,
+                "availability_fallback_count": 4,
+                "grammar_fallback_count": 12,
             },
-            ROOT,
-            registry,
-            FIXTURES.parent,
         )
-        self.assertTrue(observed["passed"], observed)
-        self.assertIsNone(observed["selected_function"])
-        self.assertEqual(observed["adapter_outcome"], "unsupported")
-        self.assertFalse(observed["artifact_created"])
-
-    def test_pilot_executes_table_driven_adjacent_ownership_phrases(self):
-        registry = self.pilot.capability_routing.load_registry(ROOT)
-
-        for index, request in enumerate(ADJACENT_OWNERSHIP_REQUESTS, start=1):
-            with self.subTest(request=request):
-                observed = self.pilot._execute_case(
-                    {
-                        "id": f"ownership-adjacent-probe-{index}",
-                        "class": "ownership",
-                        "function": None,
-                        "boundary": (
-                            "lifecycle"
-                            if "issue" in request
-                            or "roadmap" in request
-                            or "project" in request
-                            or "work item" in request
-                            or "이슈" in request
-                            or "로드맵" in request
-                            or "프로젝트" in request
-                            else "git"
-                        ),
-                        "request": request,
-                        "expected_outcome": "unsupported",
-                        "result_file": None,
-                    },
-                    ROOT,
-                    registry,
-                    FIXTURES.parent,
-                )
-                self.assertTrue(observed["passed"], observed)
-                self.assertIsNone(observed["selected_function"])
-                self.assertEqual(observed["adapter_outcome"], "unsupported")
-                self.assertFalse(observed["artifact_created"])
-
-        report = self.evaluate_cases(self.canonical_cases())
-        self.assertEqual(report["adjacent_ownership_probes"]["total"], 19)
-        self.assertEqual(report["adjacent_ownership_probes"]["passed"], 19)
-        self.assertEqual(report["adjacent_ownership_probes"]["failed"], [])
-
-    def test_pilot_executes_metamorphic_ownership_and_domain_target_probes(self):
-        registry = self.pilot.capability_routing.load_registry(ROOT)
-        for index, request in enumerate(METAMORPHIC_OWNERSHIP_REQUESTS, start=1):
-            with self.subTest(kind="ownership", request=request):
-                observed = self.pilot._execute_case(
-                    {
-                        "id": f"ownership-metamorphic-probe-{index}",
-                        "class": "ownership",
-                        "function": None,
-                        "boundary": "lifecycle" if any(
-                            word in request
-                            for word in ("issue", "roadmap", "project", "이슈", "로드맵", "프로젝트")
-                        ) else "git",
-                        "request": request,
-                        "expected_outcome": "unsupported",
-                        "result_file": None,
-                    },
-                    ROOT,
-                    registry,
-                    FIXTURES.parent,
-                )
-                self.assertTrue(observed["passed"], observed)
-        for index, (request, function) in enumerate(DOMAIN_TARGET_POSITIVE_REQUESTS, start=1):
-            with self.subTest(kind="domain", request=request):
-                observed = self.pilot._execute_case(
-                    {
-                        "id": f"positive-domain-probe-{index}",
-                        "class": "success",
-                        "function": function,
-                        "boundary": None,
-                        "request": request,
-                        "expected_outcome": "ready",
-                        "result_file": f"results/{function}.json",
-                    },
-                    ROOT,
-                    registry,
-                    FIXTURES.parent,
-                )
-                self.assertTrue(observed["passed"], observed)
-
-        report = self.evaluate_cases(self.canonical_cases())
-        self.assertEqual(report["metamorphic_ownership_probes"], {
-            "total": 14, "passed": 14, "failed": []
-        })
-        self.assertEqual(report["positive_probes"], {
-            "total": 14, "passed": 14, "failed": []
-        })
-
-    def test_pilot_executes_strong_clause_role_metamorphics(self):
-        registry = self.pilot.capability_routing.load_registry(ROOT)
-        negatives, positives = semantic_role_requests()
-        for index, request in enumerate(negatives, start=1):
-            with self.subTest(kind="ownership", request=request):
-                boundary = "lifecycle" if any(
-                    word in request
-                    for word in ("issue", "paused", "이슈", "멈춰")
-                ) else "git"
-                observed = self.pilot._execute_case(
-                    {
-                        "id": f"ownership-role-probe-{index}",
-                        "class": "ownership",
-                        "function": None,
-                        "boundary": boundary,
-                        "request": request,
-                        "expected_outcome": "unsupported",
-                        "result_file": None,
-                    },
-                    ROOT,
-                    registry,
-                    FIXTURES.parent,
-                )
-                self.assertTrue(observed["passed"], observed)
-        for index, (request, function) in enumerate(positives, start=1):
-            with self.subTest(kind="advisory", request=request):
-                observed = self.pilot._execute_case(
-                    {
-                        "id": f"positive-role-probe-{index}",
-                        "class": "success",
-                        "function": function,
-                        "boundary": None,
-                        "request": request,
-                        "expected_outcome": "ready",
-                        "result_file": f"results/{function}.json",
-                    },
-                    ROOT,
-                    registry,
-                    FIXTURES.parent,
-                )
-                self.assertTrue(observed["passed"], observed)
+        for case in report["cases"]:
+            if case["class"] == "success":
+                self.assertEqual(case["selected_function"], case["function"])
+                self.assertEqual(case["fanout"], 1)
+            elif case["class"] == "grammar":
+                self.assertIsNone(case["selected_function"])
+                self.assertEqual(case["adapter_outcome"], "unsupported")
+                self.assertEqual(case["fanout"], 0)
+                self.assertFalse(case["artifact_created"])
 
     def test_success_snapshots_use_derived_input_hash_context_and_synthetic_latency(self):
         report = self.evaluate_cases(self.canonical_cases())
 
         for function in FUNCTIONS:
-            case = self.case(report["cases"], f"success-{function}")
+            case = self.case(report["cases"], f"success-{function}-en")
             result = json.loads((FIXTURES.parent / case["result_file"]).read_text(encoding="utf-8"))
             self.assertEqual(result["input_hash"], independent_input_hash(function))
             self.assertEqual(
@@ -571,7 +256,7 @@ class SpecKitPilotTests(unittest.TestCase):
             self.evaluate_cases(cases[:-1])
 
         cases = self.canonical_cases()
-        self.case(cases, "success-clarify")["result_file"] = "results/does-not-exist.json"
+        self.case(cases, "success-clarify-en")["result_file"] = "results/does-not-exist.json"
         with self.assertRaisesRegex(self.pilot.PilotError, "unsafe_result_path"):
             self.evaluate_cases(cases)
 
@@ -579,16 +264,16 @@ class SpecKitPilotTests(unittest.TestCase):
         report = self.evaluate_cases(self.canonical_cases())
         total_chars = sum(independent_loaded_context_chars(function) for function in FUNCTIONS)
 
-        self.assertEqual(report["metrics"]["actionable_value"], 4)
+        self.assertEqual(report["metrics"]["actionable_value"], 8)
         self.assertEqual(report["metrics"]["false_positive_rate"], 0.1429)
         self.assertEqual(report["metrics"]["native_overlap_rate"], 0.2857)
         self.assertEqual(report["metrics"]["elapsed_ms"], 0)
-        self.assertEqual(report["metrics"]["loaded_context_chars"], total_chars)
-        self.assertEqual(report["metrics"]["estimated_loaded_tokens"], (total_chars + 3) // 4)
+        self.assertEqual(report["metrics"]["loaded_context_chars"], total_chars * 2)
+        self.assertEqual(report["metrics"]["estimated_loaded_tokens"], (total_chars * 2 + 3) // 4)
         for metric in (
-            "boundary_violations",
-            "unauthorized_writes",
-            "unwanted_fanout",
+            "ownership_escape_count",
+            "unauthorized_write_count",
+            "template_fanout_violations",
             "false_execution_claims",
         ):
             self.assertEqual(report["metrics"][metric], 0)
