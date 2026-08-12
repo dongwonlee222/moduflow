@@ -78,6 +78,11 @@ overlay and exactly one approved template. A non-ready handoff uses its native f
 loads or writes nothing. Advisory output is shown first and persists only after explicit
 ModuFlow approval; it never advances lifecycle state.
 
+Spec Kit selection is deliberately explicit: use only `Spec Kit clarify requirements`,
+`Spec Kit analyze requirements`, `Spec Kit checklist acceptance criteria`, `Spec Kit converge
+tasks`, or their documented Korean canonical forms. An explicit Spec Kit prefix with extra or
+mixed language reaches the bridge but falls back before config, template, input, or output access.
+
 ## Natural Language Invocation
 
 Accept Korean natural language after `@ModuFlow` and route to the smallest useful command or lifecycle action.

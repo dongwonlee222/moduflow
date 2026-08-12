@@ -45,6 +45,11 @@ project opt-in without `--write`, loads the safety overlay before exactly one ap
 and returns advisory output. Non-ready handoffs stop at their native fallback. Persistence needs
 separate explicit ModuFlow approval and never changes lifecycle state automatically.
 
+Treat the router's explicit `spec-kit` match as a candidate, not proof that a function was
+selected. Only the bridge's complete English/Korean canonical grammar may select one function;
+extra words, a second function, or mixed action language return fallback with a canonical retry
+before any config, template, project input, or output read.
+
 This contract chooses a capability; existing product commands and specialist skills still own
 their execution behavior.
 

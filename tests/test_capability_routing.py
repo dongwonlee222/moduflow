@@ -410,7 +410,7 @@ class CapabilityRoutingTests(unittest.TestCase):
 
     def test_available_spec_kit_routes_one_stage_then_adapter_selects_one_template(self):
         spec_kit = load_spec_kit_module(self)
-        request = "스펙킷으로 요구사항 체크리스트 만들어줘"
+        request = "스펙킷 요구사항 체크리스트"
         route = self.route(request, availability={"spec-kit": True})
 
         self.assertEqual(route["outcome"], "delegate")
@@ -437,10 +437,10 @@ class CapabilityRoutingTests(unittest.TestCase):
     def test_available_spec_kit_functions_each_route_only_spec_kit_with_all_capabilities(self):
         spec_kit = load_spec_kit_module(self)
         requests = {
-            "clarify": "스펙킷으로 요구사항 명확화해줘",
+            "clarify": "스펙킷 요구사항 명확화",
             "analyze": "Spec Kit analyze the requirements",
-            "checklist": "스펙킷으로 요구사항 체크리스트 만들어줘",
-            "converge": "Spec Kit converge the remaining work",
+            "checklist": "스펙킷 요구사항 체크리스트",
+            "converge": "Spec Kit converge tasks",
         }
 
         for expected_function, request in requests.items():
@@ -456,10 +456,10 @@ class CapabilityRoutingTests(unittest.TestCase):
                 )
                 self.assertEqual(spec_kit.select_function(route["request"]), expected_function)
 
-    def test_ordinary_validation_words_route_one_spec_kit_stage(self):
+    def test_old_free_form_validation_routes_to_adapter_fallback(self):
         spec_kit = load_spec_kit_module(self)
 
-        for request, expected_function in ORDINARY_VALIDATION_REQUESTS:
+        for request, _expected_function in ORDINARY_VALIDATION_REQUESTS:
             with self.subTest(request=request):
                 route = self.route(
                     request,
@@ -470,7 +470,7 @@ class CapabilityRoutingTests(unittest.TestCase):
                     [stage["adapter_id"] for stage in route["stages"]],
                     ["spec-kit"],
                 )
-                self.assertEqual(spec_kit.select_function(request), expected_function)
+                self.assertIsNone(spec_kit.select_function(request))
 
     def test_intrinsic_korean_git_action_crosses_router_but_not_adapter_boundary(self):
         spec_kit = load_spec_kit_module(self)
@@ -523,7 +523,7 @@ class CapabilityRoutingTests(unittest.TestCase):
                 (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
             )
 
-    def test_clause_token_ownership_and_domain_overrides_cross_real_router(self):
+    def test_noncanonical_domain_and_modifier_phrases_cross_to_adapter_fallback(self):
         spec_kit = load_spec_kit_module(self)
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
@@ -543,8 +543,8 @@ class CapabilityRoutingTests(unittest.TestCase):
                         ROOT, project, SPEC_KIT_ISSUE_ID, request, host_available=True
                     )
                     self.assertEqual(handoff["outcome"], "unsupported")
-            for request, function in DOMAIN_TARGET_POSITIVE_REQUESTS:
-                with self.subTest(kind="domain", request=request):
+            for request, _function in DOMAIN_TARGET_POSITIVE_REQUESTS:
+                with self.subTest(kind="domain-fallback", request=request):
                     route = self.route(
                         request,
                         availability={capability: True for capability in HOST_AVAILABLE},
@@ -553,17 +553,17 @@ class CapabilityRoutingTests(unittest.TestCase):
                     self.assertEqual(
                         [stage["adapter_id"] for stage in route["stages"]], ["spec-kit"]
                     )
-                    self.assertEqual(spec_kit.select_function(request), function)
+                    self.assertIsNone(spec_kit.select_function(request))
                     handoff = spec_kit.build_handoff(
                         ROOT, project, SPEC_KIT_ISSUE_ID, request, host_available=True
                     )
-                    self.assertEqual(handoff["outcome"], "ready")
-                    self.assertEqual(handoff["function"], function)
+                    self.assertEqual(handoff["outcome"], "unsupported")
+                    self.assertIsNone(handoff["function"])
             self.assertFalse(
                 (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
             )
 
-    def test_strong_clause_role_requests_cross_real_router_and_adapter(self):
+    def test_punctuation_and_modifier_requests_cross_to_adapter_fallback(self):
         spec_kit = load_spec_kit_module(self)
         negatives, positives = semantic_role_requests()
         with tempfile.TemporaryDirectory() as tmp:
@@ -584,8 +584,8 @@ class CapabilityRoutingTests(unittest.TestCase):
                         ROOT, project, SPEC_KIT_ISSUE_ID, request, host_available=True
                     )
                     self.assertEqual(handoff["outcome"], "unsupported")
-            for request, function in positives:
-                with self.subTest(kind="advisory", request=request):
+            for request, _function in positives:
+                with self.subTest(kind="noncanonical", request=request):
                     route = self.route(
                         request,
                         availability={capability: True for capability in HOST_AVAILABLE},
@@ -594,17 +594,17 @@ class CapabilityRoutingTests(unittest.TestCase):
                     self.assertEqual(
                         [stage["adapter_id"] for stage in route["stages"]], ["spec-kit"]
                     )
-                    self.assertEqual(spec_kit.select_function(request), function)
+                    self.assertIsNone(spec_kit.select_function(request))
                     handoff = spec_kit.build_handoff(
                         ROOT, project, SPEC_KIT_ISSUE_ID, request, host_available=True
                     )
-                    self.assertEqual(handoff["outcome"], "ready")
-                    self.assertEqual(handoff["function"], function)
+                    self.assertEqual(handoff["outcome"], "unsupported")
+                    self.assertIsNone(handoff["function"])
             self.assertFalse(
                 (project / "specs" / SPEC_KIT_ISSUE_ID / "validation.md").exists()
             )
 
-    def test_explicit_spec_kit_beats_every_general_capability_trigger_for_each_function(self):
+    def test_explicit_spec_kit_candidate_beats_general_triggers_but_extra_words_fall_back(self):
         spec_kit = load_spec_kit_module(self)
         capability_subjects = {
             "data-analytics": "KPI requirements",
@@ -633,9 +633,7 @@ class CapabilityRoutingTests(unittest.TestCase):
                         [stage["adapter_id"] for stage in route["stages"]],
                         ["spec-kit"],
                     )
-                    self.assertEqual(
-                        spec_kit.select_function(route["request"]), expected_function
-                    )
+                    self.assertIsNone(spec_kit.select_function(route["request"]))
 
     def test_ordinary_general_capability_requests_keep_their_native_routes(self):
         requests = {
@@ -715,15 +713,6 @@ class CapabilityRoutingTests(unittest.TestCase):
 
     def test_every_canonical_ownership_alias_crosses_router_but_not_adapter_boundary(self):
         spec_kit = load_spec_kit_module(self)
-        self.assertEqual(set(spec_kit.LIFECYCLE_ACTION_ALIASES), set(LIFECYCLE_ACTIONS))
-        self.assertEqual(
-            set(spec_kit.KOREAN_LIFECYCLE_ACTION_ALIASES),
-            set(KOREAN_LIFECYCLE_ACTIONS),
-        )
-        self.assertEqual(set(spec_kit.GIT_OPERATION_ALIASES), set(GIT_OPERATIONS))
-        self.assertEqual(
-            set(spec_kit.KOREAN_GIT_OPERATION_ALIASES), set(KOREAN_GIT_OPERATIONS)
-        )
         requests = [
             *(f"Spec Kit analyze then {alias} the issue" for alias in LIFECYCLE_ACTIONS),
             *(f"Spec Kit checklist then update {resource}" for resource in LIFECYCLE_RESOURCES),

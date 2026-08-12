@@ -44,21 +44,22 @@ template, or project artifact.
 
 ## Ownership Boundaries
 
-Direct `product:*` commands remain local. Implementation/code; lifecycle start/begin/pause/stop/
-resume/continue/finish/complete/close tied to issue/status/goal/roadmap/memory/project/work-item
-resources; unmistakable Git stash/fetch/pull/push/merge/rebase/reset/checkout/cherry-pick/revert/
-clone/commit; and clause-local Git add/stage/restore/switch/branch/tag with token-level Git
-operation/object semantics are unsupported by this bridge, as are all Korean equivalents, review,
-PR, release, and deployment requests. The classifier splits punctuation and sequence markers,
-then relates tokens inside each clause across arbitrary modifiers. Explicit Git context wins;
-state-qualified files/changes/hunks are Git-owned unless their operation targets requirements,
-acceptance criteria, spec, plan, tasks, validation, coverage, or inputs. Lifecycle ownership uses
-clause-local action/resource semantics across arbitrary auxiliaries/adverbs; Korean resource
-particles plus a lifecycle action remain native regardless of intervening modifiers. Advisory
-`whether to`, `which ... to`, and `where to` domain operations remain eligible. This ownership
-boundary wins before function selection even
-when the same request also says clarify, analyze, checklist, or converge. Never edit `spec.md`, `plan.md`,
-`tasks.md`, code, Git, issue state, goal, roadmap, memory, review, PR, release, or deployment state.
+The adapter accepts only the complete canonical request grammar below. It does not infer ownership
+from free-form clauses, verb roles, or token distance.
+
+```text
+English: <spec kit|speckit> <function> [<approved validation target>]
+Korean:  <스펙킷|스펙 킷> [<approved validation target>] <function>
+```
+
+Guaranteed requests include `Spec Kit clarify requirements`, `Spec Kit analyze requirements`,
+`Spec Kit checklist acceptance criteria`, `Spec Kit converge tasks`, `스펙킷 요구사항 명확화`,
+`스펙킷 요구사항 분석`, `스펙킷 승인 기준 체크리스트`, and `스펙킷 남은 작업 수렴`.
+Unknown words, multiple functions, punctuation clauses, implementation, lifecycle, Git, review,
+PR, release, deployment, or any mixed intent return a native fallback with one canonical retry.
+Fallback occurs before config, overlay, template, project input, or output access. Never edit
+`spec.md`, `plan.md`, `tasks.md`, code, Git, issue state, goal, roadmap, memory, review, PR,
+release, or deployment state.
 
 ## Quick Reference
 
