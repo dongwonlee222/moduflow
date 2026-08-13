@@ -1,6 +1,6 @@
 # Issue 095 Execution Status
 
-**Status: done** — started 2026-07-26, reviewed and merged via PR #33 as `f4029f3` on 2026-08-03; post-merge release check passed. Earlier review rounds below are retained as history.
+**Status: done** — started 2026-07-26, reviewed and merged via PR #33 as `f4029f3` on 2026-08-03; post-merge release passed and completion was reconfirmed on 2026-08-13. Earlier review rounds below are retained as history.
 
 ## Progress
 

@@ -18,25 +18,25 @@
     "097-single-entry-capability-routing-contract",
     "098-speckit-selective-validation-adapter"
   ],
-  "active_issue_id": "098-speckit-selective-validation-adapter",
-  "phase": "review",
-  "mode": "review",
-  "delegation_level": "review_ready",
+  "active_issue_id": "",
+  "phase": "select",
+  "mode": "recommend",
+  "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:review 098-speckit-selective-validation-adapter",
+  "next_command": "product:spec 094-risk-based-security-and-quality-review-gate",
   "attempts": {
-    "command": "product:review 098-speckit-selective-validation-adapter",
+    "command": "product:spec 094-risk-based-security-and-quality-review-gate",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-08-11"
+    "last_changed_at": "2026-08-13"
   },
   "blocker": null,
-  "last_action": "closed the Issue 098 selective-adapter integration gaps with strong-clause nearest-target ownership semantics and release-gated canonical pilot provenance; human activation decision remains pending",
-  "last_verification": "2026-08-11: pilot 13/13 plus ordinary/domain validation 14/14, canonical ownership 69/69, adjacent phrase 19/19, metamorphic insertion 14/14; focused 167/167; full 1168/1168; spec 0/0/0 with 19/19 coverage; lifecycle []; package 174/project/release including provenance valid; four safety counters zero",
-  "updated_at": "2026-08-11",
+  "last_action": "reconfirmed Issue 095 as shipped and completed Issue 098 after PR #37 merge, CI, local main synchronization, and ModuFlow 0.3.48 installation",
+  "last_verification": "2026-08-13: baseline full discovery 1168/1168; Issue 095 PR #33 merged as f4029f3 with CI/release evidence; Issue 098 PR #37 merged as 513e08f and installed plugin cache reports 0.3.48 with no stale plugin recommendation",
+  "updated_at": "2026-08-13",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/098-speckit-selective-validation-adapter",
+    "branch": "",
     "base_branch": "main",
     "commits": [
       "f980aef",
@@ -139,12 +139,12 @@
       "f4029f3"
     ],
     "pull_request": null,
-    "release": "repository source on main at f4029f3; no plugin publish",
+    "release": "Issues 095 and 098 are on main; latest merge 513e08f; ModuFlow 0.3.48 is installed locally",
     "execution_backend": {
       "type": "host-subagent",
-        "status": "review_ready",
-        "reason": "Issue 098 remediation and request-driven pilot are prepared; human value and activation decisions remain pending",
-        "session": "codex-2026-08-11"
+        "status": "complete",
+        "reason": "Issues 095 and 098 are merged, verified, and reconciled; select the next issue",
+        "session": "codex-2026-08-13"
       }
   }
 }

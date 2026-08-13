@@ -1,26 +1,26 @@
 # ModuFlow Roadmap
 
-## Priority Refresh — 2026-08-11
+## Priority Refresh — 2026-08-13
 
 ### Now
 
-- `098-speckit-selective-validation-adapter` — conservative finite English/Korean request grammar and a fixed 24-case real-router/adapter pilot (8 canonical successes, 4 availability fallbacks, 12 grammar fallbacks) ready for `product:review`; canonical provenance is release-gated, human value/activation decision pending, and wider/default activation prohibited.
+- `094-risk-based-security-and-quality-review-gate` — dependency 089 is done; start with `product:spec 094-risk-based-security-and-quality-review-gate`.
 
 ### Next
 
-- `094-risk-based-security-and-quality-review-gate` — resume after the Spec Kit adapter pilot is bounded.
+- `086-project-aware-production-library-dashboard` — continue the approved project-scoped production/playbook dashboard after Issue 094.
 
 ### Recently Shipped
 
 - `097-single-entry-capability-routing-contract` — merged via PR #36 as `46f98c0`; 27/27 routing simulations, 1,077/1,077 local tests, and CI passed.
 - `095-commit-issue-resolution-parity` — merged via PR #33 as `f4029f3`; post-merge release check passed, failure history remains preserved, and plugin publication stays held for Issue 096.
+- `098-speckit-selective-validation-adapter` — merged via PR #37 as `513e08f`; 24/24 conservative pilot passed, ModuFlow 0.3.48 was installed locally, and wider/default activation remains prohibited.
 - `088-canonical-repository-remote-identity-gate` and `089-verified-code-review-intake-and-remediation-routing` — merged, reviewed, approved, and packaged in v0.3.26.
 - Legacy `030-project-memory-layer` audit — prototype foundation retained; delivered extensions mapped to 034/040/043/085 and remaining registry/migration scope transferred to 090 on 2026-07-21.
 
 ### Then
 
 - `086-project-aware-production-library-dashboard` — approved design/prototype; implement global project selector plus Production Records and Playbooks tabs.
-- `094-risk-based-security-and-quality-review-gate` — dependency 089 is done; resume after the routing-contract sequence.
 
 ### Later
 

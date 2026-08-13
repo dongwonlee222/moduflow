@@ -1,6 +1,6 @@
 # Issue 098: Spec Kit Selective Validation Adapter
 
-**Status: active** — created and specified 2026-08-10; planned 2026-08-11.
+**Status: done** — created and specified 2026-08-10, implemented and verified 2026-08-12, merged via PR #37 as `513e08f`, and installed locally as ModuFlow `0.3.48` on 2026-08-13.
 **Priority: p2**
 **Blocked-by:**
 
@@ -124,6 +124,10 @@ extensions, or route build/release ownership away from ModuFlow and Superpowers.
 - 2026-08-12: Final verification passed the 24/24 deterministic pilot twice with identical evidence
   hashes, 167/167 focused tests, 1,168/1,168 full tests, 18/18 spec coverage, empty lifecycle drift,
   174-file package validation, and the complete release gate at version 0.3.48.
+- 2026-08-13: Dongwon Lee approved the selective, on-demand model and asked to finish integration.
+  PR #37 passed GitHub CI and merged as `513e08f`; local `main` was synchronized and the Codex
+  personal plugin cache was refreshed to `0.3.48+codex.20260810222010`. Wider/default activation
+  remains prohibited; project opt-in is still explicit.
 
 ## Links
 
@@ -137,4 +141,4 @@ extensions, or route build/release ownership away from ModuFlow and Superpowers.
 
 ## Next Command
 
-`/product:review 098-speckit-selective-validation-adapter`
+`product:status`

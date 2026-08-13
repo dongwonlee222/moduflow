@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issue 098 now uses a conservative finite English/Korean request grammar, and its fixed 24-case real-router/adapter safety/value pilot is ready for review; canonical pilot provenance is release-gated and wider activation remains prohibited.
+Goal `trustworthy-execution-and-project-knowledge`: Issues 095 and 098 are merged, verified, and reconciled. The next safety-gate work is Issue 094; wider/default Spec Kit activation remains prohibited.
 
 ## Active Goal
 
@@ -10,14 +10,14 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 098 now uses a conserv
 
 ## Active Issue
 
-- `098-speckit-selective-validation-adapter` — phase `review`; the fixed 24-case pilot passed 8 canonical English/Korean successes, 4 availability fallbacks, and 12 conservative grammar fallbacks with derived input/context evidence and zero safety counters; release rejects stale snapshots, while the human value/activation decision remains pending.
+- None active. Run `product:spec 094-risk-based-security-and-quality-review-gate` to start the next recommended issue.
 
-## Priority Queue — 2026-08-10
+## Priority Queue — 2026-08-13
 
-- Now: `098` selective Spec Kit validation adapter review; next command is
-  `product:review 098-speckit-selective-validation-adapter`.
+- Now: `094` risk-based security/quality review gate; blocker `089` is done. Next command is
+  `product:spec 094-risk-based-security-and-quality-review-gate`.
+- Shipped: `098` selective Spec Kit validation adapter merged via PR #37 as `513e08f`, installed locally as ModuFlow 0.3.48, and remains project-opt-in only.
 - Shipped: `097` merged via PR #36 as `46f98c0`; routing simulation and CI passed.
-- Then: `094` risk-based security/quality review gate; blocker `089` is done.
 - Shipped: `095` merged via PR #33 as `f4029f3`; post-merge release check passed.
 - Then: `086` project-aware production/playbook dashboard.
 - Also ready: `087` Korean GitHub PR review surface, `090` project knowledge registry — both independent.
