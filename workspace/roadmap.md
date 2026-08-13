@@ -4,11 +4,11 @@
 
 ### Now
 
-- `094-risk-based-security-and-quality-review-gate` — dependency 089 is done; start with `product:spec 094-risk-based-security-and-quality-review-gate`.
+- `086-project-aware-production-library-dashboard` — continue the approved project-scoped production/playbook dashboard.
 
 ### Next
 
-- `086-project-aware-production-library-dashboard` — continue the approved project-scoped production/playbook dashboard after Issue 094.
+- Select after the 086 implementation review; no security adapter work blocks routine product execution.
 
 ### Recently Shipped
 
@@ -24,6 +24,7 @@
 
 ### Later
 
+- `094-risk-based-security-and-quality-review-gate` — reduced to a P2 opt-in external-adapter gate; revisit when a project has repeated risk-sensitive release evidence or explicitly enables the policy.
 - `090-project-knowledge-and-artifact-registry` → `091-reproducible-analysis-runs-and-template-pack` → `092-project-home-dashboard`.
 - `087-korean-github-pr-review-surface` is independent and does not block 086.
 
