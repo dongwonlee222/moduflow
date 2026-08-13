@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "review",
+  "phase": "select",
   "active_goal": "trustworthy-execution-and-project-knowledge",
-  "active_issue": "098-speckit-selective-validation-adapter",
-  "last_command": "product:execute 098-speckit-selective-validation-adapter",
-  "next_command": "product:review 098-speckit-selective-validation-adapter",
+  "active_issue": "",
+  "last_command": "product:release 098-speckit-selective-validation-adapter",
+  "next_command": "product:spec 094-risk-based-security-and-quality-review-gate",
   "blockers": [],
-  "updated_at": "2026-08-11"
+  "updated_at": "2026-08-13"
 }

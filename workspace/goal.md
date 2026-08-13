@@ -48,4 +48,4 @@ Repository sync, review handoff, production records, and dashboard foundations a
 
 ## Next Command
 
-`product:review 098-speckit-selective-validation-adapter`
+`product:spec 094-risk-based-security-and-quality-review-gate`

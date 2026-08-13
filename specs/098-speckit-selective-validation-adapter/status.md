@@ -1,16 +1,16 @@
 # Issue 098 Execution Status
 
-**Status: review** — selective adapter implementation and deterministic request-driven pilot prepared 2026-08-11; human value/activation decision remains pending.
+**Status: done** — the selective adapter passed review, merged through PR #37 as `513e08f`, and was installed locally as ModuFlow `0.3.48` on 2026-08-13.
 
 ## Snapshot
 
 | Field | Value |
 | --- | --- |
-| Phase | review |
+| Phase | done |
 | Pilot | 24/24 cases: 8 canonical successes, 4 availability fallbacks, and 12 grammar fallbacks passed |
-| Human decision | pending |
+| Human decision | selective on-demand use approved |
 | Wider/default activation | prohibited |
-| Next command | `product:review 098-speckit-selective-validation-adapter` |
+| Next command | `product:status` |
 
 ## Pilot Evidence
 
@@ -18,7 +18,7 @@
 | --- | ---: |
 | Actionable unique findings | 8 |
 | Elapsed time | 0 ms synthetic fixture evidence |
-| Loaded context | 512,940 characters / 128,235 estimated tokens |
+| Loaded context | 514,416 characters / 128,604 estimated tokens |
 | Canonical English/Korean successes | 8/8 passed |
 | Availability fallbacks | 4/4 passed |
 | Conservative grammar fallbacks | 12/12 passed |
@@ -34,7 +34,7 @@ The pilot executed the real capability router and adapter against isolated proje
 ## Verification
 
 - Focused Spec Kit/routing/distribution/Codex-install matrix: 167/167 passed in 93.788 seconds.
-- Full unittest discovery: 1,168/1,168 passed in 339.962 seconds.
+- Fresh completion-reconciliation discovery: 1,168/1,168 passed in 329.592 seconds.
 - Spec consistency: 0 errors, 0 warnings, 0 info; 18/18 acceptance criteria covered.
 - Package validation: 174 required files checked.
 - Project artifact validation: valid with no errors; existing optional/dependency/link warnings only.
@@ -43,4 +43,4 @@ The pilot executed the real capability router and adapter against isolated proje
 
 ## Next Command
 
-`product:review 098-speckit-selective-validation-adapter`
+`product:status`

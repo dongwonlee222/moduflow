@@ -40,4 +40,4 @@ Plan: `specs/098-speckit-selective-validation-adapter/plan.md`
 
 ## Next Command
 
-`product:review 098-speckit-selective-validation-adapter`
+`product:status`

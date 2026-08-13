@@ -68,6 +68,6 @@ python3 scripts/project_memory.py . --issue 098-speckit-selective-validation-ada
 
 ## Source Snapshot
 
-- Issue bytes: 6937
+- Issue bytes: 7347
 - Spec bytes: 18255
-- Status bytes: 2103
+- Status bytes: 2053
