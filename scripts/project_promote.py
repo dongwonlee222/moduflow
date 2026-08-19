@@ -16,6 +16,11 @@ import sys
 from datetime import date
 from pathlib import Path
 
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from scripts import project_registry
+
 TODO_MARKER = "TODO(blocking-execution)"
 TEMPLATE_RELATIVE = Path("templates") / "issues" / "issue.md"
 
@@ -179,10 +184,19 @@ def updated_record_text(text, close_idx, issue_id):
     return "\n".join(lines)
 
 
-def build_promotion_plan(project_root, record_path, issue_id=None, date_override=None, today=None):
+def build_promotion_plan(
+    project_root,
+    record_path,
+    issue_id=None,
+    date_override=None,
+    today=None,
+    *,
+    project_context=None,
+):
     """Compute the promotion plan. Returns a dict with ok/errors and, when ok,
     the planned issue path/content and record update."""
     root = Path(project_root).resolve()
+    context = project_context or project_registry.project_context_for_root(root)
     record = Path(record_path)
     if not record.is_absolute():
         record = root / record
@@ -214,7 +228,7 @@ def build_promotion_plan(project_root, record_path, issue_id=None, date_override
         plan["errors"].append(f"record already promoted (promoted_to: {promoted_to}); refusing to promote twice")
         return plan
 
-    issues_dir = root / "issues"
+    issues_dir = project_registry.canonical_path(context, "issues")
     title = _record_title(frontmatter, body)
     slug = kebab_case(title)
     if issue_id:

@@ -60,6 +60,26 @@ def write_record(root, text=DECISION_RECORD, name="2026-07-06-use-widget-cache.m
 
 
 class PromoteDecisionEndToEndTests(unittest.TestCase):
+    def test_promotion_numbers_and_writes_in_configured_issue_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_project(tmp, existing_issues=("099-decoy.md",))
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps({"paths": {"issues": "product/issues"}}),
+                encoding="utf-8",
+            )
+            configured = root / "product" / "issues"
+            configured.mkdir(parents=True)
+            (configured / "007-real.md").write_text("# Real\n", encoding="utf-8")
+            record = write_record(root)
+
+            plan = project_promote.build_promotion_plan(root, record, today="2026-07-06")
+            result = project_promote.apply_promotion_plan(plan)
+
+            self.assertEqual(plan["issue_id"], "008-use-widget-cache")
+            self.assertEqual(Path(result["issue_path"]).parent, configured.resolve())
+            self.assertFalse((root / "issues" / "008-use-widget-cache.md").exists())
+
     def test_promote_decision_record_creates_issue_and_backlinks(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = make_project(tmp)

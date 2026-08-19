@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,6 +17,47 @@ MATCHING_IDENTITY = {
 
 
 class ProjectPrHandoffTests(unittest.TestCase):
+    def test_pr_and_korean_packet_use_configured_specs_issues_workspace_and_memory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "102-configured-pr"
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "paths": {
+                            "issues": "product/issues",
+                            "specs": "product/specs",
+                            "workspace": "product/workspace",
+                            "memory": "product/memory",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            issue_dir = root / "product" / "issues"
+            spec_dir = root / "product" / "specs" / issue_id
+            workspace_dir = root / "product" / "workspace"
+            issue_dir.mkdir(parents=True)
+            spec_dir.mkdir(parents=True)
+            workspace_dir.mkdir(parents=True)
+            (issue_dir / f"{issue_id}.md").write_text(
+                "# Issue: Configured PR\n", encoding="utf-8"
+            )
+            (workspace_dir / "issue-descriptions.ko.json").write_text(
+                json.dumps({issue_id: "설정 경로의 한글 설명"}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            path = project_pr.write_pr_handoff(root, issue_id)
+            packet = (spec_dir / "human-review.ko.md").read_text(encoding="utf-8")
+            handoff = path.read_text(encoding="utf-8")
+
+            self.assertEqual(path, (spec_dir / "pr.md").resolve())
+            self.assertIn("설정 경로의 한글 설명", packet)
+            self.assertIn("product/memory/dashboard.html", handoff)
+            self.assertFalse((root / "specs" / issue_id).exists())
+
     def test_github_pr_preflight_falls_back_when_api_unreachable(self):
         calls = []
 

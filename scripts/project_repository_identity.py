@@ -7,6 +7,11 @@ import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
+try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
 
 ALLOWED_MODES = {"remote", "local_only"}
 ALLOWED_PROVIDERS = {"github", "generic"}
@@ -123,24 +128,28 @@ def repository_from_github_artifact_url(value):
     return normalize_git_url(f"github.com/{parts[0]}/{parts[1]}", "github")
 
 
-def _repository_artifact_paths(root):
+def _repository_artifact_paths(root, project_context=None):
     root = Path(root)
+    context = project_context or project_registry.project_context_for_root(root)
     paths = []
-    issues_dir = root / "issues"
+    issues_dir = project_registry.canonical_path(context, "issues")
     if issues_dir.is_dir():
         paths.extend(sorted(issues_dir.glob("*.md")))
-    specs_dir = root / "specs"
+    specs_dir = project_registry.canonical_path(context, "specs")
     if specs_dir.is_dir():
         for name in ["spec.md", "plan.md", "status.md", "review.md", "pr.md", "release.md"]:
             paths.extend(sorted(specs_dir.glob(f"*/{name}")))
-    for relative in ["status.md", "workspace/status.md"]:
-        target = root / relative
+    status_paths = [
+        root / "status.md",
+        project_registry.canonical_path(context, "workspace") / "status.md",
+    ]
+    for target in status_paths:
         if target.is_file():
             paths.append(target)
     return sorted(set(paths))
 
 
-def audit_repository_links(root, canonical_repository=None):
+def audit_repository_links(root, canonical_repository=None, *, project_context=None):
     """Classify GitHub repository links in Git-native execution artifacts."""
     root = Path(root).resolve()
     if canonical_repository is None:
@@ -151,7 +160,8 @@ def audit_repository_links(root, canonical_repository=None):
         return []
 
     findings = []
-    for path in _repository_artifact_paths(root):
+    context = project_context or project_registry.project_context_for_root(root)
+    for path in _repository_artifact_paths(root, context):
         heading = ""
         for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             if line.startswith("## "):

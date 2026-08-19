@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,6 +18,40 @@ project_issue_schema = load_module(
 )
 
 class IssueGeneratorTests(unittest.TestCase):
+    def test_writer_and_workflow_links_use_configured_issue_and_spec_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {"paths": {"issues": "product/issues", "specs": "product/specs"}}
+                ),
+                encoding="utf-8",
+            )
+            issue_data = {
+                "title": "Configured Writer",
+                "summary": "Use canonical paths.",
+                "opportunity": "Avoid cross-project writes.",
+                "scope_in": ["Configured paths"],
+                "scope_out": ["Default paths"],
+                "acceptance_criteria": ["Writes are isolated"],
+                "tasks": ["Implement routing"],
+            }
+            slug = "007-configured-writer"
+            spec_dir = root / "product" / "specs" / slug
+            spec_dir.mkdir(parents=True)
+            (spec_dir / "spec.md").write_text("# Spec\n", encoding="utf-8")
+
+            path = issue_generator.write_issue_file(root, 7, issue_data)
+            content = path.read_text(encoding="utf-8")
+
+            self.assertEqual(
+                path, (root / "product" / "issues" / f"{slug}.md").resolve()
+            )
+            self.assertIn(f"`product/specs/{slug}/spec.md`", content)
+            self.assertIn("`product/specs/<issue-id>/plan.md`", content)
+            self.assertFalse((root / "issues").exists())
+
     def test_get_next_issue_number_empty(self):
         with tempfile.TemporaryDirectory() as tmp:
             num = issue_generator.get_next_issue_number(Path(tmp) / "issues")

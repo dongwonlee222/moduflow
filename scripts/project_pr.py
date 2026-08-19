@@ -14,6 +14,7 @@ from scripts.project_repository_identity import (
     inspect_repository_identity,
     operation_decision,
 )
+from scripts import project_registry
 
 
 @dataclass
@@ -138,8 +139,12 @@ def github_pr_preflight(root, runner=None, identity_result=None):
     return result
 
 
-def _load_ko_descriptions(root):
-    path = Path(root) / "workspace" / "issue-descriptions.ko.json"
+def _load_ko_descriptions(root, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
+    path = (
+        project_registry.canonical_path(context, "workspace")
+        / "issue-descriptions.ko.json"
+    )
     if not path.is_file():
         return {}
     try:
@@ -203,10 +208,16 @@ def _no_issue_declaration_lines(root):
     return header + entries
 
 
-def build_human_review_packet_ko(root, issue_id, branch="", pr="", reviewer="Reviewer"):
+def build_human_review_packet_ko(
+    root, issue_id, branch="", pr="", reviewer="Reviewer", *, project_context=None
+):
     root = Path(root).resolve()
-    spec_dir = root / "specs" / issue_id
-    issue_path = root / "issues" / f"{issue_id}.md"
+    context = project_context or project_registry.project_context_for_root(root)
+    specs_root = project_registry.canonical_path(context, "specs")
+    spec_dir = specs_root / issue_id
+    issue_path = project_registry.canonical_path(context, "issues") / f"{issue_id}.md"
+    memory_relative = project_registry.canonical_path(context, "memory").relative_to(root)
+    specs_relative = specs_root.relative_to(root)
     status_path = spec_dir / "status.md"
     review_path = spec_dir / "review.md"
     branch = branch or _default_branch(issue_id)
@@ -214,7 +225,7 @@ def build_human_review_packet_ko(root, issue_id, branch="", pr="", reviewer="Rev
     issue_text = _read_if_exists(issue_path)
     status_text = _read_if_exists(status_path)
     review_text = _read_if_exists(review_path)
-    descriptions = _load_ko_descriptions(root)
+    descriptions = _load_ko_descriptions(root, context)
     title = _title_from_issue(issue_text, issue_id)
     summary = descriptions.get(issue_id) or _evidence_or_fallback(
         _section(issue_text, "## Outcome") or _section(issue_text, "## Summary"),
@@ -234,7 +245,7 @@ def build_human_review_packet_ko(root, issue_id, branch="", pr="", reviewer="Rev
         "| --- | --- | --- | --- |",
     ]
     for filename, label, exists, has_ko in rows:
-        original = f"`specs/{issue_id}/{filename}`" if exists else "없음"
+        original = f"`{(specs_relative / issue_id / filename).as_posix()}`" if exists else "없음"
         ko_status = "가능" if has_ko else "요약/상세 한글 개요로 대체"
         artifact_lines.append(f"| `{filename}` | {label} | {original} | {ko_status} |")
 
@@ -245,8 +256,8 @@ def build_human_review_packet_ko(root, issue_id, branch="", pr="", reviewer="Rev
         "",
         "## 먼저 볼 것",
         "",
-        f"- 대시보드: `memory/dashboard.html#issue-db`",
-        f"- 이슈 상세: `memory/issue-{issue_id}.html`",
+        f"- 대시보드: `{(memory_relative / 'dashboard.html').as_posix()}#issue-db`",
+        f"- 이슈 상세: `{(memory_relative / f'issue-{issue_id}.html').as_posix()}`",
         f"- PR/로컬 마커: `{pr}`",
         f"- 브랜치: `{branch}`",
         f"- 리뷰어: `{reviewer}`",
@@ -306,17 +317,32 @@ def build_human_review_packet_ko(root, issue_id, branch="", pr="", reviewer="Rev
     return "\n".join(lines)
 
 
-def build_pr_handoff(root, issue_id, branch="", pr="", reviewer="Reviewer", commit_mode="", commit_reason=""):
+def build_pr_handoff(
+    root,
+    issue_id,
+    branch="",
+    pr="",
+    reviewer="Reviewer",
+    commit_mode="",
+    commit_reason="",
+    *,
+    project_context=None,
+):
     root = Path(root).resolve()
-    spec_dir = root / "specs" / issue_id
-    issue_path = root / "issues" / f"{issue_id}.md"
+    context = project_context or project_registry.project_context_for_root(root)
+    specs_root = project_registry.canonical_path(context, "specs")
+    spec_dir = specs_root / issue_id
+    issue_path = project_registry.canonical_path(context, "issues") / f"{issue_id}.md"
     spec_path = spec_dir / "spec.md"
     status_path = spec_dir / "status.md"
     review_path = spec_dir / "review.md"
     branch = branch or _default_branch(issue_id)
     pr = pr or _default_pr(issue_id)
-    dashboard_path = "memory/dashboard.html"
-    issue_html_path = f"memory/issue-{issue_id}.html"
+    memory_relative = project_registry.canonical_path(context, "memory").relative_to(root)
+    specs_relative = specs_root.relative_to(root)
+    dashboard_path = (memory_relative / "dashboard.html").as_posix()
+    issue_html_path = (memory_relative / f"issue-{issue_id}.html").as_posix()
+    human_review_path = (specs_relative / issue_id / "human-review.ko.md").as_posix()
 
     issue_text = _read_if_exists(issue_path)
     spec_text = _read_if_exists(spec_path)
@@ -376,7 +402,7 @@ def build_pr_handoff(root, issue_id, branch="", pr="", reviewer="Reviewer", comm
         "- Verification: local tests, release checks, CI/status checks, and known gaps.",
         f"- Dashboard: `{dashboard_path}`.",
         f"- Issue drill-down: `{issue_html_path}`.",
-        f"- Korean human-review packet: `specs/{issue_id}/human-review.ko.md`.",
+        f"- Korean human-review packet: `{human_review_path}`.",
         "- Review findings: implementation, QA, and PM/spec review results.",
         "- Human approval: who reviewed the dashboard, PR diff, and merge readiness.",
         "",
@@ -431,20 +457,39 @@ def build_pr_handoff(root, issue_id, branch="", pr="", reviewer="Reviewer", comm
     return "\n".join(lines)
 
 
-def write_pr_handoff(root, issue_id, branch="", pr="", reviewer="Reviewer", commit_mode="", commit_reason=""):
+def write_pr_handoff(
+    root,
+    issue_id,
+    branch="",
+    pr="",
+    reviewer="Reviewer",
+    commit_mode="",
+    commit_reason="",
+    *,
+    project_context=None,
+):
     root = Path(root).resolve()
-    target = root / "specs" / issue_id / "pr.md"
+    context = project_context or project_registry.project_context_for_root(root)
+    target = project_registry.canonical_path(context, "specs") / issue_id / "pr.md"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(
         build_pr_handoff(
             root, issue_id, branch=branch, pr=pr, reviewer=reviewer,
             commit_mode=commit_mode, commit_reason=commit_reason,
+            project_context=context,
         ),
         encoding="utf-8",
     )
     human_target = target.parent / "human-review.ko.md"
     human_target.write_text(
-        build_human_review_packet_ko(root, issue_id, branch=branch, pr=pr, reviewer=reviewer),
+        build_human_review_packet_ko(
+            root,
+            issue_id,
+            branch=branch,
+            pr=pr,
+            reviewer=reviewer,
+            project_context=context,
+        ),
         encoding="utf-8",
     )
     return target

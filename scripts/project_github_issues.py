@@ -22,6 +22,7 @@ from scripts.project_repository_identity import (
     operation_decision,
     repository_from_github_artifact_url,
 )
+from scripts import project_registry
 
 LABELS = {
     "backlog": "moduflow:backlog",
@@ -129,11 +130,12 @@ def _outcome_section(text):
     return "\n".join(paragraph).strip()
 
 
-def _issue_body(text, repo, issue_id):
+def _issue_body(text, repo, issue_id, issue_relative=None):
     base = _outcome_section(text)
+    source = issue_relative or f"issues/{issue_id}.md"
     return (
         f"{base}\n\n---\n"
-        f"Canonical source: https://github.com/{repo}/blob/HEAD/issues/{issue_id}.md\n"
+        f"Canonical source: https://github.com/{repo}/blob/HEAD/{source}\n"
         f"{BODY_MARKER}"
     )
 
@@ -217,8 +219,9 @@ def _error(message, issue_id, repository_identity=None, reason_code=None):
     return result
 
 
-def sync_issue(root, issue_id, runner=None):
+def sync_issue(root, issue_id, runner=None, *, project_context=None):
     root = Path(root).resolve()
+    context = project_context or project_registry.project_context_for_root(root)
 
     mode = _github_sync_mode(root)
     if mode == "off":
@@ -253,7 +256,7 @@ def sync_issue(root, issue_id, runner=None):
         )
     repo = canonical_repository[len("github.com/") :]
 
-    issue_path = root / "issues" / f"{issue_id}.md"
+    issue_path = project_registry.canonical_path(context, "issues") / f"{issue_id}.md"
     if not issue_path.is_file():
         return _error(f"issue file not found: {issue_path}", issue_id)
     text = issue_path.read_text(encoding="utf-8")
@@ -298,7 +301,12 @@ def sync_issue(root, issue_id, runner=None):
         return {"action": "updated", "issue_id": issue_id, "url": existing_url, "label": label}
 
     title = _issue_title(text)
-    body = _issue_body(text, repo, issue_id)
+    body = _issue_body(
+        text,
+        repo,
+        issue_id,
+        issue_path.relative_to(root).as_posix(),
+    )
     created = runner(
         ["gh", "issue", "create", "-R", repo, "--title", title, "--body", body, "--label", label],
         root,
