@@ -1,5 +1,28 @@
 # ModuFlow Roadmap
 
+## Priority Refresh — 2026-08-19
+
+### Now
+
+- `102-project-registry-and-resolver` — P0; spec approved and implementation plan complete. Await explicit execution approval; preserve Issue 093's existing path normalizer.
+- `103-atomic-lifecycle-state-transaction` — P0; spec next after graph approval. It can be designed independently of 102.
+
+### Next
+
+- `104-project-aware-natural-language-request-orchestrator` — P0; blocked by 102 and 103.
+- `105-schema-migration-and-doctor-triage` — P0; blocked by 102 and 103.
+- `106-korean-production-search-and-stable-ids` — P1; independent and may proceed after the P0 spec review.
+
+### Later
+
+- `107-shared-approved-playbook-layer` — P1; blocked by 102 and 106.
+- `108-production-approval-and-verification-gates` — P1; blocked by 104.
+- `086-project-aware-production-library-dashboard` — P2; design/prototype retained, but implementation now consumes 102 instead of creating a second project registry/resolver.
+
+### Review Gate
+
+The corrected Issue 102 spec, source audit, and dependency graph were approved on 2026-08-19. Issue 102 implementation still starts only through explicit `product:execute`; downstream issues remain dependency-gated. This refresh is authoritative over the historical snapshots below.
+
 ## Priority Refresh — 2026-08-13
 
 ### Now
