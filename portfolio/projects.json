@@ -1,10 +1,22 @@
 {
-  "schema": "moduflow.projects.v1",
+  "schema": "moduflow.projects.v2",
   "projects": [
     {
       "id": "moduflow",
       "name": "ModuFlow",
-      "path": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
+      "root": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
+      "aliases": ["ModuFlow", "모두플로", "모두플로우"],
+      "paths": {
+        "issues": "issues",
+        "specs": "specs",
+        "workspace": "workspace",
+        "knowledge": "knowledge",
+        "memory": "memory",
+        "production_records": "memory/production-records",
+        "playbooks": "playbooks",
+        "workflow": "workflow"
+      },
+      "trust_scope": "internal",
       "status": "active",
       "owner": "Dongwon Lee"
     }

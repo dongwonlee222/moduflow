@@ -1,4 +1,6 @@
+import contextlib
 import importlib.util
+import io
 import json
 import tempfile
 import unittest
@@ -75,6 +77,7 @@ class ProjectPortfolioTests(unittest.TestCase):
             (portfolio / "projects.json").write_text(
                 json.dumps(
                     {
+                        "schema": "moduflow.projects.v1",
                         "projects": [
                             {
                                 "id": "project-a",
@@ -136,7 +139,19 @@ class ProjectPortfolioTests(unittest.TestCase):
             )
             portfolio.mkdir()
             (portfolio / "projects.json").write_text(
-                json.dumps({"projects": [{"id": "project-a", "path": str(project)}]}) + "\n",
+                json.dumps(
+                    {
+                        "schema": "moduflow.projects.v1",
+                        "projects": [
+                            {
+                                "id": "project-a",
+                                "name": "Project A",
+                                "path": str(project),
+                            }
+                        ],
+                    }
+                )
+                + "\n",
                 encoding="utf-8",
             )
 
@@ -175,6 +190,251 @@ class ProjectPortfolioTests(unittest.TestCase):
             dashboard,
         )
         self.assertIn("/tmp/project-a", dashboard)
+
+    def v2_project(self, project_id, name, root, paths=None, aliases=None):
+        return {
+            "id": project_id,
+            "name": name,
+            "root": str(root),
+            "aliases": aliases or [project_id, name],
+            "paths": paths
+            or {
+                "issues": "issues",
+                "specs": "specs",
+                "workspace": "workspace",
+                "knowledge": "knowledge",
+                "memory": "memory",
+                "production_records": "memory/production-records",
+                "playbooks": "playbooks",
+                "workflow": "workflow",
+            },
+            "trust_scope": "internal",
+            "status": "active",
+            "owner": "Owner",
+        }
+
+    def write_registry(self, portfolio, projects):
+        portfolio.mkdir(parents=True, exist_ok=True)
+        path = portfolio / "projects.json"
+        path.write_text(
+            json.dumps(
+                {"schema": "moduflow.projects.v2", "projects": projects},
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return path
+
+    def test_new_portfolio_initialization_emits_projects_v2(self):
+        project_portfolio = load_module("project_portfolio", "scripts/project_portfolio.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plan = project_portfolio.build_portfolio_plan(root, dry_run=False)
+
+            project_portfolio.apply_portfolio_plan(plan)
+
+            payload = json.loads((root / "projects.json").read_text(encoding="utf-8"))
+            self.assertEqual(payload["schema"], "moduflow.projects.v2")
+            self.assertEqual(payload["projects"], [])
+
+    def test_existing_v1_registry_is_preserved_and_rendered(self):
+        project_portfolio = load_module("project_portfolio", "scripts/project_portfolio.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            portfolio = base / "portfolio"
+            project = base / "project"
+            (project / ".moduflow").mkdir(parents=True)
+            (project / ".moduflow" / "state.json").write_text(
+                json.dumps({"phase": "review", "next_command": "product:review 001"}),
+                encoding="utf-8",
+            )
+            portfolio.mkdir()
+            registry = portfolio / "projects.json"
+            registry.write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.projects.v1",
+                        "projects": [
+                            {
+                                "id": "legacy",
+                                "name": "Legacy",
+                                "path": str(project),
+                                "status": "active",
+                                "owner": "Mina",
+                            }
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            before = registry.read_bytes()
+
+            statuses = project_portfolio.collect_project_statuses(registry)
+
+            self.assertEqual(statuses[0]["id"], "legacy")
+            self.assertEqual(statuses[0]["phase"], "review")
+            self.assertEqual(statuses[0]["registry_schema"], "moduflow.projects.v1")
+            self.assertEqual(registry.read_bytes(), before)
+
+    def test_v2_status_uses_configured_workflow_and_ignores_default_decoy(self):
+        project_portfolio = load_module("project_portfolio", "scripts/project_portfolio.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            portfolio = base / "portfolio"
+            project = base / "project"
+            (project / ".moduflow").mkdir(parents=True)
+            (project / ".moduflow" / "state.json").write_text(
+                json.dumps({"phase": "execute", "next_command": "product:status"}),
+                encoding="utf-8",
+            )
+            configured = project / "ops" / "workflow"
+            configured.mkdir(parents=True)
+            (configured / "team-state.json").write_text(
+                json.dumps(
+                    {
+                        "items": [
+                            {
+                                "issue_id": "CONFIGURED-001",
+                                "status": "active",
+                                "assignee": "Mina",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            default = project / "workflow"
+            default.mkdir()
+            (default / "team-state.json").write_text(
+                json.dumps(
+                    {
+                        "items": [
+                            {
+                                "issue_id": "DECOY-001",
+                                "status": "active",
+                                "assignee": "Wrong",
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            paths = self.v2_project("project-a", "Project A", project)["paths"]
+            paths["workflow"] = "ops/workflow"
+            registry = self.write_registry(
+                portfolio,
+                [self.v2_project("project-a", "Project A", project, paths=paths)],
+            )
+
+            statuses = project_portfolio.collect_project_statuses(registry)
+
+            serialized = json.dumps(statuses, ensure_ascii=False)
+            self.assertIn("CONFIGURED-001", serialized)
+            self.assertNotIn("DECOY-001", serialized)
+            self.assertEqual(statuses[0]["resolution_status"], "resolved")
+
+    def test_invalid_registry_returns_warnings_without_project_reads(self):
+        project_portfolio = load_module("project_portfolio", "scripts/project_portfolio.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            portfolio = base / "portfolio"
+            project = base / "project"
+            (project / ".moduflow").mkdir(parents=True)
+            (project / ".moduflow" / "state.json").write_text(
+                '{"phase": "SECRET-PHASE"}', encoding="utf-8"
+            )
+            first = self.v2_project("duplicate", "One", project)
+            second = self.v2_project("duplicate", "Two", project)
+            registry = self.write_registry(portfolio, [first, second])
+
+            statuses = project_portfolio.collect_project_statuses(registry)
+
+            serialized = json.dumps(statuses, ensure_ascii=False)
+            self.assertNotIn("SECRET-PHASE", serialized)
+            self.assertIn("PROJECT_ID_DUPLICATE", serialized)
+            self.assertEqual(statuses[0]["resolution_status"], "unresolved")
+
+    def test_resolve_cli_prints_resolution_without_writing(self):
+        project_portfolio = load_module("project_portfolio", "scripts/project_portfolio.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            portfolio = base / "portfolio"
+            project_a = base / "a"
+            project_b = base / "b"
+            project_a.mkdir()
+            project_b.mkdir()
+            self.write_registry(
+                portfolio,
+                [
+                    self.v2_project("project-a", "Project A", project_a),
+                    self.v2_project(
+                        "modu-charge",
+                        "모두의충전",
+                        project_b,
+                        aliases=["모두의충전", "모두충전"],
+                    ),
+                ],
+            )
+            output = io.StringIO()
+
+            with contextlib.redirect_stdout(output):
+                code = project_portfolio.main(
+                    [str(portfolio), "--resolve", "모두의충전 배너"]
+                )
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(code, 0)
+            self.assertEqual(payload["project_id"], "modu-charge")
+            self.assertFalse((portfolio / "project-selection.json").exists())
+            self.assertFalse((portfolio / "portfolio-dashboard.md").exists())
+
+    def test_select_cli_writes_only_recent_selection(self):
+        project_portfolio = load_module("project_portfolio", "scripts/project_portfolio.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            portfolio = base / "portfolio"
+            project = base / "project"
+            project.mkdir()
+            self.write_registry(
+                portfolio,
+                [self.v2_project("project-a", "Project A", project)],
+            )
+            before = {path.name for path in portfolio.iterdir()}
+            output = io.StringIO()
+
+            with contextlib.redirect_stdout(output):
+                code = project_portfolio.main(
+                    [str(portfolio), "--select", "project-a"]
+                )
+
+            after = {path.name for path in portfolio.iterdir()}
+            self.assertEqual(code, 0)
+            self.assertEqual(after - before, {"project-selection.json"})
+            self.assertEqual(json.loads(output.getvalue())["action"], "written")
+
+    def test_unknown_select_returns_nonzero_without_writing(self):
+        project_portfolio = load_module("project_portfolio", "scripts/project_portfolio.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            portfolio = base / "portfolio"
+            project = base / "project"
+            project.mkdir()
+            self.write_registry(
+                portfolio,
+                [self.v2_project("project-a", "Project A", project)],
+            )
+            output = io.StringIO()
+
+            with contextlib.redirect_stdout(output):
+                code = project_portfolio.main(
+                    [str(portfolio), "--select", "missing"]
+                )
+
+            self.assertEqual(code, 2)
+            self.assertFalse((portfolio / "project-selection.json").exists())
+            self.assertEqual(json.loads(output.getvalue())["status"], "error")
 
 
 if __name__ == "__main__":

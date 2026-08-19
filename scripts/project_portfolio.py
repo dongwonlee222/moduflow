@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 import argparse
 import json
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
+
+try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
 
 
 PORTFOLIO_FILES = {
     "projects.json": {
-        "schema": "moduflow.projects.v1",
+        "schema": "moduflow.projects.v2",
         "projects": [],
     },
     "portfolio-dashboard.md": "# Portfolio Dashboard\n\nNo projects registered yet.\n",
@@ -87,8 +92,8 @@ def format_team_items(items):
     )
 
 
-def collect_team_summary(project_root):
-    team_state_path = project_root / "workflow" / "team-state.json"
+def collect_team_summary(workflow_dir):
+    team_state_path = Path(workflow_dir) / "team-state.json"
     state = load_json(team_state_path, {"items": []})
     items = state.get("items", [])
     if not isinstance(items, list):
@@ -111,28 +116,74 @@ def collect_team_summary(project_root):
 
 def collect_project_statuses(registry_path):
     registry_path = Path(registry_path).resolve()
-    registry = load_json(registry_path, {"projects": []})
+    registry = project_registry.load_project_registry(registry_path)
+    if not registry["valid"]:
+        return [
+            {
+                "id": "registry",
+                "name": "Project registry",
+                "path": "",
+                "status": "invalid",
+                "owner": "",
+                "phase": "unknown",
+                "next_command": "product:doctor",
+                "blockers": [],
+                "team": collect_team_summary(Path("/__moduflow_missing_workflow__")),
+                "registry_schema": registry.get("source_schema", ""),
+                "resolution_status": "unresolved",
+                "warnings": [
+                    diagnostic["code"] for diagnostic in registry["diagnostics"]
+                ],
+            }
+        ]
     statuses = []
-    for project in registry.get("projects", []):
-        project_root = Path(project.get("path", "")).expanduser().resolve()
+    for project in registry["projects"]:
+        context = project_registry.resolve_project(
+            registry_path,
+            explicit_project_id=project["id"],
+        )
+        warnings = list(context.get("warnings", []))
+        if context["status"] != "resolved":
+            statuses.append(
+                {
+                    "id": project["id"],
+                    "name": project["name"],
+                    "path": project["root"],
+                    "status": project["status"],
+                    "owner": project["owner"],
+                    "phase": "unknown",
+                    "next_command": "product:doctor",
+                    "blockers": [],
+                    "team": collect_team_summary(
+                        Path("/__moduflow_missing_workflow__")
+                    ),
+                    "registry_schema": registry["source_schema"],
+                    "resolution_status": context["status"],
+                    "warnings": warnings,
+                }
+            )
+            continue
+        project_root = Path(context["canonical_root"])
         state_path = project_root / ".moduflow" / "state.json"
         state = load_json(state_path, {})
-        warnings = []
         if not state_path.exists():
             warnings.append("missing .moduflow/state.json")
-        owner = project.get("owner") or profile_owner(project_root) or ""
-        team = collect_team_summary(project_root)
+        owner = project["owner"] or profile_owner(project_root) or ""
+        workflow_dir = project_registry.canonical_path(context, "workflow")
+        team = collect_team_summary(workflow_dir)
         statuses.append(
             {
-                "id": project.get("id", project_root.name),
-                "name": project.get("name", project.get("id", project_root.name)),
+                "id": project["id"],
+                "name": project["name"],
                 "path": str(project_root),
-                "status": project.get("status", ""),
+                "status": project["status"],
                 "owner": owner,
                 "phase": state.get("phase", "unknown"),
                 "next_command": state.get("next_command", ""),
                 "blockers": state.get("blockers", []),
                 "team": team,
+                "registry_schema": registry["source_schema"],
+                "resolution_status": context["status"],
                 "warnings": warnings,
             }
         )
@@ -206,14 +257,40 @@ def write_dashboard(portfolio_root):
     }
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description="Plan, initialize, or render a ModuFlow portfolio workspace.")
     parser.add_argument("portfolio_path", nargs="?", default=".")
-    parser.add_argument("--write", action="store_true", help="Create missing portfolio workspace files.")
-    parser.add_argument("--render", action="store_true", help="Render portfolio dashboard and weekly status from projects.json.")
-    args = parser.parse_args()
+    operations = parser.add_mutually_exclusive_group()
+    operations.add_argument("--write", action="store_true", help="Create missing portfolio workspace files.")
+    operations.add_argument("--render", action="store_true", help="Render portfolio dashboard and weekly status from projects.json.")
+    operations.add_argument("--resolve", help="Resolve a project from request text without writing.")
+    operations.add_argument("--select", help="Explicitly record one registered project ID as recent.")
+    args = parser.parse_args(argv)
 
-    if args.render:
+    portfolio_root = Path(args.portfolio_path).resolve()
+    registry_path = portfolio_root / "projects.json"
+    if args.resolve is not None:
+        result = project_registry.resolve_project(
+            registry_path,
+            request_text=args.resolve,
+        )
+    elif args.select is not None:
+        try:
+            result = project_registry.record_recent_selection(
+                registry_path,
+                args.select,
+                datetime.now(timezone.utc).isoformat(),
+            )
+        except ValueError as exc:
+            print(
+                json.dumps(
+                    {"status": "error", "message": str(exc)},
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return 2
+    elif args.render:
         result = write_dashboard(args.portfolio_path)
     else:
         result = build_portfolio_plan(args.portfolio_path, dry_run=not args.write)
