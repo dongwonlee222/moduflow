@@ -1,0 +1,43 @@
+{
+  "schema": "moduflow.projects.v2",
+  "projects": [
+    {
+      "id": "project-a",
+      "name": "Project A",
+      "root": "../../runtime/project-a",
+      "aliases": ["Project A", "PROJECT-A"],
+      "paths": {
+        "issues": "issues",
+        "specs": "specs",
+        "workspace": "workspace",
+        "knowledge": "knowledge",
+        "memory": "memory",
+        "production_records": "memory/production-records",
+        "playbooks": "playbooks",
+        "workflow": "workflow"
+      },
+      "trust_scope": "internal",
+      "status": "active",
+      "owner": "Mina"
+    },
+    {
+      "id": "modu-charge",
+      "name": "모두의충전",
+      "root": "../../runtime/modu-charge",
+      "aliases": ["모두의충전", "모두충전", "modu-charge"],
+      "paths": {
+        "issues": "projects/modu-charge/issues",
+        "specs": "specs",
+        "workspace": "workspace",
+        "knowledge": "knowledge",
+        "memory": "memory",
+        "production_records": "memory/production-records",
+        "playbooks": "playbooks",
+        "workflow": "workflow"
+      },
+      "trust_scope": "internal",
+      "status": "active",
+      "owner": "Dongwon Lee"
+    }
+  ]
+}

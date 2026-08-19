@@ -1,0 +1,17 @@
+{
+  "schema": "moduflow.projects.v1",
+  "projects": [
+    {
+      "id": "project-a",
+      "name": "Project A",
+      "path": "../../runtime/project-a",
+      "status": "active"
+    },
+    {
+      "id": "modu-charge",
+      "name": "모두의충전",
+      "path": "../../runtime/modu-charge",
+      "status": "active"
+    }
+  ]
+}

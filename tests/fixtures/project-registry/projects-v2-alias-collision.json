@@ -1,0 +1,43 @@
+{
+  "schema": "moduflow.projects.v2",
+  "projects": [
+    {
+      "id": "project-a",
+      "name": "Project A",
+      "root": "../../runtime/project-a",
+      "aliases": ["이벤트"],
+      "paths": {
+        "issues": "issues",
+        "specs": "specs",
+        "workspace": "workspace",
+        "knowledge": "knowledge",
+        "memory": "memory",
+        "production_records": "memory/production-records",
+        "playbooks": "playbooks",
+        "workflow": "workflow"
+      },
+      "trust_scope": "internal",
+      "status": "active",
+      "owner": "Mina"
+    },
+    {
+      "id": "project-b",
+      "name": "Project B",
+      "root": "../../runtime/project-b",
+      "aliases": ["이벤트"],
+      "paths": {
+        "issues": "issues",
+        "specs": "specs",
+        "workspace": "workspace",
+        "knowledge": "knowledge",
+        "memory": "memory",
+        "production_records": "memory/production-records",
+        "playbooks": "playbooks",
+        "workflow": "workflow"
+      },
+      "trust_scope": "internal",
+      "status": "active",
+      "owner": "Joon"
+    }
+  ]
+}
