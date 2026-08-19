@@ -80,6 +80,11 @@ DEFAULT_PROJECT_PATHS = {
     "issues": "issues",
     "specs": "specs",
     "workspace": "workspace",
+    "knowledge": "knowledge",
+    "memory": "memory",
+    "production_records": "memory/production-records",
+    "playbooks": "playbooks",
+    "workflow": "workflow",
 }
 
 

@@ -482,5 +482,301 @@ class ProjectResolutionTests(unittest.TestCase):
         self.assertEqual(result["paths"], {})
 
 
+class ProjectContextCompatibilityTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.registry = load_module()
+
+    def write_v1_registry(self, directory, projects):
+        path = Path(directory) / "projects.json"
+        path.write_text(
+            json.dumps(
+                {"schema": "moduflow.projects.v1", "projects": projects},
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return path
+
+    def write_v2_registry(self, directory, projects):
+        path = Path(directory) / "projects.json"
+        payloads = []
+        for project_id, name, root in projects:
+            payloads.append(
+                {
+                    "id": project_id,
+                    "name": name,
+                    "root": str(root),
+                    "aliases": [project_id, name],
+                    "paths": dict(self.registry.CANONICAL_PATH_DEFAULTS),
+                    "trust_scope": "internal",
+                    "status": "active",
+                    "owner": "Owner",
+                }
+            )
+        path.write_text(
+            json.dumps(
+                {"schema": "moduflow.projects.v2", "projects": payloads},
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return path
+
+    def test_v1_is_read_compatible_and_returns_migration_proposal_without_rewrite(self):
+        path = FIXTURES / "projects-v1.json"
+        before = path.read_bytes()
+
+        result = self.registry.load_project_registry(path)
+
+        self.assertTrue(result["valid"])
+        self.assertEqual(result["source_schema"], "moduflow.projects.v1")
+        self.assertEqual(
+            result["migration_proposal"]["schema"],
+            "moduflow.projects-migration-proposal.v1",
+        )
+        self.assertEqual(
+            result["migration_proposal"]["to_schema"],
+            "moduflow.projects.v2",
+        )
+        self.assertEqual(
+            result["migration_proposal"]["projects"][0]["paths"],
+            self.registry.CANONICAL_PATH_DEFAULTS,
+        )
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_only_selected_v1_project_reads_local_config(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            project_a = base / "a"
+            project_b = base / "b"
+            for root in (project_a, project_b):
+                (root / ".moduflow").mkdir(parents=True)
+            (project_a / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "paths": {
+                            "issues": "product/issues",
+                            "specs": "product/specs",
+                            "workspace": "product/workspace",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (project_b / ".moduflow" / "config.json").write_text(
+                '{"paths": {"issues": "must-not-read"}}',
+                encoding="utf-8",
+            )
+            registry_path = self.write_v1_registry(
+                base,
+                [
+                    {"id": "project-a", "name": "A", "path": str(project_a)},
+                    {"id": "project-b", "name": "B", "path": str(project_b)},
+                ],
+            )
+            forbidden = (project_b / ".moduflow" / "config.json").resolve()
+            original_read_text = Path.read_text
+
+            def guarded_read_text(path, *args, **kwargs):
+                if Path(path).resolve() == forbidden:
+                    raise AssertionError("unselected project config read")
+                return original_read_text(path, *args, **kwargs)
+
+            with mock.patch.object(Path, "read_text", guarded_read_text):
+                result = self.registry.resolve_project(
+                    registry_path,
+                    explicit_project_id="project-a",
+                )
+
+            self.assertEqual(result["status"], "resolved")
+            self.assertEqual(result["project_id"], "project-a")
+            self.assertEqual(result["relative_paths"]["issues"], "product/issues")
+            self.assertEqual(result["relative_paths"]["specs"], "product/specs")
+            self.assertEqual(
+                result["relative_paths"]["workspace"], "product/workspace"
+            )
+            self.assertEqual(result["relative_paths"]["memory"], "memory")
+
+    def test_explicit_root_context_matches_project_local_configured_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "paths": {
+                            "issues": "product/issues",
+                            "specs": "product/specs",
+                            "workspace": "product/workspace",
+                            "memory": "project-memory",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            context = self.registry.project_context_for_root(root)
+
+            self.assertEqual(context["status"], "resolved")
+            self.assertEqual(context["reason_code"], "explicit_root")
+            self.assertEqual(context["relative_paths"]["issues"], "product/issues")
+            self.assertEqual(context["relative_paths"]["memory"], "project-memory")
+            self.assertEqual(
+                self.registry.canonical_path(context, "issues"),
+                (root / "product" / "issues").resolve(),
+            )
+
+    def test_unsafe_new_config_paths_fall_back_and_surface_warnings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "paths": {
+                            "memory": "../outside-memory",
+                            "playbooks": "/tmp/outside-playbooks",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            context = self.registry.project_context_for_root(root)
+
+            self.assertEqual(context["relative_paths"]["memory"], "memory")
+            self.assertEqual(context["relative_paths"]["playbooks"], "playbooks")
+            self.assertEqual(
+                context["warnings"].count("PROJECT_CONFIG_PATH_OUTSIDE_ROOT"),
+                2,
+            )
+
+    def test_canonical_path_rejects_unresolved_context_and_unknown_key(self):
+        unresolved = {
+            "status": "unresolved",
+            "paths": {},
+        }
+        with self.assertRaises(ValueError):
+            self.registry.canonical_path(unresolved, "issues")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            context = self.registry.project_context_for_root(tmp)
+            with self.assertRaises(KeyError):
+                self.registry.canonical_path(context, "assets")
+
+    def test_selection_write_is_atomic_minimal_and_idempotent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            project = base / "project-a"
+            project.mkdir()
+            registry_path = self.write_v2_registry(
+                base, [("project-a", "Project A", project)]
+            )
+            selected_at = "2026-08-19T10:30:00+09:00"
+
+            first = self.registry.record_recent_selection(
+                registry_path, "project-a", selected_at
+            )
+            selection_path = base / "project-selection.json"
+            before = selection_path.read_bytes()
+            second = self.registry.record_recent_selection(
+                registry_path, "project-a", selected_at
+            )
+
+            payload = json.loads(before)
+            self.assertEqual(first["action"], "written")
+            self.assertEqual(second["action"], "noop")
+            self.assertEqual(
+                set(payload), {"schema", "project_id", "selected_at"}
+            )
+            self.assertEqual(selection_path.read_bytes(), before)
+            self.assertFalse((base / "project-selection.json.tmp").exists())
+
+    def test_invalid_or_unregistered_selection_is_ignored_with_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            project = base / "project-a"
+            project.mkdir()
+            registry_path = self.write_v2_registry(
+                base, [("project-a", "Project A", project)]
+            )
+            selection_path = base / "project-selection.json"
+            cases = [
+                ("{bad-json", "PROJECT_SELECTION_MALFORMED"),
+                (
+                    json.dumps(
+                        {
+                            "schema": "moduflow.project-selection.v1",
+                            "project_id": "missing",
+                            "selected_at": "2026-08-19T10:30:00+09:00",
+                        }
+                    ),
+                    "PROJECT_SELECTION_NOT_REGISTERED",
+                ),
+                (
+                    json.dumps(
+                        {
+                            "schema": "moduflow.project-selection.v1",
+                            "project_id": "project-a",
+                            "selected_at": "not-a-time",
+                        }
+                    ),
+                    "PROJECT_SELECTION_TIME_INVALID",
+                ),
+            ]
+            for payload, warning in cases:
+                with self.subTest(warning=warning):
+                    selection_path.write_text(payload, encoding="utf-8")
+                    result = self.registry.load_recent_selection(registry_path)
+                    self.assertEqual(result["project_id"], "")
+                    self.assertIn(warning, result["warnings"])
+
+    def test_recent_selection_is_loaded_by_resolve_project(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            project_a = base / "a"
+            project_b = base / "b"
+            project_a.mkdir()
+            project_b.mkdir()
+            registry_path = self.write_v2_registry(
+                base,
+                [
+                    ("project-a", "Project A", project_a),
+                    ("project-b", "Project B", project_b),
+                ],
+            )
+            self.registry.record_recent_selection(
+                registry_path,
+                "project-b",
+                "2026-08-19T10:30:00+09:00",
+            )
+
+            result = self.registry.resolve_project(registry_path)
+
+            self.assertEqual(result["project_id"], "project-b")
+            self.assertEqual(result["reason_code"], "recent_selection")
+
+    def test_unknown_selection_write_is_rejected_without_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            project = base / "project-a"
+            project.mkdir()
+            registry_path = self.write_v2_registry(
+                base, [("project-a", "Project A", project)]
+            )
+
+            with self.assertRaises(ValueError):
+                self.registry.record_recent_selection(
+                    registry_path,
+                    "missing",
+                    "2026-08-19T10:30:00+09:00",
+                )
+
+            self.assertFalse((base / "project-selection.json").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
