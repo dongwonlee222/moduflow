@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issues 095 and 098 are merged, verified, and reconciled. The next safety-gate work is Issue 094; wider/default Spec Kit activation remains prohibited.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 102 is implemented and release-verified on its isolated branch. The next P0 contract is Issue 103; wider/default Spec Kit activation remains prohibited.
 
 ## Active Goal
 
@@ -10,12 +10,12 @@ Goal `trustworthy-execution-and-project-knowledge`: Issues 095 and 098 are merge
 
 ## Active Issue
 
-- `102-project-registry-and-resolver` (phase: review). Canonical: `issues/102-project-registry-and-resolver.md`.
+- None active. Run `product:status` to pick the next issue.
 
-## Priority Queue — 2026-08-13
+## Priority Queue — 2026-08-19
 
-- Now: `094` risk-based security/quality review gate; blocker `089` is done. Next command is
-  `product:spec 094-risk-based-security-and-quality-review-gate`.
+- Now: `103` atomic lifecycle state transaction; Issue 102's project context contract is complete. Next command is `product:status` before starting its spec workflow.
+- Shipped on branch: `102` project registry/resolver; 1,225 tests and release check passed, package source version 0.3.49. Human integration remains pending.
 - Shipped: `098` selective Spec Kit validation adapter merged via PR #37 as `513e08f`, installed locally as ModuFlow 0.3.48, and remains project-opt-in only.
 - Shipped: `097` merged via PR #36 as `46f98c0`; routing simulation and CI passed.
 - Shipped: `095` merged via PR #33 as `f4029f3`; post-merge release check passed.

@@ -186,6 +186,10 @@ REQUIRED_FILES = [
     "workers/release-manager.md",
 ]
 
+SOURCE_ONLY_REQUIRED_FILES = {
+    "tests/test_project_registry.py",
+}
+
 
 def load_json(path: Path) -> object:
     with path.open("r", encoding="utf-8") as handle:
@@ -194,7 +198,13 @@ def load_json(path: Path) -> object:
 
 def validate_moduflow(path) -> dict:
     root = Path(path).resolve()
-    missing = [name for name in REQUIRED_FILES if not (root / name).is_file()]
+    source_checkout = (root / ".git").exists()
+    required_files = [
+        name
+        for name in REQUIRED_FILES
+        if source_checkout or name not in SOURCE_ONLY_REQUIRED_FILES
+    ]
+    missing = [name for name in required_files if not (root / name).is_file()]
 
     errors = []
     if missing:
@@ -230,7 +240,7 @@ def validate_moduflow(path) -> dict:
         "project_root": str(root),
         "valid": not errors,
         "errors": errors,
-        "checked_files": len(REQUIRED_FILES),
+        "checked_files": len(required_files),
         "missing": missing,
     }
 

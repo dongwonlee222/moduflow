@@ -1,6 +1,6 @@
 # Issue 102 Execution Status
 
-**Status: verification** — registry/resolver and all planned consumer migrations are implemented; final project and release gates are running.
+**Status: done** — registry/resolver, planned consumer migrations, review, and all project/release gates passed on 2026-08-19.
 
 ## Snapshot
 
@@ -9,8 +9,8 @@
 | Branch | `codex/102-project-registry-and-resolver` |
 | Registry | `moduflow.projects.v2` with v1 read compatibility |
 | Resolver | deterministic, fail-closed, no filesystem discovery |
-| Consumer streams | A1–C3 implemented |
-| Package version | `0.3.49` planned for final evidence commit |
+| Consumer streams | A1–D1 complete |
+| Package version | `0.3.49` |
 | Next command | `product:status 102-project-registry-and-resolver` |
 
 ## Task Commits
@@ -32,7 +32,12 @@
 - Spec consistency: 0 errors, 0 warnings, 0 info.
 - Distribution RED/GREEN proves the registry module, tests, three fixtures, v2 template, command docs, and release module are packaged.
 - External issues-root symlink regression: validator and Doctor now fail closed without traceback or content disclosure.
-- Full discovery, project validation, drift, and release results are recorded after the final fresh run.
+- Full discovery: 1,225/1,225 tests passed in 413.431 seconds.
+- Package validation: all required source/runtime files present, including cache-safe registry fixtures.
+- Project artifact validation: `valid: true`, `errors: []`; only existing optional/dependency/reference warnings remain.
+- Lifecycle drift: `[]`.
+- Release check: `valid: true`, `errors: []`; validation, provenance, linkage, lint, security, version, tests, Doctor, and release docs all passed.
+- Diff hygiene: `git diff --check` clean.
 
 ## Isolation and Compatibility Evidence
 

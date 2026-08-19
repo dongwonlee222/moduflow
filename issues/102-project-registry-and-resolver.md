@@ -1,6 +1,6 @@
 # Issue 102: Project Registry and Resolver
 
-**Status: active** — created 2026-08-19; source audited, spec approved, implementation planned, and execution started 2026-08-19.
+**Status: done** — created, approved, implemented, reviewed, and verified 2026-08-19.
 **Priority: p0**
 **Blocked-by:**
 
@@ -13,7 +13,7 @@ Add a versioned, explicit multi-project registry and one deterministic resolver 
 - Type: user multi-project orchestration improvement request
 - Link: local Codex attachment `pasted-text.txt`, 2026-08-19
 - Owner / decision maker: Dongwon Lee
-- Current phase: verify; registry, resolver, compatibility, and consumer convergence implemented
+- Current phase: done; registry, resolver, compatibility, consumer convergence, and release verification complete
 
 ## Opportunity
 
@@ -79,7 +79,7 @@ Do not crawl arbitrary folders, move user artifacts, add browser-side writes, or
 - [x] source audit → `specs/102-project-registry-and-resolver/source-audit.md` (current-source evidence; no implementation)
 - [x] plan → `specs/102-project-registry-and-resolver/plan.md` + `plan.ko.md` + `tasks.md`
 - [x] execute → registry v2, resolver, consumer adoption, migration guidance, and tests
-- [ ] review → `specs/102-project-registry-and-resolver/review.md`
+- [x] review → `specs/102-project-registry-and-resolver/review.md`
 
 ## Related Issues
 

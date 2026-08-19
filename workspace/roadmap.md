@@ -4,8 +4,7 @@
 
 ### Now
 
-- `102-project-registry-and-resolver` — P0; implementation complete on `codex/102-project-registry-and-resolver`, with final full-suite/release verification in progress. Issue 093's existing path normalizer remains the compatibility owner.
-- `103-atomic-lifecycle-state-transaction` — P0; spec next after graph approval. It can be designed independently of 102.
+- `103-atomic-lifecycle-state-transaction` — P0; next specification target. It can now consume the completed Issue 102 context contract.
 
 ### Next
 
@@ -21,7 +20,11 @@
 
 ### Review Gate
 
-The corrected Issue 102 spec, source audit, dependency graph, and implementation were explicitly approved on 2026-08-19. Final completion remains gated by full tests, project validation, lifecycle drift, and release check; downstream issues remain dependency-gated until then. This refresh is authoritative over the historical snapshots below.
+Issue 102 completed on 2026-08-19 with 1,225 tests, project validation, zero lifecycle drift, and release check passing. Issue 104/105 remain blocked only by Issue 103; Issue 107 still also depends on 106. This refresh is authoritative over the historical snapshots below.
+
+### Recently Completed
+
+- `102-project-registry-and-resolver` — explicit v2 registry, deterministic fail-closed resolver, v1 migration proposal, canonical context API, and all planned read/write consumer convergence shipped on branch `codex/102-project-registry-and-resolver`; package source version is 0.3.49.
 
 ## Priority Refresh — 2026-08-13
 
