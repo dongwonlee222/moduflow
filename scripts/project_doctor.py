@@ -8,6 +8,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
+try:
     from scripts.project_repository_identity import inspect_repository_identity
 except ModuleNotFoundError:
     from project_repository_identity import inspect_repository_identity
@@ -114,22 +119,12 @@ def run(args, cwd):
     return result
 
 
-def read_config_paths(root):
-    config_path = root / ".moduflow" / "config.json"
-    if not config_path.exists():
-        return {}
-    try:
-        config = json.loads(config_path.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-    return config.get("paths", {}) if isinstance(config.get("paths", {}), dict) else {}
-
-
-def project_paths(root):
-    paths = read_config_paths(root)
-    issues = paths.get("issues", "issues")
-    specs = paths.get("specs", "specs")
-    workspace = paths.get("workspace", "workspace")
+def project_paths(root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
+    paths = context["relative_paths"]
+    issues = paths["issues"]
+    specs = paths["specs"]
+    workspace = paths["workspace"]
     return REQUIRED_PROJECT_PATHS + [
         issues,
         specs,
@@ -185,9 +180,9 @@ def gh_auth_status(path):
     }
 
 
-def missing_project_paths(root):
+def missing_project_paths(root, *, project_context=None):
     missing = []
-    for relative in project_paths(root):
+    for relative in project_paths(root, project_context=project_context):
         if not (root / relative).exists():
             missing.append(relative)
     return missing
@@ -201,25 +196,49 @@ def missing_profile_paths(root):
     return missing
 
 
-def missing_knowledge_paths(root):
+def _mapped_required_paths(base, default_base, required_paths):
+    return [
+        str(Path(base) / Path(relative).relative_to(default_base))
+        if relative != default_base
+        else str(Path(base))
+        for relative in required_paths
+    ]
+
+
+def missing_knowledge_paths(root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
     missing = []
-    for relative in REQUIRED_KNOWLEDGE_PATHS:
+    for relative in _mapped_required_paths(
+        context["relative_paths"]["knowledge"],
+        "knowledge",
+        REQUIRED_KNOWLEDGE_PATHS,
+    ):
         if not (root / relative).exists():
             missing.append(relative)
     return missing
 
 
-def missing_memory_paths(root):
+def missing_memory_paths(root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
     missing = []
-    for relative in REQUIRED_MEMORY_PATHS:
+    for relative in _mapped_required_paths(
+        context["relative_paths"]["memory"],
+        "memory",
+        REQUIRED_MEMORY_PATHS,
+    ):
         if not (root / relative).exists():
             missing.append(relative)
     return missing
 
 
-def missing_workflow_paths(root):
+def missing_workflow_paths(root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
     missing = []
-    for relative in REQUIRED_WORKFLOW_PATHS:
+    for relative in _mapped_required_paths(
+        context["relative_paths"]["workflow"],
+        "workflow",
+        REQUIRED_WORKFLOW_PATHS,
+    ):
         if not (root / relative).exists():
             missing.append(relative)
     return missing
@@ -452,7 +471,7 @@ def check_hook_log(root):
     return recent_entries[:20]
 
 
-def inspect_project(path, include_preflight=True):
+def inspect_project(path, include_preflight=True, *, project_context=None):
     requested = Path(path).resolve()
     if include_preflight:
         detected_git_root = git_root(requested)
@@ -467,10 +486,15 @@ def inspect_project(path, include_preflight=True):
         gh_status = skipped_preflight_status()
         repository_identity = None
 
-    missing = missing_project_paths(project_root)
+    context = project_context or project_registry.project_context_for_root(
+        project_root
+    )
+    missing = missing_project_paths(project_root, project_context=context)
     missing_profile = missing_profile_paths(project_root)
-    missing_knowledge = missing_knowledge_paths(project_root)
-    missing_memory = missing_memory_paths(project_root)
+    missing_knowledge = missing_knowledge_paths(
+        project_root, project_context=context
+    )
+    missing_memory = missing_memory_paths(project_root, project_context=context)
     try:
         isolated_memory = load_project_memory().isolated_memory_entries(project_root) if not missing_memory else []
     except Exception:
@@ -483,7 +507,9 @@ def inspect_project(path, include_preflight=True):
         hook_log_warnings = check_hook_log(project_root)
     except Exception:
         hook_log_warnings = []
-    missing_workflow = missing_workflow_paths(project_root)
+    missing_workflow = missing_workflow_paths(
+        project_root, project_context=context
+    )
     candidates = discover_candidate_paths(project_root)
     migration_mode = recommended_migration_mode(missing, candidates)
     project_loop = load_project_loop()
@@ -494,9 +520,19 @@ def inspect_project(path, include_preflight=True):
         "issue_schema",
         {"errors": 0, "warnings": 0, "codes": [], "diagnostics": []},
     )
-    loop_errors = project_loop.validate_loop_state(project_root)
-    loop_state_exists = (project_root / "workspace" / "loop-state.json").exists()
-    loop_state = project_loop.load_loop_state(project_root) if loop_state_exists else None
+    loop_errors = project_loop.validate_loop_state(
+        project_root, project_context=context
+    )
+    loop_state_path = (
+        project_registry.canonical_path(context, "workspace")
+        / "loop-state.json"
+    )
+    loop_state_exists = loop_state_path.exists()
+    loop_state = (
+        project_loop.load_loop_state(project_root, project_context=context)
+        if loop_state_exists
+        else None
+    )
     git_binding = loop_state.get("git_binding") if loop_state else None
     branch = current_branch(project_root) if include_preflight and detected_git_root else None
 
@@ -504,6 +540,12 @@ def inspect_project(path, include_preflight=True):
     result = {
         "requested_path": str(requested),
         "project_root": str(project_root),
+        "project_context": {
+            "status": context["status"],
+            "reason_code": context["reason_code"],
+            "relative_paths": context["relative_paths"],
+            "warnings": context["warnings"],
+        },
         "mode": mode,
         "mode_guidance": mode_guidance(mode),
         "preflight": {

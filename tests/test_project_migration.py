@@ -154,6 +154,35 @@ class ProjectMigrationTests(unittest.TestCase):
             self.assertNotIn("workspace/dashboard.md", plan["writes"])
             self.assertIn("workspace/inbox.md", plan["writes"])
 
+    def test_overlay_migration_preserves_existing_configured_workspace(self):
+        project_migrate = load_module("project_migrate", "scripts/project_migrate.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.config.v1",
+                        "paths": {
+                            "issues": "product/issues",
+                            "specs": "product/specs",
+                            "workspace": "product/workspace",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            plan = project_migrate.build_migration_plan(root, mode="overlay")
+
+            self.assertEqual(plan["config"]["paths"]["issues"], "product/issues")
+            self.assertEqual(plan["config"]["paths"]["specs"], "product/specs")
+            self.assertEqual(
+                plan["config"]["paths"]["workspace"], "product/workspace"
+            )
+            self.assertIn("product/workspace/inbox.md", plan["writes"])
+            self.assertNotIn("workspace/inbox.md", plan["writes"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -641,6 +641,50 @@ gate_state: passed
             self.assertEqual(saved["schema"], "moduflow.loop-state.v2")
             self.assertEqual(saved["active_issue_id"], "019-loop-kernel-and-state-model")
 
+    def test_loop_state_read_and_write_use_configured_workspace(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {"paths": {"workspace": "product/workspace"}}
+                ),
+                encoding="utf-8",
+            )
+            workspace = root / "product" / "workspace"
+            workspace.mkdir(parents=True)
+            (workspace / "loop-state.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.loop-state.v2",
+                        "goal_id": "configured-goal",
+                        "issue_ids": [],
+                        "active_issue_id": None,
+                        "status": "active",
+                        "next_command": "product:goal",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            default_workspace = root / "workspace"
+            default_workspace.mkdir()
+            decoy = default_workspace / "loop-state.json"
+            decoy.write_text(
+                json.dumps({"goal_id": "wrong-goal"}), encoding="utf-8"
+            )
+
+            state = project_loop.load_loop_state(root)
+            state["last_action"] = "configured-write"
+            written = project_loop.write_loop_state(root, state)
+
+            self.assertEqual(state["goal_id"], "configured-goal")
+            self.assertEqual(written, (workspace / "loop-state.json").resolve())
+            self.assertIn(
+                "configured-write",
+                (workspace / "loop-state.json").read_text(encoding="utf-8"),
+            )
+            self.assertNotIn("configured-write", decoy.read_text(encoding="utf-8"))
+
     def test_validate_loop_state_reports_missing_active_issue_file(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

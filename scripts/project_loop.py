@@ -5,6 +5,11 @@ import json
 from datetime import date
 from pathlib import Path
 
+try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
 
 LOOP_STATE_SCHEMA = "moduflow.loop-state.v2"
 DEFAULT_MAX_ATTEMPTS = 3
@@ -28,18 +33,13 @@ def validate_issue_id(value):
     return load_project_issue_schema().validate_issue_id(value)
 
 
-def _contained_issue_location(root, path_key, issue_id, *suffix):
+def _contained_issue_location(
+    root, path_key, issue_id, *suffix, project_context=None
+):
     if not validate_issue_id(issue_id):
         raise ValueError(f"invalid issue ID: {issue_id!r}")
-    project_root = Path(root).resolve()
-    paths = load_project_issue_schema().configured_project_paths(project_root)
-    location_root = (project_root / paths[path_key]).resolve()
-    try:
-        location_root.relative_to(project_root)
-    except (OSError, RuntimeError, ValueError) as exc:
-        raise ValueError(
-            f"configured {path_key} path escapes project root"
-        ) from exc
+    context = project_context or project_registry.project_context_for_root(root)
+    location_root = project_registry.canonical_path(context, path_key)
     candidate = location_root.joinpath(issue_id, *suffix).resolve()
     try:
         candidate.relative_to(location_root)
@@ -52,8 +52,9 @@ def read_json(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def loop_state_path(root):
-    return Path(root).resolve() / "workspace" / "loop-state.json"
+def loop_state_path(root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
+    return project_registry.canonical_path(context, "workspace") / "loop-state.json"
 
 
 def normalize_attempts(raw_attempts, next_command="product:loop"):
@@ -199,23 +200,18 @@ def normalize_loop_state(raw):
     }
 
 
-def load_loop_state(root):
-    path = loop_state_path(root)
+def load_loop_state(root, *, project_context=None):
+    path = loop_state_path(root, project_context=project_context)
     if not path.exists():
         return None
     return normalize_loop_state(read_json(path))
 
 
-def issue_path(root, issue_id):
+def issue_path(root, issue_id, *, project_context=None):
     if not validate_issue_id(issue_id):
         raise ValueError(f"invalid issue ID: {issue_id!r}")
-    project_root = Path(root).resolve()
-    paths = load_project_issue_schema().configured_project_paths(project_root)
-    issues_root = (project_root / paths["issues"]).resolve()
-    try:
-        issues_root.relative_to(project_root)
-    except (OSError, RuntimeError, ValueError) as exc:
-        raise ValueError("configured issues path escapes project root") from exc
+    context = project_context or project_registry.project_context_for_root(root)
+    issues_root = project_registry.canonical_path(context, "issues")
     candidate = (issues_root / f"{issue_id}.md").resolve()
     try:
         candidate.relative_to(issues_root)
@@ -224,17 +220,20 @@ def issue_path(root, issue_id):
     return candidate
 
 
-def implementation_readiness_path(root, issue_id):
+def implementation_readiness_path(root, issue_id, *, project_context=None):
     return _contained_issue_location(
         root,
         "specs",
         issue_id,
         "implementation-readiness.json",
+        project_context=project_context,
     )
 
 
-def load_implementation_readiness(root, issue_id):
-    path = implementation_readiness_path(root, issue_id)
+def load_implementation_readiness(root, issue_id, *, project_context=None):
+    path = implementation_readiness_path(
+        root, issue_id, project_context=project_context
+    )
     if not path.exists():
         return None
     try:
@@ -253,8 +252,8 @@ def workflow_checkbox_state(issue_text, label):
     return "missing"
 
 
-def infer_issue_phase(root, issue_id):
-    path = issue_path(root, issue_id)
+def infer_issue_phase(root, issue_id, *, project_context=None):
+    path = issue_path(root, issue_id, project_context=project_context)
     if not path.exists():
         return "issue"
     issue_text = path.read_text(encoding="utf-8")
@@ -319,11 +318,14 @@ def primary_structural_diagnostic(issue):
     return None
 
 
-def missing_structural_artifact(root, issue):
+def missing_structural_artifact(root, issue, *, project_context=None):
     issue_id = issue["issue_id"]
-    paths = load_project_issue_schema().configured_project_paths(root)
+    context = project_context or project_registry.project_context_for_root(root)
+    paths = context["relative_paths"]
     try:
-        artifact_root = _contained_issue_location(root, "specs", issue_id)
+        artifact_root = _contained_issue_location(
+            root, "specs", issue_id, project_context=context
+        )
     except ValueError:
         return None
     command_name = (
@@ -341,7 +343,7 @@ def missing_structural_artifact(root, issue):
     return None
 
 
-def structural_blocker(root, issue):
+def structural_blocker(root, issue, *, project_context=None):
     diagnostic = primary_structural_diagnostic(issue)
     if diagnostic:
         return (
@@ -349,7 +351,9 @@ def structural_blocker(root, issue):
             f"{diagnostic.get('message') or 'Issue structural readiness is blocked.'} "
             f"Recommendation: {diagnostic.get('recommendation') or 'Run product:doctor.'}"
         )
-    missing = missing_structural_artifact(root, issue)
+    missing = missing_structural_artifact(
+        root, issue, project_context=project_context
+    )
     if missing:
         return (
             f"Missing structural artifact: {missing}. "
@@ -361,8 +365,11 @@ def structural_blocker(root, issue):
     )
 
 
-def evaluated_active_issue(root, active_issue_id):
-    evaluation = load_project_issue_schema().evaluate_project(root)
+def evaluated_active_issue(root, active_issue_id, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
+    evaluation = load_project_issue_schema().evaluate_project(
+        root, project_paths=context["relative_paths"]
+    )
     issues = evaluation.get("issues", [])
     active_issue = next(
         (
@@ -430,8 +437,9 @@ def default_loop_state(root):
     )
 
 
-def recommend_loop(root):
-    state = load_loop_state(root) or default_loop_state(root)
+def recommend_loop(root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
+    state = load_loop_state(root, project_context=context) or default_loop_state(root)
     active_issue_id = state.get("active_issue_id")
     if not active_issue_id:
         state["status"] = "needs_decision"
@@ -462,7 +470,9 @@ def recommend_loop(root):
         state["next_command"] = "product:doctor"
         return state
 
-    structural_issue = evaluated_active_issue(root, active_issue_id)
+    structural_issue = evaluated_active_issue(
+        root, active_issue_id, project_context=context
+    )
     if structural_issue:
         structural_command = (
             structural_issue.get("recommended_next_command") or "product:status"
@@ -473,16 +483,22 @@ def recommend_loop(root):
             or structural_issue.get("readiness") != "ready"
         ):
             state["status"] = "needs_decision"
-            state["blocker"] = structural_blocker(root, structural_issue)
+            state["blocker"] = structural_blocker(
+                root, structural_issue, project_context=context
+            )
             state["next_command"] = structural_command
             return state
 
-    phase = infer_issue_phase(root, active_issue_id)
+    phase = infer_issue_phase(
+        root, active_issue_id, project_context=context
+    )
     command = recommend_next_command(active_issue_id, phase)
     state["phase"] = phase
 
     if phase == "execute":
-        readiness = load_implementation_readiness(root, active_issue_id)
+        readiness = load_implementation_readiness(
+            root, active_issue_id, project_context=context
+        )
         if readiness and readiness.get("status") == "not_ready":
             state["phase"] = "plan"
             state["status"] = "needs_decision"
@@ -505,8 +521,8 @@ def recommend_loop(root):
     return apply_attempts_guard(state, command)
 
 
-def write_loop_state(root, state):
-    path = loop_state_path(root)
+def write_loop_state(root, state, *, project_context=None):
+    path = loop_state_path(root, project_context=project_context)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(normalize_loop_state(state), ensure_ascii=False, indent=2) + "\n",
@@ -515,8 +531,9 @@ def write_loop_state(root, state):
     return path
 
 
-def validate_loop_state(root):
-    path = loop_state_path(root)
+def validate_loop_state(root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
+    path = loop_state_path(root, project_context=context)
     if not path.exists():
         return []
     errors = []
@@ -536,7 +553,9 @@ def validate_loop_state(root):
         errors.append(
             f"workspace/loop-state.json: invalid active_issue_id {active_issue_id!r}"
         )
-    elif active_issue_id and not issue_path(root, active_issue_id).exists():
+    elif active_issue_id and not issue_path(
+        root, active_issue_id, project_context=context
+    ).exists():
         errors.append(
             f"workspace/loop-state.json: active_issue_id {active_issue_id} has no matching issue file"
         )
@@ -545,7 +564,7 @@ def validate_loop_state(root):
             errors.append(
                 f"workspace/loop-state.json: invalid issue_id {issue_id!r}"
             )
-        elif not issue_path(root, issue_id).exists():
+        elif not issue_path(root, issue_id, project_context=context).exists():
             errors.append(
                 f"workspace/loop-state.json: issue_id {issue_id} has no matching issue file"
             )

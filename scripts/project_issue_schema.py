@@ -1862,10 +1862,10 @@ def _duplicate_issue_diagnostic(issue, source_paths):
     )
 
 
-def evaluate_project(project_root):
+def evaluate_project(project_root, project_paths=None):
     """Return evaluated issues and project-level dependency diagnostics."""
     project_root = Path(project_root)
-    project_paths = configured_project_paths(project_root)
+    project_paths = project_paths or configured_project_paths(project_root)
     issues = list_normalized_issues(project_root, project_paths)
     configured_issues_violation = _configured_path_violations(
         project_root

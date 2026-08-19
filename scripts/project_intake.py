@@ -5,6 +5,11 @@ import re
 from datetime import date
 from pathlib import Path
 
+try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
 
 INTAKE_SCHEMA = "moduflow.intake-routing.v1"
 
@@ -172,8 +177,9 @@ def shaping_metadata(path, reason, durable_context):
     }
 
 
-def issue_files(root):
-    issues_dir = Path(root).resolve() / "issues"
+def issue_files(root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
+    issues_dir = project_registry.canonical_path(context, "issues")
     if not issues_dir.exists():
         return []
     return sorted(issues_dir.glob("*.md"))
@@ -183,9 +189,9 @@ def issue_id_from_path(path):
     return path.stem
 
 
-def load_issue_summaries(root):
+def load_issue_summaries(root, *, project_context=None):
     summaries = []
-    for path in issue_files(root):
+    for path in issue_files(root, project_context=project_context):
         text = path.read_text(encoding="utf-8")
         title = ""
         for line in text.splitlines():
@@ -209,10 +215,10 @@ def similarity(left_tokens, right_tokens):
     return len(left & right) / len(left | right)
 
 
-def find_related_issues(root, text, threshold=0.08):
+def find_related_issues(root, text, threshold=0.08, *, project_context=None):
     request_tokens = set(tokenize(text))
     related = []
-    for issue in load_issue_summaries(root):
+    for issue in load_issue_summaries(root, project_context=project_context):
         score = similarity(request_tokens, issue["tokens"])
         if score >= threshold:
             relationship = "duplicate_candidate" if score >= 0.18 else "related"
@@ -236,9 +242,9 @@ def slugify(text, fallback="work"):
     return re.sub(r"-+", "-", slug).strip("-") or fallback
 
 
-def next_issue_number(root):
+def next_issue_number(root, *, project_context=None):
     max_number = 0
-    for path in issue_files(root):
+    for path in issue_files(root, project_context=project_context):
         match = re.match(r"(\d+)-", path.stem)
         if match:
             max_number = max(max_number, int(match.group(1)))
@@ -252,12 +258,12 @@ def candidate_title(text, domain):
     return DOMAIN_TITLES.get(domain, "new work")
 
 
-def split_issue_candidates(root, text, classification=None):
+def split_issue_candidates(root, text, classification=None, *, project_context=None):
     classification = classification or classify_request(text)
     matched_domains = [
         domain for domain, score in classification.get("scores", {}).items() if score > 0
     ] or [classification["primary"]]
-    base_number = next_issue_number(root)
+    base_number = next_issue_number(root, project_context=project_context)
     candidates = []
     for offset, domain in enumerate(matched_domains):
         title = candidate_title(text, domain)
@@ -272,8 +278,9 @@ def split_issue_candidates(root, text, classification=None):
     return candidates
 
 
-def load_active_loop(root):
-    path = Path(root).resolve() / "workspace" / "loop-state.json"
+def load_active_loop(root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
+    path = project_registry.canonical_path(context, "workspace") / "loop-state.json"
     if not path.exists():
         return {}
     try:
@@ -288,8 +295,9 @@ def active_issue_matches(active_issue, related_issues):
     )
 
 
-def append_inbox_record(root, routed):
-    inbox_path = Path(root).resolve() / "workspace" / "inbox.md"
+def append_inbox_record(root, routed, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
+    inbox_path = project_registry.canonical_path(context, "workspace") / "inbox.md"
     inbox_path.parent.mkdir(parents=True, exist_ok=True)
     if inbox_path.exists():
         existing = inbox_path.read_text(encoding="utf-8")
@@ -303,14 +311,15 @@ def append_inbox_record(root, routed):
     return inbox_path
 
 
-def route_intake(root, request, write=False):
+def route_intake(root, request, write=False, *, project_context=None):
     root = Path(root).resolve()
+    context = project_context or project_registry.project_context_for_root(root)
     classification = classify_request(request)
     size = request_size(request, classification)
-    loop = load_active_loop(root)
+    loop = load_active_loop(root, project_context=context)
     active_issue = loop.get("active_issue_id") or loop.get("issue_id")
     active_goal = loop.get("goal_id")
-    related = find_related_issues(root, request)
+    related = find_related_issues(root, request, project_context=context)
     signals = shaping_signals(request, classification, size)
 
     if active_issue_matches(active_issue, related):
@@ -325,17 +334,23 @@ def route_intake(root, request, write=False):
         shaping = shaping_metadata("panel", "strategic_product_direction", "opportunity")
     elif signals["ambiguous"]:
         action = "shape_then_issue"
-        candidates = split_issue_candidates(root, request, classification)[:1]
+        candidates = split_issue_candidates(
+            root, request, classification, project_context=context
+        )[:1]
         next_command = "product:opportunity"
         shaping = shaping_metadata("short", "ambiguous_product_request", "opportunity")
     elif size == "large":
         action = "create_goal_with_issues"
-        candidates = split_issue_candidates(root, request, classification)
+        candidates = split_issue_candidates(
+            root, request, classification, project_context=context
+        )
         next_command = "product:goal"
         shaping = shaping_metadata("fast", "large_request_goal_graph", "issue")
     else:
         action = "create_issue"
-        candidates = split_issue_candidates(root, request, classification)[:1]
+        candidates = split_issue_candidates(
+            root, request, classification, project_context=context
+        )[:1]
         next_command = candidates[0]["next_command"] if candidates else "product:issue"
         shaping = shaping_metadata("fast", "clear_bounded_request", "issue")
 
@@ -354,7 +369,7 @@ def route_intake(root, request, write=False):
     }
     routed.update(shaping)
     if write:
-        append_inbox_record(root, routed)
+        append_inbox_record(root, routed, project_context=context)
     return routed
 
 

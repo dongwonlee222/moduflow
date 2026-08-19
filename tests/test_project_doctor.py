@@ -398,5 +398,95 @@ gate_state: passed
         )
 
 
+class CanonicalPathDoctorTests(unittest.TestCase):
+    def test_doctor_uses_configured_workspace_knowledge_memory_and_workflow(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            paths = {
+                "issues": "product/issues",
+                "specs": "product/specs",
+                "workspace": "product/workspace",
+                "knowledge": "product/knowledge",
+                "memory": "product/memory",
+                "workflow": "product/workflow",
+            }
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps({"schema": "moduflow.config.v1", "paths": paths}),
+                encoding="utf-8",
+            )
+            (root / ".moduflow" / "state.json").write_text(
+                json.dumps({"schema": "moduflow.state.v1"}), encoding="utf-8"
+            )
+            (root / paths["issues"]).mkdir(parents=True)
+            (root / paths["specs"]).mkdir(parents=True)
+            workspace = root / paths["workspace"]
+            workspace.mkdir(parents=True)
+            for name in (
+                "inbox.md",
+                "opportunities.md",
+                "roadmap.md",
+                "dashboard.md",
+            ):
+                (workspace / name).write_text("# fixture\n", encoding="utf-8")
+            (workspace / "loop-state.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.loop-state.v2",
+                        "goal_id": "goal-a",
+                        "issue_ids": [],
+                        "active_issue_id": None,
+                        "status": "active",
+                        "next_command": "product:goal",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            knowledge = root / paths["knowledge"]
+            for relative in (
+                "decisions",
+                "benchmarks",
+                "reports",
+                "research",
+                "data-notes",
+                "references",
+            ):
+                (knowledge / relative).mkdir(parents=True)
+            (knowledge / "index.md").write_text("# knowledge\n", encoding="utf-8")
+            memory = root / paths["memory"]
+            for relative in (
+                "deliverables",
+                "decisions",
+                "evidence",
+                "meetings",
+                "releases",
+                "notes",
+                "references",
+            ):
+                (memory / relative).mkdir(parents=True)
+            (memory / "index.md").write_text("# memory\n", encoding="utf-8")
+            workflow = root / paths["workflow"]
+            workflow.mkdir(parents=True)
+            for name in (
+                "review-gates.md",
+                "approval-policy.md",
+                "release-policy.md",
+                "handoff.md",
+                "risks.md",
+            ):
+                (workflow / name).write_text("# workflow\n", encoding="utf-8")
+
+            result = project_doctor.inspect_project(
+                root, include_preflight=False
+            )
+
+            self.assertTrue(result["moduflow"]["initialized"])
+            self.assertTrue(result["knowledge"]["initialized"])
+            self.assertTrue(result["memory"]["initialized"])
+            self.assertTrue(result["workflow"]["initialized"])
+            self.assertTrue(result["loop"]["initialized"])
+            self.assertEqual(result["project_context"]["status"], "resolved")
+
+
 if __name__ == "__main__":
     unittest.main()
