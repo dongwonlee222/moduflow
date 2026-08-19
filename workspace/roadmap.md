@@ -4,7 +4,7 @@
 
 ### Now
 
-- `102-project-registry-and-resolver` — P0; spec approved and implementation plan complete. Await explicit execution approval; preserve Issue 093's existing path normalizer.
+- `102-project-registry-and-resolver` — P0; implementation complete on `codex/102-project-registry-and-resolver`, with final full-suite/release verification in progress. Issue 093's existing path normalizer remains the compatibility owner.
 - `103-atomic-lifecycle-state-transaction` — P0; spec next after graph approval. It can be designed independently of 102.
 
 ### Next
@@ -21,7 +21,7 @@
 
 ### Review Gate
 
-The corrected Issue 102 spec, source audit, and dependency graph were approved on 2026-08-19. Issue 102 implementation still starts only through explicit `product:execute`; downstream issues remain dependency-gated. This refresh is authoritative over the historical snapshots below.
+The corrected Issue 102 spec, source audit, dependency graph, and implementation were explicitly approved on 2026-08-19. Final completion remains gated by full tests, project validation, lifecycle drift, and release check; downstream issues remain dependency-gated until then. This refresh is authoritative over the historical snapshots below.
 
 ## Priority Refresh — 2026-08-13
 

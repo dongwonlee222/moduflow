@@ -502,13 +502,16 @@ def validate_production_project(project_root, *, project_context=None):
     context = project_context or project_registry.project_context_for_root(root)
     errors = []
     warnings = []
-    record_paths = sorted(
-        project_registry.canonical_path(context, "production_records").glob("*.md")
-    )
-    playbook_paths = sorted(
-        project_registry.canonical_path(context, "playbooks").glob("*.md")
-    )
-    issues_root = project_registry.canonical_path(context, "issues")
+    try:
+        record_paths = sorted(
+            project_registry.canonical_path(context, "production_records").glob("*.md")
+        )
+        playbook_paths = sorted(
+            project_registry.canonical_path(context, "playbooks").glob("*.md")
+        )
+        issues_root = project_registry.canonical_path(context, "issues")
+    except ValueError as exc:
+        return {"errors": [str(exc)], "warnings": []}
     if not record_paths and not playbook_paths:
         return {"errors": [], "warnings": []}
 

@@ -10,7 +10,7 @@ Goal `trustworthy-execution-and-project-knowledge`: Issues 095 and 098 are merge
 
 ## Active Issue
 
-- None active. Run `product:spec 094-risk-based-security-and-quality-review-gate` to start the next recommended issue.
+- `102-project-registry-and-resolver` (phase: review). Canonical: `issues/102-project-registry-and-resolver.md`.
 
 ## Priority Queue — 2026-08-13
 
