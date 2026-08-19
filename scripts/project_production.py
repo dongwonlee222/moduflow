@@ -13,6 +13,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 import project_memory
 import linkage_check
+import project_registry
 
 
 RECORD_SCHEMA = "moduflow.production-record.v1"
@@ -231,18 +232,30 @@ def parse_playbook(project_root, path):
 
 def _list_artifacts(project_root, directory, parser):
     root = Path(project_root).resolve()
-    target = root / directory
+    target = Path(directory)
+    if not target.is_absolute():
+        target = root / target
     if not target.exists():
         return []
     return [parser(root, path) for path in sorted(target.glob("*.md"))]
 
 
-def list_production_records(project_root):
-    return _list_artifacts(project_root, "memory/production-records", parse_production_record)
+def list_production_records(project_root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(project_root)
+    return _list_artifacts(
+        project_root,
+        project_registry.canonical_path(context, "production_records"),
+        parse_production_record,
+    )
 
 
-def list_playbooks(project_root):
-    return _list_artifacts(project_root, "playbooks", parse_playbook)
+def list_playbooks(project_root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(project_root)
+    return _list_artifacts(
+        project_root,
+        project_registry.canonical_path(context, "playbooks"),
+        parse_playbook,
+    )
 
 
 def _configured_human_values(project_root):
@@ -299,6 +312,7 @@ def decide_playbook_update(
     approved_by,
     reason,
     decided_at,
+    project_context=None,
 ):
     if decision not in {"approve", "reject", "defer"}:
         raise ValueError("decision must be approve, reject, or defer")
@@ -307,8 +321,15 @@ def decide_playbook_update(
     if not reason or not decided_at:
         raise ValueError("reason and decided_at are required")
     root = Path(project_root).resolve()
-    record = _find_by_id(list_production_records(root), record_id, "source record")
-    playbook = _find_by_id(list_playbooks(root), playbook_id, "playbook")
+    context = project_context or project_registry.project_context_for_root(root)
+    record = _find_by_id(
+        list_production_records(root, project_context=context),
+        record_id,
+        "source record",
+    )
+    playbook = _find_by_id(
+        list_playbooks(root, project_context=context), playbook_id, "playbook"
+    )
     if record_id not in playbook["source_records"]:
         raise ValueError(f"playbook source_records does not include {record_id}")
 
@@ -400,9 +421,13 @@ def search_production(
     issue_id=None,
     kind=None,
     limit=20,
+    project_context=None,
 ):
     _positive_limit(limit)
-    items = list_production_records(project_root) + list_playbooks(project_root)
+    context = project_context or project_registry.project_context_for_root(project_root)
+    items = list_production_records(
+        project_root, project_context=context
+    ) + list_playbooks(project_root, project_context=context)
     query_text = str(query or "").strip().casefold()
     matches = []
     for original in items:
@@ -434,11 +459,15 @@ def retrieve_production_context(
     channel,
     audiences,
     limit=5,
+    project_context=None,
 ):
     _positive_limit(limit)
     requested_audiences = [project_memory.slugify(value) for value in audiences]
     ranked = []
-    for original in list_playbooks(project_root) + list_production_records(project_root):
+    context = project_context or project_registry.project_context_for_root(project_root)
+    for original in list_playbooks(
+        project_root, project_context=context
+    ) + list_production_records(project_root, project_context=context):
         if original["kind"] == "playbook" and original["status"] != "approved":
             continue
         item = dict(original)
@@ -468,12 +497,18 @@ def retrieve_production_context(
     return _envelope(ranked, limit)
 
 
-def validate_production_project(project_root):
+def validate_production_project(project_root, *, project_context=None):
     root = Path(project_root).resolve()
+    context = project_context or project_registry.project_context_for_root(root)
     errors = []
     warnings = []
-    record_paths = sorted((root / "memory" / "production-records").glob("*.md"))
-    playbook_paths = sorted((root / "playbooks").glob("*.md"))
+    record_paths = sorted(
+        project_registry.canonical_path(context, "production_records").glob("*.md")
+    )
+    playbook_paths = sorted(
+        project_registry.canonical_path(context, "playbooks").glob("*.md")
+    )
+    issues_root = project_registry.canonical_path(context, "issues")
     if not record_paths and not playbook_paths:
         return {"errors": [], "warnings": []}
 
@@ -508,7 +543,7 @@ def validate_production_project(project_root):
         if record["lifecycle"] not in allowed_lifecycle:
             errors.append(f"{prefix}: invalid lifecycle: {record['lifecycle']}")
         if record["issue_id"]:
-            if not (root / "issues" / f"{record['issue_id']}.md").exists():
+            if not (issues_root / f"{record['issue_id']}.md").exists():
                 errors.append(f"{prefix}: dangling issue reference: {record['issue_id']}")
         elif not record.get("source_context"):
             errors.append(f"{prefix}: issue_id or source_context is required")
@@ -568,13 +603,19 @@ def validate_production_project(project_root):
 PRODUCTION_DIRS = ("memory/production-records", "playbooks")
 
 
-def build_production_plan(project_root, dry_run=True):
+def build_production_plan(project_root, dry_run=True, *, project_context=None):
     root = Path(project_root).resolve()
+    context = project_context or project_registry.project_context_for_root(root)
+    directories = [
+        project_registry.canonical_path(context, key).relative_to(root).as_posix()
+        for key in ("production_records", "playbooks")
+    ]
     return {
         "schema": "moduflow.production-plan.v1",
         "project_root": str(root),
         "dry_run": dry_run,
-        "writes": [relative for relative in PRODUCTION_DIRS if not (root / relative).exists()],
+        "directories": directories,
+        "writes": [relative for relative in directories if not (root / relative).exists()],
         "preserves_existing_files": True,
     }
 
@@ -582,7 +623,7 @@ def build_production_plan(project_root, dry_run=True):
 def apply_production_plan(plan):
     root = Path(plan["project_root"])
     written = []
-    for relative in PRODUCTION_DIRS:
+    for relative in plan.get("directories", PRODUCTION_DIRS):
         target = root / relative
         if not target.exists():
             target.mkdir(parents=True)
@@ -695,11 +736,16 @@ def create_production_record(
     owner="",
     variant="",
     created=None,
+    project_context=None,
 ):
     if not issue_id and not source_context:
         raise ValueError("issue_id or source_context is required")
     root = Path(project_root).resolve()
-    apply_production_plan(build_production_plan(root, dry_run=False))
+    context = project_context or project_registry.project_context_for_root(root)
+    apply_production_plan(
+        build_production_plan(root, dry_run=False, project_context=context)
+    )
+    records_root = project_registry.canonical_path(context, "production_records")
     created = created or date.today().isoformat()
     base_record_id = f"{created}-{project_memory.slugify(title)}"
 
@@ -727,7 +773,7 @@ def create_production_record(
         "variant": variant,
         "title": title,
     }
-    for existing in list_production_records(root):
+    for existing in list_production_records(root, project_context=context):
         if _capture_key(existing) == _capture_key(candidate):
             existing_path = root / existing["path"]
             action = (
@@ -737,18 +783,18 @@ def create_production_record(
             )
             return {"action": action, "id": existing["id"], "path": existing["path"]}
     record_id = base_record_id
-    relative = f"memory/production-records/{record_id}.md"
-    target = root / relative
+    target = records_root / f"{record_id}.md"
+    relative = target.relative_to(root).as_posix()
     if target.exists():
         source_slug = project_memory.slugify(issue_id or source_context)
         record_id = f"{base_record_id}-{source_slug}"
-        relative = f"memory/production-records/{record_id}.md"
-        target = root / relative
+        target = records_root / f"{record_id}.md"
+        relative = target.relative_to(root).as_posix()
         suffix = 2
         while target.exists():
             record_id = f"{base_record_id}-{source_slug}-{suffix}"
-            relative = f"memory/production-records/{record_id}.md"
-            target = root / relative
+            target = records_root / f"{record_id}.md"
+            relative = target.relative_to(root).as_posix()
             suffix += 1
     content = render(record_id)
     target.write_text(content, encoding="utf-8")

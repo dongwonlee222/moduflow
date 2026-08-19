@@ -187,6 +187,48 @@ class MCPServerTests(unittest.TestCase):
         self.assertEqual(fetched["id"], "BIZ-CUSTOM")
         self.assertIn("Configured issue outcome.", fetched["outcome"])
 
+    def test_injected_project_context_is_reused_and_preserves_mcp_contract(self):
+        custom_issues = self.root / "product" / "issues"
+        custom_issues.mkdir(parents=True)
+        (self.root / ".moduflow" / "config.json").write_text(
+            json.dumps(
+                {
+                    "paths": {
+                        "issues": "product/issues",
+                        "specs": "product/specs",
+                        "workspace": "product/workspace",
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        (custom_issues / "CONFIGURED-001.md").write_text(
+            "# Configured MCP issue\n\n**Status: backlog** — created.\n",
+            encoding="utf-8",
+        )
+        context = mcp_server.project_registry.project_context_for_root(self.root)
+        req = {
+            "jsonrpc": "2.0",
+            "id": 45,
+            "method": "tools/call",
+            "params": {"name": "moduflow_issues", "arguments": {}},
+        }
+
+        with mock.patch.object(
+            mcp_server.project_registry,
+            "project_context_for_root",
+            side_effect=AssertionError("context resolved twice"),
+        ):
+            response = mcp_server.handle_request(
+                req, self.root, project_context=context
+            )
+
+        payload = json.loads(response["result"]["content"][0]["text"])
+        self.assertEqual(payload["schema"], "moduflow.mcp.v1")
+        self.assertEqual(
+            [item["id"] for item in payload["issues"]], ["CONFIGURED-001"]
+        )
+
     def test_issue_get_internal_symlink_keeps_record_identity_consistent(self):
         target = self.root / "issues" / "BIZ-CANON.md"
         target.write_text(
@@ -467,7 +509,10 @@ class MCPServerTests(unittest.TestCase):
                         },
                         self.root,
                     )
-                evaluate.assert_called_once_with(self.root.resolve())
+                self.assertEqual(evaluate.call_count, 1)
+                args, kwargs = evaluate.call_args
+                self.assertEqual(args, (self.root.resolve(),))
+                self.assertEqual(kwargs["project_paths"]["issues"], "issues")
 
     def test_doctor_tool_is_exception_safe(self):
         req = {
