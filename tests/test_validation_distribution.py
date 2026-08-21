@@ -581,6 +581,26 @@ next_command: {next_command}
         self.assertIn('"tests.test_canonical_path_guard"', release_source)
         self.assertIn('"canonical_path_guard"', release_source)
 
+    def test_distribution_ships_project_operation_policy_and_audit(self):
+        validator = load_module(
+            "validate_moduflow_project_operation", "scripts/validate_moduflow.py"
+        )
+        packaged = {
+            "scripts/project_operation.py",
+            "scripts/project_operation_audit.py",
+            "config/project-operation-entrypoints.json",
+        }
+        source_only = {
+            "tests/test_project_operation.py",
+            "tests/test_project_operation_audit.py",
+            "tests/project_operation_fixture.py",
+        }
+
+        self.assertTrue(packaged.issubset(set(validator.REQUIRED_FILES)))
+        self.assertTrue(source_only.issubset(set(validator.REQUIRED_FILES)))
+        self.assertTrue(source_only.issubset(set(validator.SOURCE_ONLY_REQUIRED_FILES)))
+        self.assertTrue(all((ROOT / path).is_file() for path in packaged | source_only))
+
     def test_issue_consumers_import_shared_schema_without_duplicate_parsers(self):
         forbidden_definitions = {
             "parse_issue_frontmatter",
