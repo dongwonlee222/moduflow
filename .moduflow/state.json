@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "spec",
+  "phase": "plan",
   "active_goal": "trustworthy-execution-and-project-knowledge",
   "active_issue": "110-project-operation-capability-enforcement",
-  "last_command": "product:spec 110-project-operation-capability-enforcement",
-  "next_command": "product:spec 110-project-operation-capability-enforcement",
+  "last_command": "product:plan 110-project-operation-capability-enforcement",
+  "next_command": "product:execute 110-project-operation-capability-enforcement",
   "blockers": [],
   "updated_at": "2026-08-21"
 }

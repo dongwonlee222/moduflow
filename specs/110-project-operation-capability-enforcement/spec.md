@@ -127,6 +127,8 @@ The resolver additions are exact and additive:
 
 Existing resolution `status` continues to mean `resolved | unresolved | ambiguous`; it is not renamed or overloaded. Existing raw `trust_scope` remains for compatibility, while `policy_trust_scope` is the normalized authorization input.
 
+Legacy explicit-root contexts have no portfolio registry record and currently expose raw `trust_scope: project-local`. To preserve the accepted positional-root compatibility contract, `project_context_for_root()` emits synthetic `project_status: active` and `policy_trust_scope: internal` while retaining `trust_scope: project-local` and both synthetic sources in `policy_inputs`. A resolver-selected registry context never uses this compatibility mapping: its observed registry status and trust values remain authoritative.
+
 ### 2. One authorization decision and one enforcing guard
 
 The policy layer exposes two interfaces:

@@ -122,6 +122,8 @@ Resolver에 추가되는 필드는 정확히 다음과 같으며 기존 결과�
 
 기존 resolution `status`는 계속 `resolved | unresolved | ambiguous`를 뜻하며 이름을 바꾸거나 다른 의미를 섞지 않는다. 기존 raw `trust_scope`는 호환성을 위해 유지하고 `policy_trust_scope`를 정규화된 authorization 입력으로 사용한다.
 
+레거시 explicit-root context에는 portfolio registry record가 없고 현재 raw `trust_scope: project-local`을 노출한다. 승인된 positional-root 호환 계약을 유지하기 위해 `project_context_for_root()`는 `trust_scope: project-local`과 synthetic source evidence를 `policy_inputs`에 보존하면서 synthetic `project_status: active`, `policy_trust_scope: internal`을 반환한다. Resolver가 registry에서 선택한 context에는 이 호환 매핑을 사용하지 않으며 관찰된 registry status/trust가 항상 권위다.
+
 ### 2. 하나의 authorization decision과 enforcing guard
 
 ```python

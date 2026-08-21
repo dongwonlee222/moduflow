@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is merged. Issue 110 capability enforcement has an approved design and its bilingual specification is ready for human review before planning.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is merged. Issue 110 capability enforcement has an approved bilingual specification and a source-audited implementation plan ready for execution approach selection.
 
 ## Active Goal
 
@@ -10,12 +10,12 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is merged. Issue 1
 
 ## Active Issue
 
-- `110-project-operation-capability-enforcement` — specification review; central capability guard design approved, implementation not started.
+- `110-project-operation-capability-enforcement` — implementation plan ready; nine reviewable tasks, implementation not started.
 
 ## Priority Queue — 2026-08-21
 
 - Merged: `109` canonical project-context consumer convergence — PR #41 merged as `9df5f02` after local and GitHub CI verification.
-- Now: `110` project operation capability enforcement — P0; bilingual specification ready for human review, then `product:plan`.
+- Now: `110` project operation capability enforcement — P0; policy/resolver/mutator audit completed for planning, then `product:execute` after approach selection.
 - Review now: `103` atomic lifecycle state transaction — English/Korean spec ready; implementation is now blocked only by 110.
 - Parallel before next release: `111` runtime provenance and validation-mode separation — P1, does not block 103.
 - Verified intake: four Issue 102 findings accepted and mapped to exactly three non-duplicate issues in `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`.

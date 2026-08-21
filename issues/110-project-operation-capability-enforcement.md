@@ -1,6 +1,6 @@
 # Issue 110: Project Operation Capability Enforcement
 
-**Status: active** — created 2026-08-21; design approved and specification authored 2026-08-21.
+**Status: active** — created 2026-08-21; design/specification approved and implementation plan authored 2026-08-21.
 **Priority: p0**
 **Blocked-by: `102-project-registry-and-resolver`**
 
@@ -14,7 +14,7 @@ Separate project discovery from operation authorization by returning explicit pr
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`
 - Verified against: `010eee8eeec37edd6902f2dd008e7164f715e7b1`
 - Owner / decision maker: Dongwon Lee
-- Current phase: specification ready for human review
+- Current phase: implementation plan ready; execution approach selection pending
 
 ## Opportunity
 
@@ -72,7 +72,7 @@ Do not interpret resolver success as write approval, weaken downstream safety ga
 ## Workflow Tasks
 
 - [x] spec → `specs/110-project-operation-capability-enforcement/spec.md` + `spec.ko.md`
-- [ ] plan
+- [x] plan → `specs/110-project-operation-capability-enforcement/plan.md` + `tasks.md`
 - [ ] execute → capability schema, central guard, workflow enforcement, and tests
 - [ ] review
 
@@ -93,7 +93,10 @@ Do not interpret resolver success as write approval, weaken downstream safety ga
 - Finding source: `specs/102-project-registry-and-resolver/external-review-2026-08-21.json`
 - Spec: `specs/110-project-operation-capability-enforcement/spec.md`
 - Korean spec: `specs/110-project-operation-capability-enforcement/spec.ko.md`
+- Plan: `specs/110-project-operation-capability-enforcement/plan.md`
+- Tasks: `specs/110-project-operation-capability-enforcement/tasks.md`
+- Implementation readiness: `specs/110-project-operation-capability-enforcement/implementation-readiness.json`
 
 ## Next Command
 
-`product:spec 110-project-operation-capability-enforcement` — human review pending before `product:plan`.
+`product:execute 110-project-operation-capability-enforcement` — execution approach selection pending.
