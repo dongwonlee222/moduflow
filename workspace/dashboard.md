@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is merged. Issue 110 Stream A and B1 core mutation enforcement are implemented; execution/review enforcement is next.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is merged. Issue 110 Stream A and B1–B2 enforcement are implemented; support/Spec Kit enforcement is next.
 
 ## Active Goal
 
@@ -10,12 +10,12 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is merged. Issue 1
 
 ## Active Issue
 
-- `110-project-operation-capability-enforcement` — execution; A1–A3 and B1 complete, B2 execution/review enforcement next.
+- `110-project-operation-capability-enforcement` — execution; A1–A3 and B1–B2 complete, B3 support/Spec Kit enforcement next.
 
 ## Priority Queue — 2026-08-21
 
 - Merged: `109` canonical project-context consumer convergence — PR #41 merged as `9df5f02` after local and GitHub CI verification.
-- Now: `110` project operation capability enforcement — P0; core artifact/lifecycle owners are guarded, the read-only memory listing no longer deletes stale files, and 35 guard owners remain across B2–C2.
+- Now: `110` project operation capability enforcement — P0; core and execution/review owners are guarded, read-only diagnostics remain available, and 26 guard owners remain across B3–C2.
 - Review now: `103` atomic lifecycle state transaction — English/Korean spec ready; implementation is now blocked only by 110.
 - Parallel before next release: `111` runtime provenance and validation-mode separation — P1, does not block 103.
 - Verified intake: four Issue 102 findings accepted and mapped to exactly three non-duplicate issues in `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`.
