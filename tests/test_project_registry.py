@@ -774,6 +774,33 @@ class ProjectContextCompatibilityTests(unittest.TestCase):
             self.assertEqual(selection_path.read_bytes(), before)
             self.assertFalse((base / "project-selection.json.tmp").exists())
 
+    def test_read_only_portfolio_denies_selection_before_temp_file_creation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            project = base / "project-a"
+            project.mkdir()
+            registry_path = self.write_v2_registry(
+                base, [("project-a", "Project A", project)]
+            )
+            context = self.registry.project_context_for_root(base)
+            context.update(
+                self.registry.project_operation.compute_project_policy(
+                    "active",
+                    "read-only",
+                )
+            )
+
+            with self.assertRaisesRegex(Exception, "trust scope is read-only"):
+                self.registry.record_recent_selection(
+                    registry_path,
+                    "project-a",
+                    "2026-08-19T10:30:00+09:00",
+                    portfolio_context=context,
+                )
+
+            self.assertFalse((base / "project-selection.json").exists())
+            self.assertFalse((base / "project-selection.json.tmp").exists())
+
     def test_invalid_or_unregistered_selection_is_ignored_with_warning(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

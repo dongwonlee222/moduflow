@@ -916,8 +916,20 @@ def load_recent_selection(registry_path):
     }
 
 
-def record_recent_selection(registry_path, project_id, selected_at):
+def record_recent_selection(
+    registry_path,
+    project_id,
+    selected_at,
+    *,
+    portfolio_context=None,
+):
     """Atomically record an explicit registered-project selection."""
+    portfolio_root = Path(registry_path).resolve().parent
+    context = context_for_operation(
+        portfolio_root,
+        project_context=portfolio_context,
+    )
+    project_operation.require_project_capability(context, "write")
     registry = load_project_registry(registry_path)
     if not registry.get("valid"):
         raise ValueError("cannot select from an invalid project registry")
