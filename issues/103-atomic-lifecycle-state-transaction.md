@@ -1,8 +1,8 @@
 # Issue 103: Atomic Lifecycle State Transaction
 
-**Status: backlog** — created 2026-08-19.
+**Status: backlog** — created 2026-08-19; specification drafted 2026-08-21 and awaiting human review.
 **Priority: p0**
-**Blocked-by:**
+**Blocked-by: `109-canonical-project-context-consumer-convergence`, `110-project-operation-capability-enforcement`**
 
 ## Summary
 
@@ -13,7 +13,7 @@ Replace best-effort lifecycle propagation with a validated application-level tra
 - Type: user multi-project orchestration improvement request
 - Link: local Codex attachment `pasted-text.txt`, 2026-08-19
 - Owner / decision maker: Dongwon Lee
-- Current phase: backlog
+- Current phase: specification review; implementation dependency gate is closed
 
 ## Opportunity
 
@@ -23,6 +23,7 @@ Issue 048 made the issue status canonical and added drift detection plus a singl
 
 ### In
 
+- Require a resolved canonical project context and centrally enforced write capability before transaction staging.
 - Define a change plan that lists every affected canonical and derived artifact before writes.
 - Render changes to temporary results, validate the complete projected state, then apply all changes together.
 - Restore the original byte content when any validation or write step fails.
@@ -34,7 +35,7 @@ Issue 048 made the issue status canonical and added drift detection plus a singl
 ### Out
 
 - Replacing issue Markdown as lifecycle truth.
-- Changing the issue schema or project resolution contract.
+- Changing the issue schema, project resolution contract, canonical path adoption, or capability policy.
 - Distributed transactions across remote GitHub objects or external SaaS systems.
 
 ## Acceptance Criteria
@@ -46,6 +47,8 @@ Issue 048 made the issue status canonical and added drift detection plus a singl
 - Priority changes include roadmap projection; non-priority changes do not rewrite roadmap prose.
 - Transaction evidence records affected paths, validation result, applied/noop/rolled_back status, and next command.
 - Existing Issue 048 drift checks continue to pass and detect any bypassed manual mutation.
+- Issue 109 nested canonical paths are honored for every target, and Issue 110 write denial returns before any transaction-local file is created.
+- Process termination at every durable journal boundary either recovers deterministically or blocks later mutation with `recovery_required`.
 
 ## Verification
 
@@ -69,15 +72,15 @@ Do not change project resolution, migrate legacy schemas, or make remote GitHub 
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/103-atomic-lifecycle-state-transaction/spec.md`
-- [ ] plan → `specs/103-atomic-lifecycle-state-transaction/plan.md`
+- [x] spec draft → `specs/103-atomic-lifecycle-state-transaction/spec.md` + `spec.ko.md` (awaiting human approval)
+- [ ] plan → create after specification approval and Issues 109/110 completion
 - [ ] execute → transaction planner, staged validation, rollback, evidence, and tests
-- [ ] review → `specs/103-atomic-lifecycle-state-transaction/review.md`
+- [ ] review → create after implementation verification
 
 ## Related Issues
 
 - blocks: `104-project-aware-natural-language-request-orchestrator`, `105-schema-migration-and-doctor-triage`
-- blocked_by:
+- blocked_by: `109-canonical-project-context-consumer-convergence`, `110-project-operation-capability-enforcement`
 - duplicates:
 - follows_up: `019-loop-kernel-and-state-model`, `048-artifact-lifecycle-sync`
 - supersedes:
@@ -88,7 +91,12 @@ Do not change project resolution, migrate legacy schemas, or make remote GitHub 
 - Goal: `workspace/goal.md`
 - Roadmap: `workspace/roadmap.md`
 - Source audit: `specs/102-project-registry-and-resolver/source-audit.md`
+- Spec: `specs/103-atomic-lifecycle-state-transaction/spec.md`
+- Korean spec: `specs/103-atomic-lifecycle-state-transaction/spec.ko.md`
+- Issue 102 follow-up review: `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`
 
 ## Next Command
 
-`product:spec 103-atomic-lifecycle-state-transaction`
+Dependency-first: `product:spec 109-canonical-project-context-consumer-convergence`.
+
+After spec approval and Issues 109/110 completion: `product:plan 103-atomic-lifecycle-state-transaction`.

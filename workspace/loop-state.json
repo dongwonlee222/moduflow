@@ -23,27 +23,30 @@
     "105-schema-migration-and-doctor-triage",
     "106-korean-production-search-and-stable-ids",
     "107-shared-approved-playbook-layer",
-    "108-production-approval-and-verification-gates"
+    "108-production-approval-and-verification-gates",
+    "109-canonical-project-context-consumer-convergence",
+    "110-project-operation-capability-enforcement",
+    "111-runtime-provenance-and-validation-mode-separation"
   ],
-  "active_issue_id": "102-project-registry-and-resolver",
-  "phase": "status",
+  "active_issue_id": "109-canonical-project-context-consumer-convergence",
+  "phase": "select",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:status",
+  "next_command": "product:spec 109-canonical-project-context-consumer-convergence",
   "attempts": {
-    "command": "product:status",
+    "command": "product:spec 109-canonical-project-context-consumer-convergence",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-08-19"
+    "last_changed_at": "2026-08-21"
   },
-  "blocker": null,
-  "last_action": "completed Issue 102 registry/resolver implementation, consumer convergence, review, and release verification",
-  "last_verification": "2026-08-19: 1225/1225 tests, project validation, zero lifecycle drift, and release check passed",
-  "updated_at": "2026-08-19",
+  "blocker": "Issues 109 and 110 must complete before Issue 103 implementation",
+  "last_action": "accepted Issue 102 external validation, registered Issues 109-111, and drafted the Issue 103 specification without implementation",
+  "last_verification": "2026-08-21: review packet final validation passed; source baseline release check remained valid",
+  "updated_at": "2026-08-21",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/102-project-registry-and-resolver",
+    "branch": "codex/109-canonical-project-context-consumer-convergence",
     "base_branch": "main",
     "commits": [
       "f980aef",
@@ -146,7 +149,7 @@
       "f4029f3"
     ],
     "pull_request": null,
-    "release": "Issues 095 and 098 are on main; latest merge 513e08f; ModuFlow 0.3.48 is installed locally",
+    "release": "Issue 102 is merged on main as 010eee8; ModuFlow 0.3.49 source validation passed and runtime diagnostics are tracked by Issue 111",
     "execution_backend": {
       "type": "host-subagent",
         "status": "complete",

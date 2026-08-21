@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issue 102 is implemented and release-verified on its isolated branch. The next P0 contract is Issue 103; wider/default Spec Kit activation remains prohibited.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 102 is merged and its external validation findings are accepted. Issue 103 has a reviewable specification, but implementation is gated by P0 Issues 109 and 110.
 
 ## Active Goal
 
@@ -10,12 +10,16 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 102 is implemented and
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- None active. Issue 103 specification is drafted for review; the next selectable work is Issue 109 specification.
 
-## Priority Queue — 2026-08-19
+## Priority Queue — 2026-08-21
 
-- Now: `103` atomic lifecycle state transaction; Issue 102's project context contract is complete. Next command is `product:status` before starting its spec workflow.
-- Shipped on branch: `102` project registry/resolver; 1,225 tests and release check passed, package source version 0.3.49. Human integration remains pending.
+- Now: `109` canonical project-context consumer convergence — P0 and the first dependency to specify.
+- Now: `110` project operation capability enforcement — P0; can be specified alongside 109 and must finish before 103 implementation.
+- Review now: `103` atomic lifecycle state transaction — English/Korean spec ready; implementation blocked by 109 and 110.
+- Parallel before next release: `111` runtime provenance and validation-mode separation — P1, does not block 103.
+- Verified intake: four Issue 102 findings accepted and mapped to exactly three non-duplicate issues in `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`.
+- Shipped: `102` project registry/resolver merged as `010eee8`; 1,225 tests and source release check passed, package source version 0.3.49.
 - Shipped: `098` selective Spec Kit validation adapter merged via PR #37 as `513e08f`, installed locally as ModuFlow 0.3.48, and remains project-opt-in only.
 - Shipped: `097` merged via PR #36 as `46f98c0`; routing simulation and CI passed.
 - Shipped: `095` merged via PR #33 as `f4029f3`; post-merge release check passed.

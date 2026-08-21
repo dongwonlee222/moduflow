@@ -1,0 +1,838 @@
+{
+  "schema": "moduflow.review-intake.v1",
+  "review_id": "2026-08-21-issue-102-post-release-validation",
+  "source": {
+    "kind": "ai",
+    "provider": "external-project-validation",
+    "identity": "external-project-validation",
+    "received_at": "2026-08-21",
+    "retention": "reference",
+    "locator": "/Users/dongwon.lee/.config/superpowers/worktrees/moduflow/109-111-review-followups-and-103-spec/specs/102-project-registry-and-resolver/external-review-2026-08-21.json",
+    "sha256": "82ab31ee9525bc6941804d2bd3f14b3e12da73afb8e6131014bca660a47f4661"
+  },
+  "target": {
+    "repository": "github.com/dongwonlee222/moduflow",
+    "commit": "010eee8eeec37edd6902f2dd008e7164f715e7b1",
+    "base_branch": "main"
+  },
+  "trigger": {
+    "event": "manual_intake",
+    "reason_codes": [
+      "review_received"
+    ]
+  },
+  "adapter_run": {
+    "invoked": [
+      "manual-review-document",
+      "superpowers-review"
+    ],
+    "skipped": [
+      "github-review",
+      "security-review",
+      "spec-kit"
+    ],
+    "reason_codes": [
+      "manual_source"
+    ]
+  },
+  "findings": [
+    {
+      "id": "F-001",
+      "fingerprint": "sha256:b51f35ce1ad8ea44f3535418fda838f69a9a4b49443bcb9fd0e1fa65359e604f",
+      "rule_id": "MF102-CANONICAL-CONSUMER-GAP",
+      "source_author": {
+        "kind": "ai",
+        "identity": "external-project-validation"
+      },
+      "observation": "Several project-aware consumers still construct knowledge, workflow, workspace, issue, memory, and spec paths directly from the project root instead of consuming the resolved project context.",
+      "recommendation": "Audit every project path consumer and migrate it to project_registry.canonical_path through an explicit resolved project context, with non-default-path contract tests.",
+      "root_cause_hypothesis": "Issue 102 migrated the planned initial consumer set but its broader all-consumer completion claim was not backed by an exhaustive direct-path audit.",
+      "reviewer_confidence": "high",
+      "locations": [
+        {
+          "path": "scripts/project_knowledge.py",
+          "line": 84,
+          "anchor": "knowledge"
+        },
+        {
+          "path": "scripts/project_workflow.py",
+          "line": 100,
+          "anchor": "workflow"
+        },
+        {
+          "path": "scripts/validate_project_artifacts.py",
+          "line": 116,
+          "anchor": "workspace"
+        },
+        {
+          "path": "scripts/project_review.py",
+          "line": 374,
+          "anchor": "workspace/reviews"
+        },
+        {
+          "path": "scripts/project_converge.py",
+          "line": 296,
+          "anchor": "specs"
+        },
+        {
+          "path": "scripts/worker_orchestrator.py",
+          "line": 275,
+          "anchor": "specs"
+        },
+        {
+          "path": "scripts/spec_consistency.py",
+          "line": 161,
+          "anchor": "specs"
+        }
+      ],
+      "provider_evidence": {
+        "kind": "review",
+        "format": "manual",
+        "target": "0.3.49"
+      },
+      "verification": {
+        "state": "confirmed",
+        "verifier": {
+          "kind": "ai",
+          "identity": "Codex",
+          "role": "verifier",
+          "run_id": "codex-2026-08-21-review-intake"
+        },
+        "files_checked": [
+          "scripts/project_knowledge.py",
+          "scripts/project_workflow.py",
+          "scripts/validate_project_artifacts.py",
+          "scripts/project_review.py",
+          "scripts/project_converge.py",
+          "scripts/worker_orchestrator.py",
+          "scripts/spec_consistency.py"
+        ],
+        "reproduction": [
+          "Direct root/path construction remains in every reported consumer.",
+          "Issue 102 declares a canonical context boundary while its implementation plan omitted these consumers from the named migration set."
+        ],
+        "tests": [
+          "python3 scripts/release_check.py . (baseline valid; demonstrates current coverage does not detect the omitted consumers)"
+        ],
+        "architecture": [
+          "Issue 102 canonical path service requires project-aware consumers to receive resolved context rather than reconstruct paths."
+        ],
+        "import_boundaries": [
+          "consumer -> scripts.project_registry.canonical_path"
+        ],
+        "contradictions": [],
+        "verified_at": "2026-08-21"
+      },
+      "risk": {
+        "severity": "high",
+        "release_impact": "unknown",
+        "no_risk_claim": false,
+        "no_risk_state": "not_claimed"
+      },
+      "router": {
+        "classification": "unclassified",
+        "confidence": "low",
+        "proposed_lane": null,
+        "reason_codes": [],
+        "actor": null
+      },
+      "disposition": {
+        "state": "accept",
+        "rationale": "The observation is directly present in source and violates Issue 102's broader canonical-consumer contract. Register a corrective P0 follow-up rather than rewriting the released Issue 102 history.",
+        "decided_by": {
+          "kind": "human",
+          "identity": "Dongwon Lee",
+          "run_id": "codex-2026-08-21-owner-approval"
+        },
+        "decided_at": "2026-08-21",
+        "human_approved": true,
+        "accepted_scope": null
+      },
+      "decision_history": [
+        {
+          "state": "accept",
+          "rationale": "The observation is directly present in source and violates Issue 102's broader canonical-consumer contract. Register a corrective P0 follow-up rather than rewriting the released Issue 102 history.",
+          "decided_by": {
+            "kind": "human",
+            "identity": "Dongwon Lee",
+            "run_id": "codex-2026-08-21-owner-approval"
+          },
+          "decided_at": "2026-08-21",
+          "human_approved": true,
+          "accepted_scope": null
+        }
+      ],
+      "route": {
+        "lane": "pre_release",
+        "CognitiveDemand": "deep",
+        "candidate_ids": [
+          "2026-08-21-issue-102-post-release-validation-RC-001"
+        ],
+        "existing_issue_ids": [
+          "109-canonical-project-context-consumer-convergence"
+        ]
+      },
+      "policy": {
+        "lane": "pre_release",
+        "CognitiveDemand": "deep",
+        "requires_verifier": true,
+        "requires_human_for_reject": true,
+        "reason_codes": [
+          "elevated_severity"
+        ]
+      }
+    },
+    {
+      "id": "F-002",
+      "fingerprint": "sha256:e7a1b981e137cc3127a26c8b0b538c8a3f4528f8854124a1560145b039b1a656",
+      "rule_id": "MF102-PROJECT-CAPABILITY-GAP",
+      "source_author": {
+        "kind": "ai",
+        "identity": "external-project-validation"
+      },
+      "observation": "The resolver returns archived and read-only projects as resolved without exposing project_status or operation capabilities, and mutating workflows do not share a project capability gate.",
+      "recommendation": "Add project_status plus read, write, execute, and publish capabilities to resolved context and require every mutating workflow to fail closed on the relevant denied capability.",
+      "root_cause_hypothesis": "Resolution identity and operation authorization were modeled as one success state even though registry status and trust scope are separate policy inputs.",
+      "reviewer_confidence": "high",
+      "locations": [
+        {
+          "path": "scripts/project_registry.py",
+          "line": 468,
+          "anchor": "_resolution_base"
+        },
+        {
+          "path": "scripts/project_registry.py",
+          "line": 503,
+          "anchor": "_resolved"
+        },
+        {
+          "path": "scripts/project_execution.py",
+          "line": 198,
+          "anchor": "write_implementation_readiness"
+        },
+        {
+          "path": "scripts/project_github_issues.py",
+          "line": 222,
+          "anchor": "sync_issue"
+        }
+      ],
+      "provider_evidence": {
+        "kind": "review",
+        "format": "manual",
+        "target": "0.3.49"
+      },
+      "verification": {
+        "state": "confirmed",
+        "verifier": {
+          "kind": "ai",
+          "identity": "Codex",
+          "role": "verifier",
+          "run_id": "codex-2026-08-21-review-intake"
+        },
+        "files_checked": [
+          "scripts/project_registry.py",
+          "scripts/project_execution.py",
+          "scripts/project_github_issues.py"
+        ],
+        "reproduction": [
+          "An explicit archived-demo project with trust_scope=read-only resolved successfully with no project_status or capabilities fields."
+        ],
+        "tests": [
+          "inline resolve_loaded_registry archived/read-only reproduction",
+          "python3 scripts/release_check.py . (baseline valid)"
+        ],
+        "architecture": [
+          "Project selection and operation authorization must remain separate contracts; mutators consume the authorization result."
+        ],
+        "import_boundaries": [
+          "mutating workflow -> project capability decision"
+        ],
+        "contradictions": [],
+        "verified_at": "2026-08-21"
+      },
+      "risk": {
+        "severity": "high",
+        "release_impact": "unknown",
+        "no_risk_claim": false,
+        "no_risk_state": "not_claimed"
+      },
+      "router": {
+        "classification": "unclassified",
+        "confidence": "low",
+        "proposed_lane": null,
+        "reason_codes": [],
+        "actor": null
+      },
+      "disposition": {
+        "state": "accept",
+        "rationale": "The resolver preserves trust_scope in the catalog but omits project status and operation capabilities from the resolved result. This is a P0 authorization boundary and must precede Issue 103 implementation.",
+        "decided_by": {
+          "kind": "human",
+          "identity": "Dongwon Lee",
+          "run_id": "codex-2026-08-21-owner-approval"
+        },
+        "decided_at": "2026-08-21",
+        "human_approved": true,
+        "accepted_scope": null
+      },
+      "decision_history": [
+        {
+          "state": "accept",
+          "rationale": "The resolver preserves trust_scope in the catalog but omits project status and operation capabilities from the resolved result. This is a P0 authorization boundary and must precede Issue 103 implementation.",
+          "decided_by": {
+            "kind": "human",
+            "identity": "Dongwon Lee",
+            "run_id": "codex-2026-08-21-owner-approval"
+          },
+          "decided_at": "2026-08-21",
+          "human_approved": true,
+          "accepted_scope": null
+        }
+      ],
+      "route": {
+        "lane": "pre_release",
+        "CognitiveDemand": "deep",
+        "candidate_ids": [
+          "2026-08-21-issue-102-post-release-validation-RC-002"
+        ],
+        "existing_issue_ids": [
+          "110-project-operation-capability-enforcement"
+        ]
+      },
+      "policy": {
+        "lane": "pre_release",
+        "CognitiveDemand": "deep",
+        "requires_verifier": true,
+        "requires_human_for_reject": true,
+        "reason_codes": [
+          "elevated_severity"
+        ]
+      }
+    },
+    {
+      "id": "F-003",
+      "fingerprint": "sha256:c6011f9c0b26db4503be768bcce48763ed5f81a8a6e2711c1d4acb6e3cb57ce3",
+      "rule_id": "MF102-VALIDATION-MODE-CONFLATION",
+      "source_author": {
+        "kind": "ai",
+        "identity": "external-project-validation"
+      },
+      "observation": "The installed plugin cache passes package validation but fails the source repository release check and project Doctor because those commands require Git history, full source tests, and project artifacts intentionally omitted from the cache.",
+      "recommendation": "Separate source release validation, installed plugin self-check, and target project Doctor into explicit modes with mode-appropriate requirements and messages.",
+      "root_cause_hypothesis": "Validation entry points identify their target from the supplied path without a package/source/project role contract.",
+      "reviewer_confidence": "high",
+      "locations": [
+        {
+          "path": "scripts/release_check.py",
+          "line": 1,
+          "anchor": "release_check"
+        },
+        {
+          "path": "scripts/validate_moduflow.py",
+          "line": 1,
+          "anchor": "validate_moduflow"
+        },
+        {
+          "path": "scripts/project_doctor.py",
+          "line": 1,
+          "anchor": "project_doctor"
+        },
+        {
+          "path": "scripts/register_codex_personal_marketplace.py",
+          "line": 132,
+          "anchor": "copy_plugin_cache"
+        }
+      ],
+      "provider_evidence": {
+        "kind": "review",
+        "format": "manual",
+        "target": "0.3.49"
+      },
+      "verification": {
+        "state": "confirmed",
+        "verifier": {
+          "kind": "ai",
+          "identity": "Codex",
+          "role": "verifier",
+          "run_id": "codex-2026-08-21-review-intake"
+        },
+        "files_checked": [
+          "scripts/release_check.py",
+          "scripts/validate_moduflow.py",
+          "scripts/project_doctor.py",
+          "scripts/register_codex_personal_marketplace.py"
+        ],
+        "reproduction": [
+          "Installed cache package validation passed 178 required files while source release check and project Doctor failed because .git, full issues/specs, and source tests are intentionally absent."
+        ],
+        "tests": [
+          "python3 scripts/validate_moduflow.py <installed-cache>",
+          "python3 scripts/release_check.py <installed-cache>",
+          "python3 scripts/project_doctor.py <installed-cache>"
+        ],
+        "architecture": [
+          "Source release, installed package integrity, and target project health are separate validation targets."
+        ],
+        "import_boundaries": [
+          "validation mode -> mode-specific required artifacts"
+        ],
+        "contradictions": [],
+        "verified_at": "2026-08-21"
+      },
+      "risk": {
+        "severity": "medium",
+        "release_impact": "unknown",
+        "no_risk_claim": false,
+        "no_risk_state": "not_claimed"
+      },
+      "router": {
+        "classification": "unclassified",
+        "confidence": "low",
+        "proposed_lane": null,
+        "reason_codes": [],
+        "actor": null
+      },
+      "disposition": {
+        "state": "accept",
+        "rationale": "The installed package is valid; the failure is caused by target-role conflation. Group this with runtime provenance because both require one explicit runtime/package identity surface.",
+        "decided_by": {
+          "kind": "human",
+          "identity": "Dongwon Lee",
+          "run_id": "codex-2026-08-21-owner-approval"
+        },
+        "decided_at": "2026-08-21",
+        "human_approved": true,
+        "accepted_scope": null
+      },
+      "decision_history": [
+        {
+          "state": "accept",
+          "rationale": "The installed package is valid; the failure is caused by target-role conflation. Group this with runtime provenance because both require one explicit runtime/package identity surface.",
+          "decided_by": {
+            "kind": "human",
+            "identity": "Dongwon Lee",
+            "run_id": "codex-2026-08-21-owner-approval"
+          },
+          "decided_at": "2026-08-21",
+          "human_approved": true,
+          "accepted_scope": null
+        }
+      ],
+      "route": {
+        "lane": "post_release_refactor",
+        "CognitiveDemand": "deep",
+        "candidate_ids": [
+          "2026-08-21-issue-102-post-release-validation-RC-003"
+        ],
+        "existing_issue_ids": [
+          "111-runtime-provenance-and-validation-mode-separation"
+        ]
+      },
+      "policy": {
+        "lane": "post_release_refactor",
+        "CognitiveDemand": "deep",
+        "requires_verifier": true,
+        "requires_human_for_reject": false,
+        "reason_codes": []
+      }
+    },
+    {
+      "id": "F-004",
+      "fingerprint": "sha256:a75e06305271957dff6b11914c13d72c6a11740c7a0280c09a06b426ffd3ceff",
+      "rule_id": "MF102-RUNTIME-PROVENANCE-GAP",
+      "source_author": {
+        "kind": "ai",
+        "identity": "external-project-validation"
+      },
+      "observation": "Product status and Doctor do not show the actually loaded runtime version, package path, source commit, or loaded-at timestamp, so source, installed cache, and current-session versions cannot be distinguished reliably.",
+      "recommendation": "Publish a runtime provenance record through product status and Doctor with version, package path, source commit, loaded-at, and host/session source.",
+      "root_cause_hypothesis": "Existing installed-plugin checks compare versions for staleness but do not model the active runtime instance.",
+      "reviewer_confidence": "high",
+      "locations": [
+        {
+          "path": "scripts/project_doctor.py",
+          "line": 326,
+          "anchor": "installed_plugin_staleness"
+        },
+        {
+          "path": "scripts/mcp_server.py",
+          "line": 307,
+          "anchor": "doctor summary"
+        },
+        {
+          "path": "scripts/register_codex_personal_marketplace.py",
+          "line": 196,
+          "anchor": "install_codex_personal_plugin"
+        }
+      ],
+      "provider_evidence": {
+        "kind": "review",
+        "format": "manual",
+        "target": "0.3.49"
+      },
+      "verification": {
+        "state": "confirmed",
+        "verifier": {
+          "kind": "ai",
+          "identity": "Codex",
+          "role": "verifier",
+          "run_id": "codex-2026-08-21-review-intake"
+        },
+        "files_checked": [
+          "scripts/project_doctor.py",
+          "scripts/mcp_server.py",
+          "scripts/register_codex_personal_marketplace.py"
+        ],
+        "reproduction": [
+          "Doctor exposes only staleness comparison and does not report active package path, source commit, or loaded-at metadata."
+        ],
+        "tests": [
+          "source inspection of installed_plugin_staleness and MCP Doctor summary"
+        ],
+        "architecture": [
+          "Runtime provenance must describe the active package instance rather than infer it from the newest cache directory."
+        ],
+        "import_boundaries": [
+          "runtime identity provider -> product status and Doctor"
+        ],
+        "contradictions": [],
+        "verified_at": "2026-08-21"
+      },
+      "risk": {
+        "severity": "medium",
+        "release_impact": "unknown",
+        "no_risk_claim": false,
+        "no_risk_state": "not_claimed"
+      },
+      "router": {
+        "classification": "unclassified",
+        "confidence": "low",
+        "proposed_lane": null,
+        "reason_codes": [],
+        "actor": null
+      },
+      "disposition": {
+        "state": "accept",
+        "rationale": "Current status cannot distinguish source, installed, and loaded versions. Group with validation mode separation as one P1 runtime diagnostics issue.",
+        "decided_by": {
+          "kind": "human",
+          "identity": "Dongwon Lee",
+          "run_id": "codex-2026-08-21-owner-approval"
+        },
+        "decided_at": "2026-08-21",
+        "human_approved": true,
+        "accepted_scope": null
+      },
+      "decision_history": [
+        {
+          "state": "accept",
+          "rationale": "Current status cannot distinguish source, installed, and loaded versions. Group with validation mode separation as one P1 runtime diagnostics issue.",
+          "decided_by": {
+            "kind": "human",
+            "identity": "Dongwon Lee",
+            "run_id": "codex-2026-08-21-owner-approval"
+          },
+          "decided_at": "2026-08-21",
+          "human_approved": true,
+          "accepted_scope": null
+        }
+      ],
+      "route": {
+        "lane": "post_release_refactor",
+        "CognitiveDemand": "deep",
+        "candidate_ids": [
+          "2026-08-21-issue-102-post-release-validation-RC-004"
+        ],
+        "existing_issue_ids": [
+          "111-runtime-provenance-and-validation-mode-separation"
+        ]
+      },
+      "policy": {
+        "lane": "post_release_refactor",
+        "CognitiveDemand": "deep",
+        "requires_verifier": true,
+        "requires_human_for_reject": false,
+        "reason_codes": []
+      }
+    }
+  ],
+  "trace": {
+    "finding_to_candidates": {
+      "F-001": [
+        "2026-08-21-issue-102-post-release-validation-RC-001"
+      ],
+      "F-002": [
+        "2026-08-21-issue-102-post-release-validation-RC-002"
+      ],
+      "F-003": [
+        "2026-08-21-issue-102-post-release-validation-RC-003"
+      ],
+      "F-004": [
+        "2026-08-21-issue-102-post-release-validation-RC-004"
+      ]
+    },
+    "candidate_to_findings": {
+      "2026-08-21-issue-102-post-release-validation-RC-001": [
+        "F-001"
+      ],
+      "2026-08-21-issue-102-post-release-validation-RC-002": [
+        "F-002"
+      ],
+      "2026-08-21-issue-102-post-release-validation-RC-003": [
+        "F-003"
+      ],
+      "2026-08-21-issue-102-post-release-validation-RC-004": [
+        "F-004"
+      ]
+    }
+  },
+  "updated_at": "2026-08-21",
+  "candidates": [
+    {
+      "id": "2026-08-21-issue-102-post-release-validation-RC-001",
+      "state": "linked_existing",
+      "title": "Audit every project path consumer and migrate it to project_registry.canonical_path through an expli",
+      "problem": "Several project-aware consumers still construct knowledge, workflow, workspace, issue, memory, and spec paths directly from the project root instead of consuming the resolved project context.",
+      "scope": [
+        "scripts/project_converge.py",
+        "scripts/project_knowledge.py",
+        "scripts/project_review.py",
+        "scripts/project_workflow.py",
+        "scripts/spec_consistency.py",
+        "scripts/validate_project_artifacts.py",
+        "scripts/worker_orchestrator.py"
+      ],
+      "acceptance_evidence": {
+        "F-001": {
+          "state": "confirmed",
+          "verifier": {
+            "kind": "ai",
+            "identity": "Codex",
+            "role": "verifier",
+            "run_id": "codex-2026-08-21-review-intake"
+          },
+          "files_checked": [
+            "scripts/project_knowledge.py",
+            "scripts/project_workflow.py",
+            "scripts/validate_project_artifacts.py",
+            "scripts/project_review.py",
+            "scripts/project_converge.py",
+            "scripts/worker_orchestrator.py",
+            "scripts/spec_consistency.py"
+          ],
+          "reproduction": [
+            "Direct root/path construction remains in every reported consumer.",
+            "Issue 102 declares a canonical context boundary while its implementation plan omitted these consumers from the named migration set."
+          ],
+          "tests": [
+            "python3 scripts/release_check.py . (baseline valid; demonstrates current coverage does not detect the omitted consumers)"
+          ],
+          "architecture": [
+            "Issue 102 canonical path service requires project-aware consumers to receive resolved context rather than reconstruct paths."
+          ],
+          "import_boundaries": [
+            "consumer -> scripts.project_registry.canonical_path"
+          ],
+          "contradictions": [],
+          "verified_at": "2026-08-21"
+        }
+      },
+      "priority": "p1",
+      "dependencies": [],
+      "CognitiveDemand": "deep",
+      "routing_reason_codes": [
+        "elevated_severity"
+      ],
+      "lane": "pre_release",
+      "release_impact": "non_blocking",
+      "finding_ids": [
+        "F-001"
+      ],
+      "fingerprint": "sha256:b51f35ce1ad8ea44f3535418fda838f69a9a4b49443bcb9fd0e1fa65359e604f",
+      "existing_issue_ids": [
+        "109-canonical-project-context-consumer-convergence"
+      ],
+      "linked_candidate_id": null,
+      "overlap_hints": [],
+      "next_command": "product:issue 109-canonical-project-context-consumer-convergence"
+    },
+    {
+      "id": "2026-08-21-issue-102-post-release-validation-RC-002",
+      "state": "linked_existing",
+      "title": "Add project_status plus read, write, execute, and publish capabilities to resolved context and requi",
+      "problem": "The resolver returns archived and read-only projects as resolved without exposing project_status or operation capabilities, and mutating workflows do not share a project capability gate.",
+      "scope": [
+        "scripts/project_execution.py",
+        "scripts/project_github_issues.py",
+        "scripts/project_registry.py"
+      ],
+      "acceptance_evidence": {
+        "F-002": {
+          "state": "confirmed",
+          "verifier": {
+            "kind": "ai",
+            "identity": "Codex",
+            "role": "verifier",
+            "run_id": "codex-2026-08-21-review-intake"
+          },
+          "files_checked": [
+            "scripts/project_registry.py",
+            "scripts/project_execution.py",
+            "scripts/project_github_issues.py"
+          ],
+          "reproduction": [
+            "An explicit archived-demo project with trust_scope=read-only resolved successfully with no project_status or capabilities fields."
+          ],
+          "tests": [
+            "inline resolve_loaded_registry archived/read-only reproduction",
+            "python3 scripts/release_check.py . (baseline valid)"
+          ],
+          "architecture": [
+            "Project selection and operation authorization must remain separate contracts; mutators consume the authorization result."
+          ],
+          "import_boundaries": [
+            "mutating workflow -> project capability decision"
+          ],
+          "contradictions": [],
+          "verified_at": "2026-08-21"
+        }
+      },
+      "priority": "p1",
+      "dependencies": [],
+      "CognitiveDemand": "deep",
+      "routing_reason_codes": [
+        "elevated_severity"
+      ],
+      "lane": "pre_release",
+      "release_impact": "non_blocking",
+      "finding_ids": [
+        "F-002"
+      ],
+      "fingerprint": "sha256:e7a1b981e137cc3127a26c8b0b538c8a3f4528f8854124a1560145b039b1a656",
+      "existing_issue_ids": [
+        "110-project-operation-capability-enforcement"
+      ],
+      "linked_candidate_id": null,
+      "overlap_hints": [],
+      "next_command": "product:issue 110-project-operation-capability-enforcement"
+    },
+    {
+      "id": "2026-08-21-issue-102-post-release-validation-RC-003",
+      "state": "linked_existing",
+      "title": "Separate source release validation, installed plugin self-check, and target project Doctor into expl",
+      "problem": "The installed plugin cache passes package validation but fails the source repository release check and project Doctor because those commands require Git history, full source tests, and project artifacts intentionally omitted from the cache.",
+      "scope": [
+        "scripts/project_doctor.py",
+        "scripts/register_codex_personal_marketplace.py",
+        "scripts/release_check.py",
+        "scripts/validate_moduflow.py"
+      ],
+      "acceptance_evidence": {
+        "F-003": {
+          "state": "confirmed",
+          "verifier": {
+            "kind": "ai",
+            "identity": "Codex",
+            "role": "verifier",
+            "run_id": "codex-2026-08-21-review-intake"
+          },
+          "files_checked": [
+            "scripts/release_check.py",
+            "scripts/validate_moduflow.py",
+            "scripts/project_doctor.py",
+            "scripts/register_codex_personal_marketplace.py"
+          ],
+          "reproduction": [
+            "Installed cache package validation passed 178 required files while source release check and project Doctor failed because .git, full issues/specs, and source tests are intentionally absent."
+          ],
+          "tests": [
+            "python3 scripts/validate_moduflow.py <installed-cache>",
+            "python3 scripts/release_check.py <installed-cache>",
+            "python3 scripts/project_doctor.py <installed-cache>"
+          ],
+          "architecture": [
+            "Source release, installed package integrity, and target project health are separate validation targets."
+          ],
+          "import_boundaries": [
+            "validation mode -> mode-specific required artifacts"
+          ],
+          "contradictions": [],
+          "verified_at": "2026-08-21"
+        }
+      },
+      "priority": "p2",
+      "dependencies": [],
+      "CognitiveDemand": "deep",
+      "routing_reason_codes": [],
+      "lane": "post_release_refactor",
+      "release_impact": "non_blocking",
+      "finding_ids": [
+        "F-003"
+      ],
+      "fingerprint": "sha256:c6011f9c0b26db4503be768bcce48763ed5f81a8a6e2711c1d4acb6e3cb57ce3",
+      "existing_issue_ids": [
+        "111-runtime-provenance-and-validation-mode-separation"
+      ],
+      "linked_candidate_id": null,
+      "overlap_hints": [],
+      "next_command": "product:issue 111-runtime-provenance-and-validation-mode-separation"
+    },
+    {
+      "id": "2026-08-21-issue-102-post-release-validation-RC-004",
+      "state": "linked_existing",
+      "title": "Publish a runtime provenance record through product status and Doctor with version, package path, so",
+      "problem": "Product status and Doctor do not show the actually loaded runtime version, package path, source commit, or loaded-at timestamp, so source, installed cache, and current-session versions cannot be distinguished reliably.",
+      "scope": [
+        "scripts/mcp_server.py",
+        "scripts/project_doctor.py",
+        "scripts/register_codex_personal_marketplace.py"
+      ],
+      "acceptance_evidence": {
+        "F-004": {
+          "state": "confirmed",
+          "verifier": {
+            "kind": "ai",
+            "identity": "Codex",
+            "role": "verifier",
+            "run_id": "codex-2026-08-21-review-intake"
+          },
+          "files_checked": [
+            "scripts/project_doctor.py",
+            "scripts/mcp_server.py",
+            "scripts/register_codex_personal_marketplace.py"
+          ],
+          "reproduction": [
+            "Doctor exposes only staleness comparison and does not report active package path, source commit, or loaded-at metadata."
+          ],
+          "tests": [
+            "source inspection of installed_plugin_staleness and MCP Doctor summary"
+          ],
+          "architecture": [
+            "Runtime provenance must describe the active package instance rather than infer it from the newest cache directory."
+          ],
+          "import_boundaries": [
+            "runtime identity provider -> product status and Doctor"
+          ],
+          "contradictions": [],
+          "verified_at": "2026-08-21"
+        }
+      },
+      "priority": "p2",
+      "dependencies": [],
+      "CognitiveDemand": "deep",
+      "routing_reason_codes": [],
+      "lane": "post_release_refactor",
+      "release_impact": "non_blocking",
+      "finding_ids": [
+        "F-004"
+      ],
+      "fingerprint": "sha256:a75e06305271957dff6b11914c13d72c6a11740c7a0280c09a06b426ffd3ceff",
+      "existing_issue_ids": [
+        "111-runtime-provenance-and-validation-mode-separation"
+      ],
+      "linked_candidate_id": null,
+      "overlap_hints": [],
+      "next_command": "product:issue 111-runtime-provenance-and-validation-mode-separation"
+    }
+  ]
+}

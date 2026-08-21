@@ -1,0 +1,93 @@
+{
+  "review_id": "2026-08-21-issue-102-post-release-validation",
+  "approval_evidence": "Dongwon Lee approved the recommended intake, issue split, dependency update, and Issue 103 specification on 2026-08-21 with ‘그럼 추천한대로 진행’.",
+  "decisions": [
+    {
+      "finding_id": "F-001",
+      "target_commit": "010eee8eeec37edd6902f2dd008e7164f715e7b1",
+      "verification": {
+        "state": "confirmed",
+        "verifier": {"kind": "ai", "identity": "Codex", "role": "verifier", "run_id": "codex-2026-08-21-review-intake"},
+        "files_checked": [
+          "scripts/project_knowledge.py",
+          "scripts/project_workflow.py",
+          "scripts/validate_project_artifacts.py",
+          "scripts/project_review.py",
+          "scripts/project_converge.py",
+          "scripts/worker_orchestrator.py",
+          "scripts/spec_consistency.py"
+        ],
+        "reproduction": [
+          "Direct root/path construction remains in every reported consumer.",
+          "Issue 102 declares a canonical context boundary while its implementation plan omitted these consumers from the named migration set."
+        ],
+        "tests": ["python3 scripts/release_check.py . (baseline valid; demonstrates current coverage does not detect the omitted consumers)"],
+        "architecture": ["Issue 102 canonical path service requires project-aware consumers to receive resolved context rather than reconstruct paths."],
+        "import_boundaries": ["consumer -> scripts.project_registry.canonical_path"],
+        "contradictions": [],
+        "verified_at": "2026-08-21"
+      },
+      "disposition": "accept",
+      "rationale": "The observation is directly present in source and violates Issue 102's broader canonical-consumer contract. Register a corrective P0 follow-up rather than rewriting the released Issue 102 history.",
+      "actor": {"kind": "human", "identity": "Dongwon Lee", "run_id": "codex-2026-08-21-owner-approval"},
+      "human_approved": true
+    },
+    {
+      "finding_id": "F-002",
+      "target_commit": "010eee8eeec37edd6902f2dd008e7164f715e7b1",
+      "verification": {
+        "state": "confirmed",
+        "verifier": {"kind": "ai", "identity": "Codex", "role": "verifier", "run_id": "codex-2026-08-21-review-intake"},
+        "files_checked": ["scripts/project_registry.py", "scripts/project_execution.py", "scripts/project_github_issues.py"],
+        "reproduction": ["An explicit archived-demo project with trust_scope=read-only resolved successfully with no project_status or capabilities fields."],
+        "tests": ["inline resolve_loaded_registry archived/read-only reproduction", "python3 scripts/release_check.py . (baseline valid)"],
+        "architecture": ["Project selection and operation authorization must remain separate contracts; mutators consume the authorization result."],
+        "import_boundaries": ["mutating workflow -> project capability decision"],
+        "contradictions": [],
+        "verified_at": "2026-08-21"
+      },
+      "disposition": "accept",
+      "rationale": "The resolver preserves trust_scope in the catalog but omits project status and operation capabilities from the resolved result. This is a P0 authorization boundary and must precede Issue 103 implementation.",
+      "actor": {"kind": "human", "identity": "Dongwon Lee", "run_id": "codex-2026-08-21-owner-approval"},
+      "human_approved": true
+    },
+    {
+      "finding_id": "F-003",
+      "target_commit": "010eee8eeec37edd6902f2dd008e7164f715e7b1",
+      "verification": {
+        "state": "confirmed",
+        "verifier": {"kind": "ai", "identity": "Codex", "role": "verifier", "run_id": "codex-2026-08-21-review-intake"},
+        "files_checked": ["scripts/release_check.py", "scripts/validate_moduflow.py", "scripts/project_doctor.py", "scripts/register_codex_personal_marketplace.py"],
+        "reproduction": ["Installed cache package validation passed 178 required files while source release check and project Doctor failed because .git, full issues/specs, and source tests are intentionally absent."],
+        "tests": ["python3 scripts/validate_moduflow.py <installed-cache>", "python3 scripts/release_check.py <installed-cache>", "python3 scripts/project_doctor.py <installed-cache>"],
+        "architecture": ["Source release, installed package integrity, and target project health are separate validation targets."],
+        "import_boundaries": ["validation mode -> mode-specific required artifacts"],
+        "contradictions": [],
+        "verified_at": "2026-08-21"
+      },
+      "disposition": "accept",
+      "rationale": "The installed package is valid; the failure is caused by target-role conflation. Group this with runtime provenance because both require one explicit runtime/package identity surface.",
+      "actor": {"kind": "human", "identity": "Dongwon Lee", "run_id": "codex-2026-08-21-owner-approval"},
+      "human_approved": true
+    },
+    {
+      "finding_id": "F-004",
+      "target_commit": "010eee8eeec37edd6902f2dd008e7164f715e7b1",
+      "verification": {
+        "state": "confirmed",
+        "verifier": {"kind": "ai", "identity": "Codex", "role": "verifier", "run_id": "codex-2026-08-21-review-intake"},
+        "files_checked": ["scripts/project_doctor.py", "scripts/mcp_server.py", "scripts/register_codex_personal_marketplace.py"],
+        "reproduction": ["Doctor exposes only staleness comparison and does not report active package path, source commit, or loaded-at metadata."],
+        "tests": ["source inspection of installed_plugin_staleness and MCP Doctor summary"],
+        "architecture": ["Runtime provenance must describe the active package instance rather than infer it from the newest cache directory."],
+        "import_boundaries": ["runtime identity provider -> product status and Doctor"],
+        "contradictions": [],
+        "verified_at": "2026-08-21"
+      },
+      "disposition": "accept",
+      "rationale": "Current status cannot distinguish source, installed, and loaded versions. Group with validation mode separation as one P1 runtime diagnostics issue.",
+      "actor": {"kind": "human", "identity": "Dongwon Lee", "run_id": "codex-2026-08-21-owner-approval"},
+      "human_approved": true
+    }
+  ]
+}

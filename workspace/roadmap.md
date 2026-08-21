@@ -1,5 +1,29 @@
 # ModuFlow Roadmap
 
+## Priority Refresh — 2026-08-21
+
+### Now
+
+- `109-canonical-project-context-consumer-convergence` — P0; audit and converge every project-path consumer. Blocks Issue 103 implementation.
+- `110-project-operation-capability-enforcement` — P0; add project status and read/write/execute/publish enforcement. Blocks Issue 103 implementation.
+- `103-atomic-lifecycle-state-transaction` — P0; English/Korean specification drafted for human review; implementation remains blocked by 109 and 110.
+
+### Next
+
+- `103-atomic-lifecycle-state-transaction` — begin planning and implementation only after spec approval plus completion of 109 and 110.
+- `111-runtime-provenance-and-validation-mode-separation` — P1; may proceed in parallel and must complete before the next plugin release.
+- `104-project-aware-natural-language-request-orchestrator` and `105-schema-migration-and-doctor-triage` — P0; remain blocked by 103.
+
+### Later
+
+- `106-korean-production-search-and-stable-ids` → `107-shared-approved-playbook-layer`.
+- `108-production-approval-and-verification-gates` after 104.
+- `086-project-aware-production-library-dashboard` remains P2.
+
+### Review Gate
+
+Issue 102's merged resolver core passed source release validation, but the 2026-08-21 external project validation confirmed four follow-up gaps. The accepted review packet maps them without duplication to Issues 109, 110, and 111. No implementation is included in this refresh.
+
 ## Priority Refresh — 2026-08-19
 
 ### Now

@@ -3,8 +3,10 @@
   "phase": "select",
   "active_goal": "trustworthy-execution-and-project-knowledge",
   "active_issue": "",
-  "last_command": "product:review 102-project-registry-and-resolver",
-  "next_command": "product:status",
-  "blockers": [],
-  "updated_at": "2026-08-19"
+  "last_command": "product:spec 103-atomic-lifecycle-state-transaction",
+  "next_command": "product:spec 109-canonical-project-context-consumer-convergence",
+  "blockers": [
+    "109 and 110 must complete before Issue 103 implementation"
+  ],
+  "updated_at": "2026-08-21"
 }
