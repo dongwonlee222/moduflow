@@ -1,6 +1,6 @@
 # Issue 109: Canonical Project Context Consumer Convergence
 
-**Status: backlog** — created 2026-08-21.
+**Status: active** — created 2026-08-21; specification drafted and awaiting human review 2026-08-21.
 **Priority: p0**
 **Blocked-by: `102-project-registry-and-resolver`**
 
@@ -14,7 +14,7 @@ Complete the Issue 102 follow-up by auditing every project-aware path consumer a
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`
 - Verified against: `010eee8eeec37edd6902f2dd008e7164f715e7b1`
 - Owner / decision maker: Dongwon Lee
-- Current phase: backlog
+- Current phase: specification review; implementation has not started
 
 ## Opportunity
 
@@ -70,10 +70,10 @@ Do not add operation capabilities, lifecycle transactions, remote writes, or fol
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/109-canonical-project-context-consumer-convergence/spec.md`
-- [ ] plan → `specs/109-canonical-project-context-consumer-convergence/plan.md`
+- [x] spec draft → `specs/109-canonical-project-context-consumer-convergence/spec.md` + `spec.ko.md` (awaiting human approval)
+- [ ] plan → create after specification approval
 - [ ] execute → consumer migration, guardrails, and contract tests
-- [ ] review → `specs/109-canonical-project-context-consumer-convergence/review.md`
+- [ ] review → create after implementation verification
 
 ## Related Issues
 
@@ -90,7 +90,9 @@ Do not add operation capabilities, lifecycle transactions, remote writes, or fol
 - Roadmap: `workspace/roadmap.md`
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`
 - Finding source: `specs/102-project-registry-and-resolver/external-review-2026-08-21.json`
+- Spec: `specs/109-canonical-project-context-consumer-convergence/spec.md`
+- Korean spec: `specs/109-canonical-project-context-consumer-convergence/spec.ko.md`
 
 ## Next Command
 
-`product:spec 109-canonical-project-context-consumer-convergence`
+After human specification approval: `product:plan 109-canonical-project-context-consumer-convergence`.

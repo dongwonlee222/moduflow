@@ -29,20 +29,20 @@
     "111-runtime-provenance-and-validation-mode-separation"
   ],
   "active_issue_id": "109-canonical-project-context-consumer-convergence",
-  "phase": "select",
+  "phase": "spec",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:spec 109-canonical-project-context-consumer-convergence",
+  "next_command": "product:plan 109-canonical-project-context-consumer-convergence",
   "attempts": {
-    "command": "product:spec 109-canonical-project-context-consumer-convergence",
+    "command": "product:plan 109-canonical-project-context-consumer-convergence",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-08-21"
   },
-  "blocker": "Issues 109 and 110 must complete before Issue 103 implementation",
-  "last_action": "accepted Issue 102 external validation, registered Issues 109-111, and drafted the Issue 103 specification without implementation",
-  "last_verification": "2026-08-21: review packet final validation passed; source baseline release check remained valid",
+  "blocker": "Human review of the Issue 109 specification before planning; Issues 109 and 110 still block Issue 103 implementation",
+  "last_action": "drafted the English and Korean Issue 109 specification after a repository-wide project-path consumer audit; implementation not started",
+  "last_verification": "2026-08-21: Issue 109 spec consistency 0 errors/0 warnings, project artifact validation valid, lifecycle drift empty, and full release check passed",
   "updated_at": "2026-08-21",
   "git_binding": {
     "mode": "git-files",

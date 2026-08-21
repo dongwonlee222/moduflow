@@ -4,7 +4,7 @@
 
 ### Now
 
-- `109-canonical-project-context-consumer-convergence` — P0; audit and converge every project-path consumer. Blocks Issue 103 implementation.
+- `109-canonical-project-context-consumer-convergence` — P0; English/Korean specification drafted for review after a repository-wide consumer audit. Blocks Issue 103 implementation.
 - `110-project-operation-capability-enforcement` — P0; add project status and read/write/execute/publish enforcement. Blocks Issue 103 implementation.
 - `103-atomic-lifecycle-state-transaction` — P0; English/Korean specification drafted for human review; implementation remains blocked by 109 and 110.
 
