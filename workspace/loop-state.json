@@ -28,8 +28,8 @@
     "110-project-operation-capability-enforcement",
     "111-runtime-provenance-and-validation-mode-separation"
   ],
-  "active_issue_id": "109-canonical-project-context-consumer-convergence",
-  "phase": "review",
+  "active_issue_id": "110-project-operation-capability-enforcement",
+  "phase": "spec",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
@@ -41,12 +41,12 @@
     "last_changed_at": "2026-08-21"
   },
   "blocker": "Issue 110 still blocks Issue 103 implementation",
-  "last_action": "completed and reviewed Issue 109 canonical project-context consumer convergence",
-  "last_verification": "2026-08-21: 1,248 tests, canonical guard, project validation, zero lifecycle drift, and release check passed",
+  "last_action": "authored Issue 110 bilingual specification from the approved central capability-guard design",
+  "last_verification": "2026-08-21: clean origin/main baseline passed 1,248 tests before Issue 110 specification",
   "updated_at": "2026-08-21",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/109-canonical-project-context-consumer-convergence",
+    "branch": "codex/110-project-operation-capability-enforcement",
     "base_branch": "main",
     "commits": [
       "f980aef",

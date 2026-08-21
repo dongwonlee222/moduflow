@@ -1,6 +1,6 @@
 # Issue 110: Project Operation Capability Enforcement
 
-**Status: backlog** — created 2026-08-21.
+**Status: active** — created 2026-08-21; design approved and specification authored 2026-08-21.
 **Priority: p0**
 **Blocked-by: `102-project-registry-and-resolver`**
 
@@ -14,7 +14,7 @@ Separate project discovery from operation authorization by returning explicit pr
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`
 - Verified against: `010eee8eeec37edd6902f2dd008e7164f715e7b1`
 - Owner / decision maker: Dongwon Lee
-- Current phase: backlog
+- Current phase: specification ready for human review
 
 ## Opportunity
 
@@ -71,10 +71,10 @@ Do not interpret resolver success as write approval, weaken downstream safety ga
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/110-project-operation-capability-enforcement/spec.md`
-- [ ] plan → `specs/110-project-operation-capability-enforcement/plan.md`
+- [x] spec → `specs/110-project-operation-capability-enforcement/spec.md` + `spec.ko.md`
+- [ ] plan
 - [ ] execute → capability schema, central guard, workflow enforcement, and tests
-- [ ] review → `specs/110-project-operation-capability-enforcement/review.md`
+- [ ] review
 
 ## Related Issues
 
@@ -91,7 +91,9 @@ Do not interpret resolver success as write approval, weaken downstream safety ga
 - Roadmap: `workspace/roadmap.md`
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`
 - Finding source: `specs/102-project-registry-and-resolver/external-review-2026-08-21.json`
+- Spec: `specs/110-project-operation-capability-enforcement/spec.md`
+- Korean spec: `specs/110-project-operation-capability-enforcement/spec.ko.md`
 
 ## Next Command
 
-`product:spec 110-project-operation-capability-enforcement`
+`product:spec 110-project-operation-capability-enforcement` — human review pending before `product:plan`.
