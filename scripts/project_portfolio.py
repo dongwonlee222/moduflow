@@ -159,6 +159,11 @@ def collect_project_statuses(registry_path):
                     ),
                     "registry_schema": registry["source_schema"],
                     "resolution_status": context["status"],
+                    "project_status": context["project_status"],
+                    "policy_trust_scope": context["policy_trust_scope"],
+                    "policy_inputs": context["policy_inputs"],
+                    "capabilities": context["capabilities"],
+                    "capability_reasons": context["capability_reasons"],
                     "warnings": warnings,
                 }
             )
@@ -184,6 +189,11 @@ def collect_project_statuses(registry_path):
                 "team": team,
                 "registry_schema": registry["source_schema"],
                 "resolution_status": context["status"],
+                "project_status": context["project_status"],
+                "policy_trust_scope": context["policy_trust_scope"],
+                "policy_inputs": context["policy_inputs"],
+                "capabilities": context["capabilities"],
+                "capability_reasons": context["capability_reasons"],
                 "warnings": warnings,
             }
         )

@@ -436,6 +436,36 @@ class ProjectPortfolioTests(unittest.TestCase):
             self.assertFalse((portfolio / "project-selection.json").exists())
             self.assertEqual(json.loads(output.getvalue())["status"], "error")
 
+    def test_collect_status_projects_archived_read_only_capabilities(self):
+        project_portfolio = load_module("project_portfolio", "scripts/project_portfolio.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            portfolio = base / "portfolio"
+            project = base / "project"
+            (project / ".moduflow").mkdir(parents=True)
+            (project / ".moduflow" / "state.json").write_text(
+                json.dumps({"phase": "archived", "next_command": "product:doctor"}),
+                encoding="utf-8",
+            )
+            (project / "workflow").mkdir()
+            payload = self.v2_project("project-a", "Project A", project)
+            payload["status"] = "archived"
+            payload["trust_scope"] = "read-only"
+            registry = self.write_registry(portfolio, [payload])
+
+            statuses = project_portfolio.collect_project_statuses(registry)
+
+        self.assertEqual(statuses[0]["project_status"], "archived")
+        self.assertEqual(statuses[0]["policy_trust_scope"], "read-only")
+        self.assertEqual(
+            statuses[0]["capabilities"],
+            {"read": True, "write": False, "execute": False, "publish": False},
+        )
+        self.assertEqual(
+            statuses[0]["capability_reasons"]["publish"]["reason_code"],
+            "PROJECT_OPERATION_DENIED_ARCHIVED",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

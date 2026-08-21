@@ -8,9 +8,10 @@ from datetime import datetime
 from pathlib import Path
 
 try:
-    from scripts import project_issue_schema
+    from scripts import project_issue_schema, project_operation
 except ImportError:  # pragma: no cover - direct script execution fallback
     import project_issue_schema
+    import project_operation
 
 
 REGISTRY_READ_SCHEMA = "moduflow.project-registry-read.v1"
@@ -466,7 +467,7 @@ def _candidate_view(project):
 
 
 def _resolution_base(status, reason_code, *, candidates=None, warnings=None, question=""):
-    return {
+    result = {
         "schema": RESOLUTION_SCHEMA,
         "status": status,
         "project_id": "",
@@ -479,6 +480,14 @@ def _resolution_base(status, reason_code, *, candidates=None, warnings=None, que
         "warnings": list(warnings or []),
         "question": question,
     }
+    result.update(
+        project_operation.compute_project_policy(
+            None,
+            None,
+            resolution_status=status,
+        )
+    )
+    return result
 
 
 def _unresolved(reason_code, question, warnings=None):
@@ -522,6 +531,12 @@ def _resolved(project, reason_code, warnings=None):
             "paths": dict(project["paths"]),
             "trust_scope": project["trust_scope"],
         }
+    )
+    result.update(
+        project_operation.compute_project_policy(
+            project.get("status"),
+            project.get("trust_scope"),
+        )
     )
     return result
 
@@ -768,6 +783,13 @@ def project_context_for_root(project_root):
             "paths": paths,
             "trust_scope": "project-local",
         }
+    )
+    result.update(
+        project_operation.compute_project_policy(
+            "active",
+            "project-local",
+            explicit_root_compatibility=True,
+        )
     )
     return result
 
