@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts import project_operation, project_registry
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,6 +21,25 @@ project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
 
 
 class ProjectProfileTests(unittest.TestCase):
+    def test_archived_project_denies_profile_and_identity_writes(self):
+        project_profile = load_module("project_profile_denied", "scripts/project_profile.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+            plan = project_profile.build_profile_plan(root, dry_run=False)
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_profile.apply_profile_plan(plan, project_context=context)
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_profile.apply_repository_identity_proposal(
+                    root,
+                    {"proposed_identity": {"provider": "github", "owner": "o", "repo": "r"}},
+                    project_context=context,
+                )
+
+            self.assertFalse((root / ".moduflow").exists())
+
     def test_profile_dry_run_lists_missing_profile_files_without_writing(self):
         project_profile = load_module("project_profile", "scripts/project_profile.py")
         with tempfile.TemporaryDirectory() as tmp:

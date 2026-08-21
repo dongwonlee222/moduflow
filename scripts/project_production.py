@@ -13,6 +13,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 import project_memory
 import linkage_check
+import project_operation
 import project_registry
 
 
@@ -316,12 +317,16 @@ def decide_playbook_update(
 ):
     if decision not in {"approve", "reject", "defer"}:
         raise ValueError("decision must be approve, reject, or defer")
+    root = Path(project_root).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "execute")
     if not approved_by or approved_by not in _configured_human_values(project_root):
         raise ValueError("approved_by must exactly match a configured human name or email")
     if not reason or not decided_at:
         raise ValueError("reason and decided_at are required")
-    root = Path(project_root).resolve()
-    context = project_context or project_registry.project_context_for_root(root)
     record = _find_by_id(
         list_production_records(root, project_context=context),
         record_id,
@@ -623,8 +628,13 @@ def build_production_plan(project_root, dry_run=True, *, project_context=None):
     }
 
 
-def apply_production_plan(plan):
-    root = Path(plan["project_root"])
+def apply_production_plan(plan, *, project_context=None):
+    root = Path(plan["project_root"]).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     written = []
     for relative in plan.get("directories", PRODUCTION_DIRS):
         target = root / relative
@@ -744,9 +754,14 @@ def create_production_record(
     if not issue_id and not source_context:
         raise ValueError("issue_id or source_context is required")
     root = Path(project_root).resolve()
-    context = project_context or project_registry.project_context_for_root(root)
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     apply_production_plan(
-        build_production_plan(root, dry_run=False, project_context=context)
+        build_production_plan(root, dry_run=False, project_context=context),
+        project_context=context,
     )
     records_root = project_registry.canonical_path(context, "production_records")
     created = created or date.today().isoformat()
@@ -833,6 +848,7 @@ def _parser():
     return parser
 
 
+@project_operation.cli_denial_boundary
 def main(argv=None):
     parser = _parser()
     try:

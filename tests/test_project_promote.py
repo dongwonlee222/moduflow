@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts import project_operation, project_registry
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -60,6 +62,31 @@ def write_record(root, text=DECISION_RECORD, name="2026-07-06-use-widget-cache.m
 
 
 class PromoteDecisionEndToEndTests(unittest.TestCase):
+    def test_archived_project_denies_promotion_before_issue_or_record_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            record = root / "record.md"
+            record.write_text(DECISION_RECORD, encoding="utf-8")
+            issue = root / "issues" / "110-denied.md"
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+            before = record.read_bytes()
+            plan = {
+                "ok": True,
+                "project": str(root),
+                "record": "record.md",
+                "issue_id": "110-denied",
+                "issue_path": str(issue),
+                "issue_content": "# denied\n",
+                "updated_record_text": "changed\n",
+            }
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_promote.apply_promotion_plan(plan, project_context=context)
+
+            self.assertFalse(issue.exists())
+            self.assertEqual(record.read_bytes(), before)
+
     def test_promotion_numbers_and_writes_in_configured_issue_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = make_project(tmp, existing_issues=("099-decoy.md",))

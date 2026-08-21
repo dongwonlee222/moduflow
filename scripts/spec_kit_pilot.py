@@ -14,7 +14,7 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts import capability_routing, spec_kit_adapter
+from scripts import capability_routing, project_operation, project_registry, spec_kit_adapter
 
 
 PILOT_SCHEMA = "moduflow.spec-kit-pilot.v1"
@@ -668,7 +668,19 @@ def _report_target(root):
     return _contained_under_root(root, root / REPORT_RELATIVE_PATH, "unsafe_output_path")
 
 
-def write_report(root, report, result_base=None, package_root=None):
+def write_report(
+    root,
+    report,
+    result_base=None,
+    package_root=None,
+    *,
+    project_context=None,
+):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     if not isinstance(report, dict) or "cases" not in report:
         _error("invalid_report", "pilot report must contain evaluated cases")
     declarations = [
@@ -708,6 +720,7 @@ def _error_envelope(error):
     }
 
 
+@project_operation.cli_denial_boundary
 def main(argv=None):
     parser = JsonErrorArgumentParser(
         description="Evaluate the offline selective Spec Kit pilot"

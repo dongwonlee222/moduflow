@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts import project_operation, project_registry
+
 ROOT = Path(__file__).resolve().parents[1]
 
 def load_module(name, relative_path):
@@ -18,6 +20,23 @@ project_issue_schema = load_module(
 )
 
 class IssueGeneratorTests(unittest.TestCase):
+    def test_archived_project_denies_issue_write_before_directory_creation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+            issue_data = issue_generator.generate_issues_from_goal("Denied")[0]
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                issue_generator.write_issue_file(
+                    root,
+                    110,
+                    issue_data,
+                    project_context=context,
+                )
+
+            self.assertFalse((root / "issues").exists())
+
     def test_writer_and_workflow_links_use_configured_issue_and_spec_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

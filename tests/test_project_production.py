@@ -4,6 +4,9 @@ import re
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
+
+from scripts import project_operation, project_registry
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -241,6 +244,53 @@ class ProjectProductionParserTests(unittest.TestCase):
 
 
 class ProjectProductionMutationTests(unittest.TestCase):
+    def test_archived_project_denies_all_production_mutators_before_reads_or_writes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                production.apply_production_plan(
+                    {
+                        "project_root": str(root),
+                        "directories": ["memory/production-records", "playbooks"],
+                    },
+                    project_context=context,
+                )
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                production.create_production_record(
+                    root,
+                    title="Denied",
+                    deliverable_type="document",
+                    channel="internal",
+                    audiences=["team"],
+                    lifecycle="draft",
+                    retrieval_trigger="manual",
+                    source_context="test",
+                    project_context=context,
+                )
+            with mock.patch.object(
+                production,
+                "_configured_human_values",
+                side_effect=AssertionError("project read before authorization"),
+            ) as humans:
+                with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                    production.decide_playbook_update(
+                        root,
+                        record_id="record",
+                        playbook_id="playbook",
+                        decision="approve",
+                        approved_by="human",
+                        reason="test",
+                        decided_at="2026-08-21",
+                        project_context=context,
+                    )
+
+            humans.assert_not_called()
+            self.assertFalse((root / "memory").exists())
+            self.assertFalse((root / "playbooks").exists())
+
     def test_init_creates_only_missing_production_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

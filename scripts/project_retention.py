@@ -20,6 +20,12 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+try:
+    from scripts import project_operation, project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_operation
+    import project_registry
+
 RETENTION_RELEASES = 2
 PLUGIN_MANIFEST = ".claude-plugin/plugin.json"
 RECORD_DIRS = (
@@ -143,11 +149,22 @@ def retention_status(root, runner=None):
     }
 
 
-def archive_candidates(root, archive_date, runner=None):
+def archive_candidates(
+    root,
+    archive_date,
+    runner=None,
+    *,
+    project_context=None,
+):
     """Add `archived: <date>` to each candidate's frontmatter in place.
     Files never move (Global Constraint 3); the line is inserted before the
     closing fence, leaving everything else byte-identical."""
     root = Path(root).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "execute")
     status = retention_status(root, runner)
     if not status["ok"]:
         return status
@@ -165,6 +182,7 @@ def archive_candidates(root, archive_date, runner=None):
     return status
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Issue-less record retention (075).")
     parser.add_argument("project_path", nargs="?", default=".")

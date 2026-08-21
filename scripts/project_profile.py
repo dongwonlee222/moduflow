@@ -4,6 +4,8 @@ import json
 import re
 from pathlib import Path
 
+from scripts import project_operation, project_registry
+
 from scripts.project_repository_identity import (
     ALLOWED_LIFECYCLES,
     ALLOWED_PROVIDERS,
@@ -134,8 +136,13 @@ def write_if_missing(path, content):
     return True
 
 
-def apply_profile_plan(plan):
-    project_root = Path(plan["project_root"])
+def apply_profile_plan(plan, *, project_context=None):
+    project_root = Path(plan["project_root"]).resolve()
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     written = []
     for relative, content in PROFILE_FILES.items():
         if write_if_missing(project_root / relative, content):
@@ -273,13 +280,18 @@ def _project_profile_with_identity(existing, identity):
     return existing + separator + block
 
 
-def apply_repository_identity_proposal(path, proposal):
+def apply_repository_identity_proposal(path, proposal, *, project_context=None):
     """Write one confirmed identity while preserving unrelated project content."""
     identity = proposal.get("proposed_identity")
     if not isinstance(identity, dict):
         raise ValueError("repository identity proposal requires explicit confirmation before write")
 
     root = Path(path).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "execute")
     config_path = root / ".moduflow" / "config.json"
     profile_path = root / ".moduflow" / "project-profile.md"
     config = _read_config(root)
@@ -311,6 +323,7 @@ def apply_repository_identity_proposal(path, proposal):
     }
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Plan or create ModuFlow project profile metadata.")
     parser.add_argument("project_path", nargs="?", default=".")

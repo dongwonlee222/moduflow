@@ -4,6 +4,8 @@ import unittest
 from pathlib import Path
 import importlib.util
 
+from scripts import project_operation, project_registry
+
 ROOT = Path(__file__).resolve().parents[1]
 
 def load_module(name, relative_path):
@@ -13,6 +15,23 @@ def load_module(name, relative_path):
     return module
 
 class AntigravitySyncTests(unittest.TestCase):
+    def test_archived_project_denies_sync_before_host_or_git_file_reads(self):
+        sync = load_module("antigravity_sync_denied", "scripts/antigravity_sync.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                sync.sync_tasks_bidirectional(
+                    root / "host-task.md",
+                    root / "specs" / "110-denied" / "tasks.md",
+                    project_root=root,
+                    project_context=context,
+                )
+
+            self.assertFalse((root / "specs").exists())
+
     def test_sync_tasks_merges_checkbox_states(self):
         sync = load_module("antigravity_sync", "scripts/antigravity_sync.py")
         
