@@ -180,20 +180,53 @@ def authorize_project_operation(project_context, operation):
 
     capabilities = project_context.get("capabilities")
     capability_reasons = project_context.get("capability_reasons")
-    if not isinstance(capabilities, dict) or operation not in capabilities:
+    policy_inputs = project_context.get("policy_inputs")
+    if (
+        not isinstance(capabilities, dict)
+        or not isinstance(capability_reasons, dict)
+        or not isinstance(policy_inputs, dict)
+        or "project_status_source" not in policy_inputs
+        or "trust_scope_source" not in policy_inputs
+    ):
         return _decision(
             project_context,
             operation,
             False,
             "PROJECT_CAPABILITY_UNAVAILABLE",
         )
-    allowed = capabilities[operation] is True
-    reason = capability_reasons.get(operation) if isinstance(capability_reasons, dict) else None
-    reason_code = reason.get("reason_code") if isinstance(reason, dict) else ""
-    if reason_code not in _REASONS:
-        reason_code = "PROJECT_CAPABILITY_UNAVAILABLE"
-        allowed = False
-    return _decision(project_context, operation, allowed, reason_code)
+
+    expected_policy = compute_project_policy(
+        policy_inputs["project_status_source"],
+        policy_inputs["trust_scope_source"],
+        explicit_root_compatibility=(
+            project_context.get("reason_code") == "explicit_root"
+            and policy_inputs["project_status_source"] == "active"
+            and policy_inputs["trust_scope_source"] == "project-local"
+        ),
+    )
+    decision_context = {**project_context, **expected_policy}
+    expected_allowed = expected_policy["capabilities"][operation]
+    expected_reason = expected_policy["capability_reasons"][operation]["reason_code"]
+    policy_is_consistent = (
+        project_context.get("project_status") == expected_policy["project_status"]
+        and project_context.get("policy_trust_scope")
+        == expected_policy["policy_trust_scope"]
+        and capabilities == expected_policy["capabilities"]
+        and capability_reasons == expected_policy["capability_reasons"]
+    )
+    if not policy_is_consistent:
+        reason_code = (
+            expected_reason
+            if not expected_allowed
+            else "PROJECT_CAPABILITY_UNAVAILABLE"
+        )
+        return _decision(decision_context, operation, False, reason_code)
+    return _decision(
+        decision_context,
+        operation,
+        expected_allowed,
+        expected_reason,
+    )
 
 
 def require_project_capability(project_context, operation):

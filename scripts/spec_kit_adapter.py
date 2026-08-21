@@ -967,6 +967,7 @@ def persist_validation(
     prefix = b"" if not existing else (b"\n" if existing.endswith(b"\n") else b"\n\n")
     preview = (prefix + rendered).decode("utf-8")
     if write:
+        project_operation.require_project_capability(context, "write")
         lock_relative = _canonical_relative(
             context,
             "specs",

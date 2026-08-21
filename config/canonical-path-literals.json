@@ -8,6 +8,12 @@
       "rationale": "The MCP server reads the fixed project-control directory, not a configurable artifact role."
     },
     {
+      "module": "scripts/antigravity_sync.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "Antigravity sync discovers a project root through the fixed .moduflow control directory before resolving canonical workflow paths."
+    },
+    {
       "module": "scripts/portfolio_doctor.py",
       "pattern": "join:.moduflow",
       "classification": "project_control_path",

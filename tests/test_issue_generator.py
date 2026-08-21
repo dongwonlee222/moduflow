@@ -1,4 +1,5 @@
 import importlib.util
+import ast
 import json
 import tempfile
 import unittest
@@ -20,6 +21,23 @@ project_issue_schema = load_module(
 )
 
 class IssueGeneratorTests(unittest.TestCase):
+    def test_cli_entrypoint_propagates_decorated_main_exit_code(self):
+        tree = ast.parse(
+            (ROOT / "scripts" / "issue_generator.py").read_text(encoding="utf-8")
+        )
+        entrypoint = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.If)
+            and isinstance(node.test, ast.Compare)
+            and any(
+                isinstance(value, ast.Constant) and value.value == "__main__"
+                for value in ast.walk(node.test)
+            )
+        )
+
+        self.assertTrue(any(isinstance(node, ast.Raise) for node in entrypoint.body))
+
     def test_archived_project_denies_issue_write_before_directory_creation(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

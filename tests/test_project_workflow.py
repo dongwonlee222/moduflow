@@ -76,6 +76,21 @@ class ProjectWorkflowTests(unittest.TestCase):
 
             self.assertFalse((root / "workflow").exists())
 
+    def test_archived_project_denies_direct_team_state_write(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.archived_context(root)
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_workflow.write_team_state(
+                    root,
+                    project_workflow.default_team_state(),
+                    project_context=context,
+                )
+
+            self.assertFalse((root / "workflow").exists())
+
     def test_archived_project_denies_review_check_before_git_or_status_write(self):
         project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
         with tempfile.TemporaryDirectory() as tmp:

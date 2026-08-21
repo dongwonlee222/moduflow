@@ -194,6 +194,34 @@ class ProjectOperationAuthorizationTests(unittest.TestCase):
         self.assertFalse(decision["allowed"])
         self.assertEqual(decision["reason_code"], "PROJECT_CAPABILITY_UNAVAILABLE")
 
+    def test_tampered_capability_cannot_override_archived_policy(self):
+        context = context_with_policy(
+            project_operation,
+            status="archived",
+            trust="internal",
+        )
+        context["capabilities"]["write"] = True
+
+        decision = project_operation.authorize_project_operation(context, "write")
+
+        self.assertFalse(decision["allowed"])
+        self.assertEqual(decision["reason_code"], "PROJECT_OPERATION_DENIED_ARCHIVED")
+
+    def test_registry_project_local_trust_remains_unknown_diagnostic_read(self):
+        context = context_with_policy(
+            project_operation,
+            status="active",
+            trust="project-local",
+        )
+        context["reason_code"] = "explicit_id"
+
+        decision = project_operation.authorize_project_operation(context, "read")
+
+        self.assertTrue(decision["allowed"])
+        self.assertEqual(decision["project_status"], "active")
+        self.assertEqual(decision["policy_trust_scope"], "unknown")
+        self.assertEqual(decision["reason_code"], "PROJECT_READ_ALLOWED_DIAGNOSTIC")
+
     def test_enforcing_guard_raises_typed_error_with_identical_payload(self):
         context = context_with_policy(project_operation, status="archived", trust="internal")
         expected = project_operation.authorize_project_operation(context, "publish")

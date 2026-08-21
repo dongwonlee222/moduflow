@@ -211,4 +211,4 @@ def main():
         print(f"Generated issue: {fpath.relative_to(root_dir)}")
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
