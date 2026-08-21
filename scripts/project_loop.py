@@ -6,8 +6,9 @@ from datetime import date
 from pathlib import Path
 
 try:
-    from scripts import project_registry
+    from scripts import project_operation, project_registry
 except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_operation
     import project_registry
 
 
@@ -522,7 +523,13 @@ def recommend_loop(root, *, project_context=None):
 
 
 def write_loop_state(root, state, *, project_context=None):
-    path = loop_state_path(root, project_context=project_context)
+    root = Path(root).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "execute")
+    path = loop_state_path(root, project_context=context)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(normalize_loop_state(state), ensure_ascii=False, indent=2) + "\n",
@@ -577,6 +584,7 @@ def validate_loop_state(root, *, project_context=None):
     return errors
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Inspect or advance ModuFlow loop state.")
     parser.add_argument("project_path", nargs="?", default=".")

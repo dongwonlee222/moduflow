@@ -1,3 +1,6 @@
+import contextlib
+import io
+import json
 import unittest
 
 from scripts import project_operation
@@ -114,6 +117,26 @@ class ProjectPolicyMatrixTests(unittest.TestCase):
 
 
 class ProjectOperationAuthorizationTests(unittest.TestCase):
+    def test_cli_denial_boundary_prints_json_without_traceback_and_returns_nonzero(self):
+        context = context_with_policy(
+            project_operation,
+            status="archived",
+            trust="internal",
+        )
+
+        @project_operation.cli_denial_boundary
+        def denied_command():
+            project_operation.require_project_capability(context, "write")
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = denied_command()
+
+        payload = json.loads(output.getvalue())
+        self.assertEqual(exit_code, 2)
+        self.assertEqual(payload["reason_code"], "PROJECT_OPERATION_DENIED_ARCHIVED")
+        self.assertNotIn("Traceback", output.getvalue())
+
     def test_allowed_decision_uses_stable_schema_and_normalized_policy(self):
         context = context_with_policy(project_operation, status="active", trust="internal")
 

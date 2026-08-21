@@ -19,6 +19,23 @@ project_loop = load_module("project_loop", "scripts/project_loop.py")
 
 
 class ProjectLoopTests(unittest.TestCase):
+    def test_archived_project_denies_loop_state_write_without_creating_file(self):
+        project_registry = load_module("project_registry_loop", "scripts/project_registry.py")
+        project_operation = load_module("project_operation_loop", "scripts/project_operation.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_loop.write_loop_state(
+                    root,
+                    project_loop.default_loop_state(root),
+                    project_context=context,
+                )
+
+            self.assertFalse((root / "workspace" / "loop-state.json").exists())
+
     def write_loop_state(
         self,
         root,

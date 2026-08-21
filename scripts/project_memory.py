@@ -6,8 +6,9 @@ from datetime import date
 from pathlib import Path
 
 try:
-    from scripts import project_registry
+    from scripts import project_operation, project_registry
 except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_operation
     import project_registry
 
 try:
@@ -71,7 +72,10 @@ def slugify(value):
 
 
 def _memory_root(path, project_context=None):
-    context = project_context or project_registry.project_context_for_root(path)
+    context = project_registry.context_for_operation(
+        path,
+        project_context=project_context,
+    )
     return context, project_registry.canonical_path(context, "memory")
 
 
@@ -124,8 +128,13 @@ def mkdir_if_missing(path):
     return True
 
 
-def apply_memory_plan(plan):
-    project_root = Path(plan["project_root"])
+def apply_memory_plan(plan, *, project_context=None):
+    project_root = Path(plan["project_root"]).resolve()
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     written = []
     for relative in plan.get("directories", MEMORY_DIRS):
         if mkdir_if_missing(project_root / relative):
@@ -262,9 +271,10 @@ def create_memory_entry(
     if kind not in KIND_TO_DIR:
         raise ValueError(f"Unsupported memory kind: {kind}")
     project_root = Path(path).resolve()
-    _context, target_dir = _memory_kind_dir(
+    context, target_dir = _memory_kind_dir(
         project_root, kind, project_context
     )
+    project_operation.require_project_capability(context, "write")
     target_dir.mkdir(parents=True, exist_ok=True)
     today = date.today().isoformat()
     base_id = f"{today}-{slugify(title)}"
@@ -334,7 +344,8 @@ def create_memory_candidate(
     if kind not in KIND_TO_DIR:
         raise ValueError(f"Unsupported memory kind: {kind}")
     project_root = Path(path).resolve()
-    _context, memory_root = _memory_root(project_root, project_context)
+    context, memory_root = _memory_root(project_root, project_context)
+    project_operation.require_project_capability(context, "write")
     target_dir = memory_root / ".candidates"
     target_dir.mkdir(parents=True, exist_ok=True)
     today = date.today().isoformat()
@@ -441,7 +452,7 @@ def iter_candidate_files(root, *, project_context=None):
     return sorted(path for path in candidate_root.glob("*.md") if path.is_file())
 
 
-def list_memory_candidates(path):
+def list_memory_candidates(path, *, project_context=None):
     project_root = Path(path).resolve()
     candidates = []
     import time
@@ -449,15 +460,12 @@ def list_memory_candidates(path):
     day_seconds = 24 * 3600
     stale_threshold = 14 * day_seconds
 
-    for candidate_file in iter_candidate_files(project_root):
-        # 14-day automatic stale pruning based on file mtime
+    for candidate_file in iter_candidate_files(
+        project_root,
+        project_context=project_context,
+    ):
         mtime = candidate_file.stat().st_mtime
-        if now - mtime > stale_threshold:
-            try:
-                candidate_file.unlink()
-            except Exception:
-                pass
-            continue
+        stale = now - mtime > stale_threshold
 
         try:
             text = candidate_file.read_text(encoding="utf-8")
@@ -470,16 +478,34 @@ def list_memory_candidates(path):
                     "path": str(candidate_file.relative_to(project_root)),
                     "summary": metadata.get("summary", ""),
                     "status": metadata.get("status", "candidate"),
+                    "stale": stale,
+                    "warning": "MEMORY_CANDIDATE_STALE" if stale else "",
                 }
             )
         except Exception:
-            pass
+            candidates.append(
+                {
+                    "id": candidate_file.stem,
+                    "kind": "",
+                    "title": "",
+                    "path": str(candidate_file.relative_to(project_root)),
+                    "summary": "",
+                    "status": "malformed",
+                    "stale": stale,
+                    "warning": "MEMORY_CANDIDATE_MALFORMED",
+                }
+            )
     return candidates
 
 
-def approve_memory_candidate(path, candidate_id):
+def approve_memory_candidate(path, candidate_id, *, project_context=None):
     project_root = Path(path).resolve()
-    for candidate_file in iter_candidate_files(project_root):
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "execute")
+    for candidate_file in iter_candidate_files(project_root, project_context=context):
         try:
             text = candidate_file.read_text(encoding="utf-8")
             metadata, _ = parse_frontmatter(text)
@@ -489,7 +515,7 @@ def approve_memory_candidate(path, candidate_id):
             kind = metadata.get("kind", "")
             if kind not in KIND_TO_DIR:
                 raise ValueError(f"Unsupported memory kind: {kind}")
-            _context, target_dir = _memory_kind_dir(project_root, kind)
+            _context, target_dir = _memory_kind_dir(project_root, kind, context)
             target_dir.mkdir(parents=True, exist_ok=True)
             target = target_dir / candidate_file.name
             approved_text = text.replace("status: candidate\n", "status: approved\n", 1)
@@ -510,9 +536,14 @@ def approve_memory_candidate(path, candidate_id):
     return None
 
 
-def reject_memory_candidate(path, candidate_id):
+def reject_memory_candidate(path, candidate_id, *, project_context=None):
     project_root = Path(path).resolve()
-    for candidate_file in iter_candidate_files(project_root):
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "execute")
+    for candidate_file in iter_candidate_files(project_root, project_context=context):
         try:
             text = candidate_file.read_text(encoding="utf-8")
             metadata, _ = parse_frontmatter(text)
@@ -2226,6 +2257,7 @@ def render_memory_panel(root, mem_id, *, project_context=None):
     )
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Plan, initialize, write, search, or get ModuFlow project memory.")
     parser.add_argument("project_path", nargs="?", default=".")
@@ -2269,7 +2301,8 @@ def main():
         return 0
 
     if args.dashboard:
-        _context, out_dir = _memory_root(args.project_path)
+        context, out_dir = _memory_root(args.project_path)
+        project_operation.require_project_capability(context, "write")
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / "dashboard.html"
         out_path.write_text(render_project_view(args.project_path), encoding="utf-8")
@@ -2293,9 +2326,11 @@ def main():
         return 0
 
     if args.issue:
+        context = project_registry.context_for_operation(args.project_path)
+        project_operation.require_project_capability(context, "write")
         slug = _resolve_issue_slug(args.project_path, args.issue)
         html = render_issue_panel(args.project_path, args.issue)
-        _context, out_dir = _memory_root(args.project_path)
+        _context, out_dir = _memory_root(args.project_path, context)
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / f"issue-{slug}.html"
         out_path.write_text(html, encoding="utf-8")

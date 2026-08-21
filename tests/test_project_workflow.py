@@ -32,6 +32,68 @@ class ProjectWorkflowTests(unittest.TestCase):
             context["paths"][role] = str((root / relative).resolve())
         return context
 
+    def archived_context(self, root):
+        project_registry = load_module("project_registry_workflow", "scripts/project_registry.py")
+        project_operation = load_module("project_operation_workflow", "scripts/project_operation.py")
+        context = project_registry.project_context_for_root(root)
+        context.update(project_operation.compute_project_policy("archived", "internal"))
+        return context
+
+    def test_archived_project_denies_workflow_initialization_before_writes(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plan = project_workflow.build_workflow_plan(root, dry_run=False)
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_workflow.apply_workflow_plan(
+                    plan,
+                    project_context=self.archived_context(root),
+                )
+
+            self.assertFalse((root / "workflow").exists())
+
+    def test_archived_project_denies_team_and_record_writes(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.archived_context(root)
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_workflow.upsert_team_item(
+                    root,
+                    {"issue_id": "110-denied", "status": "active"},
+                    project_context=context,
+                )
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_workflow.create_workflow_record(
+                    root,
+                    issue_id="110-denied",
+                    state="draft",
+                    owner="tester",
+                    project_context=context,
+                )
+
+            self.assertFalse((root / "workflow").exists())
+
+    def test_archived_project_denies_review_check_before_git_or_status_write(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.archived_context(root)
+
+            with mock.patch("subprocess.check_output") as git_diff:
+                with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                    project_workflow.run_review_check(
+                        root,
+                        "110-denied",
+                        project_context=context,
+                    )
+
+            git_diff.assert_not_called()
+            self.assertFalse((root / "specs").exists())
+
+
     def test_workflow_dry_run_lists_missing_files_without_writing(self):
         project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
         with tempfile.TemporaryDirectory() as tmp:

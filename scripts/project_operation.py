@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Side-effect-free project operation policy and enforcing guard."""
 
+import json
+from functools import wraps
+
 
 AUTHORIZATION_SCHEMA = "moduflow.project-operation-authorization.v1"
 OPERATIONS = ("read", "write", "execute", "publish")
@@ -206,3 +209,22 @@ def denial_exit_payload(error):
     if not isinstance(error, ProjectOperationDenied):
         raise TypeError("error must be ProjectOperationDenied")
     return error.decision
+
+
+def cli_denial_boundary(function):
+    """Render only typed policy denials as traceback-free CLI JSON."""
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except ProjectOperationDenied as error:
+            print(
+                json.dumps(
+                    denial_exit_payload(error),
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return 2
+
+    return wrapped
