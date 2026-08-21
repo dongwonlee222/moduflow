@@ -1225,5 +1225,86 @@ def _linked_blob(html):
     return m.group(1).replace("<\\/", "</") if m else ""
 
 
+class ProjectMemoryCanonicalPathTests(unittest.TestCase):
+    def test_dashboard_cli_writes_only_to_configured_memory_path(self):
+        project_memory = load_module("project_memory_dashboard_path", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps({"paths": {"memory": "product/memory"}}),
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(
+                sys,
+                "argv",
+                ["project_memory.py", str(root), "--dashboard"],
+            ):
+                self.assertEqual(project_memory.main(), 0)
+
+            self.assertTrue((root / "product" / "memory" / "dashboard.html").exists())
+            self.assertFalse((root / "memory" / "dashboard.html").exists())
+
+    def test_memory_search_create_plan_and_dashboard_use_configured_paths(self):
+        project_memory = load_module("project_memory_canonical", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            decoy = project_memory.create_memory_entry(
+                root,
+                kind="note",
+                title="DECOY MEMORY",
+                summary="must not appear",
+            )
+            (root / "issues").mkdir()
+            (root / "issues" / "WRONG.md").write_text(
+                "# WRONG DECOY ISSUE\n\n**Status: backlog** — created.\n",
+                encoding="utf-8",
+            )
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "paths": {
+                            "issues": "product/issues",
+                            "specs": "product/specs",
+                            "workspace": "product/workspace",
+                            "memory": "product/memory",
+                            "knowledge": "product/knowledge",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            configured_issues = root / "product" / "issues"
+            configured_issues.mkdir(parents=True)
+            (configured_issues / "CONFIGURED-001.md").write_text(
+                "# CONFIGURED ISSUE\n\n**Status: backlog** — created.\n",
+                encoding="utf-8",
+            )
+            created = project_memory.create_memory_entry(
+                root,
+                kind="note",
+                title="CONFIGURED MEMORY",
+                issue_id="CONFIGURED-001",
+                summary="canonical project knowledge",
+            )
+
+            hits = project_memory.search_memory_entries(root, "canonical")
+            plan = project_memory.build_memory_plan(root)
+            html = project_memory.render_project_view(root)
+
+            self.assertTrue(created["path"].startswith("product/memory/"))
+            self.assertEqual([item["id"] for item in hits], [created["id"]])
+            self.assertNotIn(decoy["id"], json.dumps(hits))
+            self.assertTrue(
+                all(path.startswith("product/memory/") for path in plan["writes"])
+            )
+            self.assertIn("CONFIGURED MEMORY", html)
+            self.assertIn("CONFIGURED ISSUE", html)
+            self.assertNotIn("DECOY MEMORY", html)
+            self.assertNotIn("WRONG DECOY ISSUE", html)
+
+
 if __name__ == "__main__":
     unittest.main()

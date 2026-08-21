@@ -278,6 +278,61 @@ class ProjectLifecycleTests(unittest.TestCase):
             self.assertNotIn("Canonical: `issues/BIZ-CUSTOM.md`.", dashboard)
             self.assertIn("Preserve me.", dashboard)
 
+    def test_sync_uses_configured_workspace_dashboard_and_ignores_default_decoy(self):
+        lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issues = root / "product" / "issues"
+            workspace = root / "product" / "workspace"
+            issues.mkdir(parents=True)
+            workspace.mkdir(parents=True)
+            (issues / "A-001.md").write_text(
+                "# Issue: `A-001`\n\n**Status: active** — created.\n",
+                encoding="utf-8",
+            )
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "paths": {
+                            "issues": "product/issues",
+                            "specs": "product/specs",
+                            "workspace": "product/workspace",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (root / ".moduflow" / "state.json").write_text(
+                json.dumps({"schema": "moduflow.state.v1"}), encoding="utf-8"
+            )
+            configured_dashboard = workspace / "dashboard.md"
+            configured_dashboard.write_text(
+                "# Dashboard\n\n## Active Issue\n\n- None active.\n\n"
+                "## Notes\n\n- CONFIGURED-PRESERVE\n",
+                encoding="utf-8",
+            )
+            default_workspace = root / "workspace"
+            default_workspace.mkdir()
+            decoy = default_workspace / "dashboard.md"
+            decoy.write_text(
+                "# Dashboard\n\n## Active Issue\n\n- WRONG-DECOY\n",
+                encoding="utf-8",
+            )
+            before = decoy.read_bytes()
+
+            result = lc.sync_lifecycle(root)
+
+            self.assertTrue(result["dashboard_updated"])
+            self.assertIn(
+                "`A-001`", configured_dashboard.read_text(encoding="utf-8")
+            )
+            self.assertIn(
+                "CONFIGURED-PRESERVE",
+                configured_dashboard.read_text(encoding="utf-8"),
+            )
+            self.assertEqual(decoy.read_bytes(), before)
+
     def test_sync_fails_closed_without_writing_for_unreadable_active_issue(self):
         lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
         with tempfile.TemporaryDirectory() as tmp:

@@ -6,6 +6,11 @@ from datetime import date
 from pathlib import Path
 
 try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
+try:
     from scripts.project_issue_schema import (
         configured_project_paths,
         evaluate_project,
@@ -65,16 +70,39 @@ def slugify(value):
     return slug or "untitled"
 
 
-def build_memory_plan(path, dry_run=True):
+def _memory_root(path, project_context=None):
+    context = project_context or project_registry.project_context_for_root(path)
+    return context, project_registry.canonical_path(context, "memory")
+
+
+def _memory_kind_dir(path, kind, project_context=None):
+    context, memory_root = _memory_root(path, project_context)
+    suffix = Path(KIND_TO_DIR[kind]).relative_to("memory")
+    return context, memory_root / suffix
+
+
+def build_memory_plan(path, dry_run=True, *, project_context=None):
     project_root = Path(path).resolve()
+    context, memory_root = _memory_root(project_root, project_context)
+    relatives = [
+        (memory_root / "index.md").relative_to(project_root).as_posix(),
+        *[
+            (memory_root / Path(relative).relative_to("memory"))
+            .relative_to(project_root)
+            .as_posix()
+            for relative in MEMORY_DIRS
+        ],
+    ]
     writes = []
-    for relative in ["memory/index.md", *MEMORY_DIRS]:
+    for relative in relatives:
         if not (project_root / relative).exists():
             writes.append(relative)
     return {
         "schema": "moduflow.memory-plan.v1",
         "project_root": str(project_root),
         "dry_run": dry_run,
+        "memory_root": memory_root.relative_to(project_root).as_posix(),
+        "directories": relatives[1:],
         "writes": writes,
         "preserves_existing_files": True,
         "portable": True,
@@ -99,11 +127,12 @@ def mkdir_if_missing(path):
 def apply_memory_plan(plan):
     project_root = Path(plan["project_root"])
     written = []
-    for relative in MEMORY_DIRS:
+    for relative in plan.get("directories", MEMORY_DIRS):
         if mkdir_if_missing(project_root / relative):
             written.append(relative)
-    if write_text_if_missing(project_root / "memory" / "index.md", INDEX_CONTENT):
-        written.append("memory/index.md")
+    index_relative = f"{plan.get('memory_root', 'memory')}/index.md"
+    if write_text_if_missing(project_root / index_relative, INDEX_CONTENT):
+        written.append(index_relative)
     plan["written"] = written
     return plan
 
@@ -228,11 +257,14 @@ def create_memory_entry(
     owner="",
     reversal_conditions="",
     tags=None,
+    project_context=None,
 ):
     if kind not in KIND_TO_DIR:
         raise ValueError(f"Unsupported memory kind: {kind}")
     project_root = Path(path).resolve()
-    target_dir = project_root / KIND_TO_DIR[kind]
+    _context, target_dir = _memory_kind_dir(
+        project_root, kind, project_context
+    )
     target_dir.mkdir(parents=True, exist_ok=True)
     today = date.today().isoformat()
     base_id = f"{today}-{slugify(title)}"
@@ -297,11 +329,13 @@ def create_memory_candidate(
     owner="",
     reversal_conditions="",
     tags=None,
+    project_context=None,
 ):
     if kind not in KIND_TO_DIR:
         raise ValueError(f"Unsupported memory kind: {kind}")
     project_root = Path(path).resolve()
-    target_dir = project_root / "memory" / ".candidates"
+    _context, memory_root = _memory_root(project_root, project_context)
+    target_dir = memory_root / ".candidates"
     target_dir.mkdir(parents=True, exist_ok=True)
     today = date.today().isoformat()
     base_id = f"{today}-{slugify(title)}"
@@ -392,15 +426,16 @@ def parse_list_value(value):
     return [item.strip() for item in inner.split(",") if item.strip()]
 
 
-def iter_memory_files(root):
-    memory_root = Path(root).resolve() / "memory"
+def iter_memory_files(root, *, project_context=None):
+    _context, memory_root = _memory_root(root, project_context)
     if not memory_root.exists():
         return []
     return sorted(path for path in memory_root.glob("*/*.md") if path.is_file())
 
 
-def iter_candidate_files(root):
-    candidate_root = Path(root).resolve() / "memory" / ".candidates"
+def iter_candidate_files(root, *, project_context=None):
+    _context, memory_root = _memory_root(root, project_context)
+    candidate_root = memory_root / ".candidates"
     if not candidate_root.exists():
         return []
     return sorted(path for path in candidate_root.glob("*.md") if path.is_file())
@@ -454,7 +489,7 @@ def approve_memory_candidate(path, candidate_id):
             kind = metadata.get("kind", "")
             if kind not in KIND_TO_DIR:
                 raise ValueError(f"Unsupported memory kind: {kind}")
-            target_dir = project_root / KIND_TO_DIR[kind]
+            _context, target_dir = _memory_kind_dir(project_root, kind)
             target_dir.mkdir(parents=True, exist_ok=True)
             target = target_dir / candidate_file.name
             approved_text = text.replace("status: candidate\n", "status: approved\n", 1)
@@ -2085,7 +2120,7 @@ def main():
         return 0
 
     if args.dashboard:
-        out_dir = Path(args.project_path).resolve() / "memory"
+        _context, out_dir = _memory_root(args.project_path)
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / "dashboard.html"
         out_path.write_text(render_project_view(args.project_path), encoding="utf-8")
@@ -2111,7 +2146,7 @@ def main():
     if args.issue:
         slug = _resolve_issue_slug(args.project_path, args.issue)
         html = render_issue_panel(args.project_path, args.issue)
-        out_dir = Path(args.project_path).resolve() / "memory"
+        _context, out_dir = _memory_root(args.project_path)
         out_dir.mkdir(parents=True, exist_ok=True)
         out_path = out_dir / f"issue-{slug}.html"
         out_path.write_text(html, encoding="utf-8")

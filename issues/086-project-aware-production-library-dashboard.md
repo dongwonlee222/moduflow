@@ -2,7 +2,7 @@
 
 **Status: backlog** — created 2026-07-10; spec, design, and prototype completed 2026-07-10. Execution not started.
 **Priority: p2**
-**Dependency: `085-project-production-records-and-playbooks` (done 2026-07-10; unblocked)**
+**Blocked-by: `102-project-registry-and-resolver`**
 
 ## Summary
 
@@ -97,7 +97,7 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 ## Related Issues
 
 - blocks:
-- blocked_by: `085-project-production-records-and-playbooks`
+- blocked_by: `102-project-registry-and-resolver`
 - duplicates:
 - follows_up: `056-dashboard-database-list-view`, `047-issue-artifact-drilldown`
 - supersedes:
@@ -123,4 +123,4 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 
 ## Next Command
 
-`product:plan 086-project-aware-production-library-dashboard`
+After Issue 102 is done: `product:plan 086-project-aware-production-library-dashboard`.

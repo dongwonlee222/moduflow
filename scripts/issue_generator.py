@@ -5,6 +5,11 @@ import re
 from datetime import date
 from pathlib import Path
 
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from scripts import project_registry
+
 def get_next_issue_number(issues_dir):
     issues_path = Path(issues_dir)
     if not issues_path.exists():
@@ -25,11 +30,14 @@ def format_issue_filename(num, title):
     return f"{num:03d}-{slug}.md"
 
 
-def workflow_artifact_link(root_dir, issue_slug, filename):
-    relative = Path("specs") / issue_slug / filename
+def workflow_artifact_link(root_dir, issue_slug, filename, project_context=None):
+    root = Path(root_dir).resolve()
+    context = project_context or project_registry.project_context_for_root(root)
+    specs_relative = project_registry.canonical_path(context, "specs").relative_to(root)
+    relative = specs_relative / issue_slug / filename
     if (Path(root_dir) / relative).is_file():
         return relative.as_posix()
-    return f"specs/<issue-id>/{filename}"
+    return (specs_relative / "<issue-id>" / filename).as_posix()
 
 
 def generate_issues_from_goal(goal, search_mock_data=None):
@@ -113,8 +121,10 @@ def generate_issues_from_goal(goal, search_mock_data=None):
     ]
     return issues
 
-def write_issue_file(root_dir, num, issue_data):
-    issues_dir = Path(root_dir) / "issues"
+def write_issue_file(root_dir, num, issue_data, *, project_context=None):
+    root = Path(root_dir).resolve()
+    context = project_context or project_registry.project_context_for_root(root)
+    issues_dir = project_registry.canonical_path(context, "issues")
     issues_dir.mkdir(parents=True, exist_ok=True)
     filename = format_issue_filename(num, issue_data["title"])
     issue_slug = filename[:-3]
@@ -124,8 +134,8 @@ def write_issue_file(root_dir, num, issue_data):
     scope_in_block = "\n".join([f"- {item}" for item in issue_data["scope_in"]])
     scope_out_block = "\n".join([f"- {item}" for item in issue_data["scope_out"]])
     ac_block = "\n".join([f"- {item}" for item in issue_data["acceptance_criteria"]])
-    spec_link = workflow_artifact_link(root_dir, issue_slug, "spec.md")
-    plan_link = workflow_artifact_link(root_dir, issue_slug, "plan.md")
+    spec_link = workflow_artifact_link(root, issue_slug, "spec.md", context)
+    plan_link = workflow_artifact_link(root, issue_slug, "plan.md", context)
     
     content = f"""# Issue {num:03d}: {issue_data["title"]}
 
@@ -179,7 +189,10 @@ def main():
     args = parser.parse_args()
 
     root_dir = Path(args.root).resolve()
-    next_num = get_next_issue_number(root_dir / "issues")
+    project_context = project_registry.project_context_for_root(root_dir)
+    next_num = get_next_issue_number(
+        project_registry.canonical_path(project_context, "issues")
+    )
     
     print(f"Goal: {args.goal}")
     print(f"Decomposing goal and generating issues starting from #{next_num}...")
@@ -187,7 +200,9 @@ def main():
     issues = generate_issues_from_goal(args.goal)
     for i, issue_data in enumerate(issues):
         num = next_num + i
-        fpath = write_issue_file(root_dir, num, issue_data)
+        fpath = write_issue_file(
+            root_dir, num, issue_data, project_context=project_context
+        )
         print(f"Generated issue: {fpath.relative_to(root_dir)}")
 
 if __name__ == "__main__":

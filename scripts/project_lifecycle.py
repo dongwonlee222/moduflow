@@ -14,6 +14,11 @@ from datetime import date
 from pathlib import Path
 
 try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
+try:
     from scripts.project_issue_schema import (
         build_artifact_index,
         evaluate_project,
@@ -108,10 +113,13 @@ def _lifecycle_state_from_evaluation(evaluation):
     }
 
 
-def lifecycle_state(root):
+def lifecycle_state(root, *, project_context=None):
     """Canonical lifecycle map projected from the shared issue model."""
     root = Path(root).resolve()
-    return _lifecycle_state_from_evaluation(evaluate_project(root))
+    context = project_context or project_registry.project_context_for_root(root)
+    return _lifecycle_state_from_evaluation(
+        evaluate_project(root, project_paths=context["relative_paths"])
+    )
 
 
 def _issue_title(text):
@@ -134,13 +142,16 @@ def _compatibility_items(evaluation):
     )
 
 
-def list_issues(root):
+def list_issues(root, *, project_context=None):
     """Compatibility records for every issues/*.md file, sorted by id."""
     root = Path(root).resolve()
-    return _compatibility_items(evaluate_project(root))
+    context = project_context or project_registry.project_context_for_root(root)
+    return _compatibility_items(
+        evaluate_project(root, project_paths=context["relative_paths"])
+    )
 
 
-def ready_issues(root):
+def ready_issues(root, *, project_context=None):
     """Startable backlog issues, priority-sorted (p0 first, then id).
 
     Structural spec/plan/review readiness is deliberately not required here.
@@ -148,7 +159,8 @@ def ready_issues(root):
     issue; satisfied dependencies allow it into this backward-compatible queue.
     """
     root = Path(root).resolve()
-    evaluation = evaluate_project(root)
+    context = project_context or project_registry.project_context_for_root(root)
+    evaluation = evaluate_project(root, project_paths=context["relative_paths"])
     items = _compatibility_items(evaluation)
     blocked_ids = {
         issue["issue_id"]
@@ -182,11 +194,14 @@ def _phase_from_evaluated_issue(issue):
     }.get(artifact_phase, "select")
 
 
-def infer_phase(root, issue_id, evaluation=None):
+def infer_phase(root, issue_id, evaluation=None, *, project_context=None):
     if not issue_id:
         return "select"
     root = Path(root).resolve()
-    evaluation = evaluation or evaluate_project(root)
+    context = project_context or project_registry.project_context_for_root(root)
+    evaluation = evaluation or evaluate_project(
+        root, project_paths=context["relative_paths"]
+    )
     issue = next(
         (
             item
@@ -317,16 +332,22 @@ def _dependency_drift_from_evaluation(evaluation):
     return drift
 
 
-def _dependency_drift(root):
+def _dependency_drift(root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
     return _dependency_drift_from_evaluation(
-        evaluate_project(Path(root).resolve())
+        evaluate_project(
+            Path(root).resolve(), project_paths=context["relative_paths"]
+        )
     )
 
 
-def consensus_drift(root, evaluation=None):
+def consensus_drift(root, evaluation=None, *, project_context=None):
     """Return only issue/state/dashboard consensus drift from one evaluation."""
     root = Path(root).resolve()
-    evaluation = evaluation or evaluate_project(root)
+    context = project_context or project_registry.project_context_for_root(root)
+    evaluation = evaluation or evaluate_project(
+        root, project_paths=context["relative_paths"]
+    )
     ls = _lifecycle_state_from_evaluation(evaluation)
     drift = []
     active = ls["active"]
@@ -341,7 +362,7 @@ def consensus_drift(root, evaluation=None):
             f".moduflow/state.json active_issue '{state_active}' != issue-file active '{issue_active}'"
         )
 
-    dash = root / "workspace" / "dashboard.md"
+    dash = project_registry.canonical_path(context, "workspace") / "dashboard.md"
     if dash.exists():
         dtext = dash.read_text(encoding="utf-8")
         active_body = _section_body(dtext, "Active Issue")
@@ -358,21 +379,23 @@ def consensus_drift(root, evaluation=None):
     return drift
 
 
-def lifecycle_drift(root):
+def lifecycle_drift(root, *, project_context=None):
     """Consensus and issue diagnostic drift. Returns [] when sources agree."""
     root = Path(root).resolve()
-    evaluation = evaluate_project(root)
+    context = project_context or project_registry.project_context_for_root(root)
+    evaluation = evaluate_project(root, project_paths=context["relative_paths"])
     return (
         _dependency_drift_from_evaluation(evaluation)
-        + consensus_drift(root, evaluation)
+        + consensus_drift(root, evaluation, project_context=context)
     )
 
 
-def sync_lifecycle(root):
+def sync_lifecycle(root, *, project_context=None):
     """Single propagation point: issue Status -> .moduflow/state.json + dashboard
     Active Issue section. Idempotent. Touches only structured fields/sections."""
     root = Path(root).resolve()
-    evaluation = evaluate_project(root)
+    context = project_context or project_registry.project_context_for_root(root)
+    evaluation = evaluate_project(root, project_paths=context["relative_paths"])
     ls = _lifecycle_state_from_evaluation(evaluation)
     errors = []
     for issue in evaluation["issues"]:
@@ -408,7 +431,7 @@ def sync_lifecycle(root):
         ),
         None,
     )
-    phase = infer_phase(root, active, evaluation)
+    phase = infer_phase(root, active, evaluation, project_context=context)
     next_command = "product:status"
     if active_issue:
         next_command = (
@@ -429,7 +452,7 @@ def sync_lifecycle(root):
         sp.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     # dashboard.md — regenerate ONLY the Active Issue section body; preserve prose.
-    dash = root / "workspace" / "dashboard.md"
+    dash = project_registry.canonical_path(context, "workspace") / "dashboard.md"
     changed_dashboard = False
     if dash.exists():
         dtext = dash.read_text(encoding="utf-8")

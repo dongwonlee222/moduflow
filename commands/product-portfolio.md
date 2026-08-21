@@ -1,6 +1,6 @@
 ---
 description: Initialize or render a portfolio workspace for multiple ModuFlow projects.
-argument-hint: "[portfolio path] [--write|--render]"
+argument-hint: "[portfolio path] [--write|--render|--resolve <request>|--select <project-id>]"
 ---
 
 # /product:portfolio
@@ -15,15 +15,21 @@ Create or refresh a central portfolio workspace over multiple project-local Modu
 python3 scripts/project_portfolio.py <portfolio-path> --write
 ```
 
-2. Register projects in `projects.json`.
+2. Register projects in `moduflow.projects.v2` with an ID, name, aliases, canonical root, all eight relative canonical paths, trust scope, status, and owner. Existing `moduflow.projects.v1` files remain read-only compatible and receive migration guidance.
 3. Render portfolio dashboard and weekly status:
 
 ```bash
 python3 scripts/project_portfolio.py <portfolio-path> --render
 ```
 
-4. The dashboard reads each project's `.moduflow/state.json` and, when present, `workflow/team-state.json`.
+4. The dashboard reads each project's `.moduflow/state.json` and canonical `workflow/team-state.json` only after registry validation.
 5. Preserve project-local Git artifacts as the source of truth.
+
+## Resolution
+
+- `--resolve <request>` applies explicit ID/CWD/alias/active/recent precedence and performs no write.
+- `--select <project-id>` atomically writes only `project-selection.json` after registry membership validation.
+- `ambiguous` and `unresolved` results expose only safe candidate identity and never read candidate project content.
 
 ## Team Columns
 

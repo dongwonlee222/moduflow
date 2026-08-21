@@ -12,6 +12,7 @@ from scripts.project_repository_identity import (
     inspect_repository_identity,
     operation_decision,
 )
+from scripts import project_registry
 
 
 READINESS_SCHEMA = "moduflow.implementation-readiness.v1"
@@ -41,11 +42,12 @@ def _implementation_tasks(tasks_text):
     return tasks or _task_lines(tasks_text)
 
 
-def _combined_issue_text(root, issue_id):
+def _combined_issue_text(root, issue_id, project_context=None):
     root = Path(root).resolve()
-    spec_dir = root / "specs" / issue_id
+    context = project_context or project_registry.project_context_for_root(root)
+    spec_dir = project_registry.canonical_path(context, "specs") / issue_id
     paths = [
-        root / "issues" / f"{issue_id}.md",
+        project_registry.canonical_path(context, "issues") / f"{issue_id}.md",
         spec_dir / "spec.md",
         spec_dir / "plan.md",
         spec_dir / "tasks.md",
@@ -96,9 +98,10 @@ def _readiness_check(check_id, required, evidence_present, severity, label, reco
     }
 
 
-def build_implementation_readiness(root, issue_id):
+def build_implementation_readiness(root, issue_id, *, project_context=None):
     root = Path(root).resolve()
-    text = _combined_issue_text(root, issue_id)
+    context = project_context or project_registry.project_context_for_root(root)
+    text = _combined_issue_text(root, issue_id, context)
     lowered = text.lower()
 
     frontend_scope = _has_any(
@@ -192,26 +195,39 @@ def build_implementation_readiness(root, issue_id):
     }
 
 
-def write_implementation_readiness(root, issue_id):
+def write_implementation_readiness(root, issue_id, *, project_context=None):
     root = Path(root).resolve()
-    target = root / "specs" / issue_id / "implementation-readiness.json"
+    context = project_context or project_registry.project_context_for_root(root)
+    target = (
+        project_registry.canonical_path(context, "specs")
+        / issue_id
+        / "implementation-readiness.json"
+    )
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(
-        json.dumps(build_implementation_readiness(root, issue_id), ensure_ascii=False, indent=2) + "\n",
+        json.dumps(
+            build_implementation_readiness(root, issue_id, project_context=context),
+            ensure_ascii=False,
+            indent=2,
+        ) + "\n",
         encoding="utf-8",
     )
     return target
 
 
-def build_review_handoff(root, issue_id):
+def build_review_handoff(root, issue_id, *, project_context=None):
     root = Path(root).resolve()
-    spec_dir = root / "specs" / issue_id
-    issue_path = root / "issues" / f"{issue_id}.md"
+    context = project_context or project_registry.project_context_for_root(root)
+    spec_dir = project_registry.canonical_path(context, "specs") / issue_id
+    issue_path = project_registry.canonical_path(context, "issues") / f"{issue_id}.md"
     spec_path = spec_dir / "spec.md"
     tasks_path = spec_dir / "tasks.md"
     status_path = spec_dir / "status.md"
-    dashboard_path = "memory/dashboard.html"
-    issue_html_path = f"memory/issue-{issue_id}.html"
+    memory_relative = project_registry.canonical_path(context, "memory").relative_to(root)
+    workspace_relative = project_registry.canonical_path(context, "workspace").relative_to(root)
+    dashboard_path = (memory_relative / "dashboard.html").as_posix()
+    issue_html_path = (memory_relative / f"issue-{issue_id}.html").as_posix()
+    constitution_path = (workspace_relative / "constitution.md").as_posix()
 
     issue_text = _read_if_exists(issue_path)
     spec_text = _read_if_exists(spec_path)
@@ -256,7 +272,7 @@ def build_review_handoff(root, issue_id):
         "- Worker: `pm-strategist`",
         "- Worker: `spec-architect`",
         "- Goal: compare implementation against problem, goals, non-goals, and acceptance criteria.",
-        "- Constitution check (issue 073): verify against `workspace/constitution.md` and record the compliance line in review.md — `Constitution: v<X.Y> checked — no violations` or the violation list.",
+        f"- Constitution check (issue 073): verify against `{constitution_path}` and record the compliance line in review.md — `Constitution: v<X.Y> checked — no violations` or the violation list.",
         "",
         "## Visual Handoff",
         "",
@@ -296,11 +312,15 @@ def build_review_handoff(root, issue_id):
     return "\n".join(lines)
 
 
-def write_review_handoff(root, issue_id):
+def write_review_handoff(root, issue_id, *, project_context=None):
     root = Path(root).resolve()
-    target = root / "specs" / issue_id / "review-handoff.md"
+    context = project_context or project_registry.project_context_for_root(root)
+    target = project_registry.canonical_path(context, "specs") / issue_id / "review-handoff.md"
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(build_review_handoff(root, issue_id), encoding="utf-8")
+    target.write_text(
+        build_review_handoff(root, issue_id, project_context=context),
+        encoding="utf-8",
+    )
     return target
 
 

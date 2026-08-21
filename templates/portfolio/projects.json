@@ -1,10 +1,22 @@
 {
-  "schema": "moduflow.projects.v1",
+  "schema": "moduflow.projects.v2",
   "projects": [
     {
       "id": "example-project",
       "name": "Example Project",
-      "path": "/absolute/path/to/project",
+      "root": "/absolute/path/to/project",
+      "aliases": ["example-project", "Example Project"],
+      "paths": {
+        "issues": "issues",
+        "specs": "specs",
+        "workspace": "workspace",
+        "knowledge": "knowledge",
+        "memory": "memory",
+        "production_records": "memory/production-records",
+        "playbooks": "playbooks",
+        "workflow": "workflow"
+      },
+      "trust_scope": "internal",
       "status": "active",
       "owner": ""
     }

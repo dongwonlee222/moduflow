@@ -712,5 +712,82 @@ class ProjectProductionDogfoodTests(unittest.TestCase):
         self.assertTrue(context["items"][0]["authoritative"])
 
 
+class ProjectProductionCanonicalPathTests(unittest.TestCase):
+    def test_search_validation_and_create_use_only_configured_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "paths": {
+                            "issues": "product/issues",
+                            "memory": "product/memory",
+                            "production_records": "product/records",
+                            "playbooks": "product/playbooks",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            configured_records = root / "product" / "records"
+            configured_playbooks = root / "product" / "playbooks"
+            configured_issues = root / "product" / "issues"
+            configured_records.mkdir(parents=True)
+            configured_playbooks.mkdir(parents=True)
+            configured_issues.mkdir(parents=True)
+            configured_content = (
+                VALID_RECORD.replace(
+                    "id: 2026-07-10-summer-banner",
+                    "id: configured-banner",
+                )
+                .replace("issue_id: 123-summer-event", "issue_id: CONFIGURED-001")
+                .replace("playbook_refs: [banner-mobile]", "playbook_refs: []")
+                .replace("- banner-mobile — candidate", "")
+                .replace(
+                    "- [Final](marketing/banner-final.png) — final · customer",
+                    "- [Final](product/banner-final.png) — final · customer",
+                )
+            )
+            (configured_records / "configured-banner.md").write_text(
+                configured_content, encoding="utf-8"
+            )
+            (configured_issues / "CONFIGURED-001.md").write_text(
+                "# Configured issue\n\n**Status: done** — completed.\n",
+                encoding="utf-8",
+            )
+            (root / "product" / "banner-final.png").write_bytes(b"image")
+            write_project(root)
+            decoy = VALID_RECORD.replace(
+                "id: 2026-07-10-summer-banner", "id: decoy-banner"
+            ).replace("playbook_refs: [banner-mobile]", "playbook_refs: []").replace(
+                "- banner-mobile — candidate", ""
+            )
+            write_record(root, decoy)
+
+            result = production.search_production(root, "banner")
+            validation = production.validate_production_project(root)
+            created = production.create_production_record(
+                root,
+                title="Configured follow-up",
+                source_context="campaign brief",
+                deliverable_type="banner",
+                channel="home-popup",
+                audiences=["customer"],
+                lifecycle="draft",
+                retrieval_trigger="when creating configured follow-ups",
+            )
+
+            self.assertEqual(
+                [item["id"] for item in result["items"]], ["configured-banner"]
+            )
+            self.assertNotIn("decoy-banner", json.dumps(result))
+            self.assertFalse(
+                any("dangling issue" in error for error in validation["errors"])
+            )
+            self.assertTrue(created["path"].startswith("product/records/"))
+            self.assertTrue((root / created["path"]).exists())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -12,11 +12,15 @@ import re
 import sys
 from pathlib import Path
 
+try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from scripts.project_issue_schema import (
-    configured_project_paths,
     evaluate_project,
     validate_issue_id,
 )
@@ -155,8 +159,11 @@ def _issue_payload(issue):
     }
 
 
-def _evaluated_items(root):
-    evaluation = evaluate_project(Path(root).resolve())
+def _evaluated_items(root, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(root)
+    evaluation = evaluate_project(
+        Path(root).resolve(), project_paths=context["relative_paths"]
+    )
     return evaluation, sorted(
         (_issue_payload(issue) for issue in evaluation["issues"]),
         key=lambda item: item["id"],
@@ -196,7 +203,7 @@ def _rpc_result(req_id, result):
     return {"jsonrpc": "2.0", "id": req_id, "result": result}
 
 
-def _tool_moduflow_status(root):
+def _tool_moduflow_status(root, *, project_context=None):
     from collections import Counter
 
     state_path = root / ".moduflow" / "state.json"
@@ -205,7 +212,9 @@ def _tool_moduflow_status(root):
     except Exception as exc:
         return _text_result({"error": f"could not read .moduflow/state.json: {exc}"})
 
-    _evaluation, items = _evaluated_items(root)
+    _evaluation, items = _evaluated_items(
+        root, project_context=project_context
+    )
     counts = Counter(item["status"] for item in items)
     payload = dict(state)
     if "schema" in payload:
@@ -214,23 +223,26 @@ def _tool_moduflow_status(root):
     return _text_result(payload)
 
 
-def _tool_moduflow_issues(root, arguments):
+def _tool_moduflow_issues(root, arguments, *, project_context=None):
     status = arguments.get("status")
-    _evaluation, items = _evaluated_items(root)
+    _evaluation, items = _evaluated_items(
+        root, project_context=project_context
+    )
     if status:
         items = [item for item in items if item["status"] == status]
     return _text_result({"issues": items})
 
 
-def _tool_moduflow_issue_get(root, arguments):
+def _tool_moduflow_issue_get(root, arguments, *, project_context=None):
     issue_id = arguments.get("id")
     if not issue_id:
         return None  # signals caller to raise a JSON-RPC -32602
     if not validate_issue_id(issue_id):
         return _text_result({"error": "invalid issue id", "id": issue_id})
-    evaluation, _items = _evaluated_items(root)
+    context = project_context or project_registry.project_context_for_root(root)
+    evaluation, _items = _evaluated_items(root, project_context=context)
     project_root = Path(root).resolve()
-    project_paths = configured_project_paths(project_root)
+    project_paths = context["relative_paths"]
     lexical_source = (
         Path(project_paths["issues"]) / f"{issue_id}.md"
     ).as_posix()
@@ -276,16 +288,22 @@ def _tool_moduflow_issue_get(root, arguments):
     })
 
 
-def _tool_moduflow_ready(root):
-    evaluation, _items = _evaluated_items(root)
+def _tool_moduflow_ready(root, *, project_context=None):
+    evaluation, _items = _evaluated_items(
+        root, project_context=project_context
+    )
     return _text_result({"ready": _ready_items(evaluation)})
 
 
-def _tool_moduflow_doctor(root):
+def _tool_moduflow_doctor(root, *, project_context=None):
     try:
         from scripts.project_doctor import inspect_project
 
-        d = inspect_project(root, include_preflight=False)
+        d = inspect_project(
+            root,
+            include_preflight=False,
+            project_context=project_context,
+        )
         summary = {
             "initialized": d["moduflow"]["initialized"],
             "missing": d["moduflow"]["missing"],
@@ -299,7 +317,7 @@ def _tool_moduflow_doctor(root):
         return _text_result({"error": f"doctor inspection failed: {exc}"})
 
 
-def handle_request(req, root):
+def handle_request(req, root, *, project_context=None):
     """Pure request handler: same input -> same output. Returns a response
     dict, or None for notifications (no id / notifications/* methods)."""
     method = req.get("method")
@@ -324,24 +342,41 @@ def handle_request(req, root):
         return _rpc_result(req_id, {"tools": TOOLS})
 
     if method == "tools/call":
+        context = project_context or project_registry.project_context_for_root(root)
         tool_name = params.get("name")
         arguments = params.get("arguments") or {}
 
         if tool_name == "moduflow_status":
-            return _rpc_result(req_id, _tool_moduflow_status(root))
+            return _rpc_result(
+                req_id,
+                _tool_moduflow_status(root, project_context=context),
+            )
         if tool_name == "moduflow_issues":
-            return _rpc_result(req_id, _tool_moduflow_issues(root, arguments))
+            return _rpc_result(
+                req_id,
+                _tool_moduflow_issues(
+                    root, arguments, project_context=context
+                ),
+            )
         if tool_name == "moduflow_issue_get":
-            result = _tool_moduflow_issue_get(root, arguments)
+            result = _tool_moduflow_issue_get(
+                root, arguments, project_context=context
+            )
             if result is None:
                 if not has_id:
                     return None
                 return _rpc_error(req_id, -32602, "Missing required argument 'id'")
             return _rpc_result(req_id, result)
         if tool_name == "moduflow_doctor":
-            return _rpc_result(req_id, _tool_moduflow_doctor(root))
+            return _rpc_result(
+                req_id,
+                _tool_moduflow_doctor(root, project_context=context),
+            )
         if tool_name == "moduflow_ready":
-            return _rpc_result(req_id, _tool_moduflow_ready(root))
+            return _rpc_result(
+                req_id,
+                _tool_moduflow_ready(root, project_context=context),
+            )
 
         if not has_id:
             return None

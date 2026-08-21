@@ -324,6 +324,36 @@ class RepositoryInspectionTests(unittest.TestCase):
         self.assertEqual(result["observed"]["base_ref"], "refs/remotes/origin/main")
         self.assertTrue(all(result["capabilities"].values()))
 
+    def test_repository_link_audit_uses_configured_artifact_paths(self):
+        config_path = self.root / ".moduflow" / "config.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["paths"] = {
+            "issues": "product/issues",
+            "specs": "product/specs",
+            "workspace": "product/workspace",
+        }
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+        (self.root / "issues").mkdir()
+        (self.root / "issues" / "999-decoy.md").write_text(
+            "# Decoy\n\nhttps://github.com/other/repo/issues/9\n",
+            encoding="utf-8",
+        )
+        configured = self.root / "product" / "issues"
+        configured.mkdir(parents=True)
+        real = configured / "102-real.md"
+        real.write_text(
+            "# Real\n\nhttps://github.com/owner/repo/issues/10\n",
+            encoding="utf-8",
+        )
+
+        findings = self.module.audit_repository_links(
+            self.root, "github.com/owner/repo"
+        )
+
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["artifact"], real.relative_to(self.root).as_posix())
+        self.assertEqual(findings[0]["classification"], "canonical")
+
     def test_origin_name_cannot_hide_wrong_fetch_repository(self):
         responses = self.matching_responses()
         responses[("git", "remote", "get-url", "--all", "origin")] = ok(

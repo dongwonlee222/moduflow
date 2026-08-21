@@ -10,6 +10,46 @@ from scripts import project_execution
 
 
 class ProjectExecutionHandoffTests(unittest.TestCase):
+    def test_readiness_and_review_writes_use_configured_issue_and_spec_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "102-configured-paths"
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {"paths": {"issues": "product/issues", "specs": "product/specs"}}
+                ),
+                encoding="utf-8",
+            )
+            (root / "issues").mkdir()
+            (root / "issues" / f"{issue_id}.md").write_text(
+                "# DECOY\n\nAPI frontend without contracts.\n", encoding="utf-8"
+            )
+            issue_dir = root / "product" / "issues"
+            spec_dir = root / "product" / "specs" / issue_id
+            issue_dir.mkdir(parents=True)
+            spec_dir.mkdir(parents=True)
+            (issue_dir / f"{issue_id}.md").write_text(
+                "# CONFIGURED ISSUE\n\nDocs-only change.\n", encoding="utf-8"
+            )
+            (spec_dir / "plan.md").write_text(
+                "# Plan\n\nTest strategy: unit test.\n"
+                "Release/rollback verification: run release_check then git revert.\n",
+                encoding="utf-8",
+            )
+            (spec_dir / "tasks.md").write_text(
+                "- [ ] Code: canonical helper\n", encoding="utf-8"
+            )
+
+            readiness = project_execution.build_implementation_readiness(root, issue_id)
+            readiness_path = project_execution.write_implementation_readiness(root, issue_id)
+            review_path = project_execution.write_review_handoff(root, issue_id)
+
+            self.assertEqual(readiness["status"], "ready")
+            self.assertEqual(readiness_path, (spec_dir / "implementation-readiness.json").resolve())
+            self.assertEqual(review_path, (spec_dir / "review-handoff.md").resolve())
+            self.assertFalse((root / "specs" / issue_id).exists())
+
     def test_write_mode_stops_before_artifact_mutation_on_identity_mismatch(self):
         identity = {
             "schema": "moduflow.repository-identity.v1",

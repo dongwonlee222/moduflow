@@ -10,6 +10,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import project_doctor
+import project_registry
 
 
 DEFAULT_PATHS = {
@@ -40,8 +41,10 @@ def first_candidate(candidates, key, fallback):
     return values[0] if values else fallback
 
 
-def build_config(project_root, mode, candidates):
+def build_config(project_root, mode, candidates, *, project_context=None):
+    context = project_context or project_registry.project_context_for_root(project_root)
     paths = dict(DEFAULT_PATHS)
+    paths.update(context["relative_paths"])
     if mode == "mapped":
         paths["issues"] = first_candidate(candidates, "issues", paths["issues"])
         paths["specs"] = first_candidate(candidates, "specs", paths["specs"])
@@ -150,12 +153,19 @@ def planned_writes(project_root, config):
     return writes
 
 
-def build_migration_plan(path, mode="mapped", dry_run=True):
+def build_migration_plan(
+    path, mode="mapped", dry_run=True, *, project_context=None
+):
     requested = Path(path).resolve()
     detected_git_root = project_doctor.git_root(requested)
     project_root = detected_git_root or requested
+    context = project_context or project_registry.project_context_for_root(
+        project_root
+    )
     candidates = project_doctor.discover_candidate_paths(project_root)
-    config = build_config(project_root, mode, candidates)
+    config = build_config(
+        project_root, mode, candidates, project_context=context
+    )
     return {
         "schema": "moduflow.migration-plan.v1",
         "project_root": str(project_root),

@@ -155,6 +155,52 @@ class GithubIssueSyncTests(unittest.TestCase):
         links_section = updated.split("## Links", 1)[1].split("## ", 1)[0]
         self.assertIn(f"- GitHub: {url}", links_section)
 
+    def test_sync_reads_and_writes_only_the_configured_issue_path(self):
+        default_issue = self._write_project()
+        config_path = self.root / ".moduflow" / "config.json"
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        config["paths"] = {"issues": "product/issues"}
+        config_path.write_text(json.dumps(config), encoding="utf-8")
+        configured_dir = self.root / "product" / "issues"
+        configured_dir.mkdir(parents=True)
+        configured_issue = configured_dir / default_issue.name
+        configured_text = ISSUE_TEXT.replace(
+            "Sample outcome text for sync.", "Configured outcome for sync."
+        )
+        configured_issue.write_text(configured_text, encoding="utf-8")
+        default_issue.write_text(
+            ISSUE_TEXT.replace("Sample outcome text for sync.", "DECOY OUTCOME"),
+            encoding="utf-8",
+        )
+
+        repo = "dongwonlee222/moduflow"
+        url = f"https://github.com/{repo}/issues/17"
+        body = (
+            "Configured outcome for sync.\n\n---\n"
+            f"Canonical source: https://github.com/{repo}/blob/HEAD/product/issues/{ISSUE_ID}.md\n"
+            "<!-- moduflow:issue-sync -->"
+        )
+        responses = self._identity_responses(repo)
+        responses.update(
+            {
+                ("gh", "label", "list", "-R", repo, "--json", "name"): json.dumps(
+                    [{"name": name} for name in project_github_issues.LABELS.values()]
+                ),
+                (
+                    "gh", "issue", "create", "-R", repo, "--title", ISSUE_ID,
+                    "--body", body, "--label", "moduflow:active",
+                ): url + "\n",
+            }
+        )
+
+        result = project_github_issues.sync_issue(
+            self.root, ISSUE_ID, runner=FakeRunner(responses)
+        )
+
+        self.assertEqual(result["action"], "created")
+        self.assertIn(f"- GitHub: {url}", configured_issue.read_text(encoding="utf-8"))
+        self.assertNotIn("- GitHub:", default_issue.read_text(encoding="utf-8"))
+
     def test_update_path_edits_labels_without_creating(self):
         repo = "o/r"
         issue_text = ISSUE_TEXT.replace(

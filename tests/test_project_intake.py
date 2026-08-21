@@ -217,6 +217,59 @@ class ProjectIntakeTests(unittest.TestCase):
             self.assertEqual(candidate["title"], "로그인 버그 고쳐줘")
             self.assertNotIn("auth", candidate["title"])
 
+    def test_route_intake_uses_only_configured_issue_and_workspace_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "paths": {
+                            "issues": "product/issues",
+                            "specs": "product/specs",
+                            "workspace": "product/workspace",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            configured_issues = root / "product" / "issues"
+            configured_workspace = root / "product" / "workspace"
+            configured_issues.mkdir(parents=True)
+            configured_workspace.mkdir(parents=True)
+            (configured_issues / "A-001.md").write_text(
+                "# A-001 배너 수정\n\n배너 수정 작업\n", encoding="utf-8"
+            )
+            (configured_workspace / "loop-state.json").write_text(
+                json.dumps(
+                    {
+                        "goal_id": "goal-a",
+                        "active_issue_id": "A-001",
+                        "issue_ids": ["A-001"],
+                        "next_command": "product:execute A-001",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            default_issues = root / "issues"
+            default_issues.mkdir()
+            (default_issues / "WRONG.md").write_text(
+                "# WRONG 배너 수정\n\n배너 수정 A-001\n", encoding="utf-8"
+            )
+
+            routed = project_intake.route_intake(
+                root, "A-001 배너 수정", write=True
+            )
+
+            self.assertEqual(
+                [item["issue_id"] for item in routed["related_issues"]],
+                ["A-001"],
+            )
+            self.assertEqual(routed["recommended_action"], "attach_active_issue")
+            self.assertNotIn("WRONG", json.dumps(routed, ensure_ascii=False))
+            self.assertTrue((configured_workspace / "inbox.md").exists())
+            self.assertFalse((root / "workspace" / "inbox.md").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

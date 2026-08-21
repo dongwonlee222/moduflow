@@ -1,5 +1,31 @@
 # ModuFlow Roadmap
 
+## Priority Refresh — 2026-08-19
+
+### Now
+
+- `103-atomic-lifecycle-state-transaction` — P0; next specification target. It can now consume the completed Issue 102 context contract.
+
+### Next
+
+- `104-project-aware-natural-language-request-orchestrator` — P0; blocked by 102 and 103.
+- `105-schema-migration-and-doctor-triage` — P0; blocked by 102 and 103.
+- `106-korean-production-search-and-stable-ids` — P1; independent and may proceed after the P0 spec review.
+
+### Later
+
+- `107-shared-approved-playbook-layer` — P1; blocked by 102 and 106.
+- `108-production-approval-and-verification-gates` — P1; blocked by 104.
+- `086-project-aware-production-library-dashboard` — P2; design/prototype retained, but implementation now consumes 102 instead of creating a second project registry/resolver.
+
+### Review Gate
+
+Issue 102 completed on 2026-08-19 with 1,225 tests, project validation, zero lifecycle drift, and release check passing. Issue 104/105 remain blocked only by Issue 103; Issue 107 still also depends on 106. This refresh is authoritative over the historical snapshots below.
+
+### Recently Completed
+
+- `102-project-registry-and-resolver` — explicit v2 registry, deterministic fail-closed resolver, v1 migration proposal, canonical context API, and all planned read/write consumer convergence shipped on branch `codex/102-project-registry-and-resolver`; package source version is 0.3.49.
+
 ## Priority Refresh — 2026-08-13
 
 ### Now

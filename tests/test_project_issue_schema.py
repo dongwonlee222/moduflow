@@ -3737,5 +3737,66 @@ external_secret: DO-NOT-EXPOSE-ISSUE-SECRET
         )
 
 
+class ProjectPathMapTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.schema = load_module(
+            "project_issue_schema_path_map", "scripts/project_issue_schema.py"
+        )
+
+    def test_project_path_defaults_cover_every_canonical_consumer(self):
+        self.assertEqual(
+            self.schema.DEFAULT_PROJECT_PATHS,
+            {
+                "issues": "issues",
+                "specs": "specs",
+                "workspace": "workspace",
+                "knowledge": "knowledge",
+                "memory": "memory",
+                "production_records": "memory/production-records",
+                "playbooks": "playbooks",
+                "workflow": "workflow",
+            },
+        )
+
+    def test_new_path_keys_reject_absolute_parent_and_symlink_escapes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            outside = root.parent / f"{root.name}-outside"
+            outside.mkdir()
+            self.addCleanup(lambda: shutil.rmtree(outside))
+            (root / "linked").symlink_to(outside, target_is_directory=True)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps(
+                    {
+                        "paths": {
+                            "knowledge": "../outside-knowledge",
+                            "memory": "/tmp/outside-memory",
+                            "production_records": "linked/records",
+                            "playbooks": "../outside-playbooks",
+                            "workflow": "linked/workflow",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            configured = self.schema.configured_project_paths(root)
+            violations = self.schema._configured_path_violations(root)
+
+            for key in (
+                "knowledge",
+                "memory",
+                "production_records",
+                "playbooks",
+                "workflow",
+            ):
+                self.assertEqual(
+                    configured[key], self.schema.DEFAULT_PROJECT_PATHS[key]
+                )
+                self.assertIn(key, violations)
+
+
 if __name__ == "__main__":
     unittest.main()

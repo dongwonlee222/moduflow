@@ -518,6 +518,28 @@ next_command: {next_command}
         self.assertTrue(expected.issubset(set(validator.REQUIRED_FILES)))
         self.assertTrue(all((ROOT / path).is_file() for path in expected))
 
+    def test_distribution_ships_project_registry_contract_and_release_suite(self):
+        validator = load_module(
+            "validate_moduflow_project_registry", "scripts/validate_moduflow.py"
+        )
+        expected = {
+            "scripts/project_registry.py",
+            "tests/test_project_registry.py",
+            "tests/fixtures/project-registry/projects-v1.json",
+            "tests/fixtures/project-registry/projects-v2.json",
+            "tests/fixtures/project-registry/projects-v2-alias-collision.json",
+            "templates/portfolio/projects.json",
+            "commands/product-projects.md",
+            "commands/product-portfolio.md",
+        }
+
+        self.assertTrue(expected.issubset(set(validator.REQUIRED_FILES)))
+        self.assertTrue(all((ROOT / path).is_file() for path in expected))
+        release_source = (ROOT / "scripts" / "release_check.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"tests.test_project_registry"', release_source)
+
     def test_issue_consumers_import_shared_schema_without_duplicate_parsers(self):
         forbidden_definitions = {
             "parse_issue_frontmatter",
