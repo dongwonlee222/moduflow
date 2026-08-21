@@ -83,16 +83,16 @@ class TransactionContractTests(unittest.TestCase):
 
         self.assertEqual(
             first_key,
-            "e48c0513a012eb46329b7e51fa68b6f7e1d205a4ee6e56db5193eb653a1edbf3",
+            "9c89689c8960bf8fcdc8ccb31859a65956e4804a2c19bf46f32e614ec690484e",
         )
         self.assertEqual(second_key, first_key)
         self.assertEqual(
             transaction.derive_transaction_id(first_context, intent),
-            "txn-80b0c06ce9fe5355571a4bc8b9074bb8",
+            "txn-e77c2f16d9ead05064180537024fe502",
         )
         self.assertEqual(
             transaction.derive_transaction_id(second_context, intent),
-            "txn-80b0c06ce9fe5355571a4bc8b9074bb8",
+            "txn-e77c2f16d9ead05064180537024fe502",
         )
 
     def test_key_cannot_be_reused_for_a_different_normalized_intent(self):
@@ -108,6 +108,62 @@ class TransactionContractTests(unittest.TestCase):
         transaction.assert_idempotency_key_matches(context, key, start)
         with self.assertRaisesRegex(ValueError, "IDEMPOTENCY_KEY_CONFLICT"):
             transaction.assert_idempotency_key_matches(context, key, complete)
+
+    def test_pause_blocker_changes_the_normalized_intent_identity(self):
+        context = resolved_transaction_context()
+        blocked_for_approval = transaction.LifecycleIntent(
+            **lifecycle_intent_fields("pause"), loop_blocker="waiting for approval"
+        )
+        blocked_for_vendor = transaction.LifecycleIntent(
+            **lifecycle_intent_fields("pause"), loop_blocker="waiting for vendor"
+        )
+
+        self.assertNotEqual(
+            transaction.derive_idempotency_key(context, blocked_for_approval),
+            transaction.derive_idempotency_key(context, blocked_for_vendor),
+        )
+
+    def test_normalization_deeply_freezes_change_payloads_and_identity(self):
+        context = resolved_transaction_context()
+        roadmap_change = {
+            "priority": {"before": "p2", "after": "p1"},
+            "dependencies": ["102-resolver"],
+        }
+        production_change = {
+            "version": "1.2.3",
+            "release": {"channel": "beta"},
+        }
+        normalized_update = transaction.normalize_lifecycle_intent(
+            transaction.LifecycleIntent(
+                **lifecycle_intent_fields("update"), roadmap_change=roadmap_change
+            )
+        )
+        normalized_production = transaction.normalize_lifecycle_intent(
+            transaction.LifecycleIntent(
+                **lifecycle_intent_fields(
+                    "production-version", production_change=production_change
+                )
+            )
+        )
+        update_key = transaction.derive_idempotency_key(context, normalized_update)
+        production_key = transaction.derive_idempotency_key(context, normalized_production)
+
+        roadmap_change["priority"]["after"] = "p0"
+        roadmap_change["dependencies"].append("110-capabilities")
+        production_change["release"]["channel"] = "stable"
+        with self.assertRaises(TypeError):
+            normalized_update.roadmap_change["priority"]["after"] = "p0"
+        with self.assertRaises(TypeError):
+            normalized_production.production_change["release"]["channel"] = "stable"
+
+        self.assertEqual(normalized_update.roadmap_change["priority"]["after"], "p1")
+        self.assertEqual(normalized_update.roadmap_change["dependencies"], ("102-resolver",))
+        self.assertEqual(normalized_production.production_change["release"]["channel"], "beta")
+        self.assertEqual(transaction.derive_idempotency_key(context, normalized_update), update_key)
+        self.assertEqual(
+            transaction.derive_idempotency_key(context, normalized_production),
+            production_key,
+        )
 
     def test_target_hashes_and_persisted_envelopes_are_redacted_and_schema_strict(self):
         before = transaction.target_sha256(b"before")
@@ -178,3 +234,65 @@ class TransactionContractTests(unittest.TestCase):
             transaction.serialize_transaction_plan({**plan, "recovery_payload": "secret"})
         with self.assertRaisesRegex(ValueError, "Unknown transaction result keys"):
             transaction.serialize_transaction_result({**result, "staging_path": "/tmp/secret"})
+
+    def test_serializers_reject_unsafe_target_and_nested_validation_content(self):
+        target = {
+            "role": "owning-issue",
+            "relative_path": "issues/103-atomic-lifecycle-state-transaction.md",
+            "existed": True,
+            "before_sha256": "6db7d803e74f1ffa7d8f5adc0bf95b3e15bf4c8373fffadf546227cc6c6742cb",
+            "after_sha256": "f39592393ef0859cb196a52693d2cea00fb2df784b3c04ae54aa7cadb8e562f8",
+            "after_bytes": 5,
+            "changed": True,
+            "validation_rules": ["issue-schema"],
+            "apply_order": 1,
+            "rollback_order": 1,
+        }
+        plan = {
+            "schema": "moduflow.lifecycle-transaction-plan.v1",
+            "transaction_id": "txn-123",
+            "idempotency_key": "key-123",
+            "project_id": "alpha",
+            "canonical_root": "/projects/alpha",
+            "issue_id": "103-atomic-lifecycle-state-transaction",
+            "action": "start",
+            "target_lifecycle": "active",
+            "targets": [target],
+        }
+        unsafe_targets = [
+            ({**target, "relative_path": "/private/recovery-payload"}, "relative_path"),
+            ({**target, "relative_path": "C:/private/recovery-payload"}, "relative_path"),
+            ({**target, "before_sha256": "recovery payload: secret"}, "sha256"),
+            ({**target, "validation_rules": ["issue-schema", {"payload": "secret"}]}, "validation_rules"),
+        ]
+        for unsafe_target, message in unsafe_targets:
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(ValueError, message):
+                    transaction.serialize_transaction_plan({**plan, "targets": [unsafe_target]})
+
+        result = {
+            "schema": "moduflow.lifecycle-transaction.v1",
+            "transaction_id": "txn-123",
+            "idempotency_key": "key-123",
+            "status": "noop",
+            "project_id": "alpha",
+            "canonical_root": "/projects/alpha",
+            "issue_id": "103-atomic-lifecycle-state-transaction",
+            "action": "start",
+            "target_lifecycle": "active",
+            "targets": [target],
+            "projected_validation": {"valid": True, "details": {"payload": "secret"}},
+            "post_apply_validation": {"valid": True},
+            "failed_stage": "",
+            "error_code": "",
+            "rollback_status": "not_required",
+            "verified_target_count": 1,
+            "next_command": "product:status",
+            "actor": "dongwon",
+            "source_event": "request:42",
+            "created_at": "2030-01-01T00:00:00Z",
+            "started_at": "",
+            "completed_at": "2030-01-01T00:00:00Z",
+        }
+        with self.assertRaisesRegex(ValueError, "validation summary keys"):
+            transaction.serialize_transaction_result(result)

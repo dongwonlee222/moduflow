@@ -9,7 +9,10 @@ top of this contract in later Issue 103 tasks.
 from dataclasses import dataclass, replace
 import hashlib
 import json
+from collections.abc import Mapping
+from pathlib import PurePosixPath, PureWindowsPath
 import re
+from types import MappingProxyType
 
 
 PLAN_SCHEMA = "moduflow.lifecycle-transaction-plan.v1"
@@ -36,6 +39,8 @@ _SEMANTIC_VERSION = re.compile(
     r"(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?"
     r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
 )
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_LOGICAL_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
 
 _TARGET_RECORD_KEYS = frozenset({
     "role",
@@ -92,6 +97,7 @@ _TERMINAL_STATUSES = frozenset({
     "rolled_back",
     "recovery_required",
 })
+_VALIDATION_SUMMARY_KEYS = frozenset({"valid", "rule_ids", "error_codes"})
 
 
 @dataclass(frozen=True)
@@ -113,11 +119,36 @@ class LifecycleIntent:
 def canonical_json_bytes(value):
     """Return canonical UTF-8 JSON bytes for deterministic hashing."""
     return json.dumps(
-        value,
+        _json_value(value),
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
+
+
+def _freeze_json_value(value):
+    """Recursively detach and freeze JSON-compatible semantic input."""
+    if isinstance(value, Mapping):
+        frozen = {}
+        for key, child in value.items():
+            if not isinstance(key, str):
+                raise TypeError("semantic change keys must be strings")
+            frozen[key] = _freeze_json_value(child)
+        return MappingProxyType(frozen)
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_json_value(child) for child in value)
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    raise TypeError("semantic change values must be JSON-compatible")
+
+
+def _json_value(value):
+    """Return a detached JSON-compatible equivalent of frozen semantic data."""
+    if isinstance(value, Mapping):
+        return {key: _json_value(child) for key, child in value.items()}
+    if isinstance(value, tuple):
+        return [_json_value(child) for child in value]
+    return value
 
 
 def target_sha256(contents):
@@ -154,7 +185,7 @@ def normalize_lifecycle_intent(intent):
 
     production_change = intent.production_change
     if action == "production-version":
-        if not isinstance(production_change, dict) or not production_change.get("version"):
+        if not isinstance(production_change, Mapping) or not production_change.get("version"):
             raise ValueError("production-version requires production_change.version")
         version = str(production_change["version"]).strip()
         if not _SEMANTIC_VERSION.fullmatch(version):
@@ -162,7 +193,7 @@ def normalize_lifecycle_intent(intent):
         production_change = {**production_change, "version": version}
     elif production_change is not None:
         raise ValueError("production_change is only valid for production-version")
-    if intent.roadmap_change is not None and not isinstance(intent.roadmap_change, dict):
+    if intent.roadmap_change is not None and not isinstance(intent.roadmap_change, Mapping):
         raise ValueError("roadmap_change must be a dictionary")
 
     return replace(
@@ -172,7 +203,17 @@ def normalize_lifecycle_intent(intent):
         actor=str(intent.actor).strip(),
         source_event=str(intent.source_event).strip(),
         target_lifecycle=fixed_target or supplied_target,
-        production_change=production_change,
+        loop_blocker=str(intent.loop_blocker or "").strip(),
+        roadmap_change=(
+            _freeze_json_value(intent.roadmap_change)
+            if intent.roadmap_change is not None
+            else None
+        ),
+        production_change=(
+            _freeze_json_value(production_change)
+            if production_change is not None
+            else None
+        ),
     )
 
 
@@ -190,6 +231,7 @@ def _semantic_identity(project_context, intent):
         "action": normalized.action,
         "target_lifecycle": normalized.target_lifecycle,
         "source_event": normalized.source_event,
+        "loop_blocker": normalized.loop_blocker,
         "roadmap_change": normalized.roadmap_change,
         "production_change": normalized.production_change,
     }
@@ -232,7 +274,68 @@ def _serialized_targets(targets):
     serialized = []
     for target in targets:
         _assert_exact_keys(target, _TARGET_RECORD_KEYS, "transaction target")
-        serialized.append(dict(target))
+        relative_path = target["relative_path"]
+        if (
+            not isinstance(relative_path, str)
+            or not relative_path
+            or "\\" in relative_path
+            or relative_path.startswith("/")
+            or PureWindowsPath(relative_path).is_absolute()
+            or any(part in {"", ".", ".."} for part in PurePosixPath(relative_path).parts)
+        ):
+            raise ValueError("relative_path must be a project-relative logical path")
+        if not isinstance(target["role"], str) or not _LOGICAL_NAME.fullmatch(target["role"]):
+            raise ValueError("role must be a logical identifier")
+        for name in ("before_sha256", "after_sha256"):
+            value = target[name]
+            if value != "absent" and (
+                not isinstance(value, str) or not _SHA256.fullmatch(value)
+            ):
+                raise ValueError(f"{name} must be a SHA-256 hash or absent")
+        if not isinstance(target["existed"], bool) or not isinstance(target["changed"], bool):
+            raise ValueError("target existence and change flags must be booleans")
+        if (
+            not isinstance(target["after_bytes"], int)
+            or isinstance(target["after_bytes"], bool)
+            or target["after_bytes"] < 0
+        ):
+            raise ValueError("after_bytes must be a non-negative integer")
+        for name in ("apply_order", "rollback_order"):
+            if (
+                not isinstance(target[name], int)
+                or isinstance(target[name], bool)
+                or target[name] < 0
+            ):
+                raise ValueError(f"{name} must be a non-negative integer")
+        rules = target["validation_rules"]
+        if (
+            not isinstance(rules, list)
+            or not all(isinstance(rule, str) and _LOGICAL_NAME.fullmatch(rule) for rule in rules)
+        ):
+            raise ValueError("validation_rules must be logical rule identifiers")
+        serialized.append({**target, "validation_rules": list(rules)})
+    return serialized
+
+
+def _serialized_validation_summary(summary):
+    if not isinstance(summary, dict):
+        raise TypeError("validation summary must be a dictionary")
+    unknown = sorted(set(summary) - _VALIDATION_SUMMARY_KEYS)
+    if unknown:
+        raise ValueError("validation summary keys must be valid, rule_ids, or error_codes")
+    if not isinstance(summary.get("valid"), bool):
+        raise ValueError("validation summary requires boolean valid")
+    serialized = {"valid": summary["valid"]}
+    for name in ("rule_ids", "error_codes"):
+        if name not in summary:
+            continue
+        values = summary[name]
+        if (
+            not isinstance(values, list)
+            or not all(isinstance(value, str) and _LOGICAL_NAME.fullmatch(value) for value in values)
+        ):
+            raise ValueError(f"validation summary {name} must be logical identifiers")
+        serialized[name] = list(values)
     return serialized
 
 
@@ -255,4 +358,13 @@ def serialize_transaction_result(result):
         not result["failed_stage"] or not result["error_code"]
     ):
         raise ValueError("Non-success transaction results require failed_stage and error_code")
-    return {**result, "targets": _serialized_targets(result["targets"])}
+    return {
+        **result,
+        "targets": _serialized_targets(result["targets"]),
+        "projected_validation": _serialized_validation_summary(
+            result["projected_validation"]
+        ),
+        "post_apply_validation": _serialized_validation_summary(
+            result["post_apply_validation"]
+        ),
+    }
