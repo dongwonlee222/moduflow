@@ -2,7 +2,7 @@
 
 Issue: `110-project-operation-capability-enforcement`
 Plan: `specs/110-project-operation-capability-enforcement/plan.md`
-Status: active — Stream A and B1–B2 complete; B3 support/Spec Kit enforcement next
+Status: active — Stream A and B1–B3 complete; C1 Git/publication enforcement next
 
 ## Stream A — Policy, Resolver, and Audit
 
@@ -14,7 +14,7 @@ Status: active — Stream A and B1–B2 complete; B3 support/Spec Kit enforcemen
 
 - [x] **B1** Guard core intake, knowledge, memory, workflow, lifecycle, and loop-state mutations; make candidate listing a pure read. | Depends: A1,A2,A3
 - [x] **B2** Guard execution, review, convergence, worker-plan, and simulation report mutation modes. | Depends: A1,A2,A3
-- [ ] **B3** Guard production, profile, migration, promotion, reference, retention, issue-generation, Antigravity, and Spec Kit mutations. | Depends: A1,A2,A3
+- [x] **B3** Guard production, profile, migration, promotion, reference, retention, issue-generation, Antigravity, and Spec Kit mutations. | Depends: A1,A2,A3
 
 ## Stream C — Git/External and Portfolio Boundaries
 
@@ -38,4 +38,4 @@ Status: active — Stream A and B1–B2 complete; B3 support/Spec Kit enforcemen
 
 ## Next Command
 
-`product:execute 110-project-operation-capability-enforcement` — continue with B3 support/Spec Kit enforcement.
+`product:execute 110-project-operation-capability-enforcement` — continue with C1 Git/publication enforcement.

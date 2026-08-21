@@ -1,6 +1,6 @@
 # Issue 110: Project Operation Capability Enforcement
 
-**Status: active** — created 2026-08-21; design/specification/plan approved, Stream A and B1–B2 implemented 2026-08-21.
+**Status: active** — created 2026-08-21; design/specification/plan approved, Stream A and B1–B3 implemented 2026-08-21.
 **Priority: p0**
 **Blocked-by: `102-project-registry-and-resolver`**
 
@@ -14,7 +14,7 @@ Separate project discovery from operation authorization by returning explicit pr
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`
 - Verified against: `010eee8eeec37edd6902f2dd008e7164f715e7b1`
 - Owner / decision maker: Dongwon Lee
-- Current phase: execution — Stream A and B1–B2 complete, B3 support/Spec Kit enforcement next
+- Current phase: execution — Stream A and B1–B3 complete, C1 Git/publication enforcement next
 
 ## Opportunity
 
@@ -99,4 +99,4 @@ Do not interpret resolver success as write approval, weaken downstream safety ga
 
 ## Next Command
 
-`product:execute 110-project-operation-capability-enforcement` — continue B3 support/Spec Kit enforcement.
+`product:execute 110-project-operation-capability-enforcement` — continue C1 Git/publication enforcement.
