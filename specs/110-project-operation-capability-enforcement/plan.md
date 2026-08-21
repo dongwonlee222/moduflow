@@ -355,7 +355,7 @@ self.assertEqual(runner.calls, [])
 - [ ] **Step 4: Pass an explicit `portfolio_context` to `record_recent_selection()` and portfolio write boundaries, require `write`, and keep selected target context read-only for status collection.**
 - [ ] **Step 5: Finalize every inventory entry and audit classification.** Assert zero unclassified, unguarded, duplicate, prohibited, and stale entries in the current repository.
 - [ ] **Step 6: Run `python3 -m unittest tests.test_project_registry tests.test_project_portfolio tests.test_project_operation_audit -v` and confirm GREEN.**
-- [ ] **Step 7: Bump `.claude-plugin/plugin.json` from `0.3.50` to `0.3.51` and commit with `feat(110): separate portfolio control authorization`.**
+- [x] **Step 7: Bump `.claude-plugin/plugin.json` from `0.3.50` to `0.3.51` with portfolio authorization, then to `0.3.52` with the post-review authorization/audit correction.**
 
 ### Stream D — Completion
 
@@ -370,14 +370,14 @@ self.assertEqual(runner.calls, [])
 - Consumes: all prior task commits and all 14 acceptance criteria.
 - Produces: source release evidence and a PR-ready branch; no merge or release.
 
-- [ ] **Step 1: Add release/distribution tests requiring `project_operation.py`, the audit, inventory, and both focused test modules in source/plugin packaging.**
-- [ ] **Step 2: Add the operation audit to `release_check.run_release_check()` importable gates and focused test command list without introducing recursive discovery.**
-- [ ] **Step 3: Document resolver-versus-authorization behavior, capability fields, CLI denial JSON, explicit-root compatibility, and downstream publish gates.**
-- [ ] **Step 4: Run all focused Issue 110 suites and fix any failure through a new RED/GREEN cycle.**
-- [ ] **Step 5: Run `python3 -m unittest discover -s tests -v`, `python3 scripts/validate_project_artifacts.py .`, `python3 scripts/spec_consistency.py . --issue-id 110-project-operation-capability-enforcement`, `python3 scripts/project_lifecycle.py . --drift`, and `git diff --check`.**
-- [ ] **Step 6: Generate the review handoff with `python3 scripts/project_execution.py . --issue-id 110-project-operation-capability-enforcement --review-handoff --write`, review every acceptance criterion, and record findings in `review.md` and evidence in `status.md`.**
-- [ ] **Step 7: Run `python3 scripts/release_check.py .` fresh; require valid true, audit zero gaps, version `0.3.51`, and no P0/P1/P2 review finding.**
-- [ ] **Step 8: Update issue/tasks/dashboard/roadmap/state to review-ready and commit with `docs(110): complete capability enforcement review`.**
+- [x] **Step 1: Add release/distribution tests requiring `project_operation.py`, the audit, inventory, and both focused test modules in source/plugin packaging.**
+- [x] **Step 2: Add the operation audit to `release_check.run_release_check()` importable gates and focused test command list without introducing recursive discovery.**
+- [x] **Step 3: Document resolver-versus-authorization behavior, capability fields, CLI denial JSON, explicit-root compatibility, and downstream publish gates.**
+- [x] **Step 4: Run all focused Issue 110 suites and fix any failure through a new RED/GREEN cycle.**
+- [x] **Step 5: Run `python3 -m unittest discover -s tests -v`, `python3 scripts/validate_project_artifacts.py .`, `python3 scripts/spec_consistency.py . --issue-id 110-project-operation-capability-enforcement`, `python3 scripts/project_lifecycle.py . --drift`, and `git diff --check`.**
+- [x] **Step 6: Generate the review handoff with `python3 scripts/project_execution.py . --issue-id 110-project-operation-capability-enforcement --review-handoff --write`, review every acceptance criterion, and record findings in `review.md` and evidence in `status.md`.**
+- [x] **Step 7: Run `python3 scripts/release_check.py .` fresh; require valid true, audit zero gaps, version `0.3.52`, and no P0/P1/P2 review finding.**
+- [x] **Step 8: Update issue/tasks/dashboard/roadmap/state to review-ready and commit with `docs(110): complete capability enforcement review`.**
 - [ ] **Step 9: Push and open one non-draft GitHub PR only after all local gates pass. Merge remains a separate explicit human decision.**
 
 ## Execution Order and Rollback

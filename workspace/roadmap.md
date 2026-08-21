@@ -4,7 +4,7 @@
 
 ### Now
 
-- `110-project-operation-capability-enforcement` — P0; Stream A and B1–B3 target-project enforcement implemented, C1–C2 remains. Blocks Issue 103 implementation.
+- `110-project-operation-capability-enforcement` — P0; implementation and all local gates passed, review-ready PR publication pending. Blocks Issue 103 until accepted/merged.
 - `103-atomic-lifecycle-state-transaction` — P0; English/Korean specification drafted for human review; implementation remains blocked by 110.
 
 ### Next

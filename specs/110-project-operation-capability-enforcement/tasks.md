@@ -2,7 +2,7 @@
 
 Issue: `110-project-operation-capability-enforcement`
 Plan: `specs/110-project-operation-capability-enforcement/plan.md`
-Status: active — Stream A and B1–B3 complete; C1 Git/publication enforcement next
+Status: review-ready — Streams A–C and all local D1 gates complete; non-draft PR publication pending
 
 ## Stream A — Policy, Resolver, and Audit
 
@@ -18,8 +18,8 @@ Status: active — Stream A and B1–B3 complete; C1 Git/publication enforcement
 
 ## Stream C — Git/External and Portfolio Boundaries
 
-- [ ] **C1** Guard dynamic Git/network/publication modes before runners while preserving repository identity and human gates. | Depends: B1,B2,B3
-- [ ] **C2** Authorize portfolio-control writes separately and close all mutator-audit gaps. | Depends: C1
+- [x] **C1** Guard dynamic Git/network/publication modes before runners while preserving repository identity and human gates. | Depends: B1,B2,B3
+- [x] **C2** Authorize portfolio-control writes separately and close all mutator-audit gaps. | Depends: C1
 
 ## Stream D — Completion
 
@@ -27,15 +27,15 @@ Status: active — Stream A and B1–B3 complete; C1 Git/publication enforcement
 
 ## Required Gates
 
-- [ ] All status × trust × operation cases and fixed denial precedence pass.
-- [ ] Every resolver route exposes the complete additive policy shape.
-- [ ] Denied boundaries perform zero file/temp/Git/subprocess/network/external side effects.
-- [ ] The mutation inventory has zero unclassified, unguarded, duplicate, prohibited, and stale entries.
-- [ ] Portfolio-control authorization cannot be reused for a target-project mutation.
-- [ ] Publish eligibility cannot bypass repository identity, review, release, CI/status, or human approval.
-- [ ] Existing positional callers and active/internal behavior remain compatible.
-- [ ] Project validation is valid, spec consistency has zero errors, lifecycle drift is `[]`, full discovery passes, and release check is valid.
+- [x] All status × trust × operation cases and fixed denial precedence pass.
+- [x] Every resolver route exposes the complete additive policy shape.
+- [x] Denied boundaries perform zero file/temp/Git/subprocess/network/external side effects.
+- [x] The mutation inventory has zero unclassified, unguarded, duplicate, prohibited, and stale entries.
+- [x] Portfolio-control authorization cannot be reused for a target-project mutation.
+- [x] Publish eligibility cannot bypass repository identity, review, release, CI/status, or human approval.
+- [x] Existing positional callers and active/internal behavior remain compatible.
+- [x] Project validation is valid, spec consistency has zero errors, lifecycle drift is `[]`, full discovery passes, and release check is valid.
 
 ## Next Command
 
-`product:execute 110-project-operation-capability-enforcement` — continue with C1 Git/publication enforcement.
+`product:pr 110-project-operation-capability-enforcement` — publish the verified branch as a non-draft PR.

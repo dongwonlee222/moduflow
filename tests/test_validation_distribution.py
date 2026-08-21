@@ -600,6 +600,12 @@ next_command: {next_command}
         self.assertTrue(source_only.issubset(set(validator.REQUIRED_FILES)))
         self.assertTrue(source_only.issubset(set(validator.SOURCE_ONLY_REQUIRED_FILES)))
         self.assertTrue(all((ROOT / path).is_file() for path in packaged | source_only))
+        release_source = (ROOT / "scripts" / "release_check.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"project_operation_audit"', release_source)
+        self.assertIn('"tests.test_project_operation"', release_source)
+        self.assertIn('"tests.test_project_operation_audit"', release_source)
 
     def test_issue_consumers_import_shared_schema_without_duplicate_parsers(self):
         forbidden_definitions = {

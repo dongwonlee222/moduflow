@@ -1,6 +1,6 @@
 # Issue 110: Project Operation Capability Enforcement
 
-**Status: active** — created 2026-08-21; design/specification/plan approved, Stream A and B1–B3 implemented 2026-08-21.
+**Status: active** — created 2026-08-21; implementation, independent review, full regression, and source release gates passed; review-ready 2026-08-21.
 **Priority: p0**
 **Blocked-by: `102-project-registry-and-resolver`**
 
@@ -14,7 +14,7 @@ Separate project discovery from operation authorization by returning explicit pr
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`
 - Verified against: `010eee8eeec37edd6902f2dd008e7164f715e7b1`
 - Owner / decision maker: Dongwon Lee
-- Current phase: execution — Stream A and B1–B3 complete, C1 Git/publication enforcement next
+- Current phase: review-ready — Streams A–C and all local D1 gates complete; non-draft PR publication pending
 
 ## Opportunity
 
@@ -73,8 +73,8 @@ Do not interpret resolver success as write approval, weaken downstream safety ga
 
 - [x] spec → `specs/110-project-operation-capability-enforcement/spec.md` + `spec.ko.md`
 - [x] plan → `specs/110-project-operation-capability-enforcement/plan.md` + `tasks.md`
-- [ ] execute → capability schema, central guard, workflow enforcement, and tests
-- [ ] review
+- [x] execute → capability schema, central guard, workflow enforcement, and tests
+- [x] review → `specs/110-project-operation-capability-enforcement/review.md`
 
 ## Related Issues
 
@@ -99,4 +99,4 @@ Do not interpret resolver success as write approval, weaken downstream safety ga
 
 ## Next Command
 
-`product:execute 110-project-operation-capability-enforcement` — continue C1 Git/publication enforcement.
+`product:pr 110-project-operation-capability-enforcement` — publish the verified branch as a non-draft PR.
