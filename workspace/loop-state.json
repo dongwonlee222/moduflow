@@ -29,20 +29,20 @@
     "111-runtime-provenance-and-validation-mode-separation"
   ],
   "active_issue_id": "109-canonical-project-context-consumer-convergence",
-  "phase": "spec",
+  "phase": "plan",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:plan 109-canonical-project-context-consumer-convergence",
+  "next_command": "product:execute 109-canonical-project-context-consumer-convergence",
   "attempts": {
-    "command": "product:plan 109-canonical-project-context-consumer-convergence",
+    "command": "product:execute 109-canonical-project-context-consumer-convergence",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-08-21"
   },
-  "blocker": "Human review of the Issue 109 specification before planning; Issues 109 and 110 still block Issue 103 implementation",
-  "last_action": "drafted the English and Korean Issue 109 specification after a repository-wide project-path consumer audit; implementation not started",
-  "last_verification": "2026-08-21: Issue 109 spec consistency 0 errors/0 warnings, project artifact validation valid, lifecycle drift empty, and full release check passed",
+  "blocker": "Issues 109 and 110 still block Issue 103 implementation",
+  "last_action": "approved the Issue 109 specification and created its TDD implementation plan and task graph",
+  "last_verification": "2026-08-21: Issue 109 spec consistency 0 errors/0 warnings and implementation readiness ready",
   "updated_at": "2026-08-21",
   "git_binding": {
     "mode": "git-files",
@@ -151,10 +151,10 @@
     "pull_request": null,
     "release": "Issue 102 is merged on main as 010eee8; ModuFlow 0.3.49 source validation passed and runtime diagnostics are tracked by Issue 111",
     "execution_backend": {
-      "type": "host-subagent",
-        "status": "complete",
-        "reason": "Issues 095 and 098 are merged, verified, and reconciled; select the next issue",
-        "session": "codex-2026-08-13"
-      }
+      "type": "codex",
+      "status": "ready",
+      "reason": "Issue 109 touches shared path authority and lifecycle state; worker plan selected sequential inline TDD execution",
+      "session": "codex-2026-08-21"
+    }
   }
 }

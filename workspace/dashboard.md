@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issue 109 now has an English/Korean specification based on a repository-wide path-consumer audit. Implementation has not started; human spec review is the current gate.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 109 specification is approved and its TDD implementation plan is ready. Implementation-readiness verification is the current gate.
 
 ## Active Goal
 
@@ -10,11 +10,11 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 109 now has an English
 
 ## Active Issue
 
-- `109-canonical-project-context-consumer-convergence` — specification drafted; awaiting human review before planning.
+- `109-canonical-project-context-consumer-convergence` — implementation plan and tasks created; readiness verification in progress.
 
 ## Priority Queue — 2026-08-21
 
-- Now: `109` canonical project-context consumer convergence — P0; English/Korean specification drafted after auditing the reported seven modules plus additional memory, Spec Kit, Git-history, and reference-backlog consumers.
+- Now: `109` canonical project-context consumer convergence — P0; specification approved and TDD plan covers twelve consumer modules plus a repository-wide regression guard.
 - Now: `110` project operation capability enforcement — P0; can be specified alongside 109 and must finish before 103 implementation.
 - Review now: `103` atomic lifecycle state transaction — English/Korean spec ready; implementation blocked by 109 and 110.
 - Parallel before next release: `111` runtime provenance and validation-mode separation — P1, does not block 103.

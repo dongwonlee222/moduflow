@@ -1,12 +1,11 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "spec",
+  "phase": "plan",
   "active_goal": "trustworthy-execution-and-project-knowledge",
   "active_issue": "109-canonical-project-context-consumer-convergence",
-  "last_command": "product:spec 109-canonical-project-context-consumer-convergence",
-  "next_command": "product:plan 109-canonical-project-context-consumer-convergence",
+  "last_command": "product:plan 109-canonical-project-context-consumer-convergence",
+  "next_command": "product:execute 109-canonical-project-context-consumer-convergence",
   "blockers": [
-    "Human review of the Issue 109 specification before planning",
     "109 and 110 must complete before Issue 103 implementation"
   ],
   "updated_at": "2026-08-21"
