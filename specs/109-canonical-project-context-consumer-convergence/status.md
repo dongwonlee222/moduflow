@@ -12,6 +12,7 @@
 | Planned migration set | 12 modules complete |
 | Additional audit migration | `capability_routing` and simulation report output |
 | Static classifications | 22 reviewed, 0 unclassified, 0 prohibited, 0 stale |
+| GitHub PR | `#41` — non-draft, ready for human review |
 | Next command | `product:spec 110-project-operation-capability-enforcement` |
 
 ## Task Commits
@@ -34,6 +35,7 @@
 - Lifecycle drift: `[]` before completion sync.
 - Release check: `valid: true`, `errors: []`; validation, guard, Spec Kit provenance, linkage, lint, security, version, tests, Doctor, and release docs passed.
 - Diff hygiene: `git diff --check` clean.
+- Publication: branch pushed and non-draft PR `#41` opened against `main`.
 
 ## Isolation and Compatibility Evidence
 

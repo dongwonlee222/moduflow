@@ -21,7 +21,7 @@ Status: done — implementation and review verified 2026-08-21; GitHub publicati
 
 ## Stream D — Verification and Publication
 
-- [ ] **D1** Run the guard, focused/full suites, validation, drift, review handoff, acceptance review, release check, lifecycle updates, and publish the completed branch/PR. | Files: issues/109-canonical-project-context-consumer-convergence.md, specs/109-canonical-project-context-consumer-convergence/status.md, specs/109-canonical-project-context-consumer-convergence/review.md, specs/109-canonical-project-context-consumer-convergence/review-handoff.md, workspace/dashboard.md, workspace/roadmap.md, .moduflow/state.json, workspace/loop-state.json | Depends: A2,B2,C1,C2
+- [x] **D1** Run the guard, focused/full suites, validation, drift, review handoff, acceptance review, release check, lifecycle updates, and publish the completed branch/PR. | Files: issues/109-canonical-project-context-consumer-convergence.md, specs/109-canonical-project-context-consumer-convergence/status.md, specs/109-canonical-project-context-consumer-convergence/review.md, specs/109-canonical-project-context-consumer-convergence/review-handoff.md, workspace/dashboard.md, workspace/roadmap.md, .moduflow/state.json, workspace/loop-state.json | Depends: A2,B2,C1,C2
 
 ## Required Gates
 

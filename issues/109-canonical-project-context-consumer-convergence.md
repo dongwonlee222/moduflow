@@ -94,6 +94,7 @@ Do not add operation capabilities, lifecycle transactions, remote writes, or fol
 - Korean spec: `specs/109-canonical-project-context-consumer-convergence/spec.ko.md`
 - Plan: `specs/109-canonical-project-context-consumer-convergence/plan.md`
 - Tasks: `specs/109-canonical-project-context-consumer-convergence/tasks.md`
+- Pull request: `https://github.com/dongwonlee222/moduflow/pull/41`
 
 ## Next Command
 
