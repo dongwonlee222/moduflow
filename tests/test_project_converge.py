@@ -105,6 +105,7 @@ class ResolveCommitsTests(unittest.TestCase):
             Path("."),
             BETA,
             target_issue_ids={BETA},
+            issue_prefix="issues",
         )
 
     def test_requested_issue_ambiguity_is_visible(self):

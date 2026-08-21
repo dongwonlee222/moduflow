@@ -2414,6 +2414,34 @@ class TestUnregisteredIssueIds(unittest.TestCase):
 
 
 class TestHistoricalIssueRegistry(unittest.TestCase):
+    def test_custom_issue_prefix_is_authoritative_without_default_fallback(self):
+        with GitRepo() as repo:
+            repo.commit("chore: base")
+            custom_issue = repo.path / "product" / "issues" / f"{ISSUE}.md"
+            custom_issue.parent.mkdir(parents=True)
+            custom_issue.write_text("# Custom issue\n", encoding="utf-8")
+            repo._git("add", "product/issues")
+            repo._git("commit", "-q", "-m", f"docs: register {ISSUE}")
+
+            errors = []
+            self.assertEqual(
+                cr.known_issue_ids(
+                    repo.runner,
+                    repo.path,
+                    errors,
+                    issue_prefix="product/issues",
+                ),
+                [ISSUE],
+            )
+            self.assertEqual(errors, [])
+
+            default_errors = []
+            self.assertEqual(
+                cr.known_issue_ids(repo.runner, repo.path, default_errors),
+                [],
+            )
+            self.assertEqual(default_errors, [])
+
     def test_issue_on_another_checkout_is_registered(self):
         with GitRepo() as repo:
             repo.commit("chore: base")

@@ -186,7 +186,7 @@ def parse_global_constraints(text):
 # Commit resolution
 # ---------------------------------------------------------------------------
 
-def resolve_commits(runner, cwd, issue_id):
+def resolve_commits(runner, cwd, issue_id, *, issue_prefix="issues"):
     """Resolve commits linked to issue_id.
 
     Wrapper over `commit_resolution` (issue 095, task B2). This module no
@@ -206,6 +206,7 @@ def resolve_commits(runner, cwd, issue_id):
         cwd,
         issue_id,
         target_issue_ids={issue_id},
+        issue_prefix=issue_prefix,
     )
     return {
         "commits": resolved["commits"],
@@ -336,7 +337,12 @@ def collect_evidence(
     else:
         global_constraints = []  # absent for old issues — not an error
 
-    resolution = resolve_commits(runner, root, issue_id)
+    resolution = resolve_commits(
+        runner,
+        root,
+        issue_id,
+        issue_prefix=project_registry.canonical_relative_path(context, "issues"),
+    )
     errors.extend(resolution["errors"])
     if resolution["errors"]:
         ok = False

@@ -72,6 +72,11 @@ ISSUE_HISTORY_ARGS = (
     "issues",
 )
 
+
+def issue_history_args(issue_prefix="issues"):
+    """Return the history query for the authoritative issue directory."""
+    return (*ISSUE_HISTORY_ARGS[:-1], issue_prefix.rstrip("/"))
+
 # GC2. Highest first. A commit matching several sources is recorded once, at
 # the highest that matched.
 SOURCE_PRECEDENCE = ("trailer", "branch", "merge-subject")
@@ -220,23 +225,24 @@ def _project_degraded(fatal_errors, projected_diagnostics):
 # Branch-name interpretation
 # ---------------------------------------------------------------------------
 
-def known_issue_ids(runner, cwd, errors):
+def known_issue_ids(runner, cwd, errors, *, issue_prefix="issues"):
     """Issue ids ever registered in reachable Git history.
 
     The current index is checkout-dependent and loses deleted issue files.
     History is the registry: an issue remains registered after archival and
     while another branch is checked out.
     """
-    args = list(ISSUE_HISTORY_ARGS)
+    args = list(issue_history_args(issue_prefix))
     result = _run(runner, args, cwd)
     if result.returncode != 0:
         errors.append(_error_text(args, result))
         return []
     ids = set()
+    prefix = issue_prefix.rstrip("/") + "/"
     for line in (result.stdout or "").splitlines():
         line = line.strip()
-        if line.startswith("issues/") and line.endswith(".md"):
-            issue_id = line[len("issues/") : -len(".md")]
+        if line.startswith(prefix) and line.endswith(".md"):
+            issue_id = line[len(prefix) : -len(".md")]
             if re.fullmatch(ISSUE_ID_PATTERN, issue_id):
                 ids.add(issue_id)
     return sorted(ids)
@@ -448,7 +454,15 @@ def branch_side_commits(records, merge_sha):
     return reachable(parents[1]) - mainline
 
 
-def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=None):
+def build_branch_membership(
+    runner,
+    cwd,
+    *,
+    issue_ids=None,
+    refs=None,
+    snapshot=None,
+    issue_prefix="issues",
+):
     """Map every commit sha to the branch names that contain it.
 
     Used for commits on a branch that has not been merged yet, where no merge
@@ -483,7 +497,12 @@ def build_branch_membership(runner, cwd, *, issue_ids=None, refs=None, snapshot=
     all_refs = list(ref_tips)
 
     if issue_ids is None:
-        issue_ids = known_issue_ids(runner, cwd, fatal_errors)
+        issue_ids = known_issue_ids(
+            runner,
+            cwd,
+            fatal_errors,
+            issue_prefix=issue_prefix,
+        )
     # One owner for branch-name interpretation (GC1) — no second copy here.
     branches = [name for name in all_refs if issue_id_from_branch(name, issue_ids)]
 
@@ -567,6 +586,7 @@ def build_attribution(
     rev_range=None,
     target_shas=None,
     target_issue_ids=None,
+    issue_prefix="issues",
 ):
     """Attribute every commit in range to at most one issue, once.
 
@@ -622,13 +642,19 @@ def build_attribution(
     else:
         order = topology_order
 
-    issue_ids = known_issue_ids(runner, cwd, fatal_errors)
+    issue_ids = known_issue_ids(
+        runner,
+        cwd,
+        fatal_errors,
+        issue_prefix=issue_prefix,
+    )
     built = build_branch_membership(
         runner,
         cwd,
         issue_ids=issue_ids,
         refs=snapshot["refs"],
         snapshot=snapshot,
+        issue_prefix=issue_prefix,
     )
     _extend_unique(fatal_errors, built.get("fatal_errors", []))
     diagnostics = list(built.get("diagnostics", []))
@@ -952,7 +978,16 @@ def build_attribution(
 # commit -> issue
 # ---------------------------------------------------------------------------
 
-def resolve_issue_for_commit(runner, cwd, sha, *, attribution=None, membership=None, issue_ids=None):
+def resolve_issue_for_commit(
+    runner,
+    cwd,
+    sha,
+    *,
+    attribution=None,
+    membership=None,
+    issue_ids=None,
+    issue_prefix="issues",
+):
     """Resolve the issue id linked to one commit.
 
     Pass `membership` (from build_branch_membership) when resolving many
@@ -965,6 +1000,7 @@ def resolve_issue_for_commit(runner, cwd, sha, *, attribution=None, membership=N
             runner,
             cwd,
             target_shas={sha},
+            issue_prefix=issue_prefix,
         )
         return _from_index_result(sha, built)
 
@@ -1048,6 +1084,7 @@ def resolve_commits_for_issue(
     rev_range=None,
     index=None,
     target_issue_ids=None,
+    issue_prefix="issues",
 ):
     """Resolve every commit linked to issue_id, in git log order.
 
@@ -1065,6 +1102,7 @@ def resolve_commits_for_issue(
             cwd,
             rev_range=rev_range,
             target_issue_ids=target_issue_ids,
+            issue_prefix=issue_prefix,
         )
     else:
         built = index

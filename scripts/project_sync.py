@@ -14,6 +14,7 @@ if __package__ in (None, ""):
 
 from scripts.project_lifecycle import _issue_status
 from scripts.project_repository_identity import inspect_repository_identity
+from scripts import project_registry
 
 FETCH_TIMEOUT_SECONDS = 5
 
@@ -96,17 +97,18 @@ def _default_remote_branch(runner, cwd, repository_identity=None):
     return "origin/main"
 
 
-def _issue_id(path):
-    if not path.startswith("issues/") or not path.endswith(".md"):
+def _issue_id(path, issue_prefix="issues"):
+    prefix = issue_prefix.rstrip("/") + "/"
+    if not path.startswith(prefix) or not path.endswith(".md"):
         return None
-    name = path[len("issues/") : -len(".md")]
+    name = path[len(prefix) : -len(".md")]
     return name or None
 
 
-def _issue_ids_from_paths(paths_text):
+def _issue_ids_from_paths(paths_text, issue_prefix="issues"):
     issue_ids = []
     for line in paths_text.splitlines():
-        issue_id = _issue_id(line.strip())
+        issue_id = _issue_id(line.strip(), issue_prefix)
         if issue_id:
             issue_ids.append(issue_id)
     return sorted(set(issue_ids))
@@ -125,21 +127,34 @@ def _list_remote_branches(runner, cwd, default_remote):
     return branches
 
 
-def _issue_ids_in_ref(runner, cwd, ref):
-    result = _run(runner, ["git", "ls-tree", "-r", "--name-only", ref, "issues"], cwd)
+def _issue_ids_in_ref(runner, cwd, ref, issue_prefix="issues"):
+    result = _run(
+        runner,
+        ["git", "ls-tree", "-r", "--name-only", ref, issue_prefix],
+        cwd,
+    )
     if result.returncode != 0:
         return []
-    return _issue_ids_from_paths(result.stdout)
+    return _issue_ids_from_paths(result.stdout, issue_prefix)
 
 
-def _status_at_ref(runner, cwd, ref, issue_id):
-    result = _run(runner, ["git", "show", f"{ref}:issues/{issue_id}.md"], cwd)
+def _status_at_ref(runner, cwd, ref, issue_id, issue_prefix="issues"):
+    result = _run(
+        runner,
+        ["git", "show", f"{ref}:{issue_prefix.rstrip('/')}/{issue_id}.md"],
+        cwd,
+    )
     if result.returncode != 0:
         return None
     return _issue_status(result.stdout)
 
 
-def find_unmerged_branch_work(runner, cwd, default_remote):
+def find_unmerged_branch_work(
+    runner,
+    cwd,
+    default_remote,
+    issue_prefix="issues",
+):
     findings = []
     for branch in _list_remote_branches(runner, cwd, default_remote):
         counts = _run(
@@ -154,10 +169,21 @@ def find_unmerged_branch_work(runner, cwd, default_remote):
             continue
 
         done_issue_ids = []
-        for issue_id in _issue_ids_in_ref(runner, cwd, branch):
-            if _status_at_ref(runner, cwd, branch, issue_id) != "done":
+        for issue_id in _issue_ids_in_ref(
+            runner,
+            cwd,
+            branch,
+            issue_prefix,
+        ):
+            if _status_at_ref(runner, cwd, branch, issue_id, issue_prefix) != "done":
                 continue
-            if _status_at_ref(runner, cwd, default_remote, issue_id) != "done":
+            if _status_at_ref(
+                runner,
+                cwd,
+                default_remote,
+                issue_id,
+                issue_prefix,
+            ) != "done":
                 done_issue_ids.append(issue_id)
 
         if done_issue_ids:
@@ -171,8 +197,13 @@ def find_unmerged_branch_work(runner, cwd, default_remote):
     return findings
 
 
-def inspect_repo_sync(path=".", runner=None, fetch=True):
+def inspect_repo_sync(path=".", runner=None, fetch=True, *, project_context=None):
     cwd = Path(path).resolve()
+    context = project_registry.context_for_operation(
+        cwd,
+        project_context=project_context,
+    )
+    issue_prefix = project_registry.canonical_relative_path(context, "issues")
     runner = runner or run_command
     is_repo = _run(runner, ["git", "rev-parse", "--is-inside-work-tree"], cwd)
     if is_repo.returncode != 0:
@@ -240,13 +271,28 @@ def inspect_repo_sync(path=".", runner=None, fetch=True):
     status = _run(runner, ["git", "status", "--porcelain"], cwd)
     dirty = bool(_stdout(status)) if status.returncode == 0 else None
 
-    remote_issues = _run(runner, ["git", "ls-tree", "-r", "--name-only", default_remote, "issues"], cwd)
-    local_issues = _run(runner, ["git", "ls-files", "issues"], cwd)
-    remote_issue_ids = _issue_ids_from_paths(remote_issues.stdout if remote_issues.returncode == 0 else "")
-    local_issue_ids = _issue_ids_from_paths(local_issues.stdout if local_issues.returncode == 0 else "")
+    remote_issues = _run(
+        runner,
+        ["git", "ls-tree", "-r", "--name-only", default_remote, issue_prefix],
+        cwd,
+    )
+    local_issues = _run(runner, ["git", "ls-files", issue_prefix], cwd)
+    remote_issue_ids = _issue_ids_from_paths(
+        remote_issues.stdout if remote_issues.returncode == 0 else "",
+        issue_prefix,
+    )
+    local_issue_ids = _issue_ids_from_paths(
+        local_issues.stdout if local_issues.returncode == 0 else "",
+        issue_prefix,
+    )
     remote_only_issue_ids = sorted(set(remote_issue_ids) - set(local_issue_ids))
 
-    unmerged_branch_work = find_unmerged_branch_work(runner, cwd, default_remote)
+    unmerged_branch_work = find_unmerged_branch_work(
+        runner,
+        cwd,
+        default_remote,
+        issue_prefix,
+    )
 
     result = {
         "schema": "moduflow.repo-sync.v1",
@@ -267,7 +313,7 @@ def inspect_repo_sync(path=".", runner=None, fetch=True):
         "remote_only_issue_ids": remote_only_issue_ids,
         "unmerged_branch_work": unmerged_branch_work,
         "repository_identity": repository_identity,
-        "mode_note": "git-files mode stores ModuFlow issues in repo files such as issues/*.md; GitHub Issues objects are optional mirrors.",
+        "mode_note": f"git-files mode stores ModuFlow issues under {issue_prefix}/*.md; GitHub Issues objects are optional mirrors.",
     }
     result["recommendations"] = format_recommendations(result)
     return result
