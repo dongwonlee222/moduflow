@@ -29,19 +29,19 @@
     "111-runtime-provenance-and-validation-mode-separation"
   ],
   "active_issue_id": "103-atomic-lifecycle-state-transaction",
-  "phase": "execute",
+  "phase": "review",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:execute 103-atomic-lifecycle-state-transaction",
+  "next_command": "product:review 103-atomic-lifecycle-state-transaction",
   "attempts": {
-    "command": "product:execute 103-atomic-lifecycle-state-transaction",
+    "command": "product:review 103-atomic-lifecycle-state-transaction",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-08-21"
   },
-  "blocker": "Issue 103 implementation plan is ready; explicit execution approval is pending",
-  "last_action": "completed Issue 110 closeout and drafted the eight-task Issue 103 implementation plan",
+  "blocker": "Issue 103 plan PR #43 awaits review and explicit execution approval",
+  "last_action": "published Issue 103 specification, eight-task plan, readiness, and review packet as PR #43",
   "last_verification": "2026-08-21: Issue 103 spec consistency clean and implementation readiness status ready",
   "updated_at": "2026-08-21",
   "git_binding": {
@@ -148,7 +148,7 @@
       "d3ce327",
       "f4029f3"
     ],
-    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/42",
+    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/43",
     "release": "Issue 110 PR #42 merged as 5f173f4; ModuFlow 0.3.52 post-merge source release validation passed",
     "execution_backend": {
       "type": "codex",

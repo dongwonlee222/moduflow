@@ -38,4 +38,4 @@ Status: ready — specification approved, dependencies complete, and implementat
 
 ## Next Command
 
-`product:execute 103-atomic-lifecycle-state-transaction` after explicit execution approval.
+`product:review 103-atomic-lifecycle-state-transaction` for plan PR #43; implementation remains approval-gated.

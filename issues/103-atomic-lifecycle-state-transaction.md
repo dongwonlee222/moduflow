@@ -13,7 +13,7 @@ Replace best-effort lifecycle propagation with a validated application-level tra
 - Type: user multi-project orchestration improvement request
 - Link: local Codex attachment `pasted-text.txt`, 2026-08-19
 - Owner / decision maker: Dongwon Lee
-- Current phase: plan review/readiness; specification approved and Issues 109/110 are complete
+- Current phase: plan review; non-draft PR #43 is open with readiness and verification evidence
 
 ## Opportunity
 
@@ -94,7 +94,8 @@ Do not change project resolution, migrate legacy schemas, or make remote GitHub 
 - Spec: `specs/103-atomic-lifecycle-state-transaction/spec.md`
 - Korean spec: `specs/103-atomic-lifecycle-state-transaction/spec.ko.md`
 - Issue 102 follow-up review: `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`
+- Pull request: `https://github.com/dongwonlee222/moduflow/pull/43`
 
 ## Next Command
 
-`product:execute 103-atomic-lifecycle-state-transaction` — begin RED/GREEN implementation after readiness validation and explicit execution approval.
+`product:review 103-atomic-lifecycle-state-transaction` — review PR #43; implementation begins only after explicit approval.

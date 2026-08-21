@@ -6,7 +6,7 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-103-atomic-lifecycle-state-transaction.html`
-- PR/로컬 마커: `local:103-atomic-lifecycle-state-transaction:draft-pr-ready`
+- PR/로컬 마커: `https://github.com/dongwonlee222/moduflow/pull/43`
 - 브랜치: `codex/103-atomic-lifecycle-state-transaction-plan`
 - 리뷰어: `Dongwon Lee`
 

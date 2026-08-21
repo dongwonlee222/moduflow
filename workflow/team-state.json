@@ -360,6 +360,21 @@
       "last_handoff": "Dongwon Lee approved PR #42; CI passed and it merged as 5f173f4.",
       "next_command": "product:plan 103-atomic-lifecycle-state-transaction",
       "updated_at": "2026-08-21"
+    },
+    {
+      "issue_id": "103-atomic-lifecycle-state-transaction",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Dongwon Lee",
+      "status": "review",
+      "branch": "",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/43",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/43",
+      "next_command": "product:review 103-atomic-lifecycle-state-transaction",
+      "updated_at": "2026-08-21"
     }
   ]
 }

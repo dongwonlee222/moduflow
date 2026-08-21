@@ -3,8 +3,8 @@
   "phase": "execute",
   "active_goal": "trustworthy-execution-and-project-knowledge",
   "active_issue": "103-atomic-lifecycle-state-transaction",
-  "last_command": "product:plan 103-atomic-lifecycle-state-transaction",
-  "next_command": "product:execute 103-atomic-lifecycle-state-transaction",
+  "last_command": "product:pr 103-atomic-lifecycle-state-transaction",
+  "next_command": "product:review 103-atomic-lifecycle-state-transaction",
   "blockers": [],
   "updated_at": "2026-08-21"
 }

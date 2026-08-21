@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issues 109 and 110 are merged. Issue 103 specification, implementation plan, and readiness gate are complete; execution approval is next.
+Goal `trustworthy-execution-and-project-knowledge`: Issues 109 and 110 are merged. Issue 103 plan/readiness PR #43 is open for review; implementation approval follows.
 
 ## Active Goal
 
@@ -10,13 +10,13 @@ Goal `trustworthy-execution-and-project-knowledge`: Issues 109 and 110 are merge
 
 ## Active Issue
 
-- `103-atomic-lifecycle-state-transaction` (phase: execute). Canonical: `issues/103-atomic-lifecycle-state-transaction.md`.
+- `103-atomic-lifecycle-state-transaction` (phase: review). Canonical: `issues/103-atomic-lifecycle-state-transaction.md`.
 
 ## Priority Queue — 2026-08-21
 
 - Merged: `109` canonical project-context consumer convergence — PR #41 merged as `9df5f02` after local and GitHub CI verification.
 - Merged: `110` project operation capability enforcement — [PR #42](https://github.com/dongwonlee222/moduflow/pull/42) passed CI and merged as `5f173f4`; post-merge source release check passed.
-- Now: `103` atomic lifecycle state transaction — P0; specification and eight-task implementation plan are ready, readiness gate passed, explicit execution approval next.
+- Now: `103` atomic lifecycle state transaction — P0; [plan PR #43](https://github.com/dongwonlee222/moduflow/pull/43) is open, with 11/11 acceptance criteria mapped and readiness 7/7 passed.
 - Parallel before next release: `111` runtime provenance and validation-mode separation — P1, does not block 103.
 - Verified intake: four Issue 102 findings accepted and mapped to exactly three non-duplicate issues in `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`.
 - Shipped: `102` project registry/resolver merged as `010eee8`; 1,225 tests and source release check passed, package source version 0.3.49.

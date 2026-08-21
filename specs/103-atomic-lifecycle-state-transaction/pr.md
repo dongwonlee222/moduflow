@@ -8,9 +8,9 @@ Use a Draft PR or a local PR-ready marker early, then attach review, verificatio
 ## Draft PR
 
 - Branch: `codex/103-atomic-lifecycle-state-transaction-plan`
-- PR: `local:103-atomic-lifecycle-state-transaction:draft-pr-ready`
+- PR: `https://github.com/dongwonlee222/moduflow/pull/43`
 - Reviewer: `Dongwon Lee`
-- Fallback reason: GitHub Draft PR URL is not recorded yet. This local PR-ready marker preserves review state until GitHub sync creates or mirrors the PR.
+- Fallback reason: GitHub Draft PR URL is available or expected to be supplied by the workflow.
 - Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
 - Commit mode: `local-git-write`
@@ -22,7 +22,7 @@ python3 scripts/project_pr.py . --issue-id 103-atomic-lifecycle-state-transactio
 ```
 
 ```bash
-python3 scripts/project_workflow.py . --pr-state --issue-id 103-atomic-lifecycle-state-transaction --pr "local:103-atomic-lifecycle-state-transaction:draft-pr-ready" --reviewer "Dongwon Lee"
+python3 scripts/project_workflow.py . --pr-state --issue-id 103-atomic-lifecycle-state-transaction --pr "https://github.com/dongwonlee222/moduflow/pull/43" --reviewer "Dongwon Lee"
 ```
 
 - Continue review: `product:review 103-atomic-lifecycle-state-transaction`
@@ -90,7 +90,7 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 103-atomic-lifecycle
 
 ## Source Snapshot
 
-- Issue bytes: 5444
+- Issue bytes: 5488
 - Spec bytes: 14441
-- Status bytes: 2572
+- Status bytes: 2691
 - Review bytes: 2305

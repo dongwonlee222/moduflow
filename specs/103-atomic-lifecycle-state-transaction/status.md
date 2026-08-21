@@ -8,6 +8,7 @@
 | --- | --- |
 | Branch | `codex/103-atomic-lifecycle-state-transaction-plan` |
 | Base | `origin/main` at `5f173f4` |
+| Pull request | [#43](https://github.com/dongwonlee222/moduflow/pull/43), non-draft |
 | Scope | application-level lifecycle transaction; no remote transaction |
 | Work graph | A1 → A2 → B1 → B2 → C1/C2 → D1 → D2 |
 | Spec consistency | 0 errors, 0 warnings, 11/11 acceptance criteria covered |
@@ -45,4 +46,4 @@
 
 ## Next Command
 
-Review the plan and readiness evidence. After explicit execution approval: `product:execute 103-atomic-lifecycle-state-transaction`.
+Run `product:review 103-atomic-lifecycle-state-transaction` for PR #43. After explicit execution approval: `product:execute 103-atomic-lifecycle-state-transaction`.

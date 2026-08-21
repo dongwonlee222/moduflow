@@ -4,7 +4,7 @@
 
 ### Now
 
-- `103-atomic-lifecycle-state-transaction` — P0; specification and implementation plan approved for review, readiness gate passed, execution approval next.
+- `103-atomic-lifecycle-state-transaction` — P0; non-draft plan PR #43 open, readiness passed, execution remains explicitly approval-gated.
 
 ### Next
 

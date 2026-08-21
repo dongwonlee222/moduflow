@@ -325,4 +325,4 @@ flowchart LR
 
 ## Next Command
 
-`product:execute 103-atomic-lifecycle-state-transaction` after implementation-readiness validation and explicit execution approval.
+`product:review 103-atomic-lifecycle-state-transaction` for plan PR #43; then `product:execute 103-atomic-lifecycle-state-transaction` after explicit execution approval.
