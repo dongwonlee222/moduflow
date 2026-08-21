@@ -2,13 +2,13 @@
 
 Issue: `110-project-operation-capability-enforcement`
 Plan: `specs/110-project-operation-capability-enforcement/plan.md`
-Status: planned — human execution approach selection pending
+Status: active — Stream A complete; B1 core enforcement next
 
 ## Stream A — Policy, Resolver, and Audit
 
-- [ ] **A1** Add the side-effect-free capability matrix, authorization decision, typed enforcing guard, denial serializer, fixtures, and RED/GREEN tests. | Files: scripts/project_operation.py, tests/test_project_operation.py, tests/project_operation_fixture.py
-- [ ] **A2** Attach additive policy fields to every resolver route and surface them in Doctor/portfolio reads. | Files: scripts/project_registry.py, tests/test_project_registry.py, scripts/project_doctor.py, tests/test_project_doctor.py, scripts/project_portfolio.py, tests/test_project_portfolio.py | Depends: A1
-- [ ] **A3** Add the AST-backed mutator inventory audit and distribution presence checks. | Files: scripts/project_operation_audit.py, config/project-operation-entrypoints.json, tests/test_project_operation_audit.py, scripts/validate_moduflow.py, tests/test_validation_distribution.py | Depends: A1
+- [x] **A1** Add the side-effect-free capability matrix, authorization decision, typed enforcing guard, denial serializer, fixtures, and RED/GREEN tests. | Files: scripts/project_operation.py, tests/test_project_operation.py, tests/project_operation_fixture.py
+- [x] **A2** Attach additive policy fields to every resolver route and surface them in Doctor/portfolio reads. | Files: scripts/project_registry.py, tests/test_project_registry.py, scripts/project_doctor.py, tests/test_project_doctor.py, scripts/project_portfolio.py, tests/test_project_portfolio.py | Depends: A1
+- [x] **A3** Add the AST-backed mutator inventory audit and distribution presence checks. | Files: scripts/project_operation_audit.py, config/project-operation-entrypoints.json, tests/test_project_operation_audit.py, scripts/validate_moduflow.py, tests/test_validation_distribution.py | Depends: A1
 
 ## Stream B — Target-Project Enforcement
 
@@ -38,4 +38,4 @@ Status: planned — human execution approach selection pending
 
 ## Next Command
 
-`product:execute 110-project-operation-capability-enforcement` after execution approach selection.
+`product:execute 110-project-operation-capability-enforcement` — continue with B1 core enforcement.

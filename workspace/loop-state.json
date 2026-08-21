@@ -29,7 +29,7 @@
     "111-runtime-provenance-and-validation-mode-separation"
   ],
   "active_issue_id": "110-project-operation-capability-enforcement",
-  "phase": "plan",
+  "phase": "execute",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
@@ -41,8 +41,8 @@
     "last_changed_at": "2026-08-21"
   },
   "blocker": "Issue 110 still blocks Issue 103 implementation",
-  "last_action": "authored Issue 110 source-audited implementation plan and nine-task dependency graph",
-  "last_verification": "2026-08-21: implementation readiness ready; spec consistency zero findings; project validation valid; lifecycle drift empty",
+  "last_action": "implemented Issue 110 Stream A policy engine, resolver projection, and mutation audit",
+  "last_verification": "2026-08-21: A1 11 tests, A2 74 tests, A3 9 tests passed; 62 mutation surfaces classified with zero inventory gaps",
   "updated_at": "2026-08-21",
   "git_binding": {
     "mode": "git-files",

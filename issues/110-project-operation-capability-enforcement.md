@@ -1,6 +1,6 @@
 # Issue 110: Project Operation Capability Enforcement
 
-**Status: active** — created 2026-08-21; design/specification approved and implementation plan authored 2026-08-21.
+**Status: active** — created 2026-08-21; design/specification/plan approved and Stream A implemented 2026-08-21.
 **Priority: p0**
 **Blocked-by: `102-project-registry-and-resolver`**
 
@@ -14,7 +14,7 @@ Separate project discovery from operation authorization by returning explicit pr
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`
 - Verified against: `010eee8eeec37edd6902f2dd008e7164f715e7b1`
 - Owner / decision maker: Dongwon Lee
-- Current phase: implementation plan ready; execution approach selection pending
+- Current phase: execution — Stream A complete, B1 core enforcement next
 
 ## Opportunity
 
