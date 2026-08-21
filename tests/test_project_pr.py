@@ -2,8 +2,9 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from scripts import project_pr
+from scripts import project_operation, project_pr, project_registry
 
 
 MATCHING_IDENTITY = {
@@ -17,6 +18,27 @@ MATCHING_IDENTITY = {
 
 
 class ProjectPrHandoffTests(unittest.TestCase):
+    def test_archived_project_denies_pr_handoff_before_build_or_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+
+            with mock.patch.object(
+                project_pr,
+                "build_pr_handoff",
+                side_effect=AssertionError("build before authorization"),
+            ) as build:
+                with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                    project_pr.write_pr_handoff(
+                        root,
+                        "110-denied",
+                        project_context=context,
+                    )
+
+            build.assert_not_called()
+            self.assertFalse((root / "specs").exists())
+
     def test_pr_and_korean_packet_use_configured_specs_issues_workspace_and_memory(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

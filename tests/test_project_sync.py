@@ -1,9 +1,10 @@
 import subprocess
+import tempfile
 import unittest
 from unittest import mock
 from pathlib import Path
 
-from scripts import project_sync
+from scripts import project_operation, project_registry, project_sync
 
 
 class FakeRunner:
@@ -25,6 +26,42 @@ class FakeRunner:
 
 
 class ProjectSyncTests(unittest.TestCase):
+    def test_archived_project_denies_fetch_before_any_git_or_identity_call(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+            runner = FakeRunner({})
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_sync.inspect_repo_sync(
+                    root,
+                    runner=runner,
+                    fetch=True,
+                    project_context=context,
+                )
+
+            self.assertEqual(runner.calls, [])
+
+    def test_archived_project_allows_non_fetch_sync_diagnostics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+            runner = FakeRunner(
+                {("git", "rev-parse", "--is-inside-work-tree"): project_sync.CommandResult(1, "", "not a repo")}
+            )
+
+            result = project_sync.inspect_repo_sync(
+                root,
+                runner=runner,
+                fetch=False,
+                project_context=context,
+            )
+
+            self.assertFalse(result["is_repo"])
+            self.assertEqual(runner.calls, [("git", "rev-parse", "--is-inside-work-tree")])
+
     def test_sync_uses_canonical_issue_prefix_for_git_queries(self):
         from scripts import project_registry
 

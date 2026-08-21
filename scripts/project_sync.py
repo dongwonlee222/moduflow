@@ -14,7 +14,7 @@ if __package__ in (None, ""):
 
 from scripts.project_lifecycle import _issue_status
 from scripts.project_repository_identity import inspect_repository_identity
-from scripts import project_registry
+from scripts import project_operation, project_registry
 
 FETCH_TIMEOUT_SECONDS = 5
 
@@ -203,6 +203,10 @@ def inspect_repo_sync(path=".", runner=None, fetch=True, *, project_context=None
         cwd,
         project_context=project_context,
     )
+    project_operation.require_project_capability(
+        context,
+        "execute" if fetch else "read",
+    )
     issue_prefix = project_registry.canonical_relative_path(context, "issues")
     runner = runner or run_command
     is_repo = _run(runner, ["git", "rev-parse", "--is-inside-work-tree"], cwd)
@@ -364,6 +368,7 @@ def format_recommendations(result):
     return recommendations
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Inspect ModuFlow repo sync freshness.")
     parser.add_argument("project_path", nargs="?", default=".")
