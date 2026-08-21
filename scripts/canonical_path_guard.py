@@ -96,15 +96,19 @@ def _literal_findings(module_path, source):
     return sorted(findings.values(), key=lambda item: (item["module"], item["pattern"]))
 
 
-def scan_scripts(root):
+def scan_scripts(root, *, errors=None):
     root = Path(root).resolve()
     findings = []
+    errors = errors if errors is not None else []
     scripts_root = root / "scripts"
     for path in sorted(scripts_root.glob("*.py")):
         module_path = path.relative_to(root).as_posix()
-        findings.extend(
-            _literal_findings(module_path, path.read_text(encoding="utf-8"))
-        )
+        try:
+            findings.extend(
+                _literal_findings(module_path, path.read_text(encoding="utf-8"))
+            )
+        except (OSError, SyntaxError, UnicodeError) as exc:
+            errors.append(f"production source scan failed for {module_path}: {exc}")
     return findings
 
 
@@ -139,8 +143,13 @@ def _classification_error(finding, entry):
 def inspect_project(root=".", classifications_path=None):
     root = Path(root).resolve()
     classifications_path = Path(classifications_path or root / "config" / "canonical-path-literals.json")
-    findings = scan_scripts(root)
-    entries = _load_classifications(classifications_path)
+    configuration_errors = []
+    findings = scan_scripts(root, errors=configuration_errors)
+    try:
+        entries = _load_classifications(classifications_path)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        entries = []
+        configuration_errors.append(f"classification file is invalid: {exc}")
     by_key = {}
     duplicate_entries = []
     for index, entry in enumerate(entries):
@@ -177,7 +186,7 @@ def inspect_project(root=".", classifications_path=None):
         if key not in matched
     ]
     classified_count = sum(item["status"] == "classified" for item in findings)
-    errors = []
+    errors = list(configuration_errors)
     errors.extend(
         f"unclassified canonical path literal: {item['module']} {item['pattern']}"
         for item in unclassified
@@ -194,7 +203,13 @@ def inspect_project(root=".", classifications_path=None):
     result = {
         "schema": SCHEMA,
         "project_root": str(root),
-        "valid": not (unclassified or prohibited or stale_entries or duplicate_entries),
+        "valid": not (
+            configuration_errors
+            or unclassified
+            or prohibited
+            or stale_entries
+            or duplicate_entries
+        ),
         "findings": findings,
         "stale_entries": stale_entries,
         "duplicate_entries": duplicate_entries,

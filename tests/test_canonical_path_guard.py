@@ -53,6 +53,19 @@ class CanonicalPathGuardTests(unittest.TestCase):
         self.assertFalse(result["valid"])
         self.assertEqual(len(result["stale_entries"]), 1)
 
+    def test_missing_classification_file_fails_closed_without_raising(self):
+        temporary, root = self.write_project("value = 1\n")
+        self.addCleanup(temporary.cleanup)
+        (root / "config" / "canonical-path-literals.json").unlink()
+
+        result = canonical_path_guard.inspect_project(root)
+
+        self.assertFalse(result["valid"])
+        self.assertTrue(
+            any("classification file" in error for error in result["errors"]),
+            result,
+        )
+
     def test_reviewed_default_string_fragment_passes(self):
         temporary, root = self.write_project(
             'CANONICAL_PATH_DEFAULTS = {"issues": "issues/"}\n',
