@@ -4,7 +4,7 @@
 
 ### Now
 
-- `110-project-operation-capability-enforcement` — P0; Stream A policy/resolver/audit foundation implemented, B1–C2 enforcement remains. Blocks Issue 103 implementation.
+- `110-project-operation-capability-enforcement` — P0; Stream A and B1 core enforcement implemented, B2–C2 enforcement remains. Blocks Issue 103 implementation.
 - `103-atomic-lifecycle-state-transaction` — P0; English/Korean specification drafted for human review; implementation remains blocked by 110.
 
 ### Next
