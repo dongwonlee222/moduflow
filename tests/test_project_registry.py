@@ -774,6 +774,33 @@ class ProjectContextCompatibilityTests(unittest.TestCase):
             self.assertEqual(selection_path.read_bytes(), before)
             self.assertFalse((base / "project-selection.json.tmp").exists())
 
+    def test_read_only_portfolio_denies_selection_before_temp_file_creation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            project = base / "project-a"
+            project.mkdir()
+            registry_path = self.write_v2_registry(
+                base, [("project-a", "Project A", project)]
+            )
+            context = self.registry.project_context_for_root(base)
+            context.update(
+                self.registry.project_operation.compute_project_policy(
+                    "active",
+                    "read-only",
+                )
+            )
+
+            with self.assertRaisesRegex(Exception, "trust scope is read-only"):
+                self.registry.record_recent_selection(
+                    registry_path,
+                    "project-a",
+                    "2026-08-19T10:30:00+09:00",
+                    portfolio_context=context,
+                )
+
+            self.assertFalse((base / "project-selection.json").exists())
+            self.assertFalse((base / "project-selection.json.tmp").exists())
+
     def test_invalid_or_unregistered_selection_is_ignored_with_warning(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -855,6 +882,114 @@ class ProjectContextCompatibilityTests(unittest.TestCase):
                 )
 
             self.assertFalse((base / "project-selection.json").exists())
+
+
+class ProjectCapabilityProjectionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.registry = load_module()
+
+    def project(self, root, *, status="active", trust="internal"):
+        return {
+            "id": "project-a",
+            "name": "Project A",
+            "root": str(Path(root).resolve()),
+            "aliases": ["project-a"],
+            "relative_paths": dict(self.registry.CANONICAL_PATH_DEFAULTS),
+            "paths": {
+                key: str((Path(root).resolve() / value).resolve())
+                for key, value in self.registry.CANONICAL_PATH_DEFAULTS.items()
+            },
+            "trust_scope": trust,
+            "status": status,
+            "owner": "Owner",
+            "source_schema": "moduflow.projects.v2",
+        }
+
+    def catalog(self, projects):
+        return {
+            "schema": "moduflow.project-registry-read.v1",
+            "valid": True,
+            "source_schema": "moduflow.projects.v2",
+            "registry_path": "/portfolio/projects.json",
+            "projects": projects,
+            "diagnostics": [],
+            "migration_proposal": None,
+        }
+
+    def test_resolved_archived_read_only_project_exposes_complete_policy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self.registry.resolve_loaded_registry(
+                self.catalog([self.project(tmp, status="archived", trust="read-only")]),
+                explicit_project_id="project-a",
+            )
+
+        self.assertEqual(result["status"], "resolved")
+        self.assertEqual(result["project_status"], "archived")
+        self.assertEqual(result["trust_scope"], "read-only")
+        self.assertEqual(result["policy_trust_scope"], "read-only")
+        self.assertEqual(
+            result["policy_inputs"],
+            {
+                "project_status_source": "archived",
+                "trust_scope_source": "read-only",
+            },
+        )
+        self.assertEqual(
+            result["capabilities"],
+            {"read": True, "write": False, "execute": False, "publish": False},
+        )
+        self.assertEqual(
+            result["capability_reasons"]["write"]["reason_code"],
+            "PROJECT_OPERATION_DENIED_ARCHIVED",
+        )
+
+    def test_every_resolution_route_has_same_policy_field_set(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project = self.project(root)
+            catalog = self.catalog([project])
+            results = [
+                self.registry.resolve_loaded_registry(catalog, explicit_project_id="project-a"),
+                self.registry.resolve_loaded_registry(catalog, cwd=root),
+                self.registry.resolve_loaded_registry(catalog, request_text="project-a request"),
+                self.registry.resolve_loaded_registry(catalog, active_project_id="project-a"),
+                self.registry.resolve_loaded_registry(catalog, recent_selection={"project_id": "project-a"}),
+                self.registry.resolve_loaded_registry(catalog, explicit_project_id="missing"),
+                self.registry.resolve_loaded_registry(
+                    self.catalog([project, {**project, "id": "project-b", "name": "Project B"}])
+                ),
+            ]
+
+        expected = {
+            "project_status",
+            "policy_trust_scope",
+            "policy_inputs",
+            "capabilities",
+            "capability_reasons",
+        }
+        for result in results:
+            with self.subTest(status=result["status"], reason=result["reason_code"]):
+                self.assertTrue(expected.issubset(result))
+                self.assertEqual(set(result["capabilities"]), {"read", "write", "execute", "publish"})
+        self.assertFalse(results[-2]["capabilities"]["read"])
+        self.assertFalse(results[-1]["capabilities"]["read"])
+
+    def test_explicit_root_preserves_raw_trust_and_synthesizes_compatible_policy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = self.registry.project_context_for_root(tmp)
+
+        self.assertEqual(result["trust_scope"], "project-local")
+        self.assertEqual(result["project_status"], "active")
+        self.assertEqual(result["policy_trust_scope"], "internal")
+        self.assertEqual(
+            result["policy_inputs"],
+            {
+                "project_status_source": "active",
+                "trust_scope_source": "project-local",
+            },
+        )
+        self.assertTrue(all(result["capabilities"].values()))
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@
 
 ### Now
 
-- `110-project-operation-capability-enforcement` — P0; add project status and read/write/execute/publish enforcement. Blocks Issue 103 implementation.
+- `110-project-operation-capability-enforcement` — P0; implementation and all local gates passed, non-draft PR #42 open for human/CI review. Blocks Issue 103 until accepted/merged.
 - `103-atomic-lifecycle-state-transaction` — P0; English/Korean specification drafted for human review; implementation remains blocked by 110.
 
 ### Next

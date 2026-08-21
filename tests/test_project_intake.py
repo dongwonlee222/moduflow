@@ -1,8 +1,12 @@
+import contextlib
 import importlib.util
+import io
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,7 +22,51 @@ def load_module(name, relative_path):
 project_intake = load_module("project_intake", "scripts/project_intake.py")
 
 
+def archived_context(root):
+    project_registry = load_module("project_registry_intake", "scripts/project_registry.py")
+    project_operation = load_module("project_operation_intake", "scripts/project_operation.py")
+    context = project_registry.project_context_for_root(root)
+    context.update(project_operation.compute_project_policy("archived", "internal"))
+    return context
+
+
 class ProjectIntakeTests(unittest.TestCase):
+    def test_denied_cli_write_returns_stable_json_without_traceback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = archived_context(root)
+            output = io.StringIO()
+
+            with mock.patch.object(
+                project_intake.project_registry,
+                "context_for_operation",
+                return_value=context,
+            ), mock.patch.object(
+                sys,
+                "argv",
+                ["project_intake.py", "record this", str(root), "--write"],
+            ), contextlib.redirect_stdout(output):
+                exit_code = project_intake.main()
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(exit_code, 2)
+            self.assertEqual(payload["reason_code"], "PROJECT_OPERATION_DENIED_ARCHIVED")
+            self.assertFalse((root / "workspace" / "inbox.md").exists())
+
+    def test_archived_project_denies_inbox_write_without_creating_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = archived_context(root)
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_intake.append_inbox_record(
+                    root,
+                    {"schema": "moduflow.intake-routing.v1"},
+                    project_context=context,
+                )
+
+            self.assertFalse((root / "workspace" / "inbox.md").exists())
+
     def test_classify_request_detects_dev_work(self):
         result = project_intake.classify_request("로그인 버그 고쳐줘")
 

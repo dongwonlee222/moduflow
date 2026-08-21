@@ -21,6 +21,71 @@ def load_module(name, relative_path):
 
 
 class ProjectMemoryTests(unittest.TestCase):
+    def archived_context(self, root):
+        project_registry = load_module("project_registry_memory", "scripts/project_registry.py")
+        project_operation = load_module("project_operation_memory", "scripts/project_operation.py")
+        context = project_registry.project_context_for_root(root)
+        context.update(project_operation.compute_project_policy("archived", "internal"))
+        return context
+
+    def test_archived_project_denies_memory_initialization_before_writes(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plan = project_memory.build_memory_plan(root, dry_run=False)
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_memory.apply_memory_plan(
+                    plan,
+                    project_context=self.archived_context(root),
+                )
+
+            self.assertFalse((root / "memory").exists())
+
+    def test_archived_project_denies_memory_entry_and_candidate_creation(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.archived_context(root)
+
+            for create, title in (
+                (project_memory.create_memory_entry, "Denied entry"),
+                (project_memory.create_memory_candidate, "Denied candidate"),
+            ):
+                with self.subTest(create=create.__name__):
+                    with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                        create(
+                            root,
+                            kind="decision",
+                            title=title,
+                            project_context=context,
+                        )
+
+            self.assertFalse((root / "memory").exists())
+
+    def test_archived_project_denies_candidate_transitions_without_removing_sources(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            approve = project_memory.create_memory_candidate(
+                root, kind="decision", title="Approve denied"
+            )
+            reject = project_memory.create_memory_candidate(
+                root, kind="decision", title="Reject denied"
+            )
+            context = self.archived_context(root)
+
+            for transition, candidate in (
+                (project_memory.approve_memory_candidate, approve),
+                (project_memory.reject_memory_candidate, reject),
+            ):
+                with self.subTest(transition=transition.__name__):
+                    with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                        transition(root, candidate["id"], project_context=context)
+
+            self.assertTrue((root / approve["path"]).exists())
+            self.assertTrue((root / reject["path"]).exists())
+
     def test_memory_dry_run_lists_missing_portable_structure_without_writing(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:
@@ -427,7 +492,7 @@ More detail contents here.
             self.assertEqual(metadata.get("status"), "candidate")
             self.assertIn("benchmarking", project_memory.parse_list_value(metadata.get("tags", "[]")))
 
-    def test_list_memory_candidates_stale_pruning(self):
+    def test_list_memory_candidates_reports_stale_without_deleting_it(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -451,12 +516,31 @@ More detail contents here.
             back_15_days = time.time() - (15 * 24 * 3600)
             os.utime(stale_path, (back_15_days, back_15_days))
 
-            # Listing should prune stale and only keep fresh
+            # Listing is a read path: stale candidates remain visible and untouched.
             candidates = project_memory.list_memory_candidates(root)
-            self.assertEqual(len(candidates), 1)
-            self.assertEqual(candidates[0]["id"], fresh_candidate["id"])
-            self.assertFalse(stale_path.exists())
+            self.assertEqual(len(candidates), 2)
+            stale = next(item for item in candidates if item["id"] == stale_candidate["id"])
+            self.assertTrue(stale["stale"])
+            self.assertEqual(stale["warning"], "MEMORY_CANDIDATE_STALE")
+            self.assertTrue(stale_path.exists())
             self.assertTrue(fresh_path.exists())
+
+    def test_list_memory_candidates_reports_malformed_without_deleting_it(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            candidate_dir = root / "memory" / ".candidates"
+            candidate_dir.mkdir(parents=True)
+            malformed = candidate_dir / "broken.md"
+            malformed.write_bytes(b"\xff\xfe")
+
+            candidates = project_memory.list_memory_candidates(root)
+
+            self.assertEqual(len(candidates), 1)
+            self.assertEqual(candidates[0]["id"], "broken")
+            self.assertEqual(candidates[0]["status"], "malformed")
+            self.assertEqual(candidates[0]["warning"], "MEMORY_CANDIDATE_MALFORMED")
+            self.assertTrue(malformed.exists())
 
     def test_workflow_release_auto_capture(self):
         project_workflow = load_module("project_workflow", "scripts/project_workflow.py")

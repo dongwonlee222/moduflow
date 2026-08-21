@@ -37,6 +37,22 @@ def scaffold(root, issues, active_in_dashboard="048-x", state_active="048-x"):
 
 
 class ProjectLifecycleTests(unittest.TestCase):
+    def test_archived_project_denies_lifecycle_sync_before_evaluation_or_write(self):
+        lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
+        project_registry = load_module("project_registry_lifecycle", "scripts/project_registry.py")
+        project_operation = load_module("project_operation_lifecycle", "scripts/project_operation.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+
+            with mock.patch.object(lc, "evaluate_project") as evaluate:
+                with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                    lc.sync_lifecycle(root, project_context=context)
+
+            evaluate.assert_not_called()
+            self.assertFalse((root / ".moduflow" / "state.json").exists())
+
     def test_warning_dependency_wait_is_still_excluded_from_ready_queue(self):
         lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
         with tempfile.TemporaryDirectory() as tmp:

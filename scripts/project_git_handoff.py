@@ -12,6 +12,7 @@ from scripts.project_repository_identity import (
     inspect_repository_identity,
     operation_decision,
 )
+from scripts import project_operation, project_registry
 
 PROBE_FILENAME = ".moduflow-write-probe"
 
@@ -56,13 +57,28 @@ def _github_api_available(root, runner):
     return result.returncode == 0
 
 
-def check_commit_capability(root, runner=None, probe_write=None, operation="commit"):
+def check_commit_capability(
+    root,
+    runner=None,
+    probe_write=None,
+    operation="commit",
+    *,
+    project_context=None,
+):
     """Classify commit capability as local-git-write, github-api-commit, or blocked."""
+    root = Path(root).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(
+        context,
+        "publish" if operation == "push" else "execute",
+    )
     if runner is None:
         runner = run_command
     if probe_write is None:
         probe_write = _default_probe_write
-    root = Path(root)
     identity = None
 
     if (root / ".moduflow" / "config.json").is_file():
@@ -146,6 +162,7 @@ def check_commit_capability(root, runner=None, probe_write=None, operation="comm
     }
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Classify local Git vs GitHub API commit capability.")
     parser.add_argument("root", nargs="?", default=".", help="Project root path")

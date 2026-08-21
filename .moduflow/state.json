@@ -1,12 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "select",
+  "phase": "review",
   "active_goal": "trustworthy-execution-and-project-knowledge",
-  "active_issue": "",
-  "last_command": "product:execute 109-canonical-project-context-consumer-convergence",
-  "next_command": "product:spec 110-project-operation-capability-enforcement",
-  "blockers": [
-    "110 must complete before Issue 103 implementation"
-  ],
+  "active_issue": "110-project-operation-capability-enforcement",
+  "last_command": "product:pr 110-project-operation-capability-enforcement",
+  "next_command": "product:review 110-project-operation-capability-enforcement",
+  "blockers": [],
   "updated_at": "2026-08-21"
 }

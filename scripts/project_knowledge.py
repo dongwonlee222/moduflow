@@ -6,8 +6,9 @@ from datetime import date
 from pathlib import Path
 
 try:
-    from scripts import project_registry
+    from scripts import project_operation, project_registry
 except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_operation
     import project_registry
 
 
@@ -87,8 +88,13 @@ def mkdir_if_missing(path):
     return True
 
 
-def apply_knowledge_plan(plan):
-    project_root = Path(plan["project_root"])
+def apply_knowledge_plan(plan, *, project_context=None):
+    project_root = Path(plan["project_root"]).resolve()
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     knowledge_root = Path(plan["knowledge_root"])
     written = []
     for relative in KNOWLEDGE_DIRS:
@@ -155,6 +161,7 @@ def create_knowledge_artifact(
         project_root,
         project_context=project_context,
     )
+    project_operation.require_project_capability(context, "write")
     target_dir = project_registry.canonical_child_path(
         context,
         "knowledge",
@@ -176,6 +183,7 @@ def create_knowledge_artifact(
     }
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Plan, initialize, or create ModuFlow knowledge artifacts.")
     parser.add_argument("project_path", nargs="?", default=".")

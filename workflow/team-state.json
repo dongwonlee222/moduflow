@@ -345,6 +345,21 @@
       "last_handoff": "PR #37 passed CI, merged as 513e08f, and ModuFlow 0.3.48 was installed locally.",
       "next_command": "product:status",
       "updated_at": "2026-08-13"
+    },
+    {
+      "issue_id": "110-project-operation-capability-enforcement",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Reviewer",
+      "status": "review",
+      "branch": "",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/42",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/42",
+      "next_command": "product:review 110-project-operation-capability-enforcement",
+      "updated_at": "2026-08-21"
     }
   ]
 }

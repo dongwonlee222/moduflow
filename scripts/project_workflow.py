@@ -6,8 +6,9 @@ from datetime import date
 from pathlib import Path
 
 try:
-    from scripts import project_registry
+    from scripts import project_operation, project_registry
 except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_operation
     import project_registry
 
 
@@ -142,7 +143,12 @@ def load_team_state(path, *, project_context=None):
 
 
 def write_team_state(path, state, *, project_context=None):
-    target = team_state_path(path, project_context=project_context)
+    context = project_registry.context_for_operation(
+        path,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "execute")
+    target = team_state_path(path, project_context=context)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return target
@@ -186,7 +192,12 @@ def normalize_team_item(item):
 
 
 def upsert_team_item(path, updates, *, project_context=None):
-    state = load_team_state(path, project_context=project_context)
+    context = project_registry.context_for_operation(
+        path,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "execute")
+    state = load_team_state(path, project_context=context)
     issue_id = updates["issue_id"]
     items = [normalize_team_item(item) for item in state.get("items", [])]
     for index, item in enumerate(items):
@@ -204,7 +215,7 @@ def upsert_team_item(path, updates, *, project_context=None):
     else:
         items.append(normalize_team_item(updates))
     state["items"] = items
-    write_team_state(path, state, project_context=project_context)
+    write_team_state(path, state, project_context=context)
     return next(item for item in items if item["issue_id"] == issue_id)
 
 
@@ -320,8 +331,13 @@ def suggest_completion_memory(
     }
 
 
-def apply_workflow_plan(plan):
-    project_root = Path(plan["project_root"])
+def apply_workflow_plan(plan, *, project_context=None):
+    project_root = Path(plan["project_root"]).resolve()
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     workflow_root = Path(plan["workflow_root"])
     written = []
     for relative, content in WORKFLOW_FILES.items():
@@ -386,6 +402,7 @@ def create_workflow_record(
         project_root,
         project_context=project_context,
     )
+    project_operation.require_project_capability(context, "write")
     target_dir = project_registry.canonical_child_path(context, "workflow", "records")
     target_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{date.today().isoformat()}-{slugify(issue_id)}-{slugify(state)}.md"
@@ -454,6 +471,7 @@ def run_review_check(path, issue_id, *, project_context=None):
         project_root,
         project_context=project_context,
     )
+    project_operation.require_project_capability(context, "execute")
     spec_dir = project_registry.canonical_child_path(context, "specs", issue_id)
     spec_file = spec_dir / "spec.md"
     status_file = spec_dir / "status.md"
@@ -558,6 +576,7 @@ def run_review_check(path, issue_id, *, project_context=None):
     }
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Plan, initialize, or create ModuFlow team workflow artifacts.")
     parser.add_argument("project_path", nargs="?", default=".")

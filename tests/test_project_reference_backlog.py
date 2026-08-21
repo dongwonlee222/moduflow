@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts import project_operation, project_registry
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -65,6 +67,28 @@ class ReferenceBacklogEntryTests(unittest.TestCase):
 
 
 class ReferenceBacklogWriteTests(unittest.TestCase):
+    def test_archived_project_denies_reference_backlog_before_workspace_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+            entry = project_reference_backlog.build_entry(
+                title="Denied",
+                source="reference",
+                gap="gap",
+                recommendation="fix",
+                issue_id="110-denied",
+            )
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_reference_backlog.write_entry(
+                    root,
+                    entry,
+                    project_context=context,
+                )
+
+            self.assertFalse((root / "workspace").exists())
+
     def test_write_entry_creates_workspace_backlog(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

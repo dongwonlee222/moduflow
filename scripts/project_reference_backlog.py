@@ -12,8 +12,9 @@ from datetime import date
 from pathlib import Path
 
 try:
-    from scripts import project_registry
+    from scripts import project_operation, project_registry
 except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_operation
     import project_registry
 
 
@@ -126,6 +127,7 @@ def write_entry(root, entry, *, project_context=None):
         root,
         project_context=project_context,
     )
+    project_operation.require_project_capability(context, "write")
     entry = _contextual_entry(entry, context)
     path = project_registry.canonical_child_path(
         context,
@@ -184,6 +186,7 @@ def build_parser():
     return parser
 
 
+@project_operation.cli_denial_boundary
 def main(argv=None):
     parser = build_parser()
     args = parser.parse_args(argv)

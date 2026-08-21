@@ -10,6 +10,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import project_doctor
+import project_operation
 import project_registry
 
 
@@ -203,8 +204,13 @@ def write_dir_if_missing(path):
     return True
 
 
-def apply_migration_plan(plan):
-    project_root = Path(plan["project_root"])
+def apply_migration_plan(plan, *, project_context=None):
+    project_root = Path(plan["project_root"]).resolve()
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "execute")
     written = []
     if write_json_if_missing(project_root / ".moduflow" / "config.json", plan["config"]):
         written.append(".moduflow/config.json")
@@ -229,6 +235,7 @@ def apply_migration_plan(plan):
     return plan
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Plan or apply a non-destructive ModuFlow project migration.")
     parser.add_argument("project_path", nargs="?", default=".")

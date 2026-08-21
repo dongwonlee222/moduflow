@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from scripts import project_doctor
+from scripts import project_doctor, project_operation, project_registry
 
 
 class CheckHookLogTests(unittest.TestCase):
@@ -486,6 +486,40 @@ class CanonicalPathDoctorTests(unittest.TestCase):
             self.assertTrue(result["workflow"]["initialized"])
             self.assertTrue(result["loop"]["initialized"])
             self.assertEqual(result["project_context"]["status"], "resolved")
+
+
+class ProjectCapabilityDoctorTests(unittest.TestCase):
+    def test_doctor_projects_archived_read_only_capabilities_without_blocking_reads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps({"schema": "moduflow.config.v1", "paths": {}}),
+                encoding="utf-8",
+            )
+            for relative in ("issues", "specs", "workspace"):
+                (root / relative).mkdir()
+            context = project_registry.project_context_for_root(root)
+            context["trust_scope"] = "read-only"
+            context.update(project_operation.compute_project_policy("archived", "read-only"))
+
+            result = project_doctor.inspect_project(
+                root,
+                include_preflight=False,
+                project_context=context,
+            )
+
+        self.assertEqual(result["project_context"]["status"], "resolved")
+        self.assertEqual(result["project_context"]["project_status"], "archived")
+        self.assertEqual(result["project_context"]["policy_trust_scope"], "read-only")
+        self.assertEqual(
+            result["project_context"]["capabilities"],
+            {"read": True, "write": False, "execute": False, "publish": False},
+        )
+        self.assertEqual(
+            result["project_context"]["capability_reasons"]["execute"]["reason_code"],
+            "PROJECT_OPERATION_DENIED_ARCHIVED",
+        )
 
 
 if __name__ == "__main__":

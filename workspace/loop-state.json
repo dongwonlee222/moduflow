@@ -28,25 +28,25 @@
     "110-project-operation-capability-enforcement",
     "111-runtime-provenance-and-validation-mode-separation"
   ],
-  "active_issue_id": "109-canonical-project-context-consumer-convergence",
+  "active_issue_id": "110-project-operation-capability-enforcement",
   "phase": "review",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:spec 110-project-operation-capability-enforcement",
+  "next_command": "product:review 110-project-operation-capability-enforcement",
   "attempts": {
-    "command": "product:spec 110-project-operation-capability-enforcement",
+    "command": "product:review 110-project-operation-capability-enforcement",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-08-21"
   },
-  "blocker": "Issue 110 still blocks Issue 103 implementation",
-  "last_action": "completed and reviewed Issue 109 canonical project-context consumer convergence",
-  "last_verification": "2026-08-21: 1,248 tests, canonical guard, project validation, zero lifecycle drift, and release check passed",
+  "blocker": "Issue 110 PR #42 awaits human/CI review; Issue 103 remains blocked until Issue 110 is accepted and merged",
+  "last_action": "published Issue 110 as non-draft GitHub PR #42 after all local gates passed",
+  "last_verification": "2026-08-21: focused 572/572, full discovery 1339/1339, mutation audit 64/64 with zero gaps, source release check valid",
   "updated_at": "2026-08-21",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/109-canonical-project-context-consumer-convergence",
+    "branch": "codex/110-project-operation-capability-enforcement",
     "base_branch": "main",
     "commits": [
       "f980aef",
@@ -148,8 +148,8 @@
       "d3ce327",
       "f4029f3"
     ],
-    "pull_request": null,
-    "release": "Issue 102 is merged on main as 010eee8; ModuFlow 0.3.49 source validation passed and runtime diagnostics are tracked by Issue 111",
+    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/42",
+    "release": "Issue 110 PR #42 targets ModuFlow 0.3.52; source release validation passed and merge remains human-gated",
     "execution_backend": {
       "type": "codex",
       "status": "ready",

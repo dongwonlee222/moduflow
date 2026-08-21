@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts import project_github_issues, project_sync
+from scripts import project_github_issues, project_operation, project_registry, project_sync
 
 
 class FakeRunner:
@@ -49,6 +49,23 @@ class GithubIssueSyncTests(unittest.TestCase):
     def setUp(self):
         self.root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.root, True)
+
+    def test_archived_project_denies_publish_before_config_issue_or_runner_reads(self):
+        context = project_registry.project_context_for_root(self.root)
+        context.update(project_operation.compute_project_policy("archived", "internal"))
+        runner = FakeRunner({})
+
+        with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+            project_github_issues.sync_issue(
+                self.root,
+                ISSUE_ID,
+                runner=runner,
+                project_context=context,
+            )
+
+        self.assertEqual(runner.calls, [])
+        self.assertFalse((self.root / ".moduflow").exists())
+
 
     def _write_project(self, github_sync="optional", issue_text=ISSUE_TEXT, repo="dongwonlee222/moduflow"):
         (self.root / ".moduflow").mkdir()

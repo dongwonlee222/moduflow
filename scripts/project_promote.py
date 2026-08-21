@@ -19,7 +19,7 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts import project_registry
+from scripts import project_operation, project_registry
 
 TODO_MARKER = "TODO(blocking-execution)"
 TEMPLATE_RELATIVE = Path("templates") / "issues" / "issue.md"
@@ -282,10 +282,16 @@ def build_promotion_plan(
     return plan
 
 
-def apply_promotion_plan(plan):
+def apply_promotion_plan(plan, *, project_context=None):
     """Write the issue file and update the record in place. Plan must be ok."""
     if not plan["ok"]:
         raise ValueError("refusing to apply a failed promotion plan: " + "; ".join(plan["errors"]))
+    root = Path(plan["project"]).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "execute")
     issue_path = Path(plan["issue_path"])
     issue_path.parent.mkdir(parents=True, exist_ok=True)
     issue_path.write_text(plan["issue_content"], encoding="utf-8")
@@ -305,6 +311,7 @@ def _plan_view(plan, dry_run):
     return view
 
 
+@project_operation.cli_denial_boundary
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Promote a capture record into an issue (075).")
     parser.add_argument("project", help="project root path")

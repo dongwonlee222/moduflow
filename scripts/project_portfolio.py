@@ -5,8 +5,9 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 try:
-    from scripts import project_registry
+    from scripts import project_operation, project_registry
 except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_operation
     import project_registry
 
 
@@ -50,8 +51,13 @@ def write_if_missing(path, content):
     return True
 
 
-def apply_portfolio_plan(plan):
-    portfolio_root = Path(plan["portfolio_root"])
+def apply_portfolio_plan(plan, *, portfolio_context=None):
+    portfolio_root = Path(plan["portfolio_root"]).resolve()
+    context = project_registry.context_for_operation(
+        portfolio_root,
+        project_context=portfolio_context,
+    )
+    project_operation.require_project_capability(context, "write")
     written = []
     for relative, content in PORTFOLIO_FILES.items():
         if write_if_missing(portfolio_root / relative, content):
@@ -159,6 +165,11 @@ def collect_project_statuses(registry_path):
                     ),
                     "registry_schema": registry["source_schema"],
                     "resolution_status": context["status"],
+                    "project_status": context["project_status"],
+                    "policy_trust_scope": context["policy_trust_scope"],
+                    "policy_inputs": context["policy_inputs"],
+                    "capabilities": context["capabilities"],
+                    "capability_reasons": context["capability_reasons"],
                     "warnings": warnings,
                 }
             )
@@ -184,6 +195,11 @@ def collect_project_statuses(registry_path):
                 "team": team,
                 "registry_schema": registry["source_schema"],
                 "resolution_status": context["status"],
+                "project_status": context["project_status"],
+                "policy_trust_scope": context["policy_trust_scope"],
+                "policy_inputs": context["policy_inputs"],
+                "capabilities": context["capabilities"],
+                "capability_reasons": context["capability_reasons"],
                 "warnings": warnings,
             }
         )
@@ -243,8 +259,13 @@ def render_weekly(statuses):
     return "\n".join(lines)
 
 
-def write_dashboard(portfolio_root):
+def write_dashboard(portfolio_root, *, portfolio_context=None):
     portfolio_root = Path(portfolio_root).resolve()
+    context = project_registry.context_for_operation(
+        portfolio_root,
+        project_context=portfolio_context,
+    )
+    project_operation.require_project_capability(context, "write")
     statuses = collect_project_statuses(portfolio_root / "projects.json")
     dashboard = render_dashboard(statuses)
     weekly = render_weekly(statuses)
@@ -257,6 +278,7 @@ def write_dashboard(portfolio_root):
     }
 
 
+@project_operation.cli_denial_boundary
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Plan, initialize, or render a ModuFlow portfolio workspace.")
     parser.add_argument("portfolio_path", nargs="?", default=".")

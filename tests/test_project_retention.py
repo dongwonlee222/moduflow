@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts import project_operation, project_registry
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 import project_retention
@@ -42,6 +44,23 @@ def write_record(root, rel, frontmatter_lines, body="\n# Title\n"):
 
 
 class RetentionTests(unittest.TestCase):
+    def test_archived_project_denies_retention_before_runner_or_record_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+            runner = FakeRunner({})
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_retention.archive_candidates(
+                    root,
+                    "2026-08-21",
+                    runner=runner,
+                    project_context=context,
+                )
+
+            self.assertEqual(runner.calls, [])
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)

@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts import project_operation, project_registry
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,6 +21,19 @@ project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
 
 
 class ProjectMigrationTests(unittest.TestCase):
+    def test_archived_project_denies_migration_before_moduflow_creation(self):
+        project_migrate = load_module("project_migrate_denied", "scripts/project_migrate.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+            plan = project_migrate.build_migration_plan(root, dry_run=False)
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_migrate.apply_migration_plan(plan, project_context=context)
+
+            self.assertFalse((root / ".moduflow").exists())
+
     def test_doctor_discovers_existing_project_artifact_candidates(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

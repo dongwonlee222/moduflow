@@ -158,6 +158,9 @@ REQUIRED_FILES = [
     "scripts/project_registry.py",
     "scripts/canonical_path_guard.py",
     "config/canonical-path-literals.json",
+    "scripts/project_operation.py",
+    "scripts/project_operation_audit.py",
+    "config/project-operation-entrypoints.json",
     "scripts/project_production.py",
     "scripts/project_portfolio.py",
     "scripts/project_workflow.py",
@@ -176,6 +179,9 @@ REQUIRED_FILES = [
     "tests/fixtures/issue-schema/legacy-markdown.md",
     "tests/test_project_registry.py",
     "tests/test_canonical_path_guard.py",
+    "tests/test_project_operation.py",
+    "tests/test_project_operation_audit.py",
+    "tests/project_operation_fixture.py",
     "tests/fixtures/project-registry/projects-v1.json",
     "tests/fixtures/project-registry/projects-v2.json",
     "tests/fixtures/project-registry/projects-v2-alias-collision.json",
@@ -192,6 +198,9 @@ REQUIRED_FILES = [
 SOURCE_ONLY_REQUIRED_FILES = {
     "tests/test_project_registry.py",
     "tests/test_canonical_path_guard.py",
+    "tests/test_project_operation.py",
+    "tests/test_project_operation_audit.py",
+    "tests/project_operation_fixture.py",
 }
 
 

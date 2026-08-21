@@ -6,8 +6,9 @@ from datetime import date
 from pathlib import Path
 
 try:
-    from scripts import project_registry
+    from scripts import project_operation, project_registry
 except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_operation
     import project_registry
 
 
@@ -296,7 +297,11 @@ def active_issue_matches(active_issue, related_issues):
 
 
 def append_inbox_record(root, routed, *, project_context=None):
-    context = project_context or project_registry.project_context_for_root(root)
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     inbox_path = project_registry.canonical_path(context, "workspace") / "inbox.md"
     inbox_path.parent.mkdir(parents=True, exist_ok=True)
     if inbox_path.exists():
@@ -373,6 +378,7 @@ def route_intake(root, request, write=False, *, project_context=None):
     return routed
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Route a loose request into a ModuFlow goal or issue graph.")
     parser.add_argument("request")

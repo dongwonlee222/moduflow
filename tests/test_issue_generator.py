@@ -1,8 +1,11 @@
 import importlib.util
+import ast
 import json
 import tempfile
 import unittest
 from pathlib import Path
+
+from scripts import project_operation, project_registry
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,6 +21,40 @@ project_issue_schema = load_module(
 )
 
 class IssueGeneratorTests(unittest.TestCase):
+    def test_cli_entrypoint_propagates_decorated_main_exit_code(self):
+        tree = ast.parse(
+            (ROOT / "scripts" / "issue_generator.py").read_text(encoding="utf-8")
+        )
+        entrypoint = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.If)
+            and isinstance(node.test, ast.Compare)
+            and any(
+                isinstance(value, ast.Constant) and value.value == "__main__"
+                for value in ast.walk(node.test)
+            )
+        )
+
+        self.assertTrue(any(isinstance(node, ast.Raise) for node in entrypoint.body))
+
+    def test_archived_project_denies_issue_write_before_directory_creation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+            issue_data = issue_generator.generate_issues_from_goal("Denied")[0]
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                issue_generator.write_issue_file(
+                    root,
+                    110,
+                    issue_data,
+                    project_context=context,
+                )
+
+            self.assertFalse((root / "issues").exists())
+
     def test_writer_and_workflow_links_use_configured_issue_and_spec_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -7,9 +7,10 @@ from pathlib import Path
 
 try:
     from scripts import capability_routing
-    from scripts import project_registry
+    from scripts import project_operation, project_registry
 except ImportError:  # Direct execution from scripts/.
     import capability_routing
+    import project_operation
     import project_registry
 
 
@@ -248,8 +249,20 @@ def simulate_cases(root, cases, *, project_context=None):
     }
 
 
-def write_report(path, report):
+def write_report(
+    path,
+    report,
+    *,
+    project_root=None,
+    project_context=None,
+):
     path = Path(path)
+    root = Path(project_root or path.parent).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -258,6 +271,7 @@ def write_report(path, report):
     return path
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(
         description="Run offline ModuFlow capability routing simulations."
@@ -268,6 +282,8 @@ def main():
 
     root = Path(args.project_path).resolve()
     context = project_registry.context_for_operation(root)
+    if args.write:
+        project_operation.require_project_capability(context, "write")
     report = simulate_cases(root, load_cases(root), project_context=context)
     if args.write:
         write_report(
@@ -278,6 +294,8 @@ def main():
                 "simulation-report.json",
             ),
             report,
+            project_root=root,
+            project_context=context,
         )
     print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
     return int(report["failed"] > 0 or any(report["metrics"].values()))

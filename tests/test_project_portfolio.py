@@ -6,6 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts import project_operation, project_registry
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,6 +20,64 @@ def load_module(name, relative_path):
 
 
 class ProjectPortfolioTests(unittest.TestCase):
+    def test_archived_selected_target_does_not_block_active_portfolio_writes(self):
+        project_portfolio = load_module("project_portfolio_control", "scripts/project_portfolio.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            portfolio = base / "portfolio"
+            target = base / "archived-target"
+            target.mkdir()
+            project = self.v2_project("archived", "Archived", target)
+            project["status"] = "archived"
+            project["trust_scope"] = "read-only"
+            self.write_registry(portfolio, [project])
+            portfolio_context = project_registry.project_context_for_root(portfolio)
+
+            result = project_portfolio.write_dashboard(
+                portfolio,
+                portfolio_context=portfolio_context,
+            )
+
+            self.assertEqual(result["project_count"], 1)
+            self.assertTrue((portfolio / "portfolio-dashboard.md").is_file())
+            self.assertFalse((target / "portfolio-dashboard.md").exists())
+
+    def test_read_only_portfolio_denies_control_writes_before_targets_change(self):
+        project_portfolio = load_module("project_portfolio_denied", "scripts/project_portfolio.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("active", "read-only"))
+            plan = project_portfolio.build_portfolio_plan(root, dry_run=False)
+
+            with self.assertRaisesRegex(Exception, "trust scope is read-only"):
+                project_portfolio.apply_portfolio_plan(
+                    plan,
+                    portfolio_context=context,
+                )
+            with self.assertRaisesRegex(Exception, "trust scope is read-only"):
+                project_portfolio.write_dashboard(
+                    root,
+                    portfolio_context=context,
+                )
+
+            self.assertEqual(list(root.iterdir()), [])
+
+    def test_portfolio_context_cannot_authorize_selected_target_mutation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            portfolio = base / "portfolio"
+            target = base / "target"
+            portfolio.mkdir()
+            target.mkdir()
+            portfolio_context = project_registry.project_context_for_root(portfolio)
+
+            with self.assertRaisesRegex(ValueError, "does not match project root"):
+                project_registry.context_for_operation(
+                    target,
+                    project_context=portfolio_context,
+                )
+
     def test_portfolio_dry_run_lists_missing_workspace_files_without_writing(self):
         project_portfolio = load_module("project_portfolio", "scripts/project_portfolio.py")
         with tempfile.TemporaryDirectory() as tmp:
@@ -435,6 +495,36 @@ class ProjectPortfolioTests(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertFalse((portfolio / "project-selection.json").exists())
             self.assertEqual(json.loads(output.getvalue())["status"], "error")
+
+    def test_collect_status_projects_archived_read_only_capabilities(self):
+        project_portfolio = load_module("project_portfolio", "scripts/project_portfolio.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            portfolio = base / "portfolio"
+            project = base / "project"
+            (project / ".moduflow").mkdir(parents=True)
+            (project / ".moduflow" / "state.json").write_text(
+                json.dumps({"phase": "archived", "next_command": "product:doctor"}),
+                encoding="utf-8",
+            )
+            (project / "workflow").mkdir()
+            payload = self.v2_project("project-a", "Project A", project)
+            payload["status"] = "archived"
+            payload["trust_scope"] = "read-only"
+            registry = self.write_registry(portfolio, [payload])
+
+            statuses = project_portfolio.collect_project_statuses(registry)
+
+        self.assertEqual(statuses[0]["project_status"], "archived")
+        self.assertEqual(statuses[0]["policy_trust_scope"], "read-only")
+        self.assertEqual(
+            statuses[0]["capabilities"],
+            {"read": True, "write": False, "execute": False, "publish": False},
+        )
+        self.assertEqual(
+            statuses[0]["capability_reasons"]["publish"]["reason_code"],
+            "PROJECT_OPERATION_DENIED_ARCHIVED",
+        )
 
 
 if __name__ == "__main__":

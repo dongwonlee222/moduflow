@@ -3,7 +3,7 @@ import unittest
 import json
 from pathlib import Path
 
-from scripts import project_git_handoff
+from scripts import project_git_handoff, project_operation, project_registry
 from scripts.project_sync import CommandResult
 
 
@@ -21,6 +21,33 @@ class CheckCommitCapabilityTests(unittest.TestCase):
             return mapping[key]
 
         return runner
+
+    def test_denied_project_stops_before_git_probe_and_github_fallback(self):
+        context = project_registry.project_context_for_root(self.root)
+        context.update(project_operation.compute_project_policy("archived", "internal"))
+        calls = []
+
+        def runner(*args, **kwargs):
+            calls.append(args)
+            raise AssertionError("runner called before authorization")
+
+        def probe(*args, **kwargs):
+            calls.append(args)
+            raise AssertionError("probe called before authorization")
+
+        for operation in ("commit", "push"):
+            with self.subTest(operation=operation):
+                with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                    project_git_handoff.check_commit_capability(
+                        self.root,
+                        runner=runner,
+                        probe_write=probe,
+                        operation=operation,
+                        project_context=context,
+                    )
+
+        self.assertEqual(calls, [])
+
 
     def test_local_git_write_succeeds(self):
         (self.root / ".git").mkdir()

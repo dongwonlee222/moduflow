@@ -14,7 +14,7 @@ from scripts.project_repository_identity import (
     inspect_repository_identity,
     operation_decision,
 )
-from scripts import project_registry
+from scripts import project_operation, project_registry
 
 
 @dataclass
@@ -76,8 +76,19 @@ def _run_command(args, cwd):
     return CommandResult(completed.returncode, completed.stdout, completed.stderr)
 
 
-def github_pr_preflight(root, runner=None, identity_result=None):
+def github_pr_preflight(
+    root,
+    runner=None,
+    identity_result=None,
+    *,
+    project_context=None,
+):
     root = Path(root).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "read")
     run = runner or _run_command
     result = {
         "schema": "moduflow.github-pr-preflight.v1",
@@ -212,7 +223,11 @@ def build_human_review_packet_ko(
     root, issue_id, branch="", pr="", reviewer="Reviewer", *, project_context=None
 ):
     root = Path(root).resolve()
-    context = project_context or project_registry.project_context_for_root(root)
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "read")
     specs_root = project_registry.canonical_path(context, "specs")
     spec_dir = specs_root / issue_id
     issue_path = project_registry.canonical_path(context, "issues") / f"{issue_id}.md"
@@ -469,7 +484,11 @@ def write_pr_handoff(
     project_context=None,
 ):
     root = Path(root).resolve()
-    context = project_context or project_registry.project_context_for_root(root)
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     target = project_registry.canonical_path(context, "specs") / issue_id / "pr.md"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(
@@ -495,6 +514,7 @@ def write_pr_handoff(
     return target
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Generate ModuFlow draft PR handoff artifacts.")
     parser.add_argument("project_path", nargs="?", default=".")

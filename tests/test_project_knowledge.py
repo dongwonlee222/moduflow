@@ -25,6 +25,30 @@ class ProjectKnowledgeTests(unittest.TestCase):
         context["paths"]["knowledge"] = str((root / "project-knowledge").resolve())
         return context
 
+    def archived_context(self, root):
+        project_registry = load_module("project_registry_knowledge", "scripts/project_registry.py")
+        project_operation = load_module("project_operation_knowledge", "scripts/project_operation.py")
+        context = project_registry.project_context_for_root(root)
+        context.update(project_operation.compute_project_policy("archived", "internal"))
+        return context
+
+    def test_archived_project_denies_knowledge_write_without_creating_directory(self):
+        project_knowledge = load_module("project_knowledge", "scripts/project_knowledge.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.archived_context(root)
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_knowledge.create_knowledge_artifact(
+                    root,
+                    kind="decision",
+                    title="Denied artifact",
+                    project_context=context,
+                )
+
+            self.assertFalse((root / "knowledge").exists())
+
+
     def test_knowledge_dry_run_lists_missing_structure_without_writing(self):
         project_knowledge = load_module("project_knowledge", "scripts/project_knowledge.py")
         with tempfile.TemporaryDirectory() as tmp:

@@ -5,8 +5,10 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from scripts import project_review as pr
+from scripts import project_operation, project_registry
 from scripts import review_intake as ri
 
 
@@ -301,6 +303,48 @@ class LazyAdapterSelectionTests(unittest.TestCase):
 
 
 class ArtifactAndCliTests(unittest.TestCase):
+    def archived_context(self, root):
+        context = project_registry.project_context_for_root(root)
+        context.update(project_operation.compute_project_policy("archived", "internal"))
+        return context
+
+    def test_archived_project_denies_review_artifact_write_before_project_reads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(
+                pr,
+                "_existing_candidates",
+                side_effect=AssertionError("project read before authorization"),
+            ) as existing:
+                with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                    pr.write_review_artifacts(
+                        root,
+                        sample_final_packet(),
+                        project_context=self.archived_context(root),
+                    )
+
+            existing.assert_not_called()
+            self.assertFalse((root / "workspace").exists())
+
+    def test_archived_project_denies_written_decisions_before_loading_packet(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(
+                pr,
+                "_load_json",
+                side_effect=AssertionError("file read before authorization"),
+            ) as load:
+                with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                    pr.apply_decisions_to_path(
+                        root,
+                        "review-denied",
+                        root / "decisions.json",
+                        write=True,
+                        project_context=self.archived_context(root),
+                    )
+
+            load.assert_not_called()
+
     def test_script_help_runs_from_project_root(self):
         root = Path(__file__).resolve().parents[1]
 

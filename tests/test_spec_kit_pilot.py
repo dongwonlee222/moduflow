@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts import project_operation, project_registry
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "spec_kit_pilot.py"
@@ -63,6 +65,22 @@ def independent_loaded_context_chars(function):
 
 
 class SpecKitPilotTests(unittest.TestCase):
+    def test_archived_project_denies_report_before_evaluation_or_temp_write(self):
+        pilot = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                pilot.write_report(
+                    root,
+                    {"cases": []},
+                    project_context=context,
+                )
+
+            self.assertFalse((root / "specs").exists())
+
     @classmethod
     def setUpClass(cls):
         cls.pilot = load_module()

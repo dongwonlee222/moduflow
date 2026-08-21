@@ -8,7 +8,7 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts import project_registry
+from scripts import project_operation, project_registry
 
 def get_next_issue_number(issues_dir):
     issues_path = Path(issues_dir)
@@ -123,7 +123,11 @@ def generate_issues_from_goal(goal, search_mock_data=None):
 
 def write_issue_file(root_dir, num, issue_data, *, project_context=None):
     root = Path(root_dir).resolve()
-    context = project_context or project_registry.project_context_for_root(root)
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     issues_dir = project_registry.canonical_path(context, "issues")
     issues_dir.mkdir(parents=True, exist_ok=True)
     filename = format_issue_filename(num, issue_data["title"])
@@ -182,6 +186,7 @@ def write_issue_file(root_dir, num, issue_data, *, project_context=None):
     file_path.write_text(content, encoding="utf-8")
     return file_path
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Autonomous goal benchmarking and issue generator")
     parser.add_argument("goal", help="The high-level goal to decompose")
@@ -206,4 +211,4 @@ def main():
         print(f"Generated issue: {fpath.relative_to(root_dir)}")
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

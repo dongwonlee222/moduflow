@@ -13,8 +13,9 @@ import unicodedata
 from pathlib import Path
 
 try:
-    from scripts import project_registry
+    from scripts import project_operation, project_registry
 except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_operation
     import project_registry
 
 
@@ -938,6 +939,12 @@ def persist_validation(
     project_context=None,
 ):
     """Rebuild current readiness, then preview or atomically append one advisory result."""
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    if write:
+        project_operation.require_project_capability(context, "write")
     validated = _current_validated_result(
         package_root,
         project_root,
@@ -945,11 +952,7 @@ def persist_validation(
         request,
         result,
         host_available=host_available,
-        project_context=project_context,
-    )
-    context = project_registry.context_for_operation(
-        project_root,
-        project_context=project_context,
+        project_context=context,
     )
     target = _contained_validation_path(
         project_root,
@@ -964,6 +967,7 @@ def persist_validation(
     prefix = b"" if not existing else (b"\n" if existing.endswith(b"\n") else b"\n\n")
     preview = (prefix + rendered).decode("utf-8")
     if write:
+        project_operation.require_project_capability(context, "write")
         lock_relative = _canonical_relative(
             context,
             "specs",
@@ -1137,11 +1141,22 @@ def _config_payload(functions):
     }
 
 
-def configure_project(project_root, functions, *, write=False):
+def configure_project(
+    project_root,
+    functions,
+    *,
+    write=False,
+    project_context=None,
+):
     functions = _function_list(functions)
     payload = _config_payload(functions)
     if not write:
         return payload
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     parent = _ensure_project_directory(project_root, ".moduflow")
     target = _project_path(project_root, ".moduflow", "capabilities.json")
     if _lexists(target):
@@ -1185,6 +1200,7 @@ def configure_project(project_root, functions, *, write=False):
     return payload
 
 
+@project_operation.cli_denial_boundary
 def main(argv=None):
     parser = JsonErrorArgumentParser(description="Configure project-local Spec Kit opt-in")
     parser.add_argument("project_root")

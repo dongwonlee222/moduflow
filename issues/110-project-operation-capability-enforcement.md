@@ -1,6 +1,6 @@
 # Issue 110: Project Operation Capability Enforcement
 
-**Status: backlog** — created 2026-08-21.
+**Status: active** — created 2026-08-21; implementation, independent review, full regression, and source release gates passed; review-ready 2026-08-21.
 **Priority: p0**
 **Blocked-by: `102-project-registry-and-resolver`**
 
@@ -14,7 +14,7 @@ Separate project discovery from operation authorization by returning explicit pr
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`
 - Verified against: `010eee8eeec37edd6902f2dd008e7164f715e7b1`
 - Owner / decision maker: Dongwon Lee
-- Current phase: backlog
+- Current phase: PR review — Streams A–D complete; non-draft PR #42 is open and awaiting human/CI review
 
 ## Opportunity
 
@@ -71,10 +71,10 @@ Do not interpret resolver success as write approval, weaken downstream safety ga
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/110-project-operation-capability-enforcement/spec.md`
-- [ ] plan → `specs/110-project-operation-capability-enforcement/plan.md`
-- [ ] execute → capability schema, central guard, workflow enforcement, and tests
-- [ ] review → `specs/110-project-operation-capability-enforcement/review.md`
+- [x] spec → `specs/110-project-operation-capability-enforcement/spec.md` + `spec.ko.md`
+- [x] plan → `specs/110-project-operation-capability-enforcement/plan.md` + `tasks.md`
+- [x] execute → capability schema, central guard, workflow enforcement, and tests
+- [x] review → `specs/110-project-operation-capability-enforcement/review.md`
 
 ## Related Issues
 
@@ -91,7 +91,13 @@ Do not interpret resolver success as write approval, weaken downstream safety ga
 - Roadmap: `workspace/roadmap.md`
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`
 - Finding source: `specs/102-project-registry-and-resolver/external-review-2026-08-21.json`
+- Spec: `specs/110-project-operation-capability-enforcement/spec.md`
+- Korean spec: `specs/110-project-operation-capability-enforcement/spec.ko.md`
+- Plan: `specs/110-project-operation-capability-enforcement/plan.md`
+- Tasks: `specs/110-project-operation-capability-enforcement/tasks.md`
+- Implementation readiness: `specs/110-project-operation-capability-enforcement/implementation-readiness.json`
+- Pull request: `https://github.com/dongwonlee222/moduflow/pull/42`
 
 ## Next Command
 
-`product:spec 110-project-operation-capability-enforcement`
+`product:review 110-project-operation-capability-enforcement` — inspect PR #42 checks and human review; merge remains a separate approval.

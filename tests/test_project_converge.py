@@ -2,11 +2,13 @@ import contextlib
 import io
 import json
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
 
 from scripts import project_converge
+from scripts import project_operation, project_registry
 
 ISSUE = "071-spec-code-converge-check"
 ALPHA = "101-alpha"
@@ -530,6 +532,24 @@ class CollectEvidenceTests(unittest.TestCase):
         self.assertEqual(evidence["files"], [])
         self.assertEqual(evidence["errors"], [])
 
+    def test_archived_project_still_allows_read_only_evidence_collection(self):
+        root = self._project()
+        runner = FakeRunner({LOG_ARGS: ""})
+        context = project_registry.project_context_for_root(root)
+        context.update(project_operation.compute_project_policy("archived", "internal"))
+
+        evidence, ok = project_converge.collect_evidence(
+            root,
+            ISSUE,
+            "2026-08-21",
+            runner=runner,
+            project_context=context,
+        )
+
+        self.assertTrue(ok)
+        self.assertTrue(evidence["no_evidence"])
+        self.assertTrue(runner.calls)
+
     def test_collect_evidence_uses_canonical_specs_and_ignores_decoy(self):
         from scripts import project_registry
 
@@ -617,6 +637,31 @@ class CollectEvidenceTests(unittest.TestCase):
 
 
 class MainTests(unittest.TestCase):
+    def test_archived_project_denies_evidence_output_before_runner_call(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(root))
+        context = project_registry.project_context_for_root(root)
+        context.update(project_operation.compute_project_policy("archived", "internal"))
+        args = types.SimpleNamespace(
+            project_path=str(root),
+            issue_id=ISSUE,
+            date="2026-08-21",
+            max_files=30,
+            max_bytes=204800,
+            json=True,
+        )
+        runner = mock.Mock(side_effect=AssertionError("runner called before authorization"))
+
+        with mock.patch.object(
+            project_converge.project_registry,
+            "context_for_operation",
+            return_value=context,
+        ):
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                project_converge._run_evidence(args, runner)
+
+        runner.assert_not_called()
+
     def _project(self, **kwargs):
         root = make_project(**kwargs)
         self.addCleanup(lambda: __import__("shutil").rmtree(root))
@@ -778,6 +823,23 @@ def mixed_judgment():
 
 
 class ApplyJudgmentTests(unittest.TestCase):
+    def test_archived_project_denies_judgment_before_spec_or_input_reads(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(root))
+        context = project_registry.project_context_for_root(root)
+        context.update(project_operation.compute_project_policy("archived", "internal"))
+
+        with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+            project_converge.apply_judgment(
+                root,
+                ISSUE,
+                root / "judgment.json",
+                "2026-08-21",
+                project_context=context,
+            )
+
+        self.assertFalse((root / "specs").exists())
+
     DATE = "2026-07-06"
 
     def _project(self, **kwargs):

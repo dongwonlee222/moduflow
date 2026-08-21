@@ -8,9 +8,10 @@ from datetime import datetime
 from pathlib import Path
 
 try:
-    from scripts import project_issue_schema
+    from scripts import project_issue_schema, project_operation
 except ImportError:  # pragma: no cover - direct script execution fallback
     import project_issue_schema
+    import project_operation
 
 
 REGISTRY_READ_SCHEMA = "moduflow.project-registry-read.v1"
@@ -466,7 +467,7 @@ def _candidate_view(project):
 
 
 def _resolution_base(status, reason_code, *, candidates=None, warnings=None, question=""):
-    return {
+    result = {
         "schema": RESOLUTION_SCHEMA,
         "status": status,
         "project_id": "",
@@ -479,6 +480,14 @@ def _resolution_base(status, reason_code, *, candidates=None, warnings=None, que
         "warnings": list(warnings or []),
         "question": question,
     }
+    result.update(
+        project_operation.compute_project_policy(
+            None,
+            None,
+            resolution_status=status,
+        )
+    )
+    return result
 
 
 def _unresolved(reason_code, question, warnings=None):
@@ -522,6 +531,12 @@ def _resolved(project, reason_code, warnings=None):
             "paths": dict(project["paths"]),
             "trust_scope": project["trust_scope"],
         }
+    )
+    result.update(
+        project_operation.compute_project_policy(
+            project.get("status"),
+            project.get("trust_scope"),
+        )
     )
     return result
 
@@ -769,6 +784,13 @@ def project_context_for_root(project_root):
             "trust_scope": "project-local",
         }
     )
+    result.update(
+        project_operation.compute_project_policy(
+            "active",
+            "project-local",
+            explicit_root_compatibility=True,
+        )
+    )
     return result
 
 
@@ -894,8 +916,20 @@ def load_recent_selection(registry_path):
     }
 
 
-def record_recent_selection(registry_path, project_id, selected_at):
+def record_recent_selection(
+    registry_path,
+    project_id,
+    selected_at,
+    *,
+    portfolio_context=None,
+):
     """Atomically record an explicit registered-project selection."""
+    portfolio_root = Path(registry_path).resolve().parent
+    context = context_for_operation(
+        portfolio_root,
+        project_context=portfolio_context,
+    )
+    project_operation.require_project_capability(context, "write")
     registry = load_project_registry(registry_path)
     if not registry.get("valid"):
         raise ValueError("cannot select from an invalid project registry")

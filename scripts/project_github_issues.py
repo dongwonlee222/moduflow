@@ -22,7 +22,7 @@ from scripts.project_repository_identity import (
     operation_decision,
     repository_from_github_artifact_url,
 )
-from scripts import project_registry
+from scripts import project_operation, project_registry
 
 LABELS = {
     "backlog": "moduflow:backlog",
@@ -221,7 +221,11 @@ def _error(message, issue_id, repository_identity=None, reason_code=None):
 
 def sync_issue(root, issue_id, runner=None, *, project_context=None):
     root = Path(root).resolve()
-    context = project_context or project_registry.project_context_for_root(root)
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "publish")
 
     mode = _github_sync_mode(root)
     if mode == "off":
@@ -321,6 +325,7 @@ def sync_issue(root, issue_id, runner=None, *, project_context=None):
     return {"action": "created", "issue_id": issue_id, "url": url, "label": label}
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(
         description="Sync a git-file issue to a GitHub Issue (opt-in, one-way)."

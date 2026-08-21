@@ -19,6 +19,7 @@ Validate setup.
 8. Report missing files and suggested fix commands.
 9. Render the versioned `repository_identity` result as expected identity, observed identity, lifecycle, capabilities, reason codes, and exact remediation. Doctor is report-only even on mismatch.
 10. For approval-sensitive hosts, call `inspect_project(path, include_preflight=False)` or `scripts/project_doctor.py <project-path> --no-preflight` first, then run full preflight only when Git/GitHub sync state is needed. The result explicitly lists `repository_identity` as skipped.
+11. Render project operation policy independently from resolution: raw `policy_inputs`, normalized `project_status` / `policy_trust_scope`, all four `capabilities`, and each `capability_reasons` entry. Doctor remains a diagnostic read even when mutation is denied.
 
 ## Korean Output
 
@@ -55,6 +56,8 @@ Render a Korean-first health check:
 ```
 
 Missing optional capabilities are warnings, not failures, in `git-files` mode.
+
+An archived, read-only, or unknown-policy project may still be inspected. Do not describe `status: resolved` as writable; use `capabilities.write`, `capabilities.execute`, and `capabilities.publish`. If a repair requires mutation, show the policy reason and recommendation rather than attempting the repair.
 
 ## Git Checks
 

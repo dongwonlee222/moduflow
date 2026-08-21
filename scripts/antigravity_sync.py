@@ -4,6 +4,12 @@ import re
 import sys
 from pathlib import Path
 
+try:
+    from scripts import project_operation, project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_operation
+    import project_registry
+
 # Matches checkboxes: - [ ] or - [x] or - [/]
 CHECKBOX_RE = re.compile(r"^(?P<indent>\s*)-\s+\[(?P<status>[ xX/])\]\s+(?P<text>.+?)\s*$")
 METADATA_RE = re.compile(r"\s*\[(files|globs|depends|shared_state|group):\s*[^\]]*\]", re.IGNORECASE)
@@ -54,7 +60,27 @@ def detect_task_drift(host_path, git_path):
             return True
     return False
 
-def sync_tasks_bidirectional(host_path, git_path):
+def _project_root_for_tasks(git_path):
+    git_path = Path(git_path).resolve()
+    for candidate in (git_path.parent, *git_path.parents):
+        if (candidate / ".moduflow").is_dir():
+            return candidate
+    return git_path.parent
+
+
+def sync_tasks_bidirectional(
+    host_path,
+    git_path,
+    *,
+    project_root=None,
+    project_context=None,
+):
+    root = Path(project_root).resolve() if project_root is not None else _project_root_for_tasks(git_path)
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "execute")
     host_tasks = parse_file_tasks(host_path)
     git_tasks = parse_file_tasks(git_path)
     
@@ -93,6 +119,7 @@ def sync_tasks_bidirectional(host_path, git_path):
     rewrite_file(host_path)
     rewrite_file(git_path)
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Sync Antigravity planning artifacts with ModuFlow.")
     parser.add_argument("--host", required=True, help="Path to host task.md")

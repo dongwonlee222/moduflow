@@ -11,6 +11,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest import mock
 
+from scripts import project_operation, project_registry
+
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "scripts" / "spec_kit_adapter.py"
@@ -216,6 +218,23 @@ def write_canonical_inputs(project, issue_id=ISSUE_ID):
 
 
 class SpecKitConfigTests(unittest.TestCase):
+    def test_archived_project_denies_configuration_before_temp_or_directory_creation(self):
+        adapter = load_module(self)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+
+            with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                adapter.configure_project(
+                    root,
+                    ["clarify"],
+                    write=True,
+                    project_context=context,
+                )
+
+            self.assertFalse((root / ".moduflow").exists())
+
     @classmethod
     def setUpClass(cls):
         cls.ska = load_module(cls)
@@ -776,6 +795,33 @@ class SpecKitConfigTests(unittest.TestCase):
 
 
 class SpecKitPersistenceTests(unittest.TestCase):
+    def test_archived_project_denies_persistence_before_validation_or_lock_creation(self):
+        adapter = load_module(self)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+
+            with mock.patch.object(
+                adapter,
+                "_current_validated_result",
+                side_effect=AssertionError("validation read before authorization"),
+            ) as validate:
+                with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                    adapter.persist_validation(
+                        ROOT,
+                        root,
+                        ISSUE_ID,
+                        "clarify this",
+                        {},
+                        host_available=True,
+                        write=True,
+                        project_context=context,
+                    )
+
+            validate.assert_not_called()
+            self.assertFalse((root / "specs").exists())
+
     """Result records must stay advisory and append-only on real project bytes."""
 
     @classmethod
