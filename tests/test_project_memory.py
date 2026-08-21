@@ -553,7 +553,9 @@ More detail contents here.
             )
             serialized = json.dumps(artifacts, ensure_ascii=False)
 
-            evaluate.assert_called_once_with(root.resolve())
+            evaluate.assert_called_once()
+            self.assertEqual(evaluate.call_args.args[0], root.resolve())
+            self.assertEqual(evaluate.call_args.args[1]["issues"], "issues")
             self.assertNotIn("DO-NOT-EXPOSE", html)
             self.assertNotIn("DO-NOT-EXPOSE", serialized)
             self.assertFalse(any(item["name"] == "issue" for item in artifacts))
@@ -1060,7 +1062,9 @@ More detail contents here.
             ) as evaluate:
                 project_memory.render_project_view(root)
 
-            evaluate.assert_called_once_with(root.resolve())
+            evaluate.assert_called_once()
+            self.assertEqual(evaluate.call_args.args[0], root.resolve())
+            self.assertEqual(evaluate.call_args.args[1]["issues"], "issues")
 
     def test_issue_panel_includes_linked_memory_section_only_when_present(self):
         project_memory = load_module("project_memory", "scripts/project_memory.py")
@@ -1226,6 +1230,45 @@ def _linked_blob(html):
 
 
 class ProjectMemoryCanonicalPathTests(unittest.TestCase):
+    def test_supplied_context_controls_dashboard_and_issue_panel(self):
+        project_memory = load_module("project_memory_supplied_context", "scripts/project_memory.py")
+        project_registry = load_module("project_registry_memory", "scripts/project_registry.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            for role, relative in {
+                "issues": "product/issues",
+                "specs": "delivery/specs",
+                "workspace": "ops/workspace",
+                "memory": "project-memory",
+            }.items():
+                context["relative_paths"][role] = relative
+                context["paths"][role] = str((root / relative).resolve())
+            issues = root / "product" / "issues"
+            specs = root / "delivery" / "specs" / "CTX-001"
+            issues.mkdir(parents=True)
+            specs.mkdir(parents=True)
+            (issues / "CTX-001.md").write_text(
+                "# CANONICAL CONTEXT ISSUE\n\n**Status: backlog** — created.\n",
+                encoding="utf-8",
+            )
+            (specs / "spec.md").write_text("# CANONICAL CONTEXT SPEC\n", encoding="utf-8")
+            decoy = root / "issues" / "WRONG.md"
+            decoy.parent.mkdir()
+            decoy.write_text("# WRONG DECOY ISSUE\n", encoding="utf-8")
+
+            html = project_memory.render_project_view(root, project_context=context)
+            panel = project_memory.render_issue_panel(
+                root,
+                "CTX-001",
+                project_context=context,
+            )
+
+            self.assertIn("CANONICAL CONTEXT ISSUE", html)
+            self.assertNotIn("WRONG DECOY ISSUE", html)
+            self.assertIn("CANONICAL CONTEXT SPEC", panel)
+            self.assertEqual(decoy.read_text(encoding="utf-8"), "# WRONG DECOY ISSUE\n")
+
     def test_dashboard_cli_writes_only_to_configured_memory_path(self):
         project_memory = load_module("project_memory_dashboard_path", "scripts/project_memory.py")
         with tempfile.TemporaryDirectory() as tmp:

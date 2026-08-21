@@ -16,7 +16,7 @@ Status: active — implementation authorized 2026-08-21
 
 ## Stream C — Adapter and Git History Convergence
 
-- [ ] **C1** Converge memory dashboards/drill-down and Spec Kit inputs/outputs while preserving stricter no-follow behavior. | Files: scripts/project_memory.py, tests/test_project_memory.py, scripts/spec_kit_adapter.py, tests/test_spec_kit_adapter.py | Depends: A1,B1
+- [x] **C1** Converge memory dashboards/drill-down and Spec Kit inputs/outputs while preserving stricter no-follow behavior. | Files: scripts/project_memory.py, tests/test_project_memory.py, scripts/spec_kit_adapter.py, tests/test_spec_kit_adapter.py | Depends: A1,B1
 - [ ] **C2** Scope sync and commit attribution Git commands to the canonical configured issue prefix with FakeRunner tests. | Files: scripts/project_sync.py, tests/test_project_sync.py, scripts/commit_resolution.py, tests/test_commit_resolution.py, tests/test_commit_resolution_parity.py | Depends: A1
 
 ## Stream D — Verification and Publication

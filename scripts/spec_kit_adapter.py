@@ -12,6 +12,11 @@ import tempfile
 import unicodedata
 from pathlib import Path
 
+try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
 
 CONFIG_SCHEMA = "moduflow.capabilities.v1"
 HANDOFF_SCHEMA = "moduflow.spec-kit-handoff.v1"
@@ -528,35 +533,77 @@ def _native_fallback(function, outcome):
     return "Spec Kit request was blocked; use native validation after correcting the request or config."
 
 
-def canonical_input_paths(issue_id, function):
+def _canonical_relative(project_context, role, *parts):
+    try:
+        return project_registry.canonical_relative_path(
+            project_context,
+            role,
+            *parts,
+        )
+    except (KeyError, ValueError) as exc:
+        raise SpecKitAdapterError(
+            "unsafe_path",
+            f"canonical {role} path is unavailable or unsafe",
+        ) from exc
+
+
+def canonical_input_paths(issue_id, function, *, project_context=None):
     if not isinstance(issue_id, str) or not ISSUE_ID_PATTERN.fullmatch(issue_id):
         _error("unsafe_issue_id", "issue_id is invalid")
     if function not in FUNCTIONS:
         return ["request"]
-    issue = f"issues/{issue_id}.md"
-    spec_root = f"specs/{issue_id}"
+    if project_context is None:
+        issue = f"issues/{issue_id}.md"
+        spec_root = f"specs/{issue_id}"
+        constitution = "workspace/constitution.md"
+    else:
+        issue = _canonical_relative(
+            project_context,
+            "issues",
+            f"{issue_id}.md",
+        )
+        spec_root = _canonical_relative(
+            project_context,
+            "specs",
+            issue_id,
+        )
+        constitution = _canonical_relative(
+            project_context,
+            "workspace",
+            "constitution.md",
+        )
     paths = {
         "clarify": [issue, f"{spec_root}/spec.md"],
         "analyze": [
             f"{spec_root}/spec.md",
             f"{spec_root}/plan.md",
             f"{spec_root}/tasks.md",
-            "workspace/constitution.md",
+            constitution,
         ],
         "checklist": [issue, f"{spec_root}/spec.md"],
         "converge": [
             f"{spec_root}/spec.md",
             f"{spec_root}/plan.md",
             f"{spec_root}/tasks.md",
-            "workspace/constitution.md",
+            constitution,
         ],
     }
     return paths[function]
 
 
-def read_canonical_inputs(project_root, issue_id, function):
+def read_canonical_inputs(
+    project_root,
+    issue_id,
+    function,
+    *,
+    project_context=None,
+):
     records = []
-    for relative in canonical_input_paths(issue_id, function):
+    for relative in canonical_input_paths(
+        issue_id,
+        function,
+        project_context=project_context,
+    ):
         path = _project_path(project_root, relative, require_regular=True)
         records.append({"path": relative, "content": _read_regular_file(path, "canonical input")})
     return records
@@ -585,6 +632,7 @@ def _handoff(
     asset=None,
     input_hash=None,
     fallback_override=None,
+    project_context=None,
 ):
     ready = outcome == "ready"
     limitations = ["Advisory only; no project artifacts or state are modified."]
@@ -602,7 +650,15 @@ def _handoff(
             "template_sha256": asset["actual_sha256"] if ready else None,
         },
         "permission": "read",
-        "inputs": canonical_input_paths(issue_id, function) if function else ["request"],
+        "inputs": (
+            canonical_input_paths(
+                issue_id,
+                function,
+                project_context=project_context,
+            )
+            if function
+            else ["request"]
+        ),
         "input_hash": input_hash if ready else None,
         "output_artifact": output_artifact,
         "limitations": limitations,
@@ -612,13 +668,30 @@ def _handoff(
     }
 
 
-def _output_path(project_root, issue_id):
-    candidate = _project_path(project_root, "specs", issue_id, "validation.md")
+def _output_path(project_root, issue_id, *, project_context=None):
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    relative = _canonical_relative(
+        context,
+        "specs",
+        issue_id,
+        "validation.md",
+    )
+    candidate = _project_path(project_root, *Path(relative).parts)
     return candidate.relative_to(_project_root(project_root)).as_posix()
 
 
-def _validation_relative_path(issue_id):
-    return f"specs/{issue_id}/validation.md"
+def _validation_relative_path(issue_id, *, project_context=None):
+    if project_context is None:
+        return f"specs/{issue_id}/validation.md"
+    return _canonical_relative(
+        project_context,
+        "specs",
+        issue_id,
+        "validation.md",
+    )
 
 
 def _json_safe(value):
@@ -699,7 +772,7 @@ def validate_result_shape(payload):
     return json.loads(json.dumps(payload, ensure_ascii=False, allow_nan=False))
 
 
-def validate_host_result(payload, handoff):
+def validate_host_result(payload, handoff, *, project_context=None):
     """Require a ready, matching handoff before a host result becomes evidence."""
     validated = validate_result_shape(payload)
     if not isinstance(handoff, dict) or handoff.get("outcome") != "ready":
@@ -722,15 +795,33 @@ def validate_host_result(payload, handoff):
         _error("permission_mismatch", "handoff permission does not match result")
     if handoff.get("input_hash") != validated["input_hash"]:
         _error("input_mismatch", "handoff canonical input identity does not match result")
-    if handoff.get("output_artifact") != _validation_relative_path(validated["issue_id"]):
+    if handoff.get("output_artifact") != _validation_relative_path(
+        validated["issue_id"],
+        project_context=project_context,
+    ):
         _error("output_mismatch", "handoff output does not match result issue")
     return validated
 
 
-def _contained_validation_path(project_root, issue_id):
+def _contained_validation_path(
+    project_root,
+    issue_id,
+    *,
+    project_context=None,
+):
     if not isinstance(issue_id, str) or not ISSUE_ID_PATTERN.fullmatch(issue_id):
         _error("unsafe_issue_id", "issue_id is invalid")
-    return _project_path(project_root, "specs", issue_id, "validation.md")
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    relative = _canonical_relative(
+        context,
+        "specs",
+        issue_id,
+        "validation.md",
+    )
+    return _project_path(project_root, *Path(relative).parts)
 
 
 def render_validation_entry(validated_result):
@@ -758,6 +849,7 @@ def _current_validated_result(
     result,
     *,
     host_available,
+    project_context=None,
 ):
     validated = validate_result_shape(result)
     if validated["issue_id"] != issue_id:
@@ -768,10 +860,15 @@ def _current_validated_result(
         issue_id,
         request,
         host_available=host_available,
+        project_context=project_context,
     )
     if handoff.get("outcome") != "ready":
         _error("handoff_not_ready", handoff.get("fallback") or "current handoff is not ready")
-    return validate_host_result(validated, handoff)
+    return validate_host_result(
+        validated,
+        handoff,
+        project_context=project_context,
+    )
 
 
 def _read_optional_regular(path, label):
@@ -838,6 +935,7 @@ def persist_validation(
     *,
     host_available,
     write=False,
+    project_context=None,
 ):
     """Rebuild current readiness, then preview or atomically append one advisory result."""
     validated = _current_validated_result(
@@ -847,8 +945,17 @@ def persist_validation(
         request,
         result,
         host_available=host_available,
+        project_context=project_context,
     )
-    target = _contained_validation_path(project_root, validated["issue_id"])
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    target = _contained_validation_path(
+        project_root,
+        validated["issue_id"],
+        project_context=context,
+    )
     marker = f"<!-- moduflow-spec-kit-run:{validated['run_id']} -->"
     existing = _read_optional_regular(target, "validation output")
     if not write and marker.encode("utf-8") in existing:
@@ -857,12 +964,13 @@ def persist_validation(
     prefix = b"" if not existing else (b"\n" if existing.endswith(b"\n") else b"\n\n")
     preview = (prefix + rendered).decode("utf-8")
     if write:
-        lock_path = _project_path(
-            project_root,
+        lock_relative = _canonical_relative(
+            context,
             "specs",
             validated["issue_id"],
             ".validation.md.lock",
         )
+        lock_path = _project_path(project_root, *Path(lock_relative).parts)
         flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
         try:
             lock_descriptor = os.open(lock_path, flags, 0o600)
@@ -879,8 +987,13 @@ def persist_validation(
                 request,
                 result,
                 host_available=host_available,
+                project_context=context,
             )
-            target = _contained_validation_path(project_root, validated["issue_id"])
+            target = _contained_validation_path(
+                project_root,
+                validated["issue_id"],
+                project_context=context,
+            )
             existing = _read_optional_regular(target, "validation output")
             if marker.encode("utf-8") in existing:
                 return {
@@ -905,14 +1018,30 @@ def persist_validation(
     }
 
 
-def build_handoff(package_root, project_root, issue_id, request, host_available):
+def build_handoff(
+    package_root,
+    project_root,
+    issue_id,
+    request,
+    host_available,
+    *,
+    project_context=None,
+):
     """Return a complete, non-executing handoff envelope for one request."""
     function = None
     output_artifact = None
     try:
         if not isinstance(issue_id, str) or not ISSUE_ID_PATTERN.fullmatch(issue_id):
             _error("unsafe_issue_id", "issue_id is invalid")
-        output_artifact = _output_path(project_root, issue_id)
+        context = project_registry.context_for_operation(
+            project_root,
+            project_context=project_context,
+        )
+        output_artifact = _output_path(
+            project_root,
+            issue_id,
+            project_context=context,
+        )
         classification = classify_request(request)
         function = classification["function"]
         if classification["outcome"] == "fallback":
@@ -926,20 +1055,47 @@ def build_handoff(package_root, project_root, issue_id, request, host_available)
                     f"{classification['reason_code']}; use native ModuFlow validation or retry: "
                     f"{classification['retry']}"
                 ),
+                project_context=context,
             )
         config = load_project_config(project_root)
         if not config["enabled"]:
-            return _handoff(issue_id, function, "disabled", request, output_artifact)
+            return _handoff(
+                issue_id,
+                function,
+                "disabled",
+                request,
+                output_artifact,
+                project_context=context,
+            )
         if function not in config["functions"]:
-            return _handoff(issue_id, function, "unsupported", request, output_artifact)
+            return _handoff(
+                issue_id,
+                function,
+                "unsupported",
+                request,
+                output_artifact,
+                project_context=context,
+            )
         if host_available is not True:
-            return _handoff(issue_id, function, "unavailable", request, output_artifact)
+            return _handoff(
+                issue_id,
+                function,
+                "unavailable",
+                request,
+                output_artifact,
+                project_context=context,
+            )
         manifest = load_manifest(package_root)
         assets = verify_assets(package_root, manifest)
         if not all(asset["valid"] for asset in assets):
             _error("assets_unavailable", "approved Spec Kit assets are unavailable")
         asset = next(asset for asset in assets if asset["function"] == function)
-        input_records = read_canonical_inputs(project_root, issue_id, function)
+        input_records = read_canonical_inputs(
+            project_root,
+            issue_id,
+            function,
+            project_context=context,
+        )
         return _handoff(
             issue_id,
             function,
@@ -948,6 +1104,7 @@ def build_handoff(package_root, project_root, issue_id, request, host_available)
             output_artifact,
             asset,
             input_hash=canonical_input_hash(input_records),
+            project_context=context,
         )
     except SpecKitAdapterError as exc:
         prerequisite = exc.code == "missing_input"
@@ -962,6 +1119,7 @@ def build_handoff(package_root, project_root, issue_id, request, host_available)
                 if prerequisite
                 else None
             ),
+            project_context=(locals().get("context")),
         )
 
 
