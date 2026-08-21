@@ -10,6 +10,11 @@ try:
 except ModuleNotFoundError:
     from project_repository_identity import audit_repository_links
 
+try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
 
 REQUIRED_PATHS = [
     ".moduflow/config.json",
@@ -103,20 +108,27 @@ def read_text_if_exists(path):
     return path.read_text(encoding="utf-8")
 
 
-def artifact_paths(root, errors):
-    paths = read_config_paths(root, errors)
-    return {
-        "issues": paths.get("issues", "issues"),
-        "specs": paths.get("specs", "specs"),
-        "workspace": paths.get("workspace", "workspace"),
-    }
+def artifact_paths(root, errors, *, project_context=None):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    return dict(context["relative_paths"])
 
 
-def active_loop_state(root, project_loop):
-    path = root / "workspace" / "loop-state.json"
+def active_loop_state(root, project_loop, *, project_context=None):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    path = project_registry.canonical_child_path(
+        context,
+        "workspace",
+        "loop-state.json",
+    )
     if not path.exists():
         return None
-    return project_loop.load_loop_state(root)
+    return project_loop.load_loop_state(root, project_context=context)
 
 
 def linked_artifacts(issue_text):
@@ -130,8 +142,12 @@ def linked_artifacts(issue_text):
     return linked
 
 
-def iter_memory_markdown(root):
-    memory_root = root / "memory"
+def iter_memory_markdown(root, *, project_context=None):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    memory_root = project_registry.canonical_path(context, "memory")
     if not memory_root.exists():
         return []
     return sorted(path for path in memory_root.glob("*/*.md") if path.is_file())
@@ -163,8 +179,12 @@ def parse_list_value(value):
     return [item.strip() for item in inner.split(",") if item.strip()]
 
 
-def validate_memory_links(root, errors):
-    for memory_file in iter_memory_markdown(root):
+def validate_memory_links(root, errors, *, project_context=None):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    for memory_file in iter_memory_markdown(root, project_context=context):
         metadata = parse_frontmatter(memory_file.read_text(encoding="utf-8"))
         relative_memory = str(memory_file.relative_to(root))
         for linked in parse_list_value(metadata.get("source_artifacts", "[]")):
@@ -174,38 +194,70 @@ def validate_memory_links(root, errors):
             errors.append(f"{relative_memory}: candidate memory must have status: candidate")
 
 
-def validate_team_workflow_state(root, errors):
-    team_state_path = root / "workflow" / "team-state.json"
+def validate_team_workflow_state(root, errors, *, project_context=None):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    team_state_path = project_registry.canonical_child_path(
+        context,
+        "workflow",
+        "team-state.json",
+    )
+    workflow_label = project_registry.canonical_relative_path(
+        context,
+        "workflow",
+        "team-state.json",
+    )
     if not team_state_path.exists():
         return
     state = read_json(team_state_path, errors)
     if not state:
         return
     if state.get("schema") != "moduflow.team-state.v1":
-        errors.append("workflow/team-state.json: schema must be moduflow.team-state.v1")
+        errors.append(f"{workflow_label}: schema must be moduflow.team-state.v1")
         return
     items = state.get("items")
     if not isinstance(items, list):
-        errors.append("workflow/team-state.json: items must be a list")
+        errors.append(f"{workflow_label}: items must be a list")
         return
     for item in items:
         issue_id = item.get("issue_id")
         status = item.get("status")
         if not issue_id:
-            errors.append("workflow/team-state.json: item missing issue_id")
+            errors.append(f"{workflow_label}: item missing issue_id")
             continue
-        if not (root / "issues" / f"{issue_id}.md").exists():
-            errors.append(f"workflow/team-state.json: item references missing issue {issue_id}")
+        if not project_registry.canonical_child_path(
+            context,
+            "issues",
+            f"{issue_id}.md",
+        ).exists():
+            errors.append(f"{workflow_label}: item references missing issue {issue_id}")
         if status == "active" and not item.get("branch"):
-            errors.append(f"workflow/team-state.json: active state for {issue_id} requires branch")
+            errors.append(f"{workflow_label}: active state for {issue_id} requires branch")
         if status == "active" and not (item.get("assignee") or item.get("locked_by")):
-            errors.append(f"workflow/team-state.json: active state for {issue_id} requires assignee or locked_by")
+            errors.append(f"{workflow_label}: active state for {issue_id} requires assignee or locked_by")
         if status == "review" and not (item.get("reviewer") and item.get("pr")):
-            errors.append(f"workflow/team-state.json: review state requires reviewer and pr for {issue_id}")
+            errors.append(f"{workflow_label}: review state requires reviewer and pr for {issue_id}")
 
 
-def validate_active_issue_links(root, issue_id, errors, project_paths):
-    issue_file = root / project_paths["issues"] / f"{issue_id}.md"
+def validate_active_issue_links(
+    root,
+    issue_id,
+    errors,
+    project_paths,
+    *,
+    project_context=None,
+):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    issue_file = project_registry.canonical_child_path(
+        context,
+        "issues",
+        f"{issue_id}.md",
+    )
     if not issue_file.exists():
         return
     try:
@@ -219,7 +271,13 @@ def validate_active_issue_links(root, issue_id, errors, project_paths):
 
 
 def validate_active_state_views(
-    root, active_issue_id, next_command, errors, project_paths
+    root,
+    active_issue_id,
+    next_command,
+    errors,
+    project_paths,
+    *,
+    project_context=None,
 ):
     # 048: lifecycle canonical is the issue file Status; .moduflow/state.json is the
     # live summary. The dashboard must mention the active issue. (next_command is NOT
@@ -228,7 +286,15 @@ def validate_active_state_views(
     # roadmap.md is a narrative roadmap, not an active-issue tracker — not gated.)
     if not active_issue_id:
         return
-    dashboard = root / project_paths["workspace"] / "dashboard.md"
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    dashboard = project_registry.canonical_child_path(
+        context,
+        "workspace",
+        "dashboard.md",
+    )
     dashboard_text = read_text_if_exists(dashboard)
     if dashboard.exists() and active_issue_id not in dashboard_text:
         source = dashboard.relative_to(root).as_posix()
@@ -249,8 +315,17 @@ def validate_next_command_matches_phase(root, loop_state, project_loop, errors):
 
 
 def validate_schema_gates(
-    root, issue_evaluation, errors, project_paths
+    root,
+    issue_evaluation,
+    errors,
+    project_paths,
+    *,
+    project_context=None,
 ):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
     # 048: gate keys off .moduflow/state.json (live summary), not loop-state.json
     # (retired/dormant — frozen at issue 040, a prior goal). loop-state's
     # next_command/phase coupling is no longer a lifecycle gate.
@@ -260,7 +335,11 @@ def validate_schema_gates(
     active_issue_id = (state.get("active_issue") or "").strip()
     if active_issue_id:
         validate_active_issue_links(
-            root, active_issue_id, errors, project_paths
+            root,
+            active_issue_id,
+            errors,
+            project_paths,
+            project_context=context,
         )
     validate_active_state_views(
         root,
@@ -268,13 +347,16 @@ def validate_schema_gates(
         state.get("next_command"),
         errors,
         project_paths,
+        project_context=context,
     )
     # 048: retain only consensus drift here. Shared issue diagnostics are emitted
     # once from issue_evaluation below, so lifecycle translation must not duplicate
     # schema, projection, or dependency diagnostics.
     try:
         lifecycle_drift = load_project_lifecycle().consensus_drift(
-            root, issue_evaluation
+            root,
+            issue_evaluation,
+            project_context=context,
         )
         for d in lifecycle_drift:
             errors.append(f"lifecycle drift: {d} (run project_lifecycle.py --sync)")
@@ -283,11 +365,26 @@ def validate_schema_gates(
     return lifecycle_drift
 
 
-def validate_issue_status_lines(root, warnings, project_paths):
+def validate_issue_status_lines(
+    root,
+    warnings,
+    project_paths,
+    *,
+    project_context=None,
+):
     # 066 follow-up: every issue file must carry the canonical `**Status: ...**`
     # line or project_lifecycle.py silently defaults it to backlog. Warning, not
     # error — target projects mid-adoption may still carry legacy files.
-    issues_dir = root / project_paths["issues"]
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    try:
+        issues_dir = project_registry.canonical_path(context, "issues")
+    except ValueError:
+        # The shared issue-schema evaluation below owns the actionable
+        # containment diagnostic. Do not follow or expose an unsafe root.
+        return
     if not issues_dir.is_dir():
         return
     for issue_file in sorted(issues_dir.glob("*.md")):
@@ -303,8 +400,11 @@ def validate_issue_status_lines(root, warnings, project_paths):
             )
 
 
-def validate_repository_links(root, errors, warnings):
-    for finding in audit_repository_links(root):
+def validate_repository_links(root, errors, warnings, *, project_context=None):
+    for finding in audit_repository_links(
+        root,
+        project_context=project_context,
+    ):
         if finding["classification"] != "mismatch":
             continue
         location = f"{finding['artifact']}:{finding['line']}"
@@ -442,27 +542,53 @@ def deduplicate_messages(messages):
     return list(dict.fromkeys(messages))
 
 
-def validate_project(path):
+def validate_project(path, *, project_context=None):
     root = Path(path).resolve()
     errors = []
     warnings = []
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
     issue_schema_module = load_project_issue_schema()
-    project_paths = issue_schema_module.configured_project_paths(root)
+    project_paths = dict(context["relative_paths"])
 
     for relative in required_paths(root, errors, project_paths):
         if not (root / relative).exists():
             errors.append(f"Missing required project artifact: {relative}")
 
     for capability, paths in OPTIONAL_CAPABILITY_PATHS.items():
-        missing = [relative for relative in paths if not (root / relative).exists()]
+        missing = []
+        for relative in paths:
+            role = capability if capability in {"knowledge", "memory", "workflow"} else None
+            if role:
+                suffix = Path(relative).relative_to(role)
+                target = project_registry.canonical_child_path(context, role, suffix)
+                label = project_registry.canonical_relative_path(context, role, suffix)
+            else:
+                target = root / relative
+                label = relative
+            if not target.exists():
+                missing.append(label)
         if missing:
             warnings.append(
                 f"Optional project capability not initialized: {capability} ({', '.join(missing)})"
             )
 
     parsed = {}
-    for relative in JSON_FILES + OPTIONAL_JSON_FILES:
-        target = root / relative
+    json_targets = [(relative, root / relative) for relative in JSON_FILES]
+    json_targets.extend(
+        (relative, root / relative)
+        for relative in OPTIONAL_JSON_FILES
+        if not relative.startswith("workflow/")
+    )
+    workflow_state = project_registry.canonical_child_path(
+        context,
+        "workflow",
+        "team-state.json",
+    )
+    json_targets.append((workflow_state.relative_to(root).as_posix(), workflow_state))
+    for relative, target in json_targets:
         if target.exists():
             parsed[relative] = read_json(target, errors)
 
@@ -489,17 +615,34 @@ def validate_project(path):
             errors.append(rendered)
 
     project_loop = load_project_loop()
-    errors.extend(project_loop.validate_loop_state(root))
+    errors.extend(project_loop.validate_loop_state(root, project_context=context))
     lifecycle_drift = validate_schema_gates(
-        root, issue_evaluation, errors, project_paths
+        root,
+        issue_evaluation,
+        errors,
+        project_paths,
+        project_context=context,
     )
-    validate_memory_links(root, errors)
-    production = load_project_production().validate_production_project(root)
+    validate_memory_links(root, errors, project_context=context)
+    production = load_project_production().validate_production_project(
+        root,
+        project_context=context,
+    )
     errors.extend(production["errors"])
     warnings.extend(production["warnings"])
-    validate_team_workflow_state(root, errors)
-    validate_issue_status_lines(root, warnings, project_paths)
-    validate_repository_links(root, errors, warnings)
+    validate_team_workflow_state(root, errors, project_context=context)
+    validate_issue_status_lines(
+        root,
+        warnings,
+        project_paths,
+        project_context=context,
+    )
+    validate_repository_links(
+        root,
+        errors,
+        warnings,
+        project_context=context,
+    )
     errors = deduplicate_messages(errors)
     warnings = deduplicate_messages(warnings)
 

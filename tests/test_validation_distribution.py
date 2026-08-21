@@ -53,6 +53,42 @@ class ValidationDistributionTests(unittest.TestCase):
             self.assertTrue(result["valid"])
             self.assertEqual(result["errors"], [])
 
+    def test_validate_project_uses_nested_context_and_ignores_decoy_defaults(self):
+        validator = load_module("validate_project_nested", "scripts/validate_project_artifacts.py")
+        project_registry = load_module("project_registry_nested", "scripts/project_registry.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+            nested = {
+                "issues": "product/issues",
+                "specs": "delivery/specs",
+                "workspace": "ops/workspace",
+                "knowledge": "project-knowledge",
+                "memory": "project-memory",
+                "production_records": "records/production",
+                "playbooks": "shared/playbooks",
+                "workflow": "team/workflow",
+            }
+            for role in ("issues", "specs", "workspace", "knowledge", "workflow"):
+                source = root / role
+                target = root / nested[role]
+                target.parent.mkdir(parents=True, exist_ok=True)
+                source.rename(target)
+            (root / nested["memory"]).mkdir(parents=True)
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps({"schema": "moduflow.config.v1", "paths": nested}) + "\n",
+                encoding="utf-8",
+            )
+            decoy = root / "workflow" / "team-state.json"
+            decoy.parent.mkdir()
+            decoy.write_text('{"schema":"broken","items":{}}\n', encoding="utf-8")
+            context = project_registry.project_context_for_root(root)
+
+            result = validator.validate_project(root, project_context=context)
+
+            self.assertTrue(result["valid"], result["errors"])
+            self.assertEqual(decoy.read_text(encoding="utf-8"), '{"schema":"broken","items":{}}\n')
+
     def test_validate_project_artifacts_warns_on_issue_missing_status_line(self):
         validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
         with tempfile.TemporaryDirectory() as tmp:

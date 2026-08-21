@@ -18,6 +18,13 @@ project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
 
 
 class ProjectKnowledgeTests(unittest.TestCase):
+    def nested_context(self, root):
+        project_registry = load_module("project_registry", "scripts/project_registry.py")
+        context = project_registry.project_context_for_root(root)
+        context["relative_paths"]["knowledge"] = "project-knowledge"
+        context["paths"]["knowledge"] = str((root / "project-knowledge").resolve())
+        return context
+
     def test_knowledge_dry_run_lists_missing_structure_without_writing(self):
         project_knowledge = load_module("project_knowledge", "scripts/project_knowledge.py")
         with tempfile.TemporaryDirectory() as tmp:
@@ -66,6 +73,32 @@ class ProjectKnowledgeTests(unittest.TestCase):
             self.assertIn("issue_id: 003-payment", content)
             self.assertIn("spec: specs/003-payment/spec.md", content)
             self.assertIn("decision_supported: Prioritize card onboarding", content)
+
+    def test_nested_context_uses_canonical_knowledge_and_ignores_decoy_default(self):
+        project_knowledge = load_module("project_knowledge", "scripts/project_knowledge.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            decoy = root / "knowledge" / "index.md"
+            decoy.parent.mkdir()
+            decoy.write_text("decoy\n", encoding="utf-8")
+            context = self.nested_context(root)
+
+            plan = project_knowledge.build_knowledge_plan(
+                root,
+                dry_run=False,
+                project_context=context,
+            )
+            project_knowledge.apply_knowledge_plan(plan)
+            artifact = project_knowledge.create_knowledge_artifact(
+                root,
+                kind="decision",
+                title="Nested authority",
+                project_context=context,
+            )
+
+            self.assertTrue((root / "project-knowledge" / "index.md").is_file())
+            self.assertTrue(artifact["path"].startswith("project-knowledge/"))
+            self.assertEqual(decoy.read_text(encoding="utf-8"), "decoy\n")
 
     def test_doctor_reports_knowledge_missing_files(self):
         with tempfile.TemporaryDirectory() as tmp:

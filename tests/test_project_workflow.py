@@ -1,6 +1,7 @@
 import importlib.util
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -18,6 +19,19 @@ project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
 
 
 class ProjectWorkflowTests(unittest.TestCase):
+    def nested_context(self, root):
+        project_registry = load_module("project_registry", "scripts/project_registry.py")
+        context = project_registry.project_context_for_root(root)
+        for role, relative in {
+            "workflow": "team/workflow",
+            "specs": "delivery/specs",
+            "issues": "product/issues",
+            "memory": "project-memory",
+        }.items():
+            context["relative_paths"][role] = relative
+            context["paths"][role] = str((root / relative).resolve())
+        return context
+
     def test_workflow_dry_run_lists_missing_files_without_writing(self):
         project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
         with tempfile.TemporaryDirectory() as tmp:
@@ -237,6 +251,50 @@ class ProjectWorkflowTests(unittest.TestCase):
             self.assertIn("## Automated Review Checklist", status_text)
             self.assertIn("[x] Verify that automated checklist is generated.", status_text)
             self.assertIn("[ ] Ensure credentials scanner detects hardcoded keys.", status_text)
+
+    def test_nested_context_uses_canonical_workflow_and_specs(self):
+        project_workflow = load_module("project_workflow", "scripts/project_workflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.nested_context(root)
+            decoy = root / "workflow" / "team-state.json"
+            decoy.parent.mkdir()
+            decoy.write_text('{"schema":"decoy"}\n', encoding="utf-8")
+            spec_dir = root / "delivery" / "specs" / "039-test-review"
+            spec_dir.mkdir(parents=True)
+            (spec_dir / "spec.md").write_text(
+                "# Spec\n\n## Acceptance Criteria\n\n- [ ] Canonical path.\n",
+                encoding="utf-8",
+            )
+            (spec_dir / "status.md").write_text("# Status\n", encoding="utf-8")
+
+            project_workflow.start_issue_work(
+                root,
+                "039-test-review",
+                "Minsu",
+                project_context=context,
+            )
+            record = project_workflow.create_workflow_record(
+                root,
+                "039-test-review",
+                "ready-for-review",
+                "Minsu",
+                project_context=context,
+            )
+            with mock.patch(
+                "subprocess.check_output",
+                return_value="+ canonical path\n",
+            ):
+                result = project_workflow.run_review_check(
+                    root,
+                    "039-test-review",
+                    project_context=context,
+                )
+
+            self.assertTrue(result["ok"])
+            self.assertTrue((root / "team" / "workflow" / "team-state.json").is_file())
+            self.assertTrue(record["path"].startswith("team/workflow/"))
+            self.assertEqual(decoy.read_text(encoding="utf-8"), '{"schema":"decoy"}\n')
 
 
 if __name__ == "__main__":

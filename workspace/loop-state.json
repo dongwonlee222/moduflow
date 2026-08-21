@@ -41,8 +41,8 @@
     "last_changed_at": "2026-08-21"
   },
   "blocker": "Issues 109 and 110 still block Issue 103 implementation",
-  "last_action": "completed Issue 109 Task A1 canonical context operation boundary through RED/GREEN TDD",
-  "last_verification": "2026-08-21: 36 project registry tests passed after Task A1",
+  "last_action": "completed Issue 109 Task B1 knowledge, workflow, and validation consumer convergence through RED/GREEN TDD",
+  "last_verification": "2026-08-21: knowledge/workflow/nested validation tests and both release-check integration tests passed after Task B1",
   "updated_at": "2026-08-21",
   "git_binding": {
     "mode": "git-files",
