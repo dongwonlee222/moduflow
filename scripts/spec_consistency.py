@@ -10,6 +10,11 @@ import re
 import sys
 from pathlib import Path
 
+try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
 STOPWORDS = {
     "the", "and", "for", "that", "with", "must", "should", "when", "given",
     "then", "every", "each", "this", "are", "not", "its", "into", "from",
@@ -156,11 +161,20 @@ def _check_structure(spec_text, plan_text, tasks_text, has_plan, has_tasks):
     return findings
 
 
-def analyze(root, issue_id):
+def analyze(root, issue_id, *, project_context=None):
     root = Path(root).resolve()
-    spec_dir = root / "specs" / issue_id
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    spec_dir = project_registry.canonical_child_path(context, "specs", issue_id)
     if not spec_dir.is_dir():
-        raise FileNotFoundError(f"specs/{issue_id}/ directory not found")
+        relative = project_registry.canonical_relative_path(
+            context,
+            "specs",
+            issue_id,
+        )
+        raise FileNotFoundError(f"{relative}/ directory not found")
 
     findings = []
 

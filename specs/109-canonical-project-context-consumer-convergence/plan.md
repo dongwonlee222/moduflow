@@ -53,7 +53,7 @@ Constitution v1.0 applies (`workspace/constitution.md`). Plan-specific additions
 - `scripts/validate_project_artifacts.py`, `tests/test_validation_distribution.py`: validation of workspace, workflow, memory, issues, specs, and knowledge through one context.
 - `scripts/project_review.py`, `tests/test_project_review.py`: review packets, candidate queue, overlap reads, and decision application.
 - `scripts/project_converge.py`, `tests/test_project_converge.py`: spec/plan/tasks/evidence/judgment/result paths.
-- `scripts/worker_orchestrator.py`, `tests/test_worker_orchestrator.py`: task files, worker plans, and related memory lookup.
+- `scripts/worker_orchestrator.py`, `tests/test_worker_orchestration.py`: task files, worker plans, and related memory lookup.
 - `scripts/spec_consistency.py`, `tests/test_spec_consistency.py`: spec/plan/tasks analysis under canonical specs.
 - `scripts/project_reference_backlog.py`, `tests/test_project_reference_backlog.py`: canonical workspace backlog and actual canonical origin-spec links.
 - `scripts/project_memory.py`, `tests/test_project_memory.py`: dashboard/drill-down issue, spec, workspace, and memory path propagation.
@@ -154,7 +154,7 @@ Public consumer functions keep positional parameters and add `*, project_context
 **Files:**
 - Modify: `scripts/project_review.py`, `tests/test_project_review.py`
 - Modify: `scripts/project_converge.py`, `tests/test_project_converge.py`
-- Modify: `scripts/worker_orchestrator.py`, `tests/test_worker_orchestrator.py`
+- Modify: `scripts/worker_orchestrator.py`, `tests/test_worker_orchestration.py`
 - Modify: `scripts/spec_consistency.py`, `tests/test_spec_consistency.py`
 - Modify: `scripts/project_reference_backlog.py`, `tests/test_project_reference_backlog.py`
 

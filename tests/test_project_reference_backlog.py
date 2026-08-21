@@ -110,6 +110,40 @@ class ReferenceBacklogWriteTests(unittest.TestCase):
             self.assertTrue(second["duplicate"])
             self.assertEqual(text.count("### Reference table needs permission examples"), 1)
 
+    def test_write_entry_uses_canonical_workspace_and_origin_spec(self):
+        project_registry = load_module("project_registry_backlog", "scripts/project_registry.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            for role, relative in {
+                "workspace": "ops/workspace",
+                "specs": "delivery/specs",
+            }.items():
+                context["relative_paths"][role] = relative
+                context["paths"][role] = str((root / relative).resolve())
+            decoy = root / "workspace" / "reference-improvements.md"
+            decoy.parent.mkdir()
+            decoy.write_text("decoy\n", encoding="utf-8")
+            entry = project_reference_backlog.build_entry(
+                title="Canonical backlog",
+                source="template:example",
+                gap="Wrong path.",
+                recommendation="Use context.",
+                issue_id="109-nested",
+                today="2026-08-21",
+            )
+
+            result = project_reference_backlog.write_entry(
+                root,
+                entry,
+                project_context=context,
+            )
+
+            text = Path(result["path"]).read_text(encoding="utf-8")
+            self.assertIn("delivery/specs/109-nested/spec.md", text)
+            self.assertTrue(Path(result["path"]).is_relative_to(root / "ops/workspace"))
+            self.assertEqual(decoy.read_text(encoding="utf-8"), "decoy\n")
+
 
 class ReferenceBacklogCliTests(unittest.TestCase):
     def test_dry_run_cli_prints_json_and_writes_nothing(self):

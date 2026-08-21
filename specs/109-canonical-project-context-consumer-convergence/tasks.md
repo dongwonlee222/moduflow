@@ -12,7 +12,7 @@ Status: active — implementation authorized 2026-08-21
 ## Stream B — Filesystem Consumer Convergence
 
 - [x] **B1** Converge knowledge, workflow, and project validation on one context with nested/poisoned-default contract tests. | Files: scripts/project_knowledge.py, tests/test_project_knowledge.py, scripts/project_workflow.py, tests/test_project_workflow.py, scripts/validate_project_artifacts.py, tests/test_validation_distribution.py | Depends: A1
-- [ ] **B2** Converge review, converge, worker orchestration, spec consistency, and reference backlog paths and generated links. | Files: scripts/project_review.py, tests/test_project_review.py, scripts/project_converge.py, tests/test_project_converge.py, scripts/worker_orchestrator.py, tests/test_worker_orchestrator.py, scripts/spec_consistency.py, tests/test_spec_consistency.py, scripts/project_reference_backlog.py, tests/test_project_reference_backlog.py | Depends: A1,B1
+- [x] **B2** Converge review, converge, worker orchestration, spec consistency, and reference backlog paths and generated links. | Files: scripts/project_review.py, tests/test_project_review.py, scripts/project_converge.py, tests/test_project_converge.py, scripts/worker_orchestrator.py, tests/test_worker_orchestration.py, scripts/spec_consistency.py, tests/test_spec_consistency.py, scripts/project_reference_backlog.py, tests/test_project_reference_backlog.py | Depends: A1,B1
 
 ## Stream C — Adapter and Git History Convergence
 

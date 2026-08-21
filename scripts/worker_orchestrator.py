@@ -5,6 +5,11 @@ import re
 import sys
 from pathlib import Path
 
+try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
 
 WORKER_RULES = [
     ("qa-reviewer", ["qa", "test", "verify", "verification", "regression", "acceptance verification"]),
@@ -200,8 +205,18 @@ def merge_order(planned_tasks):
     return ordered
 
 
-def find_related_memories(project_root, expected_files, issue_id):
+def find_related_memories(
+    project_root,
+    expected_files,
+    issue_id,
+    *,
+    project_context=None,
+):
     project_root = Path(project_root).resolve()
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
     try:
         import importlib.util
         spec = importlib.util.spec_from_file_location("project_memory", project_root / "scripts/project_memory.py")
@@ -211,7 +226,10 @@ def find_related_memories(project_root, expected_files, issue_id):
         return []
 
     related = []
-    for memory_file in project_memory.iter_memory_files(project_root):
+    for memory_file in project_memory.iter_memory_files(
+        project_root,
+        project_context=context,
+    ):
         try:
             text = memory_file.read_text(encoding="utf-8")
             metadata, _ = project_memory.parse_frontmatter(text)
@@ -270,9 +288,13 @@ def assemble_prompt_context(project_root, related_memories):
     return "\n".join(lines)
 
 
-def build_worker_plan(root, issue_id):
+def build_worker_plan(root, issue_id, *, project_context=None):
     project_root = Path(root).resolve()
-    spec_root = project_root / "specs" / issue_id
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    spec_root = project_registry.canonical_child_path(context, "specs", issue_id)
     raw_tasks = parse_tasks(spec_root / "tasks.md")
 
     planned_tasks = []
@@ -288,7 +310,12 @@ def build_worker_plan(root, issue_id):
         if shared_state_risk:
             risks.append(f"Task {index} touches shared state: {task['text']}")
         expected_files_str = ", ".join(task["expected_files"]) if task["expected_files"] else "none"
-        related_mems = find_related_memories(project_root, task["expected_files"], issue_id)
+        related_mems = find_related_memories(
+            project_root,
+            task["expected_files"],
+            issue_id,
+            project_context=context,
+        )
         context_block = assemble_prompt_context(project_root, related_mems)
         demand = WORKER_COGNITIVE_DEMAND.get(worker, "balanced")
         prompt = (
@@ -400,10 +427,18 @@ def render_worker_plan_markdown(plan):
     return "\n".join(lines)
 
 
-def write_worker_plan(root, issue_id):
+def write_worker_plan(root, issue_id, *, project_context=None):
     project_root = Path(root).resolve()
-    spec_root = project_root / "specs" / issue_id
-    plan = build_worker_plan(project_root, issue_id)
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    spec_root = project_registry.canonical_child_path(context, "specs", issue_id)
+    plan = build_worker_plan(
+        project_root,
+        issue_id,
+        project_context=context,
+    )
     spec_root.mkdir(parents=True, exist_ok=True)
     (spec_root / "worker-plan.json").write_text(
         json.dumps(plan, ensure_ascii=False, indent=2) + "\n",

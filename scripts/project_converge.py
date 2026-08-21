@@ -55,6 +55,7 @@ def _load_sibling(name, filename):
 
 
 commit_resolution = _load_sibling("commit_resolution", "commit_resolution.py")
+project_registry = _load_sibling("project_registry", "project_registry.py")
 
 try:
     from scripts.linkage_check import CommandResult, _error_text, run_command
@@ -282,6 +283,8 @@ def collect_evidence(
     runner=None,
     max_files=DEFAULT_MAX_FILES,
     max_bytes=DEFAULT_MAX_BYTES,
+    *,
+    project_context=None,
 ):
     """Build the evidence dict (schema moduflow.converge-evidence.v1).
 
@@ -289,12 +292,26 @@ def collect_evidence(
     (GC4 exit contract); a commit-less run with healthy git and an existing
     spec sets no_evidence: true and stays ok — it is a valid report."""
     root = Path(project_path).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
     runner = runner or run_command
     errors = []
     ok = True
 
-    spec_path = root / "specs" / issue_id / "spec.md"
-    plan_path = root / "specs" / issue_id / "plan.md"
+    spec_path = project_registry.canonical_child_path(
+        context,
+        "specs",
+        issue_id,
+        "spec.md",
+    )
+    plan_path = project_registry.canonical_child_path(
+        context,
+        "specs",
+        issue_id,
+        "plan.md",
+    )
 
     if spec_path.is_file():
         acceptance_criteria, notes = parse_acceptance_criteria(
@@ -303,7 +320,15 @@ def collect_evidence(
         errors.extend(notes)
     else:
         acceptance_criteria = []
-        errors.append(f"spec file missing: specs/{issue_id}/spec.md")
+        errors.append(
+            "spec file missing: "
+            + project_registry.canonical_relative_path(
+                context,
+                "specs",
+                issue_id,
+                "spec.md",
+            )
+        )
         ok = False
 
     if plan_path.is_file():
@@ -615,12 +640,23 @@ def append_cv_findings(tasks_path, findings, date):
     return {"appended": appended, "skipped": skipped, "changed": True}
 
 
-def apply_judgment(project_path, issue_id, judgment_path, date):
+def apply_judgment(
+    project_path,
+    issue_id,
+    judgment_path,
+    date,
+    *,
+    project_context=None,
+):
     """Apply a Judgment JSON: converge.md run section + tasks.md CV lines.
 
     Returns (report, ok). ok is False on invalid judgment file, missing issue
     spec dir, or write failure (GC4 exit contract, both output modes)."""
     root = Path(project_path).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
     report = {
         "schema": APPLY_SCHEMA,
         "issue_id": issue_id,
@@ -632,9 +668,14 @@ def apply_judgment(project_path, issue_id, judgment_path, date):
         "tasks_md_changed": False,
         "errors": [],
     }
-    spec_dir = root / "specs" / issue_id
+    spec_dir = project_registry.canonical_child_path(context, "specs", issue_id)
     if not spec_dir.is_dir():
-        report["errors"].append(f"issue spec dir missing: specs/{issue_id}/")
+        relative = project_registry.canonical_relative_path(
+            context,
+            "specs",
+            issue_id,
+        )
+        report["errors"].append(f"issue spec dir missing: {relative}/")
         return report, False
     try:
         raw = Path(judgment_path).read_text(encoding="utf-8")
@@ -710,6 +751,7 @@ def _human_summary(evidence, written_path):
 
 def _run_evidence(args, runner):
     root = Path(args.project_path).resolve()
+    context = project_registry.context_for_operation(root)
     generated = args.date or _dt.date.today().isoformat()
     evidence, ok = collect_evidence(
         root,
@@ -718,9 +760,15 @@ def _run_evidence(args, runner):
         runner=runner,
         max_files=args.max_files,
         max_bytes=args.max_bytes,
+        project_context=context,
     )
 
-    out_path = root / "specs" / args.issue_id / "converge-evidence.json"
+    out_path = project_registry.canonical_child_path(
+        context,
+        "specs",
+        args.issue_id,
+        "converge-evidence.json",
+    )
     written_path = None
     if out_path.parent.is_dir():
         out_path.write_text(
@@ -729,7 +777,13 @@ def _run_evidence(args, runner):
         written_path = out_path
     else:
         evidence["errors"].append(
-            f"cannot write evidence: specs/{args.issue_id}/ does not exist"
+            "cannot write evidence: "
+            + project_registry.canonical_relative_path(
+                context,
+                "specs",
+                args.issue_id,
+            )
+            + "/ does not exist"
         )
         ok = False
 

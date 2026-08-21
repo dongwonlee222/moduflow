@@ -153,6 +153,40 @@ class WorkerOrchestrationTests(unittest.TestCase):
             self.assertTrue(plan_md.exists())
             self.assertEqual(json.loads(plan_json.read_text(encoding="utf-8"))["schema"], "moduflow.worker-plan.v1")
 
+    def test_worker_plan_uses_canonical_specs_and_ignores_decoy(self):
+        orchestrator = load_module("worker_orchestrator_nested", "scripts/worker_orchestrator.py")
+        project_registry = load_module("project_registry_worker", "scripts/project_registry.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "007-worker-orchestration"
+            context = project_registry.project_context_for_root(root)
+            for role, relative in {
+                "specs": "delivery/specs",
+                "memory": "project-memory",
+            }.items():
+                context["relative_paths"][role] = relative
+                context["paths"][role] = str((root / relative).resolve())
+            nested = root / "delivery" / "specs" / issue_id
+            nested.mkdir(parents=True)
+            (nested / "tasks.md").write_text(
+                "- [ ] Implementation: canonical task\n",
+                encoding="utf-8",
+            )
+            decoy = root / "specs" / issue_id / "tasks.md"
+            decoy.parent.mkdir(parents=True)
+            decoy.write_text("- [ ] PM: decoy task\n", encoding="utf-8")
+
+            result = orchestrator.write_worker_plan(
+                root,
+                issue_id,
+                project_context=context,
+            )
+
+            plan = json.loads((nested / "worker-plan.json").read_text(encoding="utf-8"))
+            self.assertEqual(result["written"], ["worker-plan.json", "worker-plan.md"])
+            self.assertIn("canonical task", plan["tasks"][0]["text"])
+            self.assertEqual(decoy.read_text(encoding="utf-8"), "- [ ] PM: decoy task\n")
+
 
     def test_build_worker_plan_includes_subagent_configs(self):
         orchestrator = load_module("worker_orchestrator", "scripts/worker_orchestrator.py")
@@ -221,4 +255,3 @@ class WorkerOrchestrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
