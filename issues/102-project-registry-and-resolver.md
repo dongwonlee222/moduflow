@@ -83,12 +83,12 @@ Do not crawl arbitrary folders, move user artifacts, add browser-side writes, or
 
 ## Related Issues
 
-- blocks: `104-project-aware-natural-language-request-orchestrator`, `105-schema-migration-and-doctor-triage`, `107-shared-approved-playbook-layer`
+- blocks: `109-canonical-project-context-consumer-convergence`, `110-project-operation-capability-enforcement`, `104-project-aware-natural-language-request-orchestrator`, `105-schema-migration-and-doctor-triage`, `107-shared-approved-playbook-layer`
 - blocked_by:
 - duplicates:
 - follows_up: `002-project-profile`, `004-portfolio-workspace`, `025-lightweight-project-adoption`
 - supersedes:
-- related: `086-project-aware-production-library-dashboard`, `093-frontmatter-issue-schema-readiness-gate`
+- related: `086-project-aware-production-library-dashboard`, `093-frontmatter-issue-schema-readiness-gate`, `111-runtime-provenance-and-validation-mode-separation`
 
 ## Links
 
@@ -100,6 +100,7 @@ Do not crawl arbitrary folders, move user artifacts, add browser-side writes, or
 - Plan: `specs/102-project-registry-and-resolver/plan.md`
 - Korean plan summary: `specs/102-project-registry-and-resolver/plan.ko.md`
 - Tasks: `specs/102-project-registry-and-resolver/tasks.md`
+- Post-release validation: `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`
 - Roadmap: `workspace/roadmap.md`
 
 ## Next Command

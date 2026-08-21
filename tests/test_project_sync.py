@@ -1,5 +1,6 @@
 import subprocess
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from scripts import project_sync
@@ -24,6 +25,49 @@ class FakeRunner:
 
 
 class ProjectSyncTests(unittest.TestCase):
+    def test_sync_uses_canonical_issue_prefix_for_git_queries(self):
+        from scripts import project_registry
+
+        root = Path(".").resolve()
+        context = project_registry.project_context_for_root(root)
+        context["relative_paths"]["issues"] = "product/issues"
+        context["paths"]["issues"] = str((root / "product/issues").resolve())
+        runner = FakeRunner(
+            {
+                ("git", "rev-parse", "--is-inside-work-tree"): "true\n",
+                ("git", "rev-parse", "--abbrev-ref", "HEAD"): "main\n",
+                ("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"): "origin/main\n",
+                ("git", "branch", "-vv"): "* main abc [origin/main] test\n",
+                ("git", "symbolic-ref", "refs/remotes/origin/HEAD"): "refs/remotes/origin/main\n",
+                ("git", "rev-list", "--left-right", "--count", "HEAD...origin/main"): "0\t0\n",
+                ("git", "status", "--porcelain"): "",
+                ("git", "ls-tree", "-r", "--name-only", "origin/main", "product/issues"): (
+                    "product/issues/109-one.md\nproduct/issues/110-two.md\n"
+                ),
+                ("git", "ls-files", "product/issues"): "product/issues/109-one.md\n",
+                ("git", "for-each-ref", "--format=%(refname:short)", "refs/remotes"): "",
+            }
+        )
+
+        with mock.patch.object(
+            project_sync,
+            "inspect_repository_identity",
+            return_value={"observed": {"provider_default_branch": "main"}},
+        ):
+            result = project_sync.inspect_repo_sync(
+                root,
+                runner=runner,
+                fetch=False,
+                project_context=context,
+            )
+
+        self.assertEqual(result["remote_only_issue_ids"], ["110-two"])
+        self.assertIn(
+            ("git", "ls-files", "product/issues"),
+            runner.calls,
+        )
+        self.assertNotIn(("git", "ls-files", "issues"), runner.calls)
+
     def test_sync_includes_shared_repository_identity_result(self):
         expected = {
             "schema": "moduflow.repository-identity.v1",

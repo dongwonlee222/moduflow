@@ -333,6 +333,29 @@ class ArtifactAndCliTests(unittest.TestCase):
             self.assertIn("리뷰어 확신도", summary)
             self.assertIn("CognitiveDemand", paths["candidates"].read_text(encoding="utf-8"))
 
+    def test_write_packet_uses_canonical_workspace_and_ignores_decoy(self):
+        from scripts import project_registry
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context["relative_paths"]["workspace"] = "ops/workspace"
+            context["paths"]["workspace"] = str((root / "ops/workspace").resolve())
+            decoy = root / "workspace" / "review-candidates.md"
+            decoy.parent.mkdir()
+            decoy.write_text("decoy\n", encoding="utf-8")
+
+            paths = pr.write_review_artifacts(
+                root,
+                sample_final_packet(),
+                project_context=context,
+            )
+
+            self.assertTrue(
+                paths["packet"].is_relative_to((root / "ops/workspace").resolve())
+            )
+            self.assertEqual(decoy.read_text(encoding="utf-8"), "decoy\n")
+
     def test_dry_run_does_not_create_workspace_reviews(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

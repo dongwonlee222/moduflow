@@ -5,6 +5,11 @@ import re
 from datetime import date
 from pathlib import Path
 
+try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
 
 VALID_STATES = {
     "draft",
@@ -72,17 +77,25 @@ def slugify(value):
     return slug or "untitled"
 
 
-def build_workflow_plan(path, dry_run=True):
+def build_workflow_plan(path, dry_run=True, *, project_context=None):
     project_root = Path(path).resolve()
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    workflow_root = project_registry.canonical_path(context, "workflow")
     writes = []
     for relative in WORKFLOW_FILES:
-        if not (project_root / relative).exists():
-            writes.append(relative)
+        suffix = Path(relative).relative_to("workflow")
+        target = project_registry.canonical_child_path(context, "workflow", suffix)
+        if not target.exists():
+            writes.append(project_registry.canonical_relative_path(context, "workflow", suffix))
     return {
         "schema": "moduflow.workflow-plan.v1",
         "project_root": str(project_root),
         "dry_run": dry_run,
         "writes": writes,
+        "workflow_root": str(workflow_root),
         "states": sorted(VALID_STATES),
         "preserves_existing_files": True,
     }
@@ -96,8 +109,16 @@ def write_text_if_missing(path, content):
     return True
 
 
-def team_state_path(root):
-    return Path(root).resolve() / "workflow" / "team-state.json"
+def team_state_path(root, *, project_context=None):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    return project_registry.canonical_child_path(
+        context,
+        "workflow",
+        "team-state.json",
+    )
 
 
 def default_team_state():
@@ -107,8 +128,8 @@ def default_team_state():
     }
 
 
-def load_team_state(path):
-    target = team_state_path(path)
+def load_team_state(path, *, project_context=None):
+    target = team_state_path(path, project_context=project_context)
     if not target.exists():
         return default_team_state()
     try:
@@ -120,8 +141,8 @@ def load_team_state(path):
     return state
 
 
-def write_team_state(path, state):
-    target = team_state_path(path)
+def write_team_state(path, state, *, project_context=None):
+    target = team_state_path(path, project_context=project_context)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return target
@@ -164,8 +185,8 @@ def normalize_team_item(item):
     return normalized
 
 
-def upsert_team_item(path, updates):
-    state = load_team_state(path)
+def upsert_team_item(path, updates, *, project_context=None):
+    state = load_team_state(path, project_context=project_context)
     issue_id = updates["issue_id"]
     items = [normalize_team_item(item) for item in state.get("items", [])]
     for index, item in enumerate(items):
@@ -183,11 +204,20 @@ def upsert_team_item(path, updates):
     else:
         items.append(normalize_team_item(updates))
     state["items"] = items
-    write_team_state(path, state)
+    write_team_state(path, state, project_context=project_context)
     return next(item for item in items if item["issue_id"] == issue_id)
 
 
-def start_issue_work(path, issue_id, assignee, owner="", reviewer="", branch=None):
+def start_issue_work(
+    path,
+    issue_id,
+    assignee,
+    owner="",
+    reviewer="",
+    branch=None,
+    *,
+    project_context=None,
+):
     branch = branch or recommend_issue_branch(issue_id)
     return upsert_team_item(
         path,
@@ -204,10 +234,19 @@ def start_issue_work(path, issue_id, assignee, owner="", reviewer="", branch=Non
             "next_command": f"product:execute {issue_id}",
             "updated_at": date.today().isoformat(),
         },
+        project_context=project_context,
     )
 
 
-def record_pr_state(path, issue_id, pr, reviewer="", status="review"):
+def record_pr_state(
+    path,
+    issue_id,
+    pr,
+    reviewer="",
+    status="review",
+    *,
+    project_context=None,
+):
     lock_state = "released" if status in {"done", "archived"} else "active"
     return upsert_team_item(
         path,
@@ -221,11 +260,12 @@ def record_pr_state(path, issue_id, pr, reviewer="", status="review"):
             "next_command": next_command_for_status(issue_id, status),
             "updated_at": date.today().isoformat(),
         },
+        project_context=project_context,
     )
 
 
-def render_team_status(path):
-    state = load_team_state(path)
+def render_team_status(path, *, project_context=None):
+    state = load_team_state(path, project_context=project_context)
     items = [normalize_team_item(item) for item in state.get("items", [])]
     groups = [
         ("Active", {"active"}),
@@ -251,8 +291,22 @@ def render_team_status(path):
     return "\n".join(lines).rstrip() + "\n"
 
 
-def suggest_completion_memory(path, issue_id, title, summary, source_artifacts=None):
-    source_artifacts = source_artifacts or [f"issues/{issue_id}.md"]
+def suggest_completion_memory(
+    path,
+    issue_id,
+    title,
+    summary,
+    source_artifacts=None,
+    *,
+    project_context=None,
+):
+    context = project_registry.context_for_operation(
+        path,
+        project_context=project_context,
+    )
+    source_artifacts = source_artifacts or [
+        project_registry.canonical_relative_path(context, "issues", f"{issue_id}.md")
+    ]
     return {
         "entry_id": f"{date.today().isoformat()}-{slugify(issue_id)}-completion",
         "title": title,
@@ -268,10 +322,13 @@ def suggest_completion_memory(path, issue_id, title, summary, source_artifacts=N
 
 def apply_workflow_plan(plan):
     project_root = Path(plan["project_root"])
+    workflow_root = Path(plan["workflow_root"])
     written = []
     for relative, content in WORKFLOW_FILES.items():
-        if write_text_if_missing(project_root / relative, content):
-            written.append(relative)
+        suffix = Path(relative).relative_to("workflow")
+        target = workflow_root / suffix
+        if write_text_if_missing(target, content):
+            written.append(target.relative_to(project_root).as_posix())
     plan["written"] = written
     return plan
 
@@ -311,10 +368,25 @@ date: {today}
 """
 
 
-def create_workflow_record(path, issue_id, state, owner, reviewers=None, approver="", blocker="", next_command=""):
+def create_workflow_record(
+    path,
+    issue_id,
+    state,
+    owner,
+    reviewers=None,
+    approver="",
+    blocker="",
+    next_command="",
+    *,
+    project_context=None,
+):
     reviewers = reviewers or []
     project_root = Path(path).resolve()
-    target_dir = project_root / "workflow" / "records"
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    target_dir = project_registry.canonical_child_path(context, "workflow", "records")
     target_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{date.today().isoformat()}-{slugify(issue_id)}-{slugify(state)}.md"
     target = target_dir / filename
@@ -344,13 +416,26 @@ def create_workflow_record(path, issue_id, state, owner, reviewers=None, approve
                 kind="decision",
                 title=title,
                 issue_id=issue_id,
-                spec_path=f"specs/{issue_id}/spec.md",
+                spec_path=project_registry.canonical_relative_path(
+                    context,
+                    "specs",
+                    issue_id,
+                    "spec.md",
+                ),
                 source_event="issue_completed",
-                source_artifacts=[f"issues/{issue_id}.md", f"workflow/records/{filename}"],
+                source_artifacts=[
+                    project_registry.canonical_relative_path(
+                        context,
+                        "issues",
+                        f"{issue_id}.md",
+                    ),
+                    target.relative_to(project_root).as_posix(),
+                ],
                 summary=summary,
                 rationale="Documenting the completion and release context of the issue.",
                 owner=owner or "Dongwon Lee",
-                tags=["release", "completion", issue_id]
+                tags=["release", "completion", issue_id],
+                project_context=context,
             )
         except Exception as e:
             print(f"Warning: Failed to automatically capture memory candidate: {e}", file=sys.stderr)
@@ -363,9 +448,13 @@ def create_workflow_record(path, issue_id, state, owner, reviewers=None, approve
     }
 
 
-def run_review_check(path, issue_id):
+def run_review_check(path, issue_id, *, project_context=None):
     project_root = Path(path).resolve()
-    spec_dir = project_root / "specs" / issue_id
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    spec_dir = project_registry.canonical_child_path(context, "specs", issue_id)
     spec_file = spec_dir / "spec.md"
     status_file = spec_dir / "status.md"
 

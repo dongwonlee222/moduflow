@@ -790,6 +790,61 @@ def canonical_path(project_context, key):
     return candidate
 
 
+def context_for_operation(project_root, *, project_context=None):
+    """Return one resolved context bound to the explicit operation root."""
+    root = Path(project_root).resolve()
+    context = (
+        project_context_for_root(project_root)
+        if project_context is None
+        else project_context
+    )
+    if not isinstance(context, dict) or context.get("status") != "resolved":
+        raise ValueError("project context must be resolved")
+    canonical_root = context.get("canonical_root")
+    if not canonical_root:
+        raise ValueError("project context canonical root is unavailable")
+    if Path(canonical_root).resolve() != root:
+        raise ValueError("project context does not match project root")
+    return context
+
+
+def canonical_child_path(project_context, key, *parts):
+    """Return a safe child path below one canonical role root."""
+    role_root = canonical_path(project_context, key)
+    if not parts:
+        return role_root
+
+    clean_parts = []
+    for part in parts:
+        raw = str(part)
+        candidate_part = Path(raw)
+        if not raw or raw == "." or candidate_part.is_absolute():
+            raise ValueError(f"unsafe canonical child component: {raw!r}")
+        segments = candidate_part.parts
+        if not segments or any(segment in {"", ".", ".."} for segment in segments):
+            raise ValueError(f"unsafe canonical child component: {raw!r}")
+        clean_parts.extend(segments)
+
+    candidate = role_root.joinpath(*clean_parts).resolve()
+    project_root = Path(project_context["canonical_root"]).resolve()
+    try:
+        candidate.relative_to(role_root)
+        candidate.relative_to(project_root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(f"canonical child path escapes role root: {key}") from exc
+    return candidate
+
+
+def canonical_relative_path(project_context, key, *parts):
+    """Return a canonical child as a project-root-relative POSIX path."""
+    root = Path(project_context.get("canonical_root", "")).resolve()
+    child = canonical_child_path(project_context, key, *parts)
+    try:
+        return child.relative_to(root).as_posix()
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError(f"canonical path escapes project root: {key}") from exc
+
+
 def _empty_selection(warnings=None):
     return {
         "schema": SELECTION_READ_SCHEMA,

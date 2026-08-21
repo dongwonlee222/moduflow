@@ -11,6 +11,11 @@ import sys
 from datetime import date
 from pathlib import Path
 
+try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
 
 BACKLOG_RELATIVE = Path("workspace") / "reference-improvements.md"
 DEFAULT_STATUS = "candidate"
@@ -98,9 +103,40 @@ def _is_duplicate(existing_text, entry):
     return False
 
 
-def write_entry(root, entry):
-    root = Path(root)
-    path = root / BACKLOG_RELATIVE
+def _contextual_entry(entry, context):
+    contextual = dict(entry)
+    issue_id = contextual.get("origin_issue", "")
+    contextual["origin_spec"] = (
+        project_registry.canonical_relative_path(
+            context,
+            "specs",
+            issue_id,
+            "spec.md",
+        )
+        if issue_id
+        else ""
+    )
+    return contextual
+
+
+def write_entry(root, entry, *, project_context=None):
+    display_root = Path(root)
+    root = display_root.resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    entry = _contextual_entry(entry, context)
+    path = project_registry.canonical_child_path(
+        context,
+        "workspace",
+        "reference-improvements.md",
+    )
+    result_path = display_root / project_registry.canonical_relative_path(
+        context,
+        "workspace",
+        "reference-improvements.md",
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         existing = path.read_text(encoding="utf-8")
@@ -109,7 +145,7 @@ def write_entry(root, entry):
 
     if _is_duplicate(existing, entry):
         return {
-            "path": path,
+            "path": result_path,
             "written": False,
             "duplicate": True,
             "entry": entry,
@@ -118,7 +154,7 @@ def write_entry(root, entry):
     separator = "" if existing.endswith("\n\n") else "\n\n"
     path.write_text(existing + separator + render_entry_markdown(entry) + "\n", encoding="utf-8")
     return {
-        "path": path,
+        "path": result_path,
         "written": True,
         "duplicate": False,
         "entry": entry,
@@ -152,6 +188,7 @@ def main(argv=None):
     parser = build_parser()
     args = parser.parse_args(argv)
     root = Path(args.project_path)
+    context = project_registry.context_for_operation(root)
     entry = build_entry(
         title=args.title,
         source=args.source,
@@ -163,11 +200,16 @@ def main(argv=None):
         status=args.status,
         promotion_target=args.promotion_target,
     )
+    entry = _contextual_entry(entry, context)
     if args.write:
-        result = write_entry(root, entry)
+        result = write_entry(root, entry, project_context=context)
     else:
         result = {
-            "path": root / BACKLOG_RELATIVE,
+            "path": project_registry.canonical_child_path(
+                context,
+                "workspace",
+                "reference-improvements.md",
+            ),
             "written": False,
             "duplicate": False,
             "entry": entry,

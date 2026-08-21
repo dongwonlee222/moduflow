@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issue 102 is implemented and release-verified on its isolated branch. The next P0 contract is Issue 103; wider/default Spec Kit activation remains prohibited.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is verified and ready for GitHub review. Issue 110 capability enforcement is the next specification target before Issue 103 can begin.
 
 ## Active Goal
 
@@ -12,10 +12,14 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 102 is implemented and
 
 - None active. Run `product:status` to pick the next issue.
 
-## Priority Queue — 2026-08-19
+## Priority Queue — 2026-08-21
 
-- Now: `103` atomic lifecycle state transaction; Issue 102's project context contract is complete. Next command is `product:status` before starting its spec workflow.
-- Shipped on branch: `102` project registry/resolver; 1,225 tests and release check passed, package source version 0.3.49. Human integration remains pending.
+- Shipped to review: `109` canonical project-context consumer convergence — 12 planned modules plus capability routing migrated; 1,248 tests and release check passed.
+- Now: `110` project operation capability enforcement — P0; next command is `product:spec 110-project-operation-capability-enforcement` and it must finish before 103 implementation.
+- Review now: `103` atomic lifecycle state transaction — English/Korean spec ready; implementation is now blocked only by 110.
+- Parallel before next release: `111` runtime provenance and validation-mode separation — P1, does not block 103.
+- Verified intake: four Issue 102 findings accepted and mapped to exactly three non-duplicate issues in `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`.
+- Shipped: `102` project registry/resolver merged as `010eee8`; 1,225 tests and source release check passed, package source version 0.3.49.
 - Shipped: `098` selective Spec Kit validation adapter merged via PR #37 as `513e08f`, installed locally as ModuFlow 0.3.48, and remains project-opt-in only.
 - Shipped: `097` merged via PR #36 as `46f98c0`; routing simulation and CI passed.
 - Shipped: `095` merged via PR #33 as `f4029f3`; post-merge release check passed.
@@ -24,6 +28,8 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 102 is implemented and
 - Later: `090` → `091` → `092`; `082` before `083`/`084` (081's review found worker prompts carry OpenAI guidance on every host).
 
 ## Recently Completed
+
+- `109-canonical-project-context-consumer-convergence`: all project-aware consumers now use one validated canonical context; the repository guard reports 22 reviewed fixed/default literals and zero runtime, unclassified, prohibited, or stale exceptions. Full discovery passed 1,248 tests and the release check is green.
 
 - `093-frontmatter-issue-schema-readiness-gate`: one shared issue parser (`scripts/project_issue_schema.py`, 2,545 lines) now feeds lifecycle, loop, doctor, validation, MCP, and dashboard; `ready` became a computed result instead of a field an issue can assert. Reviewed 2026-07-25 with verdict approve-with-conditions (both cleared) and merged as `11190b4` via PR #31. The review refuted its own fail-open hypothesis but found and fixed a real crash: non-file `*.md` sources were silently skipped, so a directory-shaped issue file raised `IsADirectoryError` out of the loop. Spun off `095`.
 - `081-gpt-5-6-model-tier-guidance`: GPT-5.6 tier examples documented against the durable `deep`/`balanced`/`fast` schema; merged as `1e5144a` via PR #32. Recovered from an uncommitted working tree where it had been marked done since 2026-07-10 and was silently absent from the 0.3.26 release. Spun off `082`, `083`, `084`.

@@ -1,0 +1,82 @@
+{
+  "source_summary": "Post-release validation of ModuFlow 0.3.49 after Issue 102",
+  "received_from": "external project validation shared by Dongwon Lee",
+  "received_at": "2026-08-21",
+  "target_commit": "010eee8eeec37edd6902f2dd008e7164f715e7b1",
+  "findings": [
+    {
+      "rule_id": "MF102-CANONICAL-CONSUMER-GAP",
+      "observation": "Several project-aware consumers still construct knowledge, workflow, workspace, issue, memory, and spec paths directly from the project root instead of consuming the resolved project context.",
+      "recommendation": "Audit every project path consumer and migrate it to project_registry.canonical_path through an explicit resolved project context, with non-default-path contract tests.",
+      "root_cause_hypothesis": "Issue 102 migrated the planned initial consumer set but its broader all-consumer completion claim was not backed by an exhaustive direct-path audit.",
+      "locations": [
+        {"path": "scripts/project_knowledge.py", "line": 84, "anchor": "knowledge"},
+        {"path": "scripts/project_workflow.py", "line": 100, "anchor": "workflow"},
+        {"path": "scripts/validate_project_artifacts.py", "line": 116, "anchor": "workspace"},
+        {"path": "scripts/project_review.py", "line": 374, "anchor": "workspace/reviews"},
+        {"path": "scripts/project_converge.py", "line": 296, "anchor": "specs"},
+        {"path": "scripts/worker_orchestrator.py", "line": 275, "anchor": "specs"},
+        {"path": "scripts/spec_consistency.py", "line": 161, "anchor": "specs"}
+      ],
+      "severity": "high",
+      "reviewer_confidence": "high",
+      "source_author": {"kind": "ai", "identity": "external-project-validation"},
+      "provider_fingerprint": "moduflow-0.3.49-canonical-consumer-gap",
+      "provider_evidence": {"kind": "review", "format": "manual", "target": "0.3.49"},
+      "no_risk_claim": false
+    },
+    {
+      "rule_id": "MF102-PROJECT-CAPABILITY-GAP",
+      "observation": "The resolver returns archived and read-only projects as resolved without exposing project_status or operation capabilities, and mutating workflows do not share a project capability gate.",
+      "recommendation": "Add project_status plus read, write, execute, and publish capabilities to resolved context and require every mutating workflow to fail closed on the relevant denied capability.",
+      "root_cause_hypothesis": "Resolution identity and operation authorization were modeled as one success state even though registry status and trust scope are separate policy inputs.",
+      "locations": [
+        {"path": "scripts/project_registry.py", "line": 468, "anchor": "_resolution_base"},
+        {"path": "scripts/project_registry.py", "line": 503, "anchor": "_resolved"},
+        {"path": "scripts/project_execution.py", "line": 198, "anchor": "write_implementation_readiness"},
+        {"path": "scripts/project_github_issues.py", "line": 222, "anchor": "sync_issue"}
+      ],
+      "severity": "high",
+      "reviewer_confidence": "high",
+      "source_author": {"kind": "ai", "identity": "external-project-validation"},
+      "provider_fingerprint": "moduflow-0.3.49-project-capability-gap",
+      "provider_evidence": {"kind": "review", "format": "manual", "target": "0.3.49"},
+      "no_risk_claim": false
+    },
+    {
+      "rule_id": "MF102-VALIDATION-MODE-CONFLATION",
+      "observation": "The installed plugin cache passes package validation but fails the source repository release check and project Doctor because those commands require Git history, full source tests, and project artifacts intentionally omitted from the cache.",
+      "recommendation": "Separate source release validation, installed plugin self-check, and target project Doctor into explicit modes with mode-appropriate requirements and messages.",
+      "root_cause_hypothesis": "Validation entry points identify their target from the supplied path without a package/source/project role contract.",
+      "locations": [
+        {"path": "scripts/release_check.py", "line": 1, "anchor": "release_check"},
+        {"path": "scripts/validate_moduflow.py", "line": 1, "anchor": "validate_moduflow"},
+        {"path": "scripts/project_doctor.py", "line": 1, "anchor": "project_doctor"},
+        {"path": "scripts/register_codex_personal_marketplace.py", "line": 132, "anchor": "copy_plugin_cache"}
+      ],
+      "severity": "medium",
+      "reviewer_confidence": "high",
+      "source_author": {"kind": "ai", "identity": "external-project-validation"},
+      "provider_fingerprint": "moduflow-0.3.49-validation-mode-conflation",
+      "provider_evidence": {"kind": "review", "format": "manual", "target": "0.3.49"},
+      "no_risk_claim": false
+    },
+    {
+      "rule_id": "MF102-RUNTIME-PROVENANCE-GAP",
+      "observation": "Product status and Doctor do not show the actually loaded runtime version, package path, source commit, or loaded-at timestamp, so source, installed cache, and current-session versions cannot be distinguished reliably.",
+      "recommendation": "Publish a runtime provenance record through product status and Doctor with version, package path, source commit, loaded-at, and host/session source.",
+      "root_cause_hypothesis": "Existing installed-plugin checks compare versions for staleness but do not model the active runtime instance.",
+      "locations": [
+        {"path": "scripts/project_doctor.py", "line": 326, "anchor": "installed_plugin_staleness"},
+        {"path": "scripts/mcp_server.py", "line": 307, "anchor": "doctor summary"},
+        {"path": "scripts/register_codex_personal_marketplace.py", "line": 196, "anchor": "install_codex_personal_plugin"}
+      ],
+      "severity": "medium",
+      "reviewer_confidence": "high",
+      "source_author": {"kind": "ai", "identity": "external-project-validation"},
+      "provider_fingerprint": "moduflow-0.3.49-runtime-provenance-gap",
+      "provider_evidence": {"kind": "review", "format": "manual", "target": "0.3.49"},
+      "no_risk_claim": false
+    }
+  ]
+}

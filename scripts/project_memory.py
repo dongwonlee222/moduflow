@@ -681,9 +681,13 @@ def isolated_memory_entries(path):
     return isolated
 
 
-def get_memory_entry(path, entry_id):
+def get_memory_entry(path, entry_id, *, project_context=None):
     project_root = Path(path).resolve()
-    for memory_file in iter_memory_files(project_root):
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    for memory_file in iter_memory_files(project_root, project_context=context):
         text = memory_file.read_text(encoding="utf-8")
         metadata, content = parse_frontmatter(text)
         found_id = metadata.get("id") or memory_file.stem
@@ -731,11 +735,15 @@ def _normalize_target(target):
     return target
 
 
-def _collect_graph(root):
+def _collect_graph(root, *, project_context=None):
     project_root = Path(root).resolve()
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
     nodes = {}
     edges = []
-    for memory_file in iter_memory_files(project_root):
+    for memory_file in iter_memory_files(project_root, project_context=context):
         try:
             text = memory_file.read_text(encoding="utf-8")
             metadata, _ = parse_frontmatter(text)
@@ -756,8 +764,8 @@ def _collect_graph(root):
     return nodes, edges
 
 
-def generate_memory_graph(root):
-    nodes, edges = _collect_graph(root)
+def generate_memory_graph(root, *, project_context=None):
+    nodes, edges = _collect_graph(root, project_context=project_context)
 
     # Render Mermaid
     lines = ["flowchart TD"]
@@ -865,15 +873,21 @@ cy.on('tap','node', evt => {
 """
 
 
-def _memory_elements(root):
+def _memory_elements(root, *, project_context=None):
     """Build Cytoscape elements for the memory graph. Shared by the standalone
     dashboard (042) and the two-tab project view (045)."""
-    nodes, edges = _collect_graph(root)
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    nodes, edges = _collect_graph(root, project_context=context)
+    memory_prefix = project_registry.canonical_relative_path(context, "memory")
     node_ids = set(nodes)
     elements = []
     for entry_id, info in sorted(nodes.items()):
         file_path = info.get("file", "")
-        href = file_path[len("memory/"):] if file_path.startswith("memory/") else file_path
+        prefix = memory_prefix.rstrip("/") + "/"
+        href = file_path[len(prefix):] if file_path.startswith(prefix) else file_path
         elements.append({"data": {
             "id": entry_id,
             "label": info["title"],
@@ -893,8 +907,11 @@ def _memory_elements(root):
     return elements, len(nodes), edge_count
 
 
-def render_dashboard_html(root):
-    elements, node_count, edge_count = _memory_elements(root)
+def render_dashboard_html(root, *, project_context=None):
+    elements, node_count, edge_count = _memory_elements(
+        root,
+        project_context=project_context,
+    )
     return (
         DASHBOARD_TEMPLATE
         .replace("__NODE_COUNT__", str(node_count))
@@ -957,11 +974,15 @@ def _resolve_evaluated_issue_reference(reference, valid_ids):
     return matches[0] if len(matches) == 1 else None
 
 
-def _issue_linked_memory(root):
+def _issue_linked_memory(root, *, project_context=None):
     """Map issue_id -> [{id,title,kind,file}] from memory frontmatter. Sparse by design."""
     project_root = Path(root).resolve()
     mapping = {}
-    for memory_file in iter_memory_files(project_root):
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    for memory_file in iter_memory_files(project_root, project_context=context):
         try:
             metadata, _ = parse_frontmatter(memory_file.read_text(encoding="utf-8"))
         except Exception:
@@ -996,16 +1017,19 @@ def _related_refs(text, self_id, valid_ids):
     return refs
 
 
-def _evaluated_issue_context(root):
+def _evaluated_issue_context(root, *, project_context=None):
     """Evaluate issues once and retain safe prose sources for display helpers."""
     project_root = Path(root).resolve()
-    evaluation = evaluate_project(project_root)
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    evaluation = evaluate_project(project_root, context["relative_paths"])
     issues = {
         issue["issue_id"]: issue
         for issue in evaluation["issues"]
     }
-    project_paths = configured_project_paths(project_root)
-    issues_root = project_root / project_paths["issues"]
+    issues_root = project_registry.canonical_path(context, "issues")
     texts = {}
     for issue_id, issue in issues.items():
         if not _issue_source_is_safe(issue):
@@ -1036,12 +1060,20 @@ def _normalized_issue_fields(issue):
     }
 
 
-def _collect_issue_graph(root, issue_context=None):
+def _collect_issue_graph(root, issue_context=None, *, project_context=None):
     """Nodes = evaluated issues (status-colored). Edges: `supersedes` (solid)
     from prose and `related` (dashed, toggleable) from the `## Related` section.
     Related edges are undirected-deduped and exclude pairs already joined by supersedes."""
     project_root = Path(root).resolve()
-    issue_context = issue_context or _evaluated_issue_context(project_root)
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    if issue_context is None:
+        issue_context = _evaluated_issue_context(
+            project_root,
+            project_context=context,
+        )
     evaluated = issue_context["issues"]
     raw = issue_context["texts"]
     nodes = {}
@@ -1131,13 +1163,16 @@ def _issue_summary(text):
     return ""
 
 
-def _issue_summary_ko(root, issue_id, text):
+def _issue_summary_ko(root, issue_id, text, *, project_context=None):
     summary = _plain_summary(_markdown_section(text, ["요약", "한글 요약", "Summary (KO)", "Korean Summary", "문제"]))
     if summary:
         return _short_description(summary)
     project_root = Path(root).resolve()
-    project_paths = configured_project_paths(project_root)
-    specs_root = project_root / project_paths["specs"]
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    specs_root = project_registry.canonical_path(context, "specs")
     spec_dir = specs_root / issue_id
     for ko_path in (
         spec_dir / "spec.ko.md",
@@ -1159,8 +1194,20 @@ def _issue_summary_ko(root, issue_id, text):
     return ""
 
 
-def _issue_description(root, issue_id, title, text):
-    summary_ko = _issue_summary_ko(root, issue_id, text)
+def _issue_description(
+    root,
+    issue_id,
+    title,
+    text,
+    *,
+    project_context=None,
+):
+    summary_ko = _issue_summary_ko(
+        root,
+        issue_id,
+        text,
+        project_context=project_context,
+    )
     summary = _issue_summary(text)
     description = summary_ko or summary or title or issue_id
     return {
@@ -1171,10 +1218,13 @@ def _issue_description(root, issue_id, title, text):
     }
 
 
-def _issue_description_overrides(root):
+def _issue_description_overrides(root, *, project_context=None):
     project_root = Path(root).resolve()
-    project_paths = configured_project_paths(project_root)
-    workspace_root = project_root / project_paths["workspace"]
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    workspace_root = project_registry.canonical_path(context, "workspace")
     path = workspace_root / "issue-descriptions.ko.json"
     content = _read_contained_text(path, workspace_root, project_root)
     if content is None:
@@ -1188,11 +1238,20 @@ def _issue_description_overrides(root):
     return {str(k): str(v).strip() for k, v in data.items() if str(v).strip()}
 
 
-def _issue_artifact_coverage(root, issue_id, issue=None):
+def _issue_artifact_coverage(
+    root,
+    issue_id,
+    issue=None,
+    *,
+    project_context=None,
+):
     root = Path(root).resolve()
-    project_paths = configured_project_paths(root)
-    issues_root = root / project_paths["issues"]
-    specs_root = root / project_paths["specs"]
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    issues_root = project_registry.canonical_path(context, "issues")
+    specs_root = project_registry.canonical_path(context, "specs")
     spec_dir = specs_root / issue_id
     issue_file = (
         root / issue["source_path"]
@@ -1267,14 +1326,29 @@ def _issue_created(text):
     return dates[0] if dates else ""
 
 
-def _collect_issue_table(root, issue_context=None):
+def _collect_issue_table(root, issue_context=None, *, project_context=None):
     project_root = Path(root).resolve()
-    issue_context = issue_context or _evaluated_issue_context(project_root)
+    context = project_registry.context_for_operation(
+        project_root,
+        project_context=project_context,
+    )
+    if issue_context is None:
+        issue_context = _evaluated_issue_context(
+            project_root,
+            project_context=context,
+        )
     evaluated = issue_context["issues"]
     raw = issue_context["texts"]
-    graph_nodes, graph_edges = _collect_issue_graph(project_root, issue_context)
-    linked = _issue_linked_memory(project_root)
-    description_overrides = _issue_description_overrides(project_root)
+    graph_nodes, graph_edges = _collect_issue_graph(
+        project_root,
+        issue_context,
+        project_context=context,
+    )
+    linked = _issue_linked_memory(project_root, project_context=context)
+    description_overrides = _issue_description_overrides(
+        project_root,
+        project_context=context,
+    )
     relation_counts = {}
     for src, tgt, _rel in graph_edges:
         relation_counts[src] = relation_counts.get(src, 0) + 1
@@ -1283,11 +1357,22 @@ def _collect_issue_table(root, issue_context=None):
     for issue_id, issue in sorted(evaluated.items()):
         text = raw.get(issue_id, "")
         info = graph_nodes.get(issue_id, {})
-        coverage = _issue_artifact_coverage(project_root, issue_id, issue)
+        coverage = _issue_artifact_coverage(
+            project_root,
+            issue_id,
+            issue,
+            project_context=context,
+        )
         status = info.get("status", "backlog")
         next_command = issue.get("recommended_next_command") or ""
         title = info.get("title", issue_id)
-        description = _issue_description(project_root, issue_id, title, text)
+        description = _issue_description(
+            project_root,
+            issue_id,
+            title,
+            text,
+            project_context=context,
+        )
         if issue_id in description_overrides:
             description.update({
                 "summary_ko": description_overrides[issue_id],
@@ -1317,9 +1402,17 @@ def _collect_issue_table(root, issue_context=None):
     return rows
 
 
-def _issue_elements(root, issue_context=None):
-    nodes, edges = _collect_issue_graph(root, issue_context)
-    linked = _issue_linked_memory(root)
+def _issue_elements(root, issue_context=None, *, project_context=None):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    nodes, edges = _collect_issue_graph(
+        root,
+        issue_context,
+        project_context=context,
+    )
+    linked = _issue_linked_memory(root, project_context=context)
     # Group issues by goal → compound "goal box" parents, children placed in
     # number order inside each box (preset layout). This is the "flow" the user
     # asked for: structural grouping by goal, not a force-directed hairball.
@@ -1731,11 +1824,26 @@ def _json_for_script(value, indent=None):
     ).replace("</", "<\\/")
 
 
-def render_project_view(root):
-    issue_context = _evaluated_issue_context(root)
-    issue_elements, _i_n, _i_e = _issue_elements(root, issue_context)
-    memory_elements, _m_n, _m_e = _memory_elements(root)
-    issue_rows = _collect_issue_table(root, issue_context)
+def render_project_view(root, *, project_context=None):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    issue_context = _evaluated_issue_context(root, project_context=context)
+    issue_elements, _i_n, _i_e = _issue_elements(
+        root,
+        issue_context,
+        project_context=context,
+    )
+    memory_elements, _m_n, _m_e = _memory_elements(
+        root,
+        project_context=context,
+    )
+    issue_rows = _collect_issue_table(
+        root,
+        issue_context,
+        project_context=context,
+    )
     return (
         PROJECT_VIEW_TEMPLATE
         .replace("__ISSUE_ROWS__", _json_for_script(issue_rows, indent=2))
@@ -1886,14 +1994,17 @@ if (LINKED.length) {
 """
 
 
-def _resolve_issue_slug(root, issue_id):
+def _resolve_issue_slug(root, issue_id, *, project_context=None):
     root = Path(root).resolve()
     issue_id = issue_id.strip()
     if not validate_issue_id(issue_id):
         return "invalid-issue"
-    project_paths = configured_project_paths(root)
-    specs_dir = root / project_paths["specs"]
-    issues_dir = root / project_paths["issues"]
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    specs_dir = project_registry.canonical_path(context, "specs")
+    issues_dir = project_registry.canonical_path(context, "issues")
     if (specs_dir / issue_id).is_dir():
         return issue_id
     if (issues_dir / f"{issue_id}.md").is_file():
@@ -1948,9 +2059,23 @@ def _issue_title_from_text(text, fallback):
     return title.replace("`", "").strip() or fallback
 
 
-def _korean_overview_artifact(root, issue_id, issue_text):
-    overrides = _issue_description_overrides(root)
-    summary_ko = overrides.get(issue_id) or _issue_summary_ko(root, issue_id, issue_text)
+def _korean_overview_artifact(
+    root,
+    issue_id,
+    issue_text,
+    *,
+    project_context=None,
+):
+    overrides = _issue_description_overrides(
+        root,
+        project_context=project_context,
+    )
+    summary_ko = overrides.get(issue_id) or _issue_summary_ko(
+        root,
+        issue_id,
+        issue_text,
+        project_context=project_context,
+    )
     if not summary_ko:
         return None
     title = _issue_title_from_text(issue_text, issue_id)
@@ -1959,11 +2084,18 @@ def _korean_overview_artifact(root, issue_id, issue_text):
             "md": "", "ko": ko, "ko_only": True}
 
 
-def _collect_issue_artifacts(root, issue_id):
+def _collect_issue_artifacts(root, issue_id, *, project_context=None):
     root = Path(root).resolve()
-    slug = _resolve_issue_slug(root, issue_id)
-    project_paths = configured_project_paths(root)
-    evaluation = evaluate_project(root)
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    slug = _resolve_issue_slug(
+        root,
+        issue_id,
+        project_context=context,
+    )
+    evaluation = evaluate_project(root, context["relative_paths"])
     evaluated = next(
         (
             item for item in evaluation["issues"]
@@ -1973,7 +2105,7 @@ def _collect_issue_artifacts(root, issue_id):
         None,
     )
     artifacts = []
-    issues_root = root / project_paths["issues"]
+    issues_root = project_registry.canonical_path(context, "issues")
     issue_file = (
         root / evaluated["source_path"]
         if evaluated and _issue_source_is_safe(evaluated)
@@ -1986,7 +2118,12 @@ def _collect_issue_artifacts(root, issue_id):
     )
     issue_text = issue_content or ""
     ko_overview = (
-        _korean_overview_artifact(root, slug, issue_text)
+        _korean_overview_artifact(
+            root,
+            slug,
+            issue_text,
+            project_context=context,
+        )
         if issue_text
         else None
     )
@@ -1996,7 +2133,7 @@ def _collect_issue_artifacts(root, issue_id):
         artifacts.append({"name": "issue", "label": "Issue",
                           "md": issue_text,
                           "ko": _ko_sidecar(issue_file, issues_root, root)})
-    specs_root = root / project_paths["specs"]
+    specs_root = project_registry.canonical_path(context, "specs")
     spec_dir = specs_root / slug
     resolved_spec_dir = _contained_resolved_path(spec_dir, specs_root, root)
     if resolved_spec_dir is not None and resolved_spec_dir.is_dir():
@@ -2029,13 +2166,21 @@ def _collect_issue_artifacts(root, issue_id):
     return slug, artifacts
 
 
-def render_issue_panel(root, issue_id):
-    slug, artifacts = _collect_issue_artifacts(root, issue_id)
-    linked = _issue_linked_memory(root).get(slug, [])
+def render_issue_panel(root, issue_id, *, project_context=None):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    slug, artifacts = _collect_issue_artifacts(
+        root,
+        issue_id,
+        project_context=context,
+    )
+    linked = _issue_linked_memory(root, project_context=context).get(slug, [])
     lang_toggle_attr = "" if any(a.get("ko") for a in artifacts) else " hidden"
     artifacts_json = _json_for_script(artifacts)
     linked_json = _json_for_script(linked)
-    project_paths = configured_project_paths(root)
+    project_paths = context["relative_paths"]
     return (
         ISSUE_PANEL_TEMPLATE
         .replace("__PANEL_TITLE__", f"Issue {slug}")
@@ -2054,8 +2199,12 @@ def render_issue_panel(root, issue_id):
     )
 
 
-def render_memory_panel(root, mem_id):
-    entry = get_memory_entry(root, mem_id)
+def render_memory_panel(root, mem_id, *, project_context=None):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    entry = get_memory_entry(root, mem_id, project_context=context)
     if not entry:
         title, sub, artifacts = mem_id, "no such memory entry", []
     else:

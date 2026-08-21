@@ -546,6 +546,52 @@ class SpecKitConfigTests(unittest.TestCase):
         self.assertRegex(result["input_hash"], r"^sha256:[0-9a-f]{64}$")
         self.assertIsNone(result["fallback"])
 
+    def test_supplied_context_uses_nested_inputs_and_ignores_default_decoys(self):
+        from scripts import project_registry
+
+        self.write_config(opted_in_config(("analyze",)))
+        context = project_registry.project_context_for_root(self.project)
+        for role, relative in {
+            "issues": "product/issues",
+            "specs": "delivery/specs",
+            "workspace": "ops/workspace",
+        }.items():
+            context["relative_paths"][role] = relative
+            context["paths"][role] = str((self.project / relative).resolve())
+        nested = {
+            Path("delivery/specs") / ISSUE_ID / "spec.md": "# Nested spec\n",
+            Path("delivery/specs") / ISSUE_ID / "plan.md": "# Nested plan\n",
+            Path("delivery/specs") / ISSUE_ID / "tasks.md": "# Nested tasks\n",
+            Path("ops/workspace") / "constitution.md": "# Nested constitution\n",
+        }
+        for relative, content in nested.items():
+            path = self.project / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+        decoy = self.project / "specs" / ISSUE_ID / "plan.md"
+        before = decoy.read_bytes()
+
+        result = self.ska.build_handoff(
+            ROOT,
+            self.project,
+            ISSUE_ID,
+            "Spec Kit analyze requirements",
+            host_available=True,
+            project_context=context,
+        )
+
+        self.assertEqual(result["outcome"], "ready")
+        self.assertEqual(
+            result["inputs"],
+            [
+                f"delivery/specs/{ISSUE_ID}/spec.md",
+                f"delivery/specs/{ISSUE_ID}/plan.md",
+                f"delivery/specs/{ISSUE_ID}/tasks.md",
+                "ops/workspace/constitution.md",
+            ],
+        )
+        self.assertEqual(decoy.read_bytes(), before)
+
     def test_each_function_requires_its_exact_canonical_regular_inputs(self):
         required = {
             "clarify": [f"issues/{ISSUE_ID}.md", f"specs/{ISSUE_ID}/spec.md"],

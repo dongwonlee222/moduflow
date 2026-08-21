@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from scripts import spec_consistency
+from scripts import project_registry
 
 
 def write_trio(root, issue_id, spec=None, plan=None, tasks=None):
@@ -233,6 +234,36 @@ class SpecConsistencyTests(unittest.TestCase):
     def test_missing_specs_dir_raises(self):
         with self.assertRaises(FileNotFoundError):
             spec_consistency.analyze(self.root, "999-nonexistent")
+
+    def test_analyze_uses_canonical_specs_and_ignores_decoy_default(self):
+        issue_id = "109-nested"
+        context = project_registry.project_context_for_root(self.root)
+        context["relative_paths"]["specs"] = "delivery/specs"
+        context["paths"]["specs"] = str((self.root / "delivery/specs").resolve())
+        nested = self.root / "delivery" / "specs" / issue_id
+        nested.mkdir(parents=True)
+        (nested / "spec.md").write_text(
+            "# Spec\n\n## Acceptance Criteria\n\n- canonical nested behavior\n",
+            encoding="utf-8",
+        )
+        (nested / "plan.md").write_text("canonical nested behavior\n", encoding="utf-8")
+        (nested / "tasks.md").write_text("- [ ] canonical nested behavior\n", encoding="utf-8")
+        decoy = write_trio(
+            self.root,
+            issue_id,
+            spec="# Decoy without acceptance criteria\n",
+            plan="decoy\n",
+            tasks="decoy\n",
+        ) / "spec.md"
+
+        result = spec_consistency.analyze(
+            self.root,
+            issue_id,
+            project_context=context,
+        )
+
+        self.assertEqual(result["summary"]["error"], 0)
+        self.assertEqual(decoy.read_text(encoding="utf-8"), "# Decoy without acceptance criteria\n")
 
     # Review finding: threshold boundary was untested. Flag condition is
     # shared < max(2, 0.3*len(bt)) — "whichever is stricter".

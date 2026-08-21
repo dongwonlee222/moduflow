@@ -667,6 +667,85 @@ class ProjectContextCompatibilityTests(unittest.TestCase):
             with self.assertRaises(KeyError):
                 self.registry.canonical_path(context, "assets")
 
+    def test_context_for_operation_uses_compatibility_only_for_literal_none(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            expected = self.registry.project_context_for_root(root)
+
+            with mock.patch.object(
+                self.registry,
+                "project_context_for_root",
+                return_value=expected,
+            ) as adapter:
+                result = self.registry.context_for_operation(root)
+
+            self.assertIs(result, expected)
+            adapter.assert_called_once_with(root)
+
+            with mock.patch.object(
+                self.registry,
+                "project_context_for_root",
+                side_effect=AssertionError("must not fall back"),
+            ):
+                with self.assertRaisesRegex(ValueError, "resolved"):
+                    self.registry.context_for_operation(root, project_context={})
+
+    def test_context_for_operation_rejects_cross_project_context(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            project_a = base / "a"
+            project_b = base / "b"
+            project_a.mkdir()
+            project_b.mkdir()
+            context = self.registry.project_context_for_root(project_a)
+
+            with mock.patch.object(
+                self.registry,
+                "project_context_for_root",
+                side_effect=AssertionError("must not re-resolve"),
+            ):
+                with self.assertRaisesRegex(ValueError, "does not match"):
+                    self.registry.context_for_operation(
+                        project_b,
+                        project_context=context,
+                    )
+
+    def test_canonical_child_and_relative_paths_are_contained(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.registry.project_context_for_root(root)
+
+            child = self.registry.canonical_child_path(
+                context,
+                "specs",
+                "109-example",
+                "spec.md",
+            )
+            relative = self.registry.canonical_relative_path(
+                context,
+                "specs",
+                "109-example",
+                "spec.md",
+            )
+
+            self.assertEqual(
+                child,
+                (root / "specs" / "109-example" / "spec.md").resolve(),
+            )
+            self.assertEqual(relative, "specs/109-example/spec.md")
+
+    def test_canonical_child_rejects_unsafe_components(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            context = self.registry.project_context_for_root(tmp)
+            for component in ("", ".", "..", "../escape", "/absolute"):
+                with self.subTest(component=component):
+                    with self.assertRaises(ValueError):
+                        self.registry.canonical_child_path(
+                            context,
+                            "workspace",
+                            component,
+                        )
+
     def test_selection_write_is_atomic_minimal_and_idempotent(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

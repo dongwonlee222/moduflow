@@ -105,6 +105,7 @@ class ResolveCommitsTests(unittest.TestCase):
             Path("."),
             BETA,
             target_issue_ids={BETA},
+            issue_prefix="issues",
         )
 
     def test_requested_issue_ambiguity_is_visible(self):
@@ -528,6 +529,39 @@ class CollectEvidenceTests(unittest.TestCase):
         self.assertEqual(evidence["commits"], [])
         self.assertEqual(evidence["files"], [])
         self.assertEqual(evidence["errors"], [])
+
+    def test_collect_evidence_uses_canonical_specs_and_ignores_decoy(self):
+        from scripts import project_registry
+
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(root))
+        context = project_registry.project_context_for_root(root)
+        context["relative_paths"]["specs"] = "delivery/specs"
+        context["paths"]["specs"] = str((root / "delivery/specs").resolve())
+        nested = root / "delivery" / "specs" / ISSUE
+        nested.mkdir(parents=True)
+        (nested / "spec.md").write_text(
+            "# Spec\n\n## Acceptance Criteria\n\n- nested canonical criterion\n",
+            encoding="utf-8",
+        )
+        decoy = root / "specs" / ISSUE / "spec.md"
+        decoy.parent.mkdir(parents=True)
+        decoy.write_text("# Decoy\n", encoding="utf-8")
+
+        evidence, ok = project_converge.collect_evidence(
+            root,
+            ISSUE,
+            "2026-08-21",
+            runner=FakeRunner({LOG_ARGS: ""}),
+            project_context=context,
+        )
+
+        self.assertTrue(ok)
+        self.assertEqual(
+            evidence["acceptance_criteria"][0]["text"],
+            "nested canonical criterion",
+        )
+        self.assertEqual(decoy.read_text(encoding="utf-8"), "# Decoy\n")
 
     def test_git_log_failure_is_error_and_not_ok(self):
         root = self._project()

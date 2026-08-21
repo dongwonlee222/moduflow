@@ -899,6 +899,27 @@ class CapabilityRoutingTests(unittest.TestCase):
                 availability=HOST_AVAILABLE,
             )
 
+    def test_output_artifact_uses_canonical_nested_specs_path(self):
+        from scripts import project_registry
+
+        context = project_registry.project_context_for_root(ROOT)
+        context["relative_paths"]["specs"] = "product/specs"
+        context["paths"]["specs"] = str((ROOT / "product/specs").resolve())
+
+        result = self.routing.route_request(
+            "전환율을 분석해줘",
+            self.registry,
+            issue_id="001-conversion",
+            target_root=ROOT,
+            availability=HOST_AVAILABLE,
+            project_context=context,
+        )
+
+        self.assertEqual(
+            result["stages"][0]["output_artifact"],
+            "product/specs/001-conversion/analysis.md",
+        )
+
     def test_cli_prints_read_only_routing_json(self):
         completed = subprocess.run(
             [

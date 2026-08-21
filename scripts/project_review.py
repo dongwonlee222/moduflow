@@ -12,6 +12,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from scripts import review_intake as ri
+from scripts import project_registry
 
 
 ADAPTER_ORDER = [
@@ -369,15 +370,23 @@ def _write_text_atomic(path, text):
     temporary.replace(path)
 
 
-def _packet_files(root):
+def _packet_files(root, *, project_context=None):
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
     return sorted(
-        (Path(root).resolve() / "workspace" / "reviews").glob("*.json")
+        project_registry.canonical_child_path(
+            context,
+            "workspace",
+            "reviews",
+        ).glob("*.json")
     )
 
 
-def _existing_candidates(root, exclude_review_id):
+def _existing_candidates(root, exclude_review_id, *, project_context=None):
     candidates = []
-    for path in _packet_files(root):
+    for path in _packet_files(root, project_context=project_context):
         try:
             packet = _load_json(path)
         except (OSError, json.JSONDecodeError):
@@ -387,27 +396,43 @@ def _existing_candidates(root, exclude_review_id):
     return candidates
 
 
-def _add_overlap_hints(root, candidates):
+def _add_overlap_hints(root, candidates, *, project_context=None):
     from scripts.project_intake import find_related_issues
 
     enriched = copy.deepcopy(candidates)
     for candidate in enriched:
         candidate["overlap_hints"] = find_related_issues(
-            root, candidate["title"] + "\n" + candidate["problem"]
+            root,
+            candidate["title"] + "\n" + candidate["problem"],
+            project_context=project_context,
         )[:3]
     return enriched
 
 
-def write_review_artifacts(root, packet):
+def write_review_artifacts(root, packet, *, project_context=None):
     root = Path(root).resolve()
-    reviews = root / "workspace" / "reviews"
-    existing = _existing_candidates(root, packet["review_id"])
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    reviews = project_registry.canonical_child_path(
+        context,
+        "workspace",
+        "reviews",
+    )
+    existing = _existing_candidates(
+        root,
+        packet["review_id"],
+        project_context=context,
+    )
     candidate_result = ri.build_candidates(
         packet, existing_candidates=existing
     )
     stored = copy.deepcopy(packet)
     stored["candidates"] = _add_overlap_hints(
-        root, candidate_result["candidates"]
+        root,
+        candidate_result["candidates"],
+        project_context=context,
     )
     stored["trace"] = candidate_result["trace"]
     for finding in stored["findings"]:
@@ -421,13 +446,21 @@ def write_review_artifacts(root, packet):
 
     packet_path = reviews / f"{stored['review_id']}.json"
     summary_path = reviews / f"{stored['review_id']}.md"
-    candidate_path = root / "workspace" / "review-candidates.md"
+    candidate_path = project_registry.canonical_child_path(
+        context,
+        "workspace",
+        "review-candidates.md",
+    )
     _write_text_atomic(
         packet_path,
         json.dumps(stored, ensure_ascii=False, indent=2) + "\n",
     )
     _write_text_atomic(summary_path, render_summary_ko(stored))
-    all_candidates = _existing_candidates(root, stored["review_id"]) + stored[
+    all_candidates = _existing_candidates(
+        root,
+        stored["review_id"],
+        project_context=context,
+    ) + stored[
         "candidates"
     ]
     _write_text_atomic(candidate_path, render_candidate_queue(all_candidates))
@@ -470,7 +503,7 @@ def _adapt_new_source(args):
     return adapt_codeql_alerts(_load_json(args.source))
 
 
-def run_new_intake(root, args):
+def run_new_intake(root, args, *, project_context=None):
     _required_new_args(args)
     source_path = Path(args.source)
     copied_text = (
@@ -529,7 +562,11 @@ def run_new_intake(root, args):
     )
     if not args.write:
         return {"action": "preview", "packet": _public_packet(packet)}
-    paths = write_review_artifacts(root, packet)
+    paths = write_review_artifacts(
+        root,
+        packet,
+        project_context=project_context,
+    )
     return {
         "action": "written",
         "packet": _public_packet(packet),
@@ -549,17 +586,28 @@ def _verify_reference_integrity(packet):
             )
 
 
-def apply_decisions_to_path(root, review_id, decisions_path, write=False):
+def apply_decisions_to_path(
+    root,
+    review_id,
+    decisions_path,
+    write=False,
+    *,
+    project_context=None,
+):
     if not ri.REVIEW_ID_RE.fullmatch(str(review_id or "")):
         raise ri.ReviewIntakeError(
             "review_id_invalid",
             "review_id must be a safe 3-128 character artifact identifier",
         )
-    packet_path = (
-        Path(root).resolve()
-        / "workspace"
-        / "reviews"
-        / f"{review_id}.json"
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    packet_path = project_registry.canonical_child_path(
+        context,
+        "workspace",
+        "reviews",
+        f"{review_id}.json",
     )
     packet = _load_json(packet_path)
     _verify_reference_integrity(packet)
@@ -572,7 +620,11 @@ def apply_decisions_to_path(root, review_id, decisions_path, write=False):
         packet = ri.apply_decision(packet, decision)
     if not write:
         return {"action": "preview", "packet": _public_packet(packet)}
-    paths = write_review_artifacts(root, packet)
+    paths = write_review_artifacts(
+        root,
+        packet,
+        project_context=context,
+    )
     return {
         "action": "written",
         "packet": _public_packet(packet),
