@@ -7,6 +7,11 @@ import re
 import sys
 from pathlib import Path
 
+try:
+    from scripts import project_registry
+except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_registry
+
 
 REGISTRY_SCHEMA = "moduflow.capability-registry.v1"
 PERMISSIONS = {"read", "write-local", "write-external"}
@@ -203,13 +208,21 @@ def _build_stage(
     permission_state,
     available,
     target_root,
+    project_context,
 ):
     output_artifact = descriptor["output_artifact"].format(issue_id=issue_id)
-    specs_root = (Path(target_root).resolve() / "specs").resolve()
-    output_path = (Path(target_root).resolve() / output_artifact).resolve()
+    parts = Path(output_artifact).parts
+    if not parts or parts[0] != "specs":
+        raise RegistryError(
+            f"output_artifact escapes target specs/: {output_artifact}"
+        )
     try:
-        output_path.relative_to(specs_root)
-    except ValueError as exc:
+        output_path = project_registry.canonical_child_path(
+            project_context,
+            "specs",
+            *parts[1:],
+        )
+    except (KeyError, ValueError) as exc:
         raise RegistryError(
             f"output_artifact escapes target specs/: {output_artifact}"
         ) from exc
@@ -219,7 +232,11 @@ def _build_stage(
         "permission": permission,
         "permission_state": permission_state,
         "availability": "available" if available else "unavailable",
-        "output_artifact": output_path.relative_to(Path(target_root).resolve()).as_posix(),
+        "output_artifact": project_registry.canonical_relative_path(
+            project_context,
+            "specs",
+            *parts[1:],
+        ),
         "gate_after": None,
     }
 
@@ -247,6 +264,7 @@ def route_request(
     availability=None,
     approved_permissions=None,
     completed_artifacts=None,
+    project_context=None,
 ):
     """Resolve routing metadata without loading or invoking a specialist."""
     text = normalize_text(request)
@@ -255,6 +273,10 @@ def route_request(
     availability = dict(availability or {})
     approved_permissions = set(approved_permissions or set())
     completed_artifacts = set(completed_artifacts or set())
+    context = project_registry.context_for_operation(
+        target_root,
+        project_context=project_context,
+    )
 
     capability_ids = {item["id"] for item in registry["capabilities"]}
     unknown_availability = set(availability) - capability_ids
@@ -305,6 +327,7 @@ def route_request(
             permission_state=permission_state,
             available=available,
             target_root=target_root,
+            project_context=context,
         )
         result["stages"].append(stage)
         if not available:

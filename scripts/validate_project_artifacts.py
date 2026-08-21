@@ -131,13 +131,22 @@ def active_loop_state(root, project_loop, *, project_context=None):
     return project_loop.load_loop_state(root, project_context=context)
 
 
-def linked_artifacts(issue_text):
+def linked_artifacts(issue_text, project_paths=None):
+    project_paths = project_paths or {
+        "specs": "specs",
+        "workspace": "workspace",
+        "memory": "memory",
+    }
+    prefixes = tuple(
+        project_paths[role].rstrip("/") + "/"
+        for role in ("specs", "workspace", "memory")
+    )
     linked = []
     for match in LINK_RE.finditer(issue_text):
         value = match.group("path").strip()
         if any(ch in value for ch in "<>{}"):
             continue  # placeholder path (e.g. specs/<id>/{spec,plan,tasks}.md), not a real link
-        if value.startswith("specs/") or value.startswith("workspace/") or value.startswith("memory/"):
+        if value.startswith(prefixes):
             linked.append(value)
     return linked
 
@@ -190,7 +199,12 @@ def validate_memory_links(root, errors, *, project_context=None):
         for linked in parse_list_value(metadata.get("source_artifacts", "[]")):
             if linked and not (root / linked).exists():
                 errors.append(f"{relative_memory}: broken source_artifacts link: {linked}")
-        if "memory/.candidates/" in relative_memory and metadata.get("status") != "candidate":
+        candidate_prefix = project_registry.canonical_relative_path(
+            context,
+            "memory",
+            ".candidates",
+        ).rstrip("/") + "/"
+        if relative_memory.startswith(candidate_prefix) and metadata.get("status") != "candidate":
             errors.append(f"{relative_memory}: candidate memory must have status: candidate")
 
 
@@ -264,7 +278,7 @@ def validate_active_issue_links(
         issue_text = issue_file.read_text(encoding="utf-8")
     except (OSError, UnicodeError):
         return
-    for relative in linked_artifacts(issue_text):
+    for relative in linked_artifacts(issue_text, project_paths):
         if not (root / relative).exists():
             source = issue_file.relative_to(root).as_posix()
             errors.append(f"{source}: linked artifact missing: {relative}")
@@ -580,7 +594,7 @@ def validate_project(path, *, project_context=None):
     json_targets.extend(
         (relative, root / relative)
         for relative in OPTIONAL_JSON_FILES
-        if not relative.startswith("workflow/")
+        if Path(relative).parts[0] != "workflow"
     )
     workflow_state = project_registry.canonical_child_path(
         context,

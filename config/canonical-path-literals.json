@@ -1,0 +1,137 @@
+{
+  "schema": "moduflow.canonical-path-classifications.v1",
+  "entries": [
+    {
+      "module": "scripts/mcp_server.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "The MCP server reads the fixed project-control directory, not a configurable artifact role."
+    },
+    {
+      "module": "scripts/portfolio_doctor.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "Portfolio discovery identifies projects through the fixed .moduflow control directory."
+    },
+    {
+      "module": "scripts/project_doctor.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "Doctor discovery and runtime inspection use fixed .moduflow control metadata."
+    },
+    {
+      "module": "scripts/project_git_handoff.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "Git handoff reads the fixed project-control configuration."
+    },
+    {
+      "module": "scripts/project_github_issues.py",
+      "pattern": "fragment:issues/",
+      "classification": "canonical_default_declaration",
+      "rationale": "This is the explicit-root compatibility default for a generated GitHub source link; resolved callers supply the canonical issue path."
+    },
+    {
+      "module": "scripts/project_github_issues.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "GitHub mirroring reads fixed .moduflow integration metadata."
+    },
+    {
+      "module": "scripts/project_issue_schema.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "The low-level issue schema loads fixed .moduflow configuration and remains resolver-independent."
+    },
+    {
+      "module": "scripts/project_lifecycle.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "Lifecycle state is intentionally stored in the fixed .moduflow control directory."
+    },
+    {
+      "module": "scripts/project_memory.py",
+      "pattern": "fragment:issues/",
+      "classification": "canonical_default_declaration",
+      "rationale": "Memory export guidance documents default-layout mirror sources and performs no target-project I/O."
+    },
+    {
+      "module": "scripts/project_memory.py",
+      "pattern": "fragment:memory/",
+      "classification": "canonical_default_declaration",
+      "rationale": "Memory export guidance labels the default canonical source for compatibility and performs no path access."
+    },
+    {
+      "module": "scripts/project_memory.py",
+      "pattern": "fragment:specs/",
+      "classification": "canonical_default_declaration",
+      "rationale": "Memory export guidance documents default-layout mirror sources and performs no target-project I/O."
+    },
+    {
+      "module": "scripts/project_memory.py",
+      "pattern": "fragment:workspace/",
+      "classification": "canonical_default_declaration",
+      "rationale": "Memory export guidance documents default-layout mirror sources and performs no target-project I/O."
+    },
+    {
+      "module": "scripts/project_migrate.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "Migration initializes and inspects fixed project-control metadata."
+    },
+    {
+      "module": "scripts/project_portfolio.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "Portfolio registration identifies fixed project-control metadata."
+    },
+    {
+      "module": "scripts/project_profile.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "Project profile metadata belongs to the fixed .moduflow control directory."
+    },
+    {
+      "module": "scripts/project_promote.py",
+      "pattern": "join:issues",
+      "classification": "package_source_layout",
+      "rationale": "This joins the plugin's templates/issues package layout, not a target-project issue directory."
+    },
+    {
+      "module": "scripts/project_reference_backlog.py",
+      "pattern": "fragment:specs/",
+      "classification": "canonical_default_declaration",
+      "rationale": "The low-level entry builder retains a default-layout compatibility value; project-aware callers inject the canonical origin_spec."
+    },
+    {
+      "module": "scripts/project_repository_identity.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "Repository identity policy is fixed project-control metadata."
+    },
+    {
+      "module": "scripts/spec_kit_adapter.py",
+      "pattern": "fragment:issues/",
+      "classification": "canonical_default_declaration",
+      "rationale": "The adapter preserves its explicit-root compatibility branch; resolved operations use canonical role paths."
+    },
+    {
+      "module": "scripts/spec_kit_adapter.py",
+      "pattern": "fragment:specs/",
+      "classification": "canonical_default_declaration",
+      "rationale": "The adapter preserves its explicit-root compatibility branch; resolved operations use canonical role paths."
+    },
+    {
+      "module": "scripts/spec_kit_pilot.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "The pilot copies fixed project-control configuration into its isolated fixture."
+    },
+    {
+      "module": "scripts/validate_project_artifacts.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "Validation reads fixed lifecycle state from the .moduflow control directory."
+    }
+  ]
+}

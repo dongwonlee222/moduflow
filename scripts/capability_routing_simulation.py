@@ -7,8 +7,10 @@ from pathlib import Path
 
 try:
     from scripts import capability_routing
+    from scripts import project_registry
 except ImportError:  # Direct execution from scripts/.
     import capability_routing
+    import project_registry
 
 
 CASES_SCHEMA = "moduflow.capability-routing-cases.v1"
@@ -200,8 +202,12 @@ def _semantic_pair_findings(results):
     return findings
 
 
-def simulate_cases(root, cases):
+def simulate_cases(root, cases, *, project_context=None):
     root = Path(root).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
     registry = capability_routing.load_registry(root)
     results = []
     for case in cases:
@@ -212,6 +218,7 @@ def simulate_cases(root, cases):
             target_root=root,
             availability=case.get("availability") or {},
             approved_permissions=set(case.get("approved_permissions") or []),
+            project_context=context,
         )
         results.append(evaluate_case(case, actual, registry))
 
@@ -260,13 +267,16 @@ def main():
     args = parser.parse_args()
 
     root = Path(args.project_path).resolve()
-    report = simulate_cases(root, load_cases(root))
+    context = project_registry.context_for_operation(root)
+    report = simulate_cases(root, load_cases(root), project_context=context)
     if args.write:
         write_report(
-            root
-            / "specs"
-            / "097-single-entry-capability-routing-contract"
-            / "simulation-report.json",
+            project_registry.canonical_child_path(
+                context,
+                "specs",
+                "097-single-entry-capability-routing-contract",
+                "simulation-report.json",
+            ),
             report,
         )
     print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))

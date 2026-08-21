@@ -560,7 +560,10 @@ next_command: {next_command}
         )
         expected = {
             "scripts/project_registry.py",
+            "scripts/canonical_path_guard.py",
+            "config/canonical-path-literals.json",
             "tests/test_project_registry.py",
+            "tests/test_canonical_path_guard.py",
             "tests/fixtures/project-registry/projects-v1.json",
             "tests/fixtures/project-registry/projects-v2.json",
             "tests/fixtures/project-registry/projects-v2-alias-collision.json",
@@ -575,6 +578,8 @@ next_command: {next_command}
             encoding="utf-8"
         )
         self.assertIn('"tests.test_project_registry"', release_source)
+        self.assertIn('"tests.test_canonical_path_guard"', release_source)
+        self.assertIn('"canonical_path_guard"', release_source)
 
     def test_issue_consumers_import_shared_schema_without_duplicate_parsers(self):
         forbidden_definitions = {

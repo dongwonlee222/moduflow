@@ -89,7 +89,7 @@ def mkdir_if_missing(path):
 
 def apply_knowledge_plan(plan):
     project_root = Path(plan["project_root"])
-    knowledge_root = Path(plan.get("knowledge_root", project_root / "knowledge"))
+    knowledge_root = Path(plan["knowledge_root"])
     written = []
     for relative in KNOWLEDGE_DIRS:
         target = knowledge_root / relative

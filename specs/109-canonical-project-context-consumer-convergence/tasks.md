@@ -7,7 +7,7 @@ Status: active — implementation authorized 2026-08-21
 ## Stream A — Shared Boundary and Regression Guard
 
 - [x] **A1** Add strict context/root validation, canonical child paths, and canonical project-relative paths with RED/GREEN registry tests. | Files: scripts/project_registry.py, tests/test_project_registry.py
-- [ ] **A2** Add the machine-readable canonical path-literal classifier, reviewed exceptions, distribution checks, and RED/GREEN guard tests. | Files: scripts/canonical_path_guard.py, config/canonical-path-literals.json, tests/test_canonical_path_guard.py, scripts/validate_moduflow.py, scripts/release_check.py | Depends: A1
+- [x] **A2** Add the machine-readable canonical path-literal classifier, reviewed exceptions, distribution checks, and RED/GREEN guard tests. | Files: scripts/canonical_path_guard.py, config/canonical-path-literals.json, tests/test_canonical_path_guard.py, scripts/validate_moduflow.py, scripts/release_check.py | Depends: A1
 
 ## Stream B — Filesystem Consumer Convergence
 

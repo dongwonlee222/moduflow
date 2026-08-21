@@ -343,10 +343,12 @@ def run_release_check(path):
 
     validate_moduflow = load_script_module("validate_moduflow", "scripts/validate_moduflow.py")
     validate_project_artifacts = load_script_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
+    canonical_path_guard = load_script_module("canonical_path_guard", "scripts/canonical_path_guard.py")
 
     importable_checks = {
         "validate_moduflow": (validate_moduflow.validate_moduflow, root),
         "validate_project_artifacts": (validate_project_artifacts.validate_project, root),
+        "canonical_path_guard": (canonical_path_guard.inspect_project, root),
     }
     for name, (func, target) in importable_checks.items():
         result = run_importable_validation(name, func, target)
@@ -399,6 +401,7 @@ def run_release_check(path):
             "tests.test_project_profile",
             "tests.test_project_repository_identity",
             "tests.test_project_registry",
+            "tests.test_canonical_path_guard",
             "tests.test_project_repository_links",
             "tests.test_project_knowledge",
             "tests.test_project_memory",

@@ -322,7 +322,7 @@ def suggest_completion_memory(
 
 def apply_workflow_plan(plan):
     project_root = Path(plan["project_root"])
-    workflow_root = Path(plan.get("workflow_root", project_root / "workflow"))
+    workflow_root = Path(plan["workflow_root"])
     written = []
     for relative, content in WORKFLOW_FILES.items():
         suffix = Path(relative).relative_to("workflow")
