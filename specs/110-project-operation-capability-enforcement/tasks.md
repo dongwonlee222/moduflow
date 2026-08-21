@@ -2,7 +2,7 @@
 
 Issue: `110-project-operation-capability-enforcement`
 Plan: `specs/110-project-operation-capability-enforcement/plan.md`
-Status: PR review — Streams A–D complete; non-draft PR #42 is open
+Status: done — Streams A–D complete; PR #42 merged as `5f173f4`
 
 ## Stream A — Policy, Resolver, and Audit
 
@@ -38,4 +38,4 @@ Status: PR review — Streams A–D complete; non-draft PR #42 is open
 
 ## Next Command
 
-`product:review 110-project-operation-capability-enforcement` — inspect PR #42 checks and human review before a separate merge decision.
+`product:plan 103-atomic-lifecycle-state-transaction` — proceed with the now-unblocked transaction plan.

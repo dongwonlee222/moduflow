@@ -28,25 +28,25 @@
     "110-project-operation-capability-enforcement",
     "111-runtime-provenance-and-validation-mode-separation"
   ],
-  "active_issue_id": "110-project-operation-capability-enforcement",
+  "active_issue_id": "103-atomic-lifecycle-state-transaction",
   "phase": "review",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:review 110-project-operation-capability-enforcement",
+  "next_command": "product:review 103-atomic-lifecycle-state-transaction",
   "attempts": {
-    "command": "product:review 110-project-operation-capability-enforcement",
+    "command": "product:review 103-atomic-lifecycle-state-transaction",
     "count": 0,
     "max": 3,
     "last_changed_at": "2026-08-21"
   },
-  "blocker": "Issue 110 PR #42 awaits human/CI review; Issue 103 remains blocked until Issue 110 is accepted and merged",
-  "last_action": "published Issue 110 as non-draft GitHub PR #42 after all local gates passed",
-  "last_verification": "2026-08-21: focused 572/572, full discovery 1339/1339, mutation audit 64/64 with zero gaps, source release check valid",
+  "blocker": "Issue 103 plan PR #43 awaits review and explicit execution approval",
+  "last_action": "published Issue 103 specification, eight-task plan, readiness, and review packet as PR #43",
+  "last_verification": "2026-08-21: Issue 103 spec consistency clean and implementation readiness status ready",
   "updated_at": "2026-08-21",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/110-project-operation-capability-enforcement",
+    "branch": "codex/103-atomic-lifecycle-state-transaction-plan",
     "base_branch": "main",
     "commits": [
       "f980aef",
@@ -148,12 +148,12 @@
       "d3ce327",
       "f4029f3"
     ],
-    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/42",
-    "release": "Issue 110 PR #42 targets ModuFlow 0.3.52; source release validation passed and merge remains human-gated",
+    "pull_request": "https://github.com/dongwonlee222/moduflow/pull/43",
+    "release": "Issue 110 PR #42 merged as 5f173f4; ModuFlow 0.3.52 post-merge source release validation passed",
     "execution_backend": {
       "type": "codex",
       "status": "ready",
-      "reason": "Issue 109 touches shared path authority and lifecycle state; worker plan selected sequential inline TDD execution",
+      "reason": "Issue 103 planning is unblocked after Issues 109 and 110 completed",
       "session": "codex-2026-08-21"
     }
   }

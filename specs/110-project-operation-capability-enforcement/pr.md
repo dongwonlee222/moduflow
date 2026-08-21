@@ -2,17 +2,15 @@
 
 ## Purpose
 
-Make the pull request the visible review surface instead of waiting until all local review work is finished.
-Use a Draft PR or a local PR-ready marker early, then attach review, verification, and dashboard evidence to it as work progresses.
+Record the final GitHub review, approval, merge, and verification evidence for Issue 110.
 
-## Draft PR
+## Merged PR
 
 - Branch: `codex/110-project-operation-capability-enforcement`
 - PR: `https://github.com/dongwonlee222/moduflow/pull/42`
-- Reviewer: `Reviewer`
-- Fallback reason: GitHub Draft PR URL is available or expected to be supplied by the workflow.
-- Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
-- Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
+- Reviewer / merge approver: `Dongwon Lee`
+- Result: GitHub CI passed and the explicitly approved PR was squash-merged as `5f173f4` on 2026-08-21.
+- Post-merge verification: source release check `valid: true`, `errors: []` on merge commit `5f173f4`.
 - Commit mode: `local-git-write`
 
 ## Commands
@@ -70,9 +68,9 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 110-project-operatio
 
 ## Approval Record
 
-- Dashboard reviewer: `Reviewer` or assigned reviewer before merge.
-- PR diff reviewer: `Reviewer` or assigned reviewer before merge.
-- Merge approver: human approval required; not granted by this handoff.
+- Dashboard reviewer: no separate inspection claim recorded.
+- PR diff reviewer: independent code review found no open Critical or Important finding; GitHub CI passed.
+- Merge approver: Dongwon Lee explicitly approved continuation and merge in the Codex conversation on 2026-08-21.
 - Deployment approver: required only when a protected deployment environment is configured.
 
 ## Human Checkpoints
@@ -91,7 +89,7 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 110-project-operatio
 
 ## Source Snapshot
 
-- Issue bytes: 5225
+- Issue bytes: 5177
 - Spec bytes: 17086
-- Status bytes: 3336
+- Status bytes: 3440
 - Review bytes: 4038

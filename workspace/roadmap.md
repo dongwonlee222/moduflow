@@ -4,12 +4,10 @@
 
 ### Now
 
-- `110-project-operation-capability-enforcement` — P0; implementation and all local gates passed, non-draft PR #42 open for human/CI review. Blocks Issue 103 until accepted/merged.
-- `103-atomic-lifecycle-state-transaction` — P0; English/Korean specification drafted for human review; implementation remains blocked by 110.
+- `103-atomic-lifecycle-state-transaction` — P0; non-draft plan PR #43 open, readiness passed, execution remains explicitly approval-gated.
 
 ### Next
 
-- `103-atomic-lifecycle-state-transaction` — begin planning and implementation only after spec approval plus completion of 109 and 110.
 - `111-runtime-provenance-and-validation-mode-separation` — P1; may proceed in parallel and must complete before the next plugin release.
 - `104-project-aware-natural-language-request-orchestrator` and `105-schema-migration-and-doctor-triage` — P0; remain blocked by 103.
 
@@ -21,10 +19,11 @@
 
 ### Review Gate
 
-Issue 109 completed its twelve-module canonical-context migration plus an additional capability-routing audit fix. Full discovery passed 1,248 tests, the static guard has zero unclassified/prohibited/stale entries, and release check passed. Issue 110 is the only remaining blocker before Issue 103 implementation.
+Issues 109 and 110 are complete. Issue 103 now has canonical paths plus centrally enforced write capability and may proceed to transaction planning.
 
 ### Recently Completed
 
+- `110-project-operation-capability-enforcement` — PR #42 passed CI and merged as `5f173f4`; 64 mutation surfaces classified with zero gaps and post-merge source release validation passed.
 - `109-canonical-project-context-consumer-convergence` — canonical context operation boundary, nested/decoy consumer convergence, canonical Git pathspecs, and repository-wide regression classification guard; package version 0.3.50.
 
 ## Priority Refresh — 2026-08-19

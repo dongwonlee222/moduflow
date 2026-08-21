@@ -1,6 +1,6 @@
 # Issue 103: Atomic Lifecycle State Transaction
 
-**Status: backlog** — created 2026-08-19; specification drafted 2026-08-21 and awaiting human review.
+**Status: active** — created 2026-08-19; specification approved, dependencies completed, and implementation plan drafted 2026-08-21.
 **Priority: p0**
 **Blocked-by: `109-canonical-project-context-consumer-convergence`, `110-project-operation-capability-enforcement`**
 
@@ -13,7 +13,7 @@ Replace best-effort lifecycle propagation with a validated application-level tra
 - Type: user multi-project orchestration improvement request
 - Link: local Codex attachment `pasted-text.txt`, 2026-08-19
 - Owner / decision maker: Dongwon Lee
-- Current phase: specification review; implementation dependency gate is closed
+- Current phase: plan review; non-draft PR #43 is open with readiness and verification evidence
 
 ## Opportunity
 
@@ -72,8 +72,8 @@ Do not change project resolution, migrate legacy schemas, or make remote GitHub 
 
 ## Workflow Tasks
 
-- [x] spec draft → `specs/103-atomic-lifecycle-state-transaction/spec.md` + `spec.ko.md` (awaiting human approval)
-- [ ] plan → create after specification approval and Issues 109/110 completion
+- [x] spec approved → `specs/103-atomic-lifecycle-state-transaction/spec.md` + `spec.ko.md` (approved 2026-08-21)
+- [x] plan → `specs/103-atomic-lifecycle-state-transaction/plan.md` + `tasks.md`
 - [ ] execute → transaction planner, staged validation, rollback, evidence, and tests
 - [ ] review → create after implementation verification
 
@@ -94,9 +94,8 @@ Do not change project resolution, migrate legacy schemas, or make remote GitHub 
 - Spec: `specs/103-atomic-lifecycle-state-transaction/spec.md`
 - Korean spec: `specs/103-atomic-lifecycle-state-transaction/spec.ko.md`
 - Issue 102 follow-up review: `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`
+- Pull request: `https://github.com/dongwonlee222/moduflow/pull/43`
 
 ## Next Command
 
-Dependency-first: `product:spec 109-canonical-project-context-consumer-convergence`.
-
-After spec approval and Issues 109/110 completion: `product:plan 103-atomic-lifecycle-state-transaction`.
+`product:review 103-atomic-lifecycle-state-transaction` — review PR #43; implementation begins only after explicit approval.

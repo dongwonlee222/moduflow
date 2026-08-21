@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "review",
+  "phase": "execute",
   "active_goal": "trustworthy-execution-and-project-knowledge",
-  "active_issue": "110-project-operation-capability-enforcement",
-  "last_command": "product:pr 110-project-operation-capability-enforcement",
-  "next_command": "product:review 110-project-operation-capability-enforcement",
+  "active_issue": "103-atomic-lifecycle-state-transaction",
+  "last_command": "product:pr 103-atomic-lifecycle-state-transaction",
+  "next_command": "product:review 103-atomic-lifecycle-state-transaction",
   "blockers": [],
   "updated_at": "2026-08-21"
 }
