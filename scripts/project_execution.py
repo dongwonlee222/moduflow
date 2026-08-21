@@ -12,7 +12,7 @@ from scripts.project_repository_identity import (
     inspect_repository_identity,
     operation_decision,
 )
-from scripts import project_registry
+from scripts import project_operation, project_registry
 
 
 READINESS_SCHEMA = "moduflow.implementation-readiness.v1"
@@ -197,7 +197,11 @@ def build_implementation_readiness(root, issue_id, *, project_context=None):
 
 def write_implementation_readiness(root, issue_id, *, project_context=None):
     root = Path(root).resolve()
-    context = project_context or project_registry.project_context_for_root(root)
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     target = (
         project_registry.canonical_path(context, "specs")
         / issue_id
@@ -314,7 +318,11 @@ def build_review_handoff(root, issue_id, *, project_context=None):
 
 def write_review_handoff(root, issue_id, *, project_context=None):
     root = Path(root).resolve()
-    context = project_context or project_registry.project_context_for_root(root)
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
     target = project_registry.canonical_path(context, "specs") / issue_id / "review-handoff.md"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(
@@ -324,6 +332,7 @@ def write_review_handoff(root, issue_id, *, project_context=None):
     return target
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Generate ModuFlow execution/review handoff artifacts.")
     parser.add_argument("project_path", nargs="?", default=".")
@@ -333,7 +342,10 @@ def main():
     parser.add_argument("--write", action="store_true")
     args = parser.parse_args()
 
+    context = None
     if args.write:
+        context = project_registry.context_for_operation(args.project_path)
+        project_operation.require_project_capability(context, "write")
         identity = inspect_repository_identity(args.project_path)
         decision = operation_decision(identity, "execute")
         if not decision["allowed"]:
@@ -342,7 +354,13 @@ def main():
 
     if args.readiness:
         if args.write:
-            print(write_implementation_readiness(args.project_path, args.issue_id))
+            print(
+                write_implementation_readiness(
+                    args.project_path,
+                    args.issue_id,
+                    project_context=context,
+                )
+            )
         else:
             print(
                 json.dumps(
@@ -356,7 +374,11 @@ def main():
     if not args.review_handoff:
         parser.error("--readiness or --review-handoff is required")
     if args.write:
-        path = write_review_handoff(args.project_path, args.issue_id)
+        path = write_review_handoff(
+            args.project_path,
+            args.issue_id,
+            project_context=context,
+        )
         print(path)
     else:
         print(build_review_handoff(args.project_path, args.issue_id))

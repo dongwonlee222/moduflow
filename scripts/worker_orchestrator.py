@@ -6,8 +6,9 @@ import sys
 from pathlib import Path
 
 try:
-    from scripts import project_registry
+    from scripts import project_operation, project_registry
 except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_operation
     import project_registry
 
 
@@ -433,6 +434,7 @@ def write_worker_plan(root, issue_id, *, project_context=None):
         project_root,
         project_context=project_context,
     )
+    project_operation.require_project_capability(context, "write")
     spec_root = project_registry.canonical_child_path(context, "specs", issue_id)
     plan = build_worker_plan(
         project_root,
@@ -452,6 +454,7 @@ def write_worker_plan(root, issue_id, *, project_context=None):
     }
 
 
+@project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="Generate a ModuFlow worker plan for an issue.")
     parser.add_argument("issue_id")
@@ -461,6 +464,8 @@ def main():
 
     try:
         result = write_worker_plan(args.root, args.issue_id) if args.write else build_worker_plan(args.root, args.issue_id)
+    except project_operation.ProjectOperationDenied:
+        raise
     except Exception as exc:
         print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False, indent=2), file=sys.stderr)
         return 1

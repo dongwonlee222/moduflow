@@ -3,6 +3,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,6 +17,30 @@ def load_module(name, relative_path):
 
 
 class WorkerOrchestrationTests(unittest.TestCase):
+    def test_archived_project_denies_worker_plan_before_build_or_write(self):
+        orchestrator = load_module("worker_orchestrator_denied", "scripts/worker_orchestrator.py")
+        project_registry = load_module("project_registry_worker_denied", "scripts/project_registry.py")
+        project_operation = load_module("project_operation_worker_denied", "scripts/project_operation.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+
+            with mock.patch.object(
+                orchestrator,
+                "build_worker_plan",
+                side_effect=AssertionError("build called before authorization"),
+            ) as build:
+                with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                    orchestrator.write_worker_plan(
+                        root,
+                        "110-denied",
+                        project_context=context,
+                    )
+
+            build.assert_not_called()
+            self.assertFalse((root / "specs").exists())
+
     def make_project(self, root, tasks):
         spec_root = root / "specs" / "007-worker-orchestration"
         spec_root.mkdir(parents=True)

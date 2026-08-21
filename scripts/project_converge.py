@@ -56,6 +56,7 @@ def _load_sibling(name, filename):
 
 commit_resolution = _load_sibling("commit_resolution", "commit_resolution.py")
 project_registry = _load_sibling("project_registry", "project_registry.py")
+project_operation = _load_sibling("project_operation", "project_operation.py")
 
 try:
     from scripts.linkage_check import CommandResult, _error_text, run_command
@@ -663,6 +664,7 @@ def apply_judgment(
         root,
         project_context=project_context,
     )
+    project_operation.require_project_capability(context, "execute")
     report = {
         "schema": APPLY_SCHEMA,
         "issue_id": issue_id,
@@ -758,6 +760,7 @@ def _human_summary(evidence, written_path):
 def _run_evidence(args, runner):
     root = Path(args.project_path).resolve()
     context = project_registry.context_for_operation(root)
+    project_operation.require_project_capability(context, "write")
     generated = args.date or _dt.date.today().isoformat()
     evidence, ok = collect_evidence(
         root,
@@ -836,6 +839,7 @@ def _run_apply(args):
     return 0 if ok else 1
 
 
+@project_operation.cli_denial_boundary
 def main(argv=None, runner=None):
     parser = argparse.ArgumentParser(
         description="Spec-code converge check (issue 071)."

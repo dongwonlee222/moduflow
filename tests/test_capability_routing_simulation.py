@@ -6,6 +6,9 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
+
+from scripts import project_operation
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,6 +38,35 @@ def fixture_cases():
 
 
 class CapabilityRoutingSimulationTests(unittest.TestCase):
+    def test_archived_project_denies_report_before_directory_or_file_write(self):
+        simulation = load_simulation(self)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = simulation.project_registry.project_context_for_root(root)
+            context.update(
+                project_operation.compute_project_policy(
+                    "archived",
+                    "internal",
+                )
+            )
+            path = root / "specs" / "report.json"
+
+            with mock.patch.object(
+                Path,
+                "write_text",
+                side_effect=AssertionError("write before authorization"),
+            ) as write:
+                with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                    simulation.write_report(
+                        path,
+                        {"schema": "test"},
+                        project_root=root,
+                        project_context=context,
+                    )
+
+            write.assert_not_called()
+            self.assertFalse(path.parent.exists())
+
     def test_committed_fixture_corpus_has_eight_classes_and_24_cases(self):
         cases = fixture_cases()
 

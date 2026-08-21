@@ -5,11 +5,76 @@ import sys
 import io
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 from scripts import project_execution
+from scripts import project_operation, project_registry
+from tests.project_operation_fixture import context_with_policy
 
 
 class ProjectExecutionHandoffTests(unittest.TestCase):
+    def test_denied_cli_write_stops_before_repository_identity_probe(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = project_registry.project_context_for_root(root)
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+            argv = [
+                "project_execution.py",
+                str(root),
+                "--issue-id",
+                "110-denied",
+                "--readiness",
+                "--write",
+            ]
+
+            with mock.patch.object(
+                project_execution.project_registry,
+                "context_for_operation",
+                return_value=context,
+            ), mock.patch.object(
+                project_execution,
+                "inspect_repository_identity",
+                side_effect=AssertionError("identity probe before project authorization"),
+            ) as identity, mock.patch.object(sys, "argv", argv), redirect_stdout(
+                io.StringIO()
+            ) as output:
+                exit_code = project_execution.main()
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(exit_code, 2)
+            self.assertEqual(payload["reason_code"], "PROJECT_OPERATION_DENIED_ARCHIVED")
+            identity.assert_not_called()
+
+    def test_archived_project_denies_execution_artifact_writes_before_building(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = context_with_policy(
+                project_operation,
+                root=root,
+                status="archived",
+                trust="internal",
+            )
+            context.update(project_registry.project_context_for_root(root))
+            context.update(project_operation.compute_project_policy("archived", "internal"))
+
+            for writer, builder in (
+                (
+                    project_execution.write_implementation_readiness,
+                    "build_implementation_readiness",
+                ),
+                (project_execution.write_review_handoff, "build_review_handoff"),
+            ):
+                with self.subTest(writer=writer.__name__), mock.patch.object(
+                    project_execution,
+                    builder,
+                    side_effect=AssertionError("builder called before authorization"),
+                ) as build:
+                    with self.assertRaisesRegex(Exception, "Archived projects are read-only"):
+                        writer(root, "110-denied", project_context=context)
+                    build.assert_not_called()
+
+            self.assertFalse((root / "specs").exists())
+
     def test_readiness_and_review_writes_use_configured_issue_and_spec_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -12,7 +12,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from scripts import review_intake as ri
-from scripts import project_registry
+from scripts import project_operation, project_registry
 
 
 ADAPTER_ORDER = [
@@ -415,6 +415,7 @@ def write_review_artifacts(root, packet, *, project_context=None):
         root,
         project_context=project_context,
     )
+    project_operation.require_project_capability(context, "execute")
     reviews = project_registry.canonical_child_path(
         context,
         "workspace",
@@ -505,6 +506,12 @@ def _adapt_new_source(args):
 
 def run_new_intake(root, args, *, project_context=None):
     _required_new_args(args)
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    if args.write:
+        project_operation.require_project_capability(context, "execute")
     source_path = Path(args.source)
     copied_text = (
         source_path.read_text(encoding="utf-8")
@@ -565,7 +572,7 @@ def run_new_intake(root, args, *, project_context=None):
     paths = write_review_artifacts(
         root,
         packet,
-        project_context=project_context,
+        project_context=context,
     )
     return {
         "action": "written",
@@ -603,6 +610,8 @@ def apply_decisions_to_path(
         root,
         project_context=project_context,
     )
+    if write:
+        project_operation.require_project_capability(context, "execute")
     packet_path = project_registry.canonical_child_path(
         context,
         "workspace",
@@ -668,6 +677,7 @@ def build_parser():
     return parser
 
 
+@project_operation.cli_denial_boundary
 def main(argv=None):
     args = build_parser().parse_args(argv)
     root = Path(args.project_path).resolve()
