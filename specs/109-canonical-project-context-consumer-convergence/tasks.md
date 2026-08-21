@@ -2,7 +2,7 @@
 
 Issue: `109-canonical-project-context-consumer-convergence`
 Plan: `specs/109-canonical-project-context-consumer-convergence/plan.md`
-Status: active — implementation authorized 2026-08-21
+Status: done — implementation and review verified 2026-08-21; GitHub publication pending
 
 ## Stream A — Shared Boundary and Regression Guard
 
@@ -25,15 +25,15 @@ Status: active — implementation authorized 2026-08-21
 
 ## Required Gates
 
-- [ ] All twelve specification acceptance criteria have direct test or review evidence.
-- [ ] Project B honors all eight nested canonical roles and poisoned default folders remain byte-identical.
-- [ ] Invalid, unresolved, ambiguous, malformed, and cross-project contexts perform zero target-project I/O.
-- [ ] The canonical path guard has zero unclassified hits and zero stale/unjustified classifications.
-- [ ] Issue 102 and Issue 093 regression suites remain green.
-- [ ] Spec consistency has zero errors; project validation is valid; lifecycle drift is `[]`.
-- [ ] Full test discovery and `python3 scripts/release_check.py .` pass.
-- [ ] GitHub publication happens only after review evidence and final verification are committed.
+- [x] All twelve specification acceptance criteria have direct test or review evidence.
+- [x] Project B honors all eight nested canonical roles and poisoned default folders remain byte-identical.
+- [x] Invalid, unresolved, ambiguous, malformed, and cross-project contexts perform zero target-project I/O.
+- [x] The canonical path guard has zero unclassified hits and zero stale/unjustified classifications.
+- [x] Issue 102 and Issue 093 regression suites remain green.
+- [x] Spec consistency has zero errors; project validation is valid; lifecycle drift is `[]`.
+- [x] Full test discovery and `python3 scripts/release_check.py .` pass.
+- [x] GitHub publication happens only after review evidence and final verification are committed.
 
 ## Next Command
 
-`product:execute 109-canonical-project-context-consumer-convergence`
+`product:spec 110-project-operation-capability-enforcement`

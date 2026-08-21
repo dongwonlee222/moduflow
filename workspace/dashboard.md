@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issue 109 implementation is active. The shared canonical context operation boundary passed its focused RED/GREEN tests.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is verified and ready for GitHub review. Issue 110 capability enforcement is the next specification target before Issue 103 can begin.
 
 ## Active Goal
 
@@ -10,13 +10,13 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 109 implementation is 
 
 ## Active Issue
 
-- `109-canonical-project-context-consumer-convergence` — implementation active; Task A1 complete, consumer migrations remain.
+- None active. Run `product:status` to pick the next issue.
 
 ## Priority Queue — 2026-08-21
 
-- Now: `109` canonical project-context consumer convergence — P0; specification approved and TDD plan covers twelve consumer modules plus a repository-wide regression guard.
-- Now: `110` project operation capability enforcement — P0; can be specified alongside 109 and must finish before 103 implementation.
-- Review now: `103` atomic lifecycle state transaction — English/Korean spec ready; implementation blocked by 109 and 110.
+- Shipped to review: `109` canonical project-context consumer convergence — 12 planned modules plus capability routing migrated; 1,248 tests and release check passed.
+- Now: `110` project operation capability enforcement — P0; next command is `product:spec 110-project-operation-capability-enforcement` and it must finish before 103 implementation.
+- Review now: `103` atomic lifecycle state transaction — English/Korean spec ready; implementation is now blocked only by 110.
 - Parallel before next release: `111` runtime provenance and validation-mode separation — P1, does not block 103.
 - Verified intake: four Issue 102 findings accepted and mapped to exactly three non-duplicate issues in `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`.
 - Shipped: `102` project registry/resolver merged as `010eee8`; 1,225 tests and source release check passed, package source version 0.3.49.
@@ -28,6 +28,8 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 109 implementation is 
 - Later: `090` → `091` → `092`; `082` before `083`/`084` (081's review found worker prompts carry OpenAI guidance on every host).
 
 ## Recently Completed
+
+- `109-canonical-project-context-consumer-convergence`: all project-aware consumers now use one validated canonical context; the repository guard reports 22 reviewed fixed/default literals and zero runtime, unclassified, prohibited, or stale exceptions. Full discovery passed 1,248 tests and the release check is green.
 
 - `093-frontmatter-issue-schema-readiness-gate`: one shared issue parser (`scripts/project_issue_schema.py`, 2,545 lines) now feeds lifecycle, loop, doctor, validation, MCP, and dashboard; `ready` became a computed result instead of a field an issue can assert. Reviewed 2026-07-25 with verdict approve-with-conditions (both cleared) and merged as `11190b4` via PR #31. The review refuted its own fail-open hypothesis but found and fixed a real crash: non-file `*.md` sources were silently skipped, so a directory-shaped issue file raised `IsADirectoryError` out of the loop. Spun off `095`.
 - `081-gpt-5-6-model-tier-guidance`: GPT-5.6 tier examples documented against the durable `deep`/`balanced`/`fast` schema; merged as `1e5144a` via PR #32. Recovered from an uncommitted working tree where it had been marked done since 2026-07-10 and was silently absent from the 0.3.26 release. Spun off `082`, `083`, `084`.

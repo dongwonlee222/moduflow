@@ -1,6 +1,6 @@
 # Issue 109: Canonical Project Context Consumer Convergence
 
-**Status: active** — created 2026-08-21; specification approved and implementation authorized 2026-08-21.
+**Status: done** — created 2026-08-21; specification approved, implemented, reviewed, and verified 2026-08-21.
 **Priority: p0**
 **Blocked-by: `102-project-registry-and-resolver`**
 
@@ -14,7 +14,7 @@ Complete the Issue 102 follow-up by auditing every project-aware path consumer a
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`
 - Verified against: `010eee8eeec37edd6902f2dd008e7164f715e7b1`
 - Owner / decision maker: Dongwon Lee
-- Current phase: implementation complete; Tasks A1, A2, B1, B2, C1, and C2 complete; verification and review pending
+- Current phase: complete; Tasks A1, A2, B1, B2, C1, C2, and local verification/review complete
 
 ## Opportunity
 
@@ -72,8 +72,8 @@ Do not add operation capabilities, lifecycle transactions, remote writes, or fol
 
 - [x] spec → `specs/109-canonical-project-context-consumer-convergence/spec.md` + `spec.ko.md` (approved 2026-08-21)
 - [x] plan → `specs/109-canonical-project-context-consumer-convergence/plan.md` + `tasks.md`
-- [ ] execute → consumer migration, guardrails, and contract tests
-- [ ] review → create after implementation verification
+- [x] execute → consumer migration, guardrails, and contract tests
+- [x] review → `specs/109-canonical-project-context-consumer-convergence/review.md`
 
 ## Related Issues
 
@@ -97,4 +97,4 @@ Do not add operation capabilities, lifecycle transactions, remote writes, or fol
 
 ## Next Command
 
-`product:execute 109-canonical-project-context-consumer-convergence`.
+`product:spec 110-project-operation-capability-enforcement`.

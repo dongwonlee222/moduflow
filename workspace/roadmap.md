@@ -4,9 +4,8 @@
 
 ### Now
 
-- `109-canonical-project-context-consumer-convergence` — P0; specification approved and implementation plan ready. Blocks Issue 103 implementation.
 - `110-project-operation-capability-enforcement` — P0; add project status and read/write/execute/publish enforcement. Blocks Issue 103 implementation.
-- `103-atomic-lifecycle-state-transaction` — P0; English/Korean specification drafted for human review; implementation remains blocked by 109 and 110.
+- `103-atomic-lifecycle-state-transaction` — P0; English/Korean specification drafted for human review; implementation remains blocked by 110.
 
 ### Next
 
@@ -22,7 +21,11 @@
 
 ### Review Gate
 
-Issue 102's merged resolver core passed source release validation, but the 2026-08-21 external project validation confirmed four follow-up gaps. The accepted review packet maps them without duplication to Issues 109, 110, and 111. No implementation is included in this refresh.
+Issue 109 completed its twelve-module canonical-context migration plus an additional capability-routing audit fix. Full discovery passed 1,248 tests, the static guard has zero unclassified/prohibited/stale entries, and release check passed. Issue 110 is the only remaining blocker before Issue 103 implementation.
+
+### Recently Completed
+
+- `109-canonical-project-context-consumer-convergence` — canonical context operation boundary, nested/decoy consumer convergence, canonical Git pathspecs, and repository-wide regression classification guard; package version 0.3.50.
 
 ## Priority Refresh — 2026-08-19
 
