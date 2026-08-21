@@ -296,3 +296,86 @@ class TransactionContractTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "validation summary keys"):
             transaction.serialize_transaction_result(result)
+
+    def test_serializers_reject_non_scalar_envelope_fields_and_detach_outputs(self):
+        target = {
+            "role": "owning-issue",
+            "relative_path": "issues/103-atomic-lifecycle-state-transaction.md",
+            "existed": True,
+            "before_sha256": "6db7d803e74f1ffa7d8f5adc0bf95b3e15bf4c8373fffadf546227cc6c6742cb",
+            "after_sha256": "f39592393ef0859cb196a52693d2cea00fb2df784b3c04ae54aa7cadb8e562f8",
+            "after_bytes": 5,
+            "changed": True,
+            "validation_rules": ["issue-schema"],
+            "apply_order": 1,
+            "rollback_order": 1,
+        }
+        plan = {
+            "schema": "moduflow.lifecycle-transaction-plan.v1",
+            "transaction_id": "txn-123",
+            "idempotency_key": "key-123",
+            "project_id": "alpha",
+            "canonical_root": "/projects/alpha",
+            "issue_id": "103-atomic-lifecycle-state-transaction",
+            "action": "start",
+            "target_lifecycle": "active",
+            "targets": [target],
+        }
+        result = {
+            "schema": "moduflow.lifecycle-transaction.v1",
+            "transaction_id": "txn-123",
+            "idempotency_key": "key-123",
+            "status": "noop",
+            "project_id": "alpha",
+            "canonical_root": "/projects/alpha",
+            "issue_id": "103-atomic-lifecycle-state-transaction",
+            "action": "start",
+            "target_lifecycle": "active",
+            "targets": [target],
+            "projected_validation": {"valid": True, "rule_ids": ["projected-state"]},
+            "post_apply_validation": {"valid": True, "rule_ids": ["post-apply"]},
+            "failed_stage": "",
+            "error_code": "",
+            "rollback_status": "not_required",
+            "verified_target_count": 1,
+            "next_command": "product:status",
+            "actor": "dongwon",
+            "source_event": "request:42",
+            "created_at": "2030-01-01T00:00:00Z",
+            "started_at": "",
+            "completed_at": "2030-01-01T00:00:00Z",
+        }
+        plan_scalar_fields = (
+            "schema", "transaction_id", "idempotency_key", "project_id",
+            "canonical_root", "issue_id", "action", "target_lifecycle",
+        )
+        result_scalar_fields = (
+            "schema", "transaction_id", "idempotency_key", "status", "project_id",
+            "canonical_root", "issue_id", "action", "target_lifecycle", "failed_stage",
+            "error_code", "rollback_status", "verified_target_count", "next_command",
+            "actor", "source_event", "created_at", "started_at", "completed_at",
+        )
+        nested_recovery_value = {"recovery_payload": "must not escape"}
+
+        for field in plan_scalar_fields:
+            with self.subTest(envelope="plan", field=field):
+                with self.assertRaises((TypeError, ValueError)):
+                    transaction.serialize_transaction_plan(
+                        {**plan, field: nested_recovery_value}
+                    )
+        for field in result_scalar_fields:
+            with self.subTest(envelope="result", field=field):
+                with self.assertRaises((TypeError, ValueError)):
+                    transaction.serialize_transaction_result(
+                        {**result, field: nested_recovery_value}
+                    )
+
+        rendered_plan = transaction.serialize_transaction_plan(plan)
+        rendered_result = transaction.serialize_transaction_result(result)
+        target["validation_rules"].append("recovery-payload")
+        result["projected_validation"]["rule_ids"].append("recovery-payload")
+
+        self.assertEqual(rendered_plan["targets"][0]["validation_rules"], ["issue-schema"])
+        self.assertEqual(
+            rendered_result["projected_validation"]["rule_ids"], ["projected-state"]
+        )

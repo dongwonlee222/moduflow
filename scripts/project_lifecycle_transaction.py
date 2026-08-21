@@ -98,6 +98,24 @@ _TERMINAL_STATUSES = frozenset({
     "recovery_required",
 })
 _VALIDATION_SUMMARY_KEYS = frozenset({"valid", "rule_ids", "error_codes"})
+_PLAN_TEXT_FIELDS = (
+    "transaction_id",
+    "idempotency_key",
+    "project_id",
+    "canonical_root",
+    "issue_id",
+)
+_RESULT_TEXT_FIELDS = _PLAN_TEXT_FIELDS + (
+    "failed_stage",
+    "error_code",
+    "rollback_status",
+    "next_command",
+    "actor",
+    "source_event",
+    "created_at",
+    "started_at",
+    "completed_at",
+)
 
 
 @dataclass(frozen=True)
@@ -339,12 +357,39 @@ def _serialized_validation_summary(summary):
     return serialized
 
 
+def _serialized_text_fields(record, fields):
+    serialized = {}
+    for field in fields:
+        value = record[field]
+        if not isinstance(value, str):
+            raise ValueError(f"{field} must be a string")
+        serialized[field] = value
+    return serialized
+
+
+def _serialized_action_and_lifecycle(record):
+    action = record["action"]
+    if not isinstance(action, str) or action not in _ACTIONS:
+        raise ValueError("Unsupported lifecycle action")
+    target_lifecycle = record["target_lifecycle"]
+    if target_lifecycle is not None and (
+        not isinstance(target_lifecycle, str) or target_lifecycle not in _LIFECYCLES
+    ):
+        raise ValueError("Unsupported target lifecycle")
+    return {"action": action, "target_lifecycle": target_lifecycle}
+
+
 def serialize_transaction_plan(plan):
     """Return a strict, redacted plan envelope with logical paths and hashes only."""
     _assert_exact_keys(plan, _PLAN_KEYS, "transaction plan")
     if plan["schema"] != PLAN_SCHEMA:
         raise ValueError("Unsupported transaction plan schema")
-    return {**plan, "targets": _serialized_targets(plan["targets"])}
+    return {
+        "schema": PLAN_SCHEMA,
+        **_serialized_text_fields(plan, _PLAN_TEXT_FIELDS),
+        **_serialized_action_and_lifecycle(plan),
+        "targets": _serialized_targets(plan["targets"]),
+    }
 
 
 def serialize_transaction_result(result):
@@ -352,14 +397,25 @@ def serialize_transaction_result(result):
     _assert_exact_keys(result, _RESULT_KEYS, "transaction result")
     if result["schema"] != RESULT_SCHEMA:
         raise ValueError("Unsupported transaction result schema")
-    if result["status"] not in _TERMINAL_STATUSES:
+    status = result["status"]
+    if not isinstance(status, str) or status not in _TERMINAL_STATUSES:
         raise ValueError("Unsupported transaction status")
-    if result["status"] not in {"applied", "noop"} and (
+    if status not in {"applied", "noop"} and (
         not result["failed_stage"] or not result["error_code"]
     ):
         raise ValueError("Non-success transaction results require failed_stage and error_code")
+    verified_target_count = result["verified_target_count"]
+    if (
+        not isinstance(verified_target_count, int)
+        or isinstance(verified_target_count, bool)
+        or verified_target_count < 0
+    ):
+        raise ValueError("verified_target_count must be a non-negative integer")
     return {
-        **result,
+        "schema": RESULT_SCHEMA,
+        **_serialized_text_fields(result, _RESULT_TEXT_FIELDS),
+        "status": status,
+        **_serialized_action_and_lifecycle(result),
         "targets": _serialized_targets(result["targets"]),
         "projected_validation": _serialized_validation_summary(
             result["projected_validation"]
@@ -367,4 +423,5 @@ def serialize_transaction_result(result):
         "post_apply_validation": _serialized_validation_summary(
             result["post_apply_validation"]
         ),
+        "verified_target_count": verified_target_count,
     }
