@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is merged. Issue 110 implementation and every local review/release gate passed; non-draft PR #42 is open for human/CI review.
+Goal `trustworthy-execution-and-project-knowledge`: Issues 109 and 110 are merged. Issue 103 specification, implementation plan, and readiness gate are complete; execution approval is next.
 
 ## Active Goal
 
@@ -10,13 +10,13 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is merged. Issue 1
 
 ## Active Issue
 
-- `110-project-operation-capability-enforcement` (phase: review). Canonical: `issues/110-project-operation-capability-enforcement.md`.
+- `103-atomic-lifecycle-state-transaction` (phase: execute). Canonical: `issues/103-atomic-lifecycle-state-transaction.md`.
 
 ## Priority Queue — 2026-08-21
 
 - Merged: `109` canonical project-context consumer convergence — PR #41 merged as `9df5f02` after local and GitHub CI verification.
-- Now: `110` project operation capability enforcement — P0; [PR #42](https://github.com/dongwonlee222/moduflow/pull/42) is open, with 64 mutation surfaces classified at zero gaps, 1,339 full tests, source release check, and independent review passed.
-- Review now: `103` atomic lifecycle state transaction — English/Korean spec ready; implementation is now blocked only by 110.
+- Merged: `110` project operation capability enforcement — [PR #42](https://github.com/dongwonlee222/moduflow/pull/42) passed CI and merged as `5f173f4`; post-merge source release check passed.
+- Now: `103` atomic lifecycle state transaction — P0; specification and eight-task implementation plan are ready, readiness gate passed, explicit execution approval next.
 - Parallel before next release: `111` runtime provenance and validation-mode separation — P1, does not block 103.
 - Verified intake: four Issue 102 findings accepted and mapped to exactly three non-duplicate issues in `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`.
 - Shipped: `102` project registry/resolver merged as `010eee8`; 1,225 tests and source release check passed, package source version 0.3.49.
@@ -28,6 +28,8 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is merged. Issue 1
 - Later: `090` → `091` → `092`; `082` before `083`/`084` (081's review found worker prompts carry OpenAI guidance on every host).
 
 ## Recently Completed
+
+- `110-project-operation-capability-enforcement`: project resolution is separated from authorization; 64 mutation surfaces are centrally classified and guarded, 1,339 tests plus CI passed, and PR #42 merged as `5f173f4`.
 
 - `109-canonical-project-context-consumer-convergence`: all project-aware consumers now use one validated canonical context; the repository guard reports 22 reviewed fixed/default literals and zero runtime, unclassified, prohibited, or stale exceptions. Full discovery passed 1,248 tests and the release check is green.
 

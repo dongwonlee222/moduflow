@@ -1,6 +1,6 @@
 # Issue 103 명세: 원자적 라이프사이클 상태 트랜잭션
 
-**상태:** 사람 검토용 초안 — 구현은 Issues 109, 110 완료 전까지 차단한다.
+**상태:** 계획 수립 승인 — 2026-08-21 승인, Issues 109와 110 완료.
 **소유자:** Dongwon Lee
 **수정일:** 2026-08-21
 
@@ -36,8 +36,8 @@ flowchart LR
     I111[111 Runtime 진단\nP1] -. 병렬·다음 릴리스 전 .-> I103
 ```
 
-- 명세 검토는 지금 가능하다.
-- 구현은 Issue 109가 모든 참여 경로를 canonical context로 제공하고 Issue 110이 중앙 `write` capability를 강제한 뒤 시작한다.
+- 명세는 2026-08-21 계획 수립용으로 승인됐다.
+- Issue 109의 canonical path와 Issue 110의 중앙 `write` capability가 완료되어 구현 의존성은 충족됐다.
 - Issue 111은 병렬 진행할 수 있고 103 구현을 막지는 않지만 다음 플러그인 릴리스 전 필수다.
 
 ## 5. 핵심 불변식
@@ -52,6 +52,8 @@ flowchart LR
 8. 같은 의도의 재시도는 `noop`이며 Production Record를 중복 생성하지 않는다.
 9. 성공 범위는 로컬 프로젝트 산출물이며 원격 시스템까지 원자적이라고 표현하지 않는다.
 
+`start`는 이슈를 `active`로, `complete`는 `done`으로 전환한다. `update`는 이슈 상태를 유지할 수 있고, `pause`/`resume`은 이슈를 `active`로 유지하면서 loop blocker/status만 바꾼다. Production intent는 명시적 semantic version을 사용하며 version 없는 기존 record는 읽기 호환만 유지하고 이 이슈에서 마이그레이션하지 않는다.
+
 ## 6. 대상 선택
 
 항상 포함되는 대상:
@@ -64,7 +66,7 @@ flowchart LR
 
 조건부 대상:
 
-- 이슈 인덱스: 이미 존재하거나 해당 workflow가 생성을 요구할 때만;
+- 물리적 `workspace/issue-index.json`: 이미 존재하거나 workflow가 생성을 명시적으로 요구할 때만. 스키마·의존성 검증용 메모리 내 이슈 인덱스는 예상 이슈 바이트로 항상 다시 계산하며 파일 대상이 아니다;
 - 로드맵: 우선순위·의존성·릴리스 순서 등 로드맵 소유 필드가 바뀔 때만;
 - Production Record: production mutation일 때만.
 
@@ -163,4 +165,4 @@ flowchart LR
 - 여섯 종결 상태와 crash recovery 계약;
 - Issues 109/110 완료 전 구현 금지.
 
-승인과 Issues 109/110 완료 후 다음 명령은 `product:plan 103-atomic-lifecycle-state-transaction`이다.
+명세, 의존성, 계획, readiness gate가 완료됐다. 명시적 실행 승인 후 다음 명령은 `product:execute 103-atomic-lifecycle-state-transaction`이다.

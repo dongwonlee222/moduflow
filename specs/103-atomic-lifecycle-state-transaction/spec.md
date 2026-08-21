@@ -1,6 +1,6 @@
 # Issue 103 Specification: Atomic Lifecycle State Transaction
 
-**Status:** draft for human review — implementation is blocked by Issues 109 and 110.
+**Status:** approved for planning — approved 2026-08-21; Issues 109 and 110 are complete.
 **Owner:** Dongwon Lee
 **Updated:** 2026-08-21
 
@@ -38,8 +38,8 @@ flowchart LR
     I111[111 Runtime diagnostics\nP1] -. parallel; before release .-> I103
 ```
 
-- This specification may be reviewed now.
-- Implementation must not start until Issue 109 supplies canonical paths to every participating consumer and Issue 110 supplies a centrally enforced `write` capability.
+- This specification was approved for planning on 2026-08-21.
+- Issue 109 now supplies canonical paths to every participating consumer, and Issue 110 supplies a centrally enforced `write` capability; implementation dependencies are satisfied.
 - Issue 111 may proceed in parallel and does not block implementation, but it is required before the next plugin release.
 
 ## 5. Invariants
@@ -69,6 +69,8 @@ The public result uses schema `moduflow.lifecycle-transaction.v1`.
 
 The derived idempotency key binds project ID, issue ID, operation, intended semantic state, and source event identity. It must not depend on timestamps or temporary paths.
 
+Lifecycle actions map to existing schemas rather than inventing new issue states: `start` changes the issue to `active`, `complete` changes it to `done`, `update` may preserve the issue state while changing declared fields, and `pause`/`resume` keep an active issue canonical while changing loop status and blocker metadata. Production intents carry an explicit semantic version; legacy records without that field remain readable and are not migrated by this issue.
+
 ### 6.2 Target Selection
 
 Always included when configured:
@@ -81,7 +83,7 @@ Always included when configured:
 
 Conditionally included:
 
-- issue index only when it already exists or the owning workflow explicitly requires it;
+- physical `workspace/issue-index.json` only when it already exists or the owning workflow explicitly requires it; the in-memory issue index used by schema/dependency validation is always rebuilt from projected issue bytes and is not a file target;
 - roadmap only when priority, dependency, release ordering, or another roadmap-owned field changes;
 - Production Record only for a production mutation.
 
@@ -189,7 +191,7 @@ The result must be sufficient for callers to explain what happened without readi
 3. **Introduce a database/event store — rejected.** It would create a second canonical data system and exceed the Git-native product contract.
 4. **Make remote writes part of the transaction — rejected.** External APIs cannot participate in this local rollback protocol; remote work must occur after local success with its own idempotency/evidence.
 
-## 15. Acceptance Criteria
+## Acceptance Criteria
 
 - Failure injection before and after every replace/journal boundary proves unchanged state or byte-identical rollback.
 - Crash-restart tests recover every incomplete phase or block with `recovery_required`; silent continuation is impossible.
@@ -223,4 +225,4 @@ Reviewers must approve:
 - the six terminal statuses and crash-recovery contract;
 - the dependency gate requiring Issues 109 and 110 before implementation.
 
-After approval and completion of Issues 109 and 110, the next workflow command is `product:plan 103-atomic-lifecycle-state-transaction`.
+The specification, dependencies, plan, and readiness gate are complete. The next workflow command is `product:execute 103-atomic-lifecycle-state-transaction` after explicit execution approval.
