@@ -14,7 +14,7 @@ Separate project discovery from operation authorization by returning explicit pr
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`
 - Verified against: `010eee8eeec37edd6902f2dd008e7164f715e7b1`
 - Owner / decision maker: Dongwon Lee
-- Current phase: review-ready — Streams A–C and all local D1 gates complete; non-draft PR publication pending
+- Current phase: PR review — Streams A–D complete; non-draft PR #42 is open and awaiting human/CI review
 
 ## Opportunity
 
@@ -96,7 +96,8 @@ Do not interpret resolver success as write approval, weaken downstream safety ga
 - Plan: `specs/110-project-operation-capability-enforcement/plan.md`
 - Tasks: `specs/110-project-operation-capability-enforcement/tasks.md`
 - Implementation readiness: `specs/110-project-operation-capability-enforcement/implementation-readiness.json`
+- Pull request: `https://github.com/dongwonlee222/moduflow/pull/42`
 
 ## Next Command
 
-`product:pr 110-project-operation-capability-enforcement` — publish the verified branch as a non-draft PR.
+`product:review 110-project-operation-capability-enforcement` — inspect PR #42 checks and human review; merge remains a separate approval.

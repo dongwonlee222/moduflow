@@ -8,13 +8,14 @@
 | --- | --- |
 | Branch | `codex/110-project-operation-capability-enforcement` |
 | Base | `origin/main` at `9df5f02` |
+| Pull request | [#42](https://github.com/dongwonlee222/moduflow/pull/42), non-draft |
 | Package version | `0.3.52` |
 | Focused verification | 572/572 passed |
 | Full discovery | 1,339/1,339 passed in 337.459 seconds |
 | Mutation audit | 64 classified; 0 unclassified, unguarded, stale, duplicate, or configuration errors |
 | Independent review | No open Critical or Important findings |
 | Source release check | `valid: true`, `errors: []` |
-| Next command | `product:pr 110-project-operation-capability-enforcement` |
+| Next command | `product:review 110-project-operation-capability-enforcement` |
 
 ## Delivered
 
@@ -48,4 +49,4 @@
 
 ## Next Command
 
-Commit D1 evidence and publish a non-draft PR. Merge remains a separate explicit human decision.
+Inspect PR #42 checks and complete human review. Merge remains a separate explicit human decision.

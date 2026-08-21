@@ -3,8 +3,8 @@
   "phase": "review",
   "active_goal": "trustworthy-execution-and-project-knowledge",
   "active_issue": "110-project-operation-capability-enforcement",
-  "last_command": "product:review 110-project-operation-capability-enforcement",
-  "next_command": "product:pr 110-project-operation-capability-enforcement",
+  "last_command": "product:pr 110-project-operation-capability-enforcement",
+  "next_command": "product:review 110-project-operation-capability-enforcement",
   "blockers": [],
   "updated_at": "2026-08-21"
 }

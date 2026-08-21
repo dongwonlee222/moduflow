@@ -378,7 +378,7 @@ self.assertEqual(runner.calls, [])
 - [x] **Step 6: Generate the review handoff with `python3 scripts/project_execution.py . --issue-id 110-project-operation-capability-enforcement --review-handoff --write`, review every acceptance criterion, and record findings in `review.md` and evidence in `status.md`.**
 - [x] **Step 7: Run `python3 scripts/release_check.py .` fresh; require valid true, audit zero gaps, version `0.3.52`, and no P0/P1/P2 review finding.**
 - [x] **Step 8: Update issue/tasks/dashboard/roadmap/state to review-ready and commit with `docs(110): complete capability enforcement review`.**
-- [ ] **Step 9: Push and open one non-draft GitHub PR only after all local gates pass. Merge remains a separate explicit human decision.**
+- [x] **Step 9: Push and open one non-draft GitHub PR only after all local gates pass. Merge remains a separate explicit human decision.**
 
 ## Execution Order and Rollback
 

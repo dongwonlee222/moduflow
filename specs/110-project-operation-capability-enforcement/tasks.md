@@ -2,7 +2,7 @@
 
 Issue: `110-project-operation-capability-enforcement`
 Plan: `specs/110-project-operation-capability-enforcement/plan.md`
-Status: review-ready — Streams A–C and all local D1 gates complete; non-draft PR publication pending
+Status: PR review — Streams A–D complete; non-draft PR #42 is open
 
 ## Stream A — Policy, Resolver, and Audit
 
@@ -23,7 +23,7 @@ Status: review-ready — Streams A–C and all local D1 gates complete; non-draf
 
 ## Stream D — Completion
 
-- [ ] **D1** Update distribution/docs, run focused/full/release gates, produce review evidence, and publish a review-ready PR. | Depends: C2
+- [x] **D1** Update distribution/docs, run focused/full/release gates, produce review evidence, and publish a review-ready PR. | Depends: C2
 
 ## Required Gates
 
@@ -38,4 +38,4 @@ Status: review-ready — Streams A–C and all local D1 gates complete; non-draf
 
 ## Next Command
 
-`product:pr 110-project-operation-capability-enforcement` — publish the verified branch as a non-draft PR.
+`product:review 110-project-operation-capability-enforcement` — inspect PR #42 checks and human review before a separate merge decision.

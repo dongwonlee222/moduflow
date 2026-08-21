@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is merged. Issue 110 implementation and every local review/release gate passed; non-draft PR publication is next.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is merged. Issue 110 implementation and every local review/release gate passed; non-draft PR #42 is open for human/CI review.
 
 ## Active Goal
 
@@ -15,7 +15,7 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 109 is merged. Issue 1
 ## Priority Queue — 2026-08-21
 
 - Merged: `109` canonical project-context consumer convergence — PR #41 merged as `9df5f02` after local and GitHub CI verification.
-- Now: `110` project operation capability enforcement — P0; 64 mutation surfaces are classified with every gap at zero, 1,339 full tests and source release check passed, and independent review is ready.
+- Now: `110` project operation capability enforcement — P0; [PR #42](https://github.com/dongwonlee222/moduflow/pull/42) is open, with 64 mutation surfaces classified at zero gaps, 1,339 full tests, source release check, and independent review passed.
 - Review now: `103` atomic lifecycle state transaction — English/Korean spec ready; implementation is now blocked only by 110.
 - Parallel before next release: `111` runtime provenance and validation-mode separation — P1, does not block 103.
 - Verified intake: four Issue 102 findings accepted and mapped to exactly three non-duplicate issues in `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`.

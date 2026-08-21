@@ -6,7 +6,7 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-110-project-operation-capability-enforcement.html`
-- PR/로컬 마커: `local:110-project-operation-capability-enforcement:draft-pr-ready`
+- PR/로컬 마커: `https://github.com/dongwonlee222/moduflow/pull/42`
 - 브랜치: `codex/110-project-operation-capability-enforcement`
 - 리뷰어: `Reviewer`
 

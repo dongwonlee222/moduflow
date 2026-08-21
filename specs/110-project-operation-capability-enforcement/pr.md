@@ -8,9 +8,9 @@ Use a Draft PR or a local PR-ready marker early, then attach review, verificatio
 ## Draft PR
 
 - Branch: `codex/110-project-operation-capability-enforcement`
-- PR: `local:110-project-operation-capability-enforcement:draft-pr-ready`
+- PR: `https://github.com/dongwonlee222/moduflow/pull/42`
 - Reviewer: `Reviewer`
-- Fallback reason: GitHub Draft PR URL is not recorded yet. This local PR-ready marker preserves review state until GitHub sync creates or mirrors the PR.
+- Fallback reason: GitHub Draft PR URL is available or expected to be supplied by the workflow.
 - Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
 - Commit mode: `local-git-write`
@@ -22,7 +22,7 @@ python3 scripts/project_pr.py . --issue-id 110-project-operation-capability-enfo
 ```
 
 ```bash
-python3 scripts/project_workflow.py . --pr-state --issue-id 110-project-operation-capability-enforcement --pr "local:110-project-operation-capability-enforcement:draft-pr-ready" --reviewer "Reviewer"
+python3 scripts/project_workflow.py . --pr-state --issue-id 110-project-operation-capability-enforcement --pr "https://github.com/dongwonlee222/moduflow/pull/42" --reviewer "Reviewer"
 ```
 
 - Continue review: `product:review 110-project-operation-capability-enforcement`
@@ -91,7 +91,7 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 110-project-operatio
 
 ## Source Snapshot
 
-- Issue bytes: 5130
+- Issue bytes: 5225
 - Spec bytes: 17086
-- Status bytes: 3243
+- Status bytes: 3336
 - Review bytes: 4038
