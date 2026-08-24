@@ -8,12 +8,14 @@ top of this contract in later Issue 103 tasks.
 
 from dataclasses import dataclass, field, replace
 from datetime import date
+import errno
 import hashlib
 import json
 from collections.abc import Mapping
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
+import stat
 from types import MappingProxyType
 
 import project_issue_schema
@@ -163,6 +165,28 @@ class PlannedTarget:
     rollback_order: int
     _before_bytes: bytes = field(repr=False)
     _after_bytes: bytes = field(repr=False)
+
+    def __post_init__(self):
+        if not isinstance(self.validation_rules, (list, tuple)):
+            raise TypeError("validation_rules must be a list or tuple")
+        if not isinstance(self._before_bytes, (bytes, bytearray, memoryview)) or not isinstance(
+            self._after_bytes,
+            (bytes, bytearray, memoryview),
+        ):
+            raise TypeError("private target content must be bytes-like")
+        try:
+            validation_rules = tuple(self.validation_rules)
+            before_bytes = bytes(self._before_bytes)
+            after_bytes = bytes(self._after_bytes)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(
+                "validation_rules and private target content must be immutable values"
+            ) from exc
+        if not all(isinstance(rule, str) for rule in validation_rules):
+            raise TypeError("validation_rules must contain strings")
+        object.__setattr__(self, "validation_rules", validation_rules)
+        object.__setattr__(self, "_before_bytes", before_bytes)
+        object.__setattr__(self, "_after_bytes", after_bytes)
 
     def to_public_dict(self):
         return {
@@ -559,6 +583,9 @@ def _safe_planning_child(root, context, role, *parts):
     role_path = Path(relative_root)
     if role_path.is_absolute() or any(part == ".." for part in role_path.parts):
         raise LifecyclePlanError("PLAN_PATH_ESCAPE", role=role)
+    expected_role_path = (root / role_path).resolve(strict=False)
+    if configured_path.resolve(strict=False) != expected_role_path:
+        raise LifecyclePlanError("PLAN_CONTEXT_INVALID", role=role)
     clean_parts = []
     for part in parts:
         child = Path(str(part))
@@ -573,54 +600,159 @@ def _safe_planning_child(root, context, role, *parts):
     return candidate
 
 
-def _read_planning_source(path, root, role, *, required):
+def _missing_planning_source(role, relative_path, required):
+    if required:
+        raise LifecyclePlanError(
+            "PLAN_TARGET_MISSING",
+            role=role,
+            relative_path=relative_path,
+        )
+    return False, b""
+
+
+def _descriptor_open_error(
+    exc,
+    parent_fd,
+    name,
+    role,
+    relative_path,
+    required,
+    *,
+    expect_directory,
+):
+    if exc.errno == errno.ENOENT:
+        return _missing_planning_source(role, relative_path, required)
+    try:
+        metadata = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except OSError:
+        metadata = None
+    if metadata is not None and stat.S_ISLNK(metadata.st_mode):
+        raise LifecyclePlanError(
+            "PLAN_TARGET_SYMLINK",
+            role=role,
+            relative_path=relative_path,
+        ) from exc
+    if metadata is not None and (
+        (expect_directory and not stat.S_ISDIR(metadata.st_mode))
+        or (not expect_directory and not stat.S_ISREG(metadata.st_mode))
+    ):
+        raise LifecyclePlanError(
+            "PLAN_TARGET_NOT_REGULAR",
+            role=role,
+            relative_path=relative_path,
+        ) from exc
+    raise LifecyclePlanError(
+        "PLAN_TARGET_UNREADABLE",
+        role=role,
+        relative_path=relative_path,
+    ) from exc
+
+
+def _read_regular_file_no_follow(path, root, role, *, required):
+    """Read one project-relative regular file through no-follow descriptors."""
     path = Path(path)
     try:
         relative_path = path.relative_to(root).as_posix()
     except ValueError as exc:
         raise LifecyclePlanError("PLAN_PATH_ESCAPE", role=role) from exc
 
-    current = root
-    for part in Path(relative_path).parts:
-        current = current / part
+    parts = Path(relative_path).parts
+    open_fds = []
+    read_flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    no_follow = getattr(os, "O_NOFOLLOW", 0)
+    directory_flags = read_flags | no_follow | getattr(os, "O_DIRECTORY", 0)
+    try:
         try:
-            if current.is_symlink():
-                raise LifecyclePlanError(
-                    "PLAN_TARGET_SYMLINK",
-                    role=role,
-                    relative_path=relative_path,
-                )
+            parent_fd = os.open(root, directory_flags)
         except OSError as exc:
             raise LifecyclePlanError(
                 "PLAN_TARGET_UNREADABLE",
                 role=role,
                 relative_path=relative_path,
             ) from exc
+        open_fds.append(parent_fd)
 
-    if not os.path.lexists(path):
-        if required:
+        for part in parts[:-1]:
+            try:
+                child_fd = os.open(
+                    part,
+                    directory_flags,
+                    dir_fd=parent_fd,
+                )
+            except OSError as exc:
+                return _descriptor_open_error(
+                    exc,
+                    parent_fd,
+                    part,
+                    role,
+                    relative_path,
+                    required,
+                    expect_directory=True,
+                )
+            open_fds.append(child_fd)
+            parent_fd = child_fd
+
+        try:
+            file_fd = os.open(
+                parts[-1],
+                read_flags | no_follow,
+                dir_fd=parent_fd,
+            )
+        except OSError as exc:
+            return _descriptor_open_error(
+                exc,
+                parent_fd,
+                parts[-1],
+                role,
+                relative_path,
+                required,
+                expect_directory=False,
+            )
+        open_fds.append(file_fd)
+
+        try:
+            metadata = os.fstat(file_fd)
+        except OSError as exc:
             raise LifecyclePlanError(
-                "PLAN_TARGET_MISSING",
+                "PLAN_TARGET_UNREADABLE",
                 role=role,
                 relative_path=relative_path,
-            )
-        return False, b""
-    try:
-        if not path.is_file():
+            ) from exc
+        if not stat.S_ISREG(metadata.st_mode):
             raise LifecyclePlanError(
                 "PLAN_TARGET_NOT_REGULAR",
                 role=role,
                 relative_path=relative_path,
             )
-        return True, path.read_bytes()
-    except LifecyclePlanError:
-        raise
-    except OSError as exc:
-        raise LifecyclePlanError(
-            "PLAN_TARGET_UNREADABLE",
-            role=role,
-            relative_path=relative_path,
-        ) from exc
+        chunks = []
+        while True:
+            try:
+                chunk = os.read(file_fd, 64 * 1024)
+            except OSError as exc:
+                raise LifecyclePlanError(
+                    "PLAN_TARGET_UNREADABLE",
+                    role=role,
+                    relative_path=relative_path,
+                ) from exc
+            if not chunk:
+                break
+            chunks.append(chunk)
+        return True, b"".join(chunks)
+    finally:
+        for descriptor in reversed(open_fds):
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+
+def _read_planning_source(path, root, role, *, required):
+    return _read_regular_file_no_follow(
+        path,
+        root,
+        role,
+        required=required,
+    )
 
 
 def _project_relative(root, path):
@@ -815,10 +947,11 @@ def plan_lifecycle_transaction(
     issue_index_path = _safe_planning_child(
         root, context, "workspace", "issue-index.json"
     )
-    if os.path.lexists(issue_index_path) or normalized.require_issue_index:
-        existed, before = _read_planning_source(
-            issue_index_path, root, "issue-index", required=False
-        )
+    issue_index_existed, issue_index_before = _read_planning_source(
+        issue_index_path, root, "issue-index", required=False
+    )
+    if issue_index_existed or normalized.require_issue_index:
+        existed, before = issue_index_existed, issue_index_before
         index_records = _render_planning_target(
             "issue-index",
             _project_relative(root, issue_index_path),

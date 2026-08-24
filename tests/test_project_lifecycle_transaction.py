@@ -392,6 +392,9 @@ class TransactionContractTests(unittest.TestCase):
             "relative_paths": {"workspace": "workspace"},
             "warnings": ["keep"],
         }
+        validation_rules = ["issue-schema"]
+        before_bytes = bytearray(b"private before bytes")
+        after_bytes = bytearray(b"private after bytes")
         target = transaction.PlannedTarget(
             role="issue",
             relative_path="issues/BIZ-103.md",
@@ -400,11 +403,11 @@ class TransactionContractTests(unittest.TestCase):
             after_sha256="b" * 64,
             after_size=42,
             changed=True,
-            validation_rules=("issue-schema",),
+            validation_rules=validation_rules,
             apply_order=0,
             rollback_order=0,
-            _before_bytes=b"private before bytes",
-            _after_bytes=b"private after bytes",
+            _before_bytes=before_bytes,
+            _after_bytes=after_bytes,
         )
         plan = transaction.LifecycleTransactionPlan(
             schema=transaction.PLAN_SCHEMA,
@@ -422,9 +425,15 @@ class TransactionContractTests(unittest.TestCase):
         preview = plan.to_public_dict()
         context["relative_paths"]["workspace"] = "poison"
         context["warnings"].append("poison")
+        validation_rules.append("poison")
+        before_bytes[:] = b"poison"
+        after_bytes[:] = b"poison"
 
         self.assertEqual(plan._project_context["relative_paths"]["workspace"], "workspace")
         self.assertEqual(plan._project_context["warnings"], ("keep",))
+        self.assertEqual(target.validation_rules, ("issue-schema",))
+        self.assertEqual(target._before_bytes, b"private before bytes")
+        self.assertEqual(target._after_bytes, b"private after bytes")
         self.assertEqual(preview["targets"][0]["after_bytes"], 42)
         self.assertNotIn("_before_bytes", preview["targets"][0])
         self.assertNotIn("_after_bytes", preview["targets"][0])
@@ -731,13 +740,12 @@ class TransactionPlanningTests(unittest.TestCase):
                 for path in root.rglob("*")
                 if path.is_file()
             }
-            original_read_bytes = Path.read_bytes
+            original_read = transaction._read_regular_file_no_follow
             with mock.patch.object(
-                Path,
-                "read_bytes",
-                autospec=True,
-                side_effect=lambda path: original_read_bytes(path),
-            ) as read_bytes:
+                transaction,
+                "_read_regular_file_no_follow",
+                wraps=original_read,
+            ) as read_source:
                 plan = transaction.plan_lifecycle_transaction(
                     root,
                     self.intent(
@@ -754,7 +762,7 @@ class TransactionPlanningTests(unittest.TestCase):
                 if target.existed
             }
             counts = {}
-            for call in read_bytes.call_args_list:
+            for call in read_source.call_args_list:
                 path = str(call.args[0])
                 counts[path] = counts.get(path, 0) + 1
             self.assertEqual(
@@ -774,10 +782,12 @@ class TransactionPlanningTests(unittest.TestCase):
     def test_planner_failures_use_stable_codes_without_absolute_paths_or_payloads(self):
         cases = (
             ("context", "PLAN_CONTEXT_INVALID"),
+            ("context-mismatch", "PLAN_CONTEXT_INVALID"),
             ("missing", "PLAN_TARGET_MISSING"),
             ("unreadable", "PLAN_TARGET_UNREADABLE"),
             ("not-regular", "PLAN_TARGET_NOT_REGULAR"),
             ("symlink", "PLAN_TARGET_SYMLINK"),
+            ("parent-symlink", "PLAN_TARGET_SYMLINK"),
             ("escape", "PLAN_PATH_ESCAPE"),
             ("render", "PLAN_RENDER_INVALID"),
         )
@@ -788,21 +798,15 @@ class TransactionPlanningTests(unittest.TestCase):
                 patcher = None
                 if case == "context":
                     context["status"] = "unresolved"
+                elif case == "context-mismatch":
+                    context["relative_paths"]["issues"] = "shadow/issues"
                 elif case == "missing":
                     (root / ".moduflow" / "state.json").unlink()
                 elif case == "unreadable":
-                    original_read_bytes = Path.read_bytes
-
-                    def fail_state(path):
-                        if path == root.resolve() / ".moduflow" / "state.json":
-                            raise PermissionError("private operating-system detail")
-                        return original_read_bytes(path)
-
                     patcher = mock.patch.object(
-                        Path,
-                        "read_bytes",
-                        autospec=True,
-                        side_effect=fail_state,
+                        transaction.os,
+                        "read",
+                        side_effect=PermissionError("private operating-system detail"),
                     )
                 elif case == "not-regular":
                     target = root / "workspace" / "dashboard.md"
@@ -812,6 +816,11 @@ class TransactionPlanningTests(unittest.TestCase):
                     target = root / "workspace" / "loop-state.json"
                     target.unlink()
                     target.symlink_to(root / "workspace" / "dashboard.md")
+                elif case == "parent-symlink":
+                    workspace = root / "workspace"
+                    real_workspace = root / "real-workspace"
+                    workspace.rename(real_workspace)
+                    workspace.symlink_to(real_workspace, target_is_directory=True)
                 elif case == "escape":
                     context["paths"]["issues"] = str(root.parent / "outside-issues")
                 else:
@@ -837,3 +846,23 @@ class TransactionPlanningTests(unittest.TestCase):
                 self.assertEqual(raised.exception.code, expected_code)
                 self.assertNotIn(str(root), str(raised.exception))
                 self.assertNotIn("private", str(raised.exception))
+
+    def test_planner_reads_without_path_based_symlink_or_file_rechecks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            forbidden = AssertionError("path-based target read is forbidden")
+
+            with (
+                mock.patch.object(Path, "is_symlink", side_effect=forbidden),
+                mock.patch.object(Path, "is_file", side_effect=forbidden),
+                mock.patch.object(Path, "read_bytes", side_effect=forbidden),
+            ):
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+
+            self.assertEqual(plan.targets[0].role, "issue")

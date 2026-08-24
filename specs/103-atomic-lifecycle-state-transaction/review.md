@@ -34,7 +34,7 @@ Human reviews this plan PR. After explicit execution approval, run `product:exec
 
 # A2 Read-only Planner Implementation Review — 2026-08-24
 
-**Verdict: changes-requested** — commit `5b54914` passed its focused suites; A2.5a resolved two projection defects, while three planner-boundary defects still block A3 projected validation.
+**Verdict: pass** — A2.5a corrected the two projection defects and A2.5b closed all three planner-boundary findings with RED/GREEN regression coverage. A3 projected validation may proceed as a separately approved slice.
 
 ## Verification Evidence
 
@@ -45,15 +45,18 @@ Human reviews this plan PR. After explicit execution approval, run `product:exec
 - Direct context-mismatch reproduction → planner read `shadow/issues/BIZ-103.md` while `context["paths"]["issues"]` still identified `issues/`.
 - Direct immutability reproduction → mutating the input `validation_rules` list changed the frozen `PlannedTarget` value.
 - A2.5a regression → 161 transaction/lifecycle/loop/issue-schema tests passed; spec consistency reported zero findings.
+- A2.5b RED → context-map mismatch, descriptor-only reading, unreadable descriptor, and deep target immutability regressions failed for the intended reasons.
+- A2.5b GREEN → 4 focused regressions passed; 162 transaction/lifecycle/loop/issue-schema tests passed.
+- `git diff --check` → passed.
 
 ## Blocking Findings
 
 1. **Resolved in A2.5a — physical issue-index data loss.** The planner now normalizes every canonical issue from one in-memory read, overlays the owning projected issue bytes, and renders the complete physical index.
 2. **Resolved in A2.5a — backlog-preserving actions activated execution.** State/dashboard/loop projections now create an execution cursor only for projected `active`; `update`, `reconcile`, and `production-version` preserve backlog selection behavior.
-3. **P1 — resolved context maps can diverge.** `_safe_planning_child()` independently checks `paths[role]` containment and then reads from `relative_paths[role]` without requiring them to identify the same canonical role root. Reject mismatched context maps with `PLAN_CONTEXT_INVALID` before selecting a target.
-4. **P1 — no-follow check has a race window.** `_read_planning_source()` checks each component with `is_symlink()` and later reopens the pathname with `read_bytes()`. A component can be replaced by a symlink between those calls. Use descriptor-based no-follow reads and verify the opened file is regular before consuming bytes.
-5. **P2 — `PlannedTarget` is not deeply immutable.** Frozen dataclass assignment is blocked, but caller-supplied lists or mutable byte containers remain aliased. Validate/detach `validation_rules`, `_before_bytes`, and `_after_bytes` in `__post_init__`.
+3. **Resolved in A2.5b — resolved context maps could diverge.** `_safe_planning_child()` now requires `paths[role]` and `relative_paths[role]` to identify the same role root and returns `PLAN_CONTEXT_INVALID` before target selection when they differ.
+4. **Resolved in A2.5b — no-follow check had a race window.** Planner sources are now opened component-by-component with no-follow descriptors, verified as regular through the opened descriptor, and consumed with descriptor reads instead of reopening a checked pathname.
+5. **Resolved in A2.5b — `PlannedTarget` was not deeply immutable.** `__post_init__()` now detaches validation rules and private byte containers into immutable tuple/bytes values.
 
 ## Gate
 
-A3 projected validation remains blocked until findings 3–5 above have RED/GREEN regression coverage and the A2 review verdict is updated to `pass`.
+A2 is complete and no longer blocks A3. Projected validation, staging, apply, and rollback remain outside this reviewed planner boundary and require their own approved implementation slice.
