@@ -1,4 +1,5 @@
 import json
+import os
 import stat
 import sys
 import tempfile
@@ -1085,7 +1086,8 @@ class TransactionPlanningTests(unittest.TestCase):
                     stat.S_IMODE(projected_root.stat().st_mode),
                     0o700,
                 )
-                self.assertEqual(list(projected_root.iterdir()), [])
+                self.assertTrue((projected_root / ".moduflow/config.json").is_file())
+                self.assertTrue((projected_root / "issues/BIZ-103.md").is_file())
 
             self.assertFalse(projected_root.exists())
             after = {
@@ -1094,6 +1096,148 @@ class TransactionPlanningTests(unittest.TestCase):
                 if path.is_file()
             }
             self.assertEqual(after, before)
+
+    def test_private_projected_root_copies_only_configured_snapshot_privately(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, nested=True)
+            selected = {
+                "product/specs/BIZ-103/spec.md": b"# Spec\n",
+                "product/knowledge/index.md": b"# Knowledge\n",
+                "product/memory/notes/note.md": b"# Note\n",
+                "product/memory/production-records/record.md": b"# Record\n",
+                "product/playbooks/runbook.md": b"# Runbook\n",
+                "product/workflow/review-gates.md": b"# Gates\n",
+                ".moduflow/project-profile.md": b"# Profile\n",
+                ".moduflow/environments.json": b"{}\n",
+                ".moduflow/integrations.json": b"{}\n",
+                ".moduflow/humans.json": b"[]\n",
+            }
+            for relative, payload in selected.items():
+                target = root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(payload)
+            unrelated = {
+                "README.md": b"unrelated root file\n",
+                ".git/ignored": b"unrelated git file\n",
+            }
+            for relative, payload in unrelated.items():
+                target = root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(payload)
+            before = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+
+            with transaction._private_projected_root(plan) as projected_root:
+                expected = {
+                    **selected,
+                    ".moduflow/config.json": (root / ".moduflow/config.json").read_bytes(),
+                    ".moduflow/state.json": (root / ".moduflow/state.json").read_bytes(),
+                    "product/issues/BIZ-103.md": (
+                        root / "product/issues/BIZ-103.md"
+                    ).read_bytes(),
+                    "product/workspace/dashboard.md": (
+                        root / "product/workspace/dashboard.md"
+                    ).read_bytes(),
+                }
+                for relative, payload in expected.items():
+                    self.assertTrue(
+                        (projected_root / relative).is_file(),
+                        f"missing projected snapshot file: {relative}",
+                    )
+                    self.assertEqual((projected_root / relative).read_bytes(), payload)
+                for relative in (
+                    "README.md",
+                    ".git/ignored",
+                    "issues/BIZ-103.md",
+                    "workspace/dashboard.md",
+                ):
+                    self.assertFalse((projected_root / relative).exists())
+                for path in projected_root.rglob("*"):
+                    expected_mode = 0o700 if path.is_dir() else 0o600
+                    self.assertEqual(stat.S_IMODE(path.stat().st_mode), expected_mode)
+
+            after = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            self.assertEqual(after, before)
+
+    def test_projected_copy_roots_prune_nested_canonical_roles(self):
+        context = {
+            "relative_paths": {
+                "issues": "product/issues",
+                "specs": "product/specs",
+                "workspace": "product/workspace",
+                "knowledge": "product/knowledge",
+                "memory": "product/memory",
+                "production_records": "product/memory/production-records",
+                "playbooks": "product/playbooks",
+                "workflow": "product/workflow",
+            }
+        }
+
+        copy_roots = getattr(transaction, "_projected_copy_roots", None)
+        self.assertIsNotNone(copy_roots)
+        self.assertEqual(
+            copy_roots(context),
+            (
+                ("product", "issues"),
+                ("product", "knowledge"),
+                ("product", "memory"),
+                ("product", "playbooks"),
+                ("product", "specs"),
+                ("product", "workflow"),
+                ("product", "workspace"),
+            ),
+        )
+
+    def test_private_projected_root_rejects_unsafe_source_nodes_and_cleans_up(self):
+        for node_kind in ("symlink", "fifo"):
+            with self.subTest(node_kind=node_kind), tempfile.TemporaryDirectory() as tmp:
+                parent = Path(tmp)
+                root = parent / "project"
+                root.mkdir()
+                context = self.scaffold(root)
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                unsafe = root / "issues" / "unsafe-node"
+                external = parent / "external-private-payload"
+                external.write_bytes(b"must not be copied\n")
+                if node_kind == "symlink":
+                    unsafe.symlink_to(external)
+                else:
+                    os.mkfifo(unsafe)
+
+                with self.assertRaises(
+                    transaction.LifecycleProjectedValidationError
+                ) as raised:
+                    with transaction._private_projected_root(plan):
+                        self.fail("unsafe projected source must not be yielded")
+
+                self.assertEqual(raised.exception.code, "PROJECTED_SOURCE_UNSAFE")
+                self.assertEqual(str(raised.exception), "PROJECTED_SOURCE_UNSAFE")
+                self.assertEqual(external.read_bytes(), b"must not be copied\n")
+                self.assertFalse(
+                    any(
+                        "-projected-" in path.name
+                        for path in (root / ".moduflow").iterdir()
+                    )
+                )
 
     def test_private_projected_root_cleans_up_after_body_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1108,6 +1252,12 @@ class TransactionPlanningTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "injected body failure"):
                 with transaction._private_projected_root(plan) as projected_root:
+                    self.assertTrue(
+                        (projected_root / ".moduflow/config.json").is_file()
+                    )
+                    self.assertTrue(
+                        (projected_root / "issues/BIZ-103.md").is_file()
+                    )
                     raise RuntimeError("injected body failure")
 
             self.assertFalse(projected_root.exists())

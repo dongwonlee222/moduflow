@@ -121,6 +121,15 @@ _PROJECTED_VALIDATION_RULE_IDS = (
     "lifecycle-consensus",
     "production-records",
 )
+_PROJECTED_CONTROL_FILES = (
+    "config.json",
+    "state.json",
+    "project-profile.md",
+    "environments.json",
+    "integrations.json",
+    "humans.json",
+)
+_PROJECTED_COPY_BUFFER_SIZE = 64 * 1024
 _PLAN_TEXT_FIELDS = (
     "transaction_id",
     "idempotency_key",
@@ -581,9 +590,288 @@ def _writable_projected_plan_context(plan):
     return root, context
 
 
+def _projected_copy_roots(context):
+    relative_paths = (
+        context.get("relative_paths") if isinstance(context, Mapping) else None
+    )
+    if not isinstance(relative_paths, Mapping):
+        raise LifecycleProjectedValidationError("PROJECTED_CONTEXT_INVALID")
+    candidates = set()
+    try:
+        for role in project_registry.CANONICAL_PATH_DEFAULTS:
+            relative = relative_paths[role]
+            if (
+                not isinstance(relative, str)
+                or not relative
+                or relative == "."
+                or "\\" in relative
+                or relative.startswith("/")
+                or PureWindowsPath(relative).is_absolute()
+            ):
+                raise ValueError("unsafe projected role root")
+            parts = PurePosixPath(relative).parts
+            if (
+                not parts
+                or parts[0] in {".git", ".moduflow"}
+                or any(part in {"", ".", ".."} for part in parts)
+            ):
+                raise ValueError("unsafe projected role root")
+            candidates.add(tuple(parts))
+    except (KeyError, TypeError, ValueError) as exc:
+        raise LifecycleProjectedValidationError(
+            "PROJECTED_CONTEXT_INVALID"
+        ) from exc
+
+    selected = []
+    for candidate in sorted(candidates, key=lambda parts: (len(parts), parts)):
+        if any(candidate[:len(parent)] == parent for parent in selected):
+            continue
+        selected.append(candidate)
+    return tuple(sorted(selected))
+
+
+def _projected_source_metadata(parent_fd, name, *, missing_ok=False):
+    try:
+        return os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        if missing_ok:
+            return None
+        raise LifecycleProjectedValidationError("PROJECTED_COPY_FAILED")
+    except OSError as exc:
+        raise LifecycleProjectedValidationError("PROJECTED_COPY_FAILED") from exc
+
+
+def _open_projected_source_directory(root_fd, parts):
+    current_fd = os.dup(root_fd)
+    try:
+        for part in parts:
+            metadata = _projected_source_metadata(
+                current_fd,
+                part,
+                missing_ok=True,
+            )
+            if metadata is None:
+                os.close(current_fd)
+                return None
+            if not stat.S_ISDIR(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
+                raise LifecycleProjectedValidationError("PROJECTED_SOURCE_UNSAFE")
+            next_fd = os.open(
+                part,
+                os.O_RDONLY
+                | getattr(os, "O_CLOEXEC", 0)
+                | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_NOFOLLOW", 0),
+                dir_fd=current_fd,
+            )
+            os.close(current_fd)
+            current_fd = next_fd
+        return current_fd
+    except LifecycleProjectedValidationError:
+        try:
+            os.close(current_fd)
+        except OSError:
+            pass
+        raise
+    except OSError as exc:
+        try:
+            os.close(current_fd)
+        except OSError:
+            pass
+        raise LifecycleProjectedValidationError("PROJECTED_COPY_FAILED") from exc
+
+
+def _open_projected_destination_directory(root_fd, parts):
+    current_fd = os.dup(root_fd)
+    try:
+        for part in parts:
+            try:
+                os.mkdir(part, mode=0o700, dir_fd=current_fd)
+            except FileExistsError:
+                pass
+            metadata = _projected_source_metadata(current_fd, part)
+            if not stat.S_ISDIR(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
+                raise LifecycleProjectedValidationError("PROJECTED_COPY_FAILED")
+            next_fd = os.open(
+                part,
+                os.O_RDONLY
+                | getattr(os, "O_CLOEXEC", 0)
+                | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_NOFOLLOW", 0),
+                dir_fd=current_fd,
+            )
+            os.fchmod(next_fd, 0o700)
+            os.close(current_fd)
+            current_fd = next_fd
+        return current_fd
+    except LifecycleProjectedValidationError:
+        try:
+            os.close(current_fd)
+        except OSError:
+            pass
+        raise
+    except OSError as exc:
+        try:
+            os.close(current_fd)
+        except OSError:
+            pass
+        raise LifecycleProjectedValidationError("PROJECTED_COPY_FAILED") from exc
+
+
+def _copy_projected_regular_file(source_parent_fd, destination_parent_fd, name):
+    source_fd = None
+    destination_fd = None
+    try:
+        source_fd = os.open(
+            name,
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            dir_fd=source_parent_fd,
+        )
+        if not stat.S_ISREG(os.fstat(source_fd).st_mode):
+            raise LifecycleProjectedValidationError("PROJECTED_SOURCE_UNSAFE")
+        destination_fd = os.open(
+            name,
+            os.O_WRONLY
+            | os.O_CREAT
+            | os.O_EXCL
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            mode=0o600,
+            dir_fd=destination_parent_fd,
+        )
+        os.fchmod(destination_fd, 0o600)
+        while True:
+            chunk = os.read(source_fd, _PROJECTED_COPY_BUFFER_SIZE)
+            if not chunk:
+                break
+            view = memoryview(chunk)
+            while view:
+                written = os.write(destination_fd, view)
+                if written <= 0:
+                    raise OSError(errno.EIO, "projected copy write failed")
+                view = view[written:]
+    except LifecycleProjectedValidationError:
+        raise
+    except OSError as exc:
+        raise LifecycleProjectedValidationError("PROJECTED_COPY_FAILED") from exc
+    finally:
+        for descriptor in (destination_fd, source_fd):
+            if descriptor is None:
+                continue
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+
+def _copy_projected_directory(source_fd, destination_fd):
+    try:
+        names = sorted(os.listdir(source_fd))
+    except OSError as exc:
+        raise LifecycleProjectedValidationError("PROJECTED_COPY_FAILED") from exc
+    for name in names:
+        metadata = _projected_source_metadata(source_fd, name)
+        if stat.S_ISLNK(metadata.st_mode):
+            raise LifecycleProjectedValidationError("PROJECTED_SOURCE_UNSAFE")
+        if stat.S_ISREG(metadata.st_mode):
+            _copy_projected_regular_file(source_fd, destination_fd, name)
+            continue
+        if not stat.S_ISDIR(metadata.st_mode):
+            raise LifecycleProjectedValidationError("PROJECTED_SOURCE_UNSAFE")
+        source_child_fd = None
+        destination_child_fd = None
+        try:
+            source_child_fd = os.open(
+                name,
+                os.O_RDONLY
+                | getattr(os, "O_CLOEXEC", 0)
+                | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_NOFOLLOW", 0),
+                dir_fd=source_fd,
+            )
+            os.mkdir(name, mode=0o700, dir_fd=destination_fd)
+            destination_child_fd = os.open(
+                name,
+                os.O_RDONLY
+                | getattr(os, "O_CLOEXEC", 0)
+                | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_NOFOLLOW", 0),
+                dir_fd=destination_fd,
+            )
+            os.fchmod(destination_child_fd, 0o700)
+            _copy_projected_directory(source_child_fd, destination_child_fd)
+        except LifecycleProjectedValidationError:
+            raise
+        except OSError as exc:
+            raise LifecycleProjectedValidationError("PROJECTED_COPY_FAILED") from exc
+        finally:
+            for descriptor in (destination_child_fd, source_child_fd):
+                if descriptor is None:
+                    continue
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+
+
+def _populate_private_projected_root(root_fd, control_fd, projected_fd, context):
+    destination_control_fd = _open_projected_destination_directory(
+        projected_fd,
+        (".moduflow",),
+    )
+    try:
+        for name in _PROJECTED_CONTROL_FILES:
+            metadata = _projected_source_metadata(control_fd, name, missing_ok=True)
+            if metadata is None:
+                continue
+            if not stat.S_ISREG(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
+                raise LifecycleProjectedValidationError("PROJECTED_SOURCE_UNSAFE")
+            _copy_projected_regular_file(control_fd, destination_control_fd, name)
+    finally:
+        os.close(destination_control_fd)
+
+    for parts in _projected_copy_roots(context):
+        source_fd = _open_projected_source_directory(root_fd, parts)
+        if source_fd is None:
+            continue
+        destination_fd = None
+        try:
+            destination_fd = _open_projected_destination_directory(
+                projected_fd,
+                parts,
+            )
+            _copy_projected_directory(source_fd, destination_fd)
+        finally:
+            if destination_fd is not None:
+                os.close(destination_fd)
+            os.close(source_fd)
+
+
+def _remove_projected_contents(directory_fd):
+    for name in sorted(os.listdir(directory_fd)):
+        metadata = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        if stat.S_ISDIR(metadata.st_mode) and not stat.S_ISLNK(metadata.st_mode):
+            child_fd = os.open(
+                name,
+                os.O_RDONLY
+                | getattr(os, "O_CLOEXEC", 0)
+                | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_NOFOLLOW", 0),
+                dir_fd=directory_fd,
+            )
+            try:
+                _remove_projected_contents(child_fd)
+            finally:
+                os.close(child_fd)
+            os.rmdir(name, dir_fd=directory_fd)
+        else:
+            os.unlink(name, dir_fd=directory_fd)
+
+
 @contextmanager
 def _private_projected_root(plan):
-    root, _context = _writable_projected_plan_context(plan)
+    root, context = _writable_projected_plan_context(plan)
     read_flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
     directory_flags = (
         read_flags
@@ -630,19 +918,31 @@ def _private_projected_root(plan):
                 "PROJECTED_ROOT_UNAVAILABLE"
             ) from exc
 
+        _populate_private_projected_root(
+            root_fd,
+            control_fd,
+            projected_fd,
+            context,
+        )
         yield root / ".moduflow" / projected_name
     finally:
+        cleanup_error = None
         if projected_fd is not None:
             try:
-                os.close(projected_fd)
-            except OSError:
-                pass
-        cleanup_error = None
+                _remove_projected_contents(projected_fd)
+            except OSError as exc:
+                cleanup_error = exc
+            finally:
+                try:
+                    os.close(projected_fd)
+                except OSError:
+                    pass
         if projected_name and control_fd is not None:
             try:
                 os.rmdir(projected_name, dir_fd=control_fd)
             except OSError as exc:
-                cleanup_error = exc
+                if cleanup_error is None:
+                    cleanup_error = exc
         for descriptor in (control_fd, root_fd):
             if descriptor is None:
                 continue
