@@ -22,6 +22,7 @@ from types import MappingProxyType
 import project_issue_schema
 import project_operation
 import project_registry
+import validate_project_artifacts
 from project_lifecycle import (
     render_dashboard_projection,
     render_issue_index,
@@ -1242,6 +1243,28 @@ def _private_projected_state(plan):
             root=Path(projected_root).resolve(),
             context=projected_context,
         )
+
+
+def validate_projected_transaction(plan: LifecycleTransactionPlan) -> dict:
+    """Validate one private projected state without replacing canonical targets."""
+    if not isinstance(plan, LifecycleTransactionPlan):
+        raise TypeError("plan must be a LifecycleTransactionPlan")
+    try:
+        with _private_projected_state(plan) as projected:
+            validation_result = validate_project_artifacts.validate_project(
+                projected.root,
+                project_context=projected.context,
+            )
+            return _summarize_projected_validation(validation_result)
+    except (
+        project_operation.ProjectOperationDenied,
+        LifecycleProjectedValidationError,
+    ):
+        raise
+    except Exception as exc:
+        raise LifecycleProjectedValidationError(
+            "PROJECTED_VALIDATION_FAILED"
+        ) from exc
 
 
 def _serialized_text_fields(record, fields):

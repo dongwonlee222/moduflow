@@ -669,6 +669,27 @@ class TransactionPlanningTests(unittest.TestCase):
         fields.update(changes)
         return transaction.LifecycleIntent(**fields)
 
+    def replace_projected_bytes(self, plan, replacements):
+        remaining = set(replacements)
+        targets = []
+        for target in plan.targets:
+            if target.role in replacements:
+                payload = replacements[target.role]
+                target = replace(
+                    target,
+                    after_size=len(payload),
+                    after_sha256=transaction.target_sha256(payload),
+                    changed=True,
+                    _after_bytes=payload,
+                )
+                remaining.remove(target.role)
+            targets.append(target)
+        if remaining:
+            raise AssertionError(
+                f"planned roles not found: {', '.join(sorted(remaining))}"
+            )
+        return replace(plan, targets=tuple(targets))
+
     def test_plan_selects_required_and_only_explicit_optional_targets(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1529,3 +1550,354 @@ class TransactionPlanningTests(unittest.TestCase):
                     raise RuntimeError("injected body failure")
 
             self.assertFalse(projected_root.exists())
+
+    def test_validate_projected_transaction_calls_bound_validator_once_and_redacts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, nested=True)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            canonical_before = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            entry = getattr(transaction, "validate_projected_transaction", None)
+            validator_module = getattr(
+                transaction,
+                "validate_project_artifacts",
+                None,
+            )
+            self.assertIsNotNone(entry)
+            self.assertIsNotNone(validator_module)
+            observed = {}
+
+            def validate(projected_root, *, project_context=None):
+                observed["root"] = Path(projected_root)
+                observed["context"] = project_context
+                self.assertTrue(observed["root"].is_dir())
+                self.assertEqual(
+                    project_context["canonical_root"],
+                    str(observed["root"].resolve()),
+                )
+                for resolved in project_context["paths"].values():
+                    Path(resolved).relative_to(observed["root"])
+                return {
+                    "schema": "moduflow.project-validation.v1",
+                    "project_root": str(observed["root"]),
+                    "valid": True,
+                    "errors": [],
+                    "warnings": ["PRIVATE VALIDATOR WARNING"],
+                    "issue_schema": {
+                        "errors": 0,
+                        "warnings": 1,
+                        "codes": ["PRIVATE_CODE"],
+                        "diagnostics": [{"payload": "PRIVATE PAYLOAD"}],
+                    },
+                    "lifecycle_drift": [],
+                }
+
+            validator_call = mock.Mock(side_effect=validate)
+            with (
+                mock.patch.object(
+                    validator_module,
+                    "validate_project",
+                    validator_call,
+                ),
+                mock.patch.object(transaction.os, "replace") as replacement,
+            ):
+                summary = entry(plan)
+
+            self.assertEqual(
+                summary,
+                {
+                    "valid": True,
+                    "rule_ids": [
+                        "project-artifacts",
+                        "issue-schema",
+                        "lifecycle-consensus",
+                        "production-records",
+                    ],
+                    "error_codes": [],
+                },
+            )
+            validator_call.assert_called_once()
+            replacement.assert_not_called()
+            self.assertFalse(observed["root"].exists())
+            self.assertNotIn("PRIVATE", json.dumps(summary))
+            canonical_after = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            self.assertEqual(canonical_after, canonical_before)
+
+    def test_validate_projected_transaction_collapses_malformed_result_and_rejects_non_plan(self):
+        entry = getattr(transaction, "validate_projected_transaction", None)
+        self.assertIsNotNone(entry)
+        with self.assertRaisesRegex(
+            TypeError,
+            "plan must be a LifecycleTransactionPlan",
+        ):
+            entry({})
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            with mock.patch.object(
+                transaction.validate_project_artifacts,
+                "validate_project",
+                return_value={"schema": "PRIVATE INVALID CONTRACT"},
+            ):
+                summary = entry(plan)
+
+        self.assertEqual(
+            summary,
+            {
+                "valid": False,
+                "rule_ids": [
+                    "project-artifacts",
+                    "issue-schema",
+                    "lifecycle-consensus",
+                    "production-records",
+                ],
+                "error_codes": ["PROJECTED_VALIDATION_CONTRACT_INVALID"],
+            },
+        )
+        self.assertNotIn("PRIVATE", json.dumps(summary))
+
+    def test_validate_projected_transaction_redacts_runtime_failure_and_cleans_up(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            canonical_before = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            observed = {}
+            entry = getattr(transaction, "validate_projected_transaction", None)
+            validator_module = getattr(
+                transaction,
+                "validate_project_artifacts",
+                None,
+            )
+            self.assertIsNotNone(entry)
+            self.assertIsNotNone(validator_module)
+
+            def fail(projected_root, *, project_context=None):
+                observed["root"] = Path(projected_root)
+                raise RuntimeError(
+                    f"PRIVATE VALIDATOR PAYLOAD at {projected_root}"
+                )
+
+            with mock.patch.object(
+                validator_module,
+                "validate_project",
+                side_effect=fail,
+            ):
+                with self.assertRaises(
+                    transaction.LifecycleProjectedValidationError
+                ) as raised:
+                    entry(plan)
+
+            self.assertEqual(raised.exception.code, "PROJECTED_VALIDATION_FAILED")
+            self.assertEqual(str(raised.exception), "PROJECTED_VALIDATION_FAILED")
+            self.assertNotIn("PRIVATE", str(raised.exception))
+            self.assertFalse(observed["root"].exists())
+            canonical_after = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            self.assertEqual(canonical_after, canonical_before)
+
+    def test_validate_projected_transaction_denies_before_validator_or_filesystem_side_effects(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            denied_context = transaction._json_value(plan._project_context)
+            denied_context.update(
+                transaction.project_operation.compute_project_policy(
+                    "archived",
+                    "internal",
+                )
+            )
+            denied = replace(plan, _project_context=denied_context)
+            entry = getattr(transaction, "validate_projected_transaction", None)
+            validator_module = getattr(
+                transaction,
+                "validate_project_artifacts",
+                None,
+            )
+            self.assertIsNotNone(entry)
+            self.assertIsNotNone(validator_module)
+
+            with (
+                mock.patch.object(
+                    validator_module,
+                    "validate_project",
+                ) as validator_call,
+                mock.patch.object(transaction.os, "open") as open_file,
+                mock.patch.object(transaction.os, "mkdir") as mkdir,
+            ):
+                with self.assertRaises(
+                    transaction.project_operation.ProjectOperationDenied
+                ) as raised:
+                    entry(denied)
+
+            self.assertEqual(
+                raised.exception.decision["reason_code"],
+                "PROJECT_OPERATION_DENIED_ARCHIVED",
+            )
+            validator_call.assert_not_called()
+            open_file.assert_not_called()
+            mkdir.assert_not_called()
+
+    def test_validate_projected_transaction_uses_real_validator_for_valid_and_invalid_proposals(self):
+        entry = getattr(transaction, "validate_projected_transaction", None)
+        self.assertIsNotNone(entry)
+        active_issue = b"""---
+schema_version: 0.1.0
+issue_id: BIZ-103
+canonical_state: active
+status: in_progress
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:spec BIZ-103
+---
+# Issue: `BIZ-103`
+
+**Status: active** -- created 2029-12-01, started 2030-01-02.
+"""
+        backlog_issue = b"""---
+schema_version: 0.1.0
+issue_id: BIZ-103
+canonical_state: backlog
+status: backlog
+priority: p2
+definition_readiness: ready
+gate_state: passed
+depends_on: []
+next_command: product:spec BIZ-103
+---
+# Issue: `BIZ-103`
+
+**Status: backlog** -- created 2029-12-01.
+"""
+        cases = (
+            (
+                "valid",
+                "start",
+                {},
+                {"issue": active_issue},
+                [],
+            ),
+            (
+                "invalid-issue",
+                "start",
+                {},
+                {"issue": b"\xffPRIVATE ISSUE PAYLOAD"},
+                [
+                    "PROJECTED_PROJECT_INVALID",
+                    "PROJECTED_ISSUE_SCHEMA_INVALID",
+                    "PROJECTED_LIFECYCLE_DRIFT",
+                ],
+            ),
+            (
+                "invalid-state",
+                "start",
+                {},
+                {
+                    "issue": active_issue,
+                    "state": b"{PRIVATE INVALID STATE",
+                },
+                ["PROJECTED_PROJECT_INVALID"],
+            ),
+            (
+                "invalid-production-record",
+                "production-version",
+                {
+                    "production_change": {
+                        "version": "1.2.3",
+                        "record_id": "biz-103-release",
+                        "content": "initial production bytes\n",
+                    }
+                },
+                {
+                    "issue": backlog_issue,
+                    "production-record": b"PRIVATE INVALID PRODUCTION\n",
+                },
+                ["PROJECTED_PROJECT_INVALID"],
+            ),
+        )
+
+        for label, action, intent_changes, replacements, error_codes in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root)
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(action=action, **intent_changes),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                plan = self.replace_projected_bytes(plan, replacements)
+                canonical_before = {
+                    path.relative_to(root).as_posix(): path.read_bytes()
+                    for path in root.rglob("*")
+                    if path.is_file()
+                }
+
+                summary = entry(plan)
+
+                self.assertEqual(summary["valid"], not error_codes)
+                self.assertEqual(summary["error_codes"], error_codes)
+                self.assertEqual(
+                    summary["rule_ids"],
+                    [
+                        "project-artifacts",
+                        "issue-schema",
+                        "lifecycle-consensus",
+                        "production-records",
+                    ],
+                )
+                rendered = json.dumps(summary, ensure_ascii=False)
+                self.assertNotIn("PRIVATE", rendered)
+                self.assertNotIn(str(root.resolve()), rendered)
+                self.assertFalse(
+                    any(
+                        "-projected-" in path.name
+                        for path in (root / ".moduflow").iterdir()
+                    )
+                )
+                canonical_after = {
+                    path.relative_to(root).as_posix(): path.read_bytes()
+                    for path in root.rglob("*")
+                    if path.is_file()
+                }
+                self.assertEqual(canonical_after, canonical_before)
