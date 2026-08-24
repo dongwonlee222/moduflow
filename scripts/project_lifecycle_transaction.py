@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Pure lifecycle transaction contract and deterministic identity helpers.
+"""Lifecycle transaction contracts, planning, and private projection helpers.
 
-This module deliberately performs no filesystem, process, network, Git, or
-remote-system operations. Transaction planning and persistence are layered on
-top of this contract in later Issue 103 tasks.
+Planning reads canonical sources, and projected validation may use ephemeral
+private roots. Canonical replacement and recovery remain separate boundaries.
 """
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import date
 import errno
@@ -15,10 +15,12 @@ from collections.abc import Mapping
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
+import secrets
 import stat
 from types import MappingProxyType
 
 import project_issue_schema
+import project_operation
 import project_registry
 from project_lifecycle import (
     render_dashboard_projection,
@@ -266,6 +268,14 @@ class LifecyclePlanError(ValueError):
         if relative_path:
             fields.append(f"path={relative_path}")
         super().__init__("; ".join(fields))
+
+
+class LifecycleProjectedValidationError(RuntimeError):
+    """Stable projected-validation boundary error without private paths."""
+
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
 
 
 def canonical_json_bytes(value):
@@ -546,6 +556,104 @@ def _summarize_projected_validation(validation_result):
             "error_codes": error_codes,
         }
     )
+
+
+def _writable_projected_plan_context(plan):
+    if not isinstance(plan, LifecycleTransactionPlan):
+        raise TypeError("plan must be a LifecycleTransactionPlan")
+    try:
+        if (
+            not isinstance(plan.transaction_id, str)
+            or not _LOGICAL_NAME.fullmatch(plan.transaction_id)
+        ):
+            raise ValueError("transaction ID must be logical")
+        context = _json_value(plan._project_context)
+        root = Path(plan.canonical_root).resolve()
+        context = project_registry.context_for_operation(
+            root,
+            project_context=context,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        raise LifecycleProjectedValidationError(
+            "PROJECTED_CONTEXT_INVALID"
+        ) from exc
+    project_operation.require_project_capability(context, "write")
+    return root, context
+
+
+@contextmanager
+def _private_projected_root(plan):
+    root, _context = _writable_projected_plan_context(plan)
+    read_flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    directory_flags = (
+        read_flags
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    root_fd = None
+    control_fd = None
+    projected_fd = None
+    projected_name = ""
+    try:
+        try:
+            root_fd = os.open(root, directory_flags)
+            control_fd = os.open(
+                ".moduflow",
+                directory_flags,
+                dir_fd=root_fd,
+            )
+            for _attempt in range(16):
+                candidate = (
+                    f".{plan.transaction_id}-projected-"
+                    f"{secrets.token_hex(8)}"
+                )
+                try:
+                    os.mkdir(candidate, mode=0o700, dir_fd=control_fd)
+                except FileExistsError:
+                    continue
+                projected_name = candidate
+                break
+            if not projected_name:
+                raise LifecycleProjectedValidationError(
+                    "PROJECTED_ROOT_UNAVAILABLE"
+                )
+            projected_fd = os.open(
+                projected_name,
+                directory_flags,
+                dir_fd=control_fd,
+            )
+            os.fchmod(projected_fd, 0o700)
+        except LifecycleProjectedValidationError:
+            raise
+        except OSError as exc:
+            raise LifecycleProjectedValidationError(
+                "PROJECTED_ROOT_UNAVAILABLE"
+            ) from exc
+
+        yield root / ".moduflow" / projected_name
+    finally:
+        if projected_fd is not None:
+            try:
+                os.close(projected_fd)
+            except OSError:
+                pass
+        cleanup_error = None
+        if projected_name and control_fd is not None:
+            try:
+                os.rmdir(projected_name, dir_fd=control_fd)
+            except OSError as exc:
+                cleanup_error = exc
+        for descriptor in (control_fd, root_fd):
+            if descriptor is None:
+                continue
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        if cleanup_error is not None:
+            raise LifecycleProjectedValidationError(
+                "PROJECTED_ROOT_CLEANUP_FAILED"
+            ) from cleanup_error
 
 
 def _serialized_text_fields(record, fields):

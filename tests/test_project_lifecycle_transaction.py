@@ -1,8 +1,9 @@
 import json
+import stat
 import sys
 import tempfile
 import unittest
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 from unittest import mock
 
@@ -990,3 +991,123 @@ class TransactionPlanningTests(unittest.TestCase):
                 )
 
             self.assertEqual(plan.targets[0].role, "issue")
+
+    def test_private_projected_root_denies_before_creation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            denied_context = transaction._json_value(plan._project_context)
+            denied_context.update(
+                transaction.project_operation.compute_project_policy(
+                    "archived",
+                    "internal",
+                )
+            )
+            cases = (
+                (
+                    replace(plan, _project_context=denied_context),
+                    transaction.project_operation.ProjectOperationDenied,
+                    "PROJECT_OPERATION_DENIED_ARCHIVED",
+                ),
+                (
+                    replace(plan, _project_context={"status": "unresolved"}),
+                    transaction.LifecycleProjectedValidationError,
+                    "PROJECTED_CONTEXT_INVALID",
+                ),
+                (
+                    replace(plan, transaction_id="../escape"),
+                    transaction.LifecycleProjectedValidationError,
+                    "PROJECTED_CONTEXT_INVALID",
+                ),
+            )
+
+            for candidate, error_type, expected_code in cases:
+                with self.subTest(expected_code=expected_code):
+                    with (
+                        mock.patch.object(transaction.os, "open") as open_file,
+                        mock.patch.object(transaction.os, "mkdir") as mkdir,
+                    ):
+                        with self.assertRaises(error_type) as raised:
+                            with transaction._private_projected_root(candidate):
+                                self.fail("denied projected root must not be yielded")
+                    open_file.assert_not_called()
+                    mkdir.assert_not_called()
+                    actual_code = (
+                        raised.exception.decision["reason_code"]
+                        if isinstance(
+                            raised.exception,
+                            transaction.project_operation.ProjectOperationDenied,
+                        )
+                        else raised.exception.code
+                    )
+                    self.assertEqual(actual_code, expected_code)
+
+            control_root = root / ".moduflow"
+            real_control_root = root / "real-moduflow"
+            control_root.rename(real_control_root)
+            control_root.symlink_to(real_control_root, target_is_directory=True)
+            with self.assertRaises(
+                transaction.LifecycleProjectedValidationError
+            ) as raised:
+                with transaction._private_projected_root(plan):
+                    self.fail("symlinked control root must not be yielded")
+            self.assertEqual(raised.exception.code, "PROJECTED_ROOT_UNAVAILABLE")
+            self.assertFalse(
+                any("-projected-" in path.name for path in real_control_root.iterdir())
+            )
+
+    def test_private_projected_root_is_same_project_mode_0700_and_ephemeral(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            before = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+
+            with transaction._private_projected_root(plan) as projected_root:
+                projected_root.relative_to(root.resolve() / ".moduflow")
+                self.assertTrue(projected_root.is_dir())
+                self.assertEqual(
+                    stat.S_IMODE(projected_root.stat().st_mode),
+                    0o700,
+                )
+                self.assertEqual(list(projected_root.iterdir()), [])
+
+            self.assertFalse(projected_root.exists())
+            after = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            self.assertEqual(after, before)
+
+    def test_private_projected_root_cleans_up_after_body_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+
+            with self.assertRaisesRegex(RuntimeError, "injected body failure"):
+                with transaction._private_projected_root(plan) as projected_root:
+                    raise RuntimeError("injected body failure")
+
+            self.assertFalse(projected_root.exists())
