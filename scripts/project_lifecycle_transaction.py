@@ -590,6 +590,57 @@ def _writable_projected_plan_context(plan):
     return root, context
 
 
+def _projected_target_parts(relative_path):
+    if (
+        not isinstance(relative_path, str)
+        or not relative_path
+        or "\\" in relative_path
+        or relative_path.startswith("/")
+        or PureWindowsPath(relative_path).is_absolute()
+    ):
+        raise LifecycleProjectedValidationError("PROJECTED_TARGET_INVALID")
+    parts = tuple(relative_path.split("/"))
+    if (
+        not parts
+        or parts[0] == ".git"
+        or any(part in {"", ".", ".."} for part in parts)
+    ):
+        raise LifecycleProjectedValidationError("PROJECTED_TARGET_INVALID")
+    return parts
+
+
+def _validated_projected_targets(plan):
+    if not isinstance(plan, LifecycleTransactionPlan):
+        raise TypeError("plan must be a LifecycleTransactionPlan")
+    seen = set()
+    validated = []
+    try:
+        for target in plan.targets:
+            if not isinstance(target, PlannedTarget):
+                raise ValueError("target type")
+            parts = _projected_target_parts(target.relative_path)
+            if parts in seen:
+                raise ValueError("duplicate target")
+            if (
+                not isinstance(target.after_size, int)
+                or isinstance(target.after_size, bool)
+                or target.after_size != len(target._after_bytes)
+                or not isinstance(target.after_sha256, str)
+                or not _SHA256.fullmatch(target.after_sha256)
+                or target.after_sha256 != target_sha256(target._after_bytes)
+            ):
+                raise ValueError("target projection metadata")
+            seen.add(parts)
+            validated.append((target, parts))
+    except LifecycleProjectedValidationError:
+        raise
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise LifecycleProjectedValidationError(
+            "PROJECTED_TARGET_INVALID"
+        ) from exc
+    return tuple(validated)
+
+
 def _projected_copy_roots(context):
     relative_paths = (
         context.get("relative_paths") if isinstance(context, Mapping) else None

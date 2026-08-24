@@ -1202,6 +1202,47 @@ class TransactionPlanningTests(unittest.TestCase):
             ),
         )
 
+    def test_projected_target_preflight_rejects_invalid_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            target = plan.targets[0]
+            cases = (
+                replace(plan, targets=(replace(target, relative_path="../escape"),)),
+                replace(plan, targets=(target, target)),
+                replace(
+                    plan,
+                    targets=(replace(target, after_size=target.after_size + 1),),
+                ),
+                replace(
+                    plan,
+                    targets=(replace(target, after_sha256="0" * 64),),
+                ),
+            )
+            preflight = getattr(transaction, "_validated_projected_targets", None)
+            self.assertIsNotNone(preflight)
+
+            for candidate in cases:
+                with self.subTest(targets=candidate.targets):
+                    with self.assertRaises(
+                        transaction.LifecycleProjectedValidationError
+                    ) as raised:
+                        preflight(candidate)
+                    self.assertEqual(
+                        raised.exception.code,
+                        "PROJECTED_TARGET_INVALID",
+                    )
+                    self.assertEqual(
+                        str(raised.exception),
+                        "PROJECTED_TARGET_INVALID",
+                    )
+
     def test_private_projected_root_rejects_unsafe_source_nodes_and_cleans_up(self):
         for node_kind in ("symlink", "fifo"):
             with self.subTest(node_kind=node_kind), tempfile.TemporaryDirectory() as tmp:
