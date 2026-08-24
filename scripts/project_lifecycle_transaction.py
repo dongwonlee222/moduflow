@@ -16,6 +16,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 from types import MappingProxyType
 
+import project_issue_schema
 import project_registry
 from project_lifecycle import (
     render_dashboard_projection,
@@ -643,6 +644,35 @@ def _projected_issue_status(issue_bytes, fallback):
     return match.group(1).strip() if match else fallback
 
 
+def _projected_issue_index_records(root, context, issue_path, issue_after):
+    issues_root = _safe_planning_child(root, context, "issues")
+    records = []
+    for path in sorted(issues_root.glob("*.md")):
+        if path == issue_path:
+            source = issue_after
+        else:
+            _existed, source = _read_planning_source(
+                path,
+                root,
+                "issue",
+                required=True,
+            )
+        issue = project_issue_schema.parse_issue(
+            path,
+            root,
+            source_text=source.decode("utf-8"),
+        )
+        issue_id = issue["issue_id"]
+        records.append(
+            {
+                "id": issue_id,
+                "status": issue["lifecycle_state"],
+                "title": issue["title"] or issue_id,
+            }
+        )
+    return records
+
+
 def _planned_target(role, relative_path, existed, before_bytes, after_bytes, rules, order, total):
     return PlannedTarget(
         role=role,
@@ -724,12 +754,12 @@ def plan_lifecycle_transaction(
         issue_after,
         normalized.target_lifecycle or "backlog",
     )
-    issue_active = "" if projected_status == "done" else normalized.issue_id
-    phase = "select" if projected_status == "done" else "execute"
+    issue_active = normalized.issue_id if projected_status == "active" else ""
+    phase = "execute" if projected_status == "active" else "select"
     next_command = normalized.next_command or (
-        "product:status"
-        if projected_status == "done"
-        else f"product:execute {normalized.issue_id}"
+        f"product:execute {normalized.issue_id}"
+        if projected_status == "active"
+        else "product:status"
     )
     state_after = _render_planning_target(
         "state",
@@ -751,6 +781,7 @@ def plan_lifecycle_transaction(
         next_command=next_command,
         blocker=normalized.loop_blocker,
         changed_on=changed_on,
+        target_lifecycle=projected_status,
     )
     dashboard_after = _render_planning_target(
         "dashboard",
@@ -788,17 +819,20 @@ def plan_lifecycle_transaction(
         existed, before = _read_planning_source(
             issue_index_path, root, "issue-index", required=False
         )
+        index_records = _render_planning_target(
+            "issue-index",
+            _project_relative(root, issue_index_path),
+            _projected_issue_index_records,
+            root,
+            context,
+            issue_path,
+            issue_after,
+        )
         after = _render_planning_target(
             "issue-index",
             _project_relative(root, issue_index_path),
             render_issue_index,
-            [
-                {
-                    "id": normalized.issue_id,
-                    "status": projected_status,
-                    "title": normalized.issue_id,
-                }
-            ]
+            index_records,
         )
         selected.append(
             (

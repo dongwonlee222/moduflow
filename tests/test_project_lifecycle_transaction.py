@@ -607,6 +607,76 @@ class TransactionPlanningTests(unittest.TestCase):
             self.assertNotIn("roadmap", roles)
             self.assertNotIn("production-record", roles)
 
+    def test_issue_index_preserves_every_issue_and_projects_the_owner_transition(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            (root / "issues" / "BIZ-200.md").write_text(
+                "# Issue: `BIZ-200`\n\n"
+                "**Status: done** — created 2029-12-01; done 2029-12-20.\n",
+                encoding="utf-8",
+            )
+
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(action="start"),
+                project_context=context,
+                clock="2030-01-02",
+            )
+
+            target = next(target for target in plan.targets if target.role == "issue-index")
+            self.assertEqual(
+                json.loads(target._after_bytes)["issues"],
+                [
+                    {"id": "BIZ-103", "status": "active", "title": "BIZ-103"},
+                    {"id": "BIZ-200", "status": "done", "title": "BIZ-200"},
+                ],
+            )
+
+    def test_backlog_preserving_actions_do_not_activate_execution_projections(self):
+        cases = (
+            ("update", {}),
+            ("reconcile", {}),
+            (
+                "production-version",
+                {
+                    "production_change": {
+                        "version": "1.2.3",
+                        "record_id": "biz-103-release",
+                        "content": "record\n",
+                    }
+                },
+            ),
+        )
+        for action, changes in cases:
+            with self.subTest(action=action), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root)
+
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(action=action, **changes),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+
+                state = json.loads(
+                    next(target for target in plan.targets if target.role == "state")._after_bytes
+                )
+                loop = json.loads(
+                    next(target for target in plan.targets if target.role == "loop")._after_bytes
+                )
+                dashboard = next(
+                    target for target in plan.targets if target.role == "dashboard"
+                )._after_bytes.decode("utf-8")
+                self.assertEqual(state["active_issue"], "")
+                self.assertEqual(state["phase"], "select")
+                self.assertEqual(state["next_command"], "product:status")
+                self.assertIsNone(loop["active_issue_id"])
+                self.assertEqual(loop["next_command"], "product:status")
+                self.assertNotIn(self.ISSUE_ID, loop["issue_ids"])
+                self.assertIn("None active", dashboard)
+
     def test_nested_context_owns_every_target_and_poisoned_defaults_are_not_read(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

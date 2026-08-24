@@ -209,6 +209,7 @@ def render_loop_projection(
     next_command,
     blocker,
     changed_on,
+    target_lifecycle=None,
 ):
     """Return loop-state bytes for a lifecycle intent without filesystem writes."""
     if not isinstance(loop_bytes, bytes):
@@ -218,11 +219,14 @@ def render_loop_projection(
         raise ValueError("loop projection requires a JSON object")
     state = normalize_loop_state(raw)
     state.update({key: value for key, value in raw.items() if key not in state})
-    issue_ids = list(state.get("issue_ids") or [])
-    if issue_id not in issue_ids:
-        issue_ids.append(issue_id)
-    state["issue_ids"] = issue_ids
-    state["active_issue_id"] = issue_id
+    if target_lifecycle == "backlog":
+        state["active_issue_id"] = None
+    else:
+        issue_ids = list(state.get("issue_ids") or [])
+        if issue_id not in issue_ids:
+            issue_ids.append(issue_id)
+        state["issue_ids"] = issue_ids
+        state["active_issue_id"] = issue_id
     if action == "pause":
         state["status"] = "blocked"
         state["blocker"] = blocker or "Lifecycle transaction paused"
