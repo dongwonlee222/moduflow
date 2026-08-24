@@ -113,6 +113,12 @@ _TERMINAL_STATUSES = frozenset({
     "recovery_required",
 })
 _VALIDATION_SUMMARY_KEYS = frozenset({"valid", "rule_ids", "error_codes"})
+_PROJECTED_VALIDATION_RULE_IDS = (
+    "project-artifacts",
+    "issue-schema",
+    "lifecycle-consensus",
+    "production-records",
+)
 _PLAN_TEXT_FIELDS = (
     "transaction_id",
     "idempotency_key",
@@ -483,6 +489,63 @@ def _serialized_validation_summary(summary):
             raise ValueError(f"validation summary {name} must be logical identifiers")
         serialized[name] = list(values)
     return serialized
+
+
+def _projected_validation_contract_failure():
+    return _serialized_validation_summary(
+        {
+            "valid": False,
+            "rule_ids": list(_PROJECTED_VALIDATION_RULE_IDS),
+            "error_codes": ["PROJECTED_VALIDATION_CONTRACT_INVALID"],
+        }
+    )
+
+
+def _summarize_projected_validation(validation_result):
+    if not isinstance(validation_result, Mapping):
+        return _projected_validation_contract_failure()
+    valid = validation_result.get("valid")
+    errors = validation_result.get("errors")
+    issue_schema = validation_result.get("issue_schema")
+    lifecycle_drift = validation_result.get("lifecycle_drift")
+    issue_error_count = (
+        issue_schema.get("errors")
+        if isinstance(issue_schema, Mapping)
+        else None
+    )
+    contract_valid = (
+        validation_result.get("schema") == "moduflow.project-validation.v1"
+        and isinstance(valid, bool)
+        and isinstance(errors, list)
+        and all(isinstance(error, str) for error in errors)
+        and isinstance(issue_error_count, int)
+        and not isinstance(issue_error_count, bool)
+        and issue_error_count >= 0
+        and isinstance(lifecycle_drift, list)
+        and all(isinstance(drift, str) for drift in lifecycle_drift)
+        and valid == (
+            not errors
+            and issue_error_count == 0
+            and not lifecycle_drift
+        )
+    )
+    if not contract_valid:
+        return _projected_validation_contract_failure()
+
+    error_codes = []
+    if errors:
+        error_codes.append("PROJECTED_PROJECT_INVALID")
+    if issue_error_count:
+        error_codes.append("PROJECTED_ISSUE_SCHEMA_INVALID")
+    if lifecycle_drift:
+        error_codes.append("PROJECTED_LIFECYCLE_DRIFT")
+    return _serialized_validation_summary(
+        {
+            "valid": valid,
+            "rule_ids": list(_PROJECTED_VALIDATION_RULE_IDS),
+            "error_codes": error_codes,
+        }
+    )
 
 
 def _serialized_text_fields(record, fields):

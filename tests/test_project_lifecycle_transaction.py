@@ -240,6 +240,130 @@ class TransactionContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unknown transaction result keys"):
             transaction.serialize_transaction_result({**result, "staging_path": "/tmp/secret"})
 
+    def test_projected_validation_summary_is_stable_redacted_and_detached(self):
+        validation = {
+            "schema": "moduflow.project-validation.v1",
+            "project_root": "/private/projected-root",
+            "valid": False,
+            "errors": ["private artifact payload at /private/projected-root"],
+            "warnings": ["private warning"],
+            "issue_schema": {
+                "errors": 1,
+                "warnings": 0,
+                "codes": ["ISSUE_SCHEMA_PRIVATE_DETAIL"],
+                "diagnostics": [{"payload": "private diagnostic"}],
+            },
+            "lifecycle_drift": ["private lifecycle payload"],
+        }
+
+        summary = transaction._summarize_projected_validation(validation)
+        validation["errors"].append("poison")
+        validation["lifecycle_drift"].append("poison")
+
+        self.assertEqual(
+            summary,
+            {
+                "valid": False,
+                "rule_ids": [
+                    "project-artifacts",
+                    "issue-schema",
+                    "lifecycle-consensus",
+                    "production-records",
+                ],
+                "error_codes": [
+                    "PROJECTED_PROJECT_INVALID",
+                    "PROJECTED_ISSUE_SCHEMA_INVALID",
+                    "PROJECTED_LIFECYCLE_DRIFT",
+                ],
+            },
+        )
+        rendered = json.dumps(summary, ensure_ascii=False)
+        self.assertNotIn("private", rendered)
+        self.assertNotIn("poison", rendered)
+
+    def test_projected_validation_summary_accepts_valid_project_result(self):
+        summary = transaction._summarize_projected_validation(
+            {
+                "schema": "moduflow.project-validation.v1",
+                "valid": True,
+                "errors": [],
+                "issue_schema": {"errors": 0},
+                "lifecycle_drift": [],
+            }
+        )
+
+        self.assertEqual(
+            summary,
+            {
+                "valid": True,
+                "rule_ids": [
+                    "project-artifacts",
+                    "issue-schema",
+                    "lifecycle-consensus",
+                    "production-records",
+                ],
+                "error_codes": [],
+            },
+        )
+
+    def test_projected_validation_summary_collapses_malformed_results(self):
+        malformed = (
+            None,
+            {"schema": "unsupported"},
+            {
+                "schema": "moduflow.project-validation.v1",
+                "valid": "yes",
+                "errors": [],
+                "issue_schema": {"errors": 0},
+                "lifecycle_drift": [],
+            },
+            {
+                "schema": "moduflow.project-validation.v1",
+                "valid": False,
+                "errors": "private error",
+                "issue_schema": {"errors": 0},
+                "lifecycle_drift": [],
+            },
+            {
+                "schema": "moduflow.project-validation.v1",
+                "valid": False,
+                "errors": ["private error"],
+                "issue_schema": {"errors": True},
+                "lifecycle_drift": [],
+            },
+            {
+                "schema": "moduflow.project-validation.v1",
+                "valid": False,
+                "errors": ["private error"],
+                "issue_schema": {"errors": 0},
+                "lifecycle_drift": "private drift",
+            },
+            {
+                "schema": "moduflow.project-validation.v1",
+                "valid": True,
+                "errors": [],
+                "issue_schema": {"errors": 1},
+                "lifecycle_drift": [],
+            },
+        )
+        expected = {
+            "valid": False,
+            "rule_ids": [
+                "project-artifacts",
+                "issue-schema",
+                "lifecycle-consensus",
+                "production-records",
+            ],
+            "error_codes": ["PROJECTED_VALIDATION_CONTRACT_INVALID"],
+        }
+
+        for validation in malformed:
+            with self.subTest(validation=validation):
+                self.assertEqual(
+                    transaction._summarize_projected_validation(validation),
+                    expected,
+                )
+
     def test_serializers_reject_unsafe_target_and_nested_validation_content(self):
         target = {
             "role": "owning-issue",
