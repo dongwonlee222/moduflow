@@ -63,7 +63,7 @@ The journal stores only the manifest hash. Manifest entries and original artifac
 
 ### Progress
 
-`applied_target_indexes` records successfully replaced changed targets in forward apply order. `rollback_target_indexes` records successfully restored or removed targets in reverse order.
+`applied_target_indexes` records successfully replaced changed targets in forward apply order. `rollback_target_indexes` records successfully restored or removed targets in reverse order. The single `evidence` target must remain last: ordinary canonical targets are applied before post-validation, while evidence is finalized afterward.
 
 Both lists must contain unique non-boolean integers within the target range. Applied progress must be a prefix of changed targets in apply order. Rollback progress must be a prefix of the reverse applied order and therefore cannot name an unapplied target.
 
@@ -98,7 +98,7 @@ prepared|applying|post-validating|finalizing -> rolling-back|recovery-required
 rolling-back -> rolled-back|recovery-required
 ```
 
-`applying -> applying` and `rolling-back -> rolling-back` are allowed only for durable progress snapshots. Terminal `complete` and `rolled-back` snapshots have no outgoing transition. An explicit recovery attempt may move `recovery-required` to `rolling-back` or `finalizing`; normal execution may not do so.
+`applying -> applying`, `finalizing -> finalizing`, and `rolling-back -> rolling-back` are allowed only for durable progress snapshots. Terminal `complete` and `rolled-back` snapshots have no outgoing transition. An explicit recovery attempt may move `recovery-required` to `rolling-back` or `finalizing`; normal execution may not do so.
 
 ### Pure Interfaces
 
@@ -136,8 +136,9 @@ The serializer converts lower-level target validation failures to `JOURNAL_RECOR
 
 - `planned` and `staged` require empty applied and rollback progress.
 - `prepared` requires a manifest SHA-256 and empty applied and rollback progress.
-- `applying` may contain a forward applied prefix and requires empty rollback progress.
-- `post-validating` and `finalizing` require every changed target to appear in applied progress and require empty rollback progress.
+- `applying` may contain a forward applied prefix of changed non-evidence targets and requires empty rollback progress.
+- `post-validating` requires every changed non-evidence target applied, the evidence target not yet applied, and empty rollback progress.
+- `finalizing` requires every changed non-evidence target applied and may record the final evidence replacement as a progress update; rollback progress remains empty.
 - `rolling-back` requires rollback progress to be a reverse prefix of applied progress.
 - `complete` requires every changed target applied, no rollback progress, and a manifest SHA-256.
 - `rolled-back` requires every applied target represented in rollback progress; a pre-apply cleanup may use two empty progress lists.
