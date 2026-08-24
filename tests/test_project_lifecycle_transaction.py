@@ -1,12 +1,17 @@
+import json
 import sys
+import tempfile
 import unittest
+from dataclasses import FrozenInstanceError
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import project_lifecycle_transaction as transaction
+import project_registry
 from tests.lifecycle_transaction_fixture import (
     lifecycle_intent_fields,
     resolved_transaction_context,
@@ -379,3 +384,386 @@ class TransactionContractTests(unittest.TestCase):
         self.assertEqual(
             rendered_result["projected_validation"]["rule_ids"], ["projected-state"]
         )
+
+    def test_immutable_plan_detaches_context_and_serializes_redacted_targets(self):
+        context = {
+            "status": "resolved",
+            "canonical_root": "/project",
+            "relative_paths": {"workspace": "workspace"},
+            "warnings": ["keep"],
+        }
+        target = transaction.PlannedTarget(
+            role="issue",
+            relative_path="issues/BIZ-103.md",
+            existed=True,
+            before_sha256="a" * 64,
+            after_sha256="b" * 64,
+            after_size=42,
+            changed=True,
+            validation_rules=("issue-schema",),
+            apply_order=0,
+            rollback_order=0,
+            _before_bytes=b"private before bytes",
+            _after_bytes=b"private after bytes",
+        )
+        plan = transaction.LifecycleTransactionPlan(
+            schema=transaction.PLAN_SCHEMA,
+            transaction_id="txn-103",
+            idempotency_key="c" * 64,
+            project_id="explicit-root",
+            canonical_root="/project",
+            issue_id="BIZ-103",
+            action="start",
+            target_lifecycle="active",
+            targets=(target,),
+            _project_context=context,
+        )
+
+        preview = plan.to_public_dict()
+        context["relative_paths"]["workspace"] = "poison"
+        context["warnings"].append("poison")
+
+        self.assertEqual(plan._project_context["relative_paths"]["workspace"], "workspace")
+        self.assertEqual(plan._project_context["warnings"], ("keep",))
+        self.assertEqual(preview["targets"][0]["after_bytes"], 42)
+        self.assertNotIn("_before_bytes", preview["targets"][0])
+        self.assertNotIn("_after_bytes", preview["targets"][0])
+        self.assertNotIn("private before bytes", repr(plan))
+        self.assertNotIn("private after bytes", repr(plan))
+        with self.assertRaises(FrozenInstanceError):
+            plan.action = "complete"
+        with self.assertRaises(TypeError):
+            plan._project_context["status"] = "poison"
+
+
+class TransactionPlanningTests(unittest.TestCase):
+    ISSUE_ID = "BIZ-103"
+
+    def scaffold(self, root, *, nested=False, issue_index=False):
+        paths = {
+            "issues": "product/issues" if nested else "issues",
+            "specs": "product/specs" if nested else "specs",
+            "workspace": "product/workspace" if nested else "workspace",
+            "knowledge": "product/knowledge" if nested else "knowledge",
+            "memory": "product/memory" if nested else "memory",
+            "production_records": (
+                "product/memory/production-records"
+                if nested else "memory/production-records"
+            ),
+            "playbooks": "product/playbooks" if nested else "playbooks",
+            "workflow": "product/workflow" if nested else "workflow",
+        }
+        (root / ".moduflow").mkdir()
+        (root / ".moduflow" / "config.json").write_text(
+            json.dumps({"schema": "moduflow.config.v1", "paths": paths}) + "\n",
+            encoding="utf-8",
+        )
+        (root / ".moduflow" / "state.json").write_text(
+            json.dumps(
+                {
+                    "schema": "moduflow.state.v1",
+                    "active_issue": "",
+                    "phase": "select",
+                    "active_goal": "",
+                    "next_command": "product:status",
+                    "blockers": [],
+                    "updated_at": "2029-12-31",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        for role in paths.values():
+            (root / role).mkdir(parents=True, exist_ok=True)
+        issue = root / paths["issues"] / f"{self.ISSUE_ID}.md"
+        issue.write_text(
+            f"# Issue: `{self.ISSUE_ID}`\n\n"
+            "**Status: backlog** — created 2029-12-01.\n"
+            "**Priority: p2**\n"
+            "**Blocked-by: none**\n\n"
+            "## Notes\n\nPreserve issue prose.\n",
+            encoding="utf-8",
+        )
+        workspace = root / paths["workspace"]
+        (workspace / "inbox.md").write_text("# Inbox\n", encoding="utf-8")
+        (workspace / "opportunities.md").write_text("# Opportunities\n", encoding="utf-8")
+        (workspace / "roadmap.md").write_text(
+            "# Roadmap\n\nHuman roadmap prose.\n", encoding="utf-8"
+        )
+        (workspace / "dashboard.md").write_text(
+            "# Dashboard\n\n## Active Issue\n\n- None active.\n\n"
+            "## Notes\n\nPreserve dashboard prose.\n",
+            encoding="utf-8",
+        )
+        (workspace / "loop-state.json").write_text(
+            json.dumps(
+                {
+                    "schema": "moduflow.loop-state.v2",
+                    "goal_id": "goal-1",
+                    "issue_ids": [],
+                    "active_issue_id": None,
+                    "status": "active",
+                    "next_command": "product:status",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        if issue_index:
+            (workspace / "issue-index.json").write_text("{}\n", encoding="utf-8")
+        if nested:
+            for relative, payload in (
+                ("issues/BIZ-103.md", b"POISON DEFAULT ISSUE\n"),
+                ("workspace/dashboard.md", b"POISON DEFAULT DASHBOARD\n"),
+                ("workspace/loop-state.json", b"{broken-default\n"),
+                ("workspace/roadmap.md", b"POISON DEFAULT ROADMAP\n"),
+                ("memory/production-records/poison.md", b"POISON DEFAULT RECORD\n"),
+            ):
+                target = root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(payload)
+        return project_registry.project_context_for_root(root)
+
+    def intent(self, action="start", **changes):
+        fields = {
+            "issue_id": self.ISSUE_ID,
+            "action": action,
+            "actor": "dongwon",
+            "source_event": "request:A2",
+        }
+        fields.update(changes)
+        return transaction.LifecycleIntent(**fields)
+
+    def test_plan_selects_required_and_only_explicit_optional_targets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+
+            basic = transaction.plan_lifecycle_transaction(
+                root, self.intent(), project_context=context, clock="2030-01-02"
+            )
+            with_index = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(require_issue_index=True),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            roadmap = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(
+                    action="update",
+                    roadmap_change={
+                        "priority": "p1",
+                        "dependencies": ["BIZ-100"],
+                        "release_order": "7",
+                    },
+                ),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            production = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(
+                    action="production-version",
+                    production_change={
+                        "version": "1.2.3",
+                        "record_id": "biz-103-release",
+                        "content": "not-yet-valid-production-record\n",
+                    },
+                ),
+                project_context=context,
+                clock="2030-01-02",
+            )
+
+        self.assertIsInstance(basic, transaction.LifecycleTransactionPlan)
+        self.assertEqual(
+            [target.role for target in basic.targets],
+            ["issue", "state", "loop", "dashboard", "evidence"],
+        )
+        self.assertEqual(
+            [target.role for target in with_index.targets],
+            ["issue", "state", "loop", "dashboard", "issue-index", "evidence"],
+        )
+        self.assertEqual(
+            [target.role for target in roadmap.targets],
+            ["issue", "state", "loop", "dashboard", "roadmap", "evidence"],
+        )
+        self.assertEqual(
+            [target.role for target in production.targets],
+            ["issue", "state", "loop", "dashboard", "production-record", "evidence"],
+        )
+
+    def test_existing_issue_index_is_selected_but_absent_optional_files_stay_absent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+
+            plan = transaction.plan_lifecycle_transaction(
+                root, self.intent(), project_context=context, clock="2030-01-02"
+            )
+
+            roles = [target.role for target in plan.targets]
+            self.assertIn("issue-index", roles)
+            self.assertNotIn("roadmap", roles)
+            self.assertNotIn("production-record", roles)
+
+    def test_nested_context_owns_every_target_and_poisoned_defaults_are_not_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, nested=True, issue_index=True)
+            decoys = {
+                relative: (root / relative).read_bytes()
+                for relative in (
+                    "issues/BIZ-103.md",
+                    "workspace/dashboard.md",
+                    "workspace/loop-state.json",
+                    "workspace/roadmap.md",
+                    "memory/production-records/poison.md",
+                )
+            }
+
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(
+                    action="update",
+                    roadmap_change={"priority": "p1"},
+                    require_issue_index=True,
+                ),
+                project_context=context,
+                clock="2030-01-02",
+            )
+
+            self.assertEqual(
+                [target.relative_path for target in plan.targets[:-1]],
+                [
+                    "product/issues/BIZ-103.md",
+                    ".moduflow/state.json",
+                    "product/workspace/loop-state.json",
+                    "product/workspace/dashboard.md",
+                    "product/workspace/issue-index.json",
+                    "product/workspace/roadmap.md",
+                ],
+            )
+            for target in plan.targets:
+                resolved = (root / target.relative_path).resolve()
+                resolved.relative_to(root.resolve())
+            self.assertEqual(
+                {relative: (root / relative).read_bytes() for relative in decoys},
+                decoys,
+            )
+
+    def test_selected_sources_are_read_once_and_planning_never_mutates_the_tree(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            before = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            original_read_bytes = Path.read_bytes
+            with mock.patch.object(
+                Path,
+                "read_bytes",
+                autospec=True,
+                side_effect=lambda path: original_read_bytes(path),
+            ) as read_bytes:
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(
+                        action="update",
+                        roadmap_change={"priority": "p1"},
+                    ),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+
+            selected_existing = {
+                str(root.resolve() / target.relative_path)
+                for target in plan.targets
+                if target.existed
+            }
+            counts = {}
+            for call in read_bytes.call_args_list:
+                path = str(call.args[0])
+                counts[path] = counts.get(path, 0) + 1
+            self.assertEqual(
+                {path: counts.get(path, 0) for path in selected_existing},
+                {path: 1 for path in selected_existing},
+            )
+            self.assertEqual(
+                {
+                    path.relative_to(root).as_posix(): path.read_bytes()
+                    for path in root.rglob("*")
+                    if path.is_file()
+                },
+                before,
+            )
+            self.assertFalse((root / ".moduflow" / "transactions").exists())
+
+    def test_planner_failures_use_stable_codes_without_absolute_paths_or_payloads(self):
+        cases = (
+            ("context", "PLAN_CONTEXT_INVALID"),
+            ("missing", "PLAN_TARGET_MISSING"),
+            ("unreadable", "PLAN_TARGET_UNREADABLE"),
+            ("not-regular", "PLAN_TARGET_NOT_REGULAR"),
+            ("symlink", "PLAN_TARGET_SYMLINK"),
+            ("escape", "PLAN_PATH_ESCAPE"),
+            ("render", "PLAN_RENDER_INVALID"),
+        )
+        for case, expected_code in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root)
+                patcher = None
+                if case == "context":
+                    context["status"] = "unresolved"
+                elif case == "missing":
+                    (root / ".moduflow" / "state.json").unlink()
+                elif case == "unreadable":
+                    original_read_bytes = Path.read_bytes
+
+                    def fail_state(path):
+                        if path == root.resolve() / ".moduflow" / "state.json":
+                            raise PermissionError("private operating-system detail")
+                        return original_read_bytes(path)
+
+                    patcher = mock.patch.object(
+                        Path,
+                        "read_bytes",
+                        autospec=True,
+                        side_effect=fail_state,
+                    )
+                elif case == "not-regular":
+                    target = root / "workspace" / "dashboard.md"
+                    target.unlink()
+                    target.mkdir()
+                elif case == "symlink":
+                    target = root / "workspace" / "loop-state.json"
+                    target.unlink()
+                    target.symlink_to(root / "workspace" / "dashboard.md")
+                elif case == "escape":
+                    context["paths"]["issues"] = str(root.parent / "outside-issues")
+                else:
+                    (root / "issues" / f"{self.ISSUE_ID}.md").write_text(
+                        "# malformed without status\nprivate artifact payload\n",
+                        encoding="utf-8",
+                    )
+
+                try:
+                    if patcher is not None:
+                        patcher.start()
+                    with self.assertRaises(transaction.LifecyclePlanError) as raised:
+                        transaction.plan_lifecycle_transaction(
+                            root,
+                            self.intent(),
+                            project_context=context,
+                            clock="2030-01-02",
+                        )
+                finally:
+                    if patcher is not None:
+                        patcher.stop()
+
+                self.assertEqual(raised.exception.code, expected_code)
+                self.assertNotIn(str(root), str(raised.exception))
+                self.assertNotIn("private", str(raised.exception))

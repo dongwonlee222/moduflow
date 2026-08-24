@@ -75,16 +75,57 @@ class LifecycleIntent:
     production_change: dict | None = None
     require_issue_index: bool = False
 
+@dataclass(frozen=True)
+class PlannedTarget:
+    role: str
+    relative_path: str
+    existed: bool
+    before_sha256: str
+    after_sha256: str
+    after_size: int
+    changed: bool
+    validation_rules: tuple[str, ...]
+    apply_order: int
+    rollback_order: int
+    _before_bytes: bytes = field(repr=False)
+    _after_bytes: bytes = field(repr=False)
+
+@dataclass(frozen=True)
+class LifecycleTransactionPlan:
+    schema: str
+    transaction_id: str
+    idempotency_key: str
+    project_id: str
+    canonical_root: str
+    issue_id: str
+    action: str
+    target_lifecycle: str | None
+    targets: tuple[PlannedTarget, ...]
+    _project_context: Mapping = field(repr=False)
+
+    def to_public_dict(self) -> dict:
+        return serialize_transaction_plan({
+            "schema": self.schema,
+            "transaction_id": self.transaction_id,
+            "idempotency_key": self.idempotency_key,
+            "project_id": self.project_id,
+            "canonical_root": self.canonical_root,
+            "issue_id": self.issue_id,
+            "action": self.action,
+            "target_lifecycle": self.target_lifecycle,
+            "targets": [target.to_public_dict() for target in self.targets],
+        })
+
 def plan_lifecycle_transaction(
     project_root,
     intent: LifecycleIntent,
     *,
     project_context=None,
     clock=None,
-) -> dict:
-    """Return schema moduflow.lifecycle-transaction-plan.v1 without canonical writes."""
+) -> LifecycleTransactionPlan:
+    """Compute one immutable transaction plan without filesystem writes."""
 
-def validate_projected_transaction(plan: dict) -> dict:
+def validate_projected_transaction(plan: LifecycleTransactionPlan) -> dict:
     """Materialize and validate a private projected root; never replace canonical targets."""
 
 def apply_lifecycle_transaction(
@@ -112,7 +153,7 @@ def recover_incomplete_transaction(
 
 ## Implementation Readiness Contracts
 
-- **API contract mapping:** No HTTP API. The four Python transaction functions and `LifecycleIntent` above are new. Existing lifecycle/loop/production functions retain positional parameters and add only keyword-only transaction inputs. CLI JSON keeps existing compatibility keys and adds `transaction` where needed.
+- **API contract mapping:** No HTTP API. The four Python transaction functions, `LifecycleIntent`, `PlannedTarget`, and `LifecycleTransactionPlan` above are new. Existing lifecycle/loop/production functions retain positional parameters and add only keyword-only transaction inputs. CLI JSON keeps existing compatibility keys and adds `transaction` where needed.
 - **Test strategy:** Pure contract tests prove hashes, target order, action mapping, conditional targets, and deterministic IDs. Integration tests prove nested paths, zero-write denial, projected validation, expected-hash conflicts, idempotency, production-version uniqueness, exact rollback, and recovery at each persisted phase.
 - **Storybook required states:** Not applicable; no frontend component changes.
 - **MSW fixture baseline:** Not applicable; no browser or API-backed UI.
@@ -157,20 +198,19 @@ def derive_idempotency_key(project_context, intent):
 - [ ] **Step 4: Implement stable plan/result envelopes.** Reject unknown keys in persisted journal/result records, use the exact schemas in this plan, and expose logical paths plus hashes only.
 - [ ] **Step 5: Run GREEN and commit.** Run the contract slice, then commit `feat(103): define lifecycle transaction contract`.
 
-### Task A2: Pure target renderers and complete projected-state validation
+### Task A2: Read-only lifecycle transaction planner
 
 **Files:**
 - Modify: `scripts/project_lifecycle_transaction.py`, `tests/test_project_lifecycle_transaction.py`
 - Modify: `scripts/project_lifecycle.py`, `tests/test_project_lifecycle.py`
 - Modify: `scripts/project_loop.py`, `tests/test_project_loop.py`
-- Modify: `scripts/validate_project_artifacts.py`, `tests/test_validation_distribution.py`
 
 **Interfaces:**
 - Consumes: Task A1 intent/identity contract and canonical roles from the resolved context.
-- Produces: `plan_lifecycle_transaction()`, target renderers, deterministic target ordering, and `validate_projected_transaction()`.
+- Produces: immutable `PlannedTarget`/`LifecycleTransactionPlan`, redacted `to_public_dict()`, `plan_lifecycle_transaction()`, target renderers, deterministic target ordering, and safe `LifecyclePlanError` metadata.
 
 - [ ] **Step 1: Write RED target-selection tests.** Cover owning issue, state, loop, dashboard, evidence; optional `workspace/issue-index.json`; roadmap only with `roadmap_change`; Production Record only with `production_change`; and absent optional files staying absent.
-- [ ] **Step 2: Add nested/decoy tests.** Configure all Issue 109 roles below `product/*`, poison default folders, and assert every target remains inside the canonical root with no default-path reads.
+- [ ] **Step 2: Define the immutable plan boundary.** Add frozen `PlannedTarget` and `LifecycleTransactionPlan` values, recursively detach/freeze the bound project context, hide private bytes from representations, and delegate `to_public_dict()` to `serialize_transaction_plan()`.
 - [ ] **Step 3: Extract pure renderers.** Add `render_issue_transition()`, `render_state_projection()`, `render_dashboard_projection()`, `render_loop_projection()`, `render_issue_index()`, and `render_roadmap_projection()`; the last renderer owns only this bounded block:
 
 ```markdown
@@ -180,9 +220,26 @@ def derive_idempotency_key(project_context, intent):
 ```
 
 - [ ] **Step 4: Build immutable planned targets.** Read each potential target once, record exact original bytes privately in memory, render proposed bytes, and sort roles as `issue`, `state`, `loop`, `dashboard`, `issue-index`, `roadmap`, `production-record`, `evidence`.
-- [ ] **Step 5: Implement private projected-root validation.** After authorization, create a mode-`0700` validation root inside the transaction staging directory, copy canonical artifact roles without following symlinks, overlay proposed bytes, then call `validate_project_artifacts.validate_project()` plus lifecycle and production validators against that root.
-- [ ] **Step 6: Prove validation-before-replace.** Inject malformed projected issue/state/production bytes and assert validation fails with zero canonical replacement calls.
-- [ ] **Step 7: Run GREEN and commit.** Run transaction, lifecycle, loop, and validation-distribution focused suites; commit `feat(103): plan and validate projected lifecycle state`.
+- [ ] **Step 5: Prove canonical-path and no-write behavior.** Configure all Issue 109 roles below `product/*`, poison default folders, assert every selected source is read at most once, and prove planning does not create directories, temporary files, writes, replacements, Git, subprocess, or network calls.
+- [ ] **Step 6: Enforce safe planner failures.** Reject invalid context, missing/unreadable/non-regular/symlink targets, path escape, and invalid renderer output with the stable codes `PLAN_CONTEXT_INVALID`, `PLAN_TARGET_MISSING`, `PLAN_TARGET_UNREADABLE`, `PLAN_TARGET_NOT_REGULAR`, `PLAN_TARGET_SYMLINK`, `PLAN_PATH_ESCAPE`, and `PLAN_RENDER_INVALID` without absolute temporary paths or artifact payloads.
+- [ ] **Step 7: Run GREEN and commit.** Run transaction, lifecycle, loop, and nested-context focused suites; commit `feat(103): plan lifecycle transactions`.
+
+### Task A3: Private projected-state validation
+
+**Files:**
+- Modify: `scripts/project_lifecycle_transaction.py`, `tests/test_project_lifecycle_transaction.py`
+- Modify: `scripts/validate_project_artifacts.py`, `tests/test_validation_distribution.py`
+
+**Interfaces:**
+- Consumes: Task A2 immutable plan with private preimages/proposed bytes and the detached resolved context.
+- Produces: `validate_projected_transaction(plan: LifecycleTransactionPlan) -> dict` without canonical replacement.
+
+- [ ] **Step 1: Write RED projected-validation tests.** Inject malformed projected issue/state/production bytes and assert validation reports stable rule/error IDs with zero canonical replacement calls.
+- [ ] **Step 2: Prove denial before side effects.** Substitute archived/read-only/malformed detached contexts and assert zero calls to mkdir, tempfile, staging, replacement, Git, subprocess, or network boundaries.
+- [ ] **Step 3: Materialize the private projected root.** After Issue 110 `write` authorization, create a mode-`0700` validation root inside transaction-private staging, copy canonical artifact roles without following symlinks, and overlay only `PlannedTarget._after_bytes`.
+- [ ] **Step 4: Validate the projected state.** Call `validate_project_artifacts.validate_project()` plus lifecycle and Production Record validators against the projected root and return only redacted validation summaries.
+- [ ] **Step 5: Prove canonical byte stability.** Snapshot all canonical selected targets before validation and assert byte-for-byte equality plus zero canonical replacement calls after both valid and invalid projected runs.
+- [ ] **Step 6: Run GREEN and commit.** Run transaction and validation-distribution focused suites; commit `feat(103): validate projected lifecycle state`.
 
 ### Stream B — Durable Apply, Rollback, and Crash Recovery
 
@@ -210,7 +267,7 @@ def derive_idempotency_key(project_context, intent):
 - Modify: `tests/test_project_lifecycle_transaction.py`
 
 **Interfaces:**
-- Consumes: Tasks A2/B1 plan, staging, lock, and journal primitives.
+- Consumes: Tasks A2/A3/B1 plan, projected-validation, staging, lock, and journal primitives.
 - Produces: `apply_lifecycle_transaction()` and `recover_incomplete_transaction()` with all six terminal statuses.
 
 - [ ] **Step 1: Write RED failure-matrix tests.** Parameterize every journal boundary and every target index; before first replacement expect unchanged bytes, after replacement expect verified reverse-order restoration, and an injected restore failure must retain payloads and return `recovery_required`.
@@ -303,8 +360,9 @@ def derive_idempotency_key(project_context, intent):
 
 ```mermaid
 flowchart LR
-    A1[Contract + identity] --> A2[Plan + projected validation]
-    A2 --> B1[Lock + journal]
+    A1[Contract + identity] --> A2[Read-only plan]
+    A2 --> A3[Projected validation]
+    A3 --> B1[Lock + journal]
     B1 --> B2[Apply + recovery]
     B2 --> C1[Lifecycle adapters]
     B2 --> C2[Production versions]
@@ -319,7 +377,7 @@ flowchart LR
 
 ## Self-Review
 
-- **Spec coverage:** All eleven acceptance criteria map to A2 (targets/projected state), B1/B2 (journal/failure/recovery/conflict), C1 (lifecycle/roadmap/index), C2 (production idempotency), or D1/D2 (bypass/release evidence).
+- **Spec coverage:** All eleven acceptance criteria map to A2 (targets and immutable planning), A3 (projected state), B1/B2 (journal/failure/recovery/conflict), C1 (lifecycle/roadmap/index), C2 (production idempotency), or D1/D2 (bypass/release evidence).
 - **Placeholder scan:** The plan contains no deferred implementation marker; every task names exact files, interfaces, commands, expected RED/GREEN behavior, and commit boundary.
 - **Type consistency:** All later tasks consume the same `LifecycleIntent`, transaction plan/result schemas, six terminal statuses, and four public function names defined above.
 

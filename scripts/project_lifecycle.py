@@ -69,6 +69,136 @@ _SYNC_FATAL_DIAGNOSTICS = {
     "ISSUE_DUPLICATE_FIELD",
 }
 
+_ROADMAP_START = "<!-- moduflow:roadmap-projection:start -->"
+_ROADMAP_END = "<!-- moduflow:roadmap-projection:end -->"
+
+
+def _utf8_bytes(value, label):
+    if not isinstance(value, bytes):
+        raise TypeError(f"{label} must be bytes")
+    value.decode("utf-8")
+    return value
+
+
+def _json_bytes(value):
+    return (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
+def render_issue_transition(issue_bytes, target_lifecycle, *, changed_on):
+    """Return issue Markdown with only its canonical lifecycle line changed."""
+    text = _utf8_bytes(issue_bytes, "issue_bytes").decode("utf-8")
+    if target_lifecycle is None:
+        return bytes(issue_bytes)
+    if target_lifecycle not in {"backlog", "active", "done"}:
+        raise ValueError("Unsupported target lifecycle")
+    match = re.search(r"^\*\*Status:\s*[^*]+\*\*(?P<suffix>[^\n]*)$", text, re.M)
+    if not match:
+        raise ValueError("Owning issue requires a canonical Status line")
+    suffix = match.group("suffix").strip()
+    if suffix.startswith("—"):
+        suffix = suffix[1:].strip()
+    facts = [part.strip() for part in suffix.rstrip(".").split(";") if part.strip()]
+    facts = [fact for fact in facts if not fact.startswith(("started ", "done "))]
+    if target_lifecycle in {"active", "done"}:
+        facts.append(f"started {changed_on}")
+    if target_lifecycle == "done":
+        facts.append(f"done {changed_on}")
+    rendered_suffix = f" — {'; '.join(facts)}." if facts else ""
+    replacement = f"**Status: {target_lifecycle}**{rendered_suffix}"
+    return (text[: match.start()] + replacement + text[match.end() :]).encode("utf-8")
+
+
+def render_state_projection(
+    state_bytes,
+    *,
+    active_issue,
+    phase,
+    next_command,
+    changed_on,
+):
+    """Return deterministic state JSON while preserving unrelated keys."""
+    _utf8_bytes(state_bytes, "state_bytes")
+    state = json.loads(state_bytes.decode("utf-8")) if state_bytes else {}
+    if not isinstance(state, dict):
+        raise ValueError("state projection requires a JSON object")
+    state.setdefault("schema", "moduflow.state.v1")
+    state["active_issue"] = active_issue
+    state["phase"] = phase
+    state.setdefault("active_goal", "")
+    state["next_command"] = next_command
+    state.setdefault("blockers", [])
+    state["updated_at"] = changed_on
+    return _json_bytes(state)
+
+
+def render_dashboard_projection(
+    dashboard_bytes,
+    *,
+    active_issue,
+    phase,
+    source_path,
+):
+    """Return dashboard bytes with only the Active Issue section replaced."""
+    text = _utf8_bytes(dashboard_bytes, "dashboard_bytes").decode("utf-8")
+    if active_issue:
+        section = (
+            "## Active Issue\n\n"
+            f"- `{active_issue}` (phase: {phase}). Canonical: `{source_path}`.\n\n"
+        )
+    else:
+        section = (
+            "## Active Issue\n\n- None active. "
+            "Run `product:status` to pick the next issue.\n\n"
+        )
+    pattern = re.compile(r"^##\s+Active Issue\s*$.*?(?=^##\s|\Z)", re.M | re.S)
+    if not pattern.search(text):
+        raise ValueError("dashboard requires an Active Issue section")
+    return pattern.sub(lambda _match: section, text).encode("utf-8")
+
+
+def render_issue_index(issues):
+    """Return a deterministic physical compatibility index from projected issues."""
+    if not isinstance(issues, list):
+        raise TypeError("issues must be a list")
+    detached = [dict(issue) for issue in issues]
+    return _json_bytes(
+        {
+            "schema": "moduflow.issue-index.v1",
+            "issues": sorted(detached, key=lambda issue: issue["id"]),
+        }
+    )
+
+
+def render_roadmap_projection(
+    roadmap_bytes,
+    *,
+    issue_id,
+    priority,
+    dependencies,
+    release_order,
+):
+    """Replace or append the one bounded ModuFlow roadmap projection block."""
+    text = _utf8_bytes(roadmap_bytes, "roadmap_bytes").decode("utf-8")
+    dependency_text = ", ".join(dependencies) if dependencies else "none"
+    release_text = str(release_order) if release_order not in (None, "") else "none"
+    block = (
+        f"{_ROADMAP_START}\n"
+        f"- `{issue_id}` — priority `{priority}`; dependencies `{dependency_text}`; "
+        f"release order `{release_text}`.\n"
+        f"{_ROADMAP_END}"
+    )
+    pattern = re.compile(
+        rf"{re.escape(_ROADMAP_START)}.*?{re.escape(_ROADMAP_END)}",
+        re.S,
+    )
+    matches = list(pattern.finditer(text))
+    if len(matches) > 1:
+        raise ValueError("roadmap contains duplicate managed projection blocks")
+    if matches:
+        return pattern.sub(lambda _match: block, text).encode("utf-8")
+    separator = "" if not text else ("\n\n" if not text.endswith("\n\n") else "")
+    return (text + separator + block + "\n").encode("utf-8")
+
 
 def read_json(path):
     try:

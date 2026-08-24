@@ -37,6 +37,108 @@ def scaffold(root, issues, active_in_dashboard="048-x", state_active="048-x"):
 
 
 class ProjectLifecycleTests(unittest.TestCase):
+    def test_pure_renderers_transition_issue_and_preserve_unmanaged_bytes(self):
+        lc = load_module("project_lifecycle_renderers", "scripts/project_lifecycle.py")
+        issue = (
+            b"# Issue: `BIZ-103`\n\n"
+            b"**Status: backlog** \xe2\x80\x94 created 2029-12-01.\n\n"
+            b"## Notes\n\nPreserve exactly.\n"
+        )
+        dashboard = (
+            b"# Dashboard\n\n## Active Issue\n\n- None active.\n\n"
+            b"## Notes\n\nPreserve exactly.\n"
+        )
+
+        rendered_issue = lc.render_issue_transition(
+            issue, "active", changed_on="2030-01-02"
+        )
+        rendered_dashboard = lc.render_dashboard_projection(
+            dashboard,
+            active_issue="BIZ-103",
+            phase="execute",
+            source_path="product/issues/BIZ-103.md",
+        )
+
+        self.assertEqual(
+            rendered_issue,
+            b"# Issue: `BIZ-103`\n\n"
+            b"**Status: active** \xe2\x80\x94 created 2029-12-01; started 2030-01-02.\n\n"
+            b"## Notes\n\nPreserve exactly.\n",
+        )
+        self.assertEqual(
+            rendered_dashboard,
+            b"# Dashboard\n\n## Active Issue\n\n"
+            b"- `BIZ-103` (phase: execute). Canonical: `product/issues/BIZ-103.md`.\n\n"
+            b"## Notes\n\nPreserve exactly.\n",
+        )
+
+    def test_state_and_issue_index_renderers_are_deterministic_utf8_json(self):
+        lc = load_module("project_lifecycle_json_renderers", "scripts/project_lifecycle.py")
+        state = b'{"schema":"moduflow.state.v1","custom":"keep"}\n'
+        issues = [
+            {"id": "BIZ-200", "status": "backlog", "title": "Later"},
+            {"id": "BIZ-103", "status": "active", "title": "Current"},
+        ]
+
+        rendered_state = lc.render_state_projection(
+            state,
+            active_issue="BIZ-103",
+            phase="execute",
+            next_command="product:execute BIZ-103",
+            changed_on="2030-01-02",
+        )
+        rendered_index = lc.render_issue_index(issues)
+
+        self.assertEqual(
+            json.loads(rendered_state),
+            {
+                "schema": "moduflow.state.v1",
+                "custom": "keep",
+                "active_issue": "BIZ-103",
+                "phase": "execute",
+                "active_goal": "",
+                "next_command": "product:execute BIZ-103",
+                "blockers": [],
+                "updated_at": "2030-01-02",
+            },
+        )
+        self.assertEqual(
+            json.loads(rendered_index),
+            {
+                "schema": "moduflow.issue-index.v1",
+                "issues": [
+                    {"id": "BIZ-103", "status": "active", "title": "Current"},
+                    {"id": "BIZ-200", "status": "backlog", "title": "Later"},
+                ],
+            },
+        )
+
+    def test_roadmap_renderer_changes_only_its_bounded_managed_block(self):
+        lc = load_module("project_lifecycle_roadmap_renderer", "scripts/project_lifecycle.py")
+        original = (
+            b"# Roadmap\n\nHuman before.\n\n"
+            b"<!-- moduflow:roadmap-projection:start -->\n"
+            b"- `OLD` \xe2\x80\x94 priority `p3`; dependencies `none`; release order `none`.\n"
+            b"<!-- moduflow:roadmap-projection:end -->\n\n"
+            b"Human after.\n"
+        )
+
+        rendered = lc.render_roadmap_projection(
+            original,
+            issue_id="BIZ-103",
+            priority="p1",
+            dependencies=["BIZ-100", "BIZ-101"],
+            release_order="7",
+        )
+
+        self.assertEqual(
+            rendered,
+            b"# Roadmap\n\nHuman before.\n\n"
+            b"<!-- moduflow:roadmap-projection:start -->\n"
+            b"- `BIZ-103` \xe2\x80\x94 priority `p1`; dependencies `BIZ-100, BIZ-101`; release order `7`.\n"
+            b"<!-- moduflow:roadmap-projection:end -->\n\n"
+            b"Human after.\n",
+        )
     def test_archived_project_denies_lifecycle_sync_before_evaluation_or_write(self):
         lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
         project_registry = load_module("project_registry_lifecycle", "scripts/project_registry.py")

@@ -201,6 +201,45 @@ def normalize_loop_state(raw):
     }
 
 
+def render_loop_projection(
+    loop_bytes,
+    *,
+    issue_id,
+    action,
+    next_command,
+    blocker,
+    changed_on,
+):
+    """Return loop-state bytes for a lifecycle intent without filesystem writes."""
+    if not isinstance(loop_bytes, bytes):
+        raise TypeError("loop_bytes must be bytes")
+    raw = json.loads(loop_bytes.decode("utf-8")) if loop_bytes else {}
+    if not isinstance(raw, dict):
+        raise ValueError("loop projection requires a JSON object")
+    state = normalize_loop_state(raw)
+    state.update({key: value for key, value in raw.items() if key not in state})
+    issue_ids = list(state.get("issue_ids") or [])
+    if issue_id not in issue_ids:
+        issue_ids.append(issue_id)
+    state["issue_ids"] = issue_ids
+    state["active_issue_id"] = issue_id
+    if action == "pause":
+        state["status"] = "blocked"
+        state["blocker"] = blocker or "Lifecycle transaction paused"
+    elif action == "complete":
+        state["status"] = "done"
+        state["blocker"] = None
+    elif action in {"start", "resume"}:
+        state["status"] = "active"
+        state["blocker"] = None
+    elif blocker:
+        state["blocker"] = blocker
+    state["next_command"] = next_command
+    state["last_action"] = action
+    state["updated_at"] = changed_on
+    return (json.dumps(state, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
 def load_loop_state(root, *, project_context=None):
     path = loop_state_path(root, project_context=project_context)
     if not path.exists():

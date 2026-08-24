@@ -6,13 +6,25 @@ remote-system operations. Transaction planning and persistence are layered on
 top of this contract in later Issue 103 tasks.
 """
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
+from datetime import date
 import hashlib
 import json
 from collections.abc import Mapping
-from pathlib import PurePosixPath, PureWindowsPath
+import os
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 from types import MappingProxyType
+
+import project_registry
+from project_lifecycle import (
+    render_dashboard_projection,
+    render_issue_index,
+    render_issue_transition,
+    render_roadmap_projection,
+    render_state_projection,
+)
+from project_loop import render_loop_projection
 
 
 PLAN_SCHEMA = "moduflow.lifecycle-transaction-plan.v1"
@@ -132,6 +144,97 @@ class LifecycleIntent:
     roadmap_change: dict | None = None
     production_change: dict | None = None
     require_issue_index: bool = False
+
+
+@dataclass(frozen=True)
+class PlannedTarget:
+    """One selected artifact with private immutable preimage and proposal bytes."""
+
+    role: str
+    relative_path: str
+    existed: bool
+    before_sha256: str
+    after_sha256: str
+    after_size: int
+    changed: bool
+    validation_rules: tuple[str, ...]
+    apply_order: int
+    rollback_order: int
+    _before_bytes: bytes = field(repr=False)
+    _after_bytes: bytes = field(repr=False)
+
+    def to_public_dict(self):
+        return {
+            "role": self.role,
+            "relative_path": self.relative_path,
+            "existed": self.existed,
+            "before_sha256": self.before_sha256,
+            "after_sha256": self.after_sha256,
+            "after_bytes": self.after_size,
+            "changed": self.changed,
+            "validation_rules": list(self.validation_rules),
+            "apply_order": self.apply_order,
+            "rollback_order": self.rollback_order,
+        }
+
+
+@dataclass(frozen=True)
+class LifecycleTransactionPlan:
+    """Detached immutable plan with an exact redacted public representation."""
+
+    schema: str
+    transaction_id: str
+    idempotency_key: str
+    project_id: str
+    canonical_root: str
+    issue_id: str
+    action: str
+    target_lifecycle: str | None
+    targets: tuple[PlannedTarget, ...]
+    _project_context: Mapping = field(repr=False, compare=False)
+
+    def __post_init__(self):
+        if not isinstance(self.targets, tuple) or not all(
+            isinstance(target, PlannedTarget) for target in self.targets
+        ):
+            raise TypeError("targets must be a tuple of PlannedTarget values")
+        if not isinstance(self._project_context, Mapping):
+            raise TypeError("project context must be a mapping")
+        object.__setattr__(
+            self,
+            "_project_context",
+            _freeze_json_value(self._project_context),
+        )
+
+    def to_public_dict(self):
+        return serialize_transaction_plan(
+            {
+                "schema": self.schema,
+                "transaction_id": self.transaction_id,
+                "idempotency_key": self.idempotency_key,
+                "project_id": self.project_id,
+                "canonical_root": self.canonical_root,
+                "issue_id": self.issue_id,
+                "action": self.action,
+                "target_lifecycle": self.target_lifecycle,
+                "targets": [target.to_public_dict() for target in self.targets],
+            }
+        )
+
+
+class LifecyclePlanError(ValueError):
+    """Bounded planner failure that never includes artifact or absolute-path data."""
+
+    def __init__(self, code, *, role="", relative_path=""):
+        self.code = code
+        self.role = role
+        self.relative_path = relative_path
+        fields = [code]
+        if role:
+            fields.append(f"role={role}")
+        if relative_path:
+            fields.append(f"path={relative_path}")
+        super().__init__("; ".join(fields))
 
 
 def canonical_json_bytes(value):
@@ -425,3 +528,376 @@ def serialize_transaction_result(result):
         ),
         "verified_target_count": verified_target_count,
     }
+
+
+def _planning_date(clock):
+    value = clock() if callable(clock) else clock
+    if value is None:
+        value = date.today()
+    return value.isoformat() if hasattr(value, "isoformat") else str(value)
+
+
+def _safe_planning_child(root, context, role, *parts):
+    paths = context.get("paths") if isinstance(context, Mapping) else None
+    relative_paths = (
+        context.get("relative_paths") if isinstance(context, Mapping) else None
+    )
+    if not isinstance(paths, Mapping) or not isinstance(relative_paths, Mapping):
+        raise LifecyclePlanError("PLAN_CONTEXT_INVALID", role=role)
+    configured = paths.get(role)
+    relative_root = relative_paths.get(role)
+    if not isinstance(configured, str) or not isinstance(relative_root, str):
+        raise LifecyclePlanError("PLAN_CONTEXT_INVALID", role=role)
+
+    configured_path = Path(os.path.abspath(configured))
+    try:
+        configured_path.relative_to(root)
+    except ValueError as exc:
+        raise LifecyclePlanError("PLAN_PATH_ESCAPE", role=role) from exc
+
+    role_path = Path(relative_root)
+    if role_path.is_absolute() or any(part == ".." for part in role_path.parts):
+        raise LifecyclePlanError("PLAN_PATH_ESCAPE", role=role)
+    clean_parts = []
+    for part in parts:
+        child = Path(str(part))
+        if child.is_absolute() or len(child.parts) != 1 or child.name in {"", ".", ".."}:
+            raise LifecyclePlanError("PLAN_PATH_ESCAPE", role=role)
+        clean_parts.append(child.name)
+    candidate = root / role_path / Path(*clean_parts)
+    try:
+        candidate.relative_to(root)
+    except ValueError as exc:
+        raise LifecyclePlanError("PLAN_PATH_ESCAPE", role=role) from exc
+    return candidate
+
+
+def _read_planning_source(path, root, role, *, required):
+    path = Path(path)
+    try:
+        relative_path = path.relative_to(root).as_posix()
+    except ValueError as exc:
+        raise LifecyclePlanError("PLAN_PATH_ESCAPE", role=role) from exc
+
+    current = root
+    for part in Path(relative_path).parts:
+        current = current / part
+        try:
+            if current.is_symlink():
+                raise LifecyclePlanError(
+                    "PLAN_TARGET_SYMLINK",
+                    role=role,
+                    relative_path=relative_path,
+                )
+        except OSError as exc:
+            raise LifecyclePlanError(
+                "PLAN_TARGET_UNREADABLE",
+                role=role,
+                relative_path=relative_path,
+            ) from exc
+
+    if not os.path.lexists(path):
+        if required:
+            raise LifecyclePlanError(
+                "PLAN_TARGET_MISSING",
+                role=role,
+                relative_path=relative_path,
+            )
+        return False, b""
+    try:
+        if not path.is_file():
+            raise LifecyclePlanError(
+                "PLAN_TARGET_NOT_REGULAR",
+                role=role,
+                relative_path=relative_path,
+            )
+        return True, path.read_bytes()
+    except LifecyclePlanError:
+        raise
+    except OSError as exc:
+        raise LifecyclePlanError(
+            "PLAN_TARGET_UNREADABLE",
+            role=role,
+            relative_path=relative_path,
+        ) from exc
+
+
+def _project_relative(root, path):
+    return Path(path).relative_to(root).as_posix()
+
+
+def _render_planning_target(role, relative_path, renderer, *args, **kwargs):
+    try:
+        return renderer(*args, **kwargs)
+    except Exception as exc:
+        raise LifecyclePlanError(
+            "PLAN_RENDER_INVALID",
+            role=role,
+            relative_path=relative_path,
+        ) from exc
+
+
+def _projected_issue_status(issue_bytes, fallback):
+    text = issue_bytes.decode("utf-8")
+    match = re.search(r"^\*\*Status:\s*([^*]+)\*\*", text, re.M)
+    return match.group(1).strip() if match else fallback
+
+
+def _planned_target(role, relative_path, existed, before_bytes, after_bytes, rules, order, total):
+    return PlannedTarget(
+        role=role,
+        relative_path=relative_path,
+        existed=existed,
+        before_sha256=target_sha256(before_bytes) if existed else "absent",
+        after_sha256=target_sha256(after_bytes),
+        after_size=len(after_bytes),
+        changed=(not existed or before_bytes != after_bytes),
+        validation_rules=tuple(rules),
+        apply_order=order,
+        rollback_order=total - order - 1,
+        _before_bytes=before_bytes,
+        _after_bytes=after_bytes,
+    )
+
+
+def plan_lifecycle_transaction(
+    project_root,
+    intent: LifecycleIntent,
+    *,
+    project_context=None,
+    clock=None,
+):
+    """Compute one immutable lifecycle transaction plan without filesystem writes."""
+    root = Path(project_root).resolve()
+    try:
+        context = project_registry.context_for_operation(
+            root,
+            project_context=project_context,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        raise LifecyclePlanError("PLAN_CONTEXT_INVALID") from exc
+    normalized = normalize_lifecycle_intent(intent)
+    idempotency_key = normalized.idempotency_key or derive_idempotency_key(
+        context, normalized
+    )
+    if normalized.idempotency_key:
+        assert_idempotency_key_matches(context, idempotency_key, normalized)
+    transaction_id = derive_transaction_id(context, normalized)
+    changed_on = _planning_date(clock)
+
+    issue_path = _safe_planning_child(
+        root, context, "issues", f"{normalized.issue_id}.md"
+    )
+    state_path = root / ".moduflow" / "state.json"
+    loop_path = _safe_planning_child(
+        root, context, "workspace", "loop-state.json"
+    )
+    dashboard_path = _safe_planning_child(
+        root, context, "workspace", "dashboard.md"
+    )
+    issue_existed, issue_before = _read_planning_source(
+        issue_path, root, "issue", required=True
+    )
+    state_existed, state_before = _read_planning_source(
+        state_path, root, "state", required=True
+    )
+    loop_existed, loop_before = _read_planning_source(
+        loop_path, root, "loop", required=True
+    )
+    dashboard_existed, dashboard_before = _read_planning_source(
+        dashboard_path, root, "dashboard", required=True
+    )
+
+    issue_relative = _project_relative(root, issue_path)
+    issue_after = _render_planning_target(
+        "issue",
+        issue_relative,
+        render_issue_transition,
+        issue_before,
+        normalized.target_lifecycle,
+        changed_on=changed_on,
+    )
+    projected_status = _render_planning_target(
+        "issue",
+        issue_relative,
+        _projected_issue_status,
+        issue_after,
+        normalized.target_lifecycle or "backlog",
+    )
+    issue_active = "" if projected_status == "done" else normalized.issue_id
+    phase = "select" if projected_status == "done" else "execute"
+    next_command = normalized.next_command or (
+        "product:status"
+        if projected_status == "done"
+        else f"product:execute {normalized.issue_id}"
+    )
+    state_after = _render_planning_target(
+        "state",
+        _project_relative(root, state_path),
+        render_state_projection,
+        state_before,
+        active_issue=issue_active,
+        phase=phase,
+        next_command=next_command,
+        changed_on=changed_on,
+    )
+    loop_after = _render_planning_target(
+        "loop",
+        _project_relative(root, loop_path),
+        render_loop_projection,
+        loop_before,
+        issue_id=normalized.issue_id,
+        action=normalized.action,
+        next_command=next_command,
+        blocker=normalized.loop_blocker,
+        changed_on=changed_on,
+    )
+    dashboard_after = _render_planning_target(
+        "dashboard",
+        _project_relative(root, dashboard_path),
+        render_dashboard_projection,
+        dashboard_before,
+        active_issue=issue_active,
+        phase=phase,
+        source_path=issue_relative,
+    )
+
+    selected = [
+        (
+            "issue", issue_relative, issue_existed, issue_before, issue_after,
+            ("issue-schema", "lifecycle"),
+        ),
+        (
+            "state", _project_relative(root, state_path), state_existed, state_before,
+            state_after, ("state-schema", "lifecycle"),
+        ),
+        (
+            "loop", _project_relative(root, loop_path), loop_existed, loop_before,
+            loop_after, ("loop-state-schema", "lifecycle"),
+        ),
+        (
+            "dashboard", _project_relative(root, dashboard_path), dashboard_existed,
+            dashboard_before, dashboard_after, ("dashboard-projection",),
+        ),
+    ]
+
+    issue_index_path = _safe_planning_child(
+        root, context, "workspace", "issue-index.json"
+    )
+    if os.path.lexists(issue_index_path) or normalized.require_issue_index:
+        existed, before = _read_planning_source(
+            issue_index_path, root, "issue-index", required=False
+        )
+        after = _render_planning_target(
+            "issue-index",
+            _project_relative(root, issue_index_path),
+            render_issue_index,
+            [
+                {
+                    "id": normalized.issue_id,
+                    "status": projected_status,
+                    "title": normalized.issue_id,
+                }
+            ]
+        )
+        selected.append(
+            (
+                "issue-index", _project_relative(root, issue_index_path), existed,
+                before, after, ("issue-index-schema",),
+            )
+        )
+
+    if normalized.roadmap_change is not None:
+        roadmap_path = _safe_planning_child(
+            root, context, "workspace", "roadmap.md"
+        )
+        existed, before = _read_planning_source(
+            roadmap_path, root, "roadmap", required=True
+        )
+        change = normalized.roadmap_change
+        after = _render_planning_target(
+            "roadmap",
+            _project_relative(root, roadmap_path),
+            render_roadmap_projection,
+            before,
+            issue_id=normalized.issue_id,
+            priority=change.get("priority", "p2"),
+            dependencies=change.get("dependencies", ()),
+            release_order=change.get("release_order"),
+        )
+        selected.append(
+            (
+                "roadmap", _project_relative(root, roadmap_path), existed, before,
+                after, ("roadmap-projection",),
+            )
+        )
+
+    if normalized.production_change is not None:
+        change = normalized.production_change
+        record_id = str(change.get("record_id") or normalized.issue_id)
+        production_path = _safe_planning_child(
+            root, context, "production_records", f"{record_id}.md"
+        )
+        existed, before = _read_planning_source(
+            production_path,
+            root,
+            "production-record",
+            required=False,
+        )
+        content = change.get("content", "")
+        after = content if isinstance(content, bytes) else str(content).encode("utf-8")
+        selected.append(
+            (
+                "production-record", _project_relative(root, production_path), existed,
+                before, after, ("production-record-schema",),
+            )
+        )
+
+    target_total = len(selected) + 1
+    targets = tuple(
+        _planned_target(*target, order=index, total=target_total)
+        for index, target in enumerate(selected)
+    )
+    evidence_path = _safe_planning_child(
+        root, context, "workspace", "transactions", f"{transaction_id}.json"
+    )
+    evidence_existed, evidence_before = _read_planning_source(
+        evidence_path,
+        root,
+        "evidence",
+        required=False,
+    )
+    evidence_after = (
+        json.dumps(
+            {
+                "schema": "moduflow.lifecycle-transaction-evidence.v1",
+                "transaction_id": transaction_id,
+                "targets": [target.to_public_dict() for target in targets],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n"
+    ).encode("utf-8")
+    evidence = _planned_target(
+        "evidence",
+        _project_relative(root, evidence_path),
+        evidence_existed,
+        evidence_before,
+        evidence_after,
+        ("transaction-evidence-schema",),
+        len(targets),
+        target_total,
+    )
+    return LifecycleTransactionPlan(
+        schema=PLAN_SCHEMA,
+        transaction_id=transaction_id,
+        idempotency_key=idempotency_key,
+        project_id=context.get("project_id") or "explicit-root",
+        canonical_root=str(root),
+        issue_id=normalized.issue_id,
+        action=normalized.action,
+        target_lifecycle=normalized.target_lifecycle,
+        targets=targets + (evidence,),
+        _project_context=context,
+    )

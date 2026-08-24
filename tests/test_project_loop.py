@@ -19,6 +19,39 @@ project_loop = load_module("project_loop", "scripts/project_loop.py")
 
 
 class ProjectLoopTests(unittest.TestCase):
+    def test_render_loop_projection_keeps_issue_active_across_pause_and_resume(self):
+        original = json.dumps(
+            {
+                "schema": "moduflow.loop-state.v2",
+                "goal_id": "goal-1",
+                "custom": "preserve",
+            }
+        ).encode("utf-8") + b"\n"
+
+        paused = project_loop.render_loop_projection(
+            original,
+            issue_id="BIZ-103",
+            action="pause",
+            next_command="product:execute BIZ-103",
+            blocker="waiting for approval",
+            changed_on="2030-01-02",
+        )
+        resumed = project_loop.render_loop_projection(
+            paused,
+            issue_id="BIZ-103",
+            action="resume",
+            next_command="product:execute BIZ-103",
+            blocker="",
+            changed_on="2030-01-03",
+        )
+
+        self.assertEqual(json.loads(paused)["active_issue_id"], "BIZ-103")
+        self.assertEqual(json.loads(paused)["status"], "blocked")
+        self.assertEqual(json.loads(paused)["blocker"], "waiting for approval")
+        self.assertEqual(json.loads(resumed)["active_issue_id"], "BIZ-103")
+        self.assertEqual(json.loads(resumed)["status"], "active")
+        self.assertIsNone(json.loads(resumed)["blocker"])
+        self.assertEqual(json.loads(resumed)["custom"], "preserve")
     def test_archived_project_denies_loop_state_write_without_creating_file(self):
         project_registry = load_module("project_registry_loop", "scripts/project_registry.py")
         project_operation = load_module("project_operation_loop", "scripts/project_operation.py")
