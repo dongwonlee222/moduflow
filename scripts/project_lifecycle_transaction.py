@@ -7,7 +7,7 @@ private roots. Canonical replacement and recovery remain separate boundaries.
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, datetime, timezone
 import errno
 import hashlib
 import json
@@ -36,6 +36,13 @@ from project_loop import render_loop_projection
 PLAN_SCHEMA = "moduflow.lifecycle-transaction-plan.v1"
 RESULT_SCHEMA = "moduflow.lifecycle-transaction.v1"
 JOURNAL_SCHEMA = "moduflow.lifecycle-transaction-journal.v1"
+LOCK_SCHEMA = "moduflow.lifecycle-transaction-lock.v1"
+
+_LOCK_NAME = "lifecycle.lock"
+_LOCK_TOKEN = re.compile(r"^[0-9a-f]{32}$")
+_LOCK_TIMESTAMP = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$"
+)
 
 _JOURNAL_PHASES = frozenset({
     "planned",
@@ -326,6 +333,17 @@ class _ProjectedState:
     context: dict = field(repr=False, compare=False)
 
 
+@dataclass(frozen=True)
+class _LifecycleLockOwner:
+    transaction_id: str
+    pid: int
+    acquired_at: str
+    owner_token: str
+    _owner_bytes: bytes = field(repr=False, compare=False)
+    _device: int = field(repr=False, compare=False)
+    _inode: int = field(repr=False, compare=False)
+
+
 class LifecyclePlanError(ValueError):
     """Bounded planner failure that never includes artifact or absolute-path data."""
 
@@ -351,6 +369,14 @@ class LifecycleProjectedValidationError(RuntimeError):
 
 class LifecycleJournalError(ValueError):
     """Stable journal contract failure without record values or private paths."""
+
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
+
+
+class LifecycleLockError(RuntimeError):
+    """Stable lifecycle-lock failure without paths or owner-record values."""
 
     def __init__(self, code):
         self.code = code
@@ -1216,6 +1242,315 @@ def _overlay_projected_target(projected_fd, target, parts):
                 os.close(descriptor)
             except OSError:
                 pass
+
+
+def _lock_timestamp(clock):
+    value = clock() if callable(clock) else clock
+    if value is None:
+        value = datetime.now(timezone.utc)
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        value = value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    elif hasattr(value, "isoformat"):
+        value = value.isoformat()
+    else:
+        value = str(value)
+    if not _LOCK_TIMESTAMP.fullmatch(value):
+        raise LifecycleLockError("LOCK_CONTEXT_INVALID")
+    return value
+
+
+def _lock_owner_values(plan, *, clock, pid, token_factory):
+    owner_pid = os.getpid() if pid is None else pid
+    if (
+        not isinstance(owner_pid, int)
+        or isinstance(owner_pid, bool)
+        or owner_pid <= 0
+    ):
+        raise LifecycleLockError("LOCK_CONTEXT_INVALID")
+    if token_factory is None:
+        token = secrets.token_hex(16)
+    elif callable(token_factory):
+        token = token_factory()
+    else:
+        raise LifecycleLockError("LOCK_CONTEXT_INVALID")
+    if not isinstance(token, str) or not _LOCK_TOKEN.fullmatch(token):
+        raise LifecycleLockError("LOCK_CONTEXT_INVALID")
+    acquired_at = _lock_timestamp(clock)
+    record = {
+        "schema": LOCK_SCHEMA,
+        "transaction_id": plan.transaction_id,
+        "pid": owner_pid,
+        "acquired_at": acquired_at,
+        "owner_token": token,
+    }
+    return owner_pid, acquired_at, token, canonical_json_bytes(record) + b"\n"
+
+
+def _open_lock_directory(root):
+    directory_flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    root_fd = None
+    control_fd = None
+    transactions_fd = None
+    try:
+        try:
+            root_fd = os.open(root, directory_flags)
+            control_fd = os.open(
+                ".moduflow",
+                directory_flags,
+                dir_fd=root_fd,
+            )
+        except OSError as exc:
+            raise LifecycleLockError("LOCK_PATH_UNSAFE") from exc
+        try:
+            os.mkdir("transactions", mode=0o700, dir_fd=control_fd)
+        except FileExistsError:
+            pass
+        except OSError as exc:
+            raise LifecycleLockError("LOCK_CREATE_FAILED") from exc
+        try:
+            transactions_fd = os.open(
+                "transactions",
+                directory_flags,
+                dir_fd=control_fd,
+            )
+            if not stat.S_ISDIR(os.fstat(transactions_fd).st_mode):
+                raise OSError(errno.ENOTDIR, "transaction control is not a directory")
+            os.fchmod(transactions_fd, 0o700)
+        except OSError as exc:
+            raise LifecycleLockError("LOCK_PATH_UNSAFE") from exc
+        result = transactions_fd
+        transactions_fd = None
+        return result
+    finally:
+        for descriptor in (transactions_fd, control_fd, root_fd):
+            if descriptor is None:
+                continue
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+
+def _write_lock_bytes(lock_fd, owner_bytes):
+    remaining = memoryview(owner_bytes)
+    while remaining:
+        written = os.write(lock_fd, remaining)
+        if written <= 0:
+            raise OSError(errno.EIO, "lock owner write failed")
+        remaining = remaining[written:]
+
+
+def _same_lock_inode(transactions_fd, metadata):
+    try:
+        current = os.stat(
+            _LOCK_NAME,
+            dir_fd=transactions_fd,
+            follow_symlinks=False,
+        )
+    except OSError:
+        return False
+    return (
+        stat.S_ISREG(current.st_mode)
+        and current.st_dev == metadata.st_dev
+        and current.st_ino == metadata.st_ino
+    )
+
+
+def _cleanup_created_lock(transactions_fd, metadata):
+    if not _same_lock_inode(transactions_fd, metadata):
+        return
+    try:
+        os.unlink(_LOCK_NAME, dir_fd=transactions_fd)
+    except OSError:
+        pass
+
+
+def _acquire_lifecycle_lock(
+    transactions_fd,
+    plan,
+    owner_values,
+):
+    owner_pid, acquired_at, token, owner_bytes = owner_values
+    flags = (
+        os.O_CREAT
+        | os.O_EXCL
+        | os.O_WRONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    lock_fd = None
+    metadata = None
+    try:
+        try:
+            lock_fd = os.open(
+                _LOCK_NAME,
+                flags,
+                mode=0o600,
+                dir_fd=transactions_fd,
+            )
+        except FileExistsError as exc:
+            raise LifecycleLockError("LOCK_HELD") from exc
+        except OSError as exc:
+            raise LifecycleLockError("LOCK_CREATE_FAILED") from exc
+        try:
+            metadata = os.fstat(lock_fd)
+            if not stat.S_ISREG(metadata.st_mode):
+                raise OSError(errno.EINVAL, "lock is not regular")
+            os.fchmod(lock_fd, 0o600)
+            _write_lock_bytes(lock_fd, owner_bytes)
+        except OSError as exc:
+            if metadata is not None:
+                _cleanup_created_lock(transactions_fd, metadata)
+            raise LifecycleLockError("LOCK_CREATE_FAILED") from exc
+        return _LifecycleLockOwner(
+            transaction_id=plan.transaction_id,
+            pid=owner_pid,
+            acquired_at=acquired_at,
+            owner_token=token,
+            _owner_bytes=owner_bytes,
+            _device=metadata.st_dev,
+            _inode=metadata.st_ino,
+        )
+    finally:
+        if lock_fd is not None:
+            try:
+                os.close(lock_fd)
+            except OSError:
+                pass
+
+
+def _lock_metadata_matches(owner, metadata):
+    return (
+        stat.S_ISREG(metadata.st_mode)
+        and metadata.st_dev == owner._device
+        and metadata.st_ino == owner._inode
+    )
+
+
+def _read_complete_lock(lock_fd, expected_size):
+    chunks = []
+    remaining = expected_size + 1
+    while remaining:
+        chunk = os.read(lock_fd, min(4096, remaining))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    return b"".join(chunks)
+
+
+def _release_lifecycle_lock(transactions_fd, owner):
+    lock_fd = None
+    read_flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    try:
+        try:
+            metadata = os.stat(
+                _LOCK_NAME,
+                dir_fd=transactions_fd,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError as exc:
+            raise LifecycleLockError("LOCK_OWNER_MISMATCH") from exc
+        except OSError as exc:
+            raise LifecycleLockError("LOCK_RELEASE_FAILED") from exc
+        if not _lock_metadata_matches(owner, metadata):
+            raise LifecycleLockError("LOCK_OWNER_MISMATCH")
+        try:
+            lock_fd = os.open(
+                _LOCK_NAME,
+                read_flags,
+                dir_fd=transactions_fd,
+            )
+            opened = os.fstat(lock_fd)
+            if not _lock_metadata_matches(owner, opened):
+                raise LifecycleLockError("LOCK_OWNER_MISMATCH")
+            stored = _read_complete_lock(lock_fd, len(owner._owner_bytes))
+        except LifecycleLockError:
+            raise
+        except OSError as exc:
+            raise LifecycleLockError("LOCK_RELEASE_FAILED") from exc
+        if not secrets.compare_digest(stored, owner._owner_bytes):
+            raise LifecycleLockError("LOCK_OWNER_MISMATCH")
+        try:
+            current = os.stat(
+                _LOCK_NAME,
+                dir_fd=transactions_fd,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError as exc:
+            raise LifecycleLockError("LOCK_OWNER_MISMATCH") from exc
+        except OSError as exc:
+            raise LifecycleLockError("LOCK_RELEASE_FAILED") from exc
+        if not _lock_metadata_matches(owner, current):
+            raise LifecycleLockError("LOCK_OWNER_MISMATCH")
+        try:
+            os.unlink(_LOCK_NAME, dir_fd=transactions_fd)
+        except OSError as exc:
+            raise LifecycleLockError("LOCK_RELEASE_FAILED") from exc
+    finally:
+        if lock_fd is not None:
+            try:
+                os.close(lock_fd)
+            except OSError:
+                pass
+
+
+@contextmanager
+def _exclusive_lifecycle_lock(
+    plan: LifecycleTransactionPlan,
+    *,
+    clock=None,
+    pid=None,
+    token_factory=None,
+):
+    """Yield one private lock owner and remove only its unchanged lock."""
+    if not isinstance(plan, LifecycleTransactionPlan):
+        raise TypeError("plan must be a LifecycleTransactionPlan")
+    try:
+        root, _context = _writable_projected_plan_context(plan)
+    except project_operation.ProjectOperationDenied:
+        raise
+    except LifecycleProjectedValidationError as exc:
+        raise LifecycleLockError("LOCK_CONTEXT_INVALID") from exc
+    owner_values = _lock_owner_values(
+        plan,
+        clock=clock,
+        pid=pid,
+        token_factory=token_factory,
+    )
+    transactions_fd = _open_lock_directory(root)
+    try:
+        owner = _acquire_lifecycle_lock(
+            transactions_fd,
+            plan,
+            owner_values,
+        )
+        try:
+            yield owner
+        except BaseException as body_error:
+            try:
+                _release_lifecycle_lock(transactions_fd, owner)
+            except LifecycleLockError as release_error:
+                raise release_error from body_error
+            raise
+        else:
+            _release_lifecycle_lock(transactions_fd, owner)
+    finally:
+        try:
+            os.close(transactions_fd)
+        except OSError:
+            pass
 
 
 @contextmanager

@@ -1,3 +1,4 @@
+import errno
 import json
 import os
 import stat
@@ -1249,6 +1250,297 @@ class TransactionPlanningTests(unittest.TestCase):
                 )
 
             self.assertEqual(plan.targets[0].role, "issue")
+
+    def test_exclusive_lifecycle_lock_creates_redacted_owner_and_releases(self):
+        entry = getattr(transaction, "_exclusive_lifecycle_lock", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+            owner_tokens = []
+
+            for token in ("1" * 32, "2" * 32):
+                with entry(
+                    plan,
+                    clock="2030-01-02T03:04:05Z",
+                    pid=12345,
+                    token_factory=lambda token=token: token,
+                ) as owner:
+                    owner_tokens.append(owner.owner_token)
+                    self.assertTrue(lock_path.is_file())
+                    self.assertEqual(
+                        stat.S_IMODE(lock_path.parent.stat().st_mode),
+                        0o700,
+                    )
+                    self.assertEqual(
+                        stat.S_IMODE(lock_path.stat().st_mode),
+                        0o600,
+                    )
+                    self.assertEqual(
+                        json.loads(lock_path.read_text(encoding="utf-8")),
+                        {
+                            "schema": "moduflow.lifecycle-transaction-lock.v1",
+                            "transaction_id": plan.transaction_id,
+                            "pid": 12345,
+                            "acquired_at": "2030-01-02T03:04:05Z",
+                            "owner_token": token,
+                        },
+                    )
+                    rendered = lock_path.read_text(encoding="utf-8")
+                    self.assertTrue(lock_path.read_bytes().endswith(b"\n"))
+                    self.assertNotIn(str(root), rendered)
+                    self.assertNotIn("_before_bytes", rendered)
+                    self.assertNotIn("_after_bytes", rendered)
+                    self.assertFalse(hasattr(owner, "directory_fd"))
+                self.assertFalse(lock_path.exists())
+
+            self.assertEqual(owner_tokens, ["1" * 32, "2" * 32])
+            self.assertTrue(lock_path.parent.is_dir())
+
+    def test_exclusive_lifecycle_lock_rejects_concurrent_owner_without_changes(self):
+        entry = getattr(transaction, "_exclusive_lifecycle_lock", None)
+        error_type = getattr(transaction, "LifecycleLockError", None)
+        self.assertIsNotNone(entry)
+        self.assertIsNotNone(error_type)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+
+            with entry(
+                plan,
+                clock="2030-01-02T03:04:05Z",
+                pid=111,
+                token_factory=lambda: "1" * 32,
+            ):
+                before_bytes = lock_path.read_bytes()
+                before_stat = lock_path.stat()
+                with mock.patch.object(transaction.os, "kill") as kill_process:
+                    with self.assertRaises(error_type) as raised:
+                        with entry(
+                            plan,
+                            clock="2030-01-02T03:04:06Z",
+                            pid=222,
+                            token_factory=lambda: "2" * 32,
+                        ):
+                            self.fail("concurrent lock must not be yielded")
+                self.assertEqual(raised.exception.code, "LOCK_HELD")
+                self.assertEqual(str(raised.exception), "LOCK_HELD")
+                self.assertEqual(lock_path.read_bytes(), before_bytes)
+                self.assertEqual(lock_path.stat().st_ino, before_stat.st_ino)
+                self.assertEqual(lock_path.stat().st_mtime_ns, before_stat.st_mtime_ns)
+                kill_process.assert_not_called()
+
+    def test_exclusive_lifecycle_lock_denies_before_side_effects_and_rejects_symlinks(self):
+        entry = getattr(transaction, "_exclusive_lifecycle_lock", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            denied_context = transaction._json_value(plan._project_context)
+            denied_context.update(
+                transaction.project_operation.compute_project_policy(
+                    "archived",
+                    "internal",
+                )
+            )
+            denied = replace(plan, _project_context=denied_context)
+            with (
+                mock.patch.object(transaction.os, "open") as open_file,
+                mock.patch.object(transaction.os, "mkdir") as make_directory,
+                mock.patch.object(transaction.os, "unlink") as remove_file,
+            ):
+                with self.assertRaises(
+                    transaction.project_operation.ProjectOperationDenied
+                ) as raised:
+                    with entry(denied):
+                        self.fail("denied lock must not be yielded")
+            self.assertEqual(
+                raised.exception.decision["reason_code"],
+                "PROJECT_OPERATION_DENIED_ARCHIVED",
+            )
+            open_file.assert_not_called()
+            make_directory.assert_not_called()
+            remove_file.assert_not_called()
+
+            invalid_context = replace(
+                plan,
+                _project_context={"status": "unresolved"},
+            )
+            for candidate, options in (
+                (invalid_context, {}),
+                (plan, {"token_factory": "not-callable"}),
+            ):
+                with self.subTest(options=options):
+                    with (
+                        mock.patch.object(transaction.os, "open") as open_file,
+                        mock.patch.object(transaction.os, "mkdir") as make_directory,
+                        mock.patch.object(transaction.os, "unlink") as remove_file,
+                    ):
+                        with self.assertRaises(
+                            transaction.LifecycleLockError
+                        ) as raised:
+                            with entry(candidate, **options):
+                                self.fail("invalid lock input must not be yielded")
+                    self.assertEqual(
+                        raised.exception.code,
+                        "LOCK_CONTEXT_INVALID",
+                    )
+                    open_file.assert_not_called()
+                    make_directory.assert_not_called()
+                    remove_file.assert_not_called()
+
+        for component in (".moduflow", "transactions"):
+            with self.subTest(component=component), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root)
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                if component == ".moduflow":
+                    control = root / ".moduflow"
+                    real = root / "real-moduflow"
+                    control.rename(real)
+                    control.symlink_to(real, target_is_directory=True)
+                else:
+                    external = root / "external-transactions"
+                    external.mkdir()
+                    (root / ".moduflow" / "transactions").symlink_to(
+                        external,
+                        target_is_directory=True,
+                    )
+                with self.assertRaises(transaction.LifecycleLockError) as raised:
+                    with entry(
+                        plan,
+                        clock="2030-01-02T03:04:05Z",
+                        pid=123,
+                        token_factory=lambda: "1" * 32,
+                    ):
+                        self.fail("unsafe path lock must not be yielded")
+                self.assertEqual(raised.exception.code, "LOCK_PATH_UNSAFE")
+
+    def test_exclusive_lifecycle_lock_releases_body_failure_but_preserves_mismatch(self):
+        entry = getattr(transaction, "_exclusive_lifecycle_lock", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+            with self.assertRaisesRegex(ValueError, "protected body failed"):
+                with entry(
+                    plan,
+                    clock="2030-01-02T03:04:05Z",
+                    pid=123,
+                    token_factory=lambda: "1" * 32,
+                ):
+                    raise ValueError("protected body failed")
+            self.assertFalse(lock_path.exists())
+
+        for sabotage in ("mutate", "replace", "delete", "symlink"):
+            with self.subTest(sabotage=sabotage), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root)
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+                with self.assertRaises(transaction.LifecycleLockError) as raised:
+                    with entry(
+                        plan,
+                        clock="2030-01-02T03:04:05Z",
+                        pid=123,
+                        token_factory=lambda: "1" * 32,
+                    ):
+                        original = lock_path.read_bytes()
+                        if sabotage == "mutate":
+                            lock_path.write_bytes(b"mutated owner\n")
+                        elif sabotage == "replace":
+                            replacement = lock_path.with_name("replacement")
+                            replacement.write_bytes(original)
+                            os.replace(replacement, lock_path)
+                        elif sabotage == "delete":
+                            lock_path.unlink()
+                        else:
+                            decoy = lock_path.with_name("decoy")
+                            decoy.write_bytes(original)
+                            lock_path.unlink()
+                            lock_path.symlink_to(decoy)
+                self.assertEqual(raised.exception.code, "LOCK_OWNER_MISMATCH")
+                if sabotage != "delete":
+                    self.assertTrue(lock_path.exists() or lock_path.is_symlink())
+
+    def test_exclusive_lifecycle_lock_cleans_only_its_partial_creation(self):
+        entry = getattr(transaction, "_exclusive_lifecycle_lock", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+            real_write = transaction.os.write
+            calls = []
+
+            def fail_after_prefix(descriptor, payload):
+                calls.append(len(payload))
+                if len(calls) == 1:
+                    return real_write(descriptor, payload[:3])
+                raise OSError(errno.EIO, "PRIVATE WRITE FAILURE")
+
+            with mock.patch.object(
+                transaction.os,
+                "write",
+                side_effect=fail_after_prefix,
+            ):
+                with self.assertRaises(transaction.LifecycleLockError) as raised:
+                    with entry(
+                        plan,
+                        clock="2030-01-02T03:04:05Z",
+                        pid=123,
+                        token_factory=lambda: "1" * 32,
+                    ):
+                        self.fail("partial lock must not be yielded")
+
+            self.assertEqual(raised.exception.code, "LOCK_CREATE_FAILED")
+            self.assertEqual(str(raised.exception), "LOCK_CREATE_FAILED")
+            self.assertNotIn("PRIVATE", str(raised.exception))
+            self.assertGreaterEqual(len(calls), 2)
+            self.assertFalse(lock_path.exists())
 
     def test_private_projected_root_denies_before_creation(self):
         with tempfile.TemporaryDirectory() as tmp:
