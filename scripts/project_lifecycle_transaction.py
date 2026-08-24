@@ -35,6 +35,53 @@ from project_loop import render_loop_projection
 
 PLAN_SCHEMA = "moduflow.lifecycle-transaction-plan.v1"
 RESULT_SCHEMA = "moduflow.lifecycle-transaction.v1"
+JOURNAL_SCHEMA = "moduflow.lifecycle-transaction-journal.v1"
+
+_JOURNAL_PHASES = frozenset({
+    "planned",
+    "staged",
+    "prepared",
+    "applying",
+    "post-validating",
+    "finalizing",
+    "rolling-back",
+    "complete",
+    "rolled-back",
+    "recovery-required",
+})
+_JOURNAL_KEYS = frozenset({
+    "schema",
+    "transaction_id",
+    "idempotency_key",
+    "phase",
+    "targets",
+    "recovery_manifest_sha256",
+    "applied_target_indexes",
+    "rollback_target_indexes",
+    "created_at",
+    "updated_at",
+})
+_JOURNAL_TRANSITIONS = {
+    "planned": frozenset({"staged", "rolled-back", "recovery-required"}),
+    "staged": frozenset({"prepared", "rolled-back", "recovery-required"}),
+    "prepared": frozenset({"applying", "rolling-back", "recovery-required"}),
+    "applying": frozenset({
+        "applying", "post-validating", "rolling-back", "recovery-required"
+    }),
+    "post-validating": frozenset({
+        "finalizing", "rolling-back", "recovery-required"
+    }),
+    "finalizing": frozenset({
+        "finalizing", "complete", "rolling-back", "recovery-required"
+    }),
+    "rolling-back": frozenset({
+        "rolling-back", "rolled-back", "recovery-required"
+    }),
+    "complete": frozenset(),
+    "rolled-back": frozenset(),
+    "recovery-required": frozenset(),
+}
+_JOURNAL_RECOVERY_TRANSITIONS = frozenset({"rolling-back", "finalizing"})
 
 _ACTIONS = frozenset({
     "start",
@@ -300,6 +347,37 @@ class LifecycleProjectedValidationError(RuntimeError):
     def __init__(self, code):
         self.code = code
         super().__init__(code)
+
+
+class LifecycleJournalError(ValueError):
+    """Stable journal contract failure without record values or private paths."""
+
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
+
+
+def validate_journal_phase_transition(
+    current_phase: str,
+    next_phase: str,
+    *,
+    recovery: bool = False,
+) -> None:
+    """Reject an illegal journal transition without side effects."""
+    if (
+        not isinstance(current_phase, str)
+        or not isinstance(next_phase, str)
+        or current_phase not in _JOURNAL_PHASES
+        or next_phase not in _JOURNAL_PHASES
+    ):
+        raise LifecycleJournalError("JOURNAL_PHASE_INVALID")
+    if not isinstance(recovery, bool):
+        raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+    allowed = _JOURNAL_TRANSITIONS[current_phase]
+    if current_phase == "recovery-required" and recovery:
+        allowed = _JOURNAL_RECOVERY_TRANSITIONS
+    if next_phase not in allowed:
+        raise LifecycleJournalError("JOURNAL_TRANSITION_INVALID")
 
 
 def canonical_json_bytes(value):
@@ -1287,6 +1365,177 @@ def _serialized_action_and_lifecycle(record):
     ):
         raise ValueError("Unsupported target lifecycle")
     return {"action": action, "target_lifecycle": target_lifecycle}
+
+
+def _journal_record_failure():
+    raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+
+
+def _journal_progress_failure():
+    raise LifecycleJournalError("JOURNAL_PROGRESS_INVALID")
+
+
+def _serialized_journal_targets(targets):
+    try:
+        serialized = _serialized_targets(targets)
+    except (TypeError, ValueError, KeyError):
+        _journal_record_failure()
+    if not serialized:
+        _journal_record_failure()
+    total = len(serialized)
+    if any(
+        target["apply_order"] != index
+        or target["rollback_order"] != total - index - 1
+        for index, target in enumerate(serialized)
+    ):
+        _journal_record_failure()
+    if serialized[-1]["role"] != "evidence" or any(
+        target["role"] == "evidence" for target in serialized[:-1]
+    ):
+        _journal_record_failure()
+    return serialized
+
+
+def _serialized_journal_indexes(indexes, target_count):
+    if (
+        not isinstance(indexes, list)
+        or any(
+            not isinstance(index, int)
+            or isinstance(index, bool)
+            or index < 0
+            or index >= target_count
+            for index in indexes
+        )
+        or len(indexes) != len(set(indexes))
+    ):
+        _journal_progress_failure()
+    return list(indexes)
+
+
+def _validate_journal_progress(
+    phase,
+    targets,
+    manifest_sha256,
+    applied_indexes,
+    rollback_indexes,
+):
+    changed_indexes = [
+        index for index, target in enumerate(targets) if target["changed"]
+    ]
+    canonical_changed_indexes = [
+        index
+        for index, target in enumerate(targets)
+        if target["changed"] and target["role"] != "evidence"
+    ]
+    if applied_indexes != changed_indexes[:len(applied_indexes)]:
+        _journal_progress_failure()
+    reverse_applied = list(reversed(applied_indexes))
+    if rollback_indexes != reverse_applied[:len(rollback_indexes)]:
+        _journal_progress_failure()
+
+    manifest_required = {
+        "prepared",
+        "applying",
+        "post-validating",
+        "finalizing",
+        "rolling-back",
+        "complete",
+    }
+    if phase in {"planned", "staged"} and manifest_sha256 != "absent":
+        _journal_progress_failure()
+    if phase in manifest_required and manifest_sha256 == "absent":
+        _journal_progress_failure()
+    if (
+        phase in {"recovery-required", "rolled-back"}
+        and (applied_indexes or rollback_indexes)
+        and manifest_sha256 == "absent"
+    ):
+        _journal_progress_failure()
+
+    if phase in {"planned", "staged", "prepared"} and (
+        applied_indexes or rollback_indexes
+    ):
+        _journal_progress_failure()
+    if phase == "applying" and (
+        rollback_indexes
+        or applied_indexes != canonical_changed_indexes[:len(applied_indexes)]
+    ):
+        _journal_progress_failure()
+    if phase == "post-validating" and (
+        applied_indexes != canonical_changed_indexes or rollback_indexes
+    ):
+        _journal_progress_failure()
+    if phase == "finalizing" and (
+        applied_indexes not in (canonical_changed_indexes, changed_indexes)
+        or rollback_indexes
+    ):
+        _journal_progress_failure()
+    if phase == "complete" and (
+        applied_indexes != changed_indexes or rollback_indexes
+    ):
+        _journal_progress_failure()
+    if phase == "rolled-back" and rollback_indexes != reverse_applied:
+        _journal_progress_failure()
+
+
+def serialize_transaction_journal(journal: dict) -> dict:
+    """Validate and return a detached redacted journal snapshot."""
+    try:
+        _assert_exact_keys(journal, _JOURNAL_KEYS, "transaction journal")
+    except (TypeError, ValueError):
+        _journal_record_failure()
+    if journal["schema"] != JOURNAL_SCHEMA:
+        raise LifecycleJournalError("JOURNAL_SCHEMA_UNSUPPORTED")
+    phase = journal["phase"]
+    if not isinstance(phase, str) or phase not in _JOURNAL_PHASES:
+        raise LifecycleJournalError("JOURNAL_PHASE_INVALID")
+
+    text_fields = {}
+    for field in (
+        "transaction_id",
+        "idempotency_key",
+        "created_at",
+        "updated_at",
+    ):
+        value = journal[field]
+        if not isinstance(value, str) or not value:
+            _journal_record_failure()
+        text_fields[field] = value
+
+    manifest_sha256 = journal["recovery_manifest_sha256"]
+    if manifest_sha256 != "absent" and (
+        not isinstance(manifest_sha256, str)
+        or not _SHA256.fullmatch(manifest_sha256)
+    ):
+        _journal_record_failure()
+    targets = _serialized_journal_targets(journal["targets"])
+    applied_indexes = _serialized_journal_indexes(
+        journal["applied_target_indexes"],
+        len(targets),
+    )
+    rollback_indexes = _serialized_journal_indexes(
+        journal["rollback_target_indexes"],
+        len(targets),
+    )
+    _validate_journal_progress(
+        phase,
+        targets,
+        manifest_sha256,
+        applied_indexes,
+        rollback_indexes,
+    )
+    return {
+        "schema": JOURNAL_SCHEMA,
+        "transaction_id": text_fields["transaction_id"],
+        "idempotency_key": text_fields["idempotency_key"],
+        "phase": phase,
+        "targets": targets,
+        "recovery_manifest_sha256": manifest_sha256,
+        "applied_target_indexes": applied_indexes,
+        "rollback_target_indexes": rollback_indexes,
+        "created_at": text_fields["created_at"],
+        "updated_at": text_fields["updated_at"],
+    }
 
 
 def serialize_transaction_plan(plan):

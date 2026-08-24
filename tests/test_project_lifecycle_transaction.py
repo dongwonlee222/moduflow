@@ -571,6 +571,242 @@ class TransactionContractTests(unittest.TestCase):
             plan._project_context["status"] = "poison"
 
 
+class TransactionJournalContractTests(unittest.TestCase):
+    def target(self, index, total=2):
+        return {
+            "role": ("issue", "evidence")[index],
+            "relative_path": (
+                "issues/103-atomic-lifecycle-state-transaction.md",
+                "workspace/transactions/txn-103.json",
+            )[index],
+            "existed": index == 0,
+            "before_sha256": "a" * 64 if index == 0 else "absent",
+            "after_sha256": ("b", "c")[index] * 64,
+            "after_bytes": 10 + index,
+            "changed": True,
+            "validation_rules": [
+                "issue-schema" if index == 0 else "transaction-evidence-schema"
+            ],
+            "apply_order": index,
+            "rollback_order": total - index - 1,
+        }
+
+    def journal(
+        self,
+        phase="planned",
+        *,
+        manifest="absent",
+        applied=None,
+        rollback=None,
+    ):
+        return {
+            "schema": "moduflow.lifecycle-transaction-journal.v1",
+            "transaction_id": "txn-103",
+            "idempotency_key": "d" * 64,
+            "phase": phase,
+            "targets": [self.target(0), self.target(1)],
+            "recovery_manifest_sha256": manifest,
+            "applied_target_indexes": list(applied or []),
+            "rollback_target_indexes": list(rollback or []),
+            "created_at": "2030-01-01T00:00:00Z",
+            "updated_at": "2030-01-01T00:00:01Z",
+        }
+
+    def test_journal_serializer_accepts_exact_phase_snapshots(self):
+        serializer = getattr(transaction, "serialize_transaction_journal", None)
+        self.assertIsNotNone(serializer)
+        digest = "e" * 64
+        cases = (
+            ("planned", "absent", [], []),
+            ("staged", "absent", [], []),
+            ("prepared", digest, [], []),
+            ("applying", digest, [0], []),
+            ("post-validating", digest, [0], []),
+            ("finalizing", digest, [0], []),
+            ("finalizing", digest, [0, 1], []),
+            ("rolling-back", digest, [0, 1], [1]),
+            ("complete", digest, [0, 1], []),
+            ("rolled-back", digest, [0, 1], [1, 0]),
+            ("recovery-required", "absent", [], []),
+        )
+
+        for phase, manifest, applied, rollback in cases:
+            with self.subTest(phase=phase):
+                journal = self.journal(
+                    phase,
+                    manifest=manifest,
+                    applied=applied,
+                    rollback=rollback,
+                )
+                self.assertEqual(
+                    serializer(journal),
+                    journal,
+                )
+
+    def test_journal_schema_and_phase_failures_are_stable_and_redacted(self):
+        serializer = getattr(transaction, "serialize_transaction_journal", None)
+        error_type = getattr(transaction, "LifecycleJournalError", None)
+        self.assertIsNotNone(serializer)
+        self.assertIsNotNone(error_type)
+        secret = "/private/recovery/SECRET-CONTENT"
+        cases = (
+            ({**self.journal(), "private_payload": secret}, "JOURNAL_RECORD_INVALID"),
+            ({**self.journal(), "schema": secret}, "JOURNAL_SCHEMA_UNSUPPORTED"),
+            ({**self.journal(), "phase": secret}, "JOURNAL_PHASE_INVALID"),
+            ({**self.journal(), "created_at": {"secret": secret}}, "JOURNAL_RECORD_INVALID"),
+        )
+
+        for journal, code in cases:
+            with self.subTest(code=code):
+                with self.assertRaises(error_type) as raised:
+                    serializer(journal)
+                self.assertEqual(raised.exception.code, code)
+                self.assertEqual(str(raised.exception), code)
+                self.assertNotIn(secret, str(raised.exception))
+
+    def test_journal_phase_transition_contract_distinguishes_recovery(self):
+        transition = getattr(transaction, "validate_journal_phase_transition", None)
+        error_type = getattr(transaction, "LifecycleJournalError", None)
+        self.assertIsNotNone(transition)
+        self.assertIsNotNone(error_type)
+        valid = (
+            ("planned", "staged", False),
+            ("staged", "prepared", False),
+            ("prepared", "applying", False),
+            ("applying", "applying", False),
+            ("applying", "post-validating", False),
+            ("post-validating", "finalizing", False),
+            ("finalizing", "finalizing", False),
+            ("finalizing", "complete", False),
+            ("prepared", "rolling-back", False),
+            ("rolling-back", "rolling-back", False),
+            ("rolling-back", "rolled-back", False),
+            ("recovery-required", "rolling-back", True),
+            ("recovery-required", "finalizing", True),
+        )
+        for current, following, recovery in valid:
+            with self.subTest(current=current, following=following, recovery=recovery):
+                transition(
+                    current,
+                    following,
+                    recovery=recovery,
+                )
+
+        invalid = (
+            ("complete", "applying", False, "JOURNAL_TRANSITION_INVALID"),
+            ("rolled-back", "rolling-back", True, "JOURNAL_TRANSITION_INVALID"),
+            ("recovery-required", "rolling-back", False, "JOURNAL_TRANSITION_INVALID"),
+            ("unknown", "staged", False, "JOURNAL_PHASE_INVALID"),
+            ("planned", "unknown", False, "JOURNAL_PHASE_INVALID"),
+        )
+        for current, following, recovery, code in invalid:
+            with self.subTest(current=current, following=following, recovery=recovery):
+                with self.assertRaises(error_type) as raised:
+                    transition(
+                        current,
+                        following,
+                        recovery=recovery,
+                    )
+                self.assertEqual(raised.exception.code, code)
+                self.assertEqual(str(raised.exception), code)
+
+    def test_journal_rejects_invalid_progress_and_phase_invariants(self):
+        serializer = getattr(transaction, "serialize_transaction_journal", None)
+        self.assertIsNotNone(serializer)
+        digest = "e" * 64
+        cases = (
+            (self.journal("applying", manifest=digest, applied=[1]), "non-prefix"),
+            (self.journal("applying", manifest=digest, applied=[0, 0]), "duplicate"),
+            (self.journal("applying", manifest=digest, applied=[True]), "boolean"),
+            (self.journal("applying", manifest=digest, applied=[2]), "out-of-range"),
+            (
+                self.journal(
+                    "rolling-back",
+                    manifest=digest,
+                    applied=[0, 1],
+                    rollback=[0],
+                ),
+                "rollback-order",
+            ),
+            (self.journal("prepared", manifest=digest, applied=[0]), "prepared-progress"),
+            (
+                self.journal("post-validating", manifest=digest, applied=[]),
+                "incomplete-canonical-apply",
+            ),
+            (
+                self.journal("post-validating", manifest=digest, applied=[0, 1]),
+                "early-evidence-apply",
+            ),
+            (self.journal("prepared", manifest="absent"), "missing-manifest"),
+            (self.journal("staged", manifest=digest), "early-manifest"),
+            (
+                self.journal("recovery-required", applied=[0]),
+                "recovery-progress-without-manifest",
+            ),
+            (
+                self.journal("rolled-back", applied=[0], rollback=[0]),
+                "rollback-progress-without-manifest",
+            ),
+        )
+
+        for journal, label in cases:
+            with self.subTest(label=label):
+                with self.assertRaises(transaction.LifecycleJournalError) as raised:
+                    serializer(journal)
+                self.assertEqual(raised.exception.code, "JOURNAL_PROGRESS_INVALID")
+                self.assertEqual(str(raised.exception), "JOURNAL_PROGRESS_INVALID")
+
+    def test_journal_rejects_ambiguous_targets_and_invalid_manifest_values(self):
+        serializer = getattr(transaction, "serialize_transaction_journal", None)
+        self.assertIsNotNone(serializer)
+        wrong_order = self.journal()
+        wrong_order["targets"][0]["apply_order"] = 1
+        absolute_path = self.journal()
+        absolute_path["targets"][0]["relative_path"] = "/private/SECRET"
+        invalid_manifest = self.journal("prepared", manifest="SECRET-MANIFEST")
+
+        for journal in (wrong_order, absolute_path, invalid_manifest):
+            with self.subTest(journal=journal):
+                with self.assertRaises(transaction.LifecycleJournalError) as raised:
+                    serializer(journal)
+                self.assertEqual(raised.exception.code, "JOURNAL_RECORD_INVALID")
+                self.assertEqual(str(raised.exception), "JOURNAL_RECORD_INVALID")
+                self.assertNotIn("SECRET", str(raised.exception))
+
+    def test_journal_output_is_detached_redacted_and_has_zero_io(self):
+        serializer = getattr(transaction, "serialize_transaction_journal", None)
+        self.assertIsNotNone(serializer)
+        journal = self.journal(
+            "applying",
+            manifest="e" * 64,
+            applied=[0],
+        )
+        with (
+            mock.patch.object(transaction.os, "open") as open_file,
+            mock.patch.object(transaction.os, "mkdir") as make_directory,
+            mock.patch.object(transaction.os, "fsync") as sync_file,
+            mock.patch.object(transaction.os, "replace") as replace_file,
+        ):
+            rendered = serializer(journal)
+
+        journal["targets"][0]["validation_rules"].append("private-rule")
+        journal["applied_target_indexes"].append(1)
+        journal["rollback_target_indexes"].append(0)
+
+        self.assertEqual(rendered["targets"][0]["validation_rules"], ["issue-schema"])
+        self.assertEqual(rendered["applied_target_indexes"], [0])
+        self.assertEqual(rendered["rollback_target_indexes"], [])
+        serialized = json.dumps(rendered, ensure_ascii=False)
+        self.assertNotIn("_before_bytes", serialized)
+        self.assertNotIn("_after_bytes", serialized)
+        self.assertNotIn("canonical_root", serialized)
+        self.assertNotIn("/private/", serialized)
+        open_file.assert_not_called()
+        make_directory.assert_not_called()
+        sync_file.assert_not_called()
+        replace_file.assert_not_called()
+
+
 class TransactionPlanningTests(unittest.TestCase):
     ISSUE_ID = "BIZ-103"
 
