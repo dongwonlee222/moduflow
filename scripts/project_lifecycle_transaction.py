@@ -130,6 +130,14 @@ _PROJECTED_CONTROL_FILES = (
     "humans.json",
 )
 _PROJECTED_COPY_BUFFER_SIZE = 64 * 1024
+_PROJECTED_POLICY_FIELDS = (
+    "project_status",
+    "trust_scope",
+    "capabilities",
+    "capability_reasons",
+    "policy_inputs",
+    "policy_trust_scope",
+)
 _PLAN_TEXT_FIELDS = (
     "transaction_id",
     "idempotency_key",
@@ -262,6 +270,12 @@ class LifecycleTransactionPlan:
                 "targets": [target.to_public_dict() for target in self.targets],
             }
         )
+
+
+@dataclass(frozen=True)
+class _ProjectedState:
+    root: Path
+    context: dict = field(repr=False, compare=False)
 
 
 class LifecyclePlanError(ValueError):
@@ -641,6 +655,44 @@ def _validated_projected_targets(plan):
     return tuple(validated)
 
 
+def _projected_project_context(plan, projected_root):
+    try:
+        source = _json_value(plan._project_context)
+        root = Path(projected_root).resolve()
+        relative_paths = dict(source.get("relative_paths") or {})
+        if set(relative_paths) != set(project_registry.CANONICAL_PATH_DEFAULTS):
+            raise ValueError("projected context roles")
+        paths = {}
+        for role in project_registry.CANONICAL_PATH_DEFAULTS:
+            parts = _projected_target_parts(relative_paths[role])
+            candidate = root.joinpath(*parts)
+            candidate.relative_to(root)
+            paths[role] = str(candidate)
+        context = {
+            "schema": source.get("schema") or "moduflow.project-resolution.v1",
+            "status": "resolved",
+            "project_id": plan.project_id,
+            "canonical_root": str(root),
+            "relative_paths": relative_paths,
+            "paths": paths,
+        }
+        for field_name in _PROJECTED_POLICY_FIELDS:
+            if field_name in source:
+                context[field_name] = source[field_name]
+        return project_registry.context_for_operation(
+            root,
+            project_context=context,
+        )
+    except LifecycleProjectedValidationError as exc:
+        raise LifecycleProjectedValidationError(
+            "PROJECTED_CONTEXT_INVALID"
+        ) from exc
+    except (KeyError, OSError, TypeError, ValueError) as exc:
+        raise LifecycleProjectedValidationError(
+            "PROJECTED_CONTEXT_INVALID"
+        ) from exc
+
+
 def _projected_copy_roots(context):
     relative_paths = (
         context.get("relative_paths") if isinstance(context, Mapping) else None
@@ -921,6 +973,173 @@ def _remove_projected_contents(directory_fd):
 
 
 @contextmanager
+def _projected_root_descriptor(canonical_root, projected_root):
+    root = Path(canonical_root).resolve()
+    projected = Path(projected_root)
+    if projected.parent != root / ".moduflow":
+        raise LifecycleProjectedValidationError("PROJECTED_CONTEXT_INVALID")
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    root_fd = None
+    control_fd = None
+    projected_fd = None
+    try:
+        root_fd = os.open(root, flags)
+        control_fd = os.open(".moduflow", flags, dir_fd=root_fd)
+        projected_fd = os.open(projected.name, flags, dir_fd=control_fd)
+        yield projected_fd
+    except LifecycleProjectedValidationError:
+        raise
+    except OSError as exc:
+        raise LifecycleProjectedValidationError(
+            "PROJECTED_OVERLAY_FAILED"
+        ) from exc
+    finally:
+        for descriptor in (projected_fd, control_fd, root_fd):
+            if descriptor is None:
+                continue
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+
+def _open_projected_target_parent(projected_fd, parts):
+    try:
+        current_fd = os.dup(projected_fd)
+    except OSError as exc:
+        raise LifecycleProjectedValidationError(
+            "PROJECTED_OVERLAY_FAILED"
+        ) from exc
+    try:
+        for part in parts:
+            try:
+                os.mkdir(part, mode=0o700, dir_fd=current_fd)
+            except FileExistsError:
+                pass
+            metadata = os.stat(
+                part,
+                dir_fd=current_fd,
+                follow_symlinks=False,
+            )
+            if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(
+                metadata.st_mode
+            ):
+                raise LifecycleProjectedValidationError(
+                    "PROJECTED_TARGET_UNSAFE"
+                )
+            next_fd = os.open(
+                part,
+                os.O_RDONLY
+                | getattr(os, "O_CLOEXEC", 0)
+                | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_NOFOLLOW", 0),
+                dir_fd=current_fd,
+            )
+            os.fchmod(next_fd, 0o700)
+            os.close(current_fd)
+            current_fd = next_fd
+        return current_fd
+    except LifecycleProjectedValidationError:
+        try:
+            os.close(current_fd)
+        except OSError:
+            pass
+        raise
+    except OSError as exc:
+        try:
+            os.close(current_fd)
+        except OSError:
+            pass
+        raise LifecycleProjectedValidationError(
+            "PROJECTED_OVERLAY_FAILED"
+        ) from exc
+
+
+def _overlay_projected_target(projected_fd, target, parts):
+    parent_fd = None
+    target_fd = None
+    try:
+        parent_fd = _open_projected_target_parent(projected_fd, parts[:-1])
+        name = parts[-1]
+        try:
+            metadata = os.stat(
+                name,
+                dir_fd=parent_fd,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError:
+            metadata = None
+        if metadata is not None and (
+            stat.S_ISLNK(metadata.st_mode)
+            or not stat.S_ISREG(metadata.st_mode)
+        ):
+            raise LifecycleProjectedValidationError(
+                "PROJECTED_TARGET_UNSAFE"
+            )
+        flags = (
+            os.O_RDWR
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+        )
+        if metadata is None:
+            flags |= os.O_CREAT | os.O_EXCL
+        target_fd = os.open(
+            name,
+            flags,
+            mode=0o600,
+            dir_fd=parent_fd,
+        )
+        if not stat.S_ISREG(os.fstat(target_fd).st_mode):
+            raise LifecycleProjectedValidationError(
+                "PROJECTED_TARGET_UNSAFE"
+            )
+        os.ftruncate(target_fd, 0)
+        os.fchmod(target_fd, 0o600)
+        remaining = memoryview(target._after_bytes)
+        while remaining:
+            written = os.write(target_fd, remaining)
+            if written <= 0:
+                raise OSError(errno.EIO, "projected overlay write failed")
+            remaining = remaining[written:]
+        os.lseek(target_fd, 0, os.SEEK_SET)
+        digest = hashlib.sha256()
+        stored_size = 0
+        while True:
+            chunk = os.read(target_fd, _PROJECTED_COPY_BUFFER_SIZE)
+            if not chunk:
+                break
+            stored_size += len(chunk)
+            digest.update(chunk)
+        if (
+            stored_size != target.after_size
+            or digest.hexdigest() != target.after_sha256
+        ):
+            raise OSError(
+                errno.EIO,
+                "projected overlay verification failed",
+            )
+    except LifecycleProjectedValidationError:
+        raise
+    except OSError as exc:
+        raise LifecycleProjectedValidationError(
+            "PROJECTED_OVERLAY_FAILED"
+        ) from exc
+    finally:
+        for descriptor in (target_fd, parent_fd):
+            if descriptor is None:
+                continue
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+
+@contextmanager
 def _private_projected_root(plan):
     root, context = _writable_projected_plan_context(plan)
     read_flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
@@ -1005,6 +1224,24 @@ def _private_projected_root(plan):
             raise LifecycleProjectedValidationError(
                 "PROJECTED_ROOT_CLEANUP_FAILED"
             ) from cleanup_error
+
+
+@contextmanager
+def _private_projected_state(plan):
+    canonical_root, _context = _writable_projected_plan_context(plan)
+    targets = _validated_projected_targets(plan)
+    with _private_projected_root(plan) as projected_root:
+        with _projected_root_descriptor(
+            canonical_root,
+            projected_root,
+        ) as projected_fd:
+            for target, parts in targets:
+                _overlay_projected_target(projected_fd, target, parts)
+        projected_context = _projected_project_context(plan, projected_root)
+        yield _ProjectedState(
+            root=Path(projected_root).resolve(),
+            context=projected_context,
+        )
 
 
 def _serialized_text_fields(record, fields):

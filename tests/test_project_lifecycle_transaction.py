@@ -1243,6 +1243,233 @@ class TransactionPlanningTests(unittest.TestCase):
                         "PROJECTED_TARGET_INVALID",
                     )
 
+    def test_private_projected_state_overlays_every_target_and_rebinds_context(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, nested=True)
+            unrelated = root / "product/specs/unrelated/spec.md"
+            unrelated.parent.mkdir(parents=True)
+            unrelated.write_bytes(b"canonical unrelated bytes\n")
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(
+                    action="production-version",
+                    require_issue_index=True,
+                    roadmap_change={"priority": "p1"},
+                    production_change={
+                        "version": "1.2.3",
+                        "record_id": "biz-103-release",
+                        "content": "projected production bytes\n",
+                    },
+                ),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            canonical_before = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            projected_state = getattr(transaction, "_private_projected_state", None)
+            self.assertIsNotNone(projected_state)
+
+            with projected_state(plan) as projected:
+                self.assertEqual(
+                    [target.role for target in plan.targets],
+                    [
+                        "issue",
+                        "state",
+                        "loop",
+                        "dashboard",
+                        "issue-index",
+                        "roadmap",
+                        "production-record",
+                        "evidence",
+                    ],
+                )
+                for target in plan.targets:
+                    destination = projected.root / target.relative_path
+                    self.assertEqual(destination.read_bytes(), target._after_bytes)
+                    self.assertEqual(
+                        stat.S_IMODE(destination.stat().st_mode),
+                        0o600,
+                    )
+                    self.assertEqual(
+                        transaction.target_sha256(destination.read_bytes()),
+                        target.after_sha256,
+                    )
+                self.assertEqual(
+                    (
+                        projected.root / "product/specs/unrelated/spec.md"
+                    ).read_bytes(),
+                    b"canonical unrelated bytes\n",
+                )
+                self.assertEqual(
+                    projected.context["canonical_root"],
+                    str(projected.root),
+                )
+                self.assertEqual(
+                    projected.context["relative_paths"],
+                    context["relative_paths"],
+                )
+                for role, relative in context["relative_paths"].items():
+                    expected = projected.root / relative
+                    self.assertEqual(
+                        projected.context["paths"][role],
+                        str(expected),
+                    )
+                    expected.relative_to(projected.root)
+                for omitted in (
+                    "candidates",
+                    "question",
+                    "warnings",
+                    "reason_code",
+                ):
+                    self.assertNotIn(omitted, projected.context)
+                transaction.project_registry.context_for_operation(
+                    projected.root,
+                    project_context=projected.context,
+                )
+                evidence = next(
+                    target for target in plan.targets if target.role == "evidence"
+                )
+                production = next(
+                    target
+                    for target in plan.targets
+                    if target.role == "production-record"
+                )
+                self.assertEqual(
+                    stat.S_IMODE(
+                        (projected.root / evidence.relative_path).parent.stat().st_mode
+                    ),
+                    0o700,
+                )
+                self.assertEqual(
+                    stat.S_IMODE(
+                        (projected.root / production.relative_path).parent.stat().st_mode
+                    ),
+                    0o700,
+                )
+
+            self.assertFalse(projected.root.exists())
+            canonical_after = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            self.assertEqual(canonical_after, canonical_before)
+            self.assertEqual(plan.canonical_root, str(root.resolve()))
+
+    def test_private_projected_state_rejects_invalid_targets_before_side_effects(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            invalid = replace(
+                plan,
+                targets=(
+                    replace(plan.targets[0], relative_path="../escape"),
+                ),
+            )
+            projected_state = getattr(transaction, "_private_projected_state", None)
+            self.assertIsNotNone(projected_state)
+
+            with (
+                mock.patch.object(transaction.os, "open") as open_file,
+                mock.patch.object(transaction.os, "mkdir") as mkdir,
+            ):
+                with self.assertRaises(
+                    transaction.LifecycleProjectedValidationError
+                ) as raised:
+                    with projected_state(invalid):
+                        self.fail("invalid targets must not create projected state")
+            self.assertEqual(raised.exception.code, "PROJECTED_TARGET_INVALID")
+            open_file.assert_not_called()
+            mkdir.assert_not_called()
+
+    def test_private_projected_state_redacts_overlay_io_failure_and_cleans_up(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            canonical_before = (root / "issues/BIZ-103.md").read_bytes()
+            projected_state = getattr(transaction, "_private_projected_state", None)
+            self.assertIsNotNone(projected_state)
+
+            with mock.patch.object(
+                transaction.os,
+                "lseek",
+                side_effect=OSError("private projected path detail"),
+            ):
+                with self.assertRaises(
+                    transaction.LifecycleProjectedValidationError
+                ) as raised:
+                    with projected_state(plan):
+                        self.fail("failed read-back must not yield projected state")
+
+            self.assertEqual(raised.exception.code, "PROJECTED_OVERLAY_FAILED")
+            self.assertEqual(str(raised.exception), "PROJECTED_OVERLAY_FAILED")
+            self.assertNotIn(
+                "private projected path detail",
+                str(raised.exception),
+            )
+            self.assertEqual(
+                (root / "issues/BIZ-103.md").read_bytes(),
+                canonical_before,
+            )
+            self.assertFalse(
+                any(
+                    "-projected-" in path.name
+                    for path in (root / ".moduflow").iterdir()
+                )
+            )
+
+    def test_private_projected_state_rejects_destination_collision_and_cleans_up(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            evidence = next(
+                target for target in plan.targets if target.role == "evidence"
+            )
+            collision = root / evidence.relative_path
+            collision.mkdir(parents=True)
+            canonical_issue = (root / "issues/BIZ-103.md").read_bytes()
+
+            with self.assertRaises(
+                transaction.LifecycleProjectedValidationError
+            ) as raised:
+                with transaction._private_projected_state(plan):
+                    self.fail("directory collision must not be overlaid")
+
+            self.assertEqual(raised.exception.code, "PROJECTED_TARGET_UNSAFE")
+            self.assertEqual(
+                (root / "issues/BIZ-103.md").read_bytes(),
+                canonical_issue,
+            )
+            self.assertTrue(collision.is_dir())
+            self.assertFalse(
+                any(
+                    "-projected-" in path.name
+                    for path in (root / ".moduflow").iterdir()
+                )
+            )
+
     def test_private_projected_root_rejects_unsafe_source_nodes_and_cleans_up(self):
         for node_kind in ("symlink", "fifo"):
             with self.subTest(node_kind=node_kind), tempfile.TemporaryDirectory() as tmp:
