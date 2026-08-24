@@ -89,6 +89,48 @@ class ValidationDistributionTests(unittest.TestCase):
             self.assertTrue(result["valid"], result["errors"])
             self.assertEqual(decoy.read_text(encoding="utf-8"), '{"schema":"broken","items":{}}\n')
 
+    def test_validate_project_evaluates_only_roles_from_supplied_nested_context(self):
+        validator = load_module("validate_project_context_roles", "scripts/validate_project_artifacts.py")
+        project_registry = load_module("project_registry_context_roles", "scripts/project_registry.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+            nested = {
+                "issues": "product/issues",
+                "specs": "product/specs",
+                "workspace": "product/workspace",
+                "knowledge": "product/knowledge",
+                "memory": "product/memory",
+                "production_records": "product/memory/production-records",
+                "playbooks": "product/playbooks",
+                "workflow": "product/workflow",
+            }
+            for role in ("issues", "specs", "workspace", "knowledge", "workflow"):
+                source = root / role
+                target = root / nested[role]
+                target.parent.mkdir(parents=True, exist_ok=True)
+                source.rename(target)
+            for role in ("memory", "production_records", "playbooks"):
+                (root / nested[role]).mkdir(parents=True, exist_ok=True)
+            context = project_registry.project_context_for_root(root)
+            context["relative_paths"] = dict(nested)
+            context["paths"] = {
+                role: str((root / relative).resolve())
+                for role, relative in nested.items()
+            }
+            poisoned = root / "issues" / "POISON.md"
+            poisoned.parent.mkdir()
+            poisoned.write_text(
+                "---\nschema_version: 9.9.9\nissue_id: POISON\n---\n"
+                "# Poison\n\n**Status: backlog**\n",
+                encoding="utf-8",
+            )
+
+            result = validator.validate_project(root, project_context=context)
+
+            self.assertTrue(result["valid"], result["errors"])
+            self.assertFalse(any("POISON" in error for error in result["errors"]))
+
     def test_validate_project_artifacts_warns_on_issue_missing_status_line(self):
         validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
         with tempfile.TemporaryDirectory() as tmp:
