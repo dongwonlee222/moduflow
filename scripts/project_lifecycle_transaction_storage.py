@@ -120,6 +120,17 @@ class StoredPreimage:
 
 
 @dataclass(frozen=True)
+class StagedProposal:
+    index: int
+    state: str
+    relative_name: str
+    size: int
+    sha256: str
+    _device: int = field(repr=False, compare=False)
+    _inode: int = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
 class _PrivateTransactionWorkspace:
     transaction_id: str
     _root_fd: int = field(repr=False, compare=False)
@@ -237,7 +248,7 @@ def _owned_regular_metadata(metadata, expected):
     )
 
 
-def _cleanup_owned_preimage(workspace, name, metadata, expected_bytes):
+def _cleanup_owned_regular(parent_fd, name, metadata, expected_bytes):
     descriptor = None
     read_flags = (
         os.O_RDONLY
@@ -247,12 +258,12 @@ def _cleanup_owned_preimage(workspace, name, metadata, expected_bytes):
     try:
         current = os.stat(
             name,
-            dir_fd=workspace._preimages_fd,
+            dir_fd=parent_fd,
             follow_symlinks=False,
         )
         if not _owned_regular_metadata(current, metadata):
             return False
-        descriptor = os.open(name, read_flags, dir_fd=workspace._preimages_fd)
+        descriptor = os.open(name, read_flags, dir_fd=parent_fd)
         opened = os.fstat(descriptor)
         if not _owned_regular_metadata(opened, metadata):
             return False
@@ -261,17 +272,26 @@ def _cleanup_owned_preimage(workspace, name, metadata, expected_bytes):
             return False
         current = os.stat(
             name,
-            dir_fd=workspace._preimages_fd,
+            dir_fd=parent_fd,
             follow_symlinks=False,
         )
         if not _owned_regular_metadata(current, metadata):
             return False
-        os.unlink(name, dir_fd=workspace._preimages_fd)
+        os.unlink(name, dir_fd=parent_fd)
         return True
     except OSError:
         return False
     finally:
         _close_descriptors(descriptor)
+
+
+def _cleanup_owned_preimage(workspace, name, metadata, expected_bytes):
+    return _cleanup_owned_regular(
+        workspace._preimages_fd,
+        name,
+        metadata,
+        expected_bytes,
+    )
 
 
 def _write_preimage(workspace, target):
@@ -393,4 +413,151 @@ def store_preimages(workspace, storage_targets):
         os.fsync(workspace._preimages_fd)
     except OSError as exc:
         raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+    return tuple(records)
+
+
+def _open_target_parent(workspace, target):
+    parent_fd = None
+    try:
+        parent_fd = os.dup(workspace._root_fd)
+        for component in PurePosixPath(target.relative_path).parts[:-1]:
+            next_fd = os.open(component, _directory_flags(), dir_fd=parent_fd)
+            _close_descriptors(parent_fd)
+            parent_fd = next_fd
+        metadata = os.fstat(parent_fd)
+        if not stat.S_ISDIR(metadata.st_mode):
+            raise OSError(errno.ENOTDIR, "target parent is not a directory")
+        return parent_fd, metadata
+    except OSError as exc:
+        _close_descriptors(parent_fd)
+        raise LifecycleStorageError("STORAGE_PATH_UNSAFE") from exc
+
+
+def _staging_names(workspace, target):
+    digest = hashlib.sha256(workspace.transaction_id.encode("utf-8")).hexdigest()
+    basename = f".moduflow-stage-{digest}-{target.index:06d}"
+    parent = PurePosixPath(target.relative_path).parent
+    relative_name = (
+        basename
+        if parent == PurePosixPath(".")
+        else (parent / basename).as_posix()
+    )
+    return basename, relative_name
+
+
+def _write_staged_proposal(workspace, target):
+    parent_fd = None
+    descriptor = None
+    metadata = None
+    written = 0
+    name, relative_name = _staging_names(workspace, target)
+    flags = (
+        os.O_CREAT
+        | os.O_EXCL
+        | os.O_RDWR
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    try:
+        parent_fd, parent_metadata = _open_target_parent(workspace, target)
+        try:
+            descriptor = os.open(name, flags, mode=0o600, dir_fd=parent_fd)
+        except FileExistsError as exc:
+            raise LifecycleStorageError("STORAGE_CONFLICT") from exc
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_CREATE_FAILED") from exc
+        try:
+            metadata = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(metadata.st_mode)
+                or metadata.st_nlink != 1
+                or metadata.st_dev != parent_metadata.st_dev
+            ):
+                raise OSError(errno.EINVAL, "stage is not privately owned")
+            os.fchmod(descriptor, 0o600)
+        except OSError as exc:
+            if metadata is None or not _cleanup_owned_regular(
+                parent_fd,
+                name,
+                metadata,
+                b"",
+            ):
+                raise LifecycleStorageError("STORAGE_OWNER_MISMATCH") from exc
+            raise LifecycleStorageError("STORAGE_CREATE_FAILED") from exc
+        try:
+            while written < len(target._after_bytes):
+                count = os.write(descriptor, target._after_bytes[written:])
+                if count <= 0 or count > len(target._after_bytes) - written:
+                    raise OSError(errno.EIO, "stage write failed")
+                written += count
+        except OSError as exc:
+            if not _cleanup_owned_regular(
+                parent_fd,
+                name,
+                metadata,
+                target._after_bytes[:written],
+            ):
+                raise LifecycleStorageError("STORAGE_OWNER_MISMATCH") from exc
+            raise LifecycleStorageError("STORAGE_WRITE_FAILED") from exc
+        try:
+            stored = _read_complete(descriptor, target.after_size)
+            opened = os.fstat(descriptor)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_VERIFY_FAILED") from exc
+        if (
+            len(stored) != target.after_size
+            or hashlib.sha256(stored).hexdigest() != target.after_sha256
+            or not secrets.compare_digest(stored, target._after_bytes)
+        ):
+            raise LifecycleStorageError("STORAGE_VERIFY_FAILED")
+        if not _owned_regular_metadata(opened, metadata):
+            raise LifecycleStorageError("STORAGE_OWNER_MISMATCH")
+        try:
+            os.fsync(descriptor)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+        try:
+            current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_OWNER_MISMATCH") from exc
+        if not _owned_regular_metadata(current, metadata):
+            raise LifecycleStorageError("STORAGE_OWNER_MISMATCH")
+        try:
+            os.fsync(parent_fd)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+        return StagedProposal(
+            index=target.index,
+            state="staged",
+            relative_name=relative_name,
+            size=len(stored),
+            sha256=target.after_sha256,
+            _device=metadata.st_dev,
+            _inode=metadata.st_ino,
+        )
+    finally:
+        _close_descriptors(descriptor, parent_fd)
+
+
+def stage_proposed_targets(workspace, storage_targets):
+    """Return immutable verified same-filesystem staging records."""
+    if not isinstance(workspace, _PrivateTransactionWorkspace):
+        _storage_context_failure()
+    targets = _validated_storage_targets(storage_targets)
+    records = []
+    for target in targets:
+        if not target.changed:
+            records.append(
+                StagedProposal(
+                    index=target.index,
+                    state="unchanged",
+                    relative_name="unchanged",
+                    size=0,
+                    sha256="unchanged",
+                    _device=-1,
+                    _inode=-1,
+                )
+            )
+            continue
+        records.append(_write_staged_proposal(workspace, target))
     return tuple(records)
