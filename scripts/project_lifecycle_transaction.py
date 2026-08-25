@@ -352,6 +352,15 @@ class _PrivatePreimageState:
     _workspace: object = field(repr=False, compare=False)
 
 
+@dataclass(frozen=True)
+class _PrivateStagedState:
+    storage_targets: tuple[transaction_storage.StorageTarget, ...]
+    preimages: tuple[transaction_storage.StoredPreimage, ...]
+    staged_proposals: tuple[transaction_storage.StagedProposal, ...]
+    recovery_manifest: transaction_storage.RecoveryManifest
+    _workspace: object = field(repr=False, compare=False)
+
+
 class LifecyclePlanError(ValueError):
     """Bounded planner failure that never includes artifact or absolute-path data."""
 
@@ -1611,6 +1620,40 @@ def _private_preimage_workspace(
                 preimages=preimages,
                 _workspace=workspace,
             )
+
+
+@contextmanager
+def _private_staged_workspace(
+    plan: LifecycleTransactionPlan,
+    *,
+    lock_clock=None,
+    lock_pid=None,
+    lock_token_factory=None,
+):
+    """Yield verified private recovery inputs without changing canonical targets."""
+    with _private_preimage_workspace(
+        plan,
+        lock_clock=lock_clock,
+        lock_pid=lock_pid,
+        lock_token_factory=lock_token_factory,
+    ) as preimage_state:
+        staged_proposals = transaction_storage.stage_proposed_targets(
+            preimage_state._workspace,
+            preimage_state.storage_targets,
+        )
+        recovery_manifest = transaction_storage.finalize_recovery_manifest(
+            preimage_state._workspace,
+            preimage_state.storage_targets,
+            preimage_state.preimages,
+            staged_proposals,
+        )
+        yield _PrivateStagedState(
+            storage_targets=preimage_state.storage_targets,
+            preimages=preimage_state.preimages,
+            staged_proposals=staged_proposals,
+            recovery_manifest=recovery_manifest,
+            _workspace=preimage_state._workspace,
+        )
 
 
 @contextmanager

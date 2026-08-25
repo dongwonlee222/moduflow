@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 import errno
 import hashlib
+import json
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
@@ -15,6 +16,8 @@ import stat
 _LOGICAL_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _PREIMAGES_NAME = "preimages"
+_RECOVERY_MANIFEST_NAME = "recovery-manifest.json"
+_RECOVERY_MANIFEST_SCHEMA = "moduflow.lifecycle-transaction-recovery-manifest.v1"
 
 
 class LifecycleStorageError(RuntimeError):
@@ -123,6 +126,15 @@ class StoredPreimage:
 class StagedProposal:
     index: int
     state: str
+    relative_name: str
+    size: int
+    sha256: str
+    _device: int = field(repr=False, compare=False)
+    _inode: int = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
+class RecoveryManifest:
     relative_name: str
     size: int
     sha256: str
@@ -520,7 +532,10 @@ def _write_staged_proposal(workspace, target):
             current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
         except OSError as exc:
             raise LifecycleStorageError("STORAGE_OWNER_MISMATCH") from exc
-        if not _owned_regular_metadata(current, metadata):
+        if (
+            not _owned_regular_metadata(current, metadata)
+            or stat.S_IMODE(current.st_mode) != 0o600
+        ):
             raise LifecycleStorageError("STORAGE_OWNER_MISMATCH")
         try:
             os.fsync(parent_fd)
@@ -561,3 +576,338 @@ def stage_proposed_targets(workspace, storage_targets):
             continue
         records.append(_write_staged_proposal(workspace, target))
     return tuple(records)
+
+
+def _validated_recovery_records(storage_targets, preimages, staged_proposals):
+    targets = _validated_storage_targets(storage_targets)
+    if (
+        not isinstance(preimages, tuple)
+        or not isinstance(staged_proposals, tuple)
+        or len(preimages) != len(targets)
+        or len(staged_proposals) != len(targets)
+        or not all(isinstance(record, StoredPreimage) for record in preimages)
+        or not all(
+            isinstance(record, StagedProposal) for record in staged_proposals
+        )
+    ):
+        _storage_context_failure()
+    for target, preimage, proposal in zip(
+        targets,
+        preimages,
+        staged_proposals,
+    ):
+        if preimage.index != target.index or proposal.index != target.index:
+            _storage_context_failure()
+        if target.existed:
+            if (
+                preimage.state != "present"
+                or preimage.relative_name != f"preimages/{target.index:06d}.bin"
+                or preimage.size != len(target._before_bytes)
+                or preimage.sha256 != target.before_sha256
+                or preimage._device < 0
+                or preimage._inode < 0
+            ):
+                _storage_context_failure()
+        elif (
+            preimage.state != "absent"
+            or preimage.relative_name != "absent"
+            or preimage.size != 0
+            or preimage.sha256 != "absent"
+            or preimage._device != -1
+            or preimage._inode != -1
+        ):
+            _storage_context_failure()
+        if target.changed:
+            if (
+                proposal.state != "staged"
+                or proposal.size != target.after_size
+                or proposal.sha256 != target.after_sha256
+                or proposal._device < 0
+                or proposal._inode < 0
+            ):
+                _storage_context_failure()
+        elif (
+            proposal.state != "unchanged"
+            or proposal.relative_name != "unchanged"
+            or proposal.size != 0
+            or proposal.sha256 != "unchanged"
+            or proposal._device != -1
+            or proposal._inode != -1
+        ):
+            _storage_context_failure()
+    return targets, preimages, staged_proposals
+
+
+def _verify_recorded_file(
+    parent_fd,
+    name,
+    *,
+    expected_device,
+    expected_inode,
+    expected_bytes,
+    expected_sha256,
+):
+    descriptor = None
+    read_flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    try:
+        try:
+            current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+            descriptor = os.open(name, read_flags, dir_fd=parent_fd)
+            opened = os.fstat(descriptor)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_OWNER_MISMATCH") from exc
+
+        def matches_record(metadata):
+            return (
+                stat.S_ISREG(metadata.st_mode)
+                and stat.S_IMODE(metadata.st_mode) == 0o600
+                and metadata.st_nlink == 1
+                and metadata.st_dev == expected_device
+                and metadata.st_ino == expected_inode
+            )
+
+        if not matches_record(current) or not matches_record(opened):
+            raise LifecycleStorageError("STORAGE_OWNER_MISMATCH")
+        try:
+            stored = _read_complete(descriptor, len(expected_bytes))
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_VERIFY_FAILED") from exc
+        if (
+            len(stored) != len(expected_bytes)
+            or hashlib.sha256(stored).hexdigest() != expected_sha256
+            or not secrets.compare_digest(stored, expected_bytes)
+        ):
+            raise LifecycleStorageError("STORAGE_VERIFY_FAILED")
+        try:
+            current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+            opened = os.fstat(descriptor)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_OWNER_MISMATCH") from exc
+        if not matches_record(current) or not matches_record(opened):
+            raise LifecycleStorageError("STORAGE_OWNER_MISMATCH")
+    finally:
+        _close_descriptors(descriptor)
+
+
+def _verify_recovery_inputs(workspace, targets, preimages, staged_proposals):
+    for target, preimage, proposal in zip(
+        targets,
+        preimages,
+        staged_proposals,
+    ):
+        if preimage.state == "present":
+            _verify_recorded_file(
+                workspace._preimages_fd,
+                f"{target.index:06d}.bin",
+                expected_device=preimage._device,
+                expected_inode=preimage._inode,
+                expected_bytes=target._before_bytes,
+                expected_sha256=target.before_sha256,
+            )
+        if proposal.state == "staged":
+            parent_fd = None
+            try:
+                parent_fd, parent_metadata = _open_target_parent(workspace, target)
+                expected_name, expected_relative_name = _staging_names(
+                    workspace,
+                    target,
+                )
+                if (
+                    proposal.relative_name != expected_relative_name
+                    or proposal._device != parent_metadata.st_dev
+                ):
+                    _storage_context_failure()
+                _verify_recorded_file(
+                    parent_fd,
+                    expected_name,
+                    expected_device=proposal._device,
+                    expected_inode=proposal._inode,
+                    expected_bytes=target._after_bytes,
+                    expected_sha256=target.after_sha256,
+                )
+            finally:
+                _close_descriptors(parent_fd)
+
+
+def _recovery_manifest_bytes(workspace, targets, preimages, staged_proposals):
+    records = []
+    for target, preimage, proposal in zip(
+        targets,
+        preimages,
+        staged_proposals,
+    ):
+        preimage_value = {"state": "absent"}
+        if preimage.state == "present":
+            preimage_value = {
+                "state": "present",
+                "relative_name": preimage.relative_name,
+                "size": preimage.size,
+                "sha256": preimage.sha256,
+            }
+        proposal_value = {"state": "unchanged"}
+        if proposal.state == "staged":
+            proposal_value = {
+                "state": "staged",
+                "relative_name": proposal.relative_name,
+                "size": proposal.size,
+                "sha256": proposal.sha256,
+                "device": proposal._device,
+                "inode": proposal._inode,
+            }
+        records.append(
+            {
+                "index": target.index,
+                "role": target.role,
+                "relative_path": target.relative_path,
+                "existed": target.existed,
+                "before_sha256": target.before_sha256,
+                "after_sha256": target.after_sha256,
+                "preimage": preimage_value,
+                "proposed": proposal_value,
+            }
+        )
+    manifest = {
+        "schema": _RECOVERY_MANIFEST_SCHEMA,
+        "transaction_id": workspace.transaction_id,
+        "targets": records,
+    }
+    return (
+        json.dumps(
+            manifest,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        + b"\n"
+    )
+
+
+def _write_recovery_manifest(workspace, manifest_bytes):
+    descriptor = None
+    metadata = None
+    written = 0
+    flags = (
+        os.O_CREAT
+        | os.O_EXCL
+        | os.O_RDWR
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    try:
+        try:
+            descriptor = os.open(
+                _RECOVERY_MANIFEST_NAME,
+                flags,
+                mode=0o600,
+                dir_fd=workspace._workspace_fd,
+            )
+        except FileExistsError as exc:
+            raise LifecycleStorageError("STORAGE_CONFLICT") from exc
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_CREATE_FAILED") from exc
+        try:
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                raise OSError(errno.EINVAL, "manifest is not privately owned")
+            os.fchmod(descriptor, 0o600)
+        except OSError as exc:
+            if metadata is None or not _cleanup_owned_regular(
+                workspace._workspace_fd,
+                _RECOVERY_MANIFEST_NAME,
+                metadata,
+                b"",
+            ):
+                raise LifecycleStorageError("STORAGE_OWNER_MISMATCH") from exc
+            raise LifecycleStorageError("STORAGE_CREATE_FAILED") from exc
+        try:
+            while written < len(manifest_bytes):
+                count = os.write(descriptor, manifest_bytes[written:])
+                if count <= 0 or count > len(manifest_bytes) - written:
+                    raise OSError(errno.EIO, "manifest write failed")
+                written += count
+        except OSError as exc:
+            if not _cleanup_owned_regular(
+                workspace._workspace_fd,
+                _RECOVERY_MANIFEST_NAME,
+                metadata,
+                manifest_bytes[:written],
+            ):
+                raise LifecycleStorageError("STORAGE_OWNER_MISMATCH") from exc
+            raise LifecycleStorageError("STORAGE_WRITE_FAILED") from exc
+        try:
+            stored = _read_complete(descriptor, len(manifest_bytes))
+            opened = os.fstat(descriptor)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_VERIFY_FAILED") from exc
+        digest = hashlib.sha256(manifest_bytes).hexdigest()
+        if (
+            len(stored) != len(manifest_bytes)
+            or hashlib.sha256(stored).hexdigest() != digest
+            or not secrets.compare_digest(stored, manifest_bytes)
+        ):
+            raise LifecycleStorageError("STORAGE_VERIFY_FAILED")
+        if not _owned_regular_metadata(opened, metadata):
+            raise LifecycleStorageError("STORAGE_OWNER_MISMATCH")
+        try:
+            os.fsync(descriptor)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+        try:
+            current = os.stat(
+                _RECOVERY_MANIFEST_NAME,
+                dir_fd=workspace._workspace_fd,
+                follow_symlinks=False,
+            )
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_OWNER_MISMATCH") from exc
+        if (
+            not _owned_regular_metadata(current, metadata)
+            or stat.S_IMODE(current.st_mode) != 0o600
+        ):
+            raise LifecycleStorageError("STORAGE_OWNER_MISMATCH")
+        try:
+            os.fsync(workspace._workspace_fd)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+        return RecoveryManifest(
+            relative_name=_RECOVERY_MANIFEST_NAME,
+            size=len(stored),
+            sha256=digest,
+            _device=metadata.st_dev,
+            _inode=metadata.st_ino,
+        )
+    finally:
+        _close_descriptors(descriptor)
+
+
+def finalize_recovery_manifest(
+    workspace,
+    storage_targets,
+    preimages,
+    staged_proposals,
+):
+    """Create one immutable synchronized recovery manifest."""
+    if not isinstance(workspace, _PrivateTransactionWorkspace):
+        _storage_context_failure()
+    targets, preimage_records, proposal_records = _validated_recovery_records(
+        storage_targets,
+        preimages,
+        staged_proposals,
+    )
+    _verify_recovery_inputs(
+        workspace,
+        targets,
+        preimage_records,
+        proposal_records,
+    )
+    manifest_bytes = _recovery_manifest_bytes(
+        workspace,
+        targets,
+        preimage_records,
+        proposal_records,
+    )
+    return _write_recovery_manifest(workspace, manifest_bytes)

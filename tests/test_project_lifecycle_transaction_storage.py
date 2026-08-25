@@ -1,6 +1,7 @@
 import hashlib
 import importlib
 import importlib.util
+import json
 import os
 import stat
 import sys
@@ -236,6 +237,7 @@ class PrivatePreimageStorageTests(unittest.TestCase):
         for failure, expected_code in (
             ("corrupt", "STORAGE_VERIFY_FAILED"),
             ("inode", "STORAGE_OWNER_MISMATCH"),
+            ("mode-race", "STORAGE_OWNER_MISMATCH"),
             ("file-fsync", "STORAGE_DURABILITY_UNCERTAIN"),
             ("parent-fsync", "STORAGE_DURABILITY_UNCERTAIN"),
         ):
@@ -281,6 +283,19 @@ class PrivatePreimageStorageTests(unittest.TestCase):
                             "stat",
                             side_effect=replaced_entry,
                         )
+                    elif failure == "mode-race":
+                        real_fsync = storage.os.fsync
+
+                        def change_mode_after_sync(descriptor):
+                            result = real_fsync(descriptor)
+                            (issue.parent / expected_name).chmod(0o644)
+                            return result
+
+                        patcher = mock.patch.object(
+                            storage.os,
+                            "fsync",
+                            side_effect=change_mode_after_sync,
+                        )
                     else:
                         real_fsync = storage.os.fsync
                         calls = []
@@ -303,6 +318,435 @@ class PrivatePreimageStorageTests(unittest.TestCase):
                 self.assertEqual(raised.exception.code, expected_code)
                 self.assertEqual(str(raised.exception), expected_code)
                 self.assertTrue((issue.parent / expected_name).exists())
+                self.assertEqual(issue.read_bytes(), b"original issue")
+
+    def test_manifest_is_exact_canonical_redacted_immutable_and_hash_bound(self):
+        self.assertIsNotNone(storage)
+        entry = getattr(storage, "finalize_recovery_manifest", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            issue = root / "issues" / "BIZ-103.md"
+            evidence = root / ".moduflow" / "evidence" / "BIZ-103.json"
+            stable = root / "roadmaps" / "product.md"
+            issue.parent.mkdir()
+            evidence.parent.mkdir()
+            stable.parent.mkdir()
+            issue.write_bytes(b"original issue")
+            stable.write_bytes(b"stable roadmap")
+            targets = (
+                self.target(
+                    0,
+                    before=b"original issue",
+                    after=b"proposed issue",
+                ),
+                self.target(
+                    1,
+                    existed=False,
+                    after=b"new evidence",
+                ),
+                self.target(
+                    2,
+                    before=b"stable roadmap",
+                    after=b"stable roadmap",
+                    relative_path="roadmaps/product.md",
+                ),
+            )
+            workspace_path = root / ".moduflow" / "transactions" / "txn-manifest"
+            manifest_path = workspace_path / "recovery-manifest.json"
+
+            with storage.private_transaction_workspace(
+                root,
+                "txn-manifest",
+            ) as workspace:
+                preimages = storage.store_preimages(workspace, targets)
+                proposals = storage.stage_proposed_targets(workspace, targets)
+                staged_metadata = {
+                    proposal.index: (root / proposal.relative_name).stat()
+                    for proposal in proposals
+                    if proposal.state == "staged"
+                }
+                record = entry(workspace, targets, preimages, proposals)
+                manifest_bytes = manifest_path.read_bytes()
+                before = manifest_path.stat()
+                with self.assertRaises(storage.LifecycleStorageError) as raised:
+                    entry(workspace, targets, preimages, proposals)
+
+            self.assertEqual(raised.exception.code, "STORAGE_CONFLICT")
+            self.assertEqual(manifest_path.read_bytes(), manifest_bytes)
+            self.assertEqual(manifest_path.stat().st_ino, before.st_ino)
+            self.assertEqual(manifest_path.stat().st_mtime_ns, before.st_mtime_ns)
+            expected = {
+                "schema": "moduflow.lifecycle-transaction-recovery-manifest.v1",
+                "transaction_id": "txn-manifest",
+                "targets": [
+                    {
+                        "index": 0,
+                        "role": "issue",
+                        "relative_path": "issues/BIZ-103.md",
+                        "existed": True,
+                        "before_sha256": hashlib.sha256(b"original issue").hexdigest(),
+                        "after_sha256": hashlib.sha256(b"proposed issue").hexdigest(),
+                        "preimage": {
+                            "state": "present",
+                            "relative_name": "preimages/000000.bin",
+                            "size": len(b"original issue"),
+                            "sha256": hashlib.sha256(b"original issue").hexdigest(),
+                        },
+                        "proposed": {
+                            "state": "staged",
+                            "relative_name": proposals[0].relative_name,
+                            "size": len(b"proposed issue"),
+                            "sha256": hashlib.sha256(b"proposed issue").hexdigest(),
+                            "device": staged_metadata[0].st_dev,
+                            "inode": staged_metadata[0].st_ino,
+                        },
+                    },
+                    {
+                        "index": 1,
+                        "role": "evidence",
+                        "relative_path": ".moduflow/evidence/BIZ-103.json",
+                        "existed": False,
+                        "before_sha256": "absent",
+                        "after_sha256": hashlib.sha256(b"new evidence").hexdigest(),
+                        "preimage": {"state": "absent"},
+                        "proposed": {
+                            "state": "staged",
+                            "relative_name": proposals[1].relative_name,
+                            "size": len(b"new evidence"),
+                            "sha256": hashlib.sha256(b"new evidence").hexdigest(),
+                            "device": staged_metadata[1].st_dev,
+                            "inode": staged_metadata[1].st_ino,
+                        },
+                    },
+                    {
+                        "index": 2,
+                        "role": "evidence",
+                        "relative_path": "roadmaps/product.md",
+                        "existed": True,
+                        "before_sha256": hashlib.sha256(b"stable roadmap").hexdigest(),
+                        "after_sha256": hashlib.sha256(b"stable roadmap").hexdigest(),
+                        "preimage": {
+                            "state": "present",
+                            "relative_name": "preimages/000002.bin",
+                            "size": len(b"stable roadmap"),
+                            "sha256": hashlib.sha256(b"stable roadmap").hexdigest(),
+                        },
+                        "proposed": {"state": "unchanged"},
+                    },
+                ],
+            }
+            expected_bytes = (
+                json.dumps(
+                    expected,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+                + b"\n"
+            )
+            metadata = manifest_path.stat()
+            self.assertEqual(manifest_bytes, expected_bytes)
+            self.assertTrue(manifest_bytes.endswith(b"\n"))
+            self.assertFalse(manifest_bytes.endswith(b"\n\n"))
+            self.assertEqual(json.loads(manifest_bytes), expected)
+            self.assertEqual(record.relative_name, "recovery-manifest.json")
+            self.assertEqual(record.size, len(expected_bytes))
+            self.assertEqual(record.sha256, hashlib.sha256(expected_bytes).hexdigest())
+            self.assertEqual(record._device, metadata.st_dev)
+            self.assertEqual(record._inode, metadata.st_ino)
+            self.assertEqual(stat.S_IMODE(metadata.st_mode), 0o600)
+            self.assertEqual(metadata.st_nlink, 1)
+            rendered = manifest_bytes.decode("utf-8")
+            for forbidden in (
+                str(root),
+                "original issue",
+                "proposed issue",
+                "new evidence",
+                "stable roadmap",
+                "actor",
+                "source",
+                "owner_token",
+                '"pid"',
+                "OS FAILURE",
+            ):
+                self.assertNotIn(forbidden, rendered)
+
+    def test_manifest_rejects_unbound_records_before_creation(self):
+        self.assertIsNotNone(storage)
+        entry = getattr(storage, "finalize_recovery_manifest", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            issue = root / "issues" / "BIZ-103.md"
+            evidence = root / ".moduflow" / "evidence" / "BIZ-103.json"
+            issue.parent.mkdir()
+            evidence.parent.mkdir()
+            issue.write_bytes(b"original issue")
+            targets = (
+                self.target(
+                    0,
+                    before=b"original issue",
+                    after=b"proposed issue",
+                ),
+                self.target(1, existed=False, after=b"new evidence"),
+            )
+            workspace_path = root / ".moduflow" / "transactions" / "txn-invalid"
+            manifest_path = workspace_path / "recovery-manifest.json"
+            with storage.private_transaction_workspace(
+                root,
+                "txn-invalid",
+            ) as workspace:
+                preimages = storage.store_preimages(workspace, targets)
+                proposals = storage.stage_proposed_targets(workspace, targets)
+                invalid_contexts = (
+                    (list(targets), preimages, proposals, "STORAGE_CONTEXT_INVALID"),
+                    (targets, preimages[:1], proposals, "STORAGE_CONTEXT_INVALID"),
+                    (
+                        targets,
+                        (replace(preimages[0], index=1), preimages[1]),
+                        proposals,
+                        "STORAGE_CONTEXT_INVALID",
+                    ),
+                    (
+                        targets,
+                        (replace(preimages[0], state="absent"), preimages[1]),
+                        proposals,
+                        "STORAGE_CONTEXT_INVALID",
+                    ),
+                    (
+                        targets,
+                        preimages,
+                        (replace(proposals[0], state="unchanged"), proposals[1]),
+                        "STORAGE_CONTEXT_INVALID",
+                    ),
+                    (
+                        targets,
+                        preimages,
+                        (replace(proposals[0], size=1), proposals[1]),
+                        "STORAGE_CONTEXT_INVALID",
+                    ),
+                    (
+                        targets,
+                        preimages,
+                        (replace(proposals[0], _inode=proposals[0]._inode + 1), proposals[1]),
+                        "STORAGE_OWNER_MISMATCH",
+                    ),
+                )
+                for bad_targets, bad_preimages, bad_proposals, code in invalid_contexts:
+                    with self.subTest(code=code, values=repr((bad_targets, bad_preimages, bad_proposals))):
+                        with self.assertRaises(storage.LifecycleStorageError) as raised:
+                            entry(
+                                workspace,
+                                bad_targets,
+                                bad_preimages,
+                                bad_proposals,
+                            )
+                        self.assertEqual(raised.exception.code, code)
+                        self.assertFalse(manifest_path.exists())
+                for preimage in preimages:
+                    if preimage.state == "present":
+                        self.assertEqual(
+                            (workspace_path / preimage.relative_name).read_bytes(),
+                            targets[preimage.index]._before_bytes,
+                        )
+                for proposal in proposals:
+                    if proposal.state == "staged":
+                        self.assertEqual(
+                            (root / proposal.relative_name).read_bytes(),
+                            targets[proposal.index]._after_bytes,
+                        )
+            self.assertEqual(issue.read_bytes(), b"original issue")
+            self.assertFalse(evidence.exists())
+
+    def test_manifest_rechecks_private_entry_identity_mode_and_bytes_before_sealing(self):
+        self.assertIsNotNone(storage)
+        entry = getattr(storage, "finalize_recovery_manifest", None)
+        self.assertIsNotNone(entry)
+        for failure, expected_code in (
+            ("mode", "STORAGE_OWNER_MISMATCH"),
+            ("replacement-race", "STORAGE_OWNER_MISMATCH"),
+            ("deleted", "STORAGE_OWNER_MISMATCH"),
+            ("symlink", "STORAGE_OWNER_MISMATCH"),
+            ("mutated", "STORAGE_VERIFY_FAILED"),
+        ):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.scaffold(root)
+                issue = root / "issues" / "BIZ-103.md"
+                issue.parent.mkdir()
+                issue.write_bytes(b"original issue")
+                target = self.target(
+                    0,
+                    before=b"original issue",
+                    after=b"proposed issue",
+                )
+                workspace_path = root / ".moduflow" / "transactions" / "txn-recheck"
+                manifest_path = workspace_path / "recovery-manifest.json"
+                with storage.private_transaction_workspace(
+                    root,
+                    "txn-recheck",
+                ) as workspace:
+                    preimages = storage.store_preimages(workspace, (target,))
+                    proposals = storage.stage_proposed_targets(workspace, (target,))
+                    stage_path = root / proposals[0].relative_name
+                    patcher = mock.patch.object(storage.os, "read", wraps=storage.os.read)
+                    if failure == "mode":
+                        stage_path.chmod(0o644)
+                    elif failure == "replacement-race":
+                        real_read = storage.os.read
+                        replaced = []
+
+                        def replace_after_read(descriptor, size):
+                            payload = real_read(descriptor, size)
+                            if (
+                                not replaced
+                                and os.fstat(descriptor).st_ino == proposals[0]._inode
+                            ):
+                                stage_path.unlink()
+                                stage_path.write_bytes(b"proposed issue")
+                                stage_path.chmod(0o600)
+                                replaced.append(True)
+                            return payload
+
+                        patcher = mock.patch.object(
+                            storage.os,
+                            "read",
+                            side_effect=replace_after_read,
+                        )
+                    elif failure == "deleted":
+                        stage_path.unlink()
+                    elif failure == "symlink":
+                        external = root / "external-stage"
+                        external.write_bytes(b"proposed issue")
+                        stage_path.unlink()
+                        stage_path.symlink_to(external)
+                    else:
+                        stage_path.write_bytes(b"mutated stage")
+                    with patcher:
+                        with self.assertRaises(storage.LifecycleStorageError) as raised:
+                            entry(workspace, (target,), preimages, proposals)
+                    self.assertEqual(raised.exception.code, expected_code)
+                    self.assertFalse(manifest_path.exists())
+                self.assertEqual(issue.read_bytes(), b"original issue")
+
+    def test_manifest_cleanup_removes_exact_partial_but_preserves_uncertainty(self):
+        self.assertIsNotNone(storage)
+        entry = getattr(storage, "finalize_recovery_manifest", None)
+        self.assertIsNotNone(entry)
+        for failure, expected_code, should_exist in (
+            ("partial", "STORAGE_WRITE_FAILED", False),
+            ("corrupt", "STORAGE_VERIFY_FAILED", True),
+            ("inode", "STORAGE_OWNER_MISMATCH", True),
+            ("mode-race", "STORAGE_OWNER_MISMATCH", True),
+            ("file-fsync", "STORAGE_DURABILITY_UNCERTAIN", True),
+            ("workspace-fsync", "STORAGE_DURABILITY_UNCERTAIN", True),
+        ):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.scaffold(root)
+                issue = root / "issues" / "BIZ-103.md"
+                issue.parent.mkdir()
+                issue.write_bytes(b"original issue")
+                target = self.target(
+                    0,
+                    before=b"original issue",
+                    after=b"proposed issue",
+                )
+                workspace_path = root / ".moduflow" / "transactions" / "txn-manifest"
+                manifest_path = workspace_path / "recovery-manifest.json"
+                with storage.private_transaction_workspace(
+                    root,
+                    "txn-manifest",
+                ) as workspace:
+                    preimages = storage.store_preimages(workspace, (target,))
+                    proposals = storage.stage_proposed_targets(workspace, (target,))
+                    preimage_path = workspace_path / preimages[0].relative_name
+                    stage_path = root / proposals[0].relative_name
+                    private_before = {
+                        str(preimage_path): preimage_path.read_bytes(),
+                        str(stage_path): stage_path.read_bytes(),
+                    }
+                    if failure in {"partial", "corrupt"}:
+                        real_write = storage.os.write
+                        calls = []
+
+                        def altered_write(descriptor, payload):
+                            calls.append(len(payload))
+                            if failure == "partial":
+                                if len(calls) == 1:
+                                    return real_write(descriptor, bytes(payload[:3]))
+                                raise OSError(5, "MANIFEST WRITE FAILURE")
+                            return real_write(descriptor, b"x" * len(payload))
+
+                        patcher = mock.patch.object(
+                            storage.os,
+                            "write",
+                            side_effect=altered_write,
+                        )
+                    elif failure == "inode":
+                        real_stat = storage.os.stat
+
+                        def replaced_entry(path, *args, **kwargs):
+                            metadata = real_stat(path, *args, **kwargs)
+                            if (
+                                path == "recovery-manifest.json"
+                                and kwargs.get("dir_fd") is not None
+                            ):
+                                values = list(metadata)
+                                values[1] = metadata.st_ino + 1
+                                return os.stat_result(values)
+                            return metadata
+
+                        patcher = mock.patch.object(
+                            storage.os,
+                            "stat",
+                            side_effect=replaced_entry,
+                        )
+                    elif failure == "mode-race":
+                        real_fsync = storage.os.fsync
+
+                        def change_mode_after_sync(descriptor):
+                            result = real_fsync(descriptor)
+                            manifest_path.chmod(0o644)
+                            return result
+
+                        patcher = mock.patch.object(
+                            storage.os,
+                            "fsync",
+                            side_effect=change_mode_after_sync,
+                        )
+                    else:
+                        real_fsync = storage.os.fsync
+                        calls = []
+
+                        def fail_selected_sync(descriptor):
+                            calls.append(descriptor)
+                            fail_at = 1 if failure == "file-fsync" else 2
+                            if len(calls) == fail_at:
+                                raise OSError(5, "MANIFEST SYNC FAILURE")
+                            return real_fsync(descriptor)
+
+                        patcher = mock.patch.object(
+                            storage.os,
+                            "fsync",
+                            side_effect=fail_selected_sync,
+                        )
+                    with patcher:
+                        with self.assertRaises(storage.LifecycleStorageError) as raised:
+                            entry(workspace, (target,), preimages, proposals)
+                    self.assertEqual(raised.exception.code, expected_code)
+                    self.assertEqual(str(raised.exception), expected_code)
+                    self.assertEqual(manifest_path.exists(), should_exist)
+                    self.assertEqual(
+                        {
+                            str(preimage_path): preimage_path.read_bytes(),
+                            str(stage_path): stage_path.read_bytes(),
+                        },
+                        private_before,
+                    )
                 self.assertEqual(issue.read_bytes(), b"original issue")
 
     def test_storage_target_is_detached_strict_and_side_effect_free(self):

@@ -1,4 +1,5 @@
 import errno
+import hashlib
 import json
 import os
 import stat
@@ -1369,6 +1370,91 @@ class TransactionPlanningTests(unittest.TestCase):
 
             self.assertFalse(lock_path.exists())
             self.assertTrue(workspace_path.is_dir())
+            self.assertEqual(
+                {
+                    relative: (
+                        (root / relative).read_bytes()
+                        if (root / relative).exists()
+                        else None
+                    )
+                    for relative in canonical_before
+                },
+                canonical_before,
+            )
+
+    def test_private_staged_workspace_holds_lock_seals_manifest_and_never_changes_canonical_targets(self):
+        entry = getattr(transaction, "_private_staged_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            canonical_before = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if target.existed
+                    else None
+                )
+                for target in plan.targets
+            }
+            lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+            workspace_path = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+
+            with entry(
+                plan,
+                lock_clock="2030-01-02T03:04:05Z",
+                lock_pid=123,
+                lock_token_factory=lambda: "1" * 32,
+            ) as state:
+                self.assertTrue(lock_path.is_file())
+                self.assertEqual(
+                    [target.index for target in state.storage_targets],
+                    list(range(len(plan.targets))),
+                )
+                self.assertEqual(
+                    [record.index for record in state.preimages],
+                    list(range(len(plan.targets))),
+                )
+                self.assertEqual(
+                    [record.index for record in state.staged_proposals],
+                    list(range(len(plan.targets))),
+                )
+                for target, proposal in zip(plan.targets, state.staged_proposals):
+                    if target.changed:
+                        staged = root / proposal.relative_name
+                        self.assertEqual(proposal.state, "staged")
+                        self.assertEqual(staged.read_bytes(), target._after_bytes)
+                        self.assertEqual(proposal.sha256, target.after_sha256)
+                    else:
+                        self.assertEqual(proposal.state, "unchanged")
+                        self.assertEqual(proposal.relative_name, "unchanged")
+                manifest_path = workspace_path / "recovery-manifest.json"
+                manifest_bytes = manifest_path.read_bytes()
+                manifest = json.loads(manifest_bytes)
+                self.assertEqual(
+                    state.recovery_manifest.sha256,
+                    hashlib.sha256(manifest_bytes).hexdigest(),
+                )
+                self.assertEqual(
+                    [record["relative_path"] for record in manifest["targets"]],
+                    [target.relative_path for target in plan.targets],
+                )
+                rendered = repr(state)
+                self.assertNotIn(str(root), rendered)
+                self.assertNotIn("_before_bytes", rendered)
+                self.assertNotIn("_after_bytes", rendered)
+
+            self.assertFalse(lock_path.exists())
+            self.assertTrue(workspace_path.is_dir())
+            self.assertTrue((workspace_path / "recovery-manifest.json").is_file())
             self.assertEqual(
                 {
                     relative: (
