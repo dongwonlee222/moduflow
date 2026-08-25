@@ -1766,6 +1766,7 @@ def _private_prepared_workspace(
         pid=lock_pid,
         token_factory=lock_token_factory,
     ):
+        transaction_storage.verify_canonical_preimages(root, storage_targets)
         with transaction_storage.private_transaction_workspace(
             root,
             plan.transaction_id,

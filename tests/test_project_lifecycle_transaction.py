@@ -1700,6 +1700,158 @@ class TransactionPlanningTests(unittest.TestCase):
                 canonical_before,
             )
 
+    def test_private_prepared_workspace_rejects_canonical_conflict_under_lock_before_private_state(self):
+        entry = getattr(transaction, "_private_prepared_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            changed_target = next(target for target in plan.targets if target.existed)
+            changed_path = root / changed_target.relative_path
+            changed_path.write_bytes(b"external edit after planning")
+            canonical_at_entry = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if (root / target.relative_path).is_file()
+                    else None
+                )
+                for target in plan.targets
+            }
+            lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+            workspace_path = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            real_verify = transaction.transaction_storage.verify_canonical_preimages
+            observed_lock = []
+
+            def tracked_verify(canonical_root, storage_targets):
+                observed_lock.append(lock_path.is_file())
+                return real_verify(canonical_root, storage_targets)
+
+            conflict = None
+            timestamps = iter(
+                (
+                    "2030-01-02T03:04:05Z",
+                    "2030-01-02T03:04:06Z",
+                    "2030-01-02T03:04:07Z",
+                )
+            )
+            with mock.patch.object(
+                transaction.transaction_storage,
+                "verify_canonical_preimages",
+                side_effect=tracked_verify,
+            ):
+                try:
+                    with entry(
+                        plan,
+                        journal_clock=lambda: next(timestamps),
+                        lock_clock="2030-01-02T03:04:05Z",
+                        lock_pid=123,
+                        lock_token_factory=lambda: "1" * 32,
+                    ):
+                        pass
+                except transaction.transaction_storage.LifecycleCanonicalConflict as exc:
+                    conflict = exc
+
+            self.assertIsNotNone(conflict)
+            self.assertEqual(conflict.code, "CANONICAL_PREIMAGE_CONFLICT")
+            self.assertEqual(
+                conflict.target_index,
+                changed_target.apply_order,
+            )
+            self.assertEqual(observed_lock, [True])
+            self.assertFalse(lock_path.exists())
+            self.assertFalse(workspace_path.exists())
+            self.assertEqual(
+                {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if (root / target.relative_path).is_file()
+                        else None
+                    )
+                    for target in plan.targets
+                },
+                canonical_at_entry,
+            )
+
+    def test_private_prepared_workspace_verifies_once_under_lock_before_workspace(self):
+        entry = getattr(transaction, "_private_prepared_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+            workspace_path = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            events = []
+            real_verify = transaction.transaction_storage.verify_canonical_preimages
+            real_workspace = (
+                transaction.transaction_storage.private_transaction_workspace
+            )
+
+            def tracked_verify(canonical_root, storage_targets):
+                self.assertTrue(lock_path.is_file())
+                self.assertFalse(workspace_path.exists())
+                events.append("verify")
+                return real_verify(canonical_root, storage_targets)
+
+            def tracked_workspace(*args, **kwargs):
+                events.append("workspace")
+                return real_workspace(*args, **kwargs)
+
+            timestamps = iter(
+                (
+                    "2030-01-02T03:04:05Z",
+                    "2030-01-02T03:04:06Z",
+                    "2030-01-02T03:04:07Z",
+                )
+            )
+            with (
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "verify_canonical_preimages",
+                    side_effect=tracked_verify,
+                ) as verify,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "private_transaction_workspace",
+                    side_effect=tracked_workspace,
+                ) as open_workspace,
+            ):
+                with entry(
+                    plan,
+                    journal_clock=lambda: next(timestamps),
+                    lock_clock="2030-01-02T03:04:05Z",
+                    lock_pid=123,
+                    lock_token_factory=lambda: "1" * 32,
+                ) as state:
+                    journal_bytes = (workspace_path / "journal.json").read_bytes()
+                    self.assertEqual(
+                        state.journal_sha256,
+                        hashlib.sha256(journal_bytes).hexdigest(),
+                    )
+
+            self.assertEqual(events[:2], ["verify", "workspace"])
+            verify.assert_called_once()
+            open_workspace.assert_called_once()
+            self.assertTrue(workspace_path.is_dir())
+            self.assertFalse(lock_path.exists())
+
     def test_private_prepared_workspace_rejects_invalid_journal_before_storage_side_effects(self):
         entry = getattr(transaction, "_private_prepared_workspace", None)
         self.assertIsNotNone(entry)
@@ -1722,6 +1874,10 @@ class TransactionPlanningTests(unittest.TestCase):
                     ),
                 ),
                 mock.patch.object(transaction, "_exclusive_lifecycle_lock") as acquire_lock,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "verify_canonical_preimages",
+                ) as verify_preimages,
                 mock.patch.object(
                     transaction.transaction_storage,
                     "private_transaction_workspace",
@@ -1753,6 +1909,7 @@ class TransactionPlanningTests(unittest.TestCase):
                         self.fail("invalid journal must not be yielded")
             self.assertEqual(raised.exception.code, "JOURNAL_RECORD_INVALID")
             acquire_lock.assert_not_called()
+            verify_preimages.assert_not_called()
             open_workspace.assert_not_called()
             persist_journal.assert_not_called()
             store_preimages.assert_not_called()
@@ -1763,6 +1920,10 @@ class TransactionPlanningTests(unittest.TestCase):
 
             with (
                 mock.patch.object(transaction, "_exclusive_lifecycle_lock") as acquire_lock,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "verify_canonical_preimages",
+                ) as verify_preimages,
                 mock.patch.object(
                     transaction.transaction_storage,
                     "private_transaction_workspace",
@@ -1791,6 +1952,7 @@ class TransactionPlanningTests(unittest.TestCase):
                         self.fail("invalid journal clock must not be yielded")
             self.assertEqual(raised.exception.code, "JOURNAL_RECORD_INVALID")
             acquire_lock.assert_not_called()
+            verify_preimages.assert_not_called()
             open_workspace.assert_not_called()
             persist_journal.assert_not_called()
             store_preimages.assert_not_called()
