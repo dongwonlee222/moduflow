@@ -1467,6 +1467,245 @@ class TransactionPlanningTests(unittest.TestCase):
                 canonical_before,
             )
 
+    def test_private_prepared_workspace_rejects_invalid_journal_before_storage_side_effects(self):
+        entry = getattr(transaction, "_private_prepared_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+
+            with (
+                mock.patch.object(
+                    transaction,
+                    "serialize_transaction_journal",
+                    side_effect=transaction.LifecycleJournalError(
+                        "JOURNAL_RECORD_INVALID"
+                    ),
+                ),
+                mock.patch.object(transaction, "_exclusive_lifecycle_lock") as acquire_lock,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "private_transaction_workspace",
+                ) as open_workspace,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "persist_serialized_journal",
+                ) as persist_journal,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "store_preimages",
+                ) as store_preimages,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "stage_proposed_targets",
+                ) as stage_targets,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "finalize_recovery_manifest",
+                ) as finalize_manifest,
+                mock.patch.object(transaction.os, "replace") as replace_file,
+                mock.patch.object(transaction.os, "fsync") as sync_file,
+            ):
+                with self.assertRaises(transaction.LifecycleJournalError) as raised:
+                    with entry(
+                        plan,
+                        journal_clock="2030-01-02T03:04:05Z",
+                    ):
+                        self.fail("invalid journal must not be yielded")
+            self.assertEqual(raised.exception.code, "JOURNAL_RECORD_INVALID")
+            acquire_lock.assert_not_called()
+            open_workspace.assert_not_called()
+            persist_journal.assert_not_called()
+            store_preimages.assert_not_called()
+            stage_targets.assert_not_called()
+            finalize_manifest.assert_not_called()
+            replace_file.assert_not_called()
+            sync_file.assert_not_called()
+
+            with (
+                mock.patch.object(transaction, "_exclusive_lifecycle_lock") as acquire_lock,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "private_transaction_workspace",
+                ) as open_workspace,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "persist_serialized_journal",
+                ) as persist_journal,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "store_preimages",
+                ) as store_preimages,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "stage_proposed_targets",
+                ) as stage_targets,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "finalize_recovery_manifest",
+                ) as finalize_manifest,
+                mock.patch.object(transaction.os, "replace") as replace_file,
+                mock.patch.object(transaction.os, "fsync") as sync_file,
+            ):
+                with self.assertRaises(transaction.LifecycleJournalError) as raised:
+                    with entry(plan, journal_clock="NOT-A-TIMESTAMP"):
+                        self.fail("invalid journal clock must not be yielded")
+            self.assertEqual(raised.exception.code, "JOURNAL_RECORD_INVALID")
+            acquire_lock.assert_not_called()
+            open_workspace.assert_not_called()
+            persist_journal.assert_not_called()
+            store_preimages.assert_not_called()
+            stage_targets.assert_not_called()
+            finalize_manifest.assert_not_called()
+            replace_file.assert_not_called()
+            sync_file.assert_not_called()
+
+    def test_private_prepared_workspace_persists_exact_phase_order_under_one_lock_without_canonical_changes(self):
+        entry = getattr(transaction, "_private_prepared_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            canonical_before = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if target.existed
+                    else None
+                )
+                for target in plan.targets
+            }
+            lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+            workspace_path = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            timestamps = iter(
+                (
+                    "2030-01-02T03:04:05Z",
+                    "2030-01-02T03:04:06Z",
+                    "2030-01-02T03:04:07Z",
+                )
+            )
+            persisted = []
+            real_persist = transaction.transaction_storage.persist_serialized_journal
+
+            def tracked_persist(
+                workspace,
+                journal_bytes,
+                *,
+                expected_previous_sha256,
+            ):
+                persisted.append((bytes(journal_bytes), expected_previous_sha256))
+                return real_persist(
+                    workspace,
+                    journal_bytes,
+                    expected_previous_sha256=expected_previous_sha256,
+                )
+
+            with mock.patch.object(
+                transaction.transaction_storage,
+                "persist_serialized_journal",
+                side_effect=tracked_persist,
+            ):
+                with entry(
+                    plan,
+                    journal_clock=lambda: next(timestamps),
+                    lock_clock="2030-01-02T03:04:05Z",
+                    lock_pid=123,
+                    lock_token_factory=lambda: "1" * 32,
+                ) as state:
+                    self.assertTrue(lock_path.is_file())
+                    journals = [
+                        json.loads(journal_bytes)
+                        for journal_bytes, _expected in persisted
+                    ]
+                    self.assertEqual(
+                        [journal["phase"] for journal in journals],
+                        ["planned", "staged", "prepared"],
+                    )
+                    self.assertTrue(
+                        all(
+                            journal_bytes.endswith(b"\n")
+                            and not journal_bytes.endswith(b"\n\n")
+                            for journal_bytes, _expected in persisted
+                        )
+                    )
+                    self.assertEqual(
+                        [expected for _journal, expected in persisted],
+                        [
+                            "absent",
+                            hashlib.sha256(persisted[0][0]).hexdigest(),
+                            hashlib.sha256(persisted[1][0]).hexdigest(),
+                        ],
+                    )
+                    self.assertEqual(
+                        [journal["recovery_manifest_sha256"] for journal in journals],
+                        ["absent", "absent", state.recovery_manifest.sha256],
+                    )
+                    self.assertEqual(
+                        [journal["created_at"] for journal in journals],
+                        ["2030-01-02T03:04:05Z"] * 3,
+                    )
+                    self.assertEqual(
+                        [journal["updated_at"] for journal in journals],
+                        [
+                            "2030-01-02T03:04:05Z",
+                            "2030-01-02T03:04:06Z",
+                            "2030-01-02T03:04:07Z",
+                        ],
+                    )
+                    self.assertEqual(
+                        [
+                            target["relative_path"]
+                            for target in journals[-1]["targets"]
+                        ],
+                        [target.relative_path for target in plan.targets],
+                    )
+                    journal_bytes = (workspace_path / "journal.json").read_bytes()
+                    self.assertEqual(journal_bytes, persisted[-1][0])
+                    self.assertEqual(json.loads(journal_bytes)["phase"], "prepared")
+                    self.assertEqual(
+                        state.journal_sha256,
+                        hashlib.sha256(journal_bytes).hexdigest(),
+                    )
+                    self.assertFalse((workspace_path / "journal.next").exists())
+                    rendered = repr(state)
+                    self.assertNotIn(str(root), rendered)
+                    self.assertNotIn("_before_bytes", rendered)
+                    self.assertNotIn("_after_bytes", rendered)
+
+            self.assertFalse(lock_path.exists())
+            self.assertTrue(workspace_path.is_dir())
+            self.assertTrue((workspace_path / "preimages").is_dir())
+            self.assertTrue((workspace_path / "recovery-manifest.json").is_file())
+            self.assertTrue((workspace_path / "journal.json").is_file())
+            for proposal in state.staged_proposals:
+                if proposal.state == "staged":
+                    self.assertTrue((root / proposal.relative_name).is_file())
+            self.assertEqual(
+                {
+                    relative: (
+                        (root / relative).read_bytes()
+                        if (root / relative).exists()
+                        else None
+                    )
+                    for relative in canonical_before
+                },
+                canonical_before,
+            )
+
     def test_exclusive_lifecycle_lock_creates_redacted_owner_and_releases(self):
         entry = getattr(transaction, "_exclusive_lifecycle_lock", None)
         self.assertIsNotNone(entry)

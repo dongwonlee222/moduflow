@@ -361,6 +361,16 @@ class _PrivateStagedState:
     _workspace: object = field(repr=False, compare=False)
 
 
+@dataclass(frozen=True)
+class _PrivatePreparedState:
+    storage_targets: tuple[transaction_storage.StorageTarget, ...]
+    preimages: tuple[transaction_storage.StoredPreimage, ...]
+    staged_proposals: tuple[transaction_storage.StagedProposal, ...]
+    recovery_manifest: transaction_storage.RecoveryManifest
+    journal_sha256: str
+    _workspace: object = field(repr=False, compare=False)
+
+
 class LifecyclePlanError(ValueError):
     """Bounded planner failure that never includes artifact or absolute-path data."""
 
@@ -1278,6 +1288,30 @@ def _lock_timestamp(clock):
     return value
 
 
+def _journal_timestamp(clock):
+    try:
+        value = clock() if callable(clock) else clock
+        if value is None:
+            value = datetime.now(timezone.utc)
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=timezone.utc)
+            value = value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        elif hasattr(value, "isoformat"):
+            value = value.isoformat()
+        else:
+            value = str(value)
+    except Exception as exc:
+        raise LifecycleJournalError("JOURNAL_RECORD_INVALID") from exc
+    if not isinstance(value, str) or not _LOCK_TIMESTAMP.fullmatch(value):
+        raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+    return value
+
+
+def _journal_timestamps(clock):
+    return tuple(_journal_timestamp(clock) for _index in range(3))
+
+
 def _lock_owner_values(plan, *, clock, pid, token_factory):
     owner_pid = os.getpid() if pid is None else pid
     if (
@@ -1588,6 +1622,31 @@ def _storage_targets_from_plan(plan):
     )
 
 
+def _serialized_journal_bytes(
+    plan,
+    phase,
+    *,
+    created_at,
+    updated_at,
+    recovery_manifest_sha256,
+):
+    snapshot = serialize_transaction_journal(
+        {
+            "schema": JOURNAL_SCHEMA,
+            "transaction_id": plan.transaction_id,
+            "idempotency_key": plan.idempotency_key,
+            "phase": phase,
+            "targets": [target.to_public_dict() for target in plan.targets],
+            "recovery_manifest_sha256": recovery_manifest_sha256,
+            "applied_target_indexes": [],
+            "rollback_target_indexes": [],
+            "created_at": created_at,
+            "updated_at": updated_at,
+        }
+    )
+    return canonical_json_bytes(snapshot) + b"\n"
+
+
 @contextmanager
 def _private_preimage_workspace(
     plan: LifecycleTransactionPlan,
@@ -1654,6 +1713,94 @@ def _private_staged_workspace(
             recovery_manifest=recovery_manifest,
             _workspace=preimage_state._workspace,
         )
+
+
+@contextmanager
+def _private_prepared_workspace(
+    plan: LifecycleTransactionPlan,
+    *,
+    journal_clock=None,
+    lock_clock=None,
+    lock_pid=None,
+    lock_token_factory=None,
+):
+    """Persist planned through prepared recovery state without canonical writes."""
+    if not isinstance(plan, LifecycleTransactionPlan):
+        raise TypeError("plan must be a LifecycleTransactionPlan")
+    root, _context = _writable_projected_plan_context(plan)
+    storage_targets = _storage_targets_from_plan(plan)
+    planned_at, staged_at, prepared_at = _journal_timestamps(journal_clock)
+    validate_journal_phase_transition("planned", "staged")
+    validate_journal_phase_transition("staged", "prepared")
+    planned_bytes = _serialized_journal_bytes(
+        plan,
+        "planned",
+        created_at=planned_at,
+        updated_at=planned_at,
+        recovery_manifest_sha256="absent",
+    )
+
+    with _exclusive_lifecycle_lock(
+        plan,
+        clock=lock_clock,
+        pid=lock_pid,
+        token_factory=lock_token_factory,
+    ):
+        with transaction_storage.private_transaction_workspace(
+            root,
+            plan.transaction_id,
+        ) as workspace:
+            planned_sha256 = transaction_storage.persist_serialized_journal(
+                workspace,
+                planned_bytes,
+                expected_previous_sha256="absent",
+            )
+            preimages = transaction_storage.store_preimages(
+                workspace,
+                storage_targets,
+            )
+            staged_proposals = transaction_storage.stage_proposed_targets(
+                workspace,
+                storage_targets,
+            )
+            recovery_manifest = transaction_storage.finalize_recovery_manifest(
+                workspace,
+                storage_targets,
+                preimages,
+                staged_proposals,
+            )
+            staged_bytes = _serialized_journal_bytes(
+                plan,
+                "staged",
+                created_at=planned_at,
+                updated_at=staged_at,
+                recovery_manifest_sha256="absent",
+            )
+            staged_sha256 = transaction_storage.persist_serialized_journal(
+                workspace,
+                staged_bytes,
+                expected_previous_sha256=planned_sha256,
+            )
+            prepared_bytes = _serialized_journal_bytes(
+                plan,
+                "prepared",
+                created_at=planned_at,
+                updated_at=prepared_at,
+                recovery_manifest_sha256=recovery_manifest.sha256,
+            )
+            prepared_sha256 = transaction_storage.persist_serialized_journal(
+                workspace,
+                prepared_bytes,
+                expected_previous_sha256=staged_sha256,
+            )
+            yield _PrivatePreparedState(
+                storage_targets=storage_targets,
+                preimages=preimages,
+                staged_proposals=staged_proposals,
+                recovery_manifest=recovery_manifest,
+                journal_sha256=prepared_sha256,
+                _workspace=workspace,
+            )
 
 
 @contextmanager
