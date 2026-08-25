@@ -30,6 +30,21 @@ class LifecycleStorageError(RuntimeError):
         super().__init__(code)
 
 
+class LifecycleCanonicalConflict(RuntimeError):
+    """Stable canonical-preimage conflict without paths or payloads."""
+
+    def __init__(self, target_index):
+        if (
+            not isinstance(target_index, int)
+            or isinstance(target_index, bool)
+            or target_index < 0
+        ):
+            _storage_context_failure()
+        self.code = "CANONICAL_PREIMAGE_CONFLICT"
+        self.target_index = target_index
+        super().__init__(self.code)
+
+
 def _storage_context_failure():
     raise LifecycleStorageError("STORAGE_CONTEXT_INVALID")
 
@@ -408,6 +423,131 @@ def _validated_storage_targets(storage_targets):
     ):
         _storage_context_failure()
     return storage_targets
+
+
+def _canonical_conflict(target):
+    raise LifecycleCanonicalConflict(target.index) from None
+
+
+def _same_regular_entry(metadata, expected, expected_size):
+    return (
+        stat.S_ISREG(metadata.st_mode)
+        and metadata.st_dev == expected.st_dev
+        and metadata.st_ino == expected.st_ino
+        and metadata.st_size == expected_size
+    )
+
+
+def _read_bounded_canonical(descriptor, expected_size):
+    chunks = []
+    remaining = expected_size + 1
+    while remaining:
+        chunk = os.read(descriptor, min(64 * 1024, remaining))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    return b"".join(chunks)
+
+
+def _open_canonical_parent(root_fd, target):
+    parent_fd = os.dup(root_fd)
+    try:
+        for component in PurePosixPath(target.relative_path).parts[:-1]:
+            next_fd = os.open(component, _directory_flags(), dir_fd=parent_fd)
+            _close_descriptors(parent_fd)
+            parent_fd = next_fd
+        metadata = os.fstat(parent_fd)
+        if not stat.S_ISDIR(metadata.st_mode):
+            raise OSError(errno.ENOTDIR, "canonical parent is not a directory")
+        return parent_fd
+    except OSError:
+        _close_descriptors(parent_fd)
+        raise
+
+
+def _verify_canonical_preimage(root_fd, target):
+    parent_fd = None
+    descriptor = None
+    try:
+        parent_fd = _open_canonical_parent(root_fd, target)
+        name = PurePosixPath(target.relative_path).name
+        try:
+            initial = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            if target.existed:
+                _canonical_conflict(target)
+            return target.index
+        except OSError:
+            _canonical_conflict(target)
+
+        if not target.existed or not stat.S_ISREG(initial.st_mode):
+            _canonical_conflict(target)
+        read_flags = (
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+        )
+        try:
+            descriptor = os.open(name, read_flags, dir_fd=parent_fd)
+            opened = os.fstat(descriptor)
+            if not _same_regular_entry(
+                opened,
+                initial,
+                len(target._before_bytes),
+            ):
+                _canonical_conflict(target)
+            current_bytes = _read_bounded_canonical(
+                descriptor,
+                len(target._before_bytes),
+            )
+            final = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        except LifecycleCanonicalConflict:
+            raise
+        except OSError:
+            _canonical_conflict(target)
+        if (
+            not _same_regular_entry(
+                final,
+                opened,
+                len(target._before_bytes),
+            )
+            or len(current_bytes) != len(target._before_bytes)
+            or hashlib.sha256(current_bytes).hexdigest() != target.before_sha256
+            or not secrets.compare_digest(current_bytes, target._before_bytes)
+        ):
+            _canonical_conflict(target)
+        return target.index
+    except LifecycleCanonicalConflict:
+        raise
+    except OSError:
+        _canonical_conflict(target)
+    finally:
+        _close_descriptors(descriptor, parent_fd)
+
+
+def verify_canonical_preimages(canonical_root, storage_targets) -> tuple[int, ...]:
+    """Return ordered indexes whose current canonical state matches exactly."""
+    try:
+        root = Path(canonical_root)
+    except (TypeError, ValueError) as exc:
+        raise LifecycleStorageError("STORAGE_CONTEXT_INVALID") from exc
+    targets = _validated_storage_targets(storage_targets)
+    if not root.is_absolute():
+        _storage_context_failure()
+
+    root_fd = None
+    try:
+        try:
+            root_fd = os.open(root, _directory_flags())
+        except OSError:
+            _canonical_conflict(targets[0])
+        return tuple(
+            _verify_canonical_preimage(root_fd, target)
+            for target in targets
+        )
+    finally:
+        _close_descriptors(root_fd)
 
 
 def store_preimages(workspace, storage_targets):

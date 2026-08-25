@@ -1326,5 +1326,325 @@ class PrivatePreimageStorageTests(unittest.TestCase):
                     self.assertTrue(preimage.exists())
 
 
+class CanonicalPreflightStorageTests(unittest.TestCase):
+    def target(
+        self,
+        index,
+        relative_path,
+        *,
+        existed=True,
+        before=b"before",
+        after=b"after",
+        role="issue",
+    ):
+        if not existed:
+            before = b""
+        return storage.StorageTarget(
+            index=index,
+            role=role,
+            relative_path=relative_path,
+            existed=existed,
+            before_sha256=(
+                hashlib.sha256(before).hexdigest() if existed else "absent"
+            ),
+            after_sha256=hashlib.sha256(after).hexdigest(),
+            after_size=len(after),
+            changed=(not existed or before != after),
+            _before_bytes=before,
+            _after_bytes=after,
+        )
+
+    def scaffold(self, root):
+        (root / "issues").mkdir()
+        (root / "workspace" / "transactions").mkdir(parents=True)
+        (root / "nested").mkdir()
+
+    def test_verifies_present_absent_changed_and_unchanged_targets_once_without_mutation(self):
+        entry = getattr(storage, "verify_canonical_preimages", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            issue = root / "issues" / "BIZ-103.md"
+            stable = root / "nested" / "stable.md"
+            evidence = root / "workspace" / "transactions" / "txn-103.json"
+            issue.write_bytes(b"before")
+            stable.write_bytes(b"stable")
+            targets = (
+                self.target(
+                    0,
+                    "issues/BIZ-103.md",
+                    before=b"before",
+                    after=b"after",
+                ),
+                self.target(
+                    1,
+                    "nested/stable.md",
+                    before=b"stable",
+                    after=b"stable",
+                    role="dashboard",
+                ),
+                self.target(
+                    2,
+                    "workspace/transactions/txn-103.json",
+                    existed=False,
+                    after=b"evidence",
+                    role="evidence",
+                ),
+            )
+            before = (issue.read_bytes(), stable.read_bytes())
+            real_open = storage.os.open
+            opened_targets = []
+            opened_flags = []
+
+            def tracked_open(path, flags, *args, **kwargs):
+                opened_flags.append(flags)
+                if path in {"BIZ-103.md", "stable.md"}:
+                    opened_targets.append(path)
+                return real_open(path, flags, *args, **kwargs)
+
+            with (
+                mock.patch.object(storage.os, "open", side_effect=tracked_open),
+                mock.patch.object(storage.os, "mkdir") as make_directory,
+                mock.patch.object(storage.os, "write") as write_file,
+                mock.patch.object(storage.os, "fsync") as sync_file,
+                mock.patch.object(storage.os, "replace") as replace_file,
+                mock.patch.object(storage.os, "unlink") as unlink_file,
+            ):
+                self.assertEqual(entry(root, targets), (0, 1, 2))
+
+            no_follow = getattr(storage.os, "O_NOFOLLOW", 0)
+            self.assertTrue(no_follow)
+            self.assertTrue(all(flags & no_follow for flags in opened_flags))
+            self.assertEqual(opened_targets, ["BIZ-103.md", "stable.md"])
+            make_directory.assert_not_called()
+            write_file.assert_not_called()
+            sync_file.assert_not_called()
+            replace_file.assert_not_called()
+            unlink_file.assert_not_called()
+            self.assertEqual((issue.read_bytes(), stable.read_bytes()), before)
+            self.assertFalse(evidence.exists())
+
+    def test_rejects_presence_bytes_type_and_parent_changes_with_first_target_index(self):
+        entry = getattr(storage, "verify_canonical_preimages", None)
+        self.assertIsNotNone(entry)
+        scenarios = (
+            "present-missing",
+            "absent-present",
+            "bytes-changed",
+            "bytes-shortened",
+            "bytes-expanded",
+            "target-symlink",
+            "target-directory",
+            "parent-symlink",
+            "parent-file",
+        )
+        for scenario in scenarios:
+            with self.subTest(scenario=scenario), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.scaffold(root)
+                anchor = root / "issues" / "anchor.md"
+                anchor.write_bytes(b"anchor")
+                outside_file = root / "outside.md"
+                outside_file.write_bytes(b"outside-file")
+                outside_directory = root / "outside"
+                outside_directory.mkdir()
+                subject = root / "nested" / "subject.md"
+                if scenario == "absent-present":
+                    target = self.target(
+                        1,
+                        "nested/subject.md",
+                        existed=False,
+                    )
+                    subject.write_bytes(b"foreign")
+                else:
+                    target = self.target(
+                        1,
+                        "nested/subject.md",
+                        before=b"expected",
+                    )
+                    if scenario == "bytes-changed":
+                        subject.write_bytes(b"changed!")
+                    elif scenario == "bytes-shortened":
+                        subject.write_bytes(b"short")
+                    elif scenario == "bytes-expanded":
+                        subject.write_bytes(b"expected-extra")
+                    elif scenario == "target-symlink":
+                        subject.symlink_to(outside_file)
+                    elif scenario == "target-directory":
+                        subject.mkdir()
+                    elif scenario == "parent-symlink":
+                        (root / "nested").rmdir()
+                        (root / "nested").symlink_to(
+                            outside_directory,
+                            target_is_directory=True,
+                        )
+                    elif scenario == "parent-file":
+                        (root / "nested").rmdir()
+                        (root / "nested").write_bytes(b"blocked")
+                targets = (
+                    self.target(
+                        0,
+                        "issues/anchor.md",
+                        before=b"anchor",
+                        after=b"anchor",
+                    ),
+                    target,
+                )
+
+                with self.assertRaises(
+                    storage.LifecycleCanonicalConflict
+                ) as raised:
+                    entry(root, targets)
+
+                self.assertEqual(raised.exception.code, "CANONICAL_PREIMAGE_CONFLICT")
+                self.assertEqual(raised.exception.target_index, 1)
+                self.assertEqual(str(raised.exception), "CANONICAL_PREIMAGE_CONFLICT")
+                self.assertEqual(
+                    repr(raised.exception),
+                    "LifecycleCanonicalConflict('CANONICAL_PREIMAGE_CONFLICT')",
+                )
+                self.assertEqual(anchor.read_bytes(), b"anchor")
+                self.assertEqual(outside_file.read_bytes(), b"outside-file")
+                self.assertTrue(outside_directory.is_dir())
+                if scenario == "target-symlink":
+                    self.assertTrue(subject.is_symlink())
+                if scenario == "parent-symlink":
+                    self.assertTrue((root / "nested").is_symlink())
+                if scenario == "parent-file":
+                    self.assertEqual((root / "nested").read_bytes(), b"blocked")
+
+    def test_rejects_replacement_before_during_and_after_read_without_cleanup(self):
+        entry = getattr(storage, "verify_canonical_preimages", None)
+        self.assertIsNotNone(entry)
+        for race_point in ("before-open", "during-read", "after-read"):
+            with self.subTest(race_point=race_point), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.scaffold(root)
+                issue = root / "issues" / "BIZ-103.md"
+                replacement = root / "issues" / "replacement.md"
+                issue.write_bytes(b"expected")
+                replacement.write_bytes(b"foreign!")
+                target = self.target(
+                    0,
+                    "issues/BIZ-103.md",
+                    before=b"expected",
+                )
+                if race_point == "before-open":
+                    real_open = storage.os.open
+
+                    def raced_open(path, flags, *args, **kwargs):
+                        if path == "BIZ-103.md" and replacement.exists():
+                            replacement.replace(issue)
+                        return real_open(path, flags, *args, **kwargs)
+
+                    patcher = mock.patch.object(
+                        storage.os,
+                        "open",
+                        side_effect=raced_open,
+                    )
+                elif race_point == "during-read":
+                    real_read = storage.os.read
+                    replaced = False
+
+                    def raced_read(descriptor, size):
+                        nonlocal replaced
+                        if not replaced:
+                            replaced = True
+                            replacement.replace(issue)
+                        return real_read(descriptor, size)
+
+                    patcher = mock.patch.object(
+                        storage.os,
+                        "read",
+                        side_effect=raced_read,
+                    )
+                else:
+                    real_stat = storage.os.stat
+                    final_stats = 0
+
+                    def raced_stat(path, *args, **kwargs):
+                        nonlocal final_stats
+                        if (
+                            path == "BIZ-103.md"
+                            and kwargs.get("follow_symlinks") is False
+                        ):
+                            final_stats += 1
+                            if final_stats == 2:
+                                replacement.replace(issue)
+                        return real_stat(path, *args, **kwargs)
+
+                    patcher = mock.patch.object(
+                        storage.os,
+                        "stat",
+                        side_effect=raced_stat,
+                    )
+
+                with patcher:
+                    with self.assertRaises(
+                        storage.LifecycleCanonicalConflict
+                    ) as raised:
+                        entry(root, (target,))
+
+                self.assertEqual(raised.exception.code, "CANONICAL_PREIMAGE_CONFLICT")
+                self.assertEqual(raised.exception.target_index, 0)
+                self.assertEqual(issue.read_bytes(), b"foreign!")
+                self.assertFalse(replacement.exists())
+
+    def test_rejects_invalid_inputs_before_reads_and_redacts_filesystem_failures(self):
+        entry = getattr(storage, "verify_canonical_preimages", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory(prefix="SECRET-ROOT-") as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            valid = self.target(
+                0,
+                "issues/SECRET-PATH.md",
+                before=b"SECRET-BYTES",
+            )
+            gap = self.target(
+                1,
+                "issues/SECRET-PATH.md",
+                before=b"SECRET-BYTES",
+            )
+            invalid_inputs = (
+                (Path("relative-root"), (valid,)),
+                (root, [valid]),
+                (root, (gap,)),
+                (root, ()),
+            )
+            with mock.patch.object(storage.os, "open") as open_file:
+                for candidate_root, candidate_targets in invalid_inputs:
+                    with self.assertRaises(storage.LifecycleStorageError) as raised:
+                        entry(candidate_root, candidate_targets)
+                    self.assertEqual(raised.exception.code, "STORAGE_CONTEXT_INVALID")
+                open_file.assert_not_called()
+
+            for invalid_index in (-1, True, "0"):
+                with self.assertRaises(storage.LifecycleStorageError) as raised:
+                    storage.LifecycleCanonicalConflict(invalid_index)
+                self.assertEqual(raised.exception.code, "STORAGE_CONTEXT_INVALID")
+
+            with mock.patch.object(
+                storage.os,
+                "open",
+                side_effect=OSError(13, "SECRET-OS-ERROR"),
+            ):
+                with self.assertRaises(
+                    storage.LifecycleCanonicalConflict
+                ) as raised:
+                    entry(root, (valid,))
+            rendered = f"{raised.exception!s} {raised.exception!r}"
+            self.assertEqual(raised.exception.target_index, 0)
+            self.assertIsNone(raised.exception.__cause__)
+            for secret in (
+                "SECRET-PATH",
+                "SECRET-BYTES",
+                "SECRET-OS-ERROR",
+                str(root),
+            ):
+                self.assertNotIn(secret, rendered)
+
+
 if __name__ == "__main__":
     unittest.main()
