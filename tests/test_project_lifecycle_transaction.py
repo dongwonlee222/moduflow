@@ -573,6 +573,239 @@ class TransactionContractTests(unittest.TestCase):
             plan._project_context["status"] = "poison"
 
 
+class TransactionEvidenceContractTests(unittest.TestCase):
+    def target(self, role, index, total=2, *, after_sha256=None, after_bytes=None):
+        is_evidence = role == "evidence"
+        return {
+            "role": role,
+            "relative_path": (
+                "workspace/transactions/txn-103.json"
+                if is_evidence
+                else "issues/103-atomic-lifecycle-state-transaction.md"
+            ),
+            "existed": not is_evidence,
+            "before_sha256": "absent" if is_evidence else "a" * 64,
+            "after_sha256": after_sha256 or (("c" if is_evidence else "b") * 64),
+            "after_bytes": after_bytes if after_bytes is not None else 20 + index,
+            "changed": True,
+            "validation_rules": [
+                "transaction-evidence-schema" if is_evidence else "issue-schema"
+            ],
+            "apply_order": index,
+            "rollback_order": total - index - 1,
+        }
+
+    def result(self, status="applied", *, targets=None):
+        failed = status not in {"applied", "noop"}
+        return {
+            "schema": "moduflow.lifecycle-transaction.v1",
+            "transaction_id": "txn-103",
+            "idempotency_key": "d" * 64,
+            "status": status,
+            "project_id": "alpha",
+            "canonical_root": "/private/projects/alpha",
+            "issue_id": "103-atomic-lifecycle-state-transaction",
+            "action": "start",
+            "target_lifecycle": "active",
+            "targets": targets or [
+                self.target("issue", 0),
+                self.target("evidence", 1),
+            ],
+            "projected_validation": {
+                "valid": True,
+                "rule_ids": ["project-artifacts"],
+                "error_codes": [],
+            },
+            "post_apply_validation": {
+                "valid": True,
+                "rule_ids": ["project-artifacts"],
+                "error_codes": [],
+            },
+            "failed_stage": "apply" if failed else "",
+            "error_code": "APPLY_FAILED" if failed else "",
+            "rollback_status": "not-required" if not failed else "verified",
+            "verified_target_count": 2,
+            "next_command": "product:status",
+            "actor": "dongwon",
+            "source_event": "request:B1d",
+            "created_at": "2030-01-01T00:00:00Z",
+            "started_at": "2030-01-01T00:00:01Z",
+            "completed_at": "2030-01-01T00:00:02Z",
+        }
+
+    def expected_evidence(self, status="applied"):
+        failed = status not in {"applied", "noop"}
+        return {
+            "schema": "moduflow.lifecycle-transaction-evidence.v1",
+            "transaction_id": "txn-103",
+            "idempotency_key": "d" * 64,
+            "status": status,
+            "project_id": "alpha",
+            "issue_id": "103-atomic-lifecycle-state-transaction",
+            "action": "start",
+            "target_lifecycle": "active",
+            "targets": [
+                {
+                    "role": "issue",
+                    "relative_path": "issues/103-atomic-lifecycle-state-transaction.md",
+                    "existed": True,
+                    "before_sha256": "a" * 64,
+                    "after_sha256": "b" * 64,
+                    "after_bytes": 20,
+                    "changed": True,
+                    "validation_rules": ["issue-schema"],
+                    "apply_order": 0,
+                    "rollback_order": 1,
+                }
+            ],
+            "projected_validation": {
+                "valid": True,
+                "rule_ids": ["project-artifacts"],
+                "error_codes": [],
+            },
+            "post_apply_validation": {
+                "valid": True,
+                "rule_ids": ["project-artifacts"],
+                "error_codes": [],
+            },
+            "failed_stage": "apply" if failed else "",
+            "error_code": "APPLY_FAILED" if failed else "",
+            "rollback_status": "not-required" if not failed else "verified",
+            "verified_target_count": 2,
+            "next_command": "product:status",
+            "actor": "dongwon",
+            "source_event": "request:B1d",
+            "created_at": "2030-01-01T00:00:00Z",
+            "started_at": "2030-01-01T00:00:01Z",
+            "completed_at": "2030-01-01T00:00:02Z",
+        }
+
+    def test_evidence_serializer_returns_exact_redacted_result_without_self_target(self):
+        serializer = getattr(transaction, "serialize_transaction_evidence", None)
+        self.assertIsNotNone(serializer)
+        result = self.result()
+
+        evidence = serializer(result)
+
+        self.assertEqual(evidence, self.expected_evidence())
+        self.assertNotIn("canonical_root", evidence)
+        self.assertEqual([target["role"] for target in evidence["targets"]], ["issue"])
+
+    def test_evidence_renderer_is_deterministic_detached_and_not_self_referential(self):
+        serializer = getattr(transaction, "serialize_transaction_evidence", None)
+        renderer = getattr(transaction, "render_transaction_evidence", None)
+        self.assertIsNotNone(serializer)
+        self.assertIsNotNone(renderer)
+        first_result = self.result()
+        second_result = self.result(
+            targets=[
+                self.target("issue", 0),
+                self.target(
+                    "evidence",
+                    1,
+                    after_sha256="e" * 64,
+                    after_bytes=999,
+                ),
+            ]
+        )
+
+        evidence = serializer(first_result)
+        first_bytes = renderer(first_result)
+        second_bytes = renderer(second_result)
+        expected_bytes = (
+            json.dumps(
+                self.expected_evidence(),
+                ensure_ascii=False,
+                sort_keys=True,
+                indent=2,
+            ).encode("utf-8")
+            + b"\n"
+        )
+        first_result["targets"][0]["validation_rules"].append("poison")
+        first_result["projected_validation"]["rule_ids"].append("poison")
+        first_result["post_apply_validation"]["rule_ids"].append("poison")
+
+        self.assertEqual(first_bytes, second_bytes)
+        self.assertEqual(first_bytes, expected_bytes)
+        self.assertTrue(first_bytes.endswith(b"\n"))
+        self.assertFalse(first_bytes.endswith(b"\n\n"))
+        self.assertEqual(evidence, self.expected_evidence())
+
+    def test_evidence_serializer_rejects_missing_duplicate_or_nonfinal_self_target(self):
+        serializer = getattr(transaction, "serialize_transaction_evidence", None)
+        self.assertIsNotNone(serializer)
+        secret = "workspace/transactions/SECRET-CONTENT.json"
+        duplicate_secret = self.target("evidence", 2, total=3)
+        duplicate_secret["relative_path"] = secret
+        nonfinal_secret = self.target("evidence", 0)
+        nonfinal_secret["relative_path"] = secret
+        cases = (
+            [self.target("issue", 0, total=1)],
+            [
+                self.target("issue", 0, total=3),
+                self.target("evidence", 1, total=3),
+                duplicate_secret,
+            ],
+            [nonfinal_secret, self.target("issue", 1)],
+        )
+
+        for targets in cases:
+            with self.subTest(targets=[target["role"] for target in targets]):
+                with self.assertRaises(ValueError) as raised:
+                    serializer(self.result(targets=targets))
+                self.assertEqual(
+                    str(raised.exception),
+                    "Transaction evidence target layout invalid",
+                )
+                self.assertNotIn(secret, str(raised.exception))
+                self.assertNotIn(secret, repr(raised.exception))
+
+    def test_evidence_contract_reuses_all_statuses_and_has_zero_io_or_private_output(self):
+        serializer = getattr(transaction, "serialize_transaction_evidence", None)
+        renderer = getattr(transaction, "render_transaction_evidence", None)
+        self.assertIsNotNone(serializer)
+        self.assertIsNotNone(renderer)
+        forbidden = (
+            "/private/projects/alpha",
+            "_before_bytes",
+            "_after_bytes",
+            "preimages/",
+            ".moduflow-stage-",
+            "recovery-manifest",
+            "journal.json",
+            "owner_token",
+            "workspace/transactions/txn-103.json",
+        )
+
+        with (
+            mock.patch.object(transaction.os, "open") as open_file,
+            mock.patch.object(transaction.os, "mkdir") as make_directory,
+            mock.patch.object(transaction.os, "fsync") as sync_file,
+            mock.patch.object(transaction.os, "replace") as replace_file,
+        ):
+            for status in (
+                "applied",
+                "noop",
+                "denied",
+                "conflict",
+                "rolled_back",
+                "recovery_required",
+            ):
+                with self.subTest(status=status):
+                    result = self.result(status)
+                    evidence = serializer(result)
+                    rendered = renderer(result).decode("utf-8")
+                    self.assertEqual(evidence, self.expected_evidence(status))
+                    self.assertTrue(all(value not in rendered for value in forbidden))
+
+        open_file.assert_not_called()
+        make_directory.assert_not_called()
+        sync_file.assert_not_called()
+        replace_file.assert_not_called()
+        with self.assertRaisesRegex(ValueError, "^Unsupported transaction status$"):
+            serializer(self.result("unknown"))
+
+
 class TransactionJournalContractTests(unittest.TestCase):
     def target(self, index, total=2):
         return {

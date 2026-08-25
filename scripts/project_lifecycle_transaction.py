@@ -36,6 +36,7 @@ from project_loop import render_loop_projection
 
 PLAN_SCHEMA = "moduflow.lifecycle-transaction-plan.v1"
 RESULT_SCHEMA = "moduflow.lifecycle-transaction.v1"
+EVIDENCE_SCHEMA = "moduflow.lifecycle-transaction-evidence.v1"
 JOURNAL_SCHEMA = "moduflow.lifecycle-transaction-journal.v1"
 LOCK_SCHEMA = "moduflow.lifecycle-transaction-lock.v1"
 
@@ -205,6 +206,25 @@ _RESULT_TEXT_FIELDS = _PLAN_TEXT_FIELDS + (
     "failed_stage",
     "error_code",
     "rollback_status",
+    "next_command",
+    "actor",
+    "source_event",
+    "created_at",
+    "started_at",
+    "completed_at",
+)
+_EVIDENCE_RESULT_FIELDS = (
+    "transaction_id",
+    "idempotency_key",
+    "status",
+    "project_id",
+    "issue_id",
+    "action",
+    "target_lifecycle",
+    "failed_stage",
+    "error_code",
+    "rollback_status",
+    "verified_target_count",
     "next_command",
     "actor",
     "source_event",
@@ -2169,6 +2189,42 @@ def serialize_transaction_result(result):
         ),
         "verified_target_count": verified_target_count,
     }
+
+
+def serialize_transaction_evidence(result: dict) -> dict:
+    """Return detached redacted evidence from one strict result candidate."""
+    serialized = serialize_transaction_result(result)
+    targets = serialized["targets"]
+    if (
+        not targets
+        or targets[-1]["role"] != "evidence"
+        or any(target["role"] == "evidence" for target in targets[:-1])
+    ):
+        raise ValueError("Transaction evidence target layout invalid")
+    return {
+        "schema": EVIDENCE_SCHEMA,
+        **{
+            field: serialized[field]
+            for field in _EVIDENCE_RESULT_FIELDS
+        },
+        "targets": targets[:-1],
+        "projected_validation": serialized["projected_validation"],
+        "post_apply_validation": serialized["post_apply_validation"],
+    }
+
+
+def render_transaction_evidence(result: dict) -> bytes:
+    """Return deterministic UTF-8 evidence JSON with one trailing newline."""
+    evidence = serialize_transaction_evidence(result)
+    return (
+        json.dumps(
+            evidence,
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=2,
+        ).encode("utf-8")
+        + b"\n"
+    )
 
 
 def _planning_date(clock):
