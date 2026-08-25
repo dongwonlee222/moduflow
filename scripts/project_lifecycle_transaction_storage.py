@@ -18,6 +18,8 @@ _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _PREIMAGES_NAME = "preimages"
 _RECOVERY_MANIFEST_NAME = "recovery-manifest.json"
 _RECOVERY_MANIFEST_SCHEMA = "moduflow.lifecycle-transaction-recovery-manifest.v1"
+_JOURNAL_NAME = "journal.json"
+_JOURNAL_NEXT_NAME = "journal.next"
 
 
 class LifecycleStorageError(RuntimeError):
@@ -137,6 +139,14 @@ class StagedProposal:
 class RecoveryManifest:
     relative_name: str
     size: int
+    sha256: str
+    _device: int = field(repr=False, compare=False)
+    _inode: int = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
+class _JournalState:
+    state: str
     sha256: str
     _device: int = field(repr=False, compare=False)
     _inode: int = field(repr=False, compare=False)
@@ -911,3 +921,287 @@ def finalize_recovery_manifest(
         proposal_records,
     )
     return _write_recovery_manifest(workspace, manifest_bytes)
+
+
+def _journal_context(workspace, journal_bytes, expected_previous_sha256):
+    if (
+        not isinstance(workspace, _PrivateTransactionWorkspace)
+        or not isinstance(journal_bytes, bytes)
+        or not journal_bytes
+        or (
+            expected_previous_sha256 != "absent"
+            and (
+                not isinstance(expected_previous_sha256, str)
+                or not _SHA256.fullmatch(expected_previous_sha256)
+            )
+        )
+    ):
+        _storage_context_failure()
+    return journal_bytes
+
+
+def _journal_metadata_matches(metadata, expected):
+    return (
+        stat.S_ISREG(metadata.st_mode)
+        and stat.S_IMODE(metadata.st_mode) == 0o600
+        and metadata.st_nlink == 1
+        and metadata.st_dev == expected.st_dev
+        and metadata.st_ino == expected.st_ino
+    )
+
+
+def _current_journal_state(workspace):
+    descriptor = None
+    read_flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    try:
+        try:
+            current = os.stat(
+                _JOURNAL_NAME,
+                dir_fd=workspace._workspace_fd,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError:
+            return _JournalState(
+                state="absent",
+                sha256="absent",
+                _device=-1,
+                _inode=-1,
+            )
+        except OSError as exc:
+            raise LifecycleStorageError(
+                "STORAGE_JOURNAL_STATE_MISMATCH"
+            ) from exc
+        if (
+            not stat.S_ISREG(current.st_mode)
+            or stat.S_IMODE(current.st_mode) != 0o600
+            or current.st_nlink != 1
+        ):
+            raise LifecycleStorageError("STORAGE_JOURNAL_STATE_MISMATCH")
+        try:
+            descriptor = os.open(
+                _JOURNAL_NAME,
+                read_flags,
+                dir_fd=workspace._workspace_fd,
+            )
+            opened = os.fstat(descriptor)
+        except OSError as exc:
+            raise LifecycleStorageError(
+                "STORAGE_JOURNAL_STATE_MISMATCH"
+            ) from exc
+        if not _journal_metadata_matches(opened, current):
+            raise LifecycleStorageError("STORAGE_JOURNAL_STATE_MISMATCH")
+        digest = hashlib.sha256()
+        try:
+            while True:
+                chunk = os.read(descriptor, 64 * 1024)
+                if not chunk:
+                    break
+                digest.update(chunk)
+            final_entry = os.stat(
+                _JOURNAL_NAME,
+                dir_fd=workspace._workspace_fd,
+                follow_symlinks=False,
+            )
+            final_opened = os.fstat(descriptor)
+        except OSError as exc:
+            raise LifecycleStorageError(
+                "STORAGE_JOURNAL_STATE_MISMATCH"
+            ) from exc
+        if (
+            not _journal_metadata_matches(final_entry, current)
+            or not _journal_metadata_matches(final_opened, current)
+        ):
+            raise LifecycleStorageError("STORAGE_JOURNAL_STATE_MISMATCH")
+        return _JournalState(
+            state="present",
+            sha256=digest.hexdigest(),
+            _device=current.st_dev,
+            _inode=current.st_ino,
+        )
+    finally:
+        _close_descriptors(descriptor)
+
+
+def _same_journal_state(current, expected):
+    return (
+        current.state == expected.state
+        and current.sha256 == expected.sha256
+        and current._device == expected._device
+        and current._inode == expected._inode
+    )
+
+
+def _cleanup_journal_next(workspace, metadata, expected_bytes):
+    if not _cleanup_owned_regular(
+        workspace._workspace_fd,
+        _JOURNAL_NEXT_NAME,
+        metadata,
+        expected_bytes,
+    ):
+        raise LifecycleStorageError("STORAGE_OWNER_MISMATCH")
+    try:
+        os.fsync(workspace._workspace_fd)
+    except OSError as exc:
+        raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+
+
+def _write_journal_next(workspace, journal_bytes):
+    descriptor = None
+    metadata = None
+    written = 0
+    flags = (
+        os.O_CREAT
+        | os.O_EXCL
+        | os.O_RDWR
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    try:
+        try:
+            descriptor = os.open(
+                _JOURNAL_NEXT_NAME,
+                flags,
+                mode=0o600,
+                dir_fd=workspace._workspace_fd,
+            )
+        except FileExistsError as exc:
+            raise LifecycleStorageError("STORAGE_CONFLICT") from exc
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_CREATE_FAILED") from exc
+        try:
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                raise OSError(errno.EINVAL, "journal next is not privately owned")
+            os.fchmod(descriptor, 0o600)
+            metadata = os.fstat(descriptor)
+        except OSError as exc:
+            if metadata is None:
+                raise LifecycleStorageError("STORAGE_OWNER_MISMATCH") from exc
+            try:
+                _cleanup_journal_next(workspace, metadata, b"")
+            except LifecycleStorageError as cleanup_error:
+                raise cleanup_error from exc
+            raise LifecycleStorageError("STORAGE_CREATE_FAILED") from exc
+        try:
+            while written < len(journal_bytes):
+                count = os.write(descriptor, journal_bytes[written:])
+                if count <= 0 or count > len(journal_bytes) - written:
+                    raise OSError(errno.EIO, "journal write failed")
+                written += count
+        except OSError as exc:
+            try:
+                _cleanup_journal_next(
+                    workspace,
+                    metadata,
+                    journal_bytes[:written],
+                )
+            except LifecycleStorageError as cleanup_error:
+                raise cleanup_error from exc
+            raise LifecycleStorageError("STORAGE_WRITE_FAILED") from exc
+        try:
+            stored = _read_complete(descriptor, len(journal_bytes))
+            opened = os.fstat(descriptor)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_VERIFY_FAILED") from exc
+        digest = hashlib.sha256(journal_bytes).hexdigest()
+        if (
+            len(stored) != len(journal_bytes)
+            or hashlib.sha256(stored).hexdigest() != digest
+            or not secrets.compare_digest(stored, journal_bytes)
+        ):
+            raise LifecycleStorageError("STORAGE_VERIFY_FAILED")
+        if not _journal_metadata_matches(opened, metadata):
+            raise LifecycleStorageError("STORAGE_OWNER_MISMATCH")
+        try:
+            os.fsync(descriptor)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+        return metadata, digest
+    finally:
+        _close_descriptors(descriptor)
+
+
+def persist_serialized_journal(
+    workspace,
+    journal_bytes,
+    *,
+    expected_previous_sha256,
+):
+    """Atomically persist exact validated bytes and return their SHA-256."""
+    payload = _journal_context(
+        workspace,
+        journal_bytes,
+        expected_previous_sha256,
+    )
+    previous = _current_journal_state(workspace)
+    if previous.sha256 != expected_previous_sha256:
+        raise LifecycleStorageError("STORAGE_JOURNAL_STATE_MISMATCH")
+    next_metadata, digest = _write_journal_next(workspace, payload)
+    try:
+        _verify_recorded_file(
+            workspace._workspace_fd,
+            _JOURNAL_NEXT_NAME,
+            expected_device=next_metadata.st_dev,
+            expected_inode=next_metadata.st_ino,
+            expected_bytes=payload,
+            expected_sha256=digest,
+        )
+        try:
+            current = _current_journal_state(workspace)
+        except LifecycleStorageError as exc:
+            try:
+                _cleanup_journal_next(workspace, next_metadata, payload)
+            except LifecycleStorageError as cleanup_error:
+                raise cleanup_error from exc
+            raise
+        if not _same_journal_state(current, previous):
+            _cleanup_journal_next(workspace, next_metadata, payload)
+            raise LifecycleStorageError("STORAGE_JOURNAL_STATE_MISMATCH")
+        try:
+            os.replace(
+                _JOURNAL_NEXT_NAME,
+                _JOURNAL_NAME,
+                src_dir_fd=workspace._workspace_fd,
+                dst_dir_fd=workspace._workspace_fd,
+            )
+        except OSError as exc:
+            try:
+                unchanged = _same_journal_state(
+                    _current_journal_state(workspace),
+                    previous,
+                )
+            except LifecycleStorageError:
+                unchanged = False
+            if unchanged:
+                try:
+                    _cleanup_journal_next(
+                        workspace,
+                        next_metadata,
+                        payload,
+                    )
+                except LifecycleStorageError as cleanup_error:
+                    raise cleanup_error from exc
+                raise LifecycleStorageError("STORAGE_WRITE_FAILED") from exc
+            raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+        try:
+            _verify_recorded_file(
+                workspace._workspace_fd,
+                _JOURNAL_NAME,
+                expected_device=next_metadata.st_dev,
+                expected_inode=next_metadata.st_ino,
+                expected_bytes=payload,
+                expected_sha256=digest,
+            )
+        except LifecycleStorageError as exc:
+            raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+        try:
+            os.fsync(workspace._workspace_fd)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+        return digest
+    except LifecycleStorageError:
+        raise

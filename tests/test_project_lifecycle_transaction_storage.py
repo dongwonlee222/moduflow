@@ -749,6 +749,375 @@ class PrivatePreimageStorageTests(unittest.TestCase):
                     )
                 self.assertEqual(issue.read_bytes(), b"original issue")
 
+    def test_journal_persistence_requires_exact_previous_digest_and_replaces_atomically(self):
+        self.assertIsNotNone(storage)
+        entry = getattr(storage, "persist_serialized_journal", None)
+        self.assertIsNotNone(entry)
+        planned = b'{"phase":"planned"}\n'
+        staged = b'{"phase":"staged"}\n'
+        prepared = b'{"phase":"prepared"}\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            workspace_path = root / ".moduflow" / "transactions" / "txn-journal"
+            journal_path = workspace_path / "journal.json"
+            next_path = workspace_path / "journal.next"
+            with storage.private_transaction_workspace(
+                root,
+                "txn-journal",
+            ) as workspace:
+                planned_digest = entry(
+                    workspace,
+                    planned,
+                    expected_previous_sha256="absent",
+                )
+                self.assertEqual(
+                    planned_digest,
+                    "76eda423415751804910c8872a224a312413b5e231d23f959acf04082a6429a2",
+                )
+                self.assertEqual(journal_path.read_bytes(), planned)
+                self.assertFalse(next_path.exists())
+                staged_digest = entry(
+                    workspace,
+                    staged,
+                    expected_previous_sha256=planned_digest,
+                )
+                prepared_digest = entry(
+                    workspace,
+                    prepared,
+                    expected_previous_sha256=staged_digest,
+                )
+                metadata = journal_path.stat()
+                self.assertEqual(journal_path.read_bytes(), prepared)
+                self.assertEqual(
+                    prepared_digest,
+                    hashlib.sha256(prepared).hexdigest(),
+                )
+                self.assertEqual(stat.S_IMODE(metadata.st_mode), 0o600)
+                self.assertEqual(metadata.st_nlink, 1)
+                self.assertFalse(next_path.exists())
+                for expected in ("absent", "0" * 64):
+                    with self.subTest(expected=expected):
+                        before = journal_path.stat()
+                        with self.assertRaises(storage.LifecycleStorageError) as raised:
+                            entry(
+                                workspace,
+                                b'{"phase":"unknown"}\n',
+                                expected_previous_sha256=expected,
+                            )
+                        self.assertEqual(
+                            raised.exception.code,
+                            "STORAGE_JOURNAL_STATE_MISMATCH",
+                        )
+                        self.assertEqual(journal_path.read_bytes(), prepared)
+                        self.assertEqual(journal_path.stat().st_ino, before.st_ino)
+                        self.assertFalse(next_path.exists())
+                journal_path.unlink()
+                with self.assertRaises(storage.LifecycleStorageError) as raised:
+                    entry(
+                        workspace,
+                        staged,
+                        expected_previous_sha256=prepared_digest,
+                    )
+                self.assertEqual(
+                    raised.exception.code,
+                    "STORAGE_JOURNAL_STATE_MISMATCH",
+                )
+                self.assertFalse(next_path.exists())
+
+    def test_journal_persistence_orders_verify_sync_replace_and_directory_sync(self):
+        self.assertIsNotNone(storage)
+        entry = getattr(storage, "persist_serialized_journal", None)
+        self.assertIsNotNone(entry)
+        payload = b'{"phase":"planned"}\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            events = []
+            replace_call = []
+            synced_payload = []
+            with storage.private_transaction_workspace(root, "txn-order") as workspace:
+                real_write = storage.os.write
+                real_read = storage.os.read
+                real_fsync = storage.os.fsync
+                real_replace = storage.os.replace
+
+                def tracked_write(descriptor, value):
+                    events.append("write")
+                    return real_write(descriptor, value)
+
+                def tracked_read(descriptor, size):
+                    events.append("read")
+                    return real_read(descriptor, size)
+
+                def tracked_fsync(descriptor):
+                    metadata = os.fstat(descriptor)
+                    if stat.S_ISDIR(metadata.st_mode):
+                        events.append("directory-fsync")
+                    else:
+                        events.append("file-fsync")
+                        synced_payload.append(os.pread(descriptor, len(payload) + 1, 0))
+                        self.assertEqual(stat.S_IMODE(metadata.st_mode), 0o600)
+                        self.assertEqual(metadata.st_nlink, 1)
+                    return real_fsync(descriptor)
+
+                def tracked_replace(source, destination, **kwargs):
+                    events.append("replace")
+                    replace_call.append((source, destination, kwargs))
+                    return real_replace(source, destination, **kwargs)
+
+                with (
+                    mock.patch.object(storage.os, "write", side_effect=tracked_write),
+                    mock.patch.object(storage.os, "read", side_effect=tracked_read),
+                    mock.patch.object(storage.os, "fsync", side_effect=tracked_fsync),
+                    mock.patch.object(storage.os, "replace", side_effect=tracked_replace),
+                ):
+                    entry(
+                        workspace,
+                        payload,
+                        expected_previous_sha256="absent",
+                    )
+
+                self.assertLess(events.index("write"), events.index("read"))
+                self.assertLess(events.index("read"), events.index("file-fsync"))
+                self.assertLess(events.index("file-fsync"), events.index("replace"))
+                self.assertLess(events.index("replace"), events.index("directory-fsync"))
+                self.assertEqual(synced_payload, [payload])
+                self.assertEqual(
+                    replace_call,
+                    [
+                        (
+                            "journal.next",
+                            "journal.json",
+                            {
+                                "src_dir_fd": workspace._workspace_fd,
+                                "dst_dir_fd": workspace._workspace_fd,
+                            },
+                        )
+                    ],
+                )
+
+    def test_journal_persistence_rejects_conflict_mutation_and_unknown_state_without_overwrite(self):
+        self.assertIsNotNone(storage)
+        entry = getattr(storage, "persist_serialized_journal", None)
+        self.assertIsNotNone(entry)
+        planned = b'{"phase":"planned"}\n'
+        staged = b'{"phase":"staged"}\n'
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            workspace_path = root / ".moduflow" / "transactions" / "txn-conflict"
+            with storage.private_transaction_workspace(root, "txn-conflict") as workspace:
+                next_path = workspace_path / "journal.next"
+                next_path.write_bytes(b"foreign next")
+                before = next_path.stat()
+                with self.assertRaises(storage.LifecycleStorageError) as raised:
+                    entry(
+                        workspace,
+                        planned,
+                        expected_previous_sha256="absent",
+                    )
+                self.assertEqual(raised.exception.code, "STORAGE_CONFLICT")
+                self.assertEqual(next_path.read_bytes(), b"foreign next")
+                self.assertEqual(next_path.stat().st_ino, before.st_ino)
+
+        for failure in ("mode", "hardlink"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.scaffold(root)
+                workspace_path = root / ".moduflow" / "transactions" / "txn-state"
+                with storage.private_transaction_workspace(root, "txn-state") as workspace:
+                    digest = entry(
+                        workspace,
+                        planned,
+                        expected_previous_sha256="absent",
+                    )
+                    journal_path = workspace_path / "journal.json"
+                    if failure == "mode":
+                        journal_path.chmod(0o644)
+                    else:
+                        os.link(journal_path, workspace_path / "journal-link")
+                    before = journal_path.stat()
+                    with self.assertRaises(storage.LifecycleStorageError) as raised:
+                        entry(
+                            workspace,
+                            staged,
+                            expected_previous_sha256=digest,
+                        )
+                    self.assertEqual(
+                        raised.exception.code,
+                        "STORAGE_JOURNAL_STATE_MISMATCH",
+                    )
+                    self.assertEqual(journal_path.read_bytes(), planned)
+                    self.assertEqual(journal_path.stat().st_ino, before.st_ino)
+                    self.assertFalse((workspace_path / "journal.next").exists())
+
+        for failure in ("deleted", "replaced", "symlink"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.scaffold(root)
+                workspace_path = root / ".moduflow" / "transactions" / "txn-race"
+                journal_path = workspace_path / "journal.json"
+                next_path = workspace_path / "journal.next"
+                with storage.private_transaction_workspace(root, "txn-race") as workspace:
+                    digest = entry(
+                        workspace,
+                        planned,
+                        expected_previous_sha256="absent",
+                    )
+                    original_inode = journal_path.stat().st_ino
+                    real_fsync = storage.os.fsync
+                    changed = []
+
+                    def mutate_after_temp_sync(descriptor):
+                        result = real_fsync(descriptor)
+                        if not changed and not stat.S_ISDIR(os.fstat(descriptor).st_mode):
+                            journal_path.unlink()
+                            if failure == "replaced":
+                                journal_path.write_bytes(planned)
+                                journal_path.chmod(0o600)
+                            elif failure == "symlink":
+                                external = root / "external-journal"
+                                external.write_bytes(planned)
+                                journal_path.symlink_to(external)
+                            changed.append(True)
+                        return result
+
+                    with mock.patch.object(
+                        storage.os,
+                        "fsync",
+                        side_effect=mutate_after_temp_sync,
+                    ):
+                        with self.assertRaises(storage.LifecycleStorageError) as raised:
+                            entry(
+                                workspace,
+                                staged,
+                                expected_previous_sha256=digest,
+                            )
+                    self.assertEqual(
+                        raised.exception.code,
+                        "STORAGE_JOURNAL_STATE_MISMATCH",
+                    )
+                    self.assertFalse(next_path.exists())
+                    if failure == "deleted":
+                        self.assertFalse(journal_path.exists())
+                    elif failure == "replaced":
+                        self.assertNotEqual(journal_path.stat().st_ino, original_inode)
+                        self.assertEqual(journal_path.read_bytes(), planned)
+                    else:
+                        self.assertTrue(journal_path.is_symlink())
+
+    def test_journal_persistence_cleans_exact_partial_but_preserves_durability_uncertainty(self):
+        self.assertIsNotNone(storage)
+        entry = getattr(storage, "persist_serialized_journal", None)
+        self.assertIsNotNone(entry)
+        payload = b'{"phase":"planned"}\n'
+        for failure, expected_code, next_exists, journal_exists in (
+            ("partial", "STORAGE_WRITE_FAILED", False, False),
+            ("partial-cleanup-fsync", "STORAGE_DURABILITY_UNCERTAIN", False, False),
+            ("corrupt", "STORAGE_VERIFY_FAILED", True, False),
+            ("mode", "STORAGE_OWNER_MISMATCH", True, False),
+            ("file-fsync", "STORAGE_DURABILITY_UNCERTAIN", True, False),
+            ("replace", "STORAGE_WRITE_FAILED", False, False),
+            ("result-identity", "STORAGE_DURABILITY_UNCERTAIN", False, True),
+            ("directory-fsync", "STORAGE_DURABILITY_UNCERTAIN", False, True),
+        ):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.scaffold(root)
+                workspace_path = root / ".moduflow" / "transactions" / "txn-failure"
+                journal_path = workspace_path / "journal.json"
+                next_path = workspace_path / "journal.next"
+                with storage.private_transaction_workspace(
+                    root,
+                    "txn-failure",
+                ) as workspace:
+                    if failure in {"partial", "partial-cleanup-fsync", "corrupt"}:
+                        real_write = storage.os.write
+                        calls = []
+
+                        def altered_write(descriptor, value):
+                            calls.append(len(value))
+                            if failure in {"partial", "partial-cleanup-fsync"}:
+                                if len(calls) == 1:
+                                    return real_write(descriptor, bytes(value[:3]))
+                                raise OSError(5, "JOURNAL WRITE FAILURE")
+                            return real_write(descriptor, b"x" * len(value))
+
+                        if failure == "partial-cleanup-fsync":
+                            patcher = mock.patch.multiple(
+                                storage.os,
+                                write=mock.Mock(side_effect=altered_write),
+                                fsync=mock.Mock(
+                                    side_effect=OSError(
+                                        5,
+                                        "JOURNAL CLEANUP SYNC FAILURE",
+                                    )
+                                ),
+                            )
+                        else:
+                            patcher = mock.patch.object(
+                                storage.os,
+                                "write",
+                                side_effect=altered_write,
+                            )
+                    elif failure in {"mode", "file-fsync", "directory-fsync"}:
+                        real_fsync = storage.os.fsync
+                        calls = []
+
+                        def altered_fsync(descriptor):
+                            calls.append(descriptor)
+                            if failure == "mode" and len(calls) == 1:
+                                result = real_fsync(descriptor)
+                                next_path.chmod(0o644)
+                                return result
+                            if failure == "file-fsync" and len(calls) == 1:
+                                raise OSError(5, "JOURNAL FILE SYNC FAILURE")
+                            if failure == "directory-fsync" and len(calls) == 2:
+                                raise OSError(5, "JOURNAL DIRECTORY SYNC FAILURE")
+                            return real_fsync(descriptor)
+
+                        patcher = mock.patch.object(
+                            storage.os,
+                            "fsync",
+                            side_effect=altered_fsync,
+                        )
+                    elif failure == "replace":
+                        patcher = mock.patch.object(
+                            storage.os,
+                            "replace",
+                            side_effect=OSError(5, "JOURNAL REPLACE FAILURE"),
+                        )
+                    else:
+                        real_replace = storage.os.replace
+
+                        def replace_then_substitute(source, destination, **kwargs):
+                            result = real_replace(source, destination, **kwargs)
+                            journal_path.unlink()
+                            journal_path.write_bytes(payload)
+                            journal_path.chmod(0o600)
+                            return result
+
+                        patcher = mock.patch.object(
+                            storage.os,
+                            "replace",
+                            side_effect=replace_then_substitute,
+                        )
+                    with patcher:
+                        with self.assertRaises(storage.LifecycleStorageError) as raised:
+                            entry(
+                                workspace,
+                                payload,
+                                expected_previous_sha256="absent",
+                            )
+                    self.assertEqual(raised.exception.code, expected_code)
+                    self.assertEqual(str(raised.exception), expected_code)
+                    self.assertEqual(next_path.exists(), next_exists)
+                    self.assertEqual(journal_path.exists(), journal_exists)
+                    if journal_exists:
+                        self.assertEqual(journal_path.read_bytes(), payload)
+
     def test_storage_target_is_detached_strict_and_side_effect_free(self):
         self.assertIsNotNone(storage)
         before = bytearray(b"before")
