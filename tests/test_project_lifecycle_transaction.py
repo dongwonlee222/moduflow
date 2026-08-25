@@ -1251,6 +1251,136 @@ class TransactionPlanningTests(unittest.TestCase):
 
             self.assertEqual(plan.targets[0].role, "issue")
 
+    def test_private_preimage_workspace_denies_or_rejects_before_side_effects(self):
+        entry = getattr(transaction, "_private_preimage_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            denied_context = transaction._json_value(plan._project_context)
+            denied_context.update(
+                transaction.project_operation.compute_project_policy(
+                    "archived",
+                    "internal",
+                )
+            )
+            denied = replace(plan, _project_context=denied_context)
+            with (
+                mock.patch.object(transaction.os, "open") as open_file,
+                mock.patch.object(transaction.os, "mkdir") as make_directory,
+                mock.patch.object(transaction.os, "fsync") as sync_file,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "private_transaction_workspace",
+                ) as open_workspace,
+            ):
+                with self.assertRaises(
+                    transaction.project_operation.ProjectOperationDenied
+                ) as raised:
+                    with entry(denied):
+                        self.fail("denied storage must not be yielded")
+            self.assertEqual(
+                raised.exception.decision["reason_code"],
+                "PROJECT_OPERATION_DENIED_ARCHIVED",
+            )
+            open_file.assert_not_called()
+            make_directory.assert_not_called()
+            sync_file.assert_not_called()
+            open_workspace.assert_not_called()
+
+            invalid_target = replace(
+                plan.targets[0],
+                before_sha256="0" * 64,
+            )
+            invalid = replace(
+                plan,
+                targets=(invalid_target, *plan.targets[1:]),
+            )
+            with mock.patch.object(
+                transaction,
+                "_exclusive_lifecycle_lock",
+            ) as acquire_lock:
+                with self.assertRaises(
+                    transaction.transaction_storage.LifecycleStorageError
+                ) as raised:
+                    with entry(invalid):
+                        self.fail("invalid storage target must not be yielded")
+            self.assertEqual(raised.exception.code, "STORAGE_CONTEXT_INVALID")
+            acquire_lock.assert_not_called()
+            self.assertFalse((root / ".moduflow" / "transactions").exists())
+
+    def test_private_preimage_workspace_holds_lock_and_persists_exact_plan_bytes(self):
+        entry = getattr(transaction, "_private_preimage_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            canonical_before = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if target.existed
+                    else None
+                )
+                for target in plan.targets
+            }
+            lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+            workspace_path = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+
+            with entry(
+                plan,
+                lock_clock="2030-01-02T03:04:05Z",
+                lock_pid=123,
+                lock_token_factory=lambda: "1" * 32,
+            ) as state:
+                self.assertTrue(lock_path.is_file())
+                self.assertEqual(
+                    [target.index for target in state.storage_targets],
+                    list(range(len(plan.targets))),
+                )
+                self.assertEqual(
+                    [record.index for record in state.preimages],
+                    list(range(len(plan.targets))),
+                )
+                for target, record in zip(plan.targets, state.preimages):
+                    if target.existed:
+                        stored = workspace_path / record.relative_name
+                        self.assertEqual(stored.read_bytes(), target._before_bytes)
+                        self.assertEqual(record.sha256, target.before_sha256)
+                    else:
+                        self.assertEqual(record.state, "absent")
+                        self.assertEqual(record.relative_name, "absent")
+                self.assertNotIn(str(root), repr(state))
+                self.assertNotIn("_before_bytes", repr(state))
+                self.assertNotIn("_after_bytes", repr(state))
+
+            self.assertFalse(lock_path.exists())
+            self.assertTrue(workspace_path.is_dir())
+            self.assertEqual(
+                {
+                    relative: (
+                        (root / relative).read_bytes()
+                        if (root / relative).exists()
+                        else None
+                    )
+                    for relative in canonical_before
+                },
+                canonical_before,
+            )
+
     def test_exclusive_lifecycle_lock_creates_redacted_owner_and_releases(self):
         entry = getattr(transaction, "_exclusive_lifecycle_lock", None)
         self.assertIsNotNone(entry)

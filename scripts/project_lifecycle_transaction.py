@@ -20,6 +20,7 @@ import stat
 from types import MappingProxyType
 
 import project_issue_schema
+import project_lifecycle_transaction_storage as transaction_storage
 import project_operation
 import project_registry
 import validate_project_artifacts
@@ -342,6 +343,13 @@ class _LifecycleLockOwner:
     _owner_bytes: bytes = field(repr=False, compare=False)
     _device: int = field(repr=False, compare=False)
     _inode: int = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
+class _PrivatePreimageState:
+    storage_targets: tuple[transaction_storage.StorageTarget, ...]
+    preimages: tuple[transaction_storage.StoredPreimage, ...]
+    _workspace: object = field(repr=False, compare=False)
 
 
 class LifecyclePlanError(ValueError):
@@ -1551,6 +1559,58 @@ def _exclusive_lifecycle_lock(
             os.close(transactions_fd)
         except OSError:
             pass
+
+
+def _storage_targets_from_plan(plan):
+    return tuple(
+        transaction_storage.StorageTarget(
+            index=index,
+            role=target.role,
+            relative_path=target.relative_path,
+            existed=target.existed,
+            before_sha256=target.before_sha256,
+            after_sha256=target.after_sha256,
+            after_size=target.after_size,
+            changed=target.changed,
+            _before_bytes=target._before_bytes,
+            _after_bytes=target._after_bytes,
+        )
+        for index, target in enumerate(plan.targets)
+    )
+
+
+@contextmanager
+def _private_preimage_workspace(
+    plan: LifecycleTransactionPlan,
+    *,
+    lock_clock=None,
+    lock_pid=None,
+    lock_token_factory=None,
+):
+    """Yield verified private preimages under write authorization and B1b lock."""
+    if not isinstance(plan, LifecycleTransactionPlan):
+        raise TypeError("plan must be a LifecycleTransactionPlan")
+    root, _context = _writable_projected_plan_context(plan)
+    storage_targets = _storage_targets_from_plan(plan)
+    with _exclusive_lifecycle_lock(
+        plan,
+        clock=lock_clock,
+        pid=lock_pid,
+        token_factory=lock_token_factory,
+    ):
+        with transaction_storage.private_transaction_workspace(
+            root,
+            plan.transaction_id,
+        ) as workspace:
+            preimages = transaction_storage.store_preimages(
+                workspace,
+                storage_targets,
+            )
+            yield _PrivatePreimageState(
+                storage_targets=storage_targets,
+                preimages=preimages,
+                _workspace=workspace,
+            )
 
 
 @contextmanager
