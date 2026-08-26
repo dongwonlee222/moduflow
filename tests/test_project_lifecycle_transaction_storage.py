@@ -1986,5 +1986,246 @@ class CanonicalApplyStorageTests(unittest.TestCase):
                         self.assertFalse(stage_path.exists())
 
 
+class CanonicalRollbackStorageTests(unittest.TestCase):
+    def target(
+        self,
+        index,
+        relative_path,
+        *,
+        existed=True,
+        before=b"before",
+        after=b"after",
+        role="issue",
+    ):
+        if not existed:
+            before = b""
+        return storage.StorageTarget(
+            index=index,
+            role=role,
+            relative_path=relative_path,
+            existed=existed,
+            before_sha256=(
+                hashlib.sha256(before).hexdigest() if existed else "absent"
+            ),
+            after_sha256=hashlib.sha256(after).hexdigest(),
+            after_size=len(after),
+            changed=(not existed or before != after),
+            _before_bytes=before,
+            _after_bytes=after,
+        )
+
+    def scaffold(self, root):
+        (root / "issues").mkdir()
+        (root / "new").mkdir()
+        (root / ".moduflow" / "transactions").mkdir(parents=True)
+
+    def test_classifies_exact_before_and_after_for_existing_and_absent_targets(self):
+        classify = getattr(storage, "classify_canonical_target", None)
+        self.assertIsNotNone(classify)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            issue = root / "issues" / "BIZ-103.md"
+            issue.write_bytes(b"original issue")
+            targets = (
+                self.target(
+                    0,
+                    "issues/BIZ-103.md",
+                    before=b"original issue",
+                    after=b"proposed issue",
+                ),
+                self.target(
+                    1,
+                    "new/created.json",
+                    existed=False,
+                    after=b"new file",
+                    role="state",
+                ),
+            )
+            with storage.private_transaction_workspace(
+                root,
+                "txn-rollback-classify",
+            ) as workspace:
+                self.assertEqual(
+                    [classify(workspace, target) for target in targets],
+                    ["before", "before"],
+                )
+                proposals = storage.stage_proposed_targets(workspace, targets)
+                for target, proposal in zip(targets, proposals):
+                    storage.apply_staged_target(workspace, target, proposal)
+                self.assertEqual(
+                    [classify(workspace, target) for target in targets],
+                    ["after", "after"],
+                )
+
+    def test_rejects_unknown_unchanged_and_evidence_states_without_mutation(self):
+        classify = getattr(storage, "classify_canonical_target", None)
+        self.assertIsNotNone(classify)
+        with tempfile.TemporaryDirectory(prefix="SECRET-ROLLBACK-") as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            subject = root / "issues" / "SECRET.md"
+            subject.write_bytes(b"foreign bytes")
+            unknown = self.target(
+                0,
+                "issues/SECRET.md",
+                before=b"before",
+                after=b"after",
+            )
+            unchanged = self.target(
+                0,
+                "issues/SECRET.md",
+                before=b"foreign bytes",
+                after=b"foreign bytes",
+            )
+            evidence = self.target(
+                0,
+                "new/evidence.json",
+                existed=False,
+                after=b"evidence",
+                role="evidence",
+            )
+            with storage.private_transaction_workspace(
+                root,
+                "txn-rollback-unknown",
+            ) as workspace:
+                for target, code in (
+                    (unknown, "STORAGE_CANONICAL_STATE_UNKNOWN"),
+                    (unchanged, "STORAGE_CONTEXT_INVALID"),
+                    (evidence, "STORAGE_CONTEXT_INVALID"),
+                ):
+                    with self.subTest(code=code):
+                        with self.assertRaises(storage.LifecycleStorageError) as raised:
+                            classify(workspace, target)
+                        self.assertEqual(raised.exception.code, code)
+                        rendered = f"{raised.exception!s} {raised.exception!r}"
+                        for secret in (
+                            str(root),
+                            "SECRET.md",
+                            "foreign bytes",
+                        ):
+                            self.assertNotIn(secret, rendered)
+            self.assertEqual(subject.read_bytes(), b"foreign bytes")
+
+    def test_restores_existing_target_from_preimage_and_removes_new_target(self):
+        rollback = getattr(storage, "rollback_canonical_target", None)
+        self.assertIsNotNone(rollback)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            issue = root / "issues" / "BIZ-103.md"
+            unrelated = root / "issues" / "unrelated.md"
+            created = root / "new" / "created.json"
+            issue.write_bytes(b"original issue")
+            unrelated.write_bytes(b"untouched")
+            targets = (
+                self.target(
+                    0,
+                    "issues/BIZ-103.md",
+                    before=b"original issue",
+                    after=b"proposed issue",
+                ),
+                self.target(
+                    1,
+                    "new/created.json",
+                    existed=False,
+                    after=b"new file",
+                    role="state",
+                ),
+            )
+            with storage.private_transaction_workspace(
+                root,
+                "txn-rollback-success",
+            ) as workspace:
+                preimages = storage.store_preimages(workspace, targets)
+                proposals = storage.stage_proposed_targets(workspace, targets)
+                storage.finalize_recovery_manifest(
+                    workspace,
+                    targets,
+                    preimages,
+                    proposals,
+                )
+                for target, proposal in zip(targets, proposals):
+                    storage.apply_staged_target(workspace, target, proposal)
+                calls = []
+                real_replace = storage.os.replace
+                real_unlink = storage.os.unlink
+
+                def tracked_replace(*args, **kwargs):
+                    calls.append(("replace", targets[0].index))
+                    return real_replace(*args, **kwargs)
+
+                def tracked_unlink(*args, **kwargs):
+                    calls.append(("unlink", targets[1].index))
+                    return real_unlink(*args, **kwargs)
+
+                with (
+                    mock.patch.object(
+                        storage.os,
+                        "replace",
+                        side_effect=tracked_replace,
+                    ),
+                    mock.patch.object(
+                        storage.os,
+                        "unlink",
+                        side_effect=tracked_unlink,
+                    ),
+                ):
+                    self.assertEqual(
+                        rollback(workspace, targets[1], preimages[1]),
+                        1,
+                    )
+                    self.assertEqual(
+                        rollback(workspace, targets[0], preimages[0]),
+                        0,
+                    )
+
+                self.assertEqual(calls, [("unlink", 1), ("replace", 0)])
+                self.assertFalse(created.exists())
+                self.assertEqual(issue.read_bytes(), b"original issue")
+                self.assertEqual(stat.S_IMODE(issue.stat().st_mode), 0o600)
+                self.assertEqual(unrelated.read_bytes(), b"untouched")
+                self.assertEqual(
+                    [storage.classify_canonical_target(workspace, target) for target in targets],
+                    ["before", "before"],
+                )
+                self.assertEqual(
+                    tuple(root.glob("**/.moduflow-rollback-*")),
+                    (),
+                )
+
+    def test_rejects_boolean_absent_preimage_fields_before_removal(self):
+        rollback = getattr(storage, "rollback_canonical_target", None)
+        self.assertIsNotNone(rollback)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            target = self.target(
+                0,
+                "new/created.json",
+                existed=False,
+                after=b"new file",
+                role="state",
+            )
+            with storage.private_transaction_workspace(
+                root,
+                "txn-rollback-invalid-absent",
+            ) as workspace:
+                preimage = storage.store_preimages(workspace, (target,))[0]
+                proposal = storage.stage_proposed_targets(workspace, (target,))[0]
+                storage.apply_staged_target(workspace, target, proposal)
+                canonical = root / target.relative_path
+                with mock.patch.object(storage.os, "unlink") as remove_file:
+                    with self.assertRaises(storage.LifecycleStorageError) as raised:
+                        rollback(
+                            workspace,
+                            target,
+                            replace(preimage, size=False),
+                        )
+                self.assertEqual(raised.exception.code, "STORAGE_CONTEXT_INVALID")
+                remove_file.assert_not_called()
+                self.assertEqual(canonical.read_bytes(), b"new file")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -973,6 +973,247 @@ def apply_staged_target(workspace, target, staged_proposal) -> int:
         _close_descriptors(parent_fd)
 
 
+class _CanonicalStateMismatch(RuntimeError):
+    pass
+
+
+def _canonical_state_mismatch():
+    raise _CanonicalStateMismatch from None
+
+
+def _canonical_entry_matches(
+    parent_fd,
+    target,
+    *,
+    existed,
+    expected_bytes,
+    expected_sha256,
+    expected_mode=None,
+):
+    try:
+        _verify_canonical_entry(
+            parent_fd,
+            target,
+            existed=existed,
+            expected_bytes=expected_bytes,
+            expected_sha256=expected_sha256,
+            expected_mode=expected_mode,
+            failure=_canonical_state_mismatch,
+        )
+    except _CanonicalStateMismatch:
+        return False
+    return True
+
+
+def classify_canonical_target(workspace, target) -> str:
+    """Return exact 'before' or 'after'; reject every unknown state."""
+    if (
+        not isinstance(workspace, _PrivateTransactionWorkspace)
+        or not isinstance(target, StorageTarget)
+        or not target.changed
+        or target.role == "evidence"
+    ):
+        _storage_context_failure()
+    parent_fd = None
+    try:
+        parent_fd, _metadata = _open_target_parent(workspace, target)
+        if _canonical_entry_matches(
+            parent_fd,
+            target,
+            existed=target.existed,
+            expected_bytes=target._before_bytes,
+            expected_sha256=target.before_sha256,
+        ):
+            return "before"
+        if _canonical_entry_matches(
+            parent_fd,
+            target,
+            existed=True,
+            expected_bytes=target._after_bytes,
+            expected_sha256=target.after_sha256,
+            expected_mode=0o600,
+        ):
+            return "after"
+        raise LifecycleStorageError("STORAGE_CANONICAL_STATE_UNKNOWN")
+    except LifecycleStorageError as exc:
+        if exc.code in {
+            "STORAGE_CONTEXT_INVALID",
+            "STORAGE_CANONICAL_STATE_UNKNOWN",
+        }:
+            raise
+        raise LifecycleStorageError("STORAGE_CANONICAL_STATE_UNKNOWN") from None
+    finally:
+        _close_descriptors(parent_fd)
+
+
+def _valid_non_negative_integer(value):
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and value >= 0
+    )
+
+
+def _validated_rollback_context(workspace, target, preimage):
+    if (
+        not isinstance(workspace, _PrivateTransactionWorkspace)
+        or not isinstance(target, StorageTarget)
+        or not isinstance(preimage, StoredPreimage)
+        or not target.changed
+        or target.role == "evidence"
+        or not _valid_non_negative_integer(preimage.index)
+        or preimage.index != target.index
+    ):
+        _storage_context_failure()
+    if target.existed:
+        if (
+            preimage.state != "present"
+            or preimage.relative_name != f"preimages/{target.index:06d}.bin"
+            or not _valid_non_negative_integer(preimage.size)
+            or preimage.size != len(target._before_bytes)
+            or preimage.sha256 != target.before_sha256
+            or not _valid_non_negative_integer(preimage._device)
+            or not _valid_non_negative_integer(preimage._inode)
+        ):
+            _storage_context_failure()
+    elif (
+        preimage.state != "absent"
+        or preimage.relative_name != "absent"
+        or not _valid_non_negative_integer(preimage.size)
+        or preimage.size != 0
+        or preimage.sha256 != "absent"
+        or not isinstance(preimage._device, int)
+        or isinstance(preimage._device, bool)
+        or preimage._device != -1
+        or not isinstance(preimage._inode, int)
+        or isinstance(preimage._inode, bool)
+        or preimage._inode != -1
+    ):
+        _storage_context_failure()
+    return preimage
+
+
+def _rollback_name(workspace, target):
+    digest = hashlib.sha256(workspace.transaction_id.encode("utf-8")).hexdigest()
+    return f".moduflow-rollback-{digest}-{target.index:06d}"
+
+
+def _write_rollback_stage(parent_fd, workspace, target):
+    name = _rollback_name(workspace, target)
+    descriptor = None
+    offset = 0
+    try:
+        flags = (
+            os.O_CREAT
+            | os.O_EXCL
+            | os.O_RDWR
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0)
+        )
+        try:
+            descriptor = os.open(name, flags, 0o600, dir_fd=parent_fd)
+            os.fchmod(descriptor, 0o600)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_WRITE_FAILED") from exc
+        try:
+            while offset < len(target._before_bytes):
+                written = os.write(descriptor, target._before_bytes[offset:])
+                if written <= 0:
+                    raise OSError(errno.EIO, "rollback stage write failed")
+                offset += written
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_WRITE_FAILED") from exc
+        try:
+            os.fsync(descriptor)
+            metadata = os.fstat(descriptor)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+        _verify_recorded_file(
+            parent_fd,
+            name,
+            expected_device=metadata.st_dev,
+            expected_inode=metadata.st_ino,
+            expected_bytes=target._before_bytes,
+            expected_sha256=target.before_sha256,
+        )
+        return name
+    finally:
+        _close_descriptors(descriptor)
+
+
+def _require_exact_after(parent_fd, target):
+    if not _canonical_entry_matches(
+        parent_fd,
+        target,
+        existed=True,
+        expected_bytes=target._after_bytes,
+        expected_sha256=target.after_sha256,
+        expected_mode=0o600,
+    ):
+        raise LifecycleStorageError("STORAGE_CANONICAL_STATE_UNKNOWN")
+
+
+def _require_exact_before(parent_fd, target):
+    if not _canonical_entry_matches(
+        parent_fd,
+        target,
+        existed=target.existed,
+        expected_bytes=target._before_bytes,
+        expected_sha256=target.before_sha256,
+        expected_mode=0o600 if target.existed else None,
+    ):
+        raise LifecycleStorageError("STORAGE_VERIFY_FAILED")
+
+
+def rollback_canonical_target(workspace, target, preimage) -> int:
+    """Restore one exact after-state target to its before state."""
+    _validated_rollback_context(workspace, target, preimage)
+    parent_fd = None
+    try:
+        parent_fd, _parent_metadata = _open_target_parent(workspace, target)
+        if target.existed:
+            _verify_recorded_file(
+                workspace._preimages_fd,
+                f"{target.index:06d}.bin",
+                expected_device=preimage._device,
+                expected_inode=preimage._inode,
+                expected_bytes=target._before_bytes,
+                expected_sha256=target.before_sha256,
+            )
+            rollback_name = _write_rollback_stage(
+                parent_fd,
+                workspace,
+                target,
+            )
+            _require_exact_after(parent_fd, target)
+            try:
+                os.replace(
+                    rollback_name,
+                    PurePosixPath(target.relative_path).name,
+                    src_dir_fd=parent_fd,
+                    dst_dir_fd=parent_fd,
+                )
+            except OSError as exc:
+                raise LifecycleStorageError("STORAGE_REPLACE_FAILED") from exc
+        else:
+            _require_exact_after(parent_fd, target)
+            try:
+                os.unlink(
+                    PurePosixPath(target.relative_path).name,
+                    dir_fd=parent_fd,
+                )
+            except OSError as exc:
+                raise LifecycleStorageError("STORAGE_REMOVE_FAILED") from exc
+        try:
+            os.fsync(parent_fd)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+        _require_exact_before(parent_fd, target)
+        return target.index
+    finally:
+        _close_descriptors(parent_fd)
+
+
 def _verify_recovery_inputs(workspace, targets, preimages, staged_proposals):
     for target, preimage, proposal in zip(
         targets,
