@@ -388,6 +388,19 @@ class _PrivatePreparedState:
     staged_proposals: tuple[transaction_storage.StagedProposal, ...]
     recovery_manifest: transaction_storage.RecoveryManifest
     journal_sha256: str
+    created_at: str
+    _workspace: object = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
+class _PrivateAppliedState:
+    storage_targets: tuple[transaction_storage.StorageTarget, ...]
+    preimages: tuple[transaction_storage.StoredPreimage, ...]
+    staged_proposals: tuple[transaction_storage.StagedProposal, ...]
+    recovery_manifest: transaction_storage.RecoveryManifest
+    applied_target_indexes: tuple[int, ...]
+    journal_sha256: str
+    created_at: str
     _workspace: object = field(repr=False, compare=False)
 
 
@@ -1328,8 +1341,14 @@ def _journal_timestamp(clock):
     return value
 
 
-def _journal_timestamps(clock):
-    return tuple(_journal_timestamp(clock) for _index in range(3))
+def _journal_timestamps(clock, count=3):
+    if (
+        not isinstance(count, int)
+        or isinstance(count, bool)
+        or count <= 0
+    ):
+        raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+    return tuple(_journal_timestamp(clock) for _index in range(count))
 
 
 def _lock_owner_values(plan, *, clock, pid, token_factory):
@@ -1649,6 +1668,8 @@ def _serialized_journal_bytes(
     created_at,
     updated_at,
     recovery_manifest_sha256,
+    applied_target_indexes=(),
+    rollback_target_indexes=(),
 ):
     snapshot = serialize_transaction_journal(
         {
@@ -1658,8 +1679,8 @@ def _serialized_journal_bytes(
             "phase": phase,
             "targets": [target.to_public_dict() for target in plan.targets],
             "recovery_manifest_sha256": recovery_manifest_sha256,
-            "applied_target_indexes": [],
-            "rollback_target_indexes": [],
+            "applied_target_indexes": list(applied_target_indexes),
+            "rollback_target_indexes": list(rollback_target_indexes),
             "created_at": created_at,
             "updated_at": updated_at,
         }
@@ -1820,8 +1841,115 @@ def _private_prepared_workspace(
                 staged_proposals=staged_proposals,
                 recovery_manifest=recovery_manifest,
                 journal_sha256=prepared_sha256,
+                created_at=planned_at,
                 _workspace=workspace,
             )
+
+
+@contextmanager
+def _private_applied_workspace(
+    plan: LifecycleTransactionPlan,
+    *,
+    journal_clock=None,
+    lock_clock=None,
+    lock_pid=None,
+    lock_token_factory=None,
+):
+    """Apply ordinary targets and yield durable post-validating state."""
+    if not isinstance(plan, LifecycleTransactionPlan):
+        raise TypeError("plan must be a LifecycleTransactionPlan")
+    _root, _context = _writable_projected_plan_context(plan)
+    storage_targets = _storage_targets_from_plan(plan)
+    changed_ordinary = tuple(
+        target.index
+        for target in storage_targets
+        if target.changed and target.role != "evidence"
+    )
+    timestamps = _journal_timestamps(
+        journal_clock,
+        5 + len(changed_ordinary),
+    )
+    validate_journal_phase_transition("prepared", "applying")
+    for _index in changed_ordinary:
+        validate_journal_phase_transition("applying", "applying")
+    validate_journal_phase_transition("applying", "post-validating")
+    prepared_clock = iter(timestamps[:3])
+
+    with _private_prepared_workspace(
+        plan,
+        journal_clock=lambda: next(prepared_clock),
+        lock_clock=lock_clock,
+        lock_pid=lock_pid,
+        lock_token_factory=lock_token_factory,
+    ) as prepared:
+        journal_sha256 = prepared.journal_sha256
+        applying_bytes = _serialized_journal_bytes(
+            plan,
+            "applying",
+            created_at=prepared.created_at,
+            updated_at=timestamps[3],
+            recovery_manifest_sha256=prepared.recovery_manifest.sha256,
+        )
+        journal_sha256 = transaction_storage.persist_serialized_journal(
+            prepared._workspace,
+            applying_bytes,
+            expected_previous_sha256=journal_sha256,
+        )
+        applied = []
+        for target, proposal in zip(
+            prepared.storage_targets,
+            prepared.staged_proposals,
+        ):
+            if target.role == "evidence":
+                break
+            if not target.changed:
+                transaction_storage.verify_canonical_target(
+                    prepared._workspace,
+                    target,
+                )
+                continue
+            index = transaction_storage.apply_staged_target(
+                prepared._workspace,
+                target,
+                proposal,
+            )
+            applied.append(index)
+            progress_bytes = _serialized_journal_bytes(
+                plan,
+                "applying",
+                created_at=prepared.created_at,
+                updated_at=timestamps[3 + len(applied)],
+                recovery_manifest_sha256=prepared.recovery_manifest.sha256,
+                applied_target_indexes=tuple(applied),
+            )
+            journal_sha256 = transaction_storage.persist_serialized_journal(
+                prepared._workspace,
+                progress_bytes,
+                expected_previous_sha256=journal_sha256,
+            )
+        post_bytes = _serialized_journal_bytes(
+            plan,
+            "post-validating",
+            created_at=prepared.created_at,
+            updated_at=timestamps[-1],
+            recovery_manifest_sha256=prepared.recovery_manifest.sha256,
+            applied_target_indexes=tuple(applied),
+        )
+        journal_sha256 = transaction_storage.persist_serialized_journal(
+            prepared._workspace,
+            post_bytes,
+            expected_previous_sha256=journal_sha256,
+        )
+        yield _PrivateAppliedState(
+            storage_targets=prepared.storage_targets,
+            preimages=prepared.preimages,
+            staged_proposals=prepared.staged_proposals,
+            recovery_manifest=prepared.recovery_manifest,
+            applied_target_indexes=tuple(applied),
+            journal_sha256=journal_sha256,
+            created_at=prepared.created_at,
+            _workspace=prepared._workspace,
+        )
 
 
 @contextmanager

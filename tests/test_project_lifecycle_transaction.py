@@ -2101,6 +2101,474 @@ class TransactionPlanningTests(unittest.TestCase):
                 canonical_before,
             )
 
+    def test_private_applied_workspace_promotes_only_changed_ordinary_targets_and_persists_progress(self):
+        entry = getattr(transaction, "_private_applied_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(require_issue_index=True),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            detached_targets = []
+            for target in plan.targets:
+                if target.role == "dashboard":
+                    target = replace(
+                        target,
+                        after_size=len(target._before_bytes),
+                        after_sha256=transaction.target_sha256(
+                            target._before_bytes
+                        ),
+                        changed=False,
+                        _after_bytes=target._before_bytes,
+                    )
+                detached_targets.append(target)
+            plan = replace(plan, targets=tuple(detached_targets))
+            changed_ordinary = tuple(
+                target.apply_order
+                for target in plan.targets
+                if target.changed and target.role != "evidence"
+            )
+            self.assertTrue(changed_ordinary)
+            self.assertTrue(
+                any(
+                    target.changed
+                    and not target.existed
+                    and target.role != "evidence"
+                    for target in plan.targets
+                )
+            )
+            canonical_before = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if target.existed
+                    else None
+                )
+                for target in plan.targets
+            }
+            evidence = plan.targets[-1]
+            self.assertEqual(evidence.role, "evidence")
+            lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+            workspace_path = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            timestamp_values = tuple(
+                f"2030-01-02T03:04:{second:02d}Z"
+                for second in range(5, 10 + len(changed_ordinary))
+            )
+            timestamps = iter(timestamp_values)
+            persisted = []
+            verified = []
+            applied = []
+            real_persist = transaction.transaction_storage.persist_serialized_journal
+            real_verify = transaction.transaction_storage.verify_canonical_target
+            real_apply = transaction.transaction_storage.apply_staged_target
+
+            def tracked_persist(
+                workspace,
+                journal_bytes,
+                *,
+                expected_previous_sha256,
+            ):
+                self.assertTrue(lock_path.is_file())
+                persisted.append((bytes(journal_bytes), expected_previous_sha256))
+                return real_persist(
+                    workspace,
+                    journal_bytes,
+                    expected_previous_sha256=expected_previous_sha256,
+                )
+
+            def tracked_verify(workspace, target):
+                self.assertTrue(lock_path.is_file())
+                verified.append(target.index)
+                return real_verify(workspace, target)
+
+            def tracked_apply(workspace, target, proposal):
+                self.assertTrue(lock_path.is_file())
+                applied.append(target.index)
+                return real_apply(workspace, target, proposal)
+
+            with (
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "persist_serialized_journal",
+                    side_effect=tracked_persist,
+                ),
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "verify_canonical_target",
+                    side_effect=tracked_verify,
+                ),
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "apply_staged_target",
+                    side_effect=tracked_apply,
+                ),
+            ):
+                with entry(
+                    plan,
+                    journal_clock=lambda: next(timestamps),
+                    lock_clock="2030-01-02T03:04:05Z",
+                    lock_pid=123,
+                    lock_token_factory=lambda: "1" * 32,
+                ) as state:
+                    self.assertTrue(lock_path.is_file())
+                    journals = [
+                        json.loads(payload)
+                        for payload, _previous in persisted
+                    ]
+                    self.assertEqual(
+                        [journal["phase"] for journal in journals],
+                        ["planned", "staged", "prepared", "applying"]
+                        + ["applying"] * len(changed_ordinary)
+                        + ["post-validating"],
+                    )
+                    self.assertEqual(
+                        [
+                            journal["applied_target_indexes"]
+                            for journal in journals[3:]
+                        ],
+                        [
+                            [],
+                            *[
+                                list(changed_ordinary[:index])
+                                for index in range(
+                                    1,
+                                    len(changed_ordinary) + 1,
+                                )
+                            ],
+                            list(changed_ordinary),
+                        ],
+                    )
+                    self.assertTrue(
+                        all(
+                            journal["rollback_target_indexes"] == []
+                            for journal in journals
+                        )
+                    )
+                    self.assertEqual(
+                        [journal["created_at"] for journal in journals],
+                        [timestamp_values[0]] * len(journals),
+                    )
+                    self.assertEqual(
+                        [journal["updated_at"] for journal in journals],
+                        list(timestamp_values),
+                    )
+                    self.assertEqual(
+                        [previous for _payload, previous in persisted],
+                        ["absent"]
+                        + [
+                            hashlib.sha256(payload).hexdigest()
+                            for payload, _previous in persisted[:-1]
+                        ],
+                    )
+                    self.assertEqual(
+                        state.applied_target_indexes,
+                        changed_ordinary,
+                    )
+                    self.assertEqual(state.created_at, timestamp_values[0])
+                    self.assertEqual(
+                        state.journal_sha256,
+                        hashlib.sha256(persisted[-1][0]).hexdigest(),
+                    )
+                    self.assertEqual(
+                        verified,
+                        [
+                            target.apply_order
+                            for target in plan.targets
+                            if not target.changed and target.role != "evidence"
+                        ],
+                    )
+                    self.assertEqual(applied, list(changed_ordinary))
+                    evidence_proposal = state.staged_proposals[-1]
+                    self.assertEqual(evidence_proposal.state, "staged")
+                    self.assertTrue(
+                        (root / evidence_proposal.relative_name).is_file()
+                    )
+                    self.assertNotIn(str(root), repr(state))
+
+            self.assertFalse(lock_path.exists())
+            self.assertTrue(workspace_path.is_dir())
+            for target in plan.targets:
+                canonical = root / target.relative_path
+                if target.role == "evidence":
+                    self.assertEqual(
+                        canonical.read_bytes() if canonical.exists() else None,
+                        canonical_before[target.relative_path],
+                    )
+                elif target.changed:
+                    self.assertEqual(canonical.read_bytes(), target._after_bytes)
+                    self.assertEqual(stat.S_IMODE(canonical.stat().st_mode), 0o600)
+                else:
+                    self.assertEqual(
+                        canonical.read_bytes(),
+                        canonical_before[target.relative_path],
+                    )
+
+    def test_private_applied_workspace_prevalidates_every_timestamp_before_lock_or_storage(self):
+        entry = getattr(transaction, "_private_applied_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(require_issue_index=True),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            changed_ordinary = tuple(
+                target.apply_order
+                for target in plan.targets
+                if target.changed and target.role != "evidence"
+            )
+            required = 5 + len(changed_ordinary)
+            canonical_before = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if target.existed
+                    else None
+                )
+                for target in plan.targets
+            }
+            workspace_path = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+
+            for bad_index in range(required):
+                with self.subTest(bad_index=bad_index):
+                    values = ["2030-01-02T03:04:05Z"] * required
+                    values[bad_index] = "NOT-A-TIMESTAMP"
+                    timestamps = iter(values)
+                    with (
+                        mock.patch.object(
+                            transaction,
+                            "_exclusive_lifecycle_lock",
+                        ) as acquire_lock,
+                        mock.patch.object(
+                            transaction.transaction_storage,
+                            "verify_canonical_preimages",
+                        ) as verify_preimages,
+                        mock.patch.object(
+                            transaction.transaction_storage,
+                            "private_transaction_workspace",
+                        ) as open_workspace,
+                        mock.patch.object(
+                            transaction.transaction_storage,
+                            "persist_serialized_journal",
+                        ) as persist_journal,
+                        mock.patch.object(
+                            transaction.transaction_storage,
+                            "store_preimages",
+                        ) as store_preimages,
+                        mock.patch.object(
+                            transaction.transaction_storage,
+                            "stage_proposed_targets",
+                        ) as stage_targets,
+                        mock.patch.object(
+                            transaction.transaction_storage,
+                            "finalize_recovery_manifest",
+                        ) as finalize_manifest,
+                        mock.patch.object(
+                            transaction.transaction_storage,
+                            "verify_canonical_target",
+                        ) as verify_target,
+                        mock.patch.object(
+                            transaction.transaction_storage,
+                            "apply_staged_target",
+                        ) as apply_target,
+                        mock.patch.object(transaction.os, "replace") as replace_file,
+                        mock.patch.object(transaction.os, "fsync") as sync_file,
+                    ):
+                        with self.assertRaises(
+                            transaction.LifecycleJournalError
+                        ) as raised:
+                            with entry(
+                                plan,
+                                journal_clock=lambda: next(timestamps),
+                            ):
+                                self.fail("invalid timestamp must not yield")
+                    self.assertEqual(
+                        raised.exception.code,
+                        "JOURNAL_RECORD_INVALID",
+                    )
+                    for operation in (
+                        acquire_lock,
+                        verify_preimages,
+                        open_workspace,
+                        persist_journal,
+                        store_preimages,
+                        stage_targets,
+                        finalize_manifest,
+                        verify_target,
+                        apply_target,
+                        replace_file,
+                        sync_file,
+                    ):
+                        operation.assert_not_called()
+                    self.assertFalse(workspace_path.exists())
+                    self.assertEqual(
+                        {
+                            target.relative_path: (
+                                (root / target.relative_path).read_bytes()
+                                if (root / target.relative_path).exists()
+                                else None
+                            )
+                            for target in plan.targets
+                        },
+                        canonical_before,
+                    )
+
+    def test_private_applied_workspace_retains_inspectable_state_on_apply_and_progress_journal_failures(self):
+        entry = getattr(transaction, "_private_applied_workspace", None)
+        self.assertIsNotNone(entry)
+        for failure, expected_code in (
+            ("conflict-before-first", "CANONICAL_PREIMAGE_CONFLICT"),
+            ("storage-after-first", "STORAGE_REPLACE_FAILED"),
+            ("journal-after-first", "STORAGE_WRITE_FAILED"),
+        ):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root)
+                (root / "workspace" / "transactions").mkdir()
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(require_issue_index=True),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                changed_ordinary = tuple(
+                    target.apply_order
+                    for target in plan.targets
+                    if target.changed and target.role != "evidence"
+                )
+                self.assertGreaterEqual(len(changed_ordinary), 2)
+                canonical_before = {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if target.existed
+                        else None
+                    )
+                    for target in plan.targets
+                }
+                evidence = plan.targets[-1]
+                workspace_path = (
+                    root / ".moduflow" / "transactions" / plan.transaction_id
+                )
+                lock_path = (
+                    root / ".moduflow" / "transactions" / "lifecycle.lock"
+                )
+                timestamp_values = iter(
+                    f"2030-01-02T03:04:{second:02d}Z"
+                    for second in range(5, 10 + len(changed_ordinary))
+                )
+                real_apply = transaction.transaction_storage.apply_staged_target
+                real_persist = (
+                    transaction.transaction_storage.persist_serialized_journal
+                )
+                successful_indexes = []
+                apply_calls = 0
+                persist_calls = 0
+
+                def failing_apply(workspace, target, proposal):
+                    nonlocal apply_calls
+                    apply_calls += 1
+                    if failure == "conflict-before-first":
+                        raise transaction.transaction_storage.LifecycleCanonicalConflict(
+                            target.index
+                        )
+                    if failure == "storage-after-first" and apply_calls == 2:
+                        raise transaction.transaction_storage.LifecycleStorageError(
+                            "STORAGE_REPLACE_FAILED"
+                        )
+                    result = real_apply(workspace, target, proposal)
+                    successful_indexes.append(result)
+                    return result
+
+                def failing_persist(
+                    workspace,
+                    journal_bytes,
+                    *,
+                    expected_previous_sha256,
+                ):
+                    nonlocal persist_calls
+                    persist_calls += 1
+                    if failure == "journal-after-first" and persist_calls == 5:
+                        raise transaction.transaction_storage.LifecycleStorageError(
+                            "STORAGE_WRITE_FAILED"
+                        )
+                    return real_persist(
+                        workspace,
+                        journal_bytes,
+                        expected_previous_sha256=expected_previous_sha256,
+                    )
+
+                with (
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "apply_staged_target",
+                        side_effect=failing_apply,
+                    ),
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "persist_serialized_journal",
+                        side_effect=failing_persist,
+                    ),
+                ):
+                    with self.assertRaises(RuntimeError) as raised:
+                        with entry(
+                            plan,
+                            journal_clock=lambda: next(timestamp_values),
+                            lock_clock="2030-01-02T03:04:05Z",
+                            lock_pid=123,
+                            lock_token_factory=lambda: "1" * 32,
+                        ):
+                            self.fail("failed apply must not yield")
+
+                self.assertEqual(raised.exception.code, expected_code)
+                self.assertFalse(lock_path.exists())
+                self.assertTrue(workspace_path.is_dir())
+                self.assertTrue((workspace_path / "preimages").is_dir())
+                self.assertTrue(
+                    (workspace_path / "recovery-manifest.json").is_file()
+                )
+                journal = json.loads(
+                    (workspace_path / "journal.json").read_bytes()
+                )
+                self.assertEqual(journal["phase"], "applying")
+                expected_durable = (
+                    []
+                    if failure in {"conflict-before-first", "journal-after-first"}
+                    else [changed_ordinary[0]]
+                )
+                self.assertEqual(
+                    journal["applied_target_indexes"],
+                    expected_durable,
+                )
+                self.assertEqual(journal["rollback_target_indexes"], [])
+                self.assertEqual(
+                    (root / evidence.relative_path).read_bytes()
+                    if (root / evidence.relative_path).exists()
+                    else None,
+                    canonical_before[evidence.relative_path],
+                )
+                stages = tuple(root.glob("**/.moduflow-stage-*"))
+                self.assertTrue(stages)
+                for target in plan.targets:
+                    canonical = root / target.relative_path
+                    if target.apply_order in successful_indexes:
+                        self.assertEqual(canonical.read_bytes(), target._after_bytes)
+                    else:
+                        self.assertEqual(
+                            canonical.read_bytes() if canonical.exists() else None,
+                            canonical_before[target.relative_path],
+                        )
+
     def test_exclusive_lifecycle_lock_creates_redacted_owner_and_releases(self):
         entry = getattr(transaction, "_exclusive_lifecycle_lock", None)
         self.assertIsNotNone(entry)
