@@ -1646,5 +1646,345 @@ class CanonicalPreflightStorageTests(unittest.TestCase):
                 self.assertNotIn(secret, rendered)
 
 
+class CanonicalApplyStorageTests(unittest.TestCase):
+    def target(
+        self,
+        index,
+        relative_path,
+        *,
+        existed=True,
+        before=b"before",
+        after=b"after",
+        role="issue",
+    ):
+        if not existed:
+            before = b""
+        return storage.StorageTarget(
+            index=index,
+            role=role,
+            relative_path=relative_path,
+            existed=existed,
+            before_sha256=(
+                hashlib.sha256(before).hexdigest() if existed else "absent"
+            ),
+            after_sha256=hashlib.sha256(after).hexdigest(),
+            after_size=len(after),
+            changed=(not existed or before != after),
+            _before_bytes=before,
+            _after_bytes=after,
+        )
+
+    def scaffold(self, root):
+        (root / "issues").mkdir()
+        (root / "new").mkdir()
+        (root / ".moduflow" / "transactions").mkdir(parents=True)
+
+    def test_promotes_existing_and_absent_targets_with_descriptor_replace_and_0600_mode(self):
+        entry = getattr(storage, "apply_staged_target", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            issue = root / "issues" / "BIZ-103.md"
+            created = root / "new" / "created.json"
+            unrelated = root / "issues" / "unrelated.md"
+            issue.write_bytes(b"original issue")
+            unrelated.write_bytes(b"untouched")
+            targets = (
+                self.target(
+                    0,
+                    "issues/BIZ-103.md",
+                    before=b"original issue",
+                    after=b"proposed issue",
+                ),
+                self.target(
+                    1,
+                    "new/created.json",
+                    existed=False,
+                    after=b"new file",
+                    role="state",
+                ),
+            )
+            with storage.private_transaction_workspace(
+                root,
+                "txn-apply-success",
+            ) as workspace:
+                preimages = storage.store_preimages(workspace, targets)
+                proposals = storage.stage_proposed_targets(workspace, targets)
+                storage.finalize_recovery_manifest(
+                    workspace,
+                    targets,
+                    preimages,
+                    proposals,
+                )
+                with (
+                    mock.patch.object(
+                        storage.os,
+                        "replace",
+                        wraps=storage.os.replace,
+                    ) as replace_file,
+                    mock.patch.object(
+                        storage.os,
+                        "fsync",
+                        wraps=storage.os.fsync,
+                    ) as sync_file,
+                ):
+                    self.assertEqual(entry(workspace, targets[0], proposals[0]), 0)
+                    self.assertEqual(entry(workspace, targets[1], proposals[1]), 1)
+
+                self.assertEqual(replace_file.call_count, 2)
+                self.assertGreaterEqual(sync_file.call_count, 2)
+                for call in replace_file.call_args_list:
+                    self.assertIsInstance(call.kwargs["src_dir_fd"], int)
+                    self.assertEqual(
+                        call.kwargs["src_dir_fd"],
+                        call.kwargs["dst_dir_fd"],
+                    )
+                for proposal in proposals:
+                    self.assertFalse((root / proposal.relative_name).exists())
+
+            self.assertEqual(issue.read_bytes(), b"proposed issue")
+            self.assertEqual(created.read_bytes(), b"new file")
+            self.assertEqual(stat.S_IMODE(issue.stat().st_mode), 0o600)
+            self.assertEqual(stat.S_IMODE(created.stat().st_mode), 0o600)
+            self.assertEqual(unrelated.read_bytes(), b"untouched")
+
+    def test_reverifies_unchanged_target_without_replace_or_sync(self):
+        entry = getattr(storage, "verify_canonical_target", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            canonical = root / "issues" / "stable.md"
+            canonical.write_bytes(b"stable")
+            target = self.target(
+                0,
+                "issues/stable.md",
+                before=b"stable",
+                after=b"stable",
+            )
+            with storage.private_transaction_workspace(
+                root,
+                "txn-apply-unchanged",
+            ) as workspace:
+                proposals = storage.stage_proposed_targets(workspace, (target,))
+                with (
+                    mock.patch.object(storage.os, "replace") as replace_file,
+                    mock.patch.object(storage.os, "fsync") as sync_file,
+                ):
+                    self.assertEqual(entry(workspace, target), 0)
+                replace_file.assert_not_called()
+                sync_file.assert_not_called()
+                self.assertEqual(proposals[0].state, "unchanged")
+            self.assertEqual(canonical.read_bytes(), b"stable")
+
+    def test_rejects_invalid_or_unowned_proposals_before_canonical_replace(self):
+        entry = getattr(storage, "apply_staged_target", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            issue = root / "issues" / "BIZ-103.md"
+            issue.write_bytes(b"original issue")
+            target = self.target(
+                0,
+                "issues/BIZ-103.md",
+                before=b"original issue",
+                after=b"proposed issue",
+            )
+            evidence = self.target(
+                0,
+                "new/evidence.json",
+                existed=False,
+                after=b"evidence",
+                role="evidence",
+            )
+            stable = self.target(
+                0,
+                "issues/BIZ-103.md",
+                before=b"original issue",
+                after=b"original issue",
+            )
+            with storage.private_transaction_workspace(
+                root,
+                "txn-apply-invalid",
+            ) as workspace:
+                proposal = storage.stage_proposed_targets(workspace, (target,))[0]
+                evidence_proposal = storage.stage_proposed_targets(
+                    workspace,
+                    (evidence,),
+                )[0]
+                unchanged = storage.StagedProposal(
+                    index=0,
+                    state="unchanged",
+                    relative_name="unchanged",
+                    size=0,
+                    sha256="unchanged",
+                    _device=-1,
+                    _inode=-1,
+                )
+                invalid = (
+                    (target, replace(proposal, index=False)),
+                    (evidence, evidence_proposal),
+                    (stable, unchanged),
+                    (target, replace(proposal, index=1)),
+                    (target, replace(proposal, state="unchanged")),
+                    (target, replace(proposal, relative_name="wrong-stage")),
+                    (target, replace(proposal, size=1)),
+                    (target, replace(proposal, sha256="0" * 64)),
+                    (target, replace(proposal, _device=-1)),
+                    (target, replace(proposal, _device="device")),
+                    (target, replace(proposal, _inode=-1)),
+                    (target, replace(proposal, _inode=True)),
+                )
+                with mock.patch.object(storage.os, "replace") as replace_file:
+                    for candidate_target, candidate_proposal in invalid:
+                        with self.subTest(value=repr(candidate_proposal)):
+                            with self.assertRaises(
+                                storage.LifecycleStorageError
+                            ) as raised:
+                                entry(
+                                    workspace,
+                                    candidate_target,
+                                    candidate_proposal,
+                                )
+                            self.assertEqual(
+                                raised.exception.code,
+                                "STORAGE_CONTEXT_INVALID",
+                            )
+                replace_file.assert_not_called()
+                self.assertEqual(issue.read_bytes(), b"original issue")
+                self.assertTrue((root / proposal.relative_name).is_file())
+
+    def test_rejects_canonical_conflict_and_retains_staged_proposal(self):
+        entry = getattr(storage, "apply_staged_target", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            issue = root / "issues" / "BIZ-103.md"
+            issue.write_bytes(b"original issue")
+            target = self.target(
+                0,
+                "issues/BIZ-103.md",
+                before=b"original issue",
+                after=b"proposed issue",
+            )
+            with storage.private_transaction_workspace(
+                root,
+                "txn-apply-conflict",
+            ) as workspace:
+                preimages = storage.store_preimages(workspace, (target,))
+                proposals = storage.stage_proposed_targets(workspace, (target,))
+                storage.finalize_recovery_manifest(
+                    workspace,
+                    (target,),
+                    preimages,
+                    proposals,
+                )
+                stage_path = root / proposals[0].relative_name
+                issue.write_bytes(b"external edit")
+                with mock.patch.object(storage.os, "replace") as replace_file:
+                    with self.assertRaises(
+                        storage.LifecycleCanonicalConflict
+                    ) as raised:
+                        entry(workspace, target, proposals[0])
+                self.assertEqual(raised.exception.code, "CANONICAL_PREIMAGE_CONFLICT")
+                self.assertEqual(raised.exception.target_index, 0)
+                replace_file.assert_not_called()
+                self.assertEqual(issue.read_bytes(), b"external edit")
+                self.assertTrue(stage_path.is_file())
+
+    def test_bounds_replace_and_parent_sync_failures_without_cleanup_or_retry(self):
+        entry = getattr(storage, "apply_staged_target", None)
+        self.assertIsNotNone(entry)
+        for failure, expected_code in (
+            ("replace", "STORAGE_REPLACE_FAILED"),
+            ("parent-fsync", "STORAGE_DURABILITY_UNCERTAIN"),
+        ):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory(
+                prefix="SECRET-APPLY-ROOT-"
+            ) as tmp:
+                root = Path(tmp)
+                self.scaffold(root)
+                issue = root / "issues" / "SECRET-PATH.md"
+                issue.write_bytes(b"SECRET-BEFORE")
+                target = self.target(
+                    0,
+                    "issues/SECRET-PATH.md",
+                    before=b"SECRET-BEFORE",
+                    after=b"SECRET-AFTER",
+                )
+                workspace_path = (
+                    root / ".moduflow" / "transactions" / f"txn-{failure}"
+                )
+                with storage.private_transaction_workspace(
+                    root,
+                    f"txn-{failure}",
+                ) as workspace:
+                    preimages = storage.store_preimages(workspace, (target,))
+                    proposals = storage.stage_proposed_targets(workspace, (target,))
+                    manifest = storage.finalize_recovery_manifest(
+                        workspace,
+                        (target,),
+                        preimages,
+                        proposals,
+                    )
+                    stage_path = root / proposals[0].relative_name
+                    if failure == "replace":
+                        patcher = mock.patch.object(
+                            storage.os,
+                            "replace",
+                            side_effect=OSError(5, "SECRET REPLACE ERROR"),
+                        )
+                    else:
+                        patcher = mock.patch.object(
+                            storage.os,
+                            "fsync",
+                            side_effect=OSError(5, "SECRET FSYNC ERROR"),
+                        )
+                    with patcher as operation:
+                        with self.assertRaises(
+                            storage.LifecycleStorageError
+                        ) as raised:
+                            entry(workspace, target, proposals[0])
+                    self.assertEqual(raised.exception.code, expected_code)
+                    self.assertEqual(operation.call_count, 1)
+                    rendered = f"{raised.exception!s} {raised.exception!r}"
+                    for secret in (
+                        str(root),
+                        "SECRET-PATH",
+                        "SECRET-BEFORE",
+                        "SECRET-AFTER",
+                        "SECRET REPLACE ERROR",
+                        "SECRET FSYNC ERROR",
+                        proposals[0].relative_name,
+                        str(proposals[0]._device),
+                        str(proposals[0]._inode),
+                    ):
+                        self.assertNotIn(secret, rendered)
+                    self.assertTrue(workspace_path.is_dir())
+                    self.assertTrue(
+                        (workspace_path / "recovery-manifest.json").is_file()
+                    )
+                    self.assertEqual(
+                        (workspace_path / preimages[0].relative_name).read_bytes(),
+                        b"SECRET-BEFORE",
+                    )
+                    manifest_bytes = (
+                        workspace_path / "recovery-manifest.json"
+                    ).read_bytes()
+                    self.assertEqual(
+                        hashlib.sha256(manifest_bytes).hexdigest(),
+                        manifest.sha256,
+                    )
+                    if failure == "replace":
+                        self.assertEqual(issue.read_bytes(), b"SECRET-BEFORE")
+                        self.assertTrue(stage_path.is_file())
+                    else:
+                        self.assertEqual(issue.read_bytes(), b"SECRET-AFTER")
+                        self.assertFalse(stage_path.exists())
+
+
 if __name__ == "__main__":
     unittest.main()

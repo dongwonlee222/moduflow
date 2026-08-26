@@ -466,23 +466,30 @@ def _open_canonical_parent(root_fd, target):
         raise
 
 
-def _verify_canonical_preimage(root_fd, target):
-    parent_fd = None
+def _verify_canonical_entry(
+    parent_fd,
+    target,
+    *,
+    existed,
+    expected_bytes,
+    expected_sha256,
+    expected_mode=None,
+    failure,
+):
     descriptor = None
+    name = PurePosixPath(target.relative_path).name
     try:
-        parent_fd = _open_canonical_parent(root_fd, target)
-        name = PurePosixPath(target.relative_path).name
         try:
             initial = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
         except FileNotFoundError:
-            if target.existed:
-                _canonical_conflict(target)
+            if existed:
+                failure()
             return target.index
         except OSError:
-            _canonical_conflict(target)
+            failure()
 
-        if not target.existed or not stat.S_ISREG(initial.st_mode):
-            _canonical_conflict(target)
+        if not existed or not stat.S_ISREG(initial.st_mode):
+            failure()
         read_flags = (
             os.O_RDONLY
             | getattr(os, "O_CLOEXEC", 0)
@@ -494,36 +501,63 @@ def _verify_canonical_preimage(root_fd, target):
             if not _same_regular_entry(
                 opened,
                 initial,
-                len(target._before_bytes),
+                len(expected_bytes),
             ):
-                _canonical_conflict(target)
+                failure()
             current_bytes = _read_bounded_canonical(
                 descriptor,
-                len(target._before_bytes),
+                len(expected_bytes),
             )
             final = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
-        except LifecycleCanonicalConflict:
+        except (LifecycleCanonicalConflict, LifecycleStorageError):
             raise
         except OSError:
-            _canonical_conflict(target)
+            failure()
         if (
             not _same_regular_entry(
                 final,
                 opened,
-                len(target._before_bytes),
+                len(expected_bytes),
             )
-            or len(current_bytes) != len(target._before_bytes)
-            or hashlib.sha256(current_bytes).hexdigest() != target.before_sha256
-            or not secrets.compare_digest(current_bytes, target._before_bytes)
+            or len(current_bytes) != len(expected_bytes)
+            or hashlib.sha256(current_bytes).hexdigest() != expected_sha256
+            or not secrets.compare_digest(current_bytes, expected_bytes)
+            or (
+                expected_mode is not None
+                and (
+                    stat.S_IMODE(initial.st_mode) != expected_mode
+                    or stat.S_IMODE(opened.st_mode) != expected_mode
+                    or stat.S_IMODE(final.st_mode) != expected_mode
+                    or initial.st_nlink != 1
+                    or opened.st_nlink != 1
+                    or final.st_nlink != 1
+                )
+            )
         ):
-            _canonical_conflict(target)
+            failure()
         return target.index
+    finally:
+        _close_descriptors(descriptor)
+
+
+def _verify_canonical_preimage(root_fd, target):
+    parent_fd = None
+    try:
+        parent_fd = _open_canonical_parent(root_fd, target)
+        return _verify_canonical_entry(
+            parent_fd,
+            target,
+            existed=target.existed,
+            expected_bytes=target._before_bytes,
+            expected_sha256=target.before_sha256,
+            failure=lambda: _canonical_conflict(target),
+        )
     except LifecycleCanonicalConflict:
         raise
     except OSError:
         _canonical_conflict(target)
     finally:
-        _close_descriptors(descriptor, parent_fd)
+        _close_descriptors(parent_fd)
 
 
 def verify_canonical_preimages(canonical_root, storage_targets) -> tuple[int, ...]:
@@ -841,6 +875,102 @@ def _verify_recorded_file(
             raise LifecycleStorageError("STORAGE_OWNER_MISMATCH")
     finally:
         _close_descriptors(descriptor)
+
+
+def _validated_apply_context(workspace, target, proposal):
+    def valid_non_negative_integer(value):
+        return (
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and value >= 0
+        )
+
+    if (
+        not isinstance(workspace, _PrivateTransactionWorkspace)
+        or not isinstance(target, StorageTarget)
+        or not isinstance(proposal, StagedProposal)
+        or target.role == "evidence"
+        or not target.changed
+        or not valid_non_negative_integer(proposal.index)
+        or proposal.index != target.index
+        or proposal.state != "staged"
+        or not valid_non_negative_integer(proposal.size)
+        or proposal.size != target.after_size
+        or not isinstance(proposal.sha256, str)
+        or proposal.sha256 != target.after_sha256
+        or not valid_non_negative_integer(proposal._device)
+        or not valid_non_negative_integer(proposal._inode)
+    ):
+        _storage_context_failure()
+    stage_name, relative_name = _staging_names(workspace, target)
+    if proposal.relative_name != relative_name:
+        _storage_context_failure()
+    return stage_name
+
+
+def _storage_verify_failure():
+    raise LifecycleStorageError("STORAGE_VERIFY_FAILED") from None
+
+
+def verify_canonical_target(workspace, target) -> int:
+    """Prove one canonical target still equals its immutable preimage."""
+    if (
+        not isinstance(workspace, _PrivateTransactionWorkspace)
+        or not isinstance(target, StorageTarget)
+    ):
+        _storage_context_failure()
+    return _verify_canonical_preimage(workspace._root_fd, target)
+
+
+def apply_staged_target(workspace, target, staged_proposal) -> int:
+    """Promote one verified ordinary proposal and return its target index."""
+    stage_name = _validated_apply_context(workspace, target, staged_proposal)
+    parent_fd = None
+    try:
+        parent_fd, parent_metadata = _open_target_parent(workspace, target)
+        if staged_proposal._device != parent_metadata.st_dev:
+            _storage_context_failure()
+        _verify_canonical_entry(
+            parent_fd,
+            target,
+            existed=target.existed,
+            expected_bytes=target._before_bytes,
+            expected_sha256=target.before_sha256,
+            failure=lambda: _canonical_conflict(target),
+        )
+        _verify_recorded_file(
+            parent_fd,
+            stage_name,
+            expected_device=staged_proposal._device,
+            expected_inode=staged_proposal._inode,
+            expected_bytes=target._after_bytes,
+            expected_sha256=target.after_sha256,
+        )
+        try:
+            os.replace(
+                stage_name,
+                PurePosixPath(target.relative_path).name,
+                src_dir_fd=parent_fd,
+                dst_dir_fd=parent_fd,
+            )
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_REPLACE_FAILED") from exc
+        try:
+            os.fsync(parent_fd)
+        except OSError as exc:
+            raise LifecycleStorageError("STORAGE_DURABILITY_UNCERTAIN") from exc
+        _verify_canonical_entry(
+            parent_fd,
+            target,
+            existed=True,
+            expected_bytes=target._after_bytes,
+            expected_sha256=target.after_sha256,
+            expected_mode=0o600,
+            failure=_storage_verify_failure,
+        )
+        return target.index
+    finally:
+        _close_descriptors(parent_fd)
 
 
 def _verify_recovery_inputs(workspace, targets, preimages, staged_proposals):
