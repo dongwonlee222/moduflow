@@ -368,6 +368,192 @@ class TransactionContractTests(unittest.TestCase):
                     expected,
                 )
 
+    def test_post_apply_validation_summary_is_stage_specific_redacted_and_strict(self):
+        summarize = getattr(
+            transaction,
+            "_summarize_post_apply_validation",
+            None,
+        )
+        failure_summary = getattr(
+            transaction,
+            "_post_apply_failure_summary",
+            None,
+        )
+        self.assertIsNotNone(summarize)
+        self.assertIsNotNone(failure_summary)
+        invalid = {
+            "schema": "moduflow.project-validation.v1",
+            "project_root": "/PRIVATE/ROOT",
+            "valid": False,
+            "errors": ["PRIVATE PROJECT ERROR"],
+            "warnings": ["PRIVATE WARNING"],
+            "issue_schema": {
+                "errors": 1,
+                "warnings": 1,
+                "codes": ["PRIVATE_CODE"],
+                "diagnostics": [{"payload": "PRIVATE PAYLOAD"}],
+            },
+            "lifecycle_drift": ["PRIVATE DRIFT"],
+        }
+        self.assertEqual(
+            summarize(invalid),
+            {
+                "valid": False,
+                "rule_ids": [
+                    "canonical-targets",
+                    "project-artifacts",
+                    "issue-schema",
+                    "lifecycle-consensus",
+                    "production-records",
+                ],
+                "error_codes": [
+                    "POST_APPLY_PROJECT_INVALID",
+                    "POST_APPLY_ISSUE_SCHEMA_INVALID",
+                    "POST_APPLY_LIFECYCLE_DRIFT",
+                ],
+            },
+        )
+        self.assertEqual(
+            summarize({"schema": "PRIVATE MALFORMED"})["error_codes"],
+            ["POST_APPLY_VALIDATION_CONTRACT_INVALID"],
+        )
+        for warnings in ([], ["PRIVATE WARNING"]):
+            with self.subTest(warnings=warnings):
+                self.assertEqual(
+                    summarize(
+                        {
+                            "schema": "moduflow.project-validation.v1",
+                            "project_root": "/PRIVATE/ROOT",
+                            "valid": True,
+                            "errors": [],
+                            "warnings": warnings,
+                            "issue_schema": {
+                                "errors": 0,
+                                "warnings": len(warnings),
+                                "codes": [],
+                                "diagnostics": [],
+                            },
+                            "lifecycle_drift": [],
+                        }
+                    ),
+                    {
+                        "valid": True,
+                        "rule_ids": [
+                            "canonical-targets",
+                            "project-artifacts",
+                            "issue-schema",
+                            "lifecycle-consensus",
+                            "production-records",
+                        ],
+                        "error_codes": [],
+                    },
+                )
+        for error_code in (
+            "POST_APPLY_TARGET_MISMATCH",
+            "POST_APPLY_TARGET_UNPROVEN",
+            "POST_APPLY_VALIDATION_FAILED",
+        ):
+            with self.subTest(error_code=error_code):
+                self.assertEqual(
+                    failure_summary(error_code),
+                    {
+                        "valid": False,
+                        "rule_ids": [
+                            "canonical-targets",
+                            "project-artifacts",
+                            "issue-schema",
+                            "lifecycle-consensus",
+                            "production-records",
+                        ],
+                        "error_codes": [error_code],
+                    },
+                )
+        self.assertNotIn("PRIVATE", json.dumps(summarize(invalid)))
+        with self.assertRaises(transaction.LifecycleJournalError) as raised:
+            failure_summary("PRIVATE UNSAFE")
+        self.assertEqual(raised.exception.code, "JOURNAL_RECORD_INVALID")
+
+    def test_post_apply_validation_error_is_frozen_and_redacted(self):
+        error_type = getattr(
+            transaction,
+            "LifecyclePostApplyValidationError",
+            None,
+        )
+        self.assertIsNotNone(error_type)
+        summary = {
+            "valid": False,
+            "rule_ids": ["canonical-targets"],
+            "error_codes": ["POST_APPLY_TARGET_MISMATCH"],
+        }
+        error = error_type(
+            "POST_APPLY_VALIDATION_INVALID",
+            summary,
+        )
+        summary["rule_ids"].append("PRIVATE_POISON")
+        summary["error_codes"].append("PRIVATE_POISON")
+
+        self.assertEqual(error.code, "POST_APPLY_VALIDATION_INVALID")
+        self.assertEqual(
+            dict(error.post_apply_validation),
+            {
+                "valid": False,
+                "rule_ids": ("canonical-targets",),
+                "error_codes": ("POST_APPLY_TARGET_MISMATCH",),
+            },
+        )
+        self.assertEqual(str(error), "POST_APPLY_VALIDATION_INVALID")
+        self.assertEqual(
+            repr(error),
+            "LifecyclePostApplyValidationError('POST_APPLY_VALIDATION_INVALID')",
+        )
+        self.assertNotIn("PRIVATE", repr(error))
+
+        invalid = (
+            (
+                "POST_APPLY_UNKNOWN",
+                {
+                    "valid": False,
+                    "rule_ids": ["canonical-targets"],
+                    "error_codes": ["POST_APPLY_TARGET_MISMATCH"],
+                },
+            ),
+            (
+                "POST_APPLY_VALIDATION_INVALID",
+                {
+                    "valid": True,
+                    "rule_ids": ["canonical-targets"],
+                    "error_codes": [],
+                },
+            ),
+            (
+                "POST_APPLY_VALIDATION_INVALID",
+                {
+                    "valid": False,
+                    "rule_ids": ["unsafe value"],
+                    "error_codes": ["POST_APPLY_TARGET_MISMATCH"],
+                },
+            ),
+            (
+                "POST_APPLY_VALIDATION_INVALID",
+                {
+                    "valid": False,
+                    "rule_ids": ["canonical-targets"],
+                    "error_codes": ["POST_APPLY_TARGET_MISMATCH"],
+                    "private": "payload",
+                },
+            ),
+        )
+        for code, candidate in invalid:
+            with self.subTest(code=code, candidate=candidate):
+                with self.assertRaises(
+                    transaction.LifecycleJournalError
+                ) as raised:
+                    error_type(code, candidate)
+                self.assertEqual(
+                    raised.exception.code,
+                    "JOURNAL_RECORD_INVALID",
+                )
+
     def test_serializers_reject_unsafe_target_and_nested_validation_content(self):
         target = {
             "role": "owning-issue",
@@ -1176,6 +1362,7 @@ class TransactionPlanningTests(unittest.TestCase):
         self.assertEqual(rolled_back.applied_target_indexes, (0, 2))
         self.assertEqual(rolled_back.rollback_target_indexes, (2, 0))
         self.assertEqual(rolled_back.journal_sha256, "1" * 64)
+        self.assertIsNone(rolled_back.post_apply_validation)
         self.assertEqual(str(rolled_back), "TRANSACTION_ROLLED_BACK")
         self.assertEqual(
             repr(rolled_back),
@@ -1196,6 +1383,7 @@ class TransactionPlanningTests(unittest.TestCase):
         )
         self.assertEqual(recovery.applied_target_indexes, (0, 2))
         self.assertEqual(recovery.rollback_target_indexes, (2,))
+        self.assertIsNone(recovery.post_apply_validation)
         self.assertEqual(str(recovery), "TRANSACTION_RECOVERY_REQUIRED")
         self.assertEqual(
             repr(recovery),
@@ -1234,6 +1422,54 @@ class TransactionPlanningTests(unittest.TestCase):
             transaction.LifecycleRecoveryRequired(
                 rollback_error_code="unsafe value",
                 **defaults,
+            )
+        self.assertEqual(raised.exception.code, "JOURNAL_RECORD_INVALID")
+
+        summary = {
+            "valid": False,
+            "rule_ids": ["canonical-targets"],
+            "error_codes": ["POST_APPLY_TARGET_MISMATCH"],
+        }
+        summarized_rollback = transaction.LifecycleApplyRolledBack(
+            original_error_code="POST_APPLY_VALIDATION_INVALID",
+            applied_target_indexes=(0, 2),
+            rollback_target_indexes=(2, 0),
+            journal_sha256="4" * 64,
+            post_apply_validation=summary,
+        )
+        summarized_recovery = transaction.LifecycleRecoveryRequired(
+            original_error_code="POST_APPLY_VALIDATION_FAILED",
+            rollback_error_code="STORAGE_VERIFY_FAILED",
+            applied_target_indexes=(0, 2),
+            rollback_target_indexes=(2,),
+            journal_sha256="5" * 64,
+            post_apply_validation=summary,
+        )
+        summary["error_codes"].append("PRIVATE_POISON")
+        expected_summary = {
+            "valid": False,
+            "rule_ids": ("canonical-targets",),
+            "error_codes": ("POST_APPLY_TARGET_MISMATCH",),
+        }
+        self.assertEqual(
+            dict(summarized_rollback.post_apply_validation),
+            expected_summary,
+        )
+        self.assertEqual(
+            dict(summarized_recovery.post_apply_validation),
+            expected_summary,
+        )
+        self.assertNotIn("PRIVATE", repr(summarized_rollback))
+        self.assertNotIn("PRIVATE", repr(summarized_recovery))
+
+        with self.assertRaises(transaction.LifecycleJournalError) as raised:
+            transaction.LifecycleApplyRolledBack(
+                **defaults,
+                post_apply_validation={
+                    "valid": False,
+                    "rule_ids": ["unsafe value"],
+                    "error_codes": ["POST_APPLY_TARGET_MISMATCH"],
+                },
             )
         self.assertEqual(raised.exception.code, "JOURNAL_RECORD_INVALID")
 

@@ -178,6 +178,10 @@ _PROJECTED_VALIDATION_RULE_IDS = (
     "lifecycle-consensus",
     "production-records",
 )
+_POST_APPLY_VALIDATION_RULE_IDS = (
+    "canonical-targets",
+    *_PROJECTED_VALIDATION_RULE_IDS,
+)
 _PROJECTED_CONTROL_FILES = (
     "config.json",
     "state.json",
@@ -435,6 +439,23 @@ class LifecycleJournalError(ValueError):
         super().__init__(code)
 
 
+class LifecyclePostApplyValidationError(RuntimeError):
+    """Stable post-apply validation failure with a redacted summary."""
+
+    def __init__(self, code, post_apply_validation):
+        if code not in {
+            "POST_APPLY_VALIDATION_INVALID",
+            "POST_APPLY_VALIDATION_FAILED",
+        }:
+            raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+        summary = _frozen_validation_summary(post_apply_validation)
+        if summary["valid"]:
+            raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+        self.code = code
+        self.post_apply_validation = summary
+        super().__init__(code)
+
+
 _ROLLBACK_ERROR_CODE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
 
@@ -485,6 +506,7 @@ class LifecycleApplyRolledBack(RuntimeError):
         applied_target_indexes,
         rollback_target_indexes,
         journal_sha256,
+        post_apply_validation=None,
     ):
         _validated_rollback_signal_progress(
             original_error_code,
@@ -497,6 +519,9 @@ class LifecycleApplyRolledBack(RuntimeError):
         self.applied_target_indexes = tuple(applied_target_indexes)
         self.rollback_target_indexes = tuple(rollback_target_indexes)
         self.journal_sha256 = journal_sha256
+        self.post_apply_validation = _optional_post_apply_validation(
+            post_apply_validation
+        )
         super().__init__(self.code)
 
 
@@ -511,6 +536,7 @@ class LifecycleRecoveryRequired(RuntimeError):
         applied_target_indexes,
         rollback_target_indexes,
         journal_sha256,
+        post_apply_validation=None,
     ):
         _validated_rollback_signal_progress(
             original_error_code,
@@ -525,6 +551,9 @@ class LifecycleRecoveryRequired(RuntimeError):
         self.applied_target_indexes = tuple(applied_target_indexes)
         self.rollback_target_indexes = tuple(rollback_target_indexes)
         self.journal_sha256 = journal_sha256
+        self.post_apply_validation = _optional_post_apply_validation(
+            post_apply_validation
+        )
         super().__init__(self.code)
 
 
@@ -782,19 +811,55 @@ def _serialized_validation_summary(summary):
     return serialized
 
 
-def _projected_validation_contract_failure():
-    return _serialized_validation_summary(
+def _frozen_validation_summary(summary):
+    if not isinstance(summary, Mapping):
+        raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+    try:
+        candidate = {
+            "valid": summary["valid"],
+            "rule_ids": list(summary.get("rule_ids", ())),
+            "error_codes": list(summary.get("error_codes", ())),
+        }
+        if set(summary) != set(candidate):
+            raise ValueError("summary keys")
+        serialized = _serialized_validation_summary(candidate)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise LifecycleJournalError("JOURNAL_RECORD_INVALID") from exc
+    return MappingProxyType(
         {
-            "valid": False,
-            "rule_ids": list(_PROJECTED_VALIDATION_RULE_IDS),
-            "error_codes": ["PROJECTED_VALIDATION_CONTRACT_INVALID"],
+            "valid": serialized["valid"],
+            "rule_ids": tuple(serialized.get("rule_ids", ())),
+            "error_codes": tuple(serialized.get("error_codes", ())),
         }
     )
 
 
-def _summarize_projected_validation(validation_result):
+def _optional_post_apply_validation(summary):
+    if summary is None:
+        return None
+    frozen = _frozen_validation_summary(summary)
+    if frozen["valid"]:
+        raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+    return frozen
+
+
+def _summarize_validation_result(
+    validation_result,
+    *,
+    rule_ids,
+    contract_error,
+    project_error,
+    issue_error,
+    drift_error,
+):
     if not isinstance(validation_result, Mapping):
-        return _projected_validation_contract_failure()
+        return _serialized_validation_summary(
+            {
+                "valid": False,
+                "rule_ids": list(rule_ids),
+                "error_codes": [contract_error],
+            }
+        )
     valid = validation_result.get("valid")
     errors = validation_result.get("errors")
     issue_schema = validation_result.get("issue_schema")
@@ -821,20 +886,78 @@ def _summarize_projected_validation(validation_result):
         )
     )
     if not contract_valid:
-        return _projected_validation_contract_failure()
+        return _serialized_validation_summary(
+            {
+                "valid": False,
+                "rule_ids": list(rule_ids),
+                "error_codes": [contract_error],
+            }
+        )
 
     error_codes = []
     if errors:
-        error_codes.append("PROJECTED_PROJECT_INVALID")
+        error_codes.append(project_error)
     if issue_error_count:
-        error_codes.append("PROJECTED_ISSUE_SCHEMA_INVALID")
+        error_codes.append(issue_error)
     if lifecycle_drift:
-        error_codes.append("PROJECTED_LIFECYCLE_DRIFT")
+        error_codes.append(drift_error)
     return _serialized_validation_summary(
         {
             "valid": valid,
-            "rule_ids": list(_PROJECTED_VALIDATION_RULE_IDS),
+            "rule_ids": list(rule_ids),
             "error_codes": error_codes,
+        }
+    )
+
+
+def _projected_validation_contract_failure():
+    return _summarize_validation_result(
+        None,
+        rule_ids=_PROJECTED_VALIDATION_RULE_IDS,
+        contract_error="PROJECTED_VALIDATION_CONTRACT_INVALID",
+        project_error="PROJECTED_PROJECT_INVALID",
+        issue_error="PROJECTED_ISSUE_SCHEMA_INVALID",
+        drift_error="PROJECTED_LIFECYCLE_DRIFT",
+    )
+
+
+def _summarize_projected_validation(validation_result):
+    return _summarize_validation_result(
+        validation_result,
+        rule_ids=_PROJECTED_VALIDATION_RULE_IDS,
+        contract_error="PROJECTED_VALIDATION_CONTRACT_INVALID",
+        project_error="PROJECTED_PROJECT_INVALID",
+        issue_error="PROJECTED_ISSUE_SCHEMA_INVALID",
+        drift_error="PROJECTED_LIFECYCLE_DRIFT",
+    )
+
+
+def _summarize_post_apply_validation(validation_result):
+    return _summarize_validation_result(
+        validation_result,
+        rule_ids=_POST_APPLY_VALIDATION_RULE_IDS,
+        contract_error="POST_APPLY_VALIDATION_CONTRACT_INVALID",
+        project_error="POST_APPLY_PROJECT_INVALID",
+        issue_error="POST_APPLY_ISSUE_SCHEMA_INVALID",
+        drift_error="POST_APPLY_LIFECYCLE_DRIFT",
+    )
+
+
+def _post_apply_failure_summary(error_code):
+    if (
+        not isinstance(error_code, str)
+        or error_code not in {
+            "POST_APPLY_TARGET_MISMATCH",
+            "POST_APPLY_TARGET_UNPROVEN",
+            "POST_APPLY_VALIDATION_FAILED",
+        }
+    ):
+        raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+    return _serialized_validation_summary(
+        {
+            "valid": False,
+            "rule_ids": list(_POST_APPLY_VALIDATION_RULE_IDS),
+            "error_codes": [error_code],
         }
     )
 
