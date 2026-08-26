@@ -1326,6 +1326,30 @@ class TransactionPlanningTests(unittest.TestCase):
         fields.update(changes)
         return transaction.LifecycleIntent(**fields)
 
+    def validation_result(
+        self,
+        *,
+        valid=True,
+        errors=None,
+        issue_errors=0,
+        lifecycle_drift=None,
+        warnings=None,
+    ):
+        return {
+            "schema": "moduflow.project-validation.v1",
+            "project_root": "PRIVATE OMITTED",
+            "valid": valid,
+            "errors": list(errors or ()),
+            "warnings": list(warnings or ()),
+            "issue_schema": {
+                "errors": issue_errors,
+                "warnings": 0,
+                "codes": [],
+                "diagnostics": [],
+            },
+            "lifecycle_drift": list(lifecycle_drift or ()),
+        }
+
     def replace_projected_bytes(self, plan, replacements):
         remaining = set(replacements)
         targets = []
@@ -2523,6 +2547,11 @@ class TransactionPlanningTests(unittest.TestCase):
                     "apply_staged_target",
                     side_effect=tracked_apply,
                 ),
+                mock.patch.object(
+                    transaction.validate_project_artifacts,
+                    "validate_project",
+                    return_value=self.validation_result(),
+                ) as validate_project,
             ):
                 with entry(
                     plan,
@@ -2585,6 +2614,10 @@ class TransactionPlanningTests(unittest.TestCase):
                         state.applied_target_indexes,
                         changed_ordinary,
                     )
+                    self.assertIsInstance(
+                        state,
+                        transaction._PrivatePostValidatedState,
+                    )
                     self.assertEqual(state.created_at, timestamp_values[0])
                     self.assertEqual(
                         state.journal_sha256,
@@ -2596,9 +2629,15 @@ class TransactionPlanningTests(unittest.TestCase):
                             target.apply_order
                             for target in plan.targets
                             if not target.changed and target.role != "evidence"
+                        ]
+                        + [
+                            target.apply_order
+                            for target in plan.targets
+                            if not target.changed or target.role == "evidence"
                         ],
                     )
                     self.assertEqual(applied, list(changed_ordinary))
+                    validate_project.assert_called_once()
                     evidence_proposal = state.staged_proposals[-1]
                     self.assertEqual(evidence_proposal.state, "staged")
                     self.assertTrue(
@@ -2623,6 +2662,795 @@ class TransactionPlanningTests(unittest.TestCase):
                         canonical.read_bytes(),
                         canonical_before[target.relative_path],
                     )
+
+    def test_private_applied_workspace_post_validates_exact_canonical_state_under_same_lock(self):
+        entry = getattr(transaction, "_private_applied_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(require_issue_index=True),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            targets = []
+            for target in plan.targets:
+                if target.role == "dashboard":
+                    target = replace(
+                        target,
+                        after_size=len(target._before_bytes),
+                        after_sha256=transaction.target_sha256(
+                            target._before_bytes
+                        ),
+                        changed=False,
+                        _after_bytes=target._before_bytes,
+                    )
+                targets.append(target)
+            plan = replace(plan, targets=tuple(targets))
+            changed_ordinary = tuple(
+                target.apply_order
+                for target in plan.targets
+                if target.changed and target.role != "evidence"
+            )
+            unchanged_or_evidence = tuple(
+                target.apply_order
+                for target in plan.targets
+                if not target.changed or target.role == "evidence"
+            )
+            evidence = plan.targets[-1]
+            evidence_before = (
+                (root / evidence.relative_path).read_bytes()
+                if (root / evidence.relative_path).exists()
+                else None
+            )
+            lock_path = (
+                root / ".moduflow" / "transactions" / "lifecycle.lock"
+            )
+            timestamps = iter(
+                f"2030-01-02T03:04:{second:02d}Z"
+                for second in range(
+                    5,
+                    5 + 8 + 2 * len(changed_ordinary),
+                )
+            )
+            post_phase = False
+            classified = []
+            verified = []
+            validator_calls = []
+            real_apply_prepared = transaction._apply_prepared_targets
+            real_classify = (
+                transaction.transaction_storage.classify_canonical_target
+            )
+            real_verify = (
+                transaction.transaction_storage.verify_canonical_target
+            )
+
+            def tracked_apply_prepared(*args, **kwargs):
+                nonlocal post_phase
+                state = real_apply_prepared(*args, **kwargs)
+                post_phase = True
+                return state
+
+            def tracked_classify(workspace, target):
+                self.assertTrue(lock_path.is_file())
+                if post_phase:
+                    classified.append(target.index)
+                return real_classify(workspace, target)
+
+            def tracked_verify(workspace, target):
+                self.assertTrue(lock_path.is_file())
+                if post_phase:
+                    verified.append(target.index)
+                return real_verify(workspace, target)
+
+            def tracked_validator(canonical_root, *, project_context):
+                self.assertTrue(lock_path.is_file())
+                validator_calls.append((canonical_root, project_context))
+                self.assertEqual(canonical_root, root.resolve())
+                self.assertEqual(
+                    Path(project_context["canonical_root"]),
+                    root.resolve(),
+                )
+                for path in project_context["paths"].values():
+                    Path(path).relative_to(root.resolve())
+                return self.validation_result()
+
+            with (
+                mock.patch.object(
+                    transaction,
+                    "_apply_prepared_targets",
+                    side_effect=tracked_apply_prepared,
+                ),
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "classify_canonical_target",
+                    side_effect=tracked_classify,
+                ),
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "verify_canonical_target",
+                    side_effect=tracked_verify,
+                ),
+                mock.patch.object(
+                    transaction.validate_project_artifacts,
+                    "validate_project",
+                    side_effect=tracked_validator,
+                ),
+            ):
+                with entry(
+                    plan,
+                    journal_clock=lambda: next(timestamps),
+                    lock_clock="2030-01-02T03:04:05Z",
+                    lock_pid=123,
+                    lock_token_factory=lambda: "1" * 32,
+                ) as state:
+                    self.assertIsInstance(
+                        state,
+                        transaction._PrivatePostValidatedState,
+                    )
+                    self.assertEqual(
+                        state.applied_target_indexes,
+                        changed_ordinary,
+                    )
+                    self.assertEqual(
+                        state.verified_target_count,
+                        len(plan.targets),
+                    )
+                    self.assertEqual(
+                        dict(state.post_apply_validation),
+                        {
+                            "valid": True,
+                            "rule_ids": (
+                                "canonical-targets",
+                                "project-artifacts",
+                                "issue-schema",
+                                "lifecycle-consensus",
+                                "production-records",
+                            ),
+                            "error_codes": (),
+                        },
+                    )
+                    self.assertEqual(classified, list(changed_ordinary))
+                    self.assertEqual(verified, list(unchanged_or_evidence))
+                    self.assertEqual(len(validator_calls), 1)
+                    journal = json.loads(
+                        (
+                            root
+                            / ".moduflow"
+                            / "transactions"
+                            / plan.transaction_id
+                            / "journal.json"
+                        ).read_bytes()
+                    )
+                    self.assertEqual(journal["phase"], "post-validating")
+                    evidence_proposal = state.staged_proposals[-1]
+                    self.assertEqual(evidence_proposal.state, "staged")
+                    self.assertTrue(
+                        (root / evidence_proposal.relative_name).is_file()
+                    )
+                    self.assertEqual(
+                        (
+                            (root / evidence.relative_path).read_bytes()
+                            if (root / evidence.relative_path).exists()
+                            else None
+                        ),
+                        evidence_before,
+                    )
+
+    def test_private_applied_workspace_rolls_back_invalid_post_apply_validation_under_same_lock(self):
+        cases = (
+            (
+                "project-invalid",
+                self.validation_result(
+                    valid=False,
+                    errors=["PRIVATE ERROR"],
+                ),
+                ("POST_APPLY_PROJECT_INVALID",),
+            ),
+            (
+                "issue-invalid",
+                self.validation_result(valid=False, issue_errors=1),
+                ("POST_APPLY_ISSUE_SCHEMA_INVALID",),
+            ),
+            (
+                "lifecycle-drift",
+                self.validation_result(
+                    valid=False,
+                    lifecycle_drift=["PRIVATE"],
+                ),
+                ("POST_APPLY_LIFECYCLE_DRIFT",),
+            ),
+            (
+                "malformed-contract",
+                {"schema": "PRIVATE"},
+                ("POST_APPLY_VALIDATION_CONTRACT_INVALID",),
+            ),
+        )
+        for name, result, expected_codes in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root)
+                (root / "workspace" / "transactions").mkdir()
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(require_issue_index=True),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                changed_ordinary = tuple(
+                    target.apply_order
+                    for target in plan.targets
+                    if target.changed and target.role != "evidence"
+                )
+                canonical_before = {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if target.existed
+                        else None
+                    )
+                    for target in plan.targets
+                }
+                lock_path = (
+                    root / ".moduflow" / "transactions" / "lifecycle.lock"
+                )
+                timestamps = iter(
+                    f"2030-01-02T03:04:{second:02d}Z"
+                    for second in range(
+                        5,
+                        5 + 8 + 2 * len(changed_ordinary),
+                    )
+                )
+                rollback_calls = []
+                real_rollback = (
+                    transaction.transaction_storage.rollback_canonical_target
+                )
+
+                def tracked_validator(canonical_root, *, project_context):
+                    self.assertTrue(lock_path.is_file())
+                    self.assertEqual(canonical_root, root.resolve())
+                    return result
+
+                def tracked_rollback(workspace, target, preimage):
+                    self.assertTrue(lock_path.is_file())
+                    rollback_calls.append(target.index)
+                    return real_rollback(workspace, target, preimage)
+
+                with (
+                    mock.patch.object(
+                        transaction.validate_project_artifacts,
+                        "validate_project",
+                        side_effect=tracked_validator,
+                    ) as validate_project,
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "rollback_canonical_target",
+                        side_effect=tracked_rollback,
+                    ),
+                ):
+                    with self.assertRaises(
+                        transaction.LifecycleApplyRolledBack
+                    ) as raised:
+                        with transaction._private_applied_workspace(
+                            plan,
+                            journal_clock=lambda: next(timestamps),
+                            lock_clock="2030-01-02T03:04:05Z",
+                            lock_pid=123,
+                            lock_token_factory=lambda: "1" * 32,
+                        ):
+                            self.fail("invalid post-apply state must not yield")
+
+                signal = raised.exception
+                self.assertEqual(
+                    signal.original_error_code,
+                    "POST_APPLY_VALIDATION_INVALID",
+                )
+                self.assertEqual(
+                    signal.applied_target_indexes,
+                    changed_ordinary,
+                )
+                self.assertEqual(
+                    signal.rollback_target_indexes,
+                    tuple(reversed(changed_ordinary)),
+                )
+                self.assertEqual(
+                    rollback_calls,
+                    list(reversed(changed_ordinary)),
+                )
+                self.assertEqual(
+                    signal.post_apply_validation["error_codes"],
+                    expected_codes,
+                )
+                validate_project.assert_called_once()
+                self.assertFalse(lock_path.exists())
+                for target in plan.targets:
+                    canonical = root / target.relative_path
+                    self.assertEqual(
+                        canonical.read_bytes() if canonical.exists() else None,
+                        canonical_before[target.relative_path],
+                    )
+                workspace_path = (
+                    root
+                    / ".moduflow"
+                    / "transactions"
+                    / plan.transaction_id
+                )
+                self.assertEqual(
+                    json.loads(
+                        (workspace_path / "journal.json").read_bytes()
+                    )["phase"],
+                    "rolled-back",
+                )
+                self.assertEqual(
+                    plan.targets[-1].role,
+                    "evidence",
+                )
+                self.assertTrue(
+                    any(
+                        proposal.read_bytes()
+                        == plan.targets[-1]._after_bytes
+                        for proposal in root.glob("**/.moduflow-stage-*")
+                    )
+                )
+
+    def test_private_applied_workspace_rolls_back_exact_before_target_without_calling_validator(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(require_issue_index=True),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            changed_targets = tuple(
+                target
+                for target in plan.targets
+                if target.changed and target.role != "evidence"
+            )
+            changed_ordinary = tuple(
+                target.apply_order for target in changed_targets
+            )
+            restored = changed_targets[0]
+            canonical_before = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if target.existed
+                    else None
+                )
+                for target in plan.targets
+            }
+            timestamps = iter(
+                f"2030-01-02T03:04:{second:02d}Z"
+                for second in range(
+                    5,
+                    5 + 8 + 2 * len(changed_ordinary),
+                )
+            )
+            real_apply_prepared = transaction._apply_prepared_targets
+
+            def restore_before_after_apply(*args, **kwargs):
+                state = real_apply_prepared(*args, **kwargs)
+                canonical = root / restored.relative_path
+                if restored.existed:
+                    canonical.write_bytes(restored._before_bytes)
+                else:
+                    canonical.unlink()
+                return state
+
+            with (
+                mock.patch.object(
+                    transaction,
+                    "_apply_prepared_targets",
+                    side_effect=restore_before_after_apply,
+                ),
+                mock.patch.object(
+                    transaction.validate_project_artifacts,
+                    "validate_project",
+                ) as validate_project,
+            ):
+                with self.assertRaises(
+                    transaction.LifecycleApplyRolledBack
+                ) as raised:
+                    with transaction._private_applied_workspace(
+                        plan,
+                        journal_clock=lambda: next(timestamps),
+                        lock_clock="2030-01-02T03:04:05Z",
+                        lock_pid=123,
+                        lock_token_factory=lambda: "1" * 32,
+                    ):
+                        self.fail("exact-before changed target must not yield")
+
+            signal = raised.exception
+            self.assertEqual(
+                signal.original_error_code,
+                "POST_APPLY_VALIDATION_INVALID",
+            )
+            self.assertEqual(
+                signal.post_apply_validation["error_codes"],
+                ("POST_APPLY_TARGET_MISMATCH",),
+            )
+            self.assertEqual(
+                signal.rollback_target_indexes,
+                tuple(reversed(changed_ordinary)),
+            )
+            validate_project.assert_not_called()
+            for target in plan.targets:
+                canonical = root / target.relative_path
+                self.assertEqual(
+                    canonical.read_bytes() if canonical.exists() else None,
+                    canonical_before[target.relative_path],
+                )
+
+    def test_private_applied_workspace_requires_recovery_for_unproven_changed_unchanged_and_evidence_targets(self):
+        for target_class in ("changed", "unchanged", "evidence"):
+            with (
+                self.subTest(target_class=target_class),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
+                root = Path(tmp)
+                context = self.scaffold(root)
+                (root / "workspace" / "transactions").mkdir()
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(require_issue_index=True),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                targets = []
+                for target in plan.targets:
+                    if target.role == "dashboard":
+                        target = replace(
+                            target,
+                            after_size=len(target._before_bytes),
+                            after_sha256=transaction.target_sha256(
+                                target._before_bytes
+                            ),
+                            changed=False,
+                            _after_bytes=target._before_bytes,
+                        )
+                    targets.append(target)
+                plan = replace(plan, targets=tuple(targets))
+                selected = {
+                    "changed": next(
+                        target
+                        for target in plan.targets
+                        if target.changed and target.role != "evidence"
+                    ),
+                    "unchanged": next(
+                        target for target in plan.targets if not target.changed
+                    ),
+                    "evidence": next(
+                        target
+                        for target in plan.targets
+                        if target.role == "evidence"
+                    ),
+                }[target_class]
+                changed_ordinary = tuple(
+                    target.apply_order
+                    for target in plan.targets
+                    if target.changed and target.role != "evidence"
+                )
+                timestamps = iter(
+                    f"2030-01-02T03:04:{second:02d}Z"
+                    for second in range(
+                        5,
+                        5 + 8 + 2 * len(changed_ordinary),
+                    )
+                )
+                lock_path = (
+                    root / ".moduflow" / "transactions" / "lifecycle.lock"
+                )
+                workspace_path = (
+                    root
+                    / ".moduflow"
+                    / "transactions"
+                    / plan.transaction_id
+                )
+                foreign = f"PRIVATE FOREIGN {target_class}\n".encode()
+                real_apply_prepared = transaction._apply_prepared_targets
+
+                def inject_foreign_state(*args, **kwargs):
+                    state = real_apply_prepared(*args, **kwargs)
+                    (root / selected.relative_path).write_bytes(foreign)
+                    return state
+
+                with (
+                    mock.patch.object(
+                        transaction,
+                        "_apply_prepared_targets",
+                        side_effect=inject_foreign_state,
+                    ),
+                    mock.patch.object(
+                        transaction.validate_project_artifacts,
+                        "validate_project",
+                        return_value=self.validation_result(),
+                    ) as validate_project,
+                ):
+                    with self.assertRaises(
+                        transaction.LifecycleRecoveryRequired
+                    ) as raised:
+                        with transaction._private_applied_workspace(
+                            plan,
+                            journal_clock=lambda: next(timestamps),
+                            lock_clock="2030-01-02T03:04:05Z",
+                            lock_pid=123,
+                            lock_token_factory=lambda: "1" * 32,
+                        ):
+                            self.fail("unproven canonical state must not yield")
+
+                signal = raised.exception
+                self.assertEqual(
+                    signal.original_error_code,
+                    "POST_APPLY_VALIDATION_FAILED",
+                )
+                self.assertIn(
+                    signal.rollback_error_code,
+                    {
+                        "STORAGE_CANONICAL_STATE_UNKNOWN",
+                        "CANONICAL_PREIMAGE_CONFLICT",
+                        "STORAGE_VERIFY_FAILED",
+                    },
+                )
+                self.assertEqual(
+                    signal.post_apply_validation["error_codes"],
+                    ("POST_APPLY_TARGET_UNPROVEN",),
+                )
+                validate_project.assert_not_called()
+                self.assertEqual(
+                    (root / selected.relative_path).read_bytes(),
+                    foreign,
+                )
+                self.assertFalse(lock_path.exists())
+                self.assertTrue((workspace_path / "preimages").is_dir())
+                self.assertTrue(
+                    (workspace_path / "recovery-manifest.json").is_file()
+                )
+                self.assertEqual(
+                    json.loads(
+                        (workspace_path / "journal.json").read_bytes()
+                    )["phase"],
+                    "recovery-required",
+                )
+
+    def test_private_applied_workspace_redacts_validator_runtime_failure_before_rollback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(require_issue_index=True),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            changed_ordinary = tuple(
+                target.apply_order
+                for target in plan.targets
+                if target.changed and target.role != "evidence"
+            )
+            canonical_before = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if target.existed
+                    else None
+                )
+                for target in plan.targets
+            }
+            timestamps = iter(
+                f"2030-01-02T03:04:{second:02d}Z"
+                for second in range(
+                    5,
+                    5 + 8 + 2 * len(changed_ordinary),
+                )
+            )
+
+            def failing_validator(canonical_root, *, project_context):
+                raise RuntimeError(f"PRIVATE at {canonical_root}")
+
+            with mock.patch.object(
+                transaction.validate_project_artifacts,
+                "validate_project",
+                side_effect=failing_validator,
+            ):
+                with self.assertRaises(
+                    transaction.LifecycleApplyRolledBack
+                ) as raised:
+                    with transaction._private_applied_workspace(
+                        plan,
+                        journal_clock=lambda: next(timestamps),
+                        lock_clock="2030-01-02T03:04:05Z",
+                        lock_pid=123,
+                        lock_token_factory=lambda: "1" * 32,
+                    ):
+                        self.fail("validator runtime failure must not yield")
+
+            signal = raised.exception
+            self.assertEqual(
+                signal.original_error_code,
+                "POST_APPLY_VALIDATION_FAILED",
+            )
+            self.assertEqual(
+                signal.post_apply_validation["error_codes"],
+                ("POST_APPLY_VALIDATION_FAILED",),
+            )
+            rendered = json.dumps(
+                {
+                    "str": str(signal),
+                    "repr": repr(signal),
+                    "summary": {
+                        key: list(value) if isinstance(value, tuple) else value
+                        for key, value in signal.post_apply_validation.items()
+                    },
+                }
+            )
+            self.assertNotIn("PRIVATE", rendered)
+            self.assertNotIn(str(root), rendered)
+            workspace_path = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            journal_bytes = (workspace_path / "journal.json").read_bytes()
+            self.assertNotIn(b"PRIVATE", journal_bytes)
+            self.assertNotIn(str(root).encode(), journal_bytes)
+            for target in plan.targets:
+                canonical = root / target.relative_path
+                self.assertEqual(
+                    canonical.read_bytes() if canonical.exists() else None,
+                    canonical_before[target.relative_path],
+                )
+
+    def test_private_applied_workspace_does_not_claim_rolled_back_when_unchanged_or_evidence_changes_during_rollback(self):
+        for target_class in ("unchanged", "evidence"):
+            with (
+                self.subTest(target_class=target_class),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
+                root = Path(tmp)
+                context = self.scaffold(root)
+                (root / "workspace" / "transactions").mkdir()
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(require_issue_index=True),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                targets = []
+                for target in plan.targets:
+                    if target.role == "dashboard":
+                        target = replace(
+                            target,
+                            after_size=len(target._before_bytes),
+                            after_sha256=transaction.target_sha256(
+                                target._before_bytes
+                            ),
+                            changed=False,
+                            _after_bytes=target._before_bytes,
+                        )
+                    targets.append(target)
+                plan = replace(plan, targets=tuple(targets))
+                selected = {
+                    "unchanged": next(
+                        target for target in plan.targets if not target.changed
+                    ),
+                    "evidence": next(
+                        target
+                        for target in plan.targets
+                        if target.role == "evidence"
+                    ),
+                }[target_class]
+                changed_ordinary = tuple(
+                    target.apply_order
+                    for target in plan.targets
+                    if target.changed and target.role != "evidence"
+                )
+                timestamps = iter(
+                    f"2030-01-02T03:04:{second:02d}Z"
+                    for second in range(
+                        5,
+                        5 + 8 + 2 * len(changed_ordinary),
+                    )
+                )
+                lock_path = (
+                    root / ".moduflow" / "transactions" / "lifecycle.lock"
+                )
+                workspace_path = (
+                    root
+                    / ".moduflow"
+                    / "transactions"
+                    / plan.transaction_id
+                )
+                foreign = f"PRIVATE RACE {target_class}\n".encode()
+                persisted_phases = []
+                real_verify_complete = transaction._verify_complete_rollback
+                real_persist = (
+                    transaction.transaction_storage.persist_serialized_journal
+                )
+
+                def mutate_before_final_proof(prepared):
+                    self.assertTrue(lock_path.is_file())
+                    (root / selected.relative_path).write_bytes(foreign)
+                    return real_verify_complete(prepared)
+
+                def tracked_persist(
+                    workspace,
+                    journal_bytes,
+                    *,
+                    expected_previous_sha256,
+                ):
+                    persisted_phases.append(
+                        json.loads(journal_bytes)["phase"]
+                    )
+                    return real_persist(
+                        workspace,
+                        journal_bytes,
+                        expected_previous_sha256=expected_previous_sha256,
+                    )
+
+                with (
+                    mock.patch.object(
+                        transaction,
+                        "_verify_complete_rollback",
+                        side_effect=mutate_before_final_proof,
+                    ),
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "persist_serialized_journal",
+                        side_effect=tracked_persist,
+                    ),
+                    mock.patch.object(
+                        transaction.validate_project_artifacts,
+                        "validate_project",
+                        return_value=self.validation_result(
+                            valid=False,
+                            errors=["PRIVATE INVALID"],
+                        ),
+                    ),
+                ):
+                    with self.assertRaises(
+                        transaction.LifecycleRecoveryRequired
+                    ) as raised:
+                        with transaction._private_applied_workspace(
+                            plan,
+                            journal_clock=lambda: next(timestamps),
+                            lock_clock="2030-01-02T03:04:05Z",
+                            lock_pid=123,
+                            lock_token_factory=lambda: "1" * 32,
+                        ):
+                            self.fail("raced rollback proof must not yield")
+
+                signal = raised.exception
+                self.assertEqual(
+                    signal.original_error_code,
+                    "POST_APPLY_VALIDATION_INVALID",
+                )
+                self.assertEqual(
+                    signal.rollback_error_code,
+                    "CANONICAL_PREIMAGE_CONFLICT",
+                )
+                self.assertEqual(
+                    signal.post_apply_validation["error_codes"],
+                    ("POST_APPLY_PROJECT_INVALID",),
+                )
+                self.assertNotIn("rolled-back", persisted_phases)
+                self.assertEqual(
+                    persisted_phases.count("recovery-required"),
+                    1,
+                )
+                self.assertEqual(
+                    (root / selected.relative_path).read_bytes(),
+                    foreign,
+                )
+                self.assertTrue((workspace_path / "preimages").is_dir())
+                self.assertTrue(
+                    (workspace_path / "recovery-manifest.json").is_file()
+                )
+                self.assertFalse(lock_path.exists())
+                rendered = repr(signal) + str(signal)
+                self.assertNotIn("PRIVATE", rendered)
+                self.assertNotIn(str(root), rendered)
 
     def test_private_applied_workspace_prevalidates_all_forward_and_rollback_timestamps_before_lock(self):
         entry = getattr(transaction, "_private_applied_workspace", None)
@@ -2857,6 +3685,10 @@ class TransactionPlanningTests(unittest.TestCase):
                     "persist_serialized_journal",
                     side_effect=tracked_persist,
                 ),
+                mock.patch.object(
+                    transaction.validate_project_artifacts,
+                    "validate_project",
+                ) as validate_project,
             ):
                 with self.assertRaises(
                     transaction.LifecycleApplyRolledBack
@@ -2870,12 +3702,15 @@ class TransactionPlanningTests(unittest.TestCase):
                     ):
                         self.fail("failed apply must not yield")
 
+            validate_project.assert_not_called()
+
             attempted = changed_ordinary[:3]
             self.assertEqual(raised.exception.code, "TRANSACTION_ROLLED_BACK")
             self.assertEqual(
                 raised.exception.original_error_code,
                 "STORAGE_REPLACE_FAILED",
             )
+            self.assertIsNone(raised.exception.post_apply_validation)
             self.assertEqual(raised.exception.applied_target_indexes, attempted)
             self.assertEqual(
                 raised.exception.rollback_target_indexes,
@@ -3111,6 +3946,10 @@ class TransactionPlanningTests(unittest.TestCase):
                         "persist_serialized_journal",
                         side_effect=failing_persist,
                     ),
+                    mock.patch.object(
+                        transaction.validate_project_artifacts,
+                        "validate_project",
+                    ) as validate_project,
                 ):
                     with self.assertRaises(
                         transaction.LifecycleRecoveryRequired
@@ -3124,6 +3963,8 @@ class TransactionPlanningTests(unittest.TestCase):
                         ):
                             self.fail("failed apply must not yield")
 
+                validate_project.assert_not_called()
+
                 self.assertEqual(
                     raised.exception.code,
                     "TRANSACTION_RECOVERY_REQUIRED",
@@ -3132,6 +3973,7 @@ class TransactionPlanningTests(unittest.TestCase):
                     raised.exception.original_error_code,
                     "STORAGE_REPLACE_FAILED",
                 )
+                self.assertIsNone(raised.exception.post_apply_validation)
                 expected_rollback_error = {
                     "classification": "STORAGE_CANONICAL_STATE_UNKNOWN",
                     "restore-existing": "STORAGE_VERIFY_FAILED",
@@ -3205,15 +4047,25 @@ class TransactionPlanningTests(unittest.TestCase):
                 )
             )
             canonical_after = {}
+            classify_calls_at_yield = None
+            real_classify = (
+                transaction.transaction_storage.classify_canonical_target
+            )
             with (
                 mock.patch.object(
                     transaction.transaction_storage,
                     "classify_canonical_target",
+                    wraps=real_classify,
                 ) as classify_target,
                 mock.patch.object(
                     transaction.transaction_storage,
                     "rollback_canonical_target",
                 ) as rollback_target,
+                mock.patch.object(
+                    transaction.validate_project_artifacts,
+                    "validate_project",
+                    return_value=self.validation_result(),
+                ) as validate_project,
             ):
                 with self.assertRaisesRegex(RuntimeError, "CALLER FAILURE"):
                     with entry(
@@ -3231,8 +4083,13 @@ class TransactionPlanningTests(unittest.TestCase):
                             )
                             for target in plan.targets
                         }
+                        classify_calls_at_yield = classify_target.call_count
                         raise RuntimeError("CALLER FAILURE")
-            classify_target.assert_not_called()
+            self.assertEqual(
+                classify_target.call_count,
+                classify_calls_at_yield,
+            )
+            validate_project.assert_called_once()
             rollback_target.assert_not_called()
             self.assertEqual(
                 {

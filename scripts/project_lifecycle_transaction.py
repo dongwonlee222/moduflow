@@ -408,6 +408,20 @@ class _PrivateAppliedState:
     _workspace: object = field(repr=False, compare=False)
 
 
+@dataclass(frozen=True)
+class _PrivatePostValidatedState:
+    storage_targets: tuple[transaction_storage.StorageTarget, ...]
+    preimages: tuple[transaction_storage.StoredPreimage, ...]
+    staged_proposals: tuple[transaction_storage.StagedProposal, ...]
+    recovery_manifest: transaction_storage.RecoveryManifest
+    applied_target_indexes: tuple[int, ...]
+    post_apply_validation: object = field(repr=False, compare=False)
+    verified_target_count: int
+    journal_sha256: str
+    created_at: str
+    _workspace: object = field(repr=False, compare=False)
+
+
 class LifecyclePlanError(ValueError):
     """Bounded planner failure that never includes artifact or absolute-path data."""
 
@@ -2156,6 +2170,78 @@ def _apply_prepared_targets(
     )
 
 
+def _verify_post_apply_targets(applied_state):
+    verified = 0
+    try:
+        for target in applied_state.storage_targets:
+            if target.role == "evidence" or not target.changed:
+                transaction_storage.verify_canonical_target(
+                    applied_state._workspace,
+                    target,
+                )
+            else:
+                state = transaction_storage.classify_canonical_target(
+                    applied_state._workspace,
+                    target,
+                )
+                if state != "after":
+                    raise LifecyclePostApplyValidationError(
+                        "POST_APPLY_VALIDATION_INVALID",
+                        _post_apply_failure_summary(
+                            "POST_APPLY_TARGET_MISMATCH"
+                        ),
+                    )
+            verified += 1
+    except LifecyclePostApplyValidationError:
+        raise
+    except (
+        transaction_storage.LifecycleCanonicalConflict,
+        transaction_storage.LifecycleStorageError,
+    ) as exc:
+        raise LifecyclePostApplyValidationError(
+            "POST_APPLY_VALIDATION_FAILED",
+            _post_apply_failure_summary("POST_APPLY_TARGET_UNPROVEN"),
+        ) from exc
+    return verified
+
+
+def _post_validate_applied_state(
+    applied_state,
+    plan,
+    canonical_root,
+    canonical_context,
+):
+    verified_target_count = _verify_post_apply_targets(applied_state)
+    try:
+        validation_result = validate_project_artifacts.validate_project(
+            canonical_root,
+            project_context=canonical_context,
+        )
+    except Exception as exc:
+        raise LifecyclePostApplyValidationError(
+            "POST_APPLY_VALIDATION_FAILED",
+            _post_apply_failure_summary("POST_APPLY_VALIDATION_FAILED"),
+        ) from exc
+    summary = _summarize_post_apply_validation(validation_result)
+    if not summary["valid"]:
+        raise LifecyclePostApplyValidationError(
+            "POST_APPLY_VALIDATION_INVALID",
+            summary,
+        )
+    return _PrivatePostValidatedState(
+        storage_targets=applied_state.storage_targets,
+        preimages=applied_state.preimages,
+        staged_proposals=applied_state.staged_proposals,
+        recovery_manifest=applied_state.recovery_manifest,
+        applied_target_indexes=applied_state.applied_target_indexes,
+        post_apply_validation=_frozen_validation_summary(summary),
+        verified_target_count=verified_target_count,
+        journal_sha256=applied_state.journal_sha256,
+        created_at=applied_state.created_at,
+        _workspace=applied_state._workspace,
+    )
+
+
 def _reconciled_rollback_prefix(prepared, successful_indexes):
     changed = tuple(
         (target, preimage)
@@ -2198,6 +2284,27 @@ def _reconciled_rollback_prefix(prepared, successful_indexes):
     )
 
 
+def _verify_complete_rollback(prepared):
+    verified = 0
+    for target in prepared.storage_targets:
+        if target.changed and target.role != "evidence":
+            state = transaction_storage.classify_canonical_target(
+                prepared._workspace,
+                target,
+            )
+            if state != "before":
+                raise transaction_storage.LifecycleStorageError(
+                    "STORAGE_VERIFY_FAILED"
+                )
+        else:
+            transaction_storage.verify_canonical_target(
+                prepared._workspace,
+                target,
+            )
+        verified += 1
+    return verified
+
+
 def _rollback_failed_apply(
     prepared,
     plan,
@@ -2209,6 +2316,11 @@ def _rollback_failed_apply(
 ):
     confirmed_applied = tuple(successful_indexes)
     confirmed_rollback = []
+    post_apply_validation = getattr(
+        original_error,
+        "post_apply_validation",
+        None,
+    )
     rollback_failure_types = (
         transaction_storage.LifecycleCanonicalConflict,
         transaction_storage.LifecycleStorageError,
@@ -2249,6 +2361,7 @@ def _rollback_failed_apply(
                 rollback_target_indexes=tuple(confirmed_rollback),
                 expected_previous_sha256=latest_sha256,
             )
+        _verify_complete_rollback(prepared)
         latest_sha256 = _persist_progress_journal(
             prepared,
             plan,
@@ -2277,12 +2390,14 @@ def _rollback_failed_apply(
             applied_target_indexes=confirmed_applied,
             rollback_target_indexes=tuple(confirmed_rollback),
             journal_sha256=latest_sha256,
+            post_apply_validation=post_apply_validation,
         ) from rollback_error
     raise LifecycleApplyRolledBack(
         original_error_code=original_error.code,
         applied_target_indexes=confirmed_applied,
         rollback_target_indexes=tuple(confirmed_rollback),
         journal_sha256=latest_sha256,
+        post_apply_validation=post_apply_validation,
     ) from original_error
 
 
@@ -2298,7 +2413,7 @@ def _private_applied_workspace(
     """Apply ordinary targets and yield durable post-validating state."""
     if not isinstance(plan, LifecycleTransactionPlan):
         raise TypeError("plan must be a LifecycleTransactionPlan")
-    _root, _context = _writable_projected_plan_context(plan)
+    canonical_root, canonical_context = _writable_projected_plan_context(plan)
     storage_targets = _storage_targets_from_plan(plan)
     changed_ordinary = tuple(
         target.index
@@ -2340,10 +2455,17 @@ def _private_applied_workspace(
                 successful_indexes,
                 journal_state,
             )
+            post_validated_state = _post_validate_applied_state(
+                applied_state,
+                plan,
+                canonical_root,
+                canonical_context,
+            )
         except (
             transaction_storage.LifecycleCanonicalConflict,
             transaction_storage.LifecycleStorageError,
             LifecycleJournalError,
+            LifecyclePostApplyValidationError,
         ) as original_error:
             _rollback_failed_apply(
                 prepared,
@@ -2354,7 +2476,7 @@ def _private_applied_workspace(
                 timestamps,
                 changed_count,
             )
-        yield applied_state
+        yield post_validated_state
 
 
 @contextmanager
