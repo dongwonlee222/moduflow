@@ -435,6 +435,99 @@ class LifecycleJournalError(ValueError):
         super().__init__(code)
 
 
+_ROLLBACK_ERROR_CODE = re.compile(r"^[A-Z][A-Z0-9_]*$")
+
+
+def _validated_rollback_signal_progress(
+    original_error_code,
+    applied_target_indexes,
+    rollback_target_indexes,
+    journal_sha256,
+    *,
+    rollback_error_code=None,
+):
+    codes = (original_error_code,)
+    if rollback_error_code is not None:
+        codes += (rollback_error_code,)
+    valid_indexes = (
+        isinstance(applied_target_indexes, tuple)
+        and isinstance(rollback_target_indexes, tuple)
+        and all(
+            isinstance(index, int)
+            and not isinstance(index, bool)
+            and index >= 0
+            for index in applied_target_indexes + rollback_target_indexes
+        )
+        and len(applied_target_indexes) == len(set(applied_target_indexes))
+        and applied_target_indexes == tuple(sorted(applied_target_indexes))
+        and rollback_target_indexes
+        == tuple(reversed(applied_target_indexes))[:len(rollback_target_indexes)]
+    )
+    if (
+        not all(
+            isinstance(code, str) and _ROLLBACK_ERROR_CODE.fullmatch(code)
+            for code in codes
+        )
+        or not valid_indexes
+        or not isinstance(journal_sha256, str)
+        or not _SHA256.fullmatch(journal_sha256)
+    ):
+        raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+
+
+class LifecycleApplyRolledBack(RuntimeError):
+    """Private successful-rollback signal with safe detached progress."""
+
+    def __init__(
+        self,
+        *,
+        original_error_code,
+        applied_target_indexes,
+        rollback_target_indexes,
+        journal_sha256,
+    ):
+        _validated_rollback_signal_progress(
+            original_error_code,
+            applied_target_indexes,
+            rollback_target_indexes,
+            journal_sha256,
+        )
+        self.code = "TRANSACTION_ROLLED_BACK"
+        self.original_error_code = original_error_code
+        self.applied_target_indexes = tuple(applied_target_indexes)
+        self.rollback_target_indexes = tuple(rollback_target_indexes)
+        self.journal_sha256 = journal_sha256
+        super().__init__(self.code)
+
+
+class LifecycleRecoveryRequired(RuntimeError):
+    """Private indeterminate-rollback signal with safe detached progress."""
+
+    def __init__(
+        self,
+        *,
+        original_error_code,
+        rollback_error_code,
+        applied_target_indexes,
+        rollback_target_indexes,
+        journal_sha256,
+    ):
+        _validated_rollback_signal_progress(
+            original_error_code,
+            applied_target_indexes,
+            rollback_target_indexes,
+            journal_sha256,
+            rollback_error_code=rollback_error_code,
+        )
+        self.code = "TRANSACTION_RECOVERY_REQUIRED"
+        self.original_error_code = original_error_code
+        self.rollback_error_code = rollback_error_code
+        self.applied_target_indexes = tuple(applied_target_indexes)
+        self.rollback_target_indexes = tuple(rollback_target_indexes)
+        self.journal_sha256 = journal_sha256
+        super().__init__(self.code)
+
+
 class LifecycleLockError(RuntimeError):
     """Stable lifecycle-lock failure without paths or owner-record values."""
 
@@ -1846,6 +1939,230 @@ def _private_prepared_workspace(
             )
 
 
+def _persist_progress_journal(
+    prepared,
+    plan,
+    *,
+    phase,
+    updated_at,
+    applied_target_indexes,
+    rollback_target_indexes,
+    expected_previous_sha256,
+):
+    journal_bytes = _serialized_journal_bytes(
+        plan,
+        phase,
+        created_at=prepared.created_at,
+        updated_at=updated_at,
+        recovery_manifest_sha256=prepared.recovery_manifest.sha256,
+        applied_target_indexes=applied_target_indexes,
+        rollback_target_indexes=rollback_target_indexes,
+    )
+    return transaction_storage.persist_serialized_journal(
+        prepared._workspace,
+        journal_bytes,
+        expected_previous_sha256=expected_previous_sha256,
+    )
+
+
+def _apply_prepared_targets(
+    prepared,
+    plan,
+    timestamps,
+    successful_indexes,
+    journal_state,
+):
+    journal_state["sha256"] = _persist_progress_journal(
+        prepared,
+        plan,
+        phase="applying",
+        updated_at=timestamps[3],
+        applied_target_indexes=(),
+        rollback_target_indexes=(),
+        expected_previous_sha256=journal_state["sha256"],
+    )
+    for target, proposal in zip(
+        prepared.storage_targets,
+        prepared.staged_proposals,
+    ):
+        if target.role == "evidence":
+            break
+        if not target.changed:
+            transaction_storage.verify_canonical_target(
+                prepared._workspace,
+                target,
+            )
+            continue
+        index = transaction_storage.apply_staged_target(
+            prepared._workspace,
+            target,
+            proposal,
+        )
+        successful_indexes.append(index)
+        journal_state["sha256"] = _persist_progress_journal(
+            prepared,
+            plan,
+            phase="applying",
+            updated_at=timestamps[3 + len(successful_indexes)],
+            applied_target_indexes=tuple(successful_indexes),
+            rollback_target_indexes=(),
+            expected_previous_sha256=journal_state["sha256"],
+        )
+    changed_count = sum(
+        target.changed and target.role != "evidence"
+        for target in prepared.storage_targets
+    )
+    journal_state["sha256"] = _persist_progress_journal(
+        prepared,
+        plan,
+        phase="post-validating",
+        updated_at=timestamps[4 + changed_count],
+        applied_target_indexes=tuple(successful_indexes),
+        rollback_target_indexes=(),
+        expected_previous_sha256=journal_state["sha256"],
+    )
+    return _PrivateAppliedState(
+        storage_targets=prepared.storage_targets,
+        preimages=prepared.preimages,
+        staged_proposals=prepared.staged_proposals,
+        recovery_manifest=prepared.recovery_manifest,
+        applied_target_indexes=tuple(successful_indexes),
+        journal_sha256=journal_state["sha256"],
+        created_at=prepared.created_at,
+        _workspace=prepared._workspace,
+    )
+
+
+def _reconciled_rollback_prefix(prepared, successful_indexes):
+    changed = tuple(
+        (target, preimage)
+        for target, preimage in zip(
+            prepared.storage_targets,
+            prepared.preimages,
+        )
+        if target.changed and target.role != "evidence"
+    )
+    states = tuple(
+        transaction_storage.classify_canonical_target(
+            prepared._workspace,
+            target,
+        )
+        for target, _preimage in changed
+    )
+    after_positions = tuple(
+        position
+        for position, state in enumerate(states)
+        if state == "after"
+    )
+    prefix_length = max(
+        len(successful_indexes),
+        (after_positions[-1] + 1) if after_positions else 0,
+    )
+    expected_successful = tuple(
+        target.index
+        for target, _preimage in changed[:len(successful_indexes)]
+    )
+    if (
+        tuple(successful_indexes) != expected_successful
+        or any(state != "before" for state in states[prefix_length:])
+    ):
+        raise transaction_storage.LifecycleStorageError(
+            "STORAGE_CANONICAL_STATE_UNKNOWN"
+        )
+    return tuple(
+        (target, preimage, states[position])
+        for position, (target, preimage) in enumerate(changed[:prefix_length])
+    )
+
+
+def _rollback_failed_apply(
+    prepared,
+    plan,
+    original_error,
+    successful_indexes,
+    latest_sha256,
+    timestamps,
+    changed_count,
+):
+    confirmed_applied = tuple(successful_indexes)
+    confirmed_rollback = []
+    rollback_failure_types = (
+        transaction_storage.LifecycleCanonicalConflict,
+        transaction_storage.LifecycleStorageError,
+        LifecycleJournalError,
+    )
+    try:
+        prefix = _reconciled_rollback_prefix(prepared, successful_indexes)
+        confirmed_applied = tuple(
+            target.index for target, _preimage, _state in prefix
+        )
+        latest_sha256 = _persist_progress_journal(
+            prepared,
+            plan,
+            phase="rolling-back",
+            updated_at=timestamps[5 + changed_count],
+            applied_target_indexes=confirmed_applied,
+            rollback_target_indexes=(),
+            expected_previous_sha256=latest_sha256,
+        )
+        for target, preimage, state in reversed(prefix):
+            if state == "after":
+                transaction_storage.rollback_canonical_target(
+                    prepared._workspace,
+                    target,
+                    preimage,
+                )
+            confirmed_rollback.append(target.index)
+            latest_sha256 = _persist_progress_journal(
+                prepared,
+                plan,
+                phase="rolling-back",
+                updated_at=(
+                    timestamps[
+                        5 + changed_count + len(confirmed_rollback)
+                    ]
+                ),
+                applied_target_indexes=confirmed_applied,
+                rollback_target_indexes=tuple(confirmed_rollback),
+                expected_previous_sha256=latest_sha256,
+            )
+        latest_sha256 = _persist_progress_journal(
+            prepared,
+            plan,
+            phase="rolled-back",
+            updated_at=timestamps[6 + 2 * changed_count],
+            applied_target_indexes=confirmed_applied,
+            rollback_target_indexes=tuple(confirmed_rollback),
+            expected_previous_sha256=latest_sha256,
+        )
+    except rollback_failure_types as rollback_error:
+        try:
+            latest_sha256 = _persist_progress_journal(
+                prepared,
+                plan,
+                phase="recovery-required",
+                updated_at=timestamps[-1],
+                applied_target_indexes=confirmed_applied,
+                rollback_target_indexes=tuple(confirmed_rollback),
+                expected_previous_sha256=latest_sha256,
+            )
+        except rollback_failure_types:
+            pass
+        raise LifecycleRecoveryRequired(
+            original_error_code=original_error.code,
+            rollback_error_code=rollback_error.code,
+            applied_target_indexes=confirmed_applied,
+            rollback_target_indexes=tuple(confirmed_rollback),
+            journal_sha256=latest_sha256,
+        ) from rollback_error
+    raise LifecycleApplyRolledBack(
+        original_error_code=original_error.code,
+        applied_target_indexes=confirmed_applied,
+        rollback_target_indexes=tuple(confirmed_rollback),
+        journal_sha256=latest_sha256,
+    ) from original_error
+
+
 @contextmanager
 def _private_applied_workspace(
     plan: LifecycleTransactionPlan,
@@ -1865,14 +2182,22 @@ def _private_applied_workspace(
         for target in storage_targets
         if target.changed and target.role != "evidence"
     )
+    changed_count = len(changed_ordinary)
     timestamps = _journal_timestamps(
         journal_clock,
-        5 + len(changed_ordinary),
+        8 + 2 * changed_count,
     )
     validate_journal_phase_transition("prepared", "applying")
     for _index in changed_ordinary:
         validate_journal_phase_transition("applying", "applying")
     validate_journal_phase_transition("applying", "post-validating")
+    for phase in ("prepared", "applying", "post-validating"):
+        validate_journal_phase_transition(phase, "rolling-back")
+        validate_journal_phase_transition(phase, "recovery-required")
+    for _index in changed_ordinary:
+        validate_journal_phase_transition("rolling-back", "rolling-back")
+    validate_journal_phase_transition("rolling-back", "rolled-back")
+    validate_journal_phase_transition("rolling-back", "recovery-required")
     prepared_clock = iter(timestamps[:3])
 
     with _private_prepared_workspace(
@@ -1882,74 +2207,31 @@ def _private_applied_workspace(
         lock_pid=lock_pid,
         lock_token_factory=lock_token_factory,
     ) as prepared:
-        journal_sha256 = prepared.journal_sha256
-        applying_bytes = _serialized_journal_bytes(
-            plan,
-            "applying",
-            created_at=prepared.created_at,
-            updated_at=timestamps[3],
-            recovery_manifest_sha256=prepared.recovery_manifest.sha256,
-        )
-        journal_sha256 = transaction_storage.persist_serialized_journal(
-            prepared._workspace,
-            applying_bytes,
-            expected_previous_sha256=journal_sha256,
-        )
-        applied = []
-        for target, proposal in zip(
-            prepared.storage_targets,
-            prepared.staged_proposals,
-        ):
-            if target.role == "evidence":
-                break
-            if not target.changed:
-                transaction_storage.verify_canonical_target(
-                    prepared._workspace,
-                    target,
-                )
-                continue
-            index = transaction_storage.apply_staged_target(
-                prepared._workspace,
-                target,
-                proposal,
-            )
-            applied.append(index)
-            progress_bytes = _serialized_journal_bytes(
+        successful_indexes = []
+        journal_state = {"sha256": prepared.journal_sha256}
+        try:
+            applied_state = _apply_prepared_targets(
+                prepared,
                 plan,
-                "applying",
-                created_at=prepared.created_at,
-                updated_at=timestamps[3 + len(applied)],
-                recovery_manifest_sha256=prepared.recovery_manifest.sha256,
-                applied_target_indexes=tuple(applied),
+                timestamps,
+                successful_indexes,
+                journal_state,
             )
-            journal_sha256 = transaction_storage.persist_serialized_journal(
-                prepared._workspace,
-                progress_bytes,
-                expected_previous_sha256=journal_sha256,
+        except (
+            transaction_storage.LifecycleCanonicalConflict,
+            transaction_storage.LifecycleStorageError,
+            LifecycleJournalError,
+        ) as original_error:
+            _rollback_failed_apply(
+                prepared,
+                plan,
+                original_error,
+                tuple(successful_indexes),
+                journal_state["sha256"],
+                timestamps,
+                changed_count,
             )
-        post_bytes = _serialized_journal_bytes(
-            plan,
-            "post-validating",
-            created_at=prepared.created_at,
-            updated_at=timestamps[-1],
-            recovery_manifest_sha256=prepared.recovery_manifest.sha256,
-            applied_target_indexes=tuple(applied),
-        )
-        journal_sha256 = transaction_storage.persist_serialized_journal(
-            prepared._workspace,
-            post_bytes,
-            expected_previous_sha256=journal_sha256,
-        )
-        yield _PrivateAppliedState(
-            storage_targets=prepared.storage_targets,
-            preimages=prepared.preimages,
-            staged_proposals=prepared.staged_proposals,
-            recovery_manifest=prepared.recovery_manifest,
-            applied_target_indexes=tuple(applied),
-            journal_sha256=journal_sha256,
-            created_at=prepared.created_at,
-            _workspace=prepared._workspace,
-        )
+        yield applied_state
 
 
 @contextmanager

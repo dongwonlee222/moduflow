@@ -1161,6 +1161,82 @@ class TransactionPlanningTests(unittest.TestCase):
             )
         return replace(plan, targets=tuple(targets))
 
+    def test_rollback_signals_are_validated_detached_and_redacted(self):
+        rolled_back = transaction.LifecycleApplyRolledBack(
+            original_error_code="STORAGE_REPLACE_FAILED",
+            applied_target_indexes=(0, 2),
+            rollback_target_indexes=(2, 0),
+            journal_sha256="1" * 64,
+        )
+        self.assertEqual(rolled_back.code, "TRANSACTION_ROLLED_BACK")
+        self.assertEqual(
+            rolled_back.original_error_code,
+            "STORAGE_REPLACE_FAILED",
+        )
+        self.assertEqual(rolled_back.applied_target_indexes, (0, 2))
+        self.assertEqual(rolled_back.rollback_target_indexes, (2, 0))
+        self.assertEqual(rolled_back.journal_sha256, "1" * 64)
+        self.assertEqual(str(rolled_back), "TRANSACTION_ROLLED_BACK")
+        self.assertEqual(
+            repr(rolled_back),
+            "LifecycleApplyRolledBack('TRANSACTION_ROLLED_BACK')",
+        )
+
+        recovery = transaction.LifecycleRecoveryRequired(
+            original_error_code="STORAGE_REPLACE_FAILED",
+            rollback_error_code="STORAGE_VERIFY_FAILED",
+            applied_target_indexes=(0, 2),
+            rollback_target_indexes=(2,),
+            journal_sha256="2" * 64,
+        )
+        self.assertEqual(recovery.code, "TRANSACTION_RECOVERY_REQUIRED")
+        self.assertEqual(
+            recovery.rollback_error_code,
+            "STORAGE_VERIFY_FAILED",
+        )
+        self.assertEqual(recovery.applied_target_indexes, (0, 2))
+        self.assertEqual(recovery.rollback_target_indexes, (2,))
+        self.assertEqual(str(recovery), "TRANSACTION_RECOVERY_REQUIRED")
+        self.assertEqual(
+            repr(recovery),
+            "LifecycleRecoveryRequired('TRANSACTION_RECOVERY_REQUIRED')",
+        )
+
+        invalid = (
+            {"applied_target_indexes": [0, 2]},
+            {"applied_target_indexes": (False, 2)},
+            {"applied_target_indexes": (-1, 2)},
+            {"applied_target_indexes": (0, 0)},
+            {"applied_target_indexes": (2, 0)},
+            {"rollback_target_indexes": (0,)},
+            {"rollback_target_indexes": (2, 2)},
+            {"original_error_code": "unsafe value"},
+            {"journal_sha256": "not-a-hash"},
+        )
+        defaults = {
+            "original_error_code": "STORAGE_REPLACE_FAILED",
+            "applied_target_indexes": (0, 2),
+            "rollback_target_indexes": (2,),
+            "journal_sha256": "3" * 64,
+        }
+        for changes in invalid:
+            with self.subTest(changes=changes):
+                values = dict(defaults)
+                values.update(changes)
+                with self.assertRaises(transaction.LifecycleJournalError) as raised:
+                    transaction.LifecycleApplyRolledBack(**values)
+                self.assertEqual(
+                    raised.exception.code,
+                    "JOURNAL_RECORD_INVALID",
+                )
+
+        with self.assertRaises(transaction.LifecycleJournalError) as raised:
+            transaction.LifecycleRecoveryRequired(
+                rollback_error_code="unsafe value",
+                **defaults,
+            )
+        self.assertEqual(raised.exception.code, "JOURNAL_RECORD_INVALID")
+
     def test_plan_selects_required_and_only_explicit_optional_targets(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -2158,7 +2234,10 @@ class TransactionPlanningTests(unittest.TestCase):
             )
             timestamp_values = tuple(
                 f"2030-01-02T03:04:{second:02d}Z"
-                for second in range(5, 10 + len(changed_ordinary))
+                for second in range(
+                    5,
+                    5 + 8 + 2 * len(changed_ordinary),
+                )
             )
             timestamps = iter(timestamp_values)
             persisted = []
@@ -2256,7 +2335,7 @@ class TransactionPlanningTests(unittest.TestCase):
                     )
                     self.assertEqual(
                         [journal["updated_at"] for journal in journals],
-                        list(timestamp_values),
+                        list(timestamp_values[:len(journals)]),
                     )
                     self.assertEqual(
                         [previous for _payload, previous in persisted],
@@ -2309,7 +2388,7 @@ class TransactionPlanningTests(unittest.TestCase):
                         canonical_before[target.relative_path],
                     )
 
-    def test_private_applied_workspace_prevalidates_every_timestamp_before_lock_or_storage(self):
+    def test_private_applied_workspace_prevalidates_all_forward_and_rollback_timestamps_before_lock(self):
         entry = getattr(transaction, "_private_applied_workspace", None)
         self.assertIsNotNone(entry)
         with tempfile.TemporaryDirectory() as tmp:
@@ -2327,7 +2406,7 @@ class TransactionPlanningTests(unittest.TestCase):
                 for target in plan.targets
                 if target.changed and target.role != "evidence"
             )
-            required = 5 + len(changed_ordinary)
+            required = 8 + 2 * len(changed_ordinary)
             canonical_before = {
                 target.relative_path: (
                     (root / target.relative_path).read_bytes()
@@ -2382,7 +2461,16 @@ class TransactionPlanningTests(unittest.TestCase):
                             transaction.transaction_storage,
                             "apply_staged_target",
                         ) as apply_target,
+                        mock.patch.object(
+                            transaction.transaction_storage,
+                            "classify_canonical_target",
+                        ) as classify_target,
+                        mock.patch.object(
+                            transaction.transaction_storage,
+                            "rollback_canonical_target",
+                        ) as rollback_target,
                         mock.patch.object(transaction.os, "replace") as replace_file,
+                        mock.patch.object(transaction.os, "unlink") as unlink_file,
                         mock.patch.object(transaction.os, "fsync") as sync_file,
                     ):
                         with self.assertRaises(
@@ -2407,7 +2495,10 @@ class TransactionPlanningTests(unittest.TestCase):
                         finalize_manifest,
                         verify_target,
                         apply_target,
+                        classify_target,
+                        rollback_target,
                         replace_file,
+                        unlink_file,
                         sync_file,
                     ):
                         operation.assert_not_called()
@@ -2424,14 +2515,214 @@ class TransactionPlanningTests(unittest.TestCase):
                         canonical_before,
                     )
 
-    def test_private_applied_workspace_retains_inspectable_state_on_apply_and_progress_journal_failures(self):
+    def test_private_applied_workspace_rolls_back_attempted_prefix_in_reverse_under_same_lock(self):
         entry = getattr(transaction, "_private_applied_workspace", None)
         self.assertIsNotNone(entry)
-        for failure, expected_code in (
-            ("conflict-before-first", "CANONICAL_PREIMAGE_CONFLICT"),
-            ("storage-after-first", "STORAGE_REPLACE_FAILED"),
-            ("journal-after-first", "STORAGE_WRITE_FAILED"),
-        ):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(require_issue_index=True),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            changed_ordinary = tuple(
+                target.apply_order
+                for target in plan.targets
+                if target.changed and target.role != "evidence"
+            )
+            self.assertGreaterEqual(len(changed_ordinary), 3)
+            canonical_before = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if target.existed
+                    else None
+                )
+                for target in plan.targets
+            }
+            evidence = plan.targets[-1]
+            self.assertEqual(evidence.role, "evidence")
+            lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+            workspace_path = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            timestamp_values = tuple(
+                f"2030-01-02T03:04:{second:02d}Z"
+                for second in range(5, 5 + 8 + 2 * len(changed_ordinary))
+            )
+            timestamps = iter(timestamp_values)
+            persisted = []
+            rollback_calls = []
+            apply_calls = 0
+            real_apply = transaction.transaction_storage.apply_staged_target
+            real_classify = (
+                transaction.transaction_storage.classify_canonical_target
+            )
+            real_rollback = (
+                transaction.transaction_storage.rollback_canonical_target
+            )
+            real_persist = (
+                transaction.transaction_storage.persist_serialized_journal
+            )
+
+            def failing_apply(workspace, target, proposal):
+                nonlocal apply_calls
+                apply_calls += 1
+                result = real_apply(workspace, target, proposal)
+                if apply_calls == 3:
+                    raise transaction.transaction_storage.LifecycleStorageError(
+                        "STORAGE_REPLACE_FAILED"
+                    )
+                return result
+
+            def tracked_classify(workspace, target):
+                self.assertTrue(lock_path.is_file())
+                return real_classify(workspace, target)
+
+            def tracked_rollback(workspace, target, preimage):
+                self.assertTrue(lock_path.is_file())
+                rollback_calls.append(target.index)
+                return real_rollback(workspace, target, preimage)
+
+            def tracked_persist(
+                workspace,
+                journal_bytes,
+                *,
+                expected_previous_sha256,
+            ):
+                self.assertTrue(lock_path.is_file())
+                persisted.append((bytes(journal_bytes), expected_previous_sha256))
+                return real_persist(
+                    workspace,
+                    journal_bytes,
+                    expected_previous_sha256=expected_previous_sha256,
+                )
+
+            with (
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "apply_staged_target",
+                    side_effect=failing_apply,
+                ),
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "classify_canonical_target",
+                    side_effect=tracked_classify,
+                ),
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "rollback_canonical_target",
+                    side_effect=tracked_rollback,
+                ),
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "persist_serialized_journal",
+                    side_effect=tracked_persist,
+                ),
+            ):
+                with self.assertRaises(
+                    transaction.LifecycleApplyRolledBack
+                ) as raised:
+                    with entry(
+                        plan,
+                        journal_clock=lambda: next(timestamps),
+                        lock_clock="2030-01-02T03:04:05Z",
+                        lock_pid=123,
+                        lock_token_factory=lambda: "1" * 32,
+                    ):
+                        self.fail("failed apply must not yield")
+
+            attempted = changed_ordinary[:3]
+            self.assertEqual(raised.exception.code, "TRANSACTION_ROLLED_BACK")
+            self.assertEqual(
+                raised.exception.original_error_code,
+                "STORAGE_REPLACE_FAILED",
+            )
+            self.assertEqual(raised.exception.applied_target_indexes, attempted)
+            self.assertEqual(
+                raised.exception.rollback_target_indexes,
+                tuple(reversed(attempted)),
+            )
+            self.assertEqual(rollback_calls, list(reversed(attempted)))
+            self.assertFalse(lock_path.exists())
+            self.assertTrue(workspace_path.is_dir())
+            self.assertTrue((workspace_path / "preimages").is_dir())
+            self.assertTrue(
+                (workspace_path / "recovery-manifest.json").is_file()
+            )
+            for target in plan.targets:
+                canonical = root / target.relative_path
+                self.assertEqual(
+                    canonical.read_bytes() if canonical.exists() else None,
+                    canonical_before[target.relative_path],
+                )
+            evidence_stages = tuple(
+                proposal
+                for proposal in root.glob("**/.moduflow-stage-*")
+                if proposal.read_bytes() == evidence._after_bytes
+            )
+            self.assertTrue(evidence_stages)
+
+            journals = [json.loads(payload) for payload, _previous in persisted]
+            suffix = [
+                (
+                    journal["phase"],
+                    journal["applied_target_indexes"],
+                    journal["rollback_target_indexes"],
+                )
+                for journal in journals[-5:]
+            ]
+            self.assertEqual(
+                suffix,
+                [
+                    ("rolling-back", list(attempted), []),
+                    ("rolling-back", list(attempted), [attempted[2]]),
+                    (
+                        "rolling-back",
+                        list(attempted),
+                        [attempted[2], attempted[1]],
+                    ),
+                    (
+                        "rolling-back",
+                        list(attempted),
+                        [attempted[2], attempted[1], attempted[0]],
+                    ),
+                    (
+                        "rolled-back",
+                        list(attempted),
+                        [attempted[2], attempted[1], attempted[0]],
+                    ),
+                ],
+            )
+            self.assertEqual(
+                [previous for _payload, previous in persisted],
+                ["absent"]
+                + [
+                    hashlib.sha256(payload).hexdigest()
+                    for payload, _previous in persisted[:-1]
+                ],
+            )
+            self.assertTrue(
+                all(
+                    journal["created_at"] == timestamp_values[0]
+                    for journal in journals
+                )
+            )
+
+    def test_private_applied_workspace_persists_recovery_required_and_retains_state_on_rollback_failures(self):
+        entry = getattr(transaction, "_private_applied_workspace", None)
+        self.assertIsNotNone(entry)
+        failures = (
+            "classification",
+            "restore-existing",
+            "remove-new",
+            "rollback-progress-journal",
+            "rolled-back-journal",
+            "recovery-required-journal",
+        )
+        for failure in failures:
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 context = self.scaffold(root)
@@ -2447,7 +2738,14 @@ class TransactionPlanningTests(unittest.TestCase):
                     for target in plan.targets
                     if target.changed and target.role != "evidence"
                 )
-                self.assertGreaterEqual(len(changed_ordinary), 2)
+                new_index = next(
+                    target.apply_order
+                    for target in plan.targets
+                    if target.changed
+                    and not target.existed
+                    and target.role != "evidence"
+                )
+                self.assertEqual(new_index, changed_ordinary[-1])
                 canonical_before = {
                     target.relative_path: (
                         (root / target.relative_path).read_bytes()
@@ -2465,30 +2763,61 @@ class TransactionPlanningTests(unittest.TestCase):
                 )
                 timestamp_values = iter(
                     f"2030-01-02T03:04:{second:02d}Z"
-                    for second in range(5, 10 + len(changed_ordinary))
+                    for second in range(
+                        5,
+                        5 + 8 + 2 * len(changed_ordinary),
+                    )
                 )
                 real_apply = transaction.transaction_storage.apply_staged_target
+                real_classify = (
+                    transaction.transaction_storage.classify_canonical_target
+                )
+                real_rollback = (
+                    transaction.transaction_storage.rollback_canonical_target
+                )
                 real_persist = (
                     transaction.transaction_storage.persist_serialized_journal
                 )
-                successful_indexes = []
                 apply_calls = 0
-                persist_calls = 0
+                rollback_calls = []
+                recovery_persist_calls = 0
 
                 def failing_apply(workspace, target, proposal):
                     nonlocal apply_calls
                     apply_calls += 1
-                    if failure == "conflict-before-first":
-                        raise transaction.transaction_storage.LifecycleCanonicalConflict(
-                            target.index
-                        )
-                    if failure == "storage-after-first" and apply_calls == 2:
+                    result = real_apply(workspace, target, proposal)
+                    if apply_calls == len(changed_ordinary):
                         raise transaction.transaction_storage.LifecycleStorageError(
                             "STORAGE_REPLACE_FAILED"
                         )
-                    result = real_apply(workspace, target, proposal)
-                    successful_indexes.append(result)
                     return result
+
+                def failing_classify(workspace, target):
+                    self.assertTrue(lock_path.is_file())
+                    if failure in {
+                        "classification",
+                        "recovery-required-journal",
+                    }:
+                        raise transaction.transaction_storage.LifecycleStorageError(
+                            "STORAGE_CANONICAL_STATE_UNKNOWN"
+                        )
+                    return real_classify(workspace, target)
+
+                def failing_rollback(workspace, target, preimage):
+                    self.assertTrue(lock_path.is_file())
+                    rollback_calls.append(target.index)
+                    if failure == "remove-new" and target.index == new_index:
+                        raise transaction.transaction_storage.LifecycleStorageError(
+                            "STORAGE_REMOVE_FAILED"
+                        )
+                    if (
+                        failure == "restore-existing"
+                        and target.index == changed_ordinary[-2]
+                    ):
+                        raise transaction.transaction_storage.LifecycleStorageError(
+                            "STORAGE_VERIFY_FAILED"
+                        )
+                    return real_rollback(workspace, target, preimage)
 
                 def failing_persist(
                     workspace,
@@ -2496,9 +2825,26 @@ class TransactionPlanningTests(unittest.TestCase):
                     *,
                     expected_previous_sha256,
                 ):
-                    nonlocal persist_calls
-                    persist_calls += 1
-                    if failure == "journal-after-first" and persist_calls == 5:
+                    nonlocal recovery_persist_calls
+                    journal = json.loads(journal_bytes)
+                    if journal["phase"] == "recovery-required":
+                        recovery_persist_calls += 1
+                        if failure == "recovery-required-journal":
+                            raise transaction.transaction_storage.LifecycleStorageError(
+                                "STORAGE_WRITE_FAILED"
+                            )
+                    if (
+                        failure == "rollback-progress-journal"
+                        and journal["phase"] == "rolling-back"
+                        and journal["rollback_target_indexes"]
+                    ):
+                        raise transaction.transaction_storage.LifecycleStorageError(
+                            "STORAGE_WRITE_FAILED"
+                        )
+                    if (
+                        failure == "rolled-back-journal"
+                        and journal["phase"] == "rolled-back"
+                    ):
                         raise transaction.transaction_storage.LifecycleStorageError(
                             "STORAGE_WRITE_FAILED"
                         )
@@ -2516,11 +2862,23 @@ class TransactionPlanningTests(unittest.TestCase):
                     ),
                     mock.patch.object(
                         transaction.transaction_storage,
+                        "classify_canonical_target",
+                        side_effect=failing_classify,
+                    ),
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "rollback_canonical_target",
+                        side_effect=failing_rollback,
+                    ),
+                    mock.patch.object(
+                        transaction.transaction_storage,
                         "persist_serialized_journal",
                         side_effect=failing_persist,
                     ),
                 ):
-                    with self.assertRaises(RuntimeError) as raised:
+                    with self.assertRaises(
+                        transaction.LifecycleRecoveryRequired
+                    ) as raised:
                         with entry(
                             plan,
                             journal_clock=lambda: next(timestamp_values),
@@ -2530,44 +2888,138 @@ class TransactionPlanningTests(unittest.TestCase):
                         ):
                             self.fail("failed apply must not yield")
 
-                self.assertEqual(raised.exception.code, expected_code)
+                self.assertEqual(
+                    raised.exception.code,
+                    "TRANSACTION_RECOVERY_REQUIRED",
+                )
+                self.assertEqual(
+                    raised.exception.original_error_code,
+                    "STORAGE_REPLACE_FAILED",
+                )
+                expected_rollback_error = {
+                    "classification": "STORAGE_CANONICAL_STATE_UNKNOWN",
+                    "restore-existing": "STORAGE_VERIFY_FAILED",
+                    "remove-new": "STORAGE_REMOVE_FAILED",
+                    "rollback-progress-journal": "STORAGE_WRITE_FAILED",
+                    "rolled-back-journal": "STORAGE_WRITE_FAILED",
+                    "recovery-required-journal": (
+                        "STORAGE_CANONICAL_STATE_UNKNOWN"
+                    ),
+                }[failure]
+                self.assertEqual(
+                    raised.exception.rollback_error_code,
+                    expected_rollback_error,
+                )
+                self.assertEqual(str(raised.exception), raised.exception.code)
+                self.assertNotIn(str(root), repr(raised.exception))
+                self.assertLessEqual(
+                    len(raised.exception.rollback_target_indexes),
+                    len(raised.exception.applied_target_indexes),
+                )
+                self.assertEqual(recovery_persist_calls, 1)
                 self.assertFalse(lock_path.exists())
                 self.assertTrue(workspace_path.is_dir())
                 self.assertTrue((workspace_path / "preimages").is_dir())
                 self.assertTrue(
                     (workspace_path / "recovery-manifest.json").is_file()
                 )
+                self.assertTrue((workspace_path / "journal.json").is_file())
                 journal = json.loads(
                     (workspace_path / "journal.json").read_bytes()
                 )
-                self.assertEqual(journal["phase"], "applying")
-                expected_durable = (
-                    []
-                    if failure in {"conflict-before-first", "journal-after-first"}
-                    else [changed_ordinary[0]]
-                )
                 self.assertEqual(
-                    journal["applied_target_indexes"],
-                    expected_durable,
+                    journal["phase"],
+                    (
+                        "applying"
+                        if failure == "recovery-required-journal"
+                        else "recovery-required"
+                    ),
                 )
-                self.assertEqual(journal["rollback_target_indexes"], [])
+                self.assertTrue(tuple(root.glob("**/.moduflow-stage-*")))
                 self.assertEqual(
                     (root / evidence.relative_path).read_bytes()
                     if (root / evidence.relative_path).exists()
                     else None,
                     canonical_before[evidence.relative_path],
                 )
-                stages = tuple(root.glob("**/.moduflow-stage-*"))
-                self.assertTrue(stages)
-                for target in plan.targets:
-                    canonical = root / target.relative_path
-                    if target.apply_order in successful_indexes:
-                        self.assertEqual(canonical.read_bytes(), target._after_bytes)
-                    else:
-                        self.assertEqual(
-                            canonical.read_bytes() if canonical.exists() else None,
-                            canonical_before[target.relative_path],
-                        )
+
+    def test_private_applied_workspace_does_not_rollback_caller_body_exception(self):
+        entry = getattr(transaction, "_private_applied_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(require_issue_index=True),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            changed_ordinary = tuple(
+                target.apply_order
+                for target in plan.targets
+                if target.changed and target.role != "evidence"
+            )
+            timestamps = iter(
+                f"2030-01-02T03:04:{second:02d}Z"
+                for second in range(
+                    5,
+                    5 + 8 + 2 * len(changed_ordinary),
+                )
+            )
+            canonical_after = {}
+            with (
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "classify_canonical_target",
+                ) as classify_target,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "rollback_canonical_target",
+                ) as rollback_target,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "CALLER FAILURE"):
+                    with entry(
+                        plan,
+                        journal_clock=lambda: next(timestamps),
+                        lock_clock="2030-01-02T03:04:05Z",
+                        lock_pid=123,
+                        lock_token_factory=lambda: "1" * 32,
+                    ):
+                        canonical_after = {
+                            target.relative_path: (
+                                (root / target.relative_path).read_bytes()
+                                if (root / target.relative_path).exists()
+                                else None
+                            )
+                            for target in plan.targets
+                        }
+                        raise RuntimeError("CALLER FAILURE")
+            classify_target.assert_not_called()
+            rollback_target.assert_not_called()
+            self.assertEqual(
+                {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if (root / target.relative_path).exists()
+                        else None
+                    )
+                    for target in plan.targets
+                },
+                canonical_after,
+            )
+            journal_path = (
+                root
+                / ".moduflow"
+                / "transactions"
+                / plan.transaction_id
+                / "journal.json"
+            )
+            self.assertEqual(
+                json.loads(journal_path.read_bytes())["phase"],
+                "post-validating",
+            )
 
     def test_exclusive_lifecycle_lock_creates_redacted_owner_and_releases(self):
         entry = getattr(transaction, "_exclusive_lifecycle_lock", None)
