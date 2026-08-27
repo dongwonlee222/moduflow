@@ -33,11 +33,14 @@ The A2 planner continues to return a provisional evidence target. B2d accepts th
 3. builds one strict internal `applied` result candidate;
 4. renders final evidence through the existing `render_transaction_evidence()` boundary;
 5. replaces only the final planned evidence target's proposed bytes, size, and SHA-256 in a detached rebound plan;
-6. rebuilds the strict internal result candidate with the rebound target metadata and proves the rendered evidence bytes are unchanged.
+6. rebuilds the strict internal result candidate with the rebound target metadata and proves the rendered evidence bytes are unchanged;
+7. requires the rebound evidence target to be changed.
 
 The rendered evidence omits the final evidence target entirely, so changing that target's own size or hash cannot change the evidence bytes. This removes self-reference and lets the final evidence proposal exist before staging.
 
 The rebound plan, not the provisional plan, is passed to preflight, preimage storage, proposal staging, recovery-manifest generation, journal serialization, apply, post-validation, finalization, and rollback. Therefore the first durable recovery manifest already describes the final evidence proposal. B2d never rewrites a staged evidence file or recovery manifest after post-validation.
+
+An exact existing final evidence target is an idempotent replay, not a B2d success path. B2d rejects it before I/O with `FINALIZATION_EVIDENCE_ALREADY_PRESENT`; B2e will detect the completed transaction and return public `noop` before invoking this private completion boundary.
 
 ### Private completion input
 
@@ -66,7 +69,7 @@ The success sequence is:
 3. persist `post-validating` and run B2c exact target proof plus one canonical validator call;
 4. compare the actual redacted post-apply summary with the prebound successful summary;
 5. persist `finalizing` with the complete ordinary applied prefix;
-6. when evidence changed, finalize it last and persist a second `finalizing` snapshot with evidence progress; otherwise prove the unchanged evidence preimage without replacement;
+6. finalize the changed evidence target last and persist a second `finalizing` snapshot with evidence progress;
 7. prove every changed target exact after and every unchanged target exact before;
 8. persist terminal `complete` with all changed indexes;
 9. yield `_PrivateCompletedState` while the same lock and private workspace remain owned by the context manager.
@@ -90,7 +93,7 @@ def rollback_finalized_evidence(workspace, target, preimage) -> int:
     """Restore or remove one exact-after evidence target to exact before."""
 ```
 
-Each function requires `target.role == "evidence"`; the existing ordinary functions continue to reject evidence. Unchanged evidence is never replaced and remains verified through `verify_canonical_target()`.
+Each function requires `target.role == "evidence"` and `target.changed is True`; the existing ordinary functions continue to reject evidence.
 
 ### Private completed state
 
@@ -124,9 +127,9 @@ B2d uses the existing phases and adds no journal field or schema:
 post-validating -> finalizing -> finalizing -> complete
 ```
 
-The first `finalizing` snapshot records all changed ordinary indexes. When evidence changed, the second records its index after exact evidence replacement. Unchanged evidence causes no replacement and no duplicate progress snapshot. `complete` records every changed index in plan order and no rollback indexes.
+The first `finalizing` snapshot records all changed ordinary indexes. The second records the changed evidence index after exact evidence replacement. `complete` records every changed index in plan order and no rollback indexes.
 
-All timestamps are read and validated before lock acquisition. The count covers the longest finalization-then-rollback path, not merely the success path. Let `n` be the changed ordinary-target count and `e` be `1` when evidence changed or `0` when it remained exact before. Prevalidate exactly `9 + 2*n + 2*e` timestamps. When `e == 1`, the longest path includes:
+All timestamps are read and validated before lock acquisition. The count covers the longest finalization-then-rollback path, not merely the success path. For `n` changed ordinary targets, prevalidate exactly `11 + 2*n` timestamps. The longest path includes:
 
 - three preparation timestamps;
 - applying start plus `n` ordinary progress timestamps;
@@ -136,7 +139,7 @@ All timestamps are read and validated before lock acquisition. The count covers 
 - one rolled-back timestamp;
 - one reserved recovery-required timestamp.
 
-When `e == 0`, evidence progress and evidence rollback timestamps are absent. Unused branch timestamps remain private. No clock read occurs under the lock.
+Unused branch timestamps remain private. No clock read occurs under the lock.
 
 ## Complete After-State Proof
 
@@ -144,7 +147,7 @@ Before `complete`, verify every target in plan order:
 
 - changed non-evidence: `classify_canonical_target()` must return `after`;
 - changed evidence: `classify_finalized_evidence()` must return `after`;
-- unchanged target, including unchanged evidence: `verify_canonical_target()` must prove exact before.
+- unchanged non-evidence target: `verify_canonical_target()` must prove exact before.
 
 The verified count must equal the full target count. Any exact-before changed target is a bounded finalization failure. Any unknown, foreign, unsafe, or unprovable state enters rollback and never writes `complete`.
 
@@ -165,6 +168,7 @@ Finalization remains inside the existing bounded pre-yield failure boundary.
 Add one bounded `LifecycleFinalizationError` whose string and representation expose only one of these exact codes:
 
 - `FINALIZATION_INPUT_INVALID`: completion input, projected summary, result candidate, or evidence binding is inconsistent before I/O;
+- `FINALIZATION_EVIDENCE_ALREADY_PRESENT`: rebound final evidence is already exact and must be classified as replay by B2e;
 - `FINALIZATION_POST_APPLY_MISMATCH`: the actual successful B2c summary differs from the prebound expected summary;
 - `FINALIZATION_TARGET_MISMATCH`: a target is exact before where finalization requires exact after.
 
@@ -191,7 +195,7 @@ Keep B2c as the end of the private engine and combine evidence with B2e/B2f. Rej
 Implementation follows RED/GREEN TDD with focused local tests.
 
 1. Prove final evidence bytes are bound before lock and are identical when only self-target metadata changes.
-2. Prove the first recovery manifest and changed staged evidence already contain the final evidence bytes and hash; unchanged final evidence remains verified and unstaged.
+2. Prove the first recovery manifest and staged evidence already contain the final evidence bytes and hash; exact existing final evidence fails before I/O for later B2e replay handling.
 3. Prove success persists exact `finalizing`, evidence-progress, and `complete` journal order under one lock.
 4. Prove evidence is replaced last, uses mode `0600`, and canonical bytes equal `render_transaction_evidence(transaction_result)`.
 5. Prove complete after-state verification covers changed ordinary, changed evidence, and unchanged targets in plan order.
