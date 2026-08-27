@@ -46,8 +46,8 @@ Add one frozen private completion input that carries only information unavailabl
 ```python
 @dataclass(frozen=True)
 class _PrivateCompletionInput:
-    intent: LifecycleIntent
-    next_command: str
+    intent: LifecycleIntent = field(repr=False, compare=False)
+    next_command: str = field(repr=False, compare=False)
     projected_validation: object = field(repr=False, compare=False)
 ```
 
