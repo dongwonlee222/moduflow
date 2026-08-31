@@ -625,6 +625,15 @@ class _PrivateRecoveryCleanupCandidate:
 
 
 @dataclass(frozen=True)
+class _RecoveredCleanupState:
+    terminal_kind: str
+    remainder_kind: str
+    verified_target_count: int
+    _inventory: object = field(repr=False, compare=False)
+    _workspace: object = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
 class _PrivateEvidenceBinding:
     plan: LifecycleTransactionPlan = field(repr=False, compare=False)
     transaction_result: object = field(repr=False, compare=False)
@@ -703,6 +712,10 @@ _RECOVERY_CLEANUP_CODES = frozenset({
     "RECOVERY_CLEANUP_INELIGIBLE",
     "RECOVERY_CLEANUP_CANONICAL_UNPROVEN",
     "RECOVERY_CLEANUP_INVENTORY_UNSAFE",
+    "RECOVERY_CLEANUP_REPLACED",
+    "RECOVERY_CLEANUP_DELETE_FAILED",
+    "RECOVERY_CLEANUP_DURABILITY_UNCERTAIN",
+    "RECOVERY_CLEANUP_REMAINDER_UNSAFE",
 })
 
 
@@ -3833,6 +3846,106 @@ def _private_recovered_transaction_workspace(canonical_root, transaction_id):
             recovery_manifest=materials.recovery_manifest,
             _workspace=journal_state._workspace,
         )
+
+
+@contextmanager
+def _private_recovered_cleanup_workspace(canonical_root, transaction_id):
+    """Reopen only one exact cleanup-protocol remainder without mutation."""
+    try:
+        with transaction_storage.reopen_cleanup_workspace(
+            canonical_root,
+            transaction_id,
+        ) as workspace:
+            control = transaction_storage.read_cleanup_control_snapshot(
+                workspace
+            )
+            if (
+                control.journal.state == "absent"
+                and control.journal_next.state == "absent"
+            ):
+                inventory = transaction_storage.verify_cleanup_resume_inventory(
+                    workspace,
+                    (),
+                    control,
+                    terminal_kind="complete",
+                )
+                yield _RecoveredCleanupState(
+                    terminal_kind="unknown",
+                    remainder_kind=inventory.remainder_kind,
+                    verified_target_count=0,
+                    _inventory=inventory,
+                    _workspace=workspace,
+                )
+                return
+
+            if control.journal.state == "present":
+                journal = _load_exact_recovery_journal(
+                    control.journal,
+                    transaction_id,
+                    "RECOVERY_JOURNAL_INVALID",
+                )
+                if journal["phase"] not in {"complete", "rolled-back"}:
+                    raise LifecycleRecoveryCleanupError(
+                        "RECOVERY_CLEANUP_REMAINDER_UNSAFE"
+                    )
+                terminal_kind = journal["phase"]
+            elif control.journal_next.state == "present":
+                journal = _load_exact_recovery_journal(
+                    control.journal_next,
+                    transaction_id,
+                    "RECOVERY_JOURNAL_NEXT_INVALID",
+                )
+                if (
+                    journal["phase"] != "planned"
+                    or journal["recovery_manifest_sha256"] != "absent"
+                ):
+                    raise LifecycleRecoveryCleanupError(
+                        "RECOVERY_CLEANUP_REMAINDER_UNSAFE"
+                    )
+                terminal_kind = "pre-journal-orphan"
+            else:
+                raise LifecycleRecoveryCleanupError(
+                    "RECOVERY_CLEANUP_REMAINDER_UNSAFE"
+                )
+            recovery_targets = _recovery_targets_from_journal(journal)
+            try:
+                verified = len(
+                    transaction_storage.verify_cleanup_canonical_state(
+                        workspace,
+                        recovery_targets,
+                        after=terminal_kind == "complete",
+                    )
+                )
+            except transaction_storage.LifecycleRecoveryStorageError as exc:
+                raise LifecycleRecoveryCleanupError(
+                    "RECOVERY_CLEANUP_CANONICAL_UNPROVEN"
+                ) from exc
+            if verified != len(recovery_targets):
+                raise LifecycleRecoveryCleanupError(
+                    "RECOVERY_CLEANUP_CANONICAL_UNPROVEN"
+                )
+            inventory = transaction_storage.verify_cleanup_resume_inventory(
+                workspace,
+                recovery_targets,
+                control,
+                terminal_kind=terminal_kind,
+            )
+            yield _RecoveredCleanupState(
+                terminal_kind=terminal_kind,
+                remainder_kind=inventory.remainder_kind,
+                verified_target_count=verified,
+                _inventory=inventory,
+                _workspace=workspace,
+            )
+    except LifecycleRecoveryCleanupError:
+        raise
+    except (
+        LifecycleRecoveryReadError,
+        transaction_storage.LifecycleRecoveryStorageError,
+    ) as exc:
+        raise LifecycleRecoveryCleanupError(
+            "RECOVERY_CLEANUP_REMAINDER_UNSAFE"
+        ) from exc
 
 
 def _serialized_recovery_journal_bytes(

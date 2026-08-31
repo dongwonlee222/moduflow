@@ -271,6 +271,15 @@ class _PrivateTransactionWorkspace:
 
 
 @dataclass(frozen=True)
+class _PrivateCleanupWorkspace:
+    transaction_id: str
+    _root_fd: int = field(repr=False, compare=False)
+    _transactions_fd: int = field(repr=False, compare=False)
+    _workspace_fd: int = field(repr=False, compare=False)
+    _preimages_fd: int | None = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
 class _RecoveryFileSnapshot:
     state: str
     size: int
@@ -323,6 +332,27 @@ class _RecoveryCleanupInventory:
         compare=False,
     )
     _recovery_manifest: RecoveryManifest | None = field(
+        repr=False,
+        compare=False,
+    )
+
+
+@dataclass(frozen=True)
+class _CleanupResumeInventory:
+    remainder_kind: str
+    _workspace_directory: _RecoveryDirectorySnapshot = field(
+        repr=False,
+        compare=False,
+    )
+    _preimages_directory: _RecoveryDirectorySnapshot | None = field(
+        repr=False,
+        compare=False,
+    )
+    _control_snapshot: _RecoveryControlSnapshot = field(
+        repr=False,
+        compare=False,
+    )
+    _recovery_targets: tuple[RecoveryTarget, ...] = field(
         repr=False,
         compare=False,
     )
@@ -636,6 +666,71 @@ def reopen_transaction_workspace(canonical_root, transaction_id):
         )
 
 
+@contextmanager
+def reopen_cleanup_workspace(canonical_root, transaction_id):
+    """Yield one existing cleanup workspace while allowing removed preimages."""
+    try:
+        root = _validate_workspace_input(canonical_root, transaction_id)
+    except LifecycleStorageError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_WORKSPACE_UNSAFE"
+        ) from exc
+    root_fd = None
+    control_fd = None
+    transactions_fd = None
+    workspace_fd = None
+    preimages_fd = None
+    flags = _directory_flags()
+    try:
+        try:
+            root_fd = os.open(root, flags)
+            control_fd = os.open(".moduflow", flags, dir_fd=root_fd)
+            transactions_fd = os.open("transactions", flags, dir_fd=control_fd)
+        except OSError as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_WORKSPACE_UNSAFE"
+            ) from exc
+        workspace_fd = _open_existing_private_directory(
+            transactions_fd,
+            transaction_id,
+        )
+        try:
+            preimages_fd = _open_existing_private_directory(
+                workspace_fd,
+                _PREIMAGES_NAME,
+            )
+        except LifecycleRecoveryStorageError as exc:
+            try:
+                os.stat(
+                    _PREIMAGES_NAME,
+                    dir_fd=workspace_fd,
+                    follow_symlinks=False,
+                )
+            except FileNotFoundError:
+                preimages_fd = None
+            except OSError as stat_error:
+                raise LifecycleRecoveryStorageError(
+                    "RECOVERY_WORKSPACE_UNSAFE"
+                ) from stat_error
+            else:
+                raise exc
+        yield _PrivateCleanupWorkspace(
+            transaction_id=transaction_id,
+            _root_fd=root_fd,
+            _transactions_fd=transactions_fd,
+            _workspace_fd=workspace_fd,
+            _preimages_fd=preimages_fd,
+        )
+    finally:
+        _close_descriptors(
+            preimages_fd,
+            workspace_fd,
+            transactions_fd,
+            control_fd,
+            root_fd,
+        )
+
+
 def _read_recovery_file(parent_fd, name):
     descriptor = None
     try:
@@ -721,6 +816,69 @@ def read_recovery_control_snapshot(workspace):
         raise LifecycleRecoveryStorageError(
             "RECOVERY_CONTROL_FILE_UNSAFE"
         )
+    return _RecoveryControlSnapshot(
+        journal=_read_recovery_file(workspace._workspace_fd, _JOURNAL_NAME),
+        journal_next=_read_recovery_file(
+            workspace._workspace_fd,
+            _JOURNAL_NEXT_NAME,
+        ),
+        recovery_manifest=_read_recovery_file(
+            workspace._workspace_fd,
+            _RECOVERY_MANIFEST_NAME,
+        ),
+        _workspace_entries=workspace_entries,
+        _preimage_entries=preimage_entries,
+    )
+
+
+def read_cleanup_control_snapshot(workspace):
+    """Read one cleanup remainder without requiring a preimages directory."""
+    if not isinstance(workspace, _PrivateCleanupWorkspace):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    try:
+        workspace_entries = tuple(sorted(os.listdir(workspace._workspace_fd)))
+        preimage_entries = (
+            tuple(sorted(os.listdir(workspace._preimages_fd)))
+            if workspace._preimages_fd is not None
+            else ()
+        )
+    except OSError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        ) from exc
+    allowed = {
+        _PREIMAGES_NAME,
+        _RECOVERY_MANIFEST_NAME,
+        _JOURNAL_NAME,
+        _JOURNAL_NEXT_NAME,
+    }
+    if any(name not in allowed for name in workspace_entries) or any(
+        not _PREIMAGE_ENTRY.fullmatch(name) for name in preimage_entries
+    ):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        )
+    has_preimages = _PREIMAGES_NAME in workspace_entries
+    if has_preimages != (workspace._preimages_fd is not None):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        )
+    if workspace._preimages_fd is not None:
+        try:
+            preimages_entry = os.stat(
+                _PREIMAGES_NAME,
+                dir_fd=workspace._workspace_fd,
+                follow_symlinks=False,
+            )
+            opened_preimages = os.fstat(workspace._preimages_fd)
+        except OSError as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_CONTROL_FILE_UNSAFE"
+            ) from exc
+        if not _same_directory_metadata(preimages_entry, opened_preimages):
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_CONTROL_FILE_UNSAFE"
+            )
     return _RecoveryControlSnapshot(
         journal=_read_recovery_file(workspace._workspace_fd, _JOURNAL_NAME),
         journal_next=_read_recovery_file(
@@ -2564,6 +2722,89 @@ def verify_recovery_canonical_before(workspace, recovery_targets):
     return tuple(verified)
 
 
+def verify_cleanup_canonical_state(workspace, recovery_targets, *, after):
+    """Prove journal-only canonical before/after state for cleanup resume."""
+    if (
+        not isinstance(workspace, _PrivateCleanupWorkspace)
+        or not isinstance(after, bool)
+    ):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    targets = _validated_recovery_targets(recovery_targets)
+    verified = []
+    for target in targets:
+        parent_fd = None
+        descriptor = None
+        try:
+            parent_fd, _parent_metadata = _open_target_parent(workspace, target)
+            name = PurePosixPath(target.relative_path).name
+            expected_hash = target.after_sha256 if after else target.before_sha256
+            expected_absent = not after and not target.existed
+            try:
+                initial = os.stat(
+                    name,
+                    dir_fd=parent_fd,
+                    follow_symlinks=False,
+                )
+            except FileNotFoundError:
+                if not expected_absent:
+                    raise LifecycleRecoveryStorageError(
+                        "RECOVERY_PAYLOAD_MISMATCH"
+                    ) from None
+                verified.append(target.index)
+                continue
+            if expected_absent or not stat.S_ISREG(initial.st_mode):
+                raise LifecycleRecoveryStorageError(
+                    "RECOVERY_PAYLOAD_MISMATCH"
+                )
+            descriptor = os.open(
+                name,
+                os.O_RDONLY
+                | getattr(os, "O_CLOEXEC", 0)
+                | getattr(os, "O_NOFOLLOW", 0),
+                dir_fd=parent_fd,
+            )
+            opened = os.fstat(descriptor)
+            digest = hashlib.sha256()
+            size = 0
+            while True:
+                chunk = os.read(descriptor, 64 * 1024)
+                if not chunk:
+                    break
+                digest.update(chunk)
+                size += len(chunk)
+            final = os.stat(
+                name,
+                dir_fd=parent_fd,
+                follow_symlinks=False,
+            )
+            final_opened = os.fstat(descriptor)
+            stable = all(
+                stat.S_ISREG(metadata.st_mode)
+                and metadata.st_dev == initial.st_dev
+                and metadata.st_ino == initial.st_ino
+                and metadata.st_size == initial.st_size
+                for metadata in (opened, final, final_opened)
+            )
+            if (
+                not stable
+                or digest.hexdigest() != expected_hash
+                or (after and size != target.after_size)
+            ):
+                raise LifecycleRecoveryStorageError(
+                    "RECOVERY_PAYLOAD_MISMATCH"
+                )
+            verified.append(target.index)
+        except LifecycleRecoveryStorageError:
+            raise
+        except (OSError, LifecycleStorageError) as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            ) from exc
+        finally:
+            _close_descriptors(descriptor, parent_fd)
+    return tuple(verified)
+
+
 def discard_recovered_journal_next(workspace, snapshot):
     """Discard only the exact verified abandoned journal successor."""
     if (
@@ -3064,6 +3305,237 @@ def verify_recovery_cleanup_inventory(
         _preimages=preimages,
         _staged_proposals=staged_proposals,
         _recovery_manifest=manifest,
+    )
+
+
+def _cleanup_resume_directory_snapshots(workspace):
+    if not isinstance(workspace, _PrivateCleanupWorkspace):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    try:
+        workspace_entry = os.stat(
+            workspace.transaction_id,
+            dir_fd=workspace._transactions_fd,
+            follow_symlinks=False,
+        )
+        workspace_opened = os.fstat(workspace._workspace_fd)
+    except OSError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_WORKSPACE_UNSAFE"
+        ) from exc
+    if not _same_directory_metadata(workspace_entry, workspace_opened):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    preimages = None
+    if workspace._preimages_fd is not None:
+        try:
+            preimages_entry = os.stat(
+                _PREIMAGES_NAME,
+                dir_fd=workspace._workspace_fd,
+                follow_symlinks=False,
+            )
+            preimages_opened = os.fstat(workspace._preimages_fd)
+        except OSError as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_WORKSPACE_UNSAFE"
+            ) from exc
+        if not _same_directory_metadata(preimages_entry, preimages_opened):
+            raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+        preimages = _recovery_directory_snapshot(preimages_opened)
+    return _recovery_directory_snapshot(workspace_opened), preimages
+
+
+def _verify_cleanup_payload_subsets(workspace, targets, control_snapshot):
+    expected_preimages = {
+        f"{target.index:06d}.bin": target
+        for target in targets
+        if target.existed
+    }
+    current_preimages = set(control_snapshot._preimage_entries)
+    if not current_preimages.issubset(expected_preimages):
+        raise LifecycleRecoveryStorageError("RECOVERY_PAYLOAD_MISMATCH")
+    if current_preimages and workspace._preimages_fd is None:
+        raise LifecycleRecoveryStorageError("RECOVERY_PAYLOAD_INVALID")
+    for name in current_preimages:
+        target = expected_preimages[name]
+        try:
+            metadata = os.stat(
+                name,
+                dir_fd=workspace._preimages_fd,
+                follow_symlinks=False,
+            )
+        except OSError as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            ) from exc
+        _read_recovery_payload(
+            workspace._preimages_fd,
+            name,
+            expected_size=metadata.st_size,
+            expected_sha256=target.before_sha256,
+        )
+
+    digest = hashlib.sha256(workspace.transaction_id.encode("utf-8")).hexdigest()
+    prefix = f".moduflow-stage-{digest}-"
+    expected_stages = {}
+    parents = {}
+    for target in targets:
+        parent_key = PurePosixPath(target.relative_path).parent.as_posix()
+        parents.setdefault(parent_key, target)
+        if target.changed:
+            stage_name, _relative_name = _staging_names(workspace, target)
+            expected_stages[(parent_key, stage_name)] = target
+    present_stages = []
+    for parent_key, representative in parents.items():
+        parent_fd = None
+        try:
+            parent_fd, parent_metadata = _open_target_parent(
+                workspace,
+                representative,
+            )
+            names = {
+                name for name in os.listdir(parent_fd) if name.startswith(prefix)
+            }
+            for name in names:
+                target = expected_stages.get((parent_key, name))
+                if target is None:
+                    raise LifecycleRecoveryStorageError(
+                        "RECOVERY_PAYLOAD_MISMATCH"
+                    )
+                _read_recovery_payload(
+                    parent_fd,
+                    name,
+                    expected_size=target.after_size,
+                    expected_sha256=target.after_sha256,
+                    expected_device=parent_metadata.st_dev,
+                )
+                present_stages.append((parent_key, name))
+        except LifecycleRecoveryStorageError:
+            raise
+        except (OSError, LifecycleStorageError) as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            ) from exc
+        finally:
+            _close_descriptors(parent_fd)
+    return current_preimages, tuple(sorted(present_stages))
+
+
+def verify_cleanup_resume_inventory(
+    workspace,
+    recovery_targets,
+    control_snapshot,
+    *,
+    terminal_kind,
+):
+    """Classify only an exact ordered cleanup remainder without mutation."""
+    if (
+        not isinstance(workspace, _PrivateCleanupWorkspace)
+        or not isinstance(control_snapshot, _RecoveryControlSnapshot)
+        or terminal_kind not in {"complete", "rolled-back", "pre-journal-orphan"}
+    ):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    directories_before = _cleanup_resume_directory_snapshots(workspace)
+    current = read_cleanup_control_snapshot(workspace)
+    if not _same_cleanup_control_snapshot(current, control_snapshot):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        )
+
+    if current.journal.state == "absent" and current.journal_next.state == "absent":
+        if current._workspace_entries or workspace._preimages_fd is not None:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_CONTROL_FILE_UNSAFE"
+            )
+        return _CleanupResumeInventory(
+            remainder_kind="empty-workspace",
+            _workspace_directory=directories_before[0],
+            _preimages_directory=None,
+            _control_snapshot=current,
+            _recovery_targets=(),
+        )
+
+    targets = _validated_recovery_targets(recovery_targets)
+
+    if terminal_kind == "pre-journal-orphan":
+        if (
+            current.journal.state != "absent"
+            or current.journal_next.state != "present"
+        ):
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_CONTROL_FILE_UNSAFE"
+            )
+    elif current.journal.state != "present":
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        )
+
+    if current.recovery_manifest.state == "present":
+        _parse_recovery_manifest(
+            workspace,
+            targets,
+            current.recovery_manifest,
+            current.recovery_manifest.sha256,
+        )
+    preimages, stages = _verify_cleanup_payload_subsets(
+        workspace,
+        targets,
+        current,
+    )
+    expected_preimages = {
+        f"{target.index:06d}.bin" for target in targets if target.existed
+    }
+    has_preimages_directory = workspace._preimages_fd is not None
+    has_manifest = current.recovery_manifest.state == "present"
+    if terminal_kind != "pre-journal-orphan":
+        if not has_manifest and (has_preimages_directory or stages):
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_CONTROL_FILE_UNSAFE"
+            )
+        if not has_preimages_directory and stages:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_MISMATCH"
+            )
+        if preimages != expected_preimages and stages:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_MISMATCH"
+            )
+    remainder_kind = (
+        "terminal-full"
+        if has_manifest
+        and has_preimages_directory
+        and preimages == expected_preimages
+        else "terminal-private-suffix"
+        if has_manifest
+        else "terminal-control-suffix"
+    )
+    final = read_cleanup_control_snapshot(workspace)
+    directories_after = _cleanup_resume_directory_snapshots(workspace)
+    if (
+        not _same_cleanup_control_snapshot(final, current)
+        or not _same_cleanup_directory(
+            directories_before[0],
+            directories_after[0],
+        )
+        or (
+            directories_before[1] is None
+            and directories_after[1] is not None
+        )
+        or (
+            directories_before[1] is not None
+            and not _same_cleanup_directory(
+                directories_before[1],
+                directories_after[1],
+            )
+        )
+    ):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        )
+    return _CleanupResumeInventory(
+        remainder_kind=remainder_kind,
+        _workspace_directory=directories_after[0],
+        _preimages_directory=directories_after[1],
+        _control_snapshot=final,
+        _recovery_targets=targets,
     )
 
 

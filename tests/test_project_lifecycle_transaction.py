@@ -5241,6 +5241,18 @@ class TransactionPlanningTests(unittest.TestCase):
             self.assertEqual(repr(proof), "_RecoveryCleanupInventory()")
             self.assertEqual(next_path.read_bytes(), planned_bytes)
             self.assertFalse(journal_path.exists())
+            with transaction._private_recovered_cleanup_workspace(
+                root,
+                plan.transaction_id,
+            ) as cleanup:
+                self.assertEqual(
+                    cleanup.terminal_kind,
+                    "pre-journal-orphan",
+                )
+                self.assertEqual(
+                    cleanup.verified_target_count,
+                    len(plan.targets),
+                )
 
     def test_cleanup_candidate_accepts_only_proven_terminal_states_under_lock(self):
         prove = getattr(
@@ -5547,6 +5559,173 @@ class TransactionPlanningTests(unittest.TestCase):
                         self.assertEqual(str(raised.exception), expected)
 
                 self.assertFalse(lock_path.exists())
+
+    def test_cleanup_resume_workspace_accepts_only_protocol_suffixes_read_only(self):
+        reopen = getattr(
+            transaction,
+            "_private_recovered_cleanup_workspace",
+            None,
+        )
+        self.assertIsNotNone(reopen)
+        for remainder in (
+            "terminal-full",
+            "terminal-private-suffix",
+            "terminal-control-suffix",
+            "empty-workspace",
+        ):
+            with self.subTest(remainder=remainder), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context, plan = self.prepare_restart_finalizing_case(
+                    root,
+                    "after-recorded",
+                )
+                recovery_times = iter(
+                    f"2030-01-02T03:18:{second:02d}Z"
+                    for second in range(50)
+                )
+                transaction.recover_incomplete_transaction(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                    clock=lambda: next(recovery_times),
+                    lock_pid=215,
+                    lock_token_factory=lambda: "8" * 32,
+                )
+                workspace = (
+                    root
+                    / ".moduflow"
+                    / "transactions"
+                    / plan.transaction_id
+                )
+                preimages = workspace / "preimages"
+                manifest = workspace / "recovery-manifest.json"
+                journal = workspace / "journal.json"
+                if remainder != "terminal-full":
+                    for path in tuple(preimages.iterdir()):
+                        path.unlink()
+                    preimages.rmdir()
+                if remainder in {"terminal-control-suffix", "empty-workspace"}:
+                    manifest.unlink()
+                if remainder == "empty-workspace":
+                    journal.unlink()
+
+                before = {
+                    path.relative_to(root).as_posix(): (
+                        path.lstat().st_ino,
+                        path.read_bytes() if path.is_file() else None,
+                    )
+                    for path in root.rglob("*")
+                }
+                subject = transaction._authorized_recovery_subject(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                )
+                with transaction._exclusive_recovery_lock(
+                    subject,
+                    clock="2030-01-02T03:19:00Z",
+                    pid=216,
+                    token_factory=lambda: "9" * 32,
+                ):
+                    with reopen(root, plan.transaction_id) as resumed:
+                        self.assertEqual(resumed.remainder_kind, remainder)
+                        self.assertEqual(
+                            resumed.terminal_kind,
+                            "unknown" if remainder == "empty-workspace" else "complete",
+                        )
+                        if remainder != "empty-workspace":
+                            self.assertEqual(
+                                resumed.verified_target_count,
+                                len(plan.targets),
+                            )
+                        self.assertNotIn(str(root), repr(resumed))
+                        self.assertNotIn(plan.transaction_id, repr(resumed))
+
+                after = {
+                    path.relative_to(root).as_posix(): (
+                        path.lstat().st_ino,
+                        path.read_bytes() if path.is_file() else None,
+                    )
+                    for path in root.rglob("*")
+                }
+                self.assertEqual(after, before)
+                if remainder != "terminal-full":
+                    with self.assertRaises(
+                        transaction.transaction_storage.LifecycleRecoveryStorageError
+                    ):
+                        with transaction.transaction_storage.reopen_transaction_workspace(
+                            root,
+                            plan.transaction_id,
+                        ):
+                            self.fail("ordinary recovery reopen must remain strict")
+
+    def test_cleanup_resume_workspace_rejects_non_suffix_remainders(self):
+        reopen = getattr(
+            transaction,
+            "_private_recovered_cleanup_workspace",
+            None,
+        )
+        error_type = getattr(
+            transaction,
+            "LifecycleRecoveryCleanupError",
+            None,
+        )
+        self.assertIsNotNone(reopen)
+        self.assertIsNotNone(error_type)
+        for corruption in (
+            "manifest-missing-with-preimages",
+            "journal-missing-with-manifest",
+            "journal-missing-with-foreign",
+        ):
+            with self.subTest(corruption=corruption), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context, plan = self.prepare_restart_finalizing_case(
+                    root,
+                    "after-recorded",
+                )
+                recovery_times = iter(
+                    f"2030-01-02T03:20:{second:02d}Z"
+                    for second in range(50)
+                )
+                transaction.recover_incomplete_transaction(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                    clock=lambda: next(recovery_times),
+                    lock_pid=217,
+                    lock_token_factory=lambda: "a" * 32,
+                )
+                workspace = (
+                    root
+                    / ".moduflow"
+                    / "transactions"
+                    / plan.transaction_id
+                )
+                if corruption == "manifest-missing-with-preimages":
+                    changed = workspace / "recovery-manifest.json"
+                    changed.unlink()
+                else:
+                    changed = workspace / "journal.json"
+                    changed.unlink()
+                    if corruption == "journal-missing-with-foreign":
+                        (workspace / "recovery-manifest.json").unlink()
+                        preimages = workspace / "preimages"
+                        for path in tuple(preimages.iterdir()):
+                            path.unlink()
+                        preimages.rmdir()
+                        changed = workspace / "foreign-remainder"
+                        changed.write_bytes(b"must remain\n")
+                        changed.chmod(0o600)
+                with self.assertRaises(error_type) as raised:
+                    with reopen(root, plan.transaction_id):
+                        self.fail("unsafe cleanup remainder must not be yielded")
+
+                self.assertEqual(
+                    raised.exception.code,
+                    "RECOVERY_CLEANUP_REMAINDER_UNSAFE",
+                )
+                if changed.exists():
+                    self.assertTrue(changed.exists())
 
     def test_private_preimage_workspace_denies_or_rejects_before_side_effects(self):
         entry = getattr(transaction, "_private_preimage_workspace", None)
