@@ -1350,6 +1350,23 @@ class TransactionPlanningTests(unittest.TestCase):
             "lifecycle_drift": list(lifecycle_drift or ()),
         }
 
+    def projected_summary(self):
+        return transaction._summarize_projected_validation(
+            self.validation_result()
+        )
+
+    def completion_input(self, plan):
+        state_target = next(
+            target for target in plan.targets if target.role == "state"
+        )
+        next_command = json.loads(state_target._after_bytes)["next_command"]
+        return transaction._prepare_completion_input(
+            plan,
+            self.intent(require_issue_index=True),
+            next_command,
+            self.projected_summary(),
+        )
+
     def replace_projected_bytes(self, plan, replacements):
         remaining = set(replacements)
         targets = []
@@ -1370,6 +1387,272 @@ class TransactionPlanningTests(unittest.TestCase):
                 f"planned roles not found: {', '.join(sorted(remaining))}"
             )
         return replace(plan, targets=tuple(targets))
+
+    def test_completion_input_binds_final_evidence_before_io_and_freezes_result(self):
+        prepare = getattr(transaction, "_prepare_completion_input", None)
+        bind = getattr(transaction, "_bind_success_evidence", None)
+        self.assertIsNotNone(prepare)
+        self.assertIsNotNone(bind)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(require_issue_index=True),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            projected = self.projected_summary()
+            state_target = next(
+                target for target in plan.targets if target.role == "state"
+            )
+            next_command = json.loads(state_target._after_bytes)["next_command"]
+            completion = prepare(
+                plan,
+                self.intent(require_issue_index=True),
+                next_command,
+                projected,
+            )
+            n = sum(
+                target.changed and target.role != "evidence"
+                for target in plan.targets
+            )
+            timestamps = tuple(
+                f"2030-01-02T03:04:{second:02d}Z"
+                for second in range(5, 5 + 11 + 2 * n)
+            )
+            provisional_bytes = b"PRIVATE PROVISIONAL EVIDENCE\n"
+            provisional_evidence = replace(
+                plan.targets[-1],
+                after_sha256=transaction.target_sha256(provisional_bytes),
+                after_size=len(provisional_bytes),
+                changed=True,
+                _after_bytes=provisional_bytes,
+            )
+            second_plan = replace(
+                plan,
+                targets=plan.targets[:-1] + (provisional_evidence,),
+            )
+
+            with (
+                mock.patch.object(transaction.os, "open") as open_file,
+                mock.patch.object(transaction.os, "mkdir") as make_directory,
+                mock.patch.object(transaction.os, "replace") as replace_file,
+                mock.patch.object(
+                    transaction.validate_project_artifacts,
+                    "validate_project",
+                ) as validate_project,
+            ):
+                binding = bind(plan, completion, timestamps)
+                second_binding = bind(second_plan, completion, timestamps)
+
+            evidence = binding.plan.targets[-1]
+            self.assertEqual(evidence.role, "evidence")
+            self.assertTrue(evidence.changed)
+            self.assertEqual(evidence._after_bytes, binding.evidence_bytes)
+            self.assertEqual(evidence.after_size, len(binding.evidence_bytes))
+            self.assertEqual(
+                evidence.after_sha256,
+                transaction.target_sha256(binding.evidence_bytes),
+            )
+            self.assertEqual(
+                binding.evidence_bytes,
+                transaction.render_transaction_evidence(
+                    transaction._json_value(binding.transaction_result)
+                ),
+            )
+            self.assertEqual(binding.completed_at, timestamps[7 + n])
+            self.assertEqual(
+                binding.transaction_result["post_apply_validation"]["rule_ids"],
+                (
+                    "canonical-targets",
+                    "project-artifacts",
+                    "issue-schema",
+                    "lifecycle-consensus",
+                    "production-records",
+                ),
+            )
+            self.assertEqual(second_binding.evidence_bytes, binding.evidence_bytes)
+            self.assertEqual(
+                second_binding.plan.targets[-1].after_sha256,
+                evidence.after_sha256,
+            )
+            self.assertEqual(
+                second_binding.plan.targets[-1].after_size,
+                evidence.after_size,
+            )
+
+            projected["rule_ids"].append("PRIVATE MUTATION")
+            self.assertNotIn(
+                "PRIVATE MUTATION",
+                completion.projected_validation["rule_ids"],
+            )
+            self.assertNotIn(
+                "PRIVATE MUTATION",
+                binding.transaction_result["projected_validation"]["rule_ids"],
+            )
+            open_file.assert_not_called()
+            make_directory.assert_not_called()
+            replace_file.assert_not_called()
+            validate_project.assert_not_called()
+            for private in (
+                str(root),
+                "dongwon",
+                "request:A2",
+                next_command,
+                "PRIVATE PROVISIONAL EVIDENCE",
+                "project-artifacts",
+            ):
+                self.assertNotIn(private, repr(completion))
+                self.assertNotIn(private, repr(binding))
+
+    def test_completion_input_rejects_mismatch_replay_and_invalid_values_before_io(self):
+        prepare = getattr(transaction, "_prepare_completion_input", None)
+        bind = getattr(transaction, "_bind_success_evidence", None)
+        error_type = getattr(transaction, "LifecycleFinalizationError", None)
+        self.assertIsNotNone(prepare)
+        self.assertIsNotNone(bind)
+        self.assertIsNotNone(error_type)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                intent,
+                project_context=context,
+                clock="2030-01-02",
+            )
+            state_target = next(
+                target for target in plan.targets if target.role == "state"
+            )
+            next_command = json.loads(state_target._after_bytes)["next_command"]
+            valid_summary = self.projected_summary()
+            completion = prepare(
+                plan,
+                intent,
+                next_command,
+                valid_summary,
+            )
+            n = sum(
+                target.changed and target.role != "evidence"
+                for target in plan.targets
+            )
+            timestamps = tuple(
+                f"2030-01-02T03:04:{second:02d}Z"
+                for second in range(5, 5 + 11 + 2 * n)
+            )
+            binding = bind(plan, completion, timestamps)
+            replay_evidence = replace(
+                plan.targets[-1],
+                existed=True,
+                before_sha256=transaction.target_sha256(
+                    binding.evidence_bytes
+                ),
+                _before_bytes=binding.evidence_bytes,
+            )
+            replay_plan = replace(
+                plan,
+                targets=plan.targets[:-1] + (replay_evidence,),
+            )
+
+            invalid_prepare = (
+                (
+                    plan,
+                    self.intent(
+                        require_issue_index=True,
+                        source_event="request:other",
+                    ),
+                    next_command,
+                    valid_summary,
+                ),
+                (replace(plan, issue_id="BIZ-OTHER"), intent, next_command, valid_summary),
+                (replace(plan, action="complete"), intent, next_command, valid_summary),
+                (replace(plan, target_lifecycle="done"), intent, next_command, valid_summary),
+                (plan, intent, "product:private-wrong", valid_summary),
+                (
+                    plan,
+                    intent,
+                    next_command,
+                    {**valid_summary, "valid": False},
+                ),
+                (
+                    plan,
+                    intent,
+                    next_command,
+                    {**valid_summary, "rule_ids": ["unsafe value"]},
+                ),
+                (
+                    plan,
+                    intent,
+                    next_command,
+                    {**valid_summary, "private": True},
+                ),
+                (
+                    plan,
+                    intent,
+                    next_command,
+                    {**valid_summary, "error_codes": "mutable-string"},
+                ),
+            )
+
+            with (
+                mock.patch.object(transaction.os, "open") as open_file,
+                mock.patch.object(transaction.os, "mkdir") as make_directory,
+                mock.patch.object(transaction.os, "replace") as replace_file,
+                mock.patch.object(
+                    transaction.validate_project_artifacts,
+                    "validate_project",
+                ) as validate_project,
+            ):
+                for arguments in invalid_prepare:
+                    with self.subTest(arguments=arguments[0:3]):
+                        with self.assertRaises(error_type) as raised:
+                            prepare(*arguments)
+                        self.assertEqual(
+                            raised.exception.code,
+                            "FINALIZATION_INPUT_INVALID",
+                        )
+                        self.assertEqual(
+                            repr(raised.exception),
+                            "LifecycleFinalizationError('FINALIZATION_INPUT_INVALID')",
+                        )
+
+                invalid_timestamps = (
+                    timestamps[:-1],
+                    timestamps[:-1] + ("PRIVATE INVALID TIMESTAMP",),
+                )
+                for values in invalid_timestamps:
+                    with self.subTest(timestamp_count=len(values)):
+                        with self.assertRaises(error_type) as raised:
+                            bind(plan, completion, values)
+                        self.assertEqual(
+                            raised.exception.code,
+                            "FINALIZATION_INPUT_INVALID",
+                        )
+
+                replay_completion = prepare(
+                    replay_plan,
+                    intent,
+                    next_command,
+                    valid_summary,
+                )
+                with self.assertRaises(error_type) as raised:
+                    bind(replay_plan, replay_completion, timestamps)
+                self.assertEqual(
+                    raised.exception.code,
+                    "FINALIZATION_EVIDENCE_ALREADY_PRESENT",
+                )
+                self.assertEqual(
+                    str(raised.exception),
+                    "FINALIZATION_EVIDENCE_ALREADY_PRESENT",
+                )
+                open_file.assert_not_called()
+                make_directory.assert_not_called()
+                replace_file.assert_not_called()
+                validate_project.assert_not_called()
 
     def test_rollback_signals_are_validated_detached_and_redacted(self):
         rolled_back = transaction.LifecycleApplyRolledBack(

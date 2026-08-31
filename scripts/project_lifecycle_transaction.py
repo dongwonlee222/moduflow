@@ -422,6 +422,21 @@ class _PrivatePostValidatedState:
     _workspace: object = field(repr=False, compare=False)
 
 
+@dataclass(frozen=True)
+class _PrivateCompletionInput:
+    intent: LifecycleIntent = field(repr=False, compare=False)
+    next_command: str = field(repr=False, compare=False)
+    projected_validation: object = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
+class _PrivateEvidenceBinding:
+    plan: LifecycleTransactionPlan = field(repr=False, compare=False)
+    transaction_result: object = field(repr=False, compare=False)
+    evidence_bytes: bytes = field(repr=False, compare=False)
+    completed_at: str
+
+
 class LifecyclePlanError(ValueError):
     """Bounded planner failure that never includes artifact or absolute-path data."""
 
@@ -467,6 +482,24 @@ class LifecyclePostApplyValidationError(RuntimeError):
             raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
         self.code = code
         self.post_apply_validation = summary
+        super().__init__(code)
+
+
+_FINALIZATION_ERROR_CODES = frozenset({
+    "FINALIZATION_INPUT_INVALID",
+    "FINALIZATION_EVIDENCE_ALREADY_PRESENT",
+    "FINALIZATION_POST_APPLY_MISMATCH",
+    "FINALIZATION_TARGET_MISMATCH",
+})
+
+
+class LifecycleFinalizationError(RuntimeError):
+    """Stable private finalization failure without rejected values."""
+
+    def __init__(self, code):
+        if code not in _FINALIZATION_ERROR_CODES:
+            raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+        self.code = code
         super().__init__(code)
 
 
@@ -2880,6 +2913,194 @@ def render_transaction_evidence(result: dict) -> bytes:
             indent=2,
         ).encode("utf-8")
         + b"\n"
+    )
+
+
+def _planned_next_command(plan):
+    try:
+        if not isinstance(plan, LifecycleTransactionPlan):
+            raise TypeError("plan")
+        selected = {}
+        for role in ("state", "loop"):
+            targets = tuple(
+                target for target in plan.targets if target.role == role
+            )
+            if len(targets) != 1:
+                raise ValueError("target layout")
+            payload = json.loads(targets[0]._after_bytes.decode("utf-8"))
+            if not isinstance(payload, dict):
+                raise ValueError("target payload")
+            value = payload.get("next_command")
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError("next command")
+            selected[role] = value.strip()
+        if selected["state"] != selected["loop"]:
+            raise ValueError("next command mismatch")
+        return selected["state"]
+    except LifecycleFinalizationError:
+        raise
+    except (AttributeError, TypeError, ValueError, UnicodeError):
+        raise LifecycleFinalizationError(
+            "FINALIZATION_INPUT_INVALID"
+        ) from None
+
+
+def _prepare_completion_input(
+    plan,
+    intent,
+    next_command,
+    projected_validation,
+):
+    try:
+        if not isinstance(plan, LifecycleTransactionPlan):
+            raise TypeError("plan")
+        normalized = normalize_lifecycle_intent(intent)
+        context = _json_value(plan._project_context)
+        resolved_next = str(next_command or "").strip()
+        summary = _frozen_validation_summary(projected_validation)
+        matches = (
+            summary["valid"]
+            and summary["rule_ids"] == _PROJECTED_VALIDATION_RULE_IDS
+            and summary["error_codes"] == ()
+            and resolved_next == _planned_next_command(plan)
+            and normalized.issue_id == plan.issue_id
+            and normalized.action == plan.action
+            and normalized.target_lifecycle == plan.target_lifecycle
+            and derive_idempotency_key(context, normalized)
+            == plan.idempotency_key
+            and derive_transaction_id(context, normalized)
+            == plan.transaction_id
+        )
+        if not matches:
+            raise ValueError("mismatch")
+    except (LifecycleFinalizationError, LifecycleJournalError):
+        raise LifecycleFinalizationError(
+            "FINALIZATION_INPUT_INVALID"
+        ) from None
+    except (AttributeError, TypeError, ValueError, UnicodeError):
+        raise LifecycleFinalizationError(
+            "FINALIZATION_INPUT_INVALID"
+        ) from None
+    return _PrivateCompletionInput(
+        intent=normalized,
+        next_command=resolved_next,
+        projected_validation=summary,
+    )
+
+
+def _successful_post_apply_summary():
+    return _frozen_validation_summary({
+        "valid": True,
+        "rule_ids": list(_POST_APPLY_VALIDATION_RULE_IDS),
+        "error_codes": [],
+    })
+
+
+def _successful_result_candidate(plan, completion_input, timestamps, n):
+    return {
+        "schema": RESULT_SCHEMA,
+        "transaction_id": plan.transaction_id,
+        "idempotency_key": plan.idempotency_key,
+        "status": "applied",
+        "project_id": plan.project_id,
+        "canonical_root": plan.canonical_root,
+        "issue_id": plan.issue_id,
+        "action": plan.action,
+        "target_lifecycle": plan.target_lifecycle,
+        "targets": [target.to_public_dict() for target in plan.targets],
+        "projected_validation": _json_value(
+            completion_input.projected_validation
+        ),
+        "post_apply_validation": _json_value(
+            _successful_post_apply_summary()
+        ),
+        "failed_stage": "",
+        "error_code": "",
+        "rollback_status": "not-required",
+        "verified_target_count": len(plan.targets),
+        "next_command": completion_input.next_command,
+        "actor": completion_input.intent.actor,
+        "source_event": completion_input.intent.source_event,
+        "created_at": timestamps[0],
+        "started_at": timestamps[3],
+        "completed_at": timestamps[7 + n],
+    }
+
+
+def _bind_success_evidence(plan, completion_input, timestamps):
+    try:
+        if (
+            not isinstance(plan, LifecycleTransactionPlan)
+            or not isinstance(completion_input, _PrivateCompletionInput)
+        ):
+            raise ValueError("input")
+        completion_input = _prepare_completion_input(
+            plan,
+            completion_input.intent,
+            completion_input.next_command,
+            completion_input.projected_validation,
+        )
+        n = sum(
+            target.changed and target.role != "evidence"
+            for target in plan.targets
+        )
+        if not isinstance(timestamps, tuple) or len(timestamps) != 11 + 2 * n:
+            raise ValueError("timestamps")
+        for value in timestamps:
+            _journal_timestamp(value)
+        provisional = _successful_result_candidate(
+            plan,
+            completion_input,
+            timestamps,
+            n,
+        )
+        evidence_bytes = render_transaction_evidence(provisional)
+        evidence = plan.targets[-1]
+        rebound_evidence = replace(
+            evidence,
+            after_sha256=target_sha256(evidence_bytes),
+            after_size=len(evidence_bytes),
+            changed=(
+                not evidence.existed
+                or evidence._before_bytes != evidence_bytes
+            ),
+            _after_bytes=evidence_bytes,
+        )
+        if rebound_evidence.role != "evidence" or not rebound_evidence.changed:
+            raise LifecycleFinalizationError(
+                "FINALIZATION_EVIDENCE_ALREADY_PRESENT"
+            )
+        rebound_plan = replace(
+            plan,
+            targets=plan.targets[:-1] + (rebound_evidence,),
+        )
+        rebound_result = {
+            **provisional,
+            "targets": [
+                target.to_public_dict()
+                for target in rebound_plan.targets
+            ],
+        }
+        serialized = serialize_transaction_result(rebound_result)
+        if render_transaction_evidence(serialized) != evidence_bytes:
+            raise ValueError("self-reference")
+    except LifecycleFinalizationError:
+        raise
+    except (
+        IndexError,
+        KeyError,
+        LifecycleJournalError,
+        TypeError,
+        ValueError,
+    ):
+        raise LifecycleFinalizationError(
+            "FINALIZATION_INPUT_INVALID"
+        ) from None
+    return _PrivateEvidenceBinding(
+        plan=rebound_plan,
+        transaction_result=_freeze_json_value(serialized),
+        evidence_bytes=evidence_bytes,
+        completed_at=serialized["completed_at"],
     )
 
 
