@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from dataclasses import FrozenInstanceError, replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 
@@ -1853,6 +1854,343 @@ class TransactionPlanningTests(unittest.TestCase):
                 self.assertEqual(result["rollback_status"], "not-required")
                 rollback.assert_not_called()
                 replacement.assert_not_called()
+
+    def test_public_apply_maps_verified_rollback_result(self):
+        @contextmanager
+        def rolled_back(*_args, **_kwargs):
+            raise transaction.LifecycleApplyRolledBack(
+                original_error_code="POST_APPLY_VALIDATION_INVALID",
+                applied_target_indexes=(0,),
+                rollback_target_indexes=(0,),
+                journal_sha256="a" * 64,
+                post_apply_validation={
+                    "valid": False,
+                    "rule_ids": list(
+                        transaction._POST_APPLY_VALIDATION_RULE_IDS
+                    ),
+                    "error_codes": ["POST_APPLY_VALIDATION_INVALID"],
+                },
+            )
+            yield
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            with (
+                mock.patch.object(
+                    transaction,
+                    "validate_projected_transaction",
+                    return_value=self.projected_summary(),
+                ),
+                mock.patch.object(
+                    transaction,
+                    "_private_applied_workspace",
+                    side_effect=rolled_back,
+                ),
+            ):
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            self.assertEqual(result["status"], "rolled_back")
+            self.assertEqual(
+                result["failed_stage"],
+                "post-apply-validation",
+            )
+            self.assertEqual(
+                result["error_code"],
+                "POST_APPLY_VALIDATION_INVALID",
+            )
+            self.assertEqual(result["rollback_status"], "verified")
+            self.assertEqual(
+                result["post_apply_validation"]["error_codes"],
+                ["POST_APPLY_VALIDATION_INVALID"],
+            )
+            self.assertEqual(
+                result,
+                transaction.serialize_transaction_result(result),
+            )
+
+    def test_public_apply_maps_recovery_required_without_private_progress(self):
+        @contextmanager
+        def recovery_required(*_args, **_kwargs):
+            raise transaction.LifecycleRecoveryRequired(
+                original_error_code="FINALIZATION_TARGET_MISMATCH",
+                rollback_error_code="STORAGE_CANONICAL_STATE_UNKNOWN",
+                applied_target_indexes=(0,),
+                rollback_target_indexes=(),
+                journal_sha256="b" * 64,
+            )
+            yield
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            with (
+                mock.patch.object(
+                    transaction,
+                    "validate_projected_transaction",
+                    return_value=self.projected_summary(),
+                ),
+                mock.patch.object(
+                    transaction,
+                    "_private_applied_workspace",
+                    side_effect=recovery_required,
+                ),
+            ):
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            self.assertEqual(result["status"], "recovery_required")
+            self.assertEqual(result["failed_stage"], "rollback")
+            self.assertEqual(
+                result["error_code"],
+                "TRANSACTION_RECOVERY_REQUIRED",
+            )
+            self.assertEqual(result["rollback_status"], "required")
+            rendered = json.dumps(result, ensure_ascii=False)
+            self.assertNotIn("applied_target_indexes", rendered)
+            self.assertNotIn("rollback_target_indexes", rendered)
+            self.assertNotIn("journal_sha256", rendered)
+            self.assertNotIn("STORAGE_CANONICAL_STATE_UNKNOWN", rendered)
+
+    def test_public_apply_retains_existing_workspace_and_requires_recovery(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            (root / "workspace" / "transactions").mkdir()
+            (root / ".moduflow" / "transactions").mkdir()
+            intent = self.intent(require_issue_index=True)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                intent,
+                project_context=context,
+                clock="2030-01-02",
+            )
+            workspace_path = (
+                root
+                / ".moduflow"
+                / "transactions"
+                / plan.transaction_id
+            )
+            with transaction.transaction_storage.private_transaction_workspace(
+                root,
+                plan.transaction_id,
+            ):
+                pass
+
+            with (
+                mock.patch.object(
+                    transaction,
+                    "validate_projected_transaction",
+                    return_value=self.projected_summary(),
+                ),
+                mock.patch.object(transaction.os, "replace") as replacement,
+                mock.patch.object(transaction.os, "rmdir") as remove_directory,
+            ):
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            self.assertEqual(result["status"], "recovery_required")
+            self.assertEqual(result["failed_stage"], "recovery")
+            self.assertEqual(result["error_code"], "STORAGE_CONFLICT")
+            self.assertEqual(result["rollback_status"], "required")
+            self.assertTrue(workspace_path.is_dir())
+            replacement.assert_not_called()
+            remove_directory.assert_not_called()
+
+    def test_public_failure_stage_accepts_every_private_error_family(self):
+        expected = {
+            "POST_APPLY_VALIDATION_INVALID": "post-apply-validation",
+            "FINALIZATION_TARGET_MISMATCH": "finalizing",
+            "CANONICAL_PREIMAGE_CONFLICT": "preflight",
+            "LOCK_HELD": "lock",
+            "STORAGE_REPLACE_FAILED": "apply",
+            "JOURNAL_PROGRESS_INVALID": "apply",
+        }
+
+        for error_code, failed_stage in expected.items():
+            with self.subTest(error_code=error_code):
+                self.assertEqual(
+                    transaction._public_failure_stage(error_code),
+                    failed_stage,
+                )
+        with self.assertRaises(transaction.LifecycleJournalError) as raised:
+            transaction._public_failure_stage("private error text")
+        self.assertEqual(raised.exception.code, "JOURNAL_RECORD_INVALID")
+        self.assertNotIn("private", str(raised.exception))
+
+    def test_public_apply_lock_release_failure_keeps_completed_validation_proof(self):
+        @contextmanager
+        def completed_then_lock_failed(plan, *, completion_input, **_kwargs):
+            changed_count = sum(
+                target.changed and target.role != "evidence"
+                for target in plan.targets
+            )
+            timestamps = tuple(
+                f"2030-01-02T03:04:{second:02d}Z"
+                for second in range(5, 5 + 11 + 2 * changed_count)
+            )
+            result = transaction.serialize_transaction_result(
+                transaction._successful_result_candidate(
+                    plan,
+                    completion_input,
+                    timestamps,
+                    changed_count,
+                )
+            )
+            yield SimpleNamespace(
+                transaction_result=transaction._freeze_json_value(result)
+            )
+            raise transaction.LifecycleLockError("LOCK_RELEASE_FAILED")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            with (
+                mock.patch.object(
+                    transaction,
+                    "validate_projected_transaction",
+                    return_value=self.projected_summary(),
+                ),
+                mock.patch.object(
+                    transaction,
+                    "_private_applied_workspace",
+                    side_effect=completed_then_lock_failed,
+                ),
+            ):
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            self.assertEqual(result["status"], "recovery_required")
+            self.assertEqual(result["failed_stage"], "lock")
+            self.assertEqual(result["error_code"], "LOCK_RELEASE_FAILED")
+            self.assertTrue(result["projected_validation"]["valid"])
+            self.assertTrue(result["post_apply_validation"]["valid"])
+            self.assertEqual(
+                result["verified_target_count"],
+                len(result["targets"]),
+            )
+
+    def test_public_apply_rejects_explicit_key_conflict_before_replay_or_mutation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            foreign_key = transaction.derive_idempotency_key(
+                context,
+                self.intent(
+                    action="complete",
+                    require_issue_index=True,
+                ),
+            )
+            conflicting = self.intent(
+                require_issue_index=True,
+                idempotency_key=foreign_key,
+            )
+
+            with (
+                mock.patch.object(
+                    transaction,
+                    "_completed_replay_result",
+                ) as replay,
+                mock.patch.object(
+                    transaction,
+                    "_private_applied_workspace",
+                ) as private_apply,
+                mock.patch.object(transaction.os, "replace") as replacement,
+                self.assertRaisesRegex(
+                    ValueError,
+                    "^IDEMPOTENCY_KEY_CONFLICT$",
+                ),
+            ):
+                transaction.apply_lifecycle_transaction(
+                    root,
+                    conflicting,
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+
+            replay.assert_not_called()
+            private_apply.assert_not_called()
+            replacement.assert_not_called()
+
+    def test_public_apply_fault_injector_is_synchronous_and_never_retried(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            with (
+                mock.patch.object(
+                    transaction,
+                    "_private_applied_workspace",
+                ) as private_apply,
+                self.assertRaisesRegex(
+                    TypeError,
+                    "fault_injector must be callable or None",
+                ),
+            ):
+                transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock="2030-01-02",
+                    fault_injector="invalid",
+                )
+            private_apply.assert_not_called()
+
+            observed = []
+
+            def inject(stage):
+                observed.append(stage)
+                if stage == "after-replay-classification":
+                    raise RuntimeError("PRIVATE INJECTED FAILURE")
+
+            with (
+                mock.patch.object(
+                    transaction,
+                    "validate_projected_transaction",
+                ) as validator,
+                mock.patch.object(
+                    transaction,
+                    "_private_applied_workspace",
+                ) as private_apply,
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    "PRIVATE INJECTED FAILURE",
+                ),
+            ):
+                transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock="2030-01-02",
+                    fault_injector=inject,
+                )
+
+            self.assertEqual(
+                observed,
+                ["after-plan", "after-replay-classification"],
+            )
+            validator.assert_not_called()
+            private_apply.assert_not_called()
 
     def replace_projected_bytes(self, plan, replacements):
         remaining = set(replacements)

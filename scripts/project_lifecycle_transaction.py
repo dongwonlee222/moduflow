@@ -3347,6 +3347,7 @@ def _public_failure_result(
     projected_validation,
     post_apply_validation,
     verified_target_count=0,
+    targets=None,
 ):
     if not isinstance(plan, LifecycleTransactionPlan):
         raise TypeError("plan must be a LifecycleTransactionPlan")
@@ -3374,7 +3375,11 @@ def _public_failure_result(
         "issue_id": plan.issue_id,
         "action": plan.action,
         "target_lifecycle": plan.target_lifecycle,
-        "targets": [target.to_public_dict() for target in plan.targets],
+        "targets": (
+            [target.to_public_dict() for target in plan.targets]
+            if targets is None
+            else _serialized_targets(targets)
+        ),
         "projected_validation": projected_validation,
         "post_apply_validation": post_apply_validation,
         "failed_stage": failed_stage,
@@ -3388,6 +3393,24 @@ def _public_failure_result(
         "started_at": "",
         "completed_at": completed_at,
     })
+
+
+def _public_failure_stage(error_code):
+    if not isinstance(error_code, str):
+        raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+    if error_code.startswith("POST_APPLY_"):
+        return "post-apply-validation"
+    if error_code.startswith("FINALIZATION_"):
+        return "finalizing"
+    if error_code.startswith("CANONICAL_"):
+        return "preflight"
+    if error_code.startswith("LOCK_"):
+        return "lock"
+    if error_code.startswith("STORAGE_"):
+        return "apply"
+    if error_code.startswith("JOURNAL_"):
+        return "apply"
+    raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
 
 
 def _planned_next_command(plan):
@@ -4194,6 +4217,7 @@ def apply_lifecycle_transaction(
         projected,
     )
     _emit_apply_fault(fault_injector, "before-private-apply")
+    completed_result = None
     try:
         with _private_applied_workspace(
             plan,
@@ -4201,10 +4225,11 @@ def apply_lifecycle_transaction(
             journal_clock=clock,
             lock_clock=clock,
         ) as completed:
-            result = serialize_transaction_result(
+            completed_result = serialize_transaction_result(
                 _json_value(completed.transaction_result)
             )
             _emit_apply_fault(fault_injector, "after-private-complete")
+            result = completed_result
     except transaction_storage.LifecycleCanonicalConflict as exc:
         return _public_failure_result(
             plan,
@@ -4223,6 +4248,16 @@ def apply_lifecycle_transaction(
             if exc.code == "LOCK_HELD"
             else "recovery_required"
         )
+        lock_projected = (
+            completed_result["projected_validation"]
+            if completed_result is not None
+            else projected
+        )
+        lock_post_apply = (
+            completed_result["post_apply_validation"]
+            if completed_result is not None
+            else post_apply
+        )
         return _public_failure_result(
             plan,
             normalized,
@@ -4234,6 +4269,71 @@ def apply_lifecycle_transaction(
                 if status == "conflict"
                 else "required"
             ),
+            completed_at=_journal_timestamp(clock),
+            projected_validation=lock_projected,
+            post_apply_validation=lock_post_apply,
+            verified_target_count=(
+                completed_result["verified_target_count"]
+                if completed_result is not None
+                else 0
+            ),
+            targets=(
+                completed_result["targets"]
+                if completed_result is not None
+                else None
+            ),
+        )
+    except LifecycleApplyRolledBack as exc:
+        post_summary = (
+            _json_value(exc.post_apply_validation)
+            if exc.post_apply_validation is not None
+            else _public_failure_summary(
+                _POST_APPLY_VALIDATION_RULE_IDS,
+                exc.original_error_code,
+            )
+        )
+        return _public_failure_result(
+            plan,
+            normalized,
+            status="rolled_back",
+            failed_stage=_public_failure_stage(
+                exc.original_error_code
+            ),
+            error_code=exc.original_error_code,
+            rollback_status="verified",
+            completed_at=_journal_timestamp(clock),
+            projected_validation=projected,
+            post_apply_validation=post_summary,
+            verified_target_count=len(plan.targets),
+        )
+    except LifecycleRecoveryRequired as exc:
+        post_summary = (
+            _json_value(exc.post_apply_validation)
+            if exc.post_apply_validation is not None
+            else _public_failure_summary(
+                _POST_APPLY_VALIDATION_RULE_IDS,
+                exc.original_error_code,
+            )
+        )
+        return _public_failure_result(
+            plan,
+            normalized,
+            status="recovery_required",
+            failed_stage="rollback",
+            error_code=exc.code,
+            rollback_status="required",
+            completed_at=_journal_timestamp(clock),
+            projected_validation=projected,
+            post_apply_validation=post_summary,
+        )
+    except transaction_storage.LifecycleStorageError as exc:
+        return _public_failure_result(
+            plan,
+            normalized,
+            status="recovery_required",
+            failed_stage="recovery",
+            error_code=exc.code,
+            rollback_status="required",
             completed_at=_journal_timestamp(clock),
             projected_validation=projected,
             post_apply_validation=post_apply,
