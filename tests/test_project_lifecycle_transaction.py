@@ -1539,6 +1539,99 @@ class TransactionPlanningTests(unittest.TestCase):
                             )
             return context, plan, tuple(applied), tuple(rollback)
 
+    def prepare_restart_finalizing_case(self, root, evidence_state):
+        context = self.scaffold(root)
+        (root / "workspace" / "transactions").mkdir()
+        plan = transaction.plan_lifecycle_transaction(
+            root,
+            self.intent(),
+            project_context=context,
+            clock="2030-01-02",
+        )
+        setup_times = iter(
+            f"2030-01-02T03:04:{second:02d}Z"
+            for second in range(5, 40)
+        )
+        with transaction._private_prepared_workspace(
+            plan,
+            journal_clock=lambda: next(setup_times),
+            lock_clock="2030-01-02T03:04:04Z",
+            lock_pid=103,
+            lock_token_factory=lambda: "a" * 32,
+        ) as prepared:
+            changed_ordinary = [
+                (target, proposal)
+                for target, proposal in zip(
+                    prepared.storage_targets,
+                    prepared.staged_proposals,
+                )
+                if target.changed and target.role != "evidence"
+            ]
+            latest = transaction._persist_progress_journal(
+                prepared,
+                plan,
+                phase="applying",
+                updated_at=next(setup_times),
+                applied_target_indexes=(),
+                rollback_target_indexes=(),
+                expected_previous_sha256=prepared.journal_sha256,
+            )
+            applied = []
+            for target, proposal in changed_ordinary:
+                transaction.transaction_storage.apply_staged_target(
+                    prepared._workspace,
+                    target,
+                    proposal,
+                )
+                applied.append(target.index)
+                latest = transaction._persist_progress_journal(
+                    prepared,
+                    plan,
+                    phase="applying",
+                    updated_at=next(setup_times),
+                    applied_target_indexes=tuple(applied),
+                    rollback_target_indexes=(),
+                    expected_previous_sha256=latest,
+                )
+            latest = transaction._persist_progress_journal(
+                prepared,
+                plan,
+                phase="post-validating",
+                updated_at=next(setup_times),
+                applied_target_indexes=tuple(applied),
+                rollback_target_indexes=(),
+                expected_previous_sha256=latest,
+            )
+            latest = transaction._persist_progress_journal(
+                prepared,
+                plan,
+                phase="finalizing",
+                updated_at=next(setup_times),
+                applied_target_indexes=tuple(applied),
+                rollback_target_indexes=(),
+                expected_previous_sha256=latest,
+            )
+            if evidence_state in {"after-unrecorded", "after-recorded"}:
+                evidence = prepared.storage_targets[-1]
+                proposal = prepared.staged_proposals[-1]
+                transaction.transaction_storage.finalize_staged_evidence(
+                    prepared._workspace,
+                    evidence,
+                    proposal,
+                )
+                applied.append(evidence.index)
+                if evidence_state == "after-recorded":
+                    transaction._persist_progress_journal(
+                        prepared,
+                        plan,
+                        phase="finalizing",
+                        updated_at=next(setup_times),
+                        applied_target_indexes=tuple(applied),
+                        rollback_target_indexes=(),
+                        expected_previous_sha256=latest,
+                    )
+        return context, plan
+
     def test_completed_replay_returns_strict_noop_from_original_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -4011,6 +4104,387 @@ class TransactionPlanningTests(unittest.TestCase):
                         canonical.read_bytes() if canonical.exists() else None,
                         target._before_bytes if target.existed else None,
                     )
+
+    def test_recover_finalizing_transaction_completes_both_crash_positions(self):
+        recover = getattr(transaction, "_recover_finalizing_transaction", None)
+        self.assertIsNotNone(recover)
+        for evidence_state in ("before", "after-unrecorded", "after-recorded"):
+            with self.subTest(evidence=evidence_state), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context, plan = self.prepare_restart_finalizing_case(
+                    root,
+                    evidence_state,
+                )
+                subject = transaction._authorized_recovery_subject(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                )
+                recovery_times = iter(
+                    f"2030-01-02T03:05:{second:02d}Z"
+                    for second in range(40)
+                )
+                with (
+                    mock.patch.object(
+                        transaction.validate_project_artifacts,
+                        "validate_project",
+                    ) as validate_project,
+                    transaction._exclusive_recovery_lock(
+                        subject,
+                        clock="2030-01-02T03:05:30Z",
+                        pid=203,
+                        token_factory=lambda: "b" * 32,
+                    ),
+                ):
+                    with transaction._private_recovered_transaction_workspace(
+                        root,
+                        plan.transaction_id,
+                    ) as recovered:
+                        outcome = recover(
+                            recovered,
+                            journal_clock=lambda: next(recovery_times),
+                        )
+
+                self.assertEqual(outcome.status, "applied")
+                self.assertEqual(outcome.resulting_phase, "complete")
+                self.assertEqual(outcome.verified_target_count, len(plan.targets))
+                validate_project.assert_not_called()
+                journal = json.loads(
+                    (
+                        root
+                        / ".moduflow"
+                        / "transactions"
+                        / plan.transaction_id
+                        / "journal.json"
+                    ).read_bytes()
+                )
+                changed = [
+                    index for index, target in enumerate(plan.targets) if target.changed
+                ]
+                self.assertEqual(journal["phase"], "complete")
+                self.assertEqual(journal["applied_target_indexes"], changed)
+                for target in plan.targets:
+                    canonical = root / target.relative_path
+                    self.assertEqual(canonical.read_bytes(), target._after_bytes)
+
+    def test_recover_recovery_required_selects_only_proven_direction(self):
+        recover = getattr(
+            transaction,
+            "_recover_recovery_required_transaction",
+            None,
+        )
+        self.assertIsNotNone(recover)
+        cases = ("partial-apply", "rollback-prefix", "evidence-after")
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                if case == "partial-apply":
+                    context, plan, _applied, _rollback = (
+                        self.prepare_restart_recovery_case(
+                            root,
+                            "applying-recorded",
+                            applied_count=2,
+                        )
+                    )
+                elif case == "rollback-prefix":
+                    context, plan, _applied, _rollback = (
+                        self.prepare_restart_recovery_case(
+                            root,
+                            "rolling-back-recorded",
+                            applied_count=4,
+                            rollback_count=1,
+                        )
+                    )
+                else:
+                    context, plan = self.prepare_restart_finalizing_case(
+                        root,
+                        "after-unrecorded",
+                    )
+                journal_path = (
+                    root
+                    / ".moduflow"
+                    / "transactions"
+                    / plan.transaction_id
+                    / "journal.json"
+                )
+                journal = json.loads(journal_path.read_bytes())
+                journal["phase"] = "recovery-required"
+                journal["updated_at"] = "2030-01-02T03:05:00Z"
+                journal_path.write_bytes(
+                    transaction.canonical_json_bytes(
+                        transaction.serialize_transaction_journal(journal)
+                    )
+                    + b"\n"
+                )
+                subject = transaction._authorized_recovery_subject(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                )
+                recovery_times = iter(
+                    f"2030-01-02T03:06:{second:02d}Z"
+                    for second in range(40)
+                )
+                with transaction._exclusive_recovery_lock(
+                    subject,
+                    clock="2030-01-02T03:05:30Z",
+                    pid=203,
+                    token_factory=lambda: "b" * 32,
+                ):
+                    with transaction._private_recovered_transaction_workspace(
+                        root,
+                        plan.transaction_id,
+                    ) as recovered:
+                        outcome = recover(
+                            recovered,
+                            journal_clock=lambda: next(recovery_times),
+                        )
+
+                expected = "applied" if case == "evidence-after" else "rolled_back"
+                resulting = "complete" if case == "evidence-after" else "rolled-back"
+                self.assertEqual(outcome.status, expected)
+                self.assertEqual(outcome.resulting_phase, resulting)
+
+    def test_recover_recovery_required_preserves_ambiguous_finalization(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context, plan = self.prepare_restart_finalizing_case(root, "before")
+            journal_path = (
+                root
+                / ".moduflow"
+                / "transactions"
+                / plan.transaction_id
+                / "journal.json"
+            )
+            journal = json.loads(journal_path.read_bytes())
+            journal["phase"] = "recovery-required"
+            journal["updated_at"] = "2030-01-02T03:05:00Z"
+            journal_path.write_bytes(
+                transaction.canonical_json_bytes(
+                    transaction.serialize_transaction_journal(journal)
+                )
+                + b"\n"
+            )
+            before = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if (root / target.relative_path).exists()
+                    else None
+                )
+                for target in plan.targets
+            }
+            journal_before = journal_path.read_bytes()
+            subject = transaction._authorized_recovery_subject(
+                root,
+                plan.transaction_id,
+                project_context=context,
+            )
+            with transaction._exclusive_recovery_lock(
+                subject,
+                clock="2030-01-02T03:05:30Z",
+                pid=203,
+                token_factory=lambda: "b" * 32,
+            ):
+                with transaction._private_recovered_transaction_workspace(
+                    root,
+                    plan.transaction_id,
+                ) as recovered:
+                    with self.assertRaises(
+                        transaction.LifecycleRecoveryStateError
+                    ) as raised:
+                        transaction._recover_recovery_required_transaction(
+                            recovered,
+                            journal_clock="2030-01-02T03:06:00Z",
+                        )
+
+            self.assertEqual(raised.exception.code, "RECOVERY_STATE_AMBIGUOUS")
+            self.assertEqual(journal_path.read_bytes(), journal_before)
+            self.assertEqual(
+                {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if (root / target.relative_path).exists()
+                        else None
+                    )
+                    for target in plan.targets
+                },
+                before,
+            )
+
+    def test_recover_finalizing_transaction_preserves_missing_evidence_stage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context, plan = self.prepare_restart_finalizing_case(root, "before")
+            evidence_stage = next(root.glob("**/.moduflow-stage-*"))
+            evidence_stage.unlink()
+            journal_path = (
+                root
+                / ".moduflow"
+                / "transactions"
+                / plan.transaction_id
+                / "journal.json"
+            )
+            journal_before = journal_path.read_bytes()
+            canonical_before = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if (root / target.relative_path).exists()
+                    else None
+                )
+                for target in plan.targets
+            }
+            subject = transaction._authorized_recovery_subject(
+                root,
+                plan.transaction_id,
+                project_context=context,
+            )
+            with transaction._exclusive_recovery_lock(
+                subject,
+                clock="2030-01-02T03:05:30Z",
+                pid=203,
+                token_factory=lambda: "b" * 32,
+            ):
+                with transaction._private_recovered_transaction_workspace(
+                    root,
+                    plan.transaction_id,
+                ) as recovered:
+                    with self.assertRaises(
+                        transaction.LifecycleRecoveryStateError
+                    ) as raised:
+                        transaction._recover_finalizing_transaction(
+                            recovered,
+                            journal_clock="2030-01-02T03:06:00Z",
+                        )
+
+            self.assertEqual(
+                raised.exception.code,
+                "RECOVERY_STATE_CANONICAL_UNKNOWN",
+            )
+            self.assertEqual(journal_path.read_bytes(), journal_before)
+            self.assertEqual(
+                {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if (root / target.relative_path).exists()
+                        else None
+                    )
+                    for target in plan.targets
+                },
+                canonical_before,
+            )
+
+    def test_recover_loaded_transaction_verifies_terminal_phases_without_mutation(self):
+        recover = getattr(transaction, "_recover_loaded_transaction", None)
+        self.assertIsNotNone(recover)
+        for phase in ("complete", "rolled-back"):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                if phase == "complete":
+                    context, plan = self.prepare_restart_finalizing_case(
+                        root,
+                        "after-recorded",
+                    )
+                else:
+                    context, plan, _applied, _rollback = (
+                        self.prepare_restart_recovery_case(
+                            root,
+                            "rolling-back-recorded",
+                            applied_count=4,
+                            rollback_count=4,
+                        )
+                    )
+                journal_path = (
+                    root
+                    / ".moduflow"
+                    / "transactions"
+                    / plan.transaction_id
+                    / "journal.json"
+                )
+                journal = json.loads(journal_path.read_bytes())
+                journal["phase"] = phase
+                journal["applied_target_indexes"] = (
+                    [
+                        index
+                        for index, target in enumerate(plan.targets)
+                        if target.changed
+                    ]
+                    if phase == "complete"
+                    else journal["applied_target_indexes"]
+                )
+                journal["rollback_target_indexes"] = (
+                    []
+                    if phase == "complete"
+                    else journal["rollback_target_indexes"]
+                )
+                journal["updated_at"] = "2030-01-02T03:06:00Z"
+                journal_path.write_bytes(
+                    transaction.canonical_json_bytes(
+                        transaction.serialize_transaction_journal(journal)
+                    )
+                    + b"\n"
+                )
+                before = {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if (root / target.relative_path).exists()
+                        else None
+                    )
+                    for target in plan.targets
+                }
+                journal_before = journal_path.read_bytes()
+                subject = transaction._authorized_recovery_subject(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                )
+                with (
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "persist_serialized_journal",
+                    ) as persist,
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "finalize_staged_evidence",
+                    ) as finalize,
+                    mock.patch.object(
+                        transaction,
+                        "_rollback_changed_target",
+                    ) as rollback,
+                    mock.patch.object(
+                        transaction.validate_project_artifacts,
+                        "validate_project",
+                    ) as validate_project,
+                    transaction._exclusive_recovery_lock(
+                        subject,
+                        clock="2030-01-02T03:06:30Z",
+                        pid=203,
+                        token_factory=lambda: "b" * 32,
+                    ),
+                ):
+                    with transaction._private_recovered_transaction_workspace(
+                        root,
+                        plan.transaction_id,
+                    ) as recovered:
+                        outcome = recover(recovered)
+
+                self.assertEqual(outcome.status, "noop")
+                self.assertEqual(outcome.resulting_phase, phase)
+                persist.assert_not_called()
+                finalize.assert_not_called()
+                rollback.assert_not_called()
+                validate_project.assert_not_called()
+                self.assertEqual(journal_path.read_bytes(), journal_before)
+                self.assertEqual(
+                    {
+                        target.relative_path: (
+                            (root / target.relative_path).read_bytes()
+                            if (root / target.relative_path).exists()
+                            else None
+                        )
+                        for target in plan.targets
+                    },
+                    before,
+                )
 
     def test_recovered_transaction_workspace_rejects_unbound_extra_stage(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -3682,11 +3682,13 @@ def _recoverable_missing_stage_indexes(journal):
         )
         allowance = len(applied) + int(len(applied) < len(canonical))
         return canonical[:allowance]
+    if phase == "recovery-required":
+        allowance = len(applied) + int(len(applied) < len(changed))
+        return changed[:allowance]
     if phase in {
         "post-validating",
         "rolling-back",
         "rolled-back",
-        "recovery-required",
     }:
         return applied
     if phase in {"finalizing", "complete"}:
@@ -3952,65 +3954,15 @@ def _verify_complete_recovery_before(recovered):
     return verified
 
 
-def _recover_reversible_transaction(recovered, *, journal_clock=None):
-    """Recover one reversible phase only from exact journal/canonical proof."""
-    if not isinstance(recovered, _RecoveredTransactionState):
-        raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
+def _complete_recovery_rollback(
+    recovered,
+    observed,
+    confirmed_applied,
+    confirmed_rollback,
+    *,
+    journal_clock,
+):
     journal = recovered.journal_state.journal
-    observed = journal["phase"]
-    authority = recovered.journal_state.authority
-    if observed in {"planned", "staged"}:
-        try:
-            recovery_targets = _recovery_targets_from_journal(journal)
-            verified = len(
-                transaction_storage.verify_recovery_canonical_before(
-                    recovered._workspace,
-                    recovery_targets,
-                )
-            )
-        except transaction_storage.LifecycleRecoveryStorageError as exc:
-            raise LifecycleRecoveryStateError(
-                "RECOVERY_STATE_CANONICAL_UNKNOWN"
-            ) from exc
-        if authority == "pre-journal-orphan":
-            return _PrivateRecoveryOutcome(
-                observed_phase=observed,
-                resulting_phase="pre-journal-orphan",
-                status="rolled_back",
-                error_code="none",
-                verified_target_count=verified,
-                journal_sha256="absent",
-            )
-        timestamp = _journal_timestamps(journal_clock, 1)[0]
-        _discard_recovered_journal_next(recovered)
-        latest = _persist_recovery_journal(
-            recovered,
-            observed,
-            "rolled-back",
-            updated_at=timestamp,
-            applied_target_indexes=(),
-            rollback_target_indexes=(),
-            expected_previous_sha256=recovered.journal_state.journal_sha256,
-        )
-        return _PrivateRecoveryOutcome(
-            observed_phase=observed,
-            resulting_phase="rolled-back",
-            status="rolled_back",
-            error_code="none",
-            verified_target_count=verified,
-            journal_sha256=latest,
-        )
-
-    if observed not in {
-        "prepared",
-        "applying",
-        "post-validating",
-        "rolling-back",
-    } or not recovered.storage_targets:
-        raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
-    confirmed_applied, confirmed_rollback = _reconciled_recovery_rollback(
-        recovered
-    )
     recorded_rollback = tuple(journal["rollback_target_indexes"])
     needs_initial = (
         observed != "rolling-back"
@@ -4085,6 +4037,354 @@ def _recover_reversible_transaction(recovered, *, journal_clock=None):
         verified_target_count=verified,
         journal_sha256=latest,
     )
+
+
+def _recover_reversible_transaction(recovered, *, journal_clock=None):
+    """Recover one reversible phase only from exact journal/canonical proof."""
+    if not isinstance(recovered, _RecoveredTransactionState):
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
+    journal = recovered.journal_state.journal
+    observed = journal["phase"]
+    authority = recovered.journal_state.authority
+    if observed in {"planned", "staged"}:
+        try:
+            recovery_targets = _recovery_targets_from_journal(journal)
+            verified = len(
+                transaction_storage.verify_recovery_canonical_before(
+                    recovered._workspace,
+                    recovery_targets,
+                )
+            )
+        except transaction_storage.LifecycleRecoveryStorageError as exc:
+            raise LifecycleRecoveryStateError(
+                "RECOVERY_STATE_CANONICAL_UNKNOWN"
+            ) from exc
+        if authority == "pre-journal-orphan":
+            return _PrivateRecoveryOutcome(
+                observed_phase=observed,
+                resulting_phase="pre-journal-orphan",
+                status="rolled_back",
+                error_code="none",
+                verified_target_count=verified,
+                journal_sha256="absent",
+            )
+        timestamp = _journal_timestamps(journal_clock, 1)[0]
+        _discard_recovered_journal_next(recovered)
+        latest = _persist_recovery_journal(
+            recovered,
+            observed,
+            "rolled-back",
+            updated_at=timestamp,
+            applied_target_indexes=(),
+            rollback_target_indexes=(),
+            expected_previous_sha256=recovered.journal_state.journal_sha256,
+        )
+        return _PrivateRecoveryOutcome(
+            observed_phase=observed,
+            resulting_phase="rolled-back",
+            status="rolled_back",
+            error_code="none",
+            verified_target_count=verified,
+            journal_sha256=latest,
+        )
+
+    if observed not in {
+        "prepared",
+        "applying",
+        "post-validating",
+        "rolling-back",
+    } or not recovered.storage_targets:
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
+    confirmed_applied, confirmed_rollback = _reconciled_recovery_rollback(
+        recovered
+    )
+    return _complete_recovery_rollback(
+        recovered,
+        observed,
+        confirmed_applied,
+        confirmed_rollback,
+        journal_clock=journal_clock,
+    )
+
+
+def _verify_complete_recovery_after(recovered):
+    verified = 0
+    for target in recovered.storage_targets:
+        try:
+            if target.changed:
+                if transaction_storage.classify_recovered_target(
+                    recovered._workspace,
+                    target,
+                ) != "after":
+                    raise transaction_storage.LifecycleStorageError(
+                        "STORAGE_VERIFY_FAILED"
+                    )
+            else:
+                transaction_storage.verify_canonical_target(
+                    recovered._workspace,
+                    target,
+                )
+        except (
+            transaction_storage.LifecycleCanonicalConflict,
+            transaction_storage.LifecycleStorageError,
+        ) as exc:
+            raise LifecycleRecoveryStateError(
+                "RECOVERY_STATE_CANONICAL_UNKNOWN"
+            ) from exc
+        verified += 1
+    return verified
+
+
+def _recover_finalizing_transaction(recovered, *, journal_clock=None):
+    """Complete finalization only from exact ordinary/evidence after proof."""
+    if not isinstance(recovered, _RecoveredTransactionState):
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
+    journal = recovered.journal_state.journal
+    observed = journal["phase"]
+    if observed not in {"finalizing", "recovery-required"}:
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
+    if not recovered.storage_targets:
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
+    changed = tuple(target for target in recovered.storage_targets if target.changed)
+    changed_indexes = tuple(target.index for target in changed)
+    canonical_indexes = tuple(
+        target.index for target in changed if target.role != "evidence"
+    )
+    applied = tuple(journal["applied_target_indexes"])
+    if applied not in {canonical_indexes, changed_indexes}:
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_PROGRESS_INVALID")
+    evidence = recovered.storage_targets[-1]
+    if evidence.role != "evidence":
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_PROGRESS_INVALID")
+    for target in recovered.storage_targets[:-1]:
+        if target.changed:
+            if _recovery_changed_target_state(recovered, target) != "after":
+                raise LifecycleRecoveryStateError(
+                    "RECOVERY_STATE_CANONICAL_UNKNOWN"
+                )
+        else:
+            try:
+                transaction_storage.verify_canonical_target(
+                    recovered._workspace,
+                    target,
+                )
+            except (
+                transaction_storage.LifecycleCanonicalConflict,
+                transaction_storage.LifecycleStorageError,
+            ) as exc:
+                raise LifecycleRecoveryStateError(
+                    "RECOVERY_STATE_CANONICAL_UNKNOWN"
+                ) from exc
+    evidence_state = _recovery_changed_target_state(recovered, evidence)
+    if applied == changed_indexes and evidence_state != "after":
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_PROGRESS_INVALID")
+    proposal = recovered.staged_proposals[-1]
+    if evidence_state == "before" and proposal is None:
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_CANONICAL_UNKNOWN")
+    if evidence_state not in {"before", "after"}:
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_CANONICAL_UNKNOWN")
+
+    needs_progress = applied != changed_indexes
+    timestamp_count = int(needs_progress) + 1
+    timestamps = iter(_journal_timestamps(journal_clock, timestamp_count))
+    _discard_recovered_journal_next(recovered)
+    latest = recovered.journal_state.journal_sha256
+    current_phase = observed
+    if evidence_state == "before":
+        try:
+            transaction_storage.finalize_staged_evidence(
+                recovered._workspace,
+                evidence,
+                proposal,
+            )
+        except (
+            transaction_storage.LifecycleCanonicalConflict,
+            transaction_storage.LifecycleStorageError,
+        ) as exc:
+            raise LifecycleRecoveryStateError(
+                "RECOVERY_STATE_CANONICAL_UNKNOWN"
+            ) from exc
+    if needs_progress:
+        latest = _persist_recovery_journal(
+            recovered,
+            current_phase,
+            "finalizing",
+            updated_at=next(timestamps),
+            applied_target_indexes=changed_indexes,
+            rollback_target_indexes=(),
+            expected_previous_sha256=latest,
+        )
+        current_phase = "finalizing"
+    verified = _verify_complete_recovery_after(recovered)
+    latest = _persist_recovery_journal(
+        recovered,
+        current_phase,
+        "complete",
+        updated_at=next(timestamps),
+        applied_target_indexes=changed_indexes,
+        rollback_target_indexes=(),
+        expected_previous_sha256=latest,
+    )
+    return _PrivateRecoveryOutcome(
+        observed_phase=observed,
+        resulting_phase="complete",
+        status="applied",
+        error_code="none",
+        verified_target_count=verified,
+        journal_sha256=latest,
+    )
+
+
+def _reconciled_recovery_required_rollback(recovered):
+    journal = recovered.journal_state.journal
+    changed = tuple(target for target in recovered.storage_targets if target.changed)
+    changed_indexes = tuple(target.index for target in changed)
+    canonical = tuple(target for target in changed if target.role != "evidence")
+    canonical_indexes = tuple(target.index for target in canonical)
+    applied = tuple(journal["applied_target_indexes"])
+    rollback = tuple(journal["rollback_target_indexes"])
+    if (
+        applied != changed_indexes[:len(applied)]
+        or rollback != tuple(reversed(applied))[:len(rollback)]
+    ):
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_PROGRESS_INVALID")
+    states = tuple(
+        _recovery_changed_target_state(recovered, target)
+        for target in changed
+    )
+    _verify_recovery_unchanged_targets(recovered)
+    if rollback:
+        applied_count = len(applied)
+        if any(state != "before" for state in states[applied_count:]):
+            raise LifecycleRecoveryStateError(
+                "RECOVERY_STATE_PROGRESS_INVALID"
+            )
+        reverse_states = tuple(reversed(states[:applied_count]))
+        restored_count = 0
+        while (
+            restored_count < len(reverse_states)
+            and reverse_states[restored_count] == "before"
+        ):
+            restored_count += 1
+        if any(state != "after" for state in reverse_states[restored_count:]):
+            raise LifecycleRecoveryStateError(
+                "RECOVERY_STATE_PROGRESS_INVALID"
+            )
+        if (
+            restored_count < len(rollback)
+            or restored_count > len(rollback) + 1
+        ):
+            raise LifecycleRecoveryStateError(
+                "RECOVERY_STATE_PROGRESS_INVALID"
+            )
+        return applied, tuple(reversed(applied))[:restored_count]
+
+    ordinary_states = states[:len(canonical)]
+    if states[len(canonical):] != ("before",):
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
+    after_count = 0
+    while (
+        after_count < len(ordinary_states)
+        and ordinary_states[after_count] == "after"
+    ):
+        after_count += 1
+    if any(state != "before" for state in ordinary_states[after_count:]):
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_PROGRESS_INVALID")
+    if after_count == 0 or after_count == len(canonical_indexes):
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
+    if after_count >= len(applied):
+        if after_count > len(applied) + 1:
+            raise LifecycleRecoveryStateError(
+                "RECOVERY_STATE_PROGRESS_INVALID"
+            )
+        return canonical_indexes[:after_count], ()
+    restored_count = len(applied) - after_count
+    if restored_count > 1:
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_PROGRESS_INVALID")
+    return applied, tuple(reversed(applied))[:restored_count]
+
+
+def _recover_recovery_required_transaction(recovered, *, journal_clock=None):
+    """Select rollback/finalization only when recovery-required proof is unique."""
+    if (
+        not isinstance(recovered, _RecoveredTransactionState)
+        or recovered.journal_state.journal["phase"] != "recovery-required"
+        or not recovered.storage_targets
+    ):
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
+    journal = recovered.journal_state.journal
+    evidence = recovered.storage_targets[-1]
+    evidence_state = _recovery_changed_target_state(recovered, evidence)
+    if journal["rollback_target_indexes"]:
+        confirmed = _reconciled_recovery_required_rollback(recovered)
+        return _complete_recovery_rollback(
+            recovered,
+            "recovery-required",
+            *confirmed,
+            journal_clock=journal_clock,
+        )
+    if evidence_state == "after":
+        return _recover_finalizing_transaction(
+            recovered,
+            journal_clock=journal_clock,
+        )
+    confirmed = _reconciled_recovery_required_rollback(recovered)
+    return _complete_recovery_rollback(
+        recovered,
+        "recovery-required",
+        *confirmed,
+        journal_clock=journal_clock,
+    )
+
+
+def _recover_loaded_transaction(recovered, *, journal_clock=None):
+    """Apply the closed B2f2 phase decision table to one recovered workspace."""
+    if not isinstance(recovered, _RecoveredTransactionState):
+        raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
+    phase = recovered.journal_state.journal["phase"]
+    if phase in {
+        "planned",
+        "staged",
+        "prepared",
+        "applying",
+        "post-validating",
+        "rolling-back",
+    }:
+        return _recover_reversible_transaction(
+            recovered,
+            journal_clock=journal_clock,
+        )
+    if phase == "finalizing":
+        return _recover_finalizing_transaction(
+            recovered,
+            journal_clock=journal_clock,
+        )
+    if phase == "recovery-required":
+        return _recover_recovery_required_transaction(
+            recovered,
+            journal_clock=journal_clock,
+        )
+    if phase == "complete":
+        verified = _verify_complete_recovery_after(recovered)
+        return _PrivateRecoveryOutcome(
+            observed_phase=phase,
+            resulting_phase=phase,
+            status="noop",
+            error_code="none",
+            verified_target_count=verified,
+            journal_sha256=recovered.journal_state.journal_sha256,
+        )
+    if phase == "rolled-back":
+        verified = _verify_complete_recovery_before(recovered)
+        return _PrivateRecoveryOutcome(
+            observed_phase=phase,
+            resulting_phase=phase,
+            status="noop",
+            error_code="none",
+            verified_target_count=verified,
+            journal_sha256=recovered.journal_state.journal_sha256,
+        )
+    raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
 
 
 def serialize_transaction_plan(plan):
