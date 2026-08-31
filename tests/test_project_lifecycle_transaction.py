@@ -4954,6 +4954,294 @@ class TransactionPlanningTests(unittest.TestCase):
                 + b"\n",
             )
 
+    def test_cleanup_inventory_proof_is_private_frozen_and_read_only(self):
+        verify = getattr(
+            transaction.transaction_storage,
+            "verify_recovery_cleanup_inventory",
+            None,
+        )
+        self.assertIsNotNone(verify)
+        for terminal in ("complete", "rolled-back"):
+            with self.subTest(terminal=terminal), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                if terminal == "complete":
+                    context, plan = self.prepare_restart_finalizing_case(
+                        root,
+                        "after-recorded",
+                    )
+                else:
+                    context, plan, _applied, _rollback = (
+                        self.prepare_restart_recovery_case(
+                            root,
+                            "rolling-back-recorded",
+                            applied_count=4,
+                            rollback_count=4,
+                        )
+                    )
+                recovery_times = iter(
+                    f"2030-01-02T03:10:{second:02d}Z"
+                    for second in range(50)
+                )
+                recovered_report = transaction.recover_incomplete_transaction(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                    clock=lambda: next(recovery_times),
+                    lock_pid=207,
+                    lock_token_factory=lambda: "f" * 32,
+                )
+                self.assertIn(
+                    recovered_report["status"],
+                    {"applied", "rolled_back"},
+                )
+
+                def tree_snapshot():
+                    snapshot = {}
+                    for path in sorted(root.rglob("*")):
+                        metadata = path.lstat()
+                        relative = path.relative_to(root).as_posix()
+                        snapshot[relative] = (
+                            stat.S_IFMT(metadata.st_mode),
+                            stat.S_IMODE(metadata.st_mode),
+                            metadata.st_ino,
+                            metadata.st_nlink,
+                            path.read_bytes() if path.is_file() else None,
+                        )
+                    return snapshot
+
+                before = tree_snapshot()
+                with transaction._private_recovered_transaction_workspace(
+                    root,
+                    plan.transaction_id,
+                ) as recovered:
+                    journal = recovered.journal_state.journal
+                    with (
+                        mock.patch.object(
+                            transaction.transaction_storage.os,
+                            "unlink",
+                            side_effect=AssertionError("cleanup proof unlinked"),
+                        ) as unlink,
+                        mock.patch.object(
+                            transaction.transaction_storage.os,
+                            "rmdir",
+                            side_effect=AssertionError("cleanup proof removed directory"),
+                        ) as rmdir,
+                        mock.patch.object(
+                            transaction.transaction_storage.os,
+                            "replace",
+                            side_effect=AssertionError("cleanup proof replaced file"),
+                        ) as replacement,
+                        mock.patch.object(
+                            transaction.transaction_storage,
+                            "persist_serialized_journal",
+                            side_effect=AssertionError("cleanup proof persisted journal"),
+                        ) as persist,
+                    ):
+                        proof = verify(
+                            recovered._workspace,
+                            transaction._recovery_targets_from_journal(journal),
+                            recovered.journal_state._control_snapshot,
+                            recoverable_missing_indexes=(
+                                transaction._recoverable_missing_stage_indexes(
+                                    journal
+                                )
+                            ),
+                        )
+                    unlink.assert_not_called()
+                    rmdir.assert_not_called()
+                    replacement.assert_not_called()
+                    persist.assert_not_called()
+
+                self.assertEqual(repr(proof), "_RecoveryCleanupInventory()")
+                with self.assertRaises(FrozenInstanceError):
+                    proof._workspace_directory = None
+                for forbidden in (
+                    str(root),
+                    plan.transaction_id,
+                    ".moduflow-stage-",
+                    "preimages",
+                    "journal.json",
+                ):
+                    self.assertNotIn(forbidden, repr(proof))
+                self.assertEqual(tree_snapshot(), before)
+
+    def test_cleanup_inventory_proof_rejects_post_reopen_inventory_changes(self):
+        verify = getattr(
+            transaction.transaction_storage,
+            "verify_recovery_cleanup_inventory",
+            None,
+        )
+        self.assertIsNotNone(verify)
+        for corruption in (
+            "extra-control",
+            "hardlinked-preimage",
+            "extra-stage",
+            "workspace-replaced",
+        ):
+            with self.subTest(corruption=corruption), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context, plan, _applied, _rollback = (
+                    self.prepare_restart_recovery_case(
+                        root,
+                        "rolling-back-recorded",
+                        applied_count=4,
+                        rollback_count=4,
+                    )
+                )
+                recovery_times = iter(
+                    f"2030-01-02T03:11:{second:02d}Z"
+                    for second in range(50)
+                )
+                transaction.recover_incomplete_transaction(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                    clock=lambda: next(recovery_times),
+                    lock_pid=208,
+                    lock_token_factory=lambda: "1" * 32,
+                )
+                workspace = (
+                    root
+                    / ".moduflow"
+                    / "transactions"
+                    / plan.transaction_id
+                )
+                with transaction._private_recovered_transaction_workspace(
+                    root,
+                    plan.transaction_id,
+                ) as recovered:
+                    journal = recovered.journal_state.journal
+                    if corruption == "extra-control":
+                        changed = workspace / "foreign-private-file"
+                        changed.write_bytes(b"foreign\n")
+                        changed.chmod(0o600)
+                    elif corruption == "hardlinked-preimage":
+                        changed = workspace / "preimages" / "000000.bin"
+                        original = changed.read_bytes()
+                        changed.unlink()
+                        external = root / "hardlinked-private-payload"
+                        external.write_bytes(original)
+                        os.link(external, changed)
+                    elif corruption == "extra-stage":
+                        digest = hashlib.sha256(
+                            plan.transaction_id.encode("utf-8")
+                        ).hexdigest()
+                        changed = (
+                            root
+                            / "issues"
+                            / f".moduflow-stage-{digest}-999999"
+                        )
+                        changed.write_bytes(b"foreign stage\n")
+                        changed.chmod(0o600)
+                    else:
+                        moved = workspace.with_name(
+                            f"{plan.transaction_id}-original"
+                        )
+                        workspace.rename(moved)
+                        workspace.mkdir(mode=0o700)
+                        (workspace / "preimages").mkdir(mode=0o700)
+                        changed = workspace
+                    before = changed.lstat()
+                    with self.assertRaises(
+                        transaction.transaction_storage.LifecycleRecoveryStorageError
+                    ) as raised:
+                        verify(
+                            recovered._workspace,
+                            transaction._recovery_targets_from_journal(journal),
+                            recovered.journal_state._control_snapshot,
+                            recoverable_missing_indexes=(
+                                transaction._recoverable_missing_stage_indexes(
+                                    journal
+                                )
+                            ),
+                        )
+
+                self.assertIn(
+                    raised.exception.code,
+                    {
+                        "RECOVERY_WORKSPACE_UNSAFE",
+                        "RECOVERY_CONTROL_FILE_UNSAFE",
+                        "RECOVERY_PAYLOAD_INVALID",
+                        "RECOVERY_PAYLOAD_MISMATCH",
+                    },
+                )
+                self.assertTrue(changed.exists())
+                self.assertEqual(changed.lstat().st_ino, before.st_ino)
+
+    def test_cleanup_inventory_proof_accepts_exact_pre_journal_orphan(self):
+        verify = getattr(
+            transaction.transaction_storage,
+            "verify_recovery_cleanup_inventory",
+            None,
+        )
+        self.assertIsNotNone(verify)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            timestamps = iter(
+                (
+                    "2030-01-02T03:04:05Z",
+                    "2030-01-02T03:04:06Z",
+                    "2030-01-02T03:04:07Z",
+                )
+            )
+            with transaction._private_prepared_workspace(
+                plan,
+                journal_clock=lambda: next(timestamps),
+                lock_clock="2030-01-02T03:04:05Z",
+                lock_pid=123,
+                lock_token_factory=lambda: "1" * 32,
+            ):
+                pass
+            workspace = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            journal_path = workspace / "journal.json"
+            next_path = workspace / "journal.next"
+            planned = json.loads(journal_path.read_bytes())
+            planned["phase"] = "planned"
+            planned["recovery_manifest_sha256"] = "absent"
+            planned["applied_target_indexes"] = []
+            planned["rollback_target_indexes"] = []
+            planned["updated_at"] = "2030-01-02T03:04:05Z"
+            planned_bytes = (
+                transaction.canonical_json_bytes(
+                    transaction.serialize_transaction_journal(planned)
+                )
+                + b"\n"
+            )
+            next_path.write_bytes(planned_bytes)
+            next_path.chmod(0o600)
+            journal_path.unlink()
+
+            with transaction._private_recovered_transaction_workspace(
+                root,
+                plan.transaction_id,
+            ) as recovered:
+                self.assertEqual(
+                    recovered.journal_state.authority,
+                    "pre-journal-orphan",
+                )
+                proof = verify(
+                    recovered._workspace,
+                    transaction._recovery_targets_from_journal(
+                        recovered.journal_state.journal
+                    ),
+                    recovered.journal_state._control_snapshot,
+                    recoverable_missing_indexes=(),
+                )
+
+            self.assertEqual(repr(proof), "_RecoveryCleanupInventory()")
+            self.assertEqual(next_path.read_bytes(), planned_bytes)
+            self.assertFalse(journal_path.exists())
+
     def test_private_preimage_workspace_denies_or_rejects_before_side_effects(self):
         entry = getattr(transaction, "_private_preimage_workspace", None)
         self.assertIsNotNone(entry)

@@ -289,6 +289,45 @@ class _RecoveryControlSnapshot:
     _preimage_entries: tuple[str, ...] = field(repr=False, compare=False)
 
 
+@dataclass(frozen=True)
+class _RecoveryDirectorySnapshot:
+    _device: int = field(repr=False, compare=False)
+    _inode: int = field(repr=False, compare=False)
+    _mode: int = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
+class _RecoveryCleanupInventory:
+    _workspace_directory: _RecoveryDirectorySnapshot = field(
+        repr=False,
+        compare=False,
+    )
+    _preimages_directory: _RecoveryDirectorySnapshot = field(
+        repr=False,
+        compare=False,
+    )
+    _control_snapshot: _RecoveryControlSnapshot = field(
+        repr=False,
+        compare=False,
+    )
+    _recovery_targets: tuple[RecoveryTarget, ...] = field(
+        repr=False,
+        compare=False,
+    )
+    _preimages: tuple[StoredPreimage, ...] = field(
+        repr=False,
+        compare=False,
+    )
+    _staged_proposals: tuple[StagedProposal | None, ...] = field(
+        repr=False,
+        compare=False,
+    )
+    _recovery_manifest: RecoveryManifest | None = field(
+        repr=False,
+        compare=False,
+    )
+
+
 _ABSENT_RECOVERY_FILE = _RecoveryFileSnapshot(
     state="absent",
     size=0,
@@ -2655,12 +2694,377 @@ def verify_unbound_recovery_inventory(
                     expected_sha256=selected.after_sha256,
                     expected_device=parent_metadata.st_dev,
                 )
-        except LifecycleStorageError as exc:
+        except (OSError, LifecycleStorageError) as exc:
             raise LifecycleRecoveryStorageError(
                 "RECOVERY_PAYLOAD_INVALID"
             ) from exc
         finally:
             _close_descriptors(parent_fd)
+
+
+def _recovery_directory_snapshot(metadata):
+    if not _private_directory_metadata(metadata):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    return _RecoveryDirectorySnapshot(
+        _device=metadata.st_dev,
+        _inode=metadata.st_ino,
+        _mode=stat.S_IMODE(metadata.st_mode),
+    )
+
+
+def _cleanup_directory_snapshots(workspace):
+    if not isinstance(workspace, _PrivateTransactionWorkspace):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    try:
+        workspace_entry = os.stat(
+            workspace.transaction_id,
+            dir_fd=workspace._transactions_fd,
+            follow_symlinks=False,
+        )
+        workspace_opened = os.fstat(workspace._workspace_fd)
+        preimages_entry = os.stat(
+            _PREIMAGES_NAME,
+            dir_fd=workspace._workspace_fd,
+            follow_symlinks=False,
+        )
+        preimages_opened = os.fstat(workspace._preimages_fd)
+    except OSError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_WORKSPACE_UNSAFE"
+        ) from exc
+    if (
+        not _same_directory_metadata(workspace_entry, workspace_opened)
+        or not _same_directory_metadata(preimages_entry, preimages_opened)
+    ):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    return (
+        _recovery_directory_snapshot(workspace_opened),
+        _recovery_directory_snapshot(preimages_opened),
+    )
+
+
+def _same_cleanup_directory(first, second):
+    return (
+        isinstance(first, _RecoveryDirectorySnapshot)
+        and isinstance(second, _RecoveryDirectorySnapshot)
+        and first._device == second._device
+        and first._inode == second._inode
+        and first._mode == second._mode
+    )
+
+
+def _same_recovery_file_snapshot(first, second):
+    return (
+        isinstance(first, _RecoveryFileSnapshot)
+        and isinstance(second, _RecoveryFileSnapshot)
+        and first.state == second.state
+        and first.size == second.size
+        and first.sha256 == second.sha256
+        and first._device == second._device
+        and first._inode == second._inode
+        and secrets.compare_digest(first._bytes, second._bytes)
+    )
+
+
+def _same_cleanup_control_snapshot(first, second):
+    return (
+        isinstance(first, _RecoveryControlSnapshot)
+        and isinstance(second, _RecoveryControlSnapshot)
+        and _same_recovery_file_snapshot(first.journal, second.journal)
+        and _same_recovery_file_snapshot(
+            first.journal_next,
+            second.journal_next,
+        )
+        and _same_recovery_file_snapshot(
+            first.recovery_manifest,
+            second.recovery_manifest,
+        )
+        and first._workspace_entries == second._workspace_entries
+        and first._preimage_entries == second._preimage_entries
+    )
+
+
+def _load_unbound_cleanup_materials(workspace, targets, control_snapshot):
+    verify_unbound_recovery_inventory(
+        workspace,
+        targets,
+        control_snapshot,
+    )
+    preimage_entries = set(control_snapshot._preimage_entries)
+    preimages = []
+    staged_proposals = []
+    for target in targets:
+        preimage_name = f"{target.index:06d}.bin"
+        if target.existed and preimage_name in preimage_entries:
+            try:
+                metadata = os.stat(
+                    preimage_name,
+                    dir_fd=workspace._preimages_fd,
+                    follow_symlinks=False,
+                )
+            except OSError as exc:
+                raise LifecycleRecoveryStorageError(
+                    "RECOVERY_PAYLOAD_INVALID"
+                ) from exc
+            payload, metadata = _read_recovery_payload(
+                workspace._preimages_fd,
+                preimage_name,
+                expected_size=metadata.st_size,
+                expected_sha256=target.before_sha256,
+            )
+            preimages.append(
+                StoredPreimage(
+                    index=target.index,
+                    state="present",
+                    relative_name=f"preimages/{preimage_name}",
+                    size=len(payload),
+                    sha256=target.before_sha256,
+                    _device=metadata.st_dev,
+                    _inode=metadata.st_ino,
+                )
+            )
+        else:
+            preimages.append(
+                StoredPreimage(
+                    index=target.index,
+                    state="absent",
+                    relative_name="absent",
+                    size=0,
+                    sha256="absent",
+                    _device=-1,
+                    _inode=-1,
+                )
+            )
+
+        if not target.changed:
+            staged_proposals.append(
+                StagedProposal(
+                    index=target.index,
+                    state="unchanged",
+                    relative_name="unchanged",
+                    size=0,
+                    sha256="unchanged",
+                    _device=-1,
+                    _inode=-1,
+                )
+            )
+            continue
+        parent_fd = None
+        try:
+            parent_fd, parent_metadata = _open_target_parent(
+                workspace,
+                target,
+            )
+            stage_name, relative_name = _staging_names(workspace, target)
+            try:
+                stage_metadata = os.stat(
+                    stage_name,
+                    dir_fd=parent_fd,
+                    follow_symlinks=False,
+                )
+            except FileNotFoundError:
+                staged_proposals.append(None)
+                continue
+            payload, stage_metadata = _read_recovery_payload(
+                parent_fd,
+                stage_name,
+                expected_size=target.after_size,
+                expected_sha256=target.after_sha256,
+                expected_device=parent_metadata.st_dev,
+            )
+            staged_proposals.append(
+                StagedProposal(
+                    index=target.index,
+                    state="staged",
+                    relative_name=relative_name,
+                    size=len(payload),
+                    sha256=target.after_sha256,
+                    _device=stage_metadata.st_dev,
+                    _inode=stage_metadata.st_ino,
+                )
+            )
+        except (OSError, LifecycleStorageError) as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            ) from exc
+        finally:
+            _close_descriptors(parent_fd)
+    return tuple(preimages), tuple(staged_proposals)
+
+
+def _verify_exact_cleanup_preimages(workspace, preimages):
+    if not isinstance(preimages, tuple):
+        raise LifecycleRecoveryStorageError("RECOVERY_PAYLOAD_INVALID")
+    for preimage in preimages:
+        if not isinstance(preimage, StoredPreimage):
+            raise LifecycleRecoveryStorageError("RECOVERY_PAYLOAD_INVALID")
+        if preimage.state == "absent":
+            continue
+        name = f"{preimage.index:06d}.bin"
+        _payload, metadata = _read_recovery_payload(
+            workspace._preimages_fd,
+            name,
+            expected_size=preimage.size,
+            expected_sha256=preimage.sha256,
+            expected_device=preimage._device,
+            expected_inode=preimage._inode,
+        )
+        if (
+            metadata.st_dev != preimage._device
+            or metadata.st_ino != preimage._inode
+        ):
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            )
+
+
+def _verify_exact_cleanup_stages(workspace, targets, staged_proposals):
+    if (
+        not isinstance(staged_proposals, tuple)
+        or len(staged_proposals) != len(targets)
+    ):
+        raise LifecycleRecoveryStorageError("RECOVERY_PAYLOAD_INVALID")
+    expected_by_parent = {}
+    for target, proposal in zip(targets, staged_proposals):
+        parent_key = PurePosixPath(target.relative_path).parent.as_posix()
+        expected_by_parent.setdefault(parent_key, [target, set()])
+        if proposal is not None and proposal.state == "staged":
+            stage_name, _relative_name = _staging_names(workspace, target)
+            expected_by_parent[parent_key][1].add(stage_name)
+    digest = hashlib.sha256(workspace.transaction_id.encode("utf-8")).hexdigest()
+    prefix = f".moduflow-stage-{digest}-"
+    for representative, expected_names in expected_by_parent.values():
+        parent_fd = None
+        try:
+            parent_fd, _parent_metadata = _open_target_parent(
+                workspace,
+                representative,
+            )
+            current_names = {
+                name for name in os.listdir(parent_fd) if name.startswith(prefix)
+            }
+            if current_names != expected_names:
+                raise LifecycleRecoveryStorageError(
+                    "RECOVERY_PAYLOAD_MISMATCH"
+                )
+        except LifecycleRecoveryStorageError:
+            raise
+        except (OSError, LifecycleStorageError) as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            ) from exc
+        finally:
+            _close_descriptors(parent_fd)
+
+    for target, proposal in zip(targets, staged_proposals):
+        if proposal is None or proposal.state != "staged":
+            continue
+        parent_fd = None
+        try:
+            parent_fd, _parent_metadata = _open_target_parent(
+                workspace,
+                target,
+            )
+            stage_name, _relative_name = _staging_names(workspace, target)
+            _payload, metadata = _read_recovery_payload(
+                parent_fd,
+                stage_name,
+                expected_size=proposal.size,
+                expected_sha256=proposal.sha256,
+                expected_device=proposal._device,
+                expected_inode=proposal._inode,
+            )
+            if (
+                metadata.st_dev != proposal._device
+                or metadata.st_ino != proposal._inode
+            ):
+                raise LifecycleRecoveryStorageError(
+                    "RECOVERY_PAYLOAD_INVALID"
+                )
+        except (OSError, LifecycleStorageError) as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            ) from exc
+        finally:
+            _close_descriptors(parent_fd)
+
+
+def verify_recovery_cleanup_inventory(
+    workspace,
+    recovery_targets,
+    control_snapshot,
+    *,
+    recoverable_missing_indexes=(),
+):
+    """Return one private read-only proof of the exact cleanup inventory."""
+    if (
+        not isinstance(workspace, _PrivateTransactionWorkspace)
+        or not isinstance(control_snapshot, _RecoveryControlSnapshot)
+    ):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    targets = _validated_recovery_targets(recovery_targets)
+    directories_before = _cleanup_directory_snapshots(workspace)
+    current_control = read_recovery_control_snapshot(workspace)
+    if not _same_cleanup_control_snapshot(current_control, control_snapshot):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        )
+
+    manifest = None
+    if current_control.recovery_manifest.state == "present":
+        materials = load_recovery_materials(
+            workspace,
+            targets,
+            current_control.recovery_manifest,
+            current_control.recovery_manifest.sha256,
+            recoverable_missing_indexes=recoverable_missing_indexes,
+        )
+        preimages = materials.preimages
+        staged_proposals = materials.staged_proposals
+        manifest = materials.recovery_manifest
+    else:
+        if recoverable_missing_indexes:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_MANIFEST_MISMATCH"
+            )
+        preimages, staged_proposals = _load_unbound_cleanup_materials(
+            workspace,
+            targets,
+            current_control,
+        )
+
+    if (
+        len(preimages) != len(targets)
+        or len(staged_proposals) != len(targets)
+    ):
+        raise LifecycleRecoveryStorageError("RECOVERY_PAYLOAD_INVALID")
+    _verify_exact_cleanup_preimages(workspace, preimages)
+    _verify_exact_cleanup_stages(workspace, targets, staged_proposals)
+    final_control = read_recovery_control_snapshot(workspace)
+    directories_after = _cleanup_directory_snapshots(workspace)
+    if (
+        not _same_cleanup_control_snapshot(final_control, current_control)
+        or not _same_cleanup_directory(
+            directories_before[0],
+            directories_after[0],
+        )
+        or not _same_cleanup_directory(
+            directories_before[1],
+            directories_after[1],
+        )
+    ):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        )
+    return _RecoveryCleanupInventory(
+        _workspace_directory=directories_after[0],
+        _preimages_directory=directories_after[1],
+        _control_snapshot=final_control,
+        _recovery_targets=targets,
+        _preimages=preimages,
+        _staged_proposals=staged_proposals,
+        _recovery_manifest=manifest,
+    )
 
 
 def _journal_context(workspace, journal_bytes, expected_previous_sha256):
