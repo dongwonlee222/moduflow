@@ -3663,13 +3663,18 @@ def delete_proven_cleanup_inventory(
         raise LifecycleCleanupStorageError(
             "RECOVERY_CLEANUP_REPLACED"
         )
-    directories = _cleanup_resume_directory_snapshots(workspace)
+    try:
+        directories = _cleanup_resume_directory_snapshots(workspace)
+        current_control = read_cleanup_control_snapshot(workspace)
+    except LifecycleRecoveryStorageError as exc:
+        raise LifecycleCleanupStorageError(
+            "RECOVERY_CLEANUP_REPLACED"
+        ) from exc
     if not _same_cleanup_directory(
         directories[0],
         inventory._workspace_directory,
     ):
         raise LifecycleCleanupStorageError("RECOVERY_CLEANUP_REPLACED")
-    current_control = read_cleanup_control_snapshot(workspace)
     if not _same_cleanup_control_snapshot(
         current_control,
         inventory._control_snapshot,
@@ -3711,7 +3716,7 @@ def delete_proven_cleanup_inventory(
             )
         except LifecycleCleanupStorageError:
             raise
-        except LifecycleRecoveryStorageError as exc:
+        except (LifecycleRecoveryStorageError, LifecycleStorageError) as exc:
             raise LifecycleCleanupStorageError(
                 "RECOVERY_CLEANUP_REPLACED"
             ) from exc
@@ -3816,11 +3821,16 @@ def delete_proven_cleanup_inventory(
         stage_name="journal-next",
     )
     if control.journal.state == "present":
-        verified = verify_cleanup_canonical_state(
-            workspace,
-            inventory._recovery_targets,
-            after=terminal_kind == "complete",
-        )
+        try:
+            verified = verify_cleanup_canonical_state(
+                workspace,
+                inventory._recovery_targets,
+                after=terminal_kind == "complete",
+            )
+        except LifecycleRecoveryStorageError as exc:
+            raise LifecycleCleanupStorageError(
+                "RECOVERY_CLEANUP_REPLACED"
+            ) from exc
         if len(verified) != len(inventory._recovery_targets):
             raise LifecycleCleanupStorageError(
                 "RECOVERY_CLEANUP_REPLACED"

@@ -5854,6 +5854,27 @@ class TransactionPlanningTests(unittest.TestCase):
                     root,
                     plan.transaction_id,
                 ) as cleanup:
+                    with (
+                        mock.patch.object(
+                            transaction.transaction_storage,
+                            "read_cleanup_control_snapshot",
+                            side_effect=(
+                                transaction.transaction_storage.LifecycleRecoveryStorageError(
+                                    "RECOVERY_CONTROL_FILE_UNSAFE"
+                                )
+                            ),
+                        ),
+                        self.assertRaises(error_type) as raced,
+                    ):
+                        delete(
+                            cleanup._workspace,
+                            cleanup._inventory,
+                            terminal_kind=cleanup.terminal_kind,
+                        )
+                    self.assertEqual(
+                        raced.exception.code,
+                        "RECOVERY_CLEANUP_REPLACED",
+                    )
                     payload = journal.read_bytes()
                     original_inode = journal.stat().st_ino
                     journal.unlink()
