@@ -5242,6 +5242,312 @@ class TransactionPlanningTests(unittest.TestCase):
             self.assertEqual(next_path.read_bytes(), planned_bytes)
             self.assertFalse(journal_path.exists())
 
+    def test_cleanup_candidate_accepts_only_proven_terminal_states_under_lock(self):
+        prove = getattr(
+            transaction,
+            "_prove_recovery_cleanup_candidate",
+            None,
+        )
+        self.assertIsNotNone(prove)
+        for terminal in ("complete", "rolled-back", "pre-journal-orphan"):
+            with self.subTest(terminal=terminal), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                if terminal == "complete":
+                    context, plan = self.prepare_restart_finalizing_case(
+                        root,
+                        "after-recorded",
+                    )
+                    recovery_times = iter(
+                        f"2030-01-02T03:12:{second:02d}Z"
+                        for second in range(50)
+                    )
+                    transaction.recover_incomplete_transaction(
+                        root,
+                        plan.transaction_id,
+                        project_context=context,
+                        clock=lambda: next(recovery_times),
+                        lock_pid=209,
+                        lock_token_factory=lambda: "2" * 32,
+                    )
+                elif terminal == "rolled-back":
+                    context, plan, _applied, _rollback = (
+                        self.prepare_restart_recovery_case(
+                            root,
+                            "rolling-back-recorded",
+                            applied_count=4,
+                            rollback_count=4,
+                        )
+                    )
+                    recovery_times = iter(
+                        f"2030-01-02T03:13:{second:02d}Z"
+                        for second in range(50)
+                    )
+                    transaction.recover_incomplete_transaction(
+                        root,
+                        plan.transaction_id,
+                        project_context=context,
+                        clock=lambda: next(recovery_times),
+                        lock_pid=210,
+                        lock_token_factory=lambda: "3" * 32,
+                    )
+                else:
+                    context = self.scaffold(root)
+                    (root / "workspace" / "transactions").mkdir()
+                    plan = transaction.plan_lifecycle_transaction(
+                        root,
+                        self.intent(),
+                        project_context=context,
+                        clock="2030-01-02",
+                    )
+                    timestamps = iter(
+                        (
+                            "2030-01-02T03:04:05Z",
+                            "2030-01-02T03:04:06Z",
+                            "2030-01-02T03:04:07Z",
+                        )
+                    )
+                    with transaction._private_prepared_workspace(
+                        plan,
+                        journal_clock=lambda: next(timestamps),
+                        lock_clock="2030-01-02T03:04:05Z",
+                        lock_pid=123,
+                        lock_token_factory=lambda: "1" * 32,
+                    ):
+                        pass
+                    workspace = (
+                        root
+                        / ".moduflow"
+                        / "transactions"
+                        / plan.transaction_id
+                    )
+                    journal_path = workspace / "journal.json"
+                    next_path = workspace / "journal.next"
+                    planned = json.loads(journal_path.read_bytes())
+                    planned["phase"] = "planned"
+                    planned["recovery_manifest_sha256"] = "absent"
+                    planned["applied_target_indexes"] = []
+                    planned["rollback_target_indexes"] = []
+                    planned["updated_at"] = "2030-01-02T03:04:05Z"
+                    next_path.write_bytes(
+                        transaction.canonical_json_bytes(
+                            transaction.serialize_transaction_journal(planned)
+                        )
+                        + b"\n"
+                    )
+                    next_path.chmod(0o600)
+                    journal_path.unlink()
+
+                subject = transaction._authorized_recovery_subject(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                )
+                lock_path = root / ".moduflow/transactions/lifecycle.lock"
+                with transaction._exclusive_recovery_lock(
+                    subject,
+                    clock="2030-01-02T03:14:00Z",
+                    pid=211,
+                    token_factory=lambda: "4" * 32,
+                ):
+                    self.assertTrue(lock_path.is_file())
+                    with transaction._private_recovered_transaction_workspace(
+                        root,
+                        plan.transaction_id,
+                    ) as recovered:
+                        candidate = prove(recovered)
+
+                self.assertFalse(lock_path.exists())
+                self.assertEqual(candidate.terminal_kind, terminal)
+                self.assertEqual(
+                    candidate.verified_target_count,
+                    len(plan.targets),
+                )
+                expected_authority = (
+                    "pre-journal-orphan"
+                    if terminal == "pre-journal-orphan"
+                    else "current"
+                )
+                self.assertEqual(candidate.journal_authority, expected_authority)
+                self.assertNotIn(str(root), repr(candidate))
+                self.assertNotIn("_inventory", repr(candidate))
+                with self.assertRaises(FrozenInstanceError):
+                    candidate.terminal_kind = "private"
+
+    def test_cleanup_candidate_rejects_nonterminal_phases_before_inventory(self):
+        prove = getattr(
+            transaction,
+            "_prove_recovery_cleanup_candidate",
+            None,
+        )
+        error_type = getattr(
+            transaction,
+            "LifecycleRecoveryCleanupError",
+            None,
+        )
+        self.assertIsNotNone(prove)
+        self.assertIsNotNone(error_type)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context, plan, _applied, _rollback = (
+                self.prepare_restart_recovery_case(
+                    root,
+                    "applying-recorded",
+                    applied_count=1,
+                )
+            )
+            subject = transaction._authorized_recovery_subject(
+                root,
+                plan.transaction_id,
+                project_context=context,
+            )
+            with transaction._exclusive_recovery_lock(
+                subject,
+                clock="2030-01-02T03:15:00Z",
+                pid=212,
+                token_factory=lambda: "5" * 32,
+            ):
+                with transaction._private_recovered_transaction_workspace(
+                    root,
+                    plan.transaction_id,
+                ) as recovered:
+                    with mock.patch.object(
+                        transaction.transaction_storage,
+                        "verify_recovery_cleanup_inventory",
+                    ) as inventory:
+                        for phase in (
+                            "planned",
+                            "staged",
+                            "prepared",
+                            "applying",
+                            "post-validating",
+                            "finalizing",
+                            "rolling-back",
+                            "recovery-required",
+                        ):
+                            with self.subTest(phase=phase):
+                                journal = transaction._json_value(
+                                    recovered.journal_state.journal
+                                )
+                                journal["phase"] = phase
+                                selected = replace(
+                                    recovered,
+                                    journal_state=replace(
+                                        recovered.journal_state,
+                                        journal=journal,
+                                    ),
+                                )
+                                with self.assertRaises(error_type) as raised:
+                                    prove(selected)
+                                self.assertEqual(
+                                    raised.exception.code,
+                                    "RECOVERY_CLEANUP_INELIGIBLE",
+                                )
+                                self.assertEqual(
+                                    str(raised.exception),
+                                    "RECOVERY_CLEANUP_INELIGIBLE",
+                                )
+                        inventory.assert_not_called()
+
+                    malformed = replace(
+                        recovered,
+                        journal_state=replace(
+                            recovered.journal_state,
+                            journal={},
+                        ),
+                    )
+                    with self.assertRaises(error_type) as raised:
+                        prove(malformed)
+                    self.assertEqual(
+                        raised.exception.code,
+                        "RECOVERY_CLEANUP_INELIGIBLE",
+                    )
+
+        invalid = error_type("PRIVATE CLEANUP ERROR")
+        self.assertEqual(invalid.code, "RECOVERY_CLEANUP_INELIGIBLE")
+        self.assertEqual(str(invalid), "RECOVERY_CLEANUP_INELIGIBLE")
+
+    def test_cleanup_candidate_maps_canonical_and_inventory_uncertainty(self):
+        prove = getattr(
+            transaction,
+            "_prove_recovery_cleanup_candidate",
+            None,
+        )
+        error_type = getattr(
+            transaction,
+            "LifecycleRecoveryCleanupError",
+            None,
+        )
+        self.assertIsNotNone(prove)
+        self.assertIsNotNone(error_type)
+        for uncertainty in ("canonical", "inventory"):
+            with self.subTest(uncertainty=uncertainty), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context, plan = self.prepare_restart_finalizing_case(
+                    root,
+                    "after-recorded",
+                )
+                recovery_times = iter(
+                    f"2030-01-02T03:16:{second:02d}Z"
+                    for second in range(50)
+                )
+                transaction.recover_incomplete_transaction(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                    clock=lambda: next(recovery_times),
+                    lock_pid=213,
+                    lock_token_factory=lambda: "6" * 32,
+                )
+                subject = transaction._authorized_recovery_subject(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                )
+                lock_path = root / ".moduflow/transactions/lifecycle.lock"
+                workspace = (
+                    root
+                    / ".moduflow"
+                    / "transactions"
+                    / plan.transaction_id
+                )
+                with transaction._exclusive_recovery_lock(
+                    subject,
+                    clock="2030-01-02T03:17:00Z",
+                    pid=214,
+                    token_factory=lambda: "7" * 32,
+                ):
+                    with transaction._private_recovered_transaction_workspace(
+                        root,
+                        plan.transaction_id,
+                    ) as recovered:
+                        self.assertTrue(lock_path.is_file())
+                        if uncertainty == "canonical":
+                            changed_target = next(
+                                target for target in plan.targets if target.changed
+                            )
+                            canonical = root / changed_target.relative_path
+                            canonical.write_bytes(b"unknown canonical bytes\n")
+                            with mock.patch.object(
+                                transaction.transaction_storage,
+                                "verify_recovery_cleanup_inventory",
+                            ) as inventory:
+                                with self.assertRaises(error_type) as raised:
+                                    prove(recovered)
+                            inventory.assert_not_called()
+                            expected = "RECOVERY_CLEANUP_CANONICAL_UNPROVEN"
+                        else:
+                            foreign = workspace / "foreign-cleanup-entry"
+                            foreign.write_bytes(b"must remain\n")
+                            foreign.chmod(0o600)
+                            with self.assertRaises(error_type) as raised:
+                                prove(recovered)
+                            self.assertEqual(foreign.read_bytes(), b"must remain\n")
+                            expected = "RECOVERY_CLEANUP_INVENTORY_UNSAFE"
+                        self.assertEqual(raised.exception.code, expected)
+                        self.assertEqual(str(raised.exception), expected)
+
+                self.assertFalse(lock_path.exists())
+
     def test_private_preimage_workspace_denies_or_rejects_before_side_effects(self):
         entry = getattr(transaction, "_private_preimage_workspace", None)
         self.assertIsNotNone(entry)

@@ -617,6 +617,14 @@ class _PrivateRecoveryOutcome:
 
 
 @dataclass(frozen=True)
+class _PrivateRecoveryCleanupCandidate:
+    terminal_kind: str
+    verified_target_count: int
+    journal_authority: str
+    _inventory: object = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
 class _PrivateEvidenceBinding:
     plan: LifecycleTransactionPlan = field(repr=False, compare=False)
     transaction_result: object = field(repr=False, compare=False)
@@ -687,6 +695,23 @@ class LifecycleRecoveryStateError(RuntimeError):
     def __init__(self, code):
         if code not in _RECOVERY_STATE_CODES:
             code = "RECOVERY_STATE_AMBIGUOUS"
+        self.code = code
+        super().__init__(code)
+
+
+_RECOVERY_CLEANUP_CODES = frozenset({
+    "RECOVERY_CLEANUP_INELIGIBLE",
+    "RECOVERY_CLEANUP_CANONICAL_UNPROVEN",
+    "RECOVERY_CLEANUP_INVENTORY_UNSAFE",
+})
+
+
+class LifecycleRecoveryCleanupError(RuntimeError):
+    """Stable cleanup-proof failure without private inventory details."""
+
+    def __init__(self, code):
+        if code not in _RECOVERY_CLEANUP_CODES:
+            code = "RECOVERY_CLEANUP_INELIGIBLE"
         self.code = code
         super().__init__(code)
 
@@ -4453,6 +4478,83 @@ def _recover_loaded_transaction(recovered, *, journal_clock=None):
             journal_sha256=recovered.journal_state.journal_sha256,
         )
     raise LifecycleRecoveryStateError("RECOVERY_STATE_AMBIGUOUS")
+
+
+def _prove_recovery_cleanup_candidate(recovered):
+    """Prove one terminal cleanup candidate without deleting private state."""
+    if not isinstance(recovered, _RecoveredTransactionState):
+        raise LifecycleRecoveryCleanupError(
+            "RECOVERY_CLEANUP_INELIGIBLE"
+        )
+    try:
+        journal_state = recovered.journal_state
+        journal = journal_state.journal
+        phase = journal["phase"]
+        authority = journal_state.authority
+        recovery_targets = _recovery_targets_from_journal(journal)
+    except (
+        AttributeError,
+        KeyError,
+        TypeError,
+        ValueError,
+        LifecycleRecoveryReadError,
+    ) as exc:
+        raise LifecycleRecoveryCleanupError(
+            "RECOVERY_CLEANUP_INELIGIBLE"
+        ) from exc
+
+    try:
+        if authority == "pre-journal-orphan" and phase == "planned":
+            verified = len(
+                transaction_storage.verify_recovery_canonical_before(
+                    recovered._workspace,
+                    recovery_targets,
+                )
+            )
+            terminal_kind = "pre-journal-orphan"
+        elif authority == "current" and phase == "complete":
+            verified = _verify_complete_recovery_after(recovered)
+            terminal_kind = "complete"
+        elif authority == "current" and phase == "rolled-back":
+            verified = _verify_complete_recovery_before(recovered)
+            terminal_kind = "rolled-back"
+        else:
+            raise LifecycleRecoveryCleanupError(
+                "RECOVERY_CLEANUP_INELIGIBLE"
+            )
+    except LifecycleRecoveryCleanupError:
+        raise
+    except (
+        LifecycleRecoveryStateError,
+        transaction_storage.LifecycleRecoveryStorageError,
+    ) as exc:
+        raise LifecycleRecoveryCleanupError(
+            "RECOVERY_CLEANUP_CANONICAL_UNPROVEN"
+        ) from exc
+    if verified != len(recovery_targets):
+        raise LifecycleRecoveryCleanupError(
+            "RECOVERY_CLEANUP_CANONICAL_UNPROVEN"
+        )
+
+    try:
+        inventory = transaction_storage.verify_recovery_cleanup_inventory(
+            recovered._workspace,
+            recovery_targets,
+            journal_state._control_snapshot,
+            recoverable_missing_indexes=(
+                _recoverable_missing_stage_indexes(journal)
+            ),
+        )
+    except transaction_storage.LifecycleRecoveryStorageError as exc:
+        raise LifecycleRecoveryCleanupError(
+            "RECOVERY_CLEANUP_INVENTORY_UNSAFE"
+        ) from exc
+    return _PrivateRecoveryCleanupCandidate(
+        terminal_kind=terminal_kind,
+        verified_target_count=verified,
+        journal_authority=authority,
+        _inventory=inventory,
+    )
 
 
 def serialize_transaction_plan(plan):
