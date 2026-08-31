@@ -199,6 +199,19 @@ class RecoveryTarget:
 
 
 @dataclass(frozen=True)
+class _RecoveredBeforeTarget:
+    index: int
+    role: str
+    relative_path: str
+    existed: bool
+    before_sha256: str
+    after_sha256: str
+    after_size: int
+    changed: bool
+    _before_bytes: bytes = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
 class StoredPreimage:
     index: int
     state: str
@@ -233,7 +246,7 @@ class RecoveryManifest:
 class _RecoveredMaterials:
     storage_targets: tuple[StorageTarget, ...] = field(repr=False, compare=False)
     preimages: tuple[StoredPreimage, ...] = field(repr=False, compare=False)
-    staged_proposals: tuple[StagedProposal, ...] = field(
+    staged_proposals: tuple[StagedProposal | None, ...] = field(
         repr=False,
         compare=False,
     )
@@ -1517,6 +1530,42 @@ def classify_finalized_evidence(workspace, target) -> str:
     )
 
 
+def classify_recovered_target(workspace, target) -> str:
+    """Classify a rehydrated target, including an already-restored stage loss."""
+    if isinstance(target, StorageTarget):
+        return _classify_changed_target(
+            workspace,
+            target,
+            evidence=target.role == "evidence",
+        )
+    if (
+        not isinstance(workspace, _PrivateTransactionWorkspace)
+        or not isinstance(target, _RecoveredBeforeTarget)
+        or not target.changed
+    ):
+        _storage_context_failure()
+    parent_fd = None
+    try:
+        parent_fd, _metadata = _open_target_parent(workspace, target)
+        if _canonical_entry_matches(
+            parent_fd,
+            target,
+            existed=target.existed,
+            expected_bytes=target._before_bytes,
+            expected_sha256=target.before_sha256,
+        ):
+            return "before"
+        raise LifecycleStorageError("STORAGE_CANONICAL_STATE_UNKNOWN")
+    except LifecycleStorageError:
+        raise
+    except OSError as exc:
+        raise LifecycleStorageError(
+            "STORAGE_CANONICAL_STATE_UNKNOWN"
+        ) from exc
+    finally:
+        _close_descriptors(parent_fd)
+
+
 def _valid_non_negative_integer(value):
     return (
         isinstance(value, int)
@@ -2154,7 +2203,14 @@ def _load_recovered_preimage(workspace, target, record):
     )
 
 
-def _load_recovered_proposal(workspace, target, record, before_bytes):
+def _load_recovered_proposal(
+    workspace,
+    target,
+    record,
+    before_bytes,
+    *,
+    allow_consumed,
+):
     if not target.changed:
         if record != {"state": "unchanged"}:
             raise LifecycleRecoveryStorageError(
@@ -2205,14 +2261,40 @@ def _load_recovered_proposal(workspace, target, record, before_bytes):
             raise LifecycleRecoveryStorageError(
                 "RECOVERY_MANIFEST_MISMATCH"
             )
-        payload, metadata = _read_recovery_payload(
-            parent_fd,
-            stage_name,
-            expected_size=target.after_size,
-            expected_sha256=target.after_sha256,
-            expected_device=record["device"],
-            expected_inode=record["inode"],
-        )
+        try:
+            payload, metadata = _read_recovery_payload(
+                parent_fd,
+                stage_name,
+                expected_size=target.after_size,
+                expected_sha256=target.after_sha256,
+                expected_device=record["device"],
+                expected_inode=record["inode"],
+            )
+        except LifecycleRecoveryStorageError as exc:
+            if exc.code != "RECOVERY_PAYLOAD_MISSING":
+                raise
+            if not allow_consumed:
+                raise
+            try:
+                payload, _canonical_metadata = _read_recovery_payload(
+                    parent_fd,
+                    PurePosixPath(target.relative_path).name,
+                    expected_size=target.after_size,
+                    expected_sha256=target.after_sha256,
+                )
+            except LifecycleRecoveryStorageError:
+                if _canonical_entry_matches(
+                    parent_fd,
+                    target,
+                    existed=target.existed,
+                    expected_bytes=before_bytes,
+                    expected_sha256=target.before_sha256,
+                ):
+                    return None, None
+                raise LifecycleRecoveryStorageError(
+                    "RECOVERY_PAYLOAD_MISSING"
+                ) from None
+            return payload, None
         return (
             payload,
             StagedProposal(
@@ -2274,18 +2356,37 @@ def load_recovery_materials(
     recovery_targets,
     manifest_snapshot,
     expected_manifest_sha256,
+    *,
+    recoverable_missing_indexes=(),
 ):
     """Rehydrate exact manifest-bound recovery inputs without writes."""
     if not isinstance(workspace, _PrivateTransactionWorkspace):
         raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
     targets = _validated_recovery_targets(recovery_targets)
+    if (
+        not isinstance(recoverable_missing_indexes, tuple)
+        or any(
+            not isinstance(index, int)
+            or isinstance(index, bool)
+            or index < 0
+            or index >= len(targets)
+            or not targets[index].changed
+            for index in recoverable_missing_indexes
+        )
+        or len(recoverable_missing_indexes)
+        != len(set(recoverable_missing_indexes))
+    ):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_MANIFEST_MISMATCH"
+        )
+    recoverable_missing = frozenset(recoverable_missing_indexes)
     records = _parse_recovery_manifest(
         workspace,
         targets,
         manifest_snapshot,
         expected_manifest_sha256,
     )
-    _verify_recovery_stage_inventory(workspace, targets)
+    _verify_recovery_stage_inventory(workspace, targets, allow_missing=True)
     storage_targets = []
     preimages = []
     proposals = []
@@ -2305,19 +2406,29 @@ def load_recovery_materials(
             target,
             proposal_record,
             before_bytes,
+            allow_consumed=target.index in recoverable_missing,
         )
+        target_type = (
+            StorageTarget
+            if after_bytes is not None
+            else _RecoveredBeforeTarget
+        )
+        target_values = {
+            "index": target.index,
+            "role": target.role,
+            "relative_path": target.relative_path,
+            "existed": target.existed,
+            "before_sha256": target.before_sha256,
+            "after_sha256": target.after_sha256,
+            "after_size": target.after_size,
+            "changed": target.changed,
+            "_before_bytes": before_bytes,
+        }
+        if after_bytes is not None:
+            target_values["_after_bytes"] = after_bytes
         storage_targets.append(
-            StorageTarget(
-                index=target.index,
-                role=target.role,
-                relative_path=target.relative_path,
-                existed=target.existed,
-                before_sha256=target.before_sha256,
-                after_sha256=target.after_sha256,
-                after_size=target.after_size,
-                changed=target.changed,
-                _before_bytes=before_bytes,
-                _after_bytes=after_bytes,
+            target_type(
+                **target_values,
             )
         )
         preimages.append(preimage)
@@ -2340,6 +2451,112 @@ def load_recovery_materials(
             _inode=manifest_snapshot._inode,
         ),
     )
+
+
+def verify_recovery_canonical_before(workspace, recovery_targets):
+    """Prove journal-only targets remain at exact canonical before-state."""
+    if not isinstance(workspace, _PrivateTransactionWorkspace):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    targets = _validated_recovery_targets(recovery_targets)
+    verified = []
+    for target in targets:
+        parent_fd = None
+        descriptor = None
+        try:
+            parent_fd, _parent_metadata = _open_target_parent(workspace, target)
+            name = PurePosixPath(target.relative_path).name
+            try:
+                initial = os.stat(
+                    name,
+                    dir_fd=parent_fd,
+                    follow_symlinks=False,
+                )
+            except FileNotFoundError:
+                if target.existed:
+                    raise LifecycleRecoveryStorageError(
+                        "RECOVERY_PAYLOAD_MISMATCH"
+                    ) from None
+                verified.append(target.index)
+                continue
+            if not target.existed or not stat.S_ISREG(initial.st_mode):
+                raise LifecycleRecoveryStorageError(
+                    "RECOVERY_PAYLOAD_MISMATCH"
+                )
+            descriptor = os.open(
+                name,
+                os.O_RDONLY
+                | getattr(os, "O_CLOEXEC", 0)
+                | getattr(os, "O_NOFOLLOW", 0),
+                dir_fd=parent_fd,
+            )
+            opened = os.fstat(descriptor)
+            digest = hashlib.sha256()
+            while True:
+                chunk = os.read(descriptor, 64 * 1024)
+                if not chunk:
+                    break
+                digest.update(chunk)
+            final = os.stat(
+                name,
+                dir_fd=parent_fd,
+                follow_symlinks=False,
+            )
+            final_opened = os.fstat(descriptor)
+            stable = all(
+                stat.S_ISREG(metadata.st_mode)
+                and metadata.st_dev == initial.st_dev
+                and metadata.st_ino == initial.st_ino
+                and metadata.st_size == initial.st_size
+                for metadata in (opened, final, final_opened)
+            )
+            if not stable or digest.hexdigest() != target.before_sha256:
+                raise LifecycleRecoveryStorageError(
+                    "RECOVERY_PAYLOAD_MISMATCH"
+                )
+            verified.append(target.index)
+        except LifecycleRecoveryStorageError:
+            raise
+        except (OSError, LifecycleStorageError) as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            ) from exc
+        finally:
+            _close_descriptors(descriptor, parent_fd)
+    return tuple(verified)
+
+
+def discard_recovered_journal_next(workspace, snapshot):
+    """Discard only the exact verified abandoned journal successor."""
+    if (
+        not isinstance(workspace, _PrivateTransactionWorkspace)
+        or not isinstance(snapshot, _RecoveryFileSnapshot)
+        or snapshot.state != "present"
+    ):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        )
+    current = _read_recovery_file(
+        workspace._workspace_fd,
+        _JOURNAL_NEXT_NAME,
+    )
+    if (
+        current.state != "present"
+        or current.size != snapshot.size
+        or current.sha256 != snapshot.sha256
+        or current._device != snapshot._device
+        or current._inode != snapshot._inode
+        or not secrets.compare_digest(current._bytes, snapshot._bytes)
+    ):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        )
+    try:
+        os.unlink(_JOURNAL_NEXT_NAME, dir_fd=workspace._workspace_fd)
+        os.fsync(workspace._workspace_fd)
+    except OSError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        ) from exc
 
 
 def verify_unbound_recovery_inventory(
