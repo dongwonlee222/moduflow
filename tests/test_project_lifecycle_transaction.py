@@ -1580,6 +1580,280 @@ class TransactionPlanningTests(unittest.TestCase):
             validator.assert_not_called()
             workspace.assert_not_called()
 
+    def test_public_apply_returns_private_completed_result_then_zero_work_noop(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            (root / "workspace" / "transactions").mkdir()
+            intent = self.intent(require_issue_index=True)
+
+            with mock.patch.object(
+                transaction.validate_project_artifacts,
+                "validate_project",
+                return_value=self.validation_result(),
+            ):
+                applied = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            with (
+                mock.patch.object(
+                    transaction,
+                    "validate_projected_transaction",
+                ) as validator,
+                mock.patch.object(
+                    transaction,
+                    "_private_applied_workspace",
+                ) as private_apply,
+                mock.patch.object(
+                    transaction,
+                    "_journal_timestamps",
+                ) as journal_timestamps,
+                mock.patch.object(
+                    transaction,
+                    "_lock_timestamp",
+                ) as lock_timestamp,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "private_transaction_workspace",
+                ) as workspace,
+                mock.patch.object(transaction.os, "replace") as replacement,
+            ):
+                noop = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock="2030-01-03",
+                )
+
+            self.assertEqual(applied["status"], "applied")
+            self.assertEqual(
+                applied,
+                transaction.serialize_transaction_result(applied),
+            )
+            self.assertEqual(noop["status"], "noop")
+            self.assertEqual(
+                noop["transaction_id"],
+                applied["transaction_id"],
+            )
+            validator.assert_not_called()
+            private_apply.assert_not_called()
+            journal_timestamps.assert_not_called()
+            lock_timestamp.assert_not_called()
+            workspace.assert_not_called()
+            replacement.assert_not_called()
+
+    def test_public_apply_denial_has_zero_transaction_side_effects(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            denial = transaction.project_operation.ProjectOperationDenied({
+                "message": "PRIVATE DENIAL",
+                "reason_code": "PROJECT_OPERATION_DENIED_READ_ONLY",
+            })
+
+            with (
+                mock.patch.object(
+                    transaction,
+                    "_writable_projected_plan_context",
+                    side_effect=denial,
+                ),
+                mock.patch.object(transaction.os, "mkdir") as make_directory,
+                mock.patch.object(transaction.os, "replace") as replacement,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "private_transaction_workspace",
+                ) as workspace,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "persist_serialized_journal",
+                ) as persist,
+            ):
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            self.assertEqual(result["status"], "denied")
+            self.assertEqual(result["failed_stage"], "authorization")
+            self.assertEqual(
+                result["error_code"],
+                "PROJECT_OPERATION_DENIED_READ_ONLY",
+            )
+            self.assertEqual(
+                result,
+                transaction.serialize_transaction_result(result),
+            )
+            self.assertNotIn("PRIVATE", json.dumps(result))
+            make_directory.assert_not_called()
+            replacement.assert_not_called()
+            workspace.assert_not_called()
+            persist.assert_not_called()
+
+    def test_public_apply_maps_replay_and_projected_conflicts_without_writes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            projected_invalid = {
+                "valid": False,
+                "rule_ids": list(
+                    transaction._PROJECTED_VALIDATION_RULE_IDS
+                ),
+                "error_codes": ["PROJECTED_PROJECT_INVALID"],
+            }
+            cases = (
+                (
+                    "replay",
+                    {
+                        "replay": transaction.LifecycleReplayConflict(
+                            "REPLAY_EVIDENCE_CONFLICT"
+                        )
+                    },
+                    "replay",
+                    "REPLAY_EVIDENCE_CONFLICT",
+                ),
+                (
+                    "projected-invalid",
+                    {"projected": projected_invalid},
+                    "projected-validation",
+                    "PROJECTED_VALIDATION_INVALID",
+                ),
+                (
+                    "projected-failed",
+                    {
+                        "projected": (
+                            transaction.LifecycleProjectedValidationError(
+                                "PROJECTED_VALIDATION_FAILED"
+                            )
+                        )
+                    },
+                    "projected-validation",
+                    "PROJECTED_VALIDATION_FAILED",
+                ),
+            )
+
+            for label, configured, failed_stage, error_code in cases:
+                with self.subTest(label=label), (
+                    mock.patch.object(
+                        transaction,
+                        "_completed_replay_result",
+                        side_effect=configured.get("replay"),
+                        return_value=None,
+                    )
+                ), mock.patch.object(
+                    transaction,
+                    "validate_projected_transaction",
+                    side_effect=(
+                        configured.get("projected")
+                        if isinstance(
+                            configured.get("projected"),
+                            Exception,
+                        )
+                        else None
+                    ),
+                    return_value=(
+                        configured.get("projected")
+                        if isinstance(configured.get("projected"), dict)
+                        else self.projected_summary()
+                    ),
+                ), mock.patch.object(
+                    transaction,
+                    "_private_applied_workspace",
+                ) as private_apply, mock.patch.object(
+                    transaction.os,
+                    "replace",
+                ) as replacement:
+                    result = transaction.apply_lifecycle_transaction(
+                        root,
+                        intent,
+                        project_context=context,
+                        clock=self.public_clock(),
+                    )
+
+                self.assertEqual(result["status"], "conflict")
+                self.assertEqual(result["failed_stage"], failed_stage)
+                self.assertEqual(result["error_code"], error_code)
+                self.assertEqual(
+                    result,
+                    transaction.serialize_transaction_result(result),
+                )
+                private_apply.assert_not_called()
+                replacement.assert_not_called()
+
+    def test_public_apply_maps_preflight_and_lock_conflicts_without_rollback(self):
+        @contextmanager
+        def lock_held(*_args, **_kwargs):
+            raise transaction.LifecycleLockError("LOCK_HELD")
+            yield
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            (root / "workspace" / "transactions").mkdir()
+            intent = self.intent(require_issue_index=True)
+            cases = (
+                (
+                    "preflight",
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "verify_canonical_preimages",
+                        side_effect=(
+                            transaction.transaction_storage
+                            .LifecycleCanonicalConflict(
+                                0
+                            )
+                        ),
+                    ),
+                    "preflight",
+                    "CANONICAL_PREIMAGE_CONFLICT",
+                ),
+                (
+                    "lock",
+                    mock.patch.object(
+                        transaction,
+                        "_private_applied_workspace",
+                        side_effect=lock_held,
+                    ),
+                    "lock",
+                    "LOCK_HELD",
+                ),
+            )
+
+            for label, failure_patch, failed_stage, error_code in cases:
+                with self.subTest(label=label), failure_patch, (
+                    mock.patch.object(
+                        transaction,
+                        "validate_projected_transaction",
+                        return_value=self.projected_summary(),
+                    )
+                ), mock.patch.object(
+                    transaction.transaction_storage,
+                    "rollback_canonical_target",
+                ) as rollback, mock.patch.object(
+                    transaction.os,
+                    "replace",
+                ) as replacement:
+                    result = transaction.apply_lifecycle_transaction(
+                        root,
+                        intent,
+                        project_context=context,
+                        clock=self.public_clock(),
+                    )
+
+                self.assertEqual(result["status"], "conflict")
+                self.assertEqual(result["failed_stage"], failed_stage)
+                self.assertEqual(result["error_code"], error_code)
+                self.assertEqual(result["rollback_status"], "not-required")
+                rollback.assert_not_called()
+                replacement.assert_not_called()
+
     def replace_projected_bytes(self, plan, replacements):
         remaining = set(replacements)
         targets = []

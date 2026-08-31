@@ -171,6 +171,30 @@ _TERMINAL_STATUSES = frozenset({
     "rolled_back",
     "recovery_required",
 })
+_APPLY_FAULT_STAGES = frozenset({
+    "after-plan",
+    "after-replay-classification",
+    "after-projected-validation",
+    "before-private-apply",
+    "after-private-complete",
+})
+_PUBLIC_FAILED_STAGES = frozenset({
+    "authorization",
+    "replay",
+    "projected-validation",
+    "preflight",
+    "lock",
+    "apply",
+    "post-apply-validation",
+    "finalizing",
+    "rollback",
+    "recovery",
+})
+_PUBLIC_ROLLBACK_STATUSES = frozenset({
+    "not-required",
+    "verified",
+    "required",
+})
 _VALIDATION_SUMMARY_KEYS = frozenset({"valid", "rule_ids", "error_codes"})
 _PROJECTED_VALIDATION_RULE_IDS = (
     "project-artifacts",
@@ -3293,6 +3317,79 @@ def _completed_replay_result(plan, intent):
         ) from None
 
 
+def _emit_apply_fault(fault_injector, stage):
+    if stage not in _APPLY_FAULT_STAGES:
+        raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+    if fault_injector is None:
+        return
+    if not callable(fault_injector):
+        raise TypeError("fault_injector must be callable or None")
+    fault_injector(stage)
+
+
+def _public_failure_summary(rule_ids, error_code):
+    return _serialized_validation_summary({
+        "valid": False,
+        "rule_ids": list(rule_ids),
+        "error_codes": [error_code],
+    })
+
+
+def _public_failure_result(
+    plan,
+    intent,
+    *,
+    status,
+    failed_stage,
+    error_code,
+    rollback_status,
+    completed_at,
+    projected_validation,
+    post_apply_validation,
+    verified_target_count=0,
+):
+    if not isinstance(plan, LifecycleTransactionPlan):
+        raise TypeError("plan must be a LifecycleTransactionPlan")
+    normalized = normalize_lifecycle_intent(intent)
+    if (
+        status not in {
+            "denied",
+            "conflict",
+            "rolled_back",
+            "recovery_required",
+        }
+        or failed_stage not in _PUBLIC_FAILED_STAGES
+        or rollback_status not in _PUBLIC_ROLLBACK_STATUSES
+        or not isinstance(error_code, str)
+        or not _ROLLBACK_ERROR_CODE.fullmatch(error_code)
+    ):
+        raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
+    return serialize_transaction_result({
+        "schema": RESULT_SCHEMA,
+        "transaction_id": plan.transaction_id,
+        "idempotency_key": plan.idempotency_key,
+        "status": status,
+        "project_id": plan.project_id,
+        "canonical_root": plan.canonical_root,
+        "issue_id": plan.issue_id,
+        "action": plan.action,
+        "target_lifecycle": plan.target_lifecycle,
+        "targets": [target.to_public_dict() for target in plan.targets],
+        "projected_validation": projected_validation,
+        "post_apply_validation": post_apply_validation,
+        "failed_stage": failed_stage,
+        "error_code": error_code,
+        "rollback_status": rollback_status,
+        "verified_target_count": verified_target_count,
+        "next_command": _planned_next_command(plan),
+        "actor": normalized.actor,
+        "source_event": normalized.source_event,
+        "created_at": completed_at,
+        "started_at": "",
+        "completed_at": completed_at,
+    })
+
+
 def _planned_next_command(plan):
     try:
         if not isinstance(plan, LifecycleTransactionPlan):
@@ -3994,3 +4091,151 @@ def plan_lifecycle_transaction(
         targets=targets + (evidence,),
         _project_context=context,
     )
+
+
+def apply_lifecycle_transaction(
+    project_root,
+    intent: LifecycleIntent,
+    *,
+    project_context=None,
+    clock=None,
+    fault_injector=None,
+):
+    """Apply one lifecycle transaction or return its completed replay."""
+    normalized = normalize_lifecycle_intent(intent)
+    plan = plan_lifecycle_transaction(
+        project_root,
+        normalized,
+        project_context=project_context,
+        clock=clock,
+    )
+    _emit_apply_fault(fault_injector, "after-plan")
+    projected = _public_failure_summary(
+        _PROJECTED_VALIDATION_RULE_IDS,
+        "PROJECTED_VALIDATION_NOT_RUN",
+    )
+    post_apply = _public_failure_summary(
+        _POST_APPLY_VALIDATION_RULE_IDS,
+        "POST_APPLY_VALIDATION_NOT_RUN",
+    )
+    try:
+        _writable_projected_plan_context(plan)
+    except project_operation.ProjectOperationDenied as exc:
+        denial_code = exc.decision.get("reason_code")
+        if (
+            not isinstance(denial_code, str)
+            or not _ROLLBACK_ERROR_CODE.fullmatch(denial_code)
+        ):
+            raise LifecycleJournalError(
+                "JOURNAL_RECORD_INVALID"
+            ) from None
+        return _public_failure_result(
+            plan,
+            normalized,
+            status="denied",
+            failed_stage="authorization",
+            error_code=denial_code,
+            rollback_status="not-required",
+            completed_at=_journal_timestamp(clock),
+            projected_validation=projected,
+            post_apply_validation=post_apply,
+        )
+    try:
+        replay = _completed_replay_result(plan, normalized)
+    except LifecycleReplayConflict as exc:
+        return _public_failure_result(
+            plan,
+            normalized,
+            status="conflict",
+            failed_stage="replay",
+            error_code=exc.code,
+            rollback_status="not-required",
+            completed_at=_journal_timestamp(clock),
+            projected_validation=projected,
+            post_apply_validation=post_apply,
+        )
+    _emit_apply_fault(fault_injector, "after-replay-classification")
+    if replay is not None:
+        return replay
+    try:
+        projected = validate_projected_transaction(plan)
+    except LifecycleProjectedValidationError as exc:
+        return _public_failure_result(
+            plan,
+            normalized,
+            status="conflict",
+            failed_stage="projected-validation",
+            error_code=exc.code,
+            rollback_status="not-required",
+            completed_at=_journal_timestamp(clock),
+            projected_validation=_public_failure_summary(
+                _PROJECTED_VALIDATION_RULE_IDS,
+                exc.code,
+            ),
+            post_apply_validation=post_apply,
+        )
+    if not projected["valid"]:
+        return _public_failure_result(
+            plan,
+            normalized,
+            status="conflict",
+            failed_stage="projected-validation",
+            error_code="PROJECTED_VALIDATION_INVALID",
+            rollback_status="not-required",
+            completed_at=_journal_timestamp(clock),
+            projected_validation=projected,
+            post_apply_validation=post_apply,
+        )
+    _emit_apply_fault(fault_injector, "after-projected-validation")
+    completion = _prepare_completion_input(
+        plan,
+        normalized,
+        _planned_next_command(plan),
+        projected,
+    )
+    _emit_apply_fault(fault_injector, "before-private-apply")
+    try:
+        with _private_applied_workspace(
+            plan,
+            completion_input=completion,
+            journal_clock=clock,
+            lock_clock=clock,
+        ) as completed:
+            result = serialize_transaction_result(
+                _json_value(completed.transaction_result)
+            )
+            _emit_apply_fault(fault_injector, "after-private-complete")
+    except transaction_storage.LifecycleCanonicalConflict as exc:
+        return _public_failure_result(
+            plan,
+            normalized,
+            status="conflict",
+            failed_stage="preflight",
+            error_code=exc.code,
+            rollback_status="not-required",
+            completed_at=_journal_timestamp(clock),
+            projected_validation=projected,
+            post_apply_validation=post_apply,
+        )
+    except LifecycleLockError as exc:
+        status = (
+            "conflict"
+            if exc.code == "LOCK_HELD"
+            else "recovery_required"
+        )
+        return _public_failure_result(
+            plan,
+            normalized,
+            status=status,
+            failed_stage="lock",
+            error_code=exc.code,
+            rollback_status=(
+                "not-required"
+                if status == "conflict"
+                else "required"
+            ),
+            completed_at=_journal_timestamp(clock),
+            projected_validation=projected,
+            post_apply_validation=post_apply,
+        )
+    return result
