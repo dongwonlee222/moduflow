@@ -6,7 +6,9 @@ import stat
 import sys
 import tempfile
 import unittest
+from contextlib import contextmanager
 from dataclasses import FrozenInstanceError, replace
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -1366,6 +1368,217 @@ class TransactionPlanningTests(unittest.TestCase):
             next_command,
             self.projected_summary(),
         )
+
+    def public_clock(self):
+        values = [date(2030, 1, 2)]
+        start = datetime(2030, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+        values.extend(
+            start + timedelta(seconds=index)
+            for index in range(80)
+        )
+        iterator = iter(values)
+        return lambda: next(iterator)
+
+    def apply_privately_once(self, root, context, intent):
+        (root / "workspace" / "transactions").mkdir(exist_ok=True)
+        plan = transaction.plan_lifecycle_transaction(
+            root,
+            intent,
+            project_context=context,
+            clock="2030-01-02",
+        )
+        completion = transaction._prepare_completion_input(
+            plan,
+            intent,
+            transaction._planned_next_command(plan),
+            self.projected_summary(),
+        )
+        changed_count = sum(
+            target.changed and target.role != "evidence"
+            for target in plan.targets
+        )
+        timestamps = iter(
+            tuple(
+                f"2030-01-02T03:04:{second:02d}Z"
+                for second in range(5, 5 + 11 + 2 * changed_count)
+            )
+        )
+        with mock.patch.object(
+            transaction.validate_project_artifacts,
+            "validate_project",
+            return_value=self.validation_result(),
+        ):
+            with transaction._private_applied_workspace(
+                plan,
+                completion_input=completion,
+                journal_clock=lambda: next(timestamps),
+                lock_clock="2030-01-02T03:05:30Z",
+                lock_pid=103,
+                lock_token_factory=lambda: "a" * 32,
+            ) as completed:
+                return transaction._json_value(completed.transaction_result)
+
+    def test_completed_replay_returns_strict_noop_from_original_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            applied = self.apply_privately_once(root, context, intent)
+            replay_plan = transaction.plan_lifecycle_transaction(
+                root,
+                intent,
+                project_context=context,
+                clock="2030-01-03",
+            )
+
+            result = transaction._completed_replay_result(replay_plan, intent)
+
+            self.assertEqual(result["status"], "noop")
+            self.assertEqual(result["transaction_id"], applied["transaction_id"])
+            self.assertEqual(result["idempotency_key"], applied["idempotency_key"])
+            self.assertEqual(result["created_at"], applied["created_at"])
+            self.assertEqual(result["completed_at"], applied["completed_at"])
+            self.assertEqual(result["targets"][:-1], applied["targets"][:-1])
+            self.assertEqual(result["targets"][-1]["role"], "evidence")
+            self.assertTrue(result["targets"][-1]["existed"])
+            self.assertFalse(result["targets"][-1]["changed"])
+            self.assertEqual(
+                result["targets"][-1]["before_sha256"],
+                result["targets"][-1]["after_sha256"],
+            )
+            self.assertEqual(
+                result,
+                transaction.serialize_transaction_result(result),
+            )
+
+    def test_completed_replay_returns_none_only_when_evidence_is_absent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                intent,
+                project_context=context,
+                clock="2030-01-02",
+            )
+
+            self.assertIsNone(
+                transaction._completed_replay_result(plan, intent)
+            )
+
+    def test_completed_replay_rejects_malformed_foreign_and_reordered_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            applied = self.apply_privately_once(root, context, intent)
+            evidence_path = root / applied["targets"][-1]["relative_path"]
+            original_bytes = evidence_path.read_bytes()
+            original = json.loads(original_bytes)
+            cases = {
+                "malformed": b"{PRIVATE-BROKEN\n",
+                "unknown-key": {
+                    **original,
+                    "private": "PRIVATE-FORBIDDEN",
+                },
+                "non-applied": {**original, "status": "noop"},
+                "foreign-id": {
+                    **original,
+                    "transaction_id": "txn-foreign",
+                },
+                "reordered": {
+                    **original,
+                    "targets": list(reversed(original["targets"])),
+                },
+            }
+
+            for label, candidate in cases.items():
+                with self.subTest(label=label):
+                    if isinstance(candidate, bytes):
+                        evidence_path.write_bytes(candidate)
+                    else:
+                        evidence_path.write_text(
+                            json.dumps(
+                                candidate,
+                                ensure_ascii=False,
+                                sort_keys=True,
+                                indent=2,
+                            )
+                            + "\n",
+                            encoding="utf-8",
+                        )
+                    replay_plan = transaction.plan_lifecycle_transaction(
+                        root,
+                        intent,
+                        project_context=context,
+                        clock="2030-01-03",
+                    )
+
+                    with self.assertRaises(
+                        transaction.LifecycleReplayConflict
+                    ) as raised:
+                        transaction._completed_replay_result(
+                            replay_plan,
+                            intent,
+                        )
+
+                    self.assertEqual(
+                        raised.exception.code,
+                        "REPLAY_EVIDENCE_CONFLICT",
+                    )
+                    rendered_error = str(raised.exception) + repr(
+                        raised.exception
+                    )
+                    self.assertNotIn(str(root.resolve()), rendered_error)
+                    self.assertNotIn("PRIVATE", rendered_error)
+                    evidence_path.write_bytes(original_bytes)
+
+    def test_completed_replay_rejects_canonical_drift_without_writes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            applied = self.apply_privately_once(root, context, intent)
+            issue_path = root / applied["targets"][0]["relative_path"]
+            issue_path.write_text(
+                issue_path.read_text(encoding="utf-8")
+                + "\nPRIVATE EXTERNAL EDIT\n",
+                encoding="utf-8",
+            )
+            replay_plan = transaction.plan_lifecycle_transaction(
+                root,
+                intent,
+                project_context=context,
+                clock="2030-01-03",
+            )
+
+            with (
+                mock.patch.object(transaction.os, "replace") as replacement,
+                mock.patch.object(
+                    transaction,
+                    "validate_projected_transaction",
+                ) as validator,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "private_transaction_workspace",
+                ) as workspace,
+                self.assertRaises(
+                    transaction.LifecycleReplayConflict
+                ) as raised,
+            ):
+                transaction._completed_replay_result(replay_plan, intent)
+
+            self.assertEqual(
+                raised.exception.code,
+                "REPLAY_CANONICAL_DRIFT",
+            )
+            rendered_error = str(raised.exception) + repr(raised.exception)
+            self.assertNotIn(str(root.resolve()), rendered_error)
+            self.assertNotIn("PRIVATE", rendered_error)
+            replacement.assert_not_called()
+            validator.assert_not_called()
+            workspace.assert_not_called()
 
     def replace_projected_bytes(self, plan, replacements):
         remaining = set(replacements)

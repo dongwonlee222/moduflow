@@ -236,6 +236,13 @@ _EVIDENCE_RESULT_FIELDS = (
     "started_at",
     "completed_at",
 )
+_COMPLETED_EVIDENCE_KEYS = frozenset({
+    "schema",
+    *_EVIDENCE_RESULT_FIELDS,
+    "targets",
+    "projected_validation",
+    "post_apply_validation",
+})
 
 
 @dataclass(frozen=True)
@@ -493,6 +500,22 @@ class LifecycleJournalError(ValueError):
     """Stable journal contract failure without record values or private paths."""
 
     def __init__(self, code):
+        self.code = code
+        super().__init__(code)
+
+
+_REPLAY_ERROR_CODES = frozenset({
+    "REPLAY_EVIDENCE_CONFLICT",
+    "REPLAY_CANONICAL_DRIFT",
+})
+
+
+class LifecycleReplayConflict(RuntimeError):
+    """Stable completed-replay conflict without rejected values."""
+
+    def __init__(self, code):
+        if code not in _REPLAY_ERROR_CODES:
+            raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
         self.code = code
         super().__init__(code)
 
@@ -3118,6 +3141,156 @@ def render_transaction_evidence(result: dict) -> bytes:
         ).encode("utf-8")
         + b"\n"
     )
+
+
+def _completed_replay_result(plan, intent):
+    """Return strict noop for one exact completed transaction, or None."""
+    if not isinstance(plan, LifecycleTransactionPlan):
+        raise TypeError("plan must be a LifecycleTransactionPlan")
+    normalized = normalize_lifecycle_intent(intent)
+    try:
+        evidence_target = plan.targets[-1]
+        if evidence_target.role != "evidence":
+            raise ValueError("evidence target")
+        if not evidence_target.existed:
+            return None
+        if (
+            evidence_target.before_sha256
+            != target_sha256(evidence_target._before_bytes)
+        ):
+            raise ValueError("evidence hash")
+        evidence = json.loads(evidence_target._before_bytes.decode("utf-8"))
+        _assert_exact_keys(
+            evidence,
+            _COMPLETED_EVIDENCE_KEYS,
+            "completed transaction evidence",
+        )
+        if (
+            evidence["schema"] != EVIDENCE_SCHEMA
+            or evidence["status"] != "applied"
+            or evidence["failed_stage"]
+            or evidence["error_code"]
+            or evidence["rollback_status"] != "not-required"
+        ):
+            raise ValueError("evidence state")
+        expected_identity = {
+            "transaction_id": plan.transaction_id,
+            "idempotency_key": plan.idempotency_key,
+            "project_id": plan.project_id,
+            "issue_id": plan.issue_id,
+            "action": plan.action,
+            "target_lifecycle": plan.target_lifecycle,
+            "source_event": normalized.source_event,
+        }
+        if any(
+            evidence[key] != value
+            for key, value in expected_identity.items()
+        ):
+            raise ValueError("evidence identity")
+        ordinary = evidence["targets"]
+        if (
+            not isinstance(ordinary, list)
+            or len(ordinary) != len(plan.targets) - 1
+        ):
+            raise ValueError("target count")
+        serialized_ordinary = _serialized_targets(ordinary)
+        for planned, recorded in zip(
+            plan.targets[:-1],
+            serialized_ordinary,
+        ):
+            expected_layout = (
+                planned.role == recorded["role"]
+                and planned.relative_path == recorded["relative_path"]
+                and planned.validation_rules
+                == tuple(recorded["validation_rules"])
+                and planned.apply_order == recorded["apply_order"]
+                and planned.rollback_order == recorded["rollback_order"]
+                and recorded["existed"]
+                == (recorded["before_sha256"] != "absent")
+                and recorded["changed"]
+                == (
+                    not recorded["existed"]
+                    or recorded["before_sha256"]
+                    != recorded["after_sha256"]
+                )
+            )
+            if not expected_layout:
+                raise ValueError("target layout")
+            if (
+                not planned.existed
+                or planned.before_sha256 != recorded["after_sha256"]
+            ):
+                raise LifecycleReplayConflict(
+                    "REPLAY_CANONICAL_DRIFT"
+                )
+        projected = _serialized_validation_summary(
+            evidence["projected_validation"]
+        )
+        post_apply = _serialized_validation_summary(
+            evidence["post_apply_validation"]
+        )
+        if (
+            not projected["valid"]
+            or projected.get("rule_ids")
+            != list(_PROJECTED_VALIDATION_RULE_IDS)
+            or projected.get("error_codes") != []
+            or not post_apply["valid"]
+            or post_apply.get("rule_ids")
+            != list(_POST_APPLY_VALIDATION_RULE_IDS)
+            or post_apply.get("error_codes") != []
+            or evidence["verified_target_count"] != len(plan.targets)
+        ):
+            raise ValueError("completion proof")
+        evidence_sha256 = target_sha256(evidence_target._before_bytes)
+        self_target = {
+            "role": "evidence",
+            "relative_path": evidence_target.relative_path,
+            "existed": True,
+            "before_sha256": evidence_sha256,
+            "after_sha256": evidence_sha256,
+            "after_bytes": len(evidence_target._before_bytes),
+            "changed": False,
+            "validation_rules": list(evidence_target.validation_rules),
+            "apply_order": evidence_target.apply_order,
+            "rollback_order": evidence_target.rollback_order,
+        }
+        return serialize_transaction_result({
+            "schema": RESULT_SCHEMA,
+            "transaction_id": evidence["transaction_id"],
+            "idempotency_key": evidence["idempotency_key"],
+            "status": "noop",
+            "project_id": evidence["project_id"],
+            "canonical_root": plan.canonical_root,
+            "issue_id": evidence["issue_id"],
+            "action": evidence["action"],
+            "target_lifecycle": evidence["target_lifecycle"],
+            "targets": serialized_ordinary + [self_target],
+            "projected_validation": projected,
+            "post_apply_validation": post_apply,
+            "failed_stage": "",
+            "error_code": "",
+            "rollback_status": "not-required",
+            "verified_target_count": evidence["verified_target_count"],
+            "next_command": evidence["next_command"],
+            "actor": evidence["actor"],
+            "source_event": evidence["source_event"],
+            "created_at": evidence["created_at"],
+            "started_at": evidence["started_at"],
+            "completed_at": evidence["completed_at"],
+        })
+    except LifecycleReplayConflict:
+        raise
+    except (
+        AttributeError,
+        IndexError,
+        KeyError,
+        TypeError,
+        ValueError,
+        UnicodeError,
+    ):
+        raise LifecycleReplayConflict(
+            "REPLAY_EVIDENCE_CONFLICT"
+        ) from None
 
 
 def _planned_next_command(plan):
