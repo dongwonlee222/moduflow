@@ -4486,6 +4486,358 @@ class TransactionPlanningTests(unittest.TestCase):
                     before,
                 )
 
+    def test_transaction_recovery_report_is_strict_deterministic_and_redacted(self):
+        serializer = getattr(transaction, "serialize_transaction_recovery", None)
+        renderer = getattr(transaction, "render_transaction_recovery", None)
+        self.assertIsNotNone(serializer)
+        self.assertIsNotNone(renderer)
+        report = {
+            "schema": "moduflow.lifecycle-transaction-recovery.v1",
+            "project_id": "project-103",
+            "canonical_root": "/projects/moduflow",
+            "status": "rolled_back",
+            "transactions": [
+                {
+                    "transaction_id": "txn-103",
+                    "idempotency_key": "d" * 64,
+                    "observed_phase": "applying",
+                    "resulting_phase": "rolled-back",
+                    "status": "rolled_back",
+                    "error_code": "none",
+                    "targets": [
+                        {
+                            "role": "issue",
+                            "relative_path": "issues/BIZ-103.md",
+                            "existed": True,
+                            "before_sha256": "a" * 64,
+                            "after_sha256": "b" * 64,
+                            "changed": True,
+                        }
+                    ],
+                    "verified_target_count": 1,
+                }
+            ],
+        }
+
+        serialized = serializer(report)
+        rendered = renderer(report)
+        report["transactions"][0]["targets"][0]["role"] = "private"
+
+        self.assertEqual(serialized["status"], "rolled_back")
+        self.assertEqual(serialized["transactions"][0]["targets"][0]["role"], "issue")
+        self.assertEqual(json.loads(rendered), serialized)
+        self.assertTrue(rendered.endswith(b"\n"))
+        self.assertFalse(rendered.endswith(b"\n\n"))
+        for forbidden in (
+            "preimages/",
+            ".moduflow-stage-",
+            "owner_token",
+            "pid",
+            "PRIVATE",
+            "projected_validation",
+            "actor",
+        ):
+            self.assertNotIn(forbidden, rendered.decode("utf-8"))
+
+        invalid = json.loads(rendered)
+        invalid["transactions"][0]["error_code"] = "PRIVATE_ERROR"
+        with self.assertRaises(ValueError):
+            serializer(invalid)
+        invalid = json.loads(rendered)
+        invalid["transactions"][0]["resulting_phase"] = "private-phase"
+        with self.assertRaises(ValueError):
+            serializer(invalid)
+        invalid = json.loads(rendered)
+        invalid["private"] = "forbidden"
+        with self.assertRaises(ValueError):
+            serializer(invalid)
+
+    def test_public_explicit_recovery_maps_success_terminal_and_ambiguity(self):
+        entry = getattr(transaction, "recover_incomplete_transaction", None)
+        self.assertIsNotNone(entry)
+        cases = ("rollback", "finalize", "ambiguous")
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                if case == "rollback":
+                    context, plan, _applied, _rollback = (
+                        self.prepare_restart_recovery_case(
+                            root,
+                            "applying-unrecorded",
+                            applied_count=2,
+                        )
+                    )
+                else:
+                    context, plan = self.prepare_restart_finalizing_case(
+                        root,
+                        "before",
+                    )
+                journal_path = (
+                    root
+                    / ".moduflow"
+                    / "transactions"
+                    / plan.transaction_id
+                    / "journal.json"
+                )
+                if case == "ambiguous":
+                    journal = json.loads(journal_path.read_bytes())
+                    journal["phase"] = "recovery-required"
+                    journal["updated_at"] = "2030-01-02T03:05:00Z"
+                    journal_path.write_bytes(
+                        transaction.canonical_json_bytes(
+                            transaction.serialize_transaction_journal(journal)
+                        )
+                        + b"\n"
+                    )
+                before = {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if (root / target.relative_path).exists()
+                        else None
+                    )
+                    for target in plan.targets
+                }
+                journal_before = journal_path.read_bytes()
+                clock_values = iter(
+                    f"2030-01-02T03:06:{second:02d}Z"
+                    for second in range(50)
+                )
+                result = entry(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                    clock=lambda: next(clock_values),
+                    lock_pid=203,
+                    lock_token_factory=lambda: "b" * 32,
+                )
+
+                expected = {
+                    "rollback": "rolled_back",
+                    "finalize": "applied",
+                    "ambiguous": "recovery_required",
+                }[case]
+                self.assertEqual(result["status"], expected)
+                self.assertEqual(len(result["transactions"]), 1)
+                record = result["transactions"][0]
+                self.assertEqual(record["transaction_id"], plan.transaction_id)
+                self.assertEqual(record["status"], expected)
+                if case == "ambiguous":
+                    self.assertEqual(
+                        record["error_code"],
+                        "RECOVERY_STATE_AMBIGUOUS",
+                    )
+                    self.assertEqual(journal_path.read_bytes(), journal_before)
+                    self.assertEqual(
+                        {
+                            target.relative_path: (
+                                (root / target.relative_path).read_bytes()
+                                if (root / target.relative_path).exists()
+                                else None
+                            )
+                            for target in plan.targets
+                        },
+                        before,
+                    )
+                else:
+                    terminal_clock = iter(
+                        f"2030-01-02T03:07:{second:02d}Z"
+                        for second in range(10)
+                    )
+                    terminal = entry(
+                        root,
+                        plan.transaction_id,
+                        project_context=context,
+                        clock=lambda: next(terminal_clock),
+                        lock_pid=204,
+                        lock_token_factory=lambda: "c" * 32,
+                    )
+                    self.assertEqual(terminal["status"], "noop")
+
+    def test_public_explicit_recovery_denies_or_blocks_before_mutation(self):
+        entry = getattr(transaction, "recover_incomplete_transaction", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            denied_context = transaction._json_value(context)
+            denied_context.update(
+                transaction.project_operation.compute_project_policy(
+                    "archived",
+                    "internal",
+                )
+            )
+            with mock.patch.object(
+                transaction,
+                "_private_recovered_transaction_workspace",
+            ) as reopen:
+                denied = entry(
+                    root,
+                    "txn-denied",
+                    project_context=denied_context,
+                )
+            self.assertEqual(denied["status"], "denied")
+            self.assertEqual(
+                denied["transactions"][0]["error_code"],
+                "PROJECT_OPERATION_DENIED_ARCHIVED",
+            )
+            reopen.assert_not_called()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context, plan, _applied, _rollback = self.prepare_restart_recovery_case(
+                root,
+                "applying-recorded",
+                applied_count=1,
+            )
+            transactions = root / ".moduflow" / "transactions"
+            lock_path = transactions / "lifecycle.lock"
+            lock_path.write_bytes(
+                transaction.canonical_json_bytes(
+                    {
+                        "schema": "moduflow.lifecycle-transaction-lock.v1",
+                        "transaction_id": plan.transaction_id,
+                        "pid": 111,
+                        "acquired_at": "2030-01-02T03:05:00Z",
+                        "owner_token": "a" * 32,
+                    }
+                )
+                + b"\n"
+            )
+            lock_path.chmod(0o600)
+            journal_path = (
+                transactions / plan.transaction_id / "journal.json"
+            )
+            before = journal_path.read_bytes()
+            blocked = entry(
+                root,
+                plan.transaction_id,
+                project_context=context,
+                pid_probe=lambda _pid, _signal: None,
+                lock_pid=203,
+                lock_token_factory=lambda: "b" * 32,
+            )
+
+            self.assertEqual(blocked["status"], "recovery_required")
+            self.assertEqual(
+                blocked["transactions"][0]["error_code"],
+                "RECOVERY_LOCK_LIVE",
+            )
+            self.assertEqual(journal_path.read_bytes(), before)
+            self.assertTrue(lock_path.exists())
+
+    def test_public_explicit_recovery_faults_only_at_durable_boundaries(self):
+        entry = getattr(transaction, "recover_incomplete_transaction", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            with (
+                mock.patch.object(
+                    transaction,
+                    "_authorized_recovery_subject",
+                ) as authorize,
+                self.assertRaisesRegex(
+                    TypeError,
+                    "fault_injector must be callable or None",
+                ),
+            ):
+                entry(
+                    root,
+                    "txn-invalid-injector",
+                    project_context=context,
+                    fault_injector="invalid",
+                )
+            authorize.assert_not_called()
+
+        for fault_stage in (
+            "after-recovery-read",
+            "after-recovery-lock",
+            "after-recovery-complete",
+        ):
+            with self.subTest(fault_stage=fault_stage), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context, plan, _applied, _rollback = (
+                    self.prepare_restart_recovery_case(
+                        root,
+                        "applying-recorded",
+                        applied_count=1,
+                    )
+                )
+                transactions = root / ".moduflow" / "transactions"
+                lock_path = transactions / "lifecycle.lock"
+                journal_path = (
+                    transactions / plan.transaction_id / "journal.json"
+                )
+                journal_before = journal_path.read_bytes()
+                canonical_before = {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if (root / target.relative_path).exists()
+                        else None
+                    )
+                    for target in plan.targets
+                }
+                observed = []
+
+                def inject(stage):
+                    observed.append((stage, lock_path.exists()))
+                    if stage == fault_stage:
+                        raise RuntimeError("PRIVATE RECOVERY INTERRUPTION")
+
+                clock_values = iter(
+                    f"2030-01-02T03:08:{second:02d}Z"
+                    for second in range(50)
+                )
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    "PRIVATE RECOVERY INTERRUPTION",
+                ):
+                    entry(
+                        root,
+                        plan.transaction_id,
+                        project_context=context,
+                        clock=lambda: next(clock_values),
+                        lock_pid=205,
+                        lock_token_factory=lambda: "d" * 32,
+                        fault_injector=inject,
+                    )
+
+                self.assertFalse(lock_path.exists())
+                self.assertEqual(observed[0], ("after-recovery-read", False))
+                if fault_stage != "after-recovery-read":
+                    self.assertEqual(observed[1], ("after-recovery-lock", True))
+                if fault_stage == "after-recovery-complete":
+                    self.assertEqual(
+                        observed[2],
+                        ("after-recovery-complete", True),
+                    )
+                    terminal_clock = iter(
+                        f"2030-01-02T03:09:{second:02d}Z"
+                        for second in range(10)
+                    )
+                    retry = entry(
+                        root,
+                        plan.transaction_id,
+                        project_context=context,
+                        clock=lambda: next(terminal_clock),
+                        lock_pid=206,
+                        lock_token_factory=lambda: "e" * 32,
+                    )
+                    self.assertEqual(retry["status"], "noop")
+                else:
+                    self.assertEqual(journal_path.read_bytes(), journal_before)
+                    self.assertEqual(
+                        {
+                            target.relative_path: (
+                                (root / target.relative_path).read_bytes()
+                                if (root / target.relative_path).exists()
+                                else None
+                            )
+                            for target in plan.targets
+                        },
+                        canonical_before,
+                    )
+
     def test_recovered_transaction_workspace_rejects_unbound_extra_stage(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -39,6 +39,7 @@ RESULT_SCHEMA = "moduflow.lifecycle-transaction.v1"
 EVIDENCE_SCHEMA = "moduflow.lifecycle-transaction-evidence.v1"
 JOURNAL_SCHEMA = "moduflow.lifecycle-transaction-journal.v1"
 LOCK_SCHEMA = "moduflow.lifecycle-transaction-lock.v1"
+RECOVERY_SCHEMA = "moduflow.lifecycle-transaction-recovery.v1"
 
 _LOCK_NAME = "lifecycle.lock"
 _MAX_LOCK_BYTES = 4096
@@ -164,6 +165,31 @@ _RESULT_KEYS = frozenset({
     "started_at",
     "completed_at",
 })
+_RECOVERY_REPORT_KEYS = frozenset({
+    "schema",
+    "project_id",
+    "canonical_root",
+    "status",
+    "transactions",
+})
+_RECOVERY_RECORD_KEYS = frozenset({
+    "transaction_id",
+    "idempotency_key",
+    "observed_phase",
+    "resulting_phase",
+    "status",
+    "error_code",
+    "targets",
+    "verified_target_count",
+})
+_RECOVERY_TARGET_KEYS = frozenset({
+    "role",
+    "relative_path",
+    "existed",
+    "before_sha256",
+    "after_sha256",
+    "changed",
+})
 _TERMINAL_STATUSES = frozenset({
     "applied",
     "noop",
@@ -171,6 +197,48 @@ _TERMINAL_STATUSES = frozenset({
     "conflict",
     "rolled_back",
     "recovery_required",
+})
+_RECOVERY_REPORT_PHASES = _JOURNAL_PHASES | frozenset({
+    "pre-journal-orphan",
+    "unknown",
+})
+_RECOVERY_REPORT_ERROR_CODES = frozenset({
+    "none",
+    "RECOVERY_DISCOVERY_UNSAFE",
+    "RECOVERY_WORKSPACE_UNSAFE",
+    "RECOVERY_CONTROL_FILE_UNSAFE",
+    "RECOVERY_MANIFEST_MISSING",
+    "RECOVERY_MANIFEST_INVALID",
+    "RECOVERY_MANIFEST_MISMATCH",
+    "RECOVERY_PAYLOAD_MISSING",
+    "RECOVERY_PAYLOAD_INVALID",
+    "RECOVERY_PAYLOAD_MISMATCH",
+    "RECOVERY_JOURNAL_MISSING",
+    "RECOVERY_JOURNAL_INVALID",
+    "RECOVERY_JOURNAL_NEXT_INVALID",
+    "RECOVERY_JOURNAL_NEXT_CONFLICT",
+    "RECOVERY_LOCK_LIVE",
+    "RECOVERY_LOCK_INVALID",
+    "RECOVERY_LOCK_FOREIGN",
+    "RECOVERY_LOCK_UNCERTAIN",
+    "RECOVERY_LOCK_REPLACED",
+    "RECOVERY_LOCK_RECLAIM_FAILED",
+    "RECOVERY_STATE_AMBIGUOUS",
+    "RECOVERY_STATE_CANONICAL_UNKNOWN",
+    "RECOVERY_STATE_PROGRESS_INVALID",
+    "RECOVERY_STATE_JOURNAL_PERSIST_FAILED",
+    "PROJECT_CONTEXT_UNAVAILABLE",
+    "PROJECT_OPERATION_UNKNOWN",
+    "PROJECT_CAPABILITY_UNAVAILABLE",
+    "PROJECT_OPERATION_DENIED_ARCHIVED",
+    "PROJECT_OPERATION_DENIED_READ_ONLY",
+    "PROJECT_OPERATION_DENIED_STATUS_UNKNOWN",
+    "PROJECT_OPERATION_DENIED_TRUST_UNKNOWN",
+})
+_RECOVERY_FAULT_STAGES = frozenset({
+    "after-recovery-read",
+    "after-recovery-lock",
+    "after-recovery-complete",
 })
 _APPLY_FAULT_STAGES = frozenset({
     "after-plan",
@@ -4435,6 +4503,163 @@ def serialize_transaction_result(result):
     }
 
 
+def _serialized_recovery_target(target):
+    _assert_exact_keys(target, _RECOVERY_TARGET_KEYS, "recovery target")
+    role = target["role"]
+    relative_path = target["relative_path"]
+    existed = target["existed"]
+    changed = target["changed"]
+    before_sha256 = target["before_sha256"]
+    after_sha256 = target["after_sha256"]
+    if (
+        not isinstance(role, str)
+        or not _LOGICAL_NAME.fullmatch(role)
+        or not isinstance(relative_path, str)
+        or not relative_path
+        or "\\" in relative_path
+        or relative_path.startswith("/")
+        or PureWindowsPath(relative_path).is_absolute()
+        or any(part in {"", ".", ".."} for part in relative_path.split("/"))
+        or not isinstance(existed, bool)
+        or not isinstance(changed, bool)
+        or (
+            existed
+            and (
+                not isinstance(before_sha256, str)
+                or not _SHA256.fullmatch(before_sha256)
+            )
+        )
+        or (not existed and before_sha256 != "absent")
+        or not isinstance(after_sha256, str)
+        or not _SHA256.fullmatch(after_sha256)
+        or changed != (not existed or before_sha256 != after_sha256)
+    ):
+        raise ValueError("Invalid recovery target")
+    return {
+        "role": role,
+        "relative_path": relative_path,
+        "existed": existed,
+        "before_sha256": before_sha256,
+        "after_sha256": after_sha256,
+        "changed": changed,
+    }
+
+
+def _serialized_recovery_record(record):
+    _assert_exact_keys(record, _RECOVERY_RECORD_KEYS, "recovery record")
+    transaction_id = record["transaction_id"]
+    idempotency_key = record["idempotency_key"]
+    observed_phase = record["observed_phase"]
+    resulting_phase = record["resulting_phase"]
+    status = record["status"]
+    error_code = record["error_code"]
+    if (
+        not isinstance(transaction_id, str)
+        or not _LOGICAL_NAME.fullmatch(transaction_id)
+        or not isinstance(idempotency_key, str)
+        or not idempotency_key
+        or observed_phase not in _RECOVERY_REPORT_PHASES
+        or resulting_phase not in _RECOVERY_REPORT_PHASES
+        or status not in _TERMINAL_STATUSES
+        or error_code not in _RECOVERY_REPORT_ERROR_CODES
+        or (
+            status in {"applied", "noop", "rolled_back"}
+            and error_code != "none"
+        )
+        or (
+            status in {"denied", "conflict", "recovery_required"}
+            and error_code == "none"
+        )
+        or not isinstance(record["targets"], (list, tuple))
+    ):
+        raise ValueError("Invalid recovery record")
+    targets = [
+        _serialized_recovery_target(target)
+        for target in record["targets"]
+    ]
+    verified = record["verified_target_count"]
+    if (
+        not isinstance(verified, int)
+        or isinstance(verified, bool)
+        or verified < 0
+        or verified > len(targets)
+    ):
+        raise ValueError("Invalid recovery verified target count")
+    return {
+        "transaction_id": transaction_id,
+        "idempotency_key": idempotency_key,
+        "observed_phase": observed_phase,
+        "resulting_phase": resulting_phase,
+        "status": status,
+        "error_code": error_code,
+        "targets": targets,
+        "verified_target_count": verified,
+    }
+
+
+def _aggregate_recovery_status(records):
+    statuses = {record["status"] for record in records}
+    for status in (
+        "recovery_required",
+        "conflict",
+        "denied",
+        "applied",
+        "rolled_back",
+        "noop",
+    ):
+        if status in statuses:
+            return status
+    return "noop"
+
+
+def serialize_transaction_recovery(report):
+    """Return one strict detached redacted recovery report."""
+    _assert_exact_keys(report, _RECOVERY_REPORT_KEYS, "recovery report")
+    if report["schema"] != RECOVERY_SCHEMA:
+        raise ValueError("Unsupported transaction recovery schema")
+    project_id = report["project_id"]
+    canonical_root = report["canonical_root"]
+    if (
+        not isinstance(project_id, str)
+        or not project_id
+        or not isinstance(canonical_root, str)
+        or not canonical_root
+        or (
+            canonical_root != "unknown"
+            and not Path(canonical_root).is_absolute()
+        )
+        or not isinstance(report["transactions"], (list, tuple))
+    ):
+        raise ValueError("Invalid transaction recovery report")
+    records = [
+        _serialized_recovery_record(record)
+        for record in report["transactions"]
+    ]
+    aggregate = _aggregate_recovery_status(records)
+    if report["status"] != aggregate:
+        raise ValueError("Invalid transaction recovery aggregate status")
+    return {
+        "schema": RECOVERY_SCHEMA,
+        "project_id": project_id,
+        "canonical_root": canonical_root,
+        "status": aggregate,
+        "transactions": records,
+    }
+
+
+def render_transaction_recovery(report):
+    """Return deterministic UTF-8 recovery JSON with one trailing newline."""
+    return (
+        json.dumps(
+            serialize_transaction_recovery(report),
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=2,
+        ).encode("utf-8")
+        + b"\n"
+    )
+
+
 def serialize_transaction_evidence(result: dict) -> dict:
     """Return detached redacted evidence from one strict result candidate."""
     serialized = serialize_transaction_result(result)
@@ -5417,6 +5642,215 @@ def plan_lifecycle_transaction(
         target_lifecycle=normalized.target_lifecycle,
         targets=targets + (evidence,),
         _project_context=context,
+    )
+
+
+def _emit_recovery_fault(fault_injector, stage):
+    if fault_injector is None:
+        return
+    if not callable(fault_injector) or stage not in _RECOVERY_FAULT_STAGES:
+        raise TypeError("invalid recovery fault injector")
+    fault_injector(stage)
+
+
+def _safe_recovery_transaction_id(transaction_id):
+    if (
+        isinstance(transaction_id, str)
+        and _LOGICAL_NAME.fullmatch(transaction_id)
+    ):
+        return transaction_id
+    return "unknown"
+
+
+def _safe_recovery_root(project_root):
+    try:
+        return str(Path(project_root).resolve())
+    except (OSError, TypeError, ValueError):
+        return "unknown"
+
+
+def _recovery_public_target(target):
+    return {
+        "role": target["role"],
+        "relative_path": target["relative_path"],
+        "existed": target["existed"],
+        "before_sha256": target["before_sha256"],
+        "after_sha256": target["after_sha256"],
+        "changed": target["changed"],
+    }
+
+
+def _recovery_public_identity(recovered):
+    journal = recovered.journal_state.journal
+    return {
+        "transaction_id": journal["transaction_id"],
+        "idempotency_key": journal["idempotency_key"],
+        "observed_phase": journal["phase"],
+        "targets": [
+            _recovery_public_target(target)
+            for target in journal["targets"]
+        ],
+    }
+
+
+def _recovery_public_record(
+    transaction_id,
+    *,
+    identity=None,
+    outcome=None,
+    status=None,
+    error_code=None,
+):
+    if identity is None:
+        identity = {
+            "transaction_id": _safe_recovery_transaction_id(transaction_id),
+            "idempotency_key": "unknown",
+            "observed_phase": "unknown",
+            "targets": [],
+        }
+    if outcome is not None:
+        return {
+            **identity,
+            "resulting_phase": outcome.resulting_phase,
+            "status": outcome.status,
+            "error_code": outcome.error_code,
+            "verified_target_count": outcome.verified_target_count,
+        }
+    return {
+        **identity,
+        "resulting_phase": identity["observed_phase"],
+        "status": status,
+        "error_code": error_code,
+        "verified_target_count": 0,
+    }
+
+
+def _recovery_public_report(project_id, canonical_root, record):
+    return serialize_transaction_recovery(
+        {
+            "schema": RECOVERY_SCHEMA,
+            "project_id": project_id or "unknown",
+            "canonical_root": canonical_root,
+            "status": record["status"],
+            "transactions": [record],
+        }
+    )
+
+
+def recover_incomplete_transaction(
+    project_root,
+    transaction_id,
+    *,
+    project_context=None,
+    clock=None,
+    pid_probe=None,
+    lock_pid=None,
+    lock_token_factory=None,
+    fault_injector=None,
+):
+    """Recover one explicit transaction and return a redacted recovery report."""
+    if fault_injector is not None and not callable(fault_injector):
+        raise TypeError("fault_injector must be callable or None")
+    public_root = _safe_recovery_root(project_root)
+    try:
+        subject = _authorized_recovery_subject(
+            project_root,
+            transaction_id,
+            project_context=project_context,
+        )
+    except project_operation.ProjectOperationDenied as exc:
+        record = _recovery_public_record(
+            transaction_id,
+            status="denied",
+            error_code=exc.decision["reason_code"],
+        )
+        return _recovery_public_report(
+            exc.decision.get("project_id") or "unknown",
+            public_root,
+            record,
+        )
+    except LifecycleRecoveryLockError as exc:
+        record = _recovery_public_record(
+            transaction_id,
+            status="recovery_required",
+            error_code=exc.code,
+        )
+        return _recovery_public_report(
+            "unknown",
+            public_root,
+            record,
+        )
+
+    identity = None
+    read_failures = (
+        LifecycleRecoveryReadError,
+        transaction_storage.LifecycleRecoveryStorageError,
+    )
+    try:
+        with _private_recovered_transaction_workspace(
+            subject._root,
+            subject.transaction_id,
+        ) as preview:
+            identity = _recovery_public_identity(preview)
+    except read_failures as exc:
+        record = _recovery_public_record(
+            transaction_id,
+            status="recovery_required",
+            error_code=exc.code,
+        )
+        return _recovery_public_report(
+            subject.project_id,
+            str(subject._root),
+            record,
+        )
+    _emit_recovery_fault(fault_injector, "after-recovery-read")
+
+    try:
+        with _exclusive_recovery_lock(
+            subject,
+            clock=clock,
+            pid=lock_pid,
+            token_factory=lock_token_factory,
+            pid_probe=pid_probe,
+        ):
+            _emit_recovery_fault(fault_injector, "after-recovery-lock")
+            with _private_recovered_transaction_workspace(
+                subject._root,
+                subject.transaction_id,
+            ) as recovered:
+                identity = _recovery_public_identity(recovered)
+                outcome = _recover_loaded_transaction(
+                    recovered,
+                    journal_clock=clock,
+                )
+            _emit_recovery_fault(fault_injector, "after-recovery-complete")
+    except (
+        LifecycleRecoveryLockError,
+        LifecycleRecoveryReadError,
+        LifecycleRecoveryStateError,
+        transaction_storage.LifecycleRecoveryStorageError,
+    ) as exc:
+        record = _recovery_public_record(
+            transaction_id,
+            identity=identity,
+            status="recovery_required",
+            error_code=exc.code,
+        )
+        return _recovery_public_report(
+            subject.project_id,
+            str(subject._root),
+            record,
+        )
+
+    record = _recovery_public_record(
+        transaction_id,
+        identity=identity,
+        outcome=outcome,
+    )
+    return _recovery_public_report(
+        subject.project_id,
+        str(subject._root),
+        record,
     )
 
 
