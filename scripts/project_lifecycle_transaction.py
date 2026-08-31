@@ -227,6 +227,13 @@ _RECOVERY_REPORT_ERROR_CODES = frozenset({
     "RECOVERY_STATE_CANONICAL_UNKNOWN",
     "RECOVERY_STATE_PROGRESS_INVALID",
     "RECOVERY_STATE_JOURNAL_PERSIST_FAILED",
+    "RECOVERY_CLEANUP_INELIGIBLE",
+    "RECOVERY_CLEANUP_CANONICAL_UNPROVEN",
+    "RECOVERY_CLEANUP_INVENTORY_UNSAFE",
+    "RECOVERY_CLEANUP_REPLACED",
+    "RECOVERY_CLEANUP_DELETE_FAILED",
+    "RECOVERY_CLEANUP_DURABILITY_UNCERTAIN",
+    "RECOVERY_CLEANUP_REMAINDER_UNSAFE",
     "PROJECT_CONTEXT_UNAVAILABLE",
     "PROJECT_OPERATION_UNKNOWN",
     "PROJECT_CAPABILITY_UNAVAILABLE",
@@ -1369,6 +1376,27 @@ def _authorized_recovery_subject(
         _root=root,
         _project_context=context,
     )
+
+
+def _authorized_project_recovery_context(
+    project_root,
+    *,
+    project_context=None,
+):
+    """Resolve one project-wide recovery context and require write capability."""
+    try:
+        root = Path(project_root).resolve()
+        context = project_registry.context_for_operation(
+            root,
+            project_context=project_context,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID") from exc
+    project_operation.require_project_capability(context, "write")
+    project_id = context.get("project_id") or "explicit-root"
+    if not isinstance(project_id, str) or not project_id:
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID")
+    return root, _json_value(context), project_id
 
 
 def _projected_target_parts(relative_path):
@@ -6013,15 +6041,138 @@ def _recovery_public_record(
     }
 
 
-def _recovery_public_report(project_id, canonical_root, record):
+def _recovery_public_reports(project_id, canonical_root, records):
+    records = list(records)
     return serialize_transaction_recovery(
         {
             "schema": RECOVERY_SCHEMA,
             "project_id": project_id or "unknown",
             "canonical_root": canonical_root,
-            "status": record["status"],
-            "transactions": [record],
+            "status": _aggregate_recovery_status(records),
+            "transactions": records,
         }
+    )
+
+
+def _recovery_public_report(project_id, canonical_root, record):
+    return _recovery_public_reports(
+        project_id,
+        canonical_root,
+        [record],
+    )
+
+
+def _recover_project_transactions(
+    canonical_root,
+    project_id,
+    project_context,
+    *,
+    clock=None,
+    pid_probe=None,
+    lock_pid=None,
+    lock_token_factory=None,
+    fault_injector=None,
+):
+    """Recover one frozen project inventory in deterministic ID order."""
+    try:
+        discovered = transaction_storage.discover_recovery_workspaces(
+            canonical_root,
+        )
+        selected = tuple(
+            sorted(discovered, key=lambda value: value.encode("utf-8"))
+        )
+        if (
+            len(selected) != len(set(selected))
+            or any(
+                not isinstance(transaction_id, str)
+                or not _LOGICAL_NAME.fullmatch(transaction_id)
+                for transaction_id in selected
+            )
+        ):
+            raise ValueError("unsafe recovery inventory")
+    except (
+        AttributeError,
+        TypeError,
+        ValueError,
+        transaction_storage.LifecycleRecoveryStorageError,
+    ):
+        record = _recovery_public_record(
+            "unknown",
+            status="recovery_required",
+            error_code="RECOVERY_DISCOVERY_UNSAFE",
+        )
+        return _recovery_public_report(
+            project_id,
+            str(canonical_root),
+            record,
+        )
+
+    records = []
+    for transaction_id in selected:
+        report = recover_incomplete_transaction(
+            canonical_root,
+            transaction_id,
+            project_context=project_context,
+            clock=clock,
+            pid_probe=pid_probe,
+            lock_pid=lock_pid,
+            lock_token_factory=lock_token_factory,
+            fault_injector=fault_injector,
+        )
+        try:
+            serialized = serialize_transaction_recovery(report)
+            if (
+                len(serialized["transactions"]) != 1
+                or serialized["transactions"][0]["transaction_id"]
+                != transaction_id
+            ):
+                raise ValueError("invalid explicit recovery report")
+            record = serialized["transactions"][0]
+        except (KeyError, TypeError, ValueError):
+            record = _recovery_public_record(
+                transaction_id,
+                status="recovery_required",
+                error_code="RECOVERY_STATE_AMBIGUOUS",
+            )
+
+        if record["status"] in {"applied", "rolled_back", "noop"}:
+            subject = _RecoverySubject(
+                transaction_id=transaction_id,
+                project_id=project_id,
+                _root=canonical_root,
+                _project_context=project_context,
+            )
+            try:
+                _cleanup_recovery_candidate(
+                    subject,
+                    transaction_id,
+                    clock=clock,
+                    lock_pid=lock_pid,
+                    lock_token_factory=lock_token_factory,
+                    pid_probe=pid_probe,
+                )
+            except (
+                LifecycleRecoveryCleanupError,
+                LifecycleRecoveryLockError,
+            ) as exc:
+                record = {
+                    **record,
+                    "status": "recovery_required",
+                    "error_code": exc.code,
+                }
+
+        records.append(record)
+        if record["status"] in {
+            "conflict",
+            "denied",
+            "recovery_required",
+        }:
+            break
+
+    return _recovery_public_reports(
+        project_id,
+        str(canonical_root),
+        records,
     )
 
 
@@ -6036,10 +6187,48 @@ def recover_incomplete_transaction(
     lock_token_factory=None,
     fault_injector=None,
 ):
-    """Recover one explicit transaction and return a redacted recovery report."""
+    """Recover one transaction, or the frozen project inventory when ID is empty."""
     if fault_injector is not None and not callable(fault_injector):
         raise TypeError("fault_injector must be callable or None")
     public_root = _safe_recovery_root(project_root)
+    if transaction_id == "":
+        try:
+            root, context, project_id = _authorized_project_recovery_context(
+                project_root,
+                project_context=project_context,
+            )
+        except project_operation.ProjectOperationDenied as exc:
+            record = _recovery_public_record(
+                "unknown",
+                status="denied",
+                error_code=exc.decision["reason_code"],
+            )
+            return _recovery_public_report(
+                exc.decision.get("project_id") or "unknown",
+                public_root,
+                record,
+            )
+        except LifecycleRecoveryLockError as exc:
+            record = _recovery_public_record(
+                "unknown",
+                status="recovery_required",
+                error_code=exc.code,
+            )
+            return _recovery_public_report(
+                "unknown",
+                public_root,
+                record,
+            )
+        return _recover_project_transactions(
+            root,
+            project_id,
+            context,
+            clock=clock,
+            pid_probe=pid_probe,
+            lock_pid=lock_pid,
+            lock_token_factory=lock_token_factory,
+            fault_injector=fault_injector,
+        )
     try:
         subject = _authorized_recovery_subject(
             project_root,

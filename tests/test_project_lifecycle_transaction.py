@@ -4725,6 +4725,153 @@ class TransactionPlanningTests(unittest.TestCase):
             self.assertEqual(journal_path.read_bytes(), before)
             self.assertTrue(lock_path.exists())
 
+    def test_public_project_wide_recovery_empty_and_denies_before_discovery(self):
+        entry = getattr(transaction, "recover_incomplete_transaction", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            empty = entry(root, "", project_context=context)
+
+            self.assertEqual(empty["status"], "noop")
+            self.assertEqual(empty["transactions"], [])
+
+            denied_context = transaction._json_value(context)
+            denied_context.update(
+                transaction.project_operation.compute_project_policy(
+                    "archived",
+                    "internal",
+                )
+            )
+            with mock.patch.object(
+                transaction.transaction_storage,
+                "discover_recovery_workspaces",
+            ) as discover:
+                denied = entry(root, "", project_context=denied_context)
+
+            self.assertEqual(denied["status"], "denied")
+            self.assertEqual(
+                denied["transactions"][0]["error_code"],
+                "PROJECT_OPERATION_DENIED_ARCHIVED",
+            )
+            discover.assert_not_called()
+
+    def test_private_project_wide_recovery_orders_and_stops_first_unresolved(self):
+        coordinator = getattr(transaction, "_recover_project_transactions", None)
+        authorize = getattr(
+            transaction,
+            "_authorized_project_recovery_context",
+            None,
+        )
+        self.assertIsNotNone(coordinator)
+        self.assertIsNotNone(authorize)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            canonical_root, authorized_context, project_id = authorize(
+                root,
+                project_context=context,
+            )
+            calls = []
+
+            def explicit(_root, transaction_id, **_kwargs):
+                calls.append(transaction_id)
+                record = transaction._recovery_public_record(
+                    transaction_id,
+                    status="noop",
+                    error_code="none",
+                )
+                return transaction._recovery_public_report(
+                    project_id,
+                    str(canonical_root),
+                    record,
+                )
+
+            cleaned = []
+
+            def cleanup(_subject, transaction_id, **_kwargs):
+                cleaned.append(transaction_id)
+                if transaction_id == "txn-m":
+                    raise transaction.LifecycleRecoveryCleanupError(
+                        "RECOVERY_CLEANUP_REPLACED"
+                    )
+
+            with (
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "discover_recovery_workspaces",
+                    return_value=("txn-z", "txn-a", "txn-m"),
+                ),
+                mock.patch.object(
+                    transaction,
+                    "recover_incomplete_transaction",
+                    side_effect=explicit,
+                ),
+                mock.patch.object(
+                    transaction,
+                    "_cleanup_recovery_candidate",
+                    side_effect=cleanup,
+                ),
+            ):
+                report = coordinator(
+                    canonical_root,
+                    project_id,
+                    authorized_context,
+                )
+
+            self.assertEqual(calls, ["txn-a", "txn-m"])
+            self.assertEqual(cleaned, ["txn-a", "txn-m"])
+            self.assertEqual(report["status"], "recovery_required")
+            self.assertEqual(
+                report["transactions"][-1]["error_code"],
+                "RECOVERY_CLEANUP_REPLACED",
+            )
+            self.assertEqual(
+                [record["transaction_id"] for record in report["transactions"]],
+                ["txn-a", "txn-m"],
+            )
+
+    def test_public_project_wide_recovery_recovers_cleans_and_retries_noop(self):
+        entry = getattr(transaction, "recover_incomplete_transaction", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context, plan = self.prepare_restart_finalizing_case(
+                root,
+                "after-recorded",
+            )
+            clock_values = iter(
+                f"2030-01-02T03:31:{second:02d}Z"
+                for second in range(50)
+            )
+            report = entry(
+                root,
+                "",
+                project_context=context,
+                clock=lambda: next(clock_values),
+                lock_pid=227,
+                lock_token_factory=lambda: "6" * 32,
+            )
+
+            self.assertEqual(report["status"], "applied")
+            self.assertEqual(
+                [record["transaction_id"] for record in report["transactions"]],
+                [plan.transaction_id],
+            )
+            workspace = root / ".moduflow/transactions" / plan.transaction_id
+            self.assertFalse(workspace.exists())
+
+            retry = entry(
+                root,
+                "",
+                project_context=context,
+                clock="2030-01-02T03:32:00Z",
+                lock_pid=228,
+                lock_token_factory=lambda: "7" * 32,
+            )
+            self.assertEqual(retry["status"], "noop")
+            self.assertEqual(retry["transactions"], [])
+
     def test_public_explicit_recovery_faults_only_at_durable_boundaries(self):
         entry = getattr(transaction, "recover_incomplete_transaction", None)
         self.assertIsNotNone(entry)
