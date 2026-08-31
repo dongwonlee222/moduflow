@@ -3075,6 +3075,170 @@ class TransactionPlanningTests(unittest.TestCase):
             )
             self.assertEqual(journal.read_bytes(), b"{}\n")
 
+    def test_recovered_journal_workspace_loads_exact_current_snapshot_read_only(self):
+        entry = getattr(transaction, "_private_recovered_journal_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            timestamps = iter(
+                (
+                    "2030-01-02T03:04:05Z",
+                    "2030-01-02T03:04:06Z",
+                    "2030-01-02T03:04:07Z",
+                )
+            )
+            with transaction._private_prepared_workspace(
+                plan,
+                journal_clock=lambda: next(timestamps),
+                lock_clock="2030-01-02T03:04:05Z",
+                lock_pid=123,
+                lock_token_factory=lambda: "1" * 32,
+            ):
+                pass
+            workspace = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            journal_before = (workspace / "journal.json").read_bytes()
+
+            with mock.patch.object(transaction.os, "replace") as replace_file:
+                with entry(root, plan.transaction_id) as recovered:
+                    self.assertEqual(recovered.authority, "current")
+                    self.assertEqual(recovered.journal["phase"], "prepared")
+                    self.assertIsNone(recovered.journal_next)
+                    self.assertEqual(
+                        recovered.journal_sha256,
+                        hashlib.sha256(journal_before).hexdigest(),
+                    )
+                    self.assertNotIn(str(root), repr(recovered))
+            replace_file.assert_not_called()
+            self.assertEqual(
+                (workspace / "journal.json").read_bytes(),
+                journal_before,
+            )
+
+    def test_recovered_journal_workspace_classifies_only_exact_legal_next(self):
+        entry = getattr(transaction, "_private_recovered_journal_workspace", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            timestamps = iter(
+                (
+                    "2030-01-02T03:04:05Z",
+                    "2030-01-02T03:04:06Z",
+                    "2030-01-02T03:04:07Z",
+                )
+            )
+            with transaction._private_prepared_workspace(
+                plan,
+                journal_clock=lambda: next(timestamps),
+                lock_clock="2030-01-02T03:04:05Z",
+                lock_pid=123,
+                lock_token_factory=lambda: "1" * 32,
+            ):
+                pass
+            workspace = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            journal_path = workspace / "journal.json"
+            next_path = workspace / "journal.next"
+            current_bytes = journal_path.read_bytes()
+            successor = json.loads(current_bytes)
+            successor["phase"] = "applying"
+            successor["updated_at"] = "2030-01-02T03:04:08Z"
+            next_bytes = transaction.canonical_json_bytes(
+                transaction.serialize_transaction_journal(successor)
+            ) + b"\n"
+            next_path.write_bytes(next_bytes)
+            next_path.chmod(0o600)
+
+            with entry(root, plan.transaction_id) as recovered:
+                self.assertEqual(recovered.authority, "current")
+                self.assertEqual(recovered.journal["phase"], "prepared")
+                self.assertEqual(recovered.journal_next["phase"], "applying")
+                self.assertEqual(
+                    recovered.journal_next_sha256,
+                    hashlib.sha256(next_bytes).hexdigest(),
+                )
+
+            self.assertEqual(journal_path.read_bytes(), current_bytes)
+            self.assertEqual(next_path.read_bytes(), next_bytes)
+
+    def test_recovered_journal_workspace_rejects_foreign_successor_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            timestamps = iter(
+                (
+                    "2030-01-02T03:04:05Z",
+                    "2030-01-02T03:04:06Z",
+                    "2030-01-02T03:04:07Z",
+                )
+            )
+            with transaction._private_prepared_workspace(
+                plan,
+                journal_clock=lambda: next(timestamps),
+                lock_clock="2030-01-02T03:04:05Z",
+                lock_pid=123,
+                lock_token_factory=lambda: "1" * 32,
+            ):
+                pass
+            workspace = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            current_bytes = (workspace / "journal.json").read_bytes()
+            successor = json.loads(current_bytes)
+            successor["phase"] = "applying"
+            successor["updated_at"] = "2030-01-02T03:04:08Z"
+            successor["recovery_manifest_sha256"] = "f" * 64
+            next_bytes = transaction.canonical_json_bytes(
+                transaction.serialize_transaction_journal(successor)
+            ) + b"\n"
+            next_path = workspace / "journal.next"
+            next_path.write_bytes(next_bytes)
+            next_path.chmod(0o600)
+
+            with self.assertRaises(
+                transaction.LifecycleRecoveryReadError
+            ) as raised:
+                with transaction._private_recovered_journal_workspace(
+                    root,
+                    plan.transaction_id,
+                ):
+                    self.fail("foreign manifest successor must not be yielded")
+
+            self.assertEqual(
+                raised.exception.code,
+                "RECOVERY_JOURNAL_NEXT_CONFLICT",
+            )
+            self.assertEqual(
+                (workspace / "journal.json").read_bytes(),
+                current_bytes,
+            )
+            self.assertEqual(next_path.read_bytes(), next_bytes)
+
     def test_private_preimage_workspace_denies_or_rejects_before_side_effects(self):
         entry = getattr(transaction, "_private_preimage_workspace", None)
         self.assertIsNotNone(entry)

@@ -490,6 +490,18 @@ class _PrivateCompletionInput:
 
 
 @dataclass(frozen=True)
+class _RecoveredJournalState:
+    transaction_id: str
+    journal: object = field(repr=False, compare=False)
+    journal_sha256: str
+    journal_next: object = field(repr=False, compare=False)
+    journal_next_sha256: str
+    authority: str
+    _control_snapshot: object = field(repr=False, compare=False)
+    _workspace: object = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
 class _PrivateEvidenceBinding:
     plan: LifecycleTransactionPlan = field(repr=False, compare=False)
     transaction_result: object = field(repr=False, compare=False)
@@ -524,6 +536,24 @@ class LifecycleJournalError(ValueError):
     """Stable journal contract failure without record values or private paths."""
 
     def __init__(self, code):
+        self.code = code
+        super().__init__(code)
+
+
+_RECOVERY_READ_CODES = frozenset({
+    "RECOVERY_JOURNAL_MISSING",
+    "RECOVERY_JOURNAL_INVALID",
+    "RECOVERY_JOURNAL_NEXT_INVALID",
+    "RECOVERY_JOURNAL_NEXT_CONFLICT",
+})
+
+
+class LifecycleRecoveryReadError(RuntimeError):
+    """Stable restart-journal read failure without rejected values."""
+
+    def __init__(self, code):
+        if code not in _RECOVERY_READ_CODES:
+            code = "RECOVERY_JOURNAL_INVALID"
         self.code = code
         super().__init__(code)
 
@@ -3081,6 +3111,147 @@ def serialize_transaction_journal(journal: dict) -> dict:
         "created_at": text_fields["created_at"],
         "updated_at": text_fields["updated_at"],
     }
+
+
+def _load_exact_recovery_journal(snapshot, transaction_id, error_code):
+    if snapshot.state != "present":
+        return None
+    try:
+        decoded = json.loads(snapshot._bytes.decode("utf-8"))
+        serialized = serialize_transaction_journal(decoded)
+        if canonical_json_bytes(serialized) + b"\n" != snapshot._bytes:
+            raise ValueError("journal bytes are not canonical")
+        if serialized["transaction_id"] != transaction_id:
+            raise ValueError("journal identity does not match workspace")
+        return _freeze_json_value(serialized)
+    except (
+        AttributeError,
+        KeyError,
+        TypeError,
+        ValueError,
+        UnicodeError,
+        LifecycleJournalError,
+    ):
+        raise LifecycleRecoveryReadError(error_code) from None
+
+
+def _journal_progress_is_monotonic(current, successor, field):
+    current_values = tuple(current[field])
+    successor_values = tuple(successor[field])
+    return (
+        len(successor_values) >= len(current_values)
+        and successor_values[:len(current_values)] == current_values
+    )
+
+
+def _validate_recovery_journal_successor(current, successor):
+    identity_fields = (
+        "schema",
+        "transaction_id",
+        "idempotency_key",
+        "targets",
+        "created_at",
+    )
+    try:
+        if any(current[field] != successor[field] for field in identity_fields):
+            raise ValueError("journal identity changed")
+        validate_journal_phase_transition(
+            current["phase"],
+            successor["phase"],
+            recovery=current["phase"] == "recovery-required",
+        )
+        manifest_changed = (
+            current["recovery_manifest_sha256"]
+            != successor["recovery_manifest_sha256"]
+        )
+        manifest_binding_transition = (
+            current["phase"] == "staged"
+            and successor["phase"] == "prepared"
+            and current["recovery_manifest_sha256"] == "absent"
+            and successor["recovery_manifest_sha256"] != "absent"
+        )
+        if manifest_changed and not manifest_binding_transition:
+            raise ValueError("journal manifest changed")
+        if not _journal_progress_is_monotonic(
+            current,
+            successor,
+            "applied_target_indexes",
+        ) or not _journal_progress_is_monotonic(
+            current,
+            successor,
+            "rollback_target_indexes",
+        ):
+            raise ValueError("journal progress regressed")
+    except (KeyError, TypeError, ValueError, LifecycleJournalError):
+        raise LifecycleRecoveryReadError(
+            "RECOVERY_JOURNAL_NEXT_CONFLICT"
+        ) from None
+
+
+def _load_recovered_journal_state(transaction_id, control, workspace):
+    current = _load_exact_recovery_journal(
+        control.journal,
+        transaction_id,
+        "RECOVERY_JOURNAL_INVALID",
+    )
+    successor = _load_exact_recovery_journal(
+        control.journal_next,
+        transaction_id,
+        "RECOVERY_JOURNAL_NEXT_INVALID",
+    )
+    if current is None:
+        if successor is None:
+            raise LifecycleRecoveryReadError("RECOVERY_JOURNAL_MISSING")
+        if successor["phase"] != "planned":
+            raise LifecycleRecoveryReadError(
+                "RECOVERY_JOURNAL_NEXT_CONFLICT"
+            )
+        return _RecoveredJournalState(
+            transaction_id=transaction_id,
+            journal=successor,
+            journal_sha256="absent",
+            journal_next=successor,
+            journal_next_sha256=control.journal_next.sha256,
+            authority="pre-journal-orphan",
+            _control_snapshot=control,
+            _workspace=workspace,
+        )
+    if successor is not None:
+        _validate_recovery_journal_successor(current, successor)
+    return _RecoveredJournalState(
+        transaction_id=transaction_id,
+        journal=current,
+        journal_sha256=control.journal.sha256,
+        journal_next=successor,
+        journal_next_sha256=(
+            control.journal_next.sha256
+            if successor is not None
+            else "absent"
+        ),
+        authority="current",
+        _control_snapshot=control,
+        _workspace=workspace,
+    )
+
+
+@contextmanager
+def _private_recovered_journal_workspace(canonical_root, transaction_id):
+    discovered = transaction_storage.discover_recovery_workspaces(
+        canonical_root,
+        transaction_id,
+    )
+    if discovered != (transaction_id,):
+        raise LifecycleRecoveryReadError("RECOVERY_JOURNAL_MISSING")
+    with transaction_storage.reopen_transaction_workspace(
+        canonical_root,
+        transaction_id,
+    ) as workspace:
+        control = transaction_storage.read_recovery_control_snapshot(workspace)
+        yield _load_recovered_journal_state(
+            transaction_id,
+            control,
+            workspace,
+        )
 
 
 def serialize_transaction_plan(plan):
