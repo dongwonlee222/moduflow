@@ -877,7 +877,21 @@ def _verify_recorded_file(
         _close_descriptors(descriptor)
 
 
-def _validated_apply_context(workspace, target, proposal):
+def _target_has_expected_role(target, *, evidence):
+    return (
+        target.role == "evidence"
+        if evidence
+        else target.role != "evidence"
+    )
+
+
+def _validated_apply_context(
+    workspace,
+    target,
+    proposal,
+    *,
+    evidence,
+):
     def valid_non_negative_integer(value):
         return (
             isinstance(value, int)
@@ -886,10 +900,11 @@ def _validated_apply_context(workspace, target, proposal):
         )
 
     if (
-        not isinstance(workspace, _PrivateTransactionWorkspace)
+        not isinstance(evidence, bool)
+        or not isinstance(workspace, _PrivateTransactionWorkspace)
         or not isinstance(target, StorageTarget)
         or not isinstance(proposal, StagedProposal)
-        or target.role == "evidence"
+        or not _target_has_expected_role(target, evidence=evidence)
         or not target.changed
         or not valid_non_negative_integer(proposal.index)
         or proposal.index != target.index
@@ -922,9 +937,19 @@ def verify_canonical_target(workspace, target) -> int:
     return _verify_canonical_preimage(workspace._root_fd, target)
 
 
-def apply_staged_target(workspace, target, staged_proposal) -> int:
-    """Promote one verified ordinary proposal and return its target index."""
-    stage_name = _validated_apply_context(workspace, target, staged_proposal)
+def _apply_staged_changed_target(
+    workspace,
+    target,
+    staged_proposal,
+    *,
+    evidence,
+):
+    stage_name = _validated_apply_context(
+        workspace,
+        target,
+        staged_proposal,
+        evidence=evidence,
+    )
     parent_fd = None
     try:
         parent_fd, parent_metadata = _open_target_parent(workspace, target)
@@ -973,6 +998,26 @@ def apply_staged_target(workspace, target, staged_proposal) -> int:
         _close_descriptors(parent_fd)
 
 
+def apply_staged_target(workspace, target, staged_proposal) -> int:
+    """Promote one verified ordinary proposal and return its target index."""
+    return _apply_staged_changed_target(
+        workspace,
+        target,
+        staged_proposal,
+        evidence=False,
+    )
+
+
+def finalize_staged_evidence(workspace, target, staged_proposal) -> int:
+    """Promote one verified final evidence proposal and return its index."""
+    return _apply_staged_changed_target(
+        workspace,
+        target,
+        staged_proposal,
+        evidence=True,
+    )
+
+
 class _CanonicalStateMismatch(RuntimeError):
     pass
 
@@ -1005,13 +1050,13 @@ def _canonical_entry_matches(
     return True
 
 
-def classify_canonical_target(workspace, target) -> str:
-    """Return exact 'before' or 'after'; reject every unknown state."""
+def _classify_changed_target(workspace, target, *, evidence) -> str:
     if (
-        not isinstance(workspace, _PrivateTransactionWorkspace)
+        not isinstance(evidence, bool)
+        or not isinstance(workspace, _PrivateTransactionWorkspace)
         or not isinstance(target, StorageTarget)
         or not target.changed
-        or target.role == "evidence"
+        or not _target_has_expected_role(target, evidence=evidence)
     ):
         _storage_context_failure()
     parent_fd = None
@@ -1046,6 +1091,24 @@ def classify_canonical_target(workspace, target) -> str:
         _close_descriptors(parent_fd)
 
 
+def classify_canonical_target(workspace, target) -> str:
+    """Return exact ordinary 'before' or 'after'; reject unknown state."""
+    return _classify_changed_target(
+        workspace,
+        target,
+        evidence=False,
+    )
+
+
+def classify_finalized_evidence(workspace, target) -> str:
+    """Return exact evidence 'before' or 'after'; reject unknown state."""
+    return _classify_changed_target(
+        workspace,
+        target,
+        evidence=True,
+    )
+
+
 def _valid_non_negative_integer(value):
     return (
         isinstance(value, int)
@@ -1054,13 +1117,20 @@ def _valid_non_negative_integer(value):
     )
 
 
-def _validated_rollback_context(workspace, target, preimage):
+def _validated_rollback_context(
+    workspace,
+    target,
+    preimage,
+    *,
+    evidence,
+):
     if (
-        not isinstance(workspace, _PrivateTransactionWorkspace)
+        not isinstance(evidence, bool)
+        or not isinstance(workspace, _PrivateTransactionWorkspace)
         or not isinstance(target, StorageTarget)
         or not isinstance(preimage, StoredPreimage)
         or not target.changed
-        or target.role == "evidence"
+        or not _target_has_expected_role(target, evidence=evidence)
         or not _valid_non_negative_integer(preimage.index)
         or preimage.index != target.index
     ):
@@ -1165,9 +1235,19 @@ def _require_exact_before(parent_fd, target):
         raise LifecycleStorageError("STORAGE_VERIFY_FAILED")
 
 
-def rollback_canonical_target(workspace, target, preimage) -> int:
-    """Restore one exact after-state target to its before state."""
-    _validated_rollback_context(workspace, target, preimage)
+def _rollback_changed_target(
+    workspace,
+    target,
+    preimage,
+    *,
+    evidence,
+):
+    _validated_rollback_context(
+        workspace,
+        target,
+        preimage,
+        evidence=evidence,
+    )
     parent_fd = None
     try:
         parent_fd, _parent_metadata = _open_target_parent(workspace, target)
@@ -1212,6 +1292,26 @@ def rollback_canonical_target(workspace, target, preimage) -> int:
         return target.index
     finally:
         _close_descriptors(parent_fd)
+
+
+def rollback_canonical_target(workspace, target, preimage) -> int:
+    """Restore one exact ordinary after-state target to its before state."""
+    return _rollback_changed_target(
+        workspace,
+        target,
+        preimage,
+        evidence=False,
+    )
+
+
+def rollback_finalized_evidence(workspace, target, preimage) -> int:
+    """Restore one exact evidence after-state target to its before state."""
+    return _rollback_changed_target(
+        workspace,
+        target,
+        preimage,
+        evidence=True,
+    )
 
 
 def _verify_recovery_inputs(workspace, targets, preimages, staged_proposals):
