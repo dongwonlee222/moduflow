@@ -2940,6 +2940,141 @@ class TransactionPlanningTests(unittest.TestCase):
 
             self.assertEqual(plan.targets[0].role, "issue")
 
+    def test_recovery_workspace_discovery_and_reopen_are_read_only(self):
+        storage = transaction.transaction_storage
+        self.assertIsNotNone(getattr(storage, "discover_recovery_workspaces", None))
+        self.assertIsNotNone(getattr(storage, "reopen_transaction_workspace", None))
+        self.assertIsNotNone(getattr(storage, "read_recovery_control_snapshot", None))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            transactions = root / ".moduflow" / "transactions"
+            transactions.mkdir(mode=0o700)
+            for transaction_id in ("txn-b", "txn-a"):
+                with storage.private_transaction_workspace(root, transaction_id):
+                    pass
+
+            with (
+                mock.patch.object(storage.os, "mkdir") as make_directory,
+                mock.patch.object(storage.os, "chmod") as change_mode,
+                mock.patch.object(storage.os, "fchmod") as change_fd_mode,
+                mock.patch.object(storage.os, "unlink") as unlink,
+                mock.patch.object(storage.os, "replace") as replace_file,
+                mock.patch.object(storage.os, "fsync") as sync_file,
+            ):
+                self.assertEqual(
+                    storage.discover_recovery_workspaces(root),
+                    ("txn-a", "txn-b"),
+                )
+                self.assertEqual(
+                    storage.discover_recovery_workspaces(root, "txn-b"),
+                    ("txn-b",),
+                )
+                with storage.reopen_transaction_workspace(
+                    root,
+                    "txn-a",
+                ) as workspace:
+                    snapshot = storage.read_recovery_control_snapshot(workspace)
+                    self.assertEqual(snapshot.journal.state, "absent")
+                    self.assertEqual(snapshot.journal_next.state, "absent")
+                    self.assertEqual(snapshot.recovery_manifest.state, "absent")
+                    self.assertNotIn(str(root), repr(snapshot))
+
+            for operation in (
+                make_directory,
+                change_mode,
+                change_fd_mode,
+                unlink,
+                replace_file,
+                sync_file,
+            ):
+                operation.assert_not_called()
+
+    def test_recovery_workspace_discovery_rejects_unsafe_entries_without_repair(self):
+        storage = transaction.transaction_storage
+        error_type = getattr(storage, "LifecycleRecoveryStorageError", None)
+        self.assertIsNotNone(error_type)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            transactions = root / ".moduflow" / "transactions"
+            transactions.mkdir(mode=0o700)
+            foreign = transactions / "foreign.txt"
+            foreign.write_text("do not expose\n", encoding="utf-8")
+            before = foreign.stat()
+
+            with mock.patch.object(storage.os, "unlink") as unlink:
+                with self.assertRaises(error_type) as raised:
+                    storage.discover_recovery_workspaces(root)
+
+            self.assertEqual(
+                raised.exception.code,
+                "RECOVERY_DISCOVERY_UNSAFE",
+            )
+            self.assertEqual(
+                str(raised.exception),
+                "RECOVERY_DISCOVERY_UNSAFE",
+            )
+            self.assertNotIn("foreign.txt", repr(raised.exception))
+            unlink.assert_not_called()
+            self.assertEqual(foreign.read_bytes(), b"do not expose\n")
+            self.assertEqual(foreign.stat().st_ino, before.st_ino)
+
+    def test_recovery_reopen_rejects_unsafe_workspace_and_control_files(self):
+        storage = transaction.transaction_storage
+        error_type = storage.LifecycleRecoveryStorageError
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.scaffold(root)
+            transactions = root / ".moduflow" / "transactions"
+            transactions.mkdir(mode=0o700)
+
+            with self.assertRaises(RuntimeError) as invalid_id:
+                with storage.reopen_transaction_workspace(root, "../escape"):
+                    self.fail("invalid transaction ID must not open")
+            self.assertIsInstance(invalid_id.exception, error_type)
+            self.assertEqual(
+                invalid_id.exception.code,
+                "RECOVERY_WORKSPACE_UNSAFE",
+            )
+
+            with storage.private_transaction_workspace(root, "txn-extra"):
+                pass
+            extra_workspace = transactions / "txn-extra"
+            extra = extra_workspace / "foreign.bin"
+            extra.write_bytes(b"private extra\n")
+            with storage.reopen_transaction_workspace(
+                root,
+                "txn-extra",
+            ) as workspace:
+                with self.assertRaises(error_type) as extra_error:
+                    storage.read_recovery_control_snapshot(workspace)
+            self.assertEqual(
+                extra_error.exception.code,
+                "RECOVERY_CONTROL_FILE_UNSAFE",
+            )
+            self.assertEqual(extra.read_bytes(), b"private extra\n")
+
+            with storage.private_transaction_workspace(root, "txn-linked"):
+                pass
+            linked_workspace = transactions / "txn-linked"
+            journal = linked_workspace / "journal.json"
+            journal.write_bytes(b"{}\n")
+            journal.chmod(0o600)
+            hard_link = root / "outside-journal-copy"
+            os.link(journal, hard_link)
+            with storage.reopen_transaction_workspace(
+                root,
+                "txn-linked",
+            ) as workspace:
+                with self.assertRaises(error_type) as linked_error:
+                    storage.read_recovery_control_snapshot(workspace)
+            self.assertEqual(
+                linked_error.exception.code,
+                "RECOVERY_CONTROL_FILE_UNSAFE",
+            )
+            self.assertEqual(journal.read_bytes(), b"{}\n")
+
     def test_private_preimage_workspace_denies_or_rejects_before_side_effects(self):
         entry = getattr(transaction, "_private_preimage_workspace", None)
         self.assertIsNotNone(entry)

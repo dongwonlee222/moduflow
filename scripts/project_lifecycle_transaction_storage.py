@@ -20,6 +20,13 @@ _RECOVERY_MANIFEST_NAME = "recovery-manifest.json"
 _RECOVERY_MANIFEST_SCHEMA = "moduflow.lifecycle-transaction-recovery-manifest.v1"
 _JOURNAL_NAME = "journal.json"
 _JOURNAL_NEXT_NAME = "journal.next"
+_LOCK_NAME = "lifecycle.lock"
+_PREIMAGE_ENTRY = re.compile(r"^[0-9]{6}\.bin$")
+_RECOVERY_STORAGE_CODES = frozenset({
+    "RECOVERY_DISCOVERY_UNSAFE",
+    "RECOVERY_WORKSPACE_UNSAFE",
+    "RECOVERY_CONTROL_FILE_UNSAFE",
+})
 
 
 class LifecycleStorageError(RuntimeError):
@@ -43,6 +50,16 @@ class LifecycleCanonicalConflict(RuntimeError):
         self.code = "CANONICAL_PREIMAGE_CONFLICT"
         self.target_index = target_index
         super().__init__(self.code)
+
+
+class LifecycleRecoveryStorageError(RuntimeError):
+    """Stable read-only recovery failure without paths or payload values."""
+
+    def __init__(self, code):
+        if code not in _RECOVERY_STORAGE_CODES:
+            code = "RECOVERY_WORKSPACE_UNSAFE"
+        self.code = code
+        super().__init__(code)
 
 
 def _storage_context_failure():
@@ -176,6 +193,35 @@ class _PrivateTransactionWorkspace:
     _preimages_fd: int = field(repr=False, compare=False)
 
 
+@dataclass(frozen=True)
+class _RecoveryFileSnapshot:
+    state: str
+    size: int
+    sha256: str
+    _bytes: bytes = field(repr=False, compare=False)
+    _device: int = field(repr=False, compare=False)
+    _inode: int = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
+class _RecoveryControlSnapshot:
+    journal: _RecoveryFileSnapshot
+    journal_next: _RecoveryFileSnapshot
+    recovery_manifest: _RecoveryFileSnapshot
+    _workspace_entries: tuple[str, ...] = field(repr=False, compare=False)
+    _preimage_entries: tuple[str, ...] = field(repr=False, compare=False)
+
+
+_ABSENT_RECOVERY_FILE = _RecoveryFileSnapshot(
+    state="absent",
+    size=0,
+    sha256="absent",
+    _bytes=b"",
+    _device=-1,
+    _inode=-1,
+)
+
+
 def _directory_flags():
     return (
         os.O_RDONLY
@@ -274,6 +320,304 @@ def _read_complete(descriptor, expected_size):
         chunks.append(chunk)
         remaining -= len(chunk)
     return b"".join(chunks)
+
+
+def _recovery_root(canonical_root):
+    try:
+        root = Path(canonical_root)
+    except (TypeError, ValueError) as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_DISCOVERY_UNSAFE"
+        ) from exc
+    if not root.is_absolute():
+        raise LifecycleRecoveryStorageError("RECOVERY_DISCOVERY_UNSAFE")
+    return root
+
+
+def _open_recovery_transactions(canonical_root):
+    root = _recovery_root(canonical_root)
+    root_fd = None
+    control_fd = None
+    transactions_fd = None
+    flags = _directory_flags()
+    try:
+        root_fd = os.open(root, flags)
+        control_fd = os.open(".moduflow", flags, dir_fd=root_fd)
+        transactions_fd = os.open("transactions", flags, dir_fd=control_fd)
+        opened = os.fstat(transactions_fd)
+        if not stat.S_ISDIR(opened.st_mode):
+            raise OSError(errno.ENOTDIR, "transactions is not a directory")
+        result = transactions_fd
+        transactions_fd = None
+        return result
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_DISCOVERY_UNSAFE"
+        ) from exc
+    finally:
+        _close_descriptors(transactions_fd, control_fd, root_fd)
+
+
+def _private_directory_metadata(metadata):
+    return (
+        stat.S_ISDIR(metadata.st_mode)
+        and stat.S_IMODE(metadata.st_mode) == 0o700
+    )
+
+
+def _same_directory_metadata(first, second):
+    return (
+        _private_directory_metadata(first)
+        and _private_directory_metadata(second)
+        and first.st_dev == second.st_dev
+        and first.st_ino == second.st_ino
+    )
+
+
+def _validate_lock_entry(transactions_fd):
+    try:
+        metadata = os.stat(
+            _LOCK_NAME,
+            dir_fd=transactions_fd,
+            follow_symlinks=False,
+        )
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_DISCOVERY_UNSAFE"
+        ) from exc
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or stat.S_IMODE(metadata.st_mode) != 0o600
+        or metadata.st_nlink != 1
+    ):
+        raise LifecycleRecoveryStorageError("RECOVERY_DISCOVERY_UNSAFE")
+
+
+def discover_recovery_workspaces(canonical_root, transaction_id=""):
+    """Return deterministic existing transaction IDs without mutation."""
+    if (
+        not isinstance(transaction_id, str)
+        or (transaction_id and not _LOGICAL_NAME.fullmatch(transaction_id))
+    ):
+        raise LifecycleRecoveryStorageError("RECOVERY_DISCOVERY_UNSAFE")
+    transactions_fd = _open_recovery_transactions(canonical_root)
+    if transactions_fd is None:
+        return ()
+    try:
+        try:
+            entries = tuple(sorted(os.listdir(transactions_fd)))
+        except OSError as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_DISCOVERY_UNSAFE"
+            ) from exc
+        identifiers = []
+        for name in entries:
+            if name == _LOCK_NAME:
+                _validate_lock_entry(transactions_fd)
+                continue
+            if not _LOGICAL_NAME.fullmatch(name):
+                raise LifecycleRecoveryStorageError(
+                    "RECOVERY_DISCOVERY_UNSAFE"
+                )
+            try:
+                metadata = os.stat(
+                    name,
+                    dir_fd=transactions_fd,
+                    follow_symlinks=False,
+                )
+            except OSError as exc:
+                raise LifecycleRecoveryStorageError(
+                    "RECOVERY_DISCOVERY_UNSAFE"
+                ) from exc
+            if not _private_directory_metadata(metadata):
+                raise LifecycleRecoveryStorageError(
+                    "RECOVERY_DISCOVERY_UNSAFE"
+                )
+            identifiers.append(name)
+        selected = tuple(identifiers)
+        if transaction_id:
+            return (transaction_id,) if transaction_id in selected else ()
+        return selected
+    finally:
+        _close_descriptors(transactions_fd)
+
+
+def _open_existing_private_directory(parent_fd, name):
+    descriptor = None
+    try:
+        before = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        if not _private_directory_metadata(before):
+            raise OSError(errno.ENOTDIR, "private directory is unsafe")
+        descriptor = os.open(name, _directory_flags(), dir_fd=parent_fd)
+        opened = os.fstat(descriptor)
+        after = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        if (
+            not _same_directory_metadata(before, opened)
+            or not _same_directory_metadata(before, after)
+        ):
+            raise OSError(errno.EINVAL, "private directory changed")
+        result = descriptor
+        descriptor = None
+        return result
+    except OSError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_WORKSPACE_UNSAFE"
+        ) from exc
+    finally:
+        _close_descriptors(descriptor)
+
+
+@contextmanager
+def reopen_transaction_workspace(canonical_root, transaction_id):
+    """Yield one existing descriptor-backed workspace without repair."""
+    try:
+        root = _validate_workspace_input(canonical_root, transaction_id)
+    except LifecycleStorageError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_WORKSPACE_UNSAFE"
+        ) from exc
+    root_fd = None
+    control_fd = None
+    transactions_fd = None
+    workspace_fd = None
+    preimages_fd = None
+    flags = _directory_flags()
+    try:
+        try:
+            root_fd = os.open(root, flags)
+            control_fd = os.open(".moduflow", flags, dir_fd=root_fd)
+            transactions_fd = os.open("transactions", flags, dir_fd=control_fd)
+        except OSError as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_WORKSPACE_UNSAFE"
+            ) from exc
+        workspace_fd = _open_existing_private_directory(
+            transactions_fd,
+            transaction_id,
+        )
+        preimages_fd = _open_existing_private_directory(
+            workspace_fd,
+            _PREIMAGES_NAME,
+        )
+        yield _PrivateTransactionWorkspace(
+            transaction_id=transaction_id,
+            _root_fd=root_fd,
+            _transactions_fd=transactions_fd,
+            _workspace_fd=workspace_fd,
+            _preimages_fd=preimages_fd,
+        )
+    finally:
+        _close_descriptors(
+            preimages_fd,
+            workspace_fd,
+            transactions_fd,
+            control_fd,
+            root_fd,
+        )
+
+
+def _read_recovery_file(parent_fd, name):
+    descriptor = None
+    try:
+        try:
+            before = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            return _ABSENT_RECOVERY_FILE
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or stat.S_IMODE(before.st_mode) != 0o600
+            or before.st_nlink != 1
+        ):
+            raise OSError(errno.EINVAL, "recovery file is unsafe")
+        descriptor = os.open(
+            name,
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            dir_fd=parent_fd,
+        )
+        opened = os.fstat(descriptor)
+        payload = _read_complete(descriptor, before.st_size)
+        after = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        final_opened = os.fstat(descriptor)
+        if (
+            len(payload) != before.st_size
+            or not _journal_metadata_matches(opened, before)
+            or not _journal_metadata_matches(after, before)
+            or not _journal_metadata_matches(final_opened, before)
+        ):
+            raise OSError(errno.EINVAL, "recovery file changed")
+        return _RecoveryFileSnapshot(
+            state="present",
+            size=len(payload),
+            sha256=hashlib.sha256(payload).hexdigest(),
+            _bytes=payload,
+            _device=before.st_dev,
+            _inode=before.st_ino,
+        )
+    except OSError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        ) from exc
+    finally:
+        _close_descriptors(descriptor)
+
+
+def read_recovery_control_snapshot(workspace):
+    """Read fixed control files and private inventories without writes."""
+    if not isinstance(workspace, _PrivateTransactionWorkspace):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    try:
+        workspace_entries = tuple(sorted(os.listdir(workspace._workspace_fd)))
+        preimage_entries = tuple(sorted(os.listdir(workspace._preimages_fd)))
+    except OSError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        ) from exc
+    allowed = {
+        _PREIMAGES_NAME,
+        _RECOVERY_MANIFEST_NAME,
+        _JOURNAL_NAME,
+        _JOURNAL_NEXT_NAME,
+    }
+    if any(name not in allowed for name in workspace_entries) or any(
+        not _PREIMAGE_ENTRY.fullmatch(name) for name in preimage_entries
+    ):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        )
+    try:
+        preimages_entry = os.stat(
+            _PREIMAGES_NAME,
+            dir_fd=workspace._workspace_fd,
+            follow_symlinks=False,
+        )
+        opened_preimages = os.fstat(workspace._preimages_fd)
+    except OSError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        ) from exc
+    if not _same_directory_metadata(preimages_entry, opened_preimages):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        )
+    return _RecoveryControlSnapshot(
+        journal=_read_recovery_file(workspace._workspace_fd, _JOURNAL_NAME),
+        journal_next=_read_recovery_file(
+            workspace._workspace_fd,
+            _JOURNAL_NEXT_NAME,
+        ),
+        recovery_manifest=_read_recovery_file(
+            workspace._workspace_fd,
+            _RECOVERY_MANIFEST_NAME,
+        ),
+        _workspace_entries=workspace_entries,
+        _preimage_entries=preimage_entries,
+    )
 
 
 def _owned_regular_metadata(metadata, expected):
