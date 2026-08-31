@@ -41,6 +41,7 @@ JOURNAL_SCHEMA = "moduflow.lifecycle-transaction-journal.v1"
 LOCK_SCHEMA = "moduflow.lifecycle-transaction-lock.v1"
 
 _LOCK_NAME = "lifecycle.lock"
+_MAX_LOCK_BYTES = 4096
 _LOCK_TOKEN = re.compile(r"^[0-9a-f]{32}$")
 _LOCK_TIMESTAMP = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$"
@@ -401,6 +402,32 @@ class _LifecycleLockOwner:
 
 
 @dataclass(frozen=True)
+class _RecoverySubject:
+    transaction_id: str
+    project_id: str
+    _root: Path = field(repr=False, compare=False)
+    _project_context: Mapping = field(repr=False, compare=False)
+
+    def __post_init__(self):
+        if not isinstance(self._project_context, Mapping):
+            raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID")
+        object.__setattr__(
+            self,
+            "_project_context",
+            _freeze_json_value(self._project_context),
+        )
+
+
+@dataclass(frozen=True)
+class _RecoveryLockSnapshot:
+    _pid: int = field(repr=False, compare=False)
+    _bytes: bytes = field(repr=False, compare=False)
+    _device: int = field(repr=False, compare=False)
+    _inode: int = field(repr=False, compare=False)
+    _size: int = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
 class _PrivatePreimageState:
     storage_targets: tuple[transaction_storage.StorageTarget, ...]
     preimages: tuple[transaction_storage.StoredPreimage, ...]
@@ -724,6 +751,26 @@ class LifecycleLockError(RuntimeError):
     """Stable lifecycle-lock failure without paths or owner-record values."""
 
     def __init__(self, code):
+        self.code = code
+        super().__init__(code)
+
+
+_RECOVERY_LOCK_CODES = frozenset({
+    "RECOVERY_LOCK_LIVE",
+    "RECOVERY_LOCK_INVALID",
+    "RECOVERY_LOCK_FOREIGN",
+    "RECOVERY_LOCK_UNCERTAIN",
+    "RECOVERY_LOCK_REPLACED",
+    "RECOVERY_LOCK_RECLAIM_FAILED",
+})
+
+
+class LifecycleRecoveryLockError(RuntimeError):
+    """Stable recovery-lock failure without private owner details."""
+
+    def __init__(self, code):
+        if code not in _RECOVERY_LOCK_CODES:
+            code = "RECOVERY_LOCK_INVALID"
         self.code = code
         super().__init__(code)
 
@@ -1149,6 +1196,38 @@ def _writable_projected_plan_context(plan):
         ) from exc
     project_operation.require_project_capability(context, "write")
     return root, context
+
+
+def _authorized_recovery_subject(
+    project_root,
+    transaction_id,
+    *,
+    project_context=None,
+):
+    """Resolve one explicit recovery identity and require write capability."""
+    try:
+        if (
+            not isinstance(transaction_id, str)
+            or not _LOGICAL_NAME.fullmatch(transaction_id)
+        ):
+            raise ValueError("transaction ID must be logical")
+        root = Path(project_root).resolve()
+        context = project_registry.context_for_operation(
+            root,
+            project_context=project_context,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID") from exc
+    project_operation.require_project_capability(context, "write")
+    project_id = context.get("project_id") or "explicit-root"
+    if not isinstance(project_id, str) or not project_id:
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID")
+    return _RecoverySubject(
+        transaction_id=transaction_id,
+        project_id=project_id,
+        _root=root,
+        _project_context=context,
+    )
 
 
 def _projected_target_parts(relative_path):
@@ -1976,6 +2055,274 @@ def _release_lifecycle_lock(transactions_fd, owner):
                 os.close(lock_fd)
             except OSError:
                 pass
+
+
+def _open_recovery_lock_directory(subject):
+    if not isinstance(subject, _RecoverySubject):
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID")
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    root_fd = None
+    control_fd = None
+    transactions_fd = None
+    try:
+        root_fd = os.open(subject._root, flags)
+        control_fd = os.open(".moduflow", flags, dir_fd=root_fd)
+        transactions_fd = os.open("transactions", flags, dir_fd=control_fd)
+        metadata = os.fstat(transactions_fd)
+        if (
+            not stat.S_ISDIR(metadata.st_mode)
+            or stat.S_IMODE(metadata.st_mode) != 0o700
+        ):
+            raise OSError(errno.EINVAL, "unsafe recovery lock directory")
+        result = transactions_fd
+        transactions_fd = None
+        return result
+    except LifecycleRecoveryLockError:
+        raise
+    except OSError as exc:
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID") from exc
+    finally:
+        for descriptor in (transactions_fd, control_fd, root_fd):
+            if descriptor is None:
+                continue
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+
+def _recovery_lock_metadata_matches(current, expected):
+    return (
+        stat.S_ISREG(current.st_mode)
+        and stat.S_IMODE(current.st_mode) == 0o600
+        and current.st_nlink == 1
+        and current.st_dev == expected.st_dev
+        and current.st_ino == expected.st_ino
+        and current.st_size == expected.st_size
+    )
+
+
+def _read_recovery_lock_snapshot(transactions_fd, transaction_id):
+    descriptor = None
+    try:
+        try:
+            before = os.stat(
+                _LOCK_NAME,
+                dir_fd=transactions_fd,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError:
+            return None
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or stat.S_IMODE(before.st_mode) != 0o600
+            or before.st_nlink != 1
+            or before.st_size <= 0
+            or before.st_size > _MAX_LOCK_BYTES
+        ):
+            raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID")
+        descriptor = os.open(
+            _LOCK_NAME,
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            dir_fd=transactions_fd,
+        )
+        opened = os.fstat(descriptor)
+        payload = _read_complete_lock(descriptor, before.st_size)
+        after = os.stat(
+            _LOCK_NAME,
+            dir_fd=transactions_fd,
+            follow_symlinks=False,
+        )
+        final_opened = os.fstat(descriptor)
+        if (
+            not _recovery_lock_metadata_matches(opened, before)
+            or not _recovery_lock_metadata_matches(after, before)
+            or not _recovery_lock_metadata_matches(final_opened, before)
+            or len(payload) != before.st_size
+        ):
+            raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID")
+        try:
+            record = json.loads(payload.decode("utf-8"))
+        except (TypeError, ValueError, UnicodeError):
+            raise LifecycleRecoveryLockError(
+                "RECOVERY_LOCK_INVALID"
+            ) from None
+        expected_keys = {
+            "schema",
+            "transaction_id",
+            "pid",
+            "acquired_at",
+            "owner_token",
+        }
+        if not isinstance(record, dict) or set(record) != expected_keys:
+            raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID")
+        canonical = canonical_json_bytes(record) + b"\n"
+        if not secrets.compare_digest(canonical, payload):
+            raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID")
+        if (
+            record["schema"] != LOCK_SCHEMA
+            or not isinstance(record["transaction_id"], str)
+            or not _LOGICAL_NAME.fullmatch(record["transaction_id"])
+            or not isinstance(record["pid"], int)
+            or isinstance(record["pid"], bool)
+            or record["pid"] <= 0
+            or not isinstance(record["acquired_at"], str)
+            or not _LOCK_TIMESTAMP.fullmatch(record["acquired_at"])
+            or not isinstance(record["owner_token"], str)
+            or not _LOCK_TOKEN.fullmatch(record["owner_token"])
+        ):
+            raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID")
+        if record["transaction_id"] != transaction_id:
+            raise LifecycleRecoveryLockError("RECOVERY_LOCK_FOREIGN")
+        return _RecoveryLockSnapshot(
+            _pid=record["pid"],
+            _bytes=payload,
+            _device=before.st_dev,
+            _inode=before.st_ino,
+            _size=before.st_size,
+        )
+    except LifecycleRecoveryLockError:
+        raise
+    except OSError as exc:
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID") from exc
+    finally:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+
+def _reclaim_stale_recovery_lock(
+    transactions_fd,
+    subject,
+    snapshot,
+    pid_probe,
+):
+    try:
+        pid_probe(snapshot._pid, 0)
+    except OSError as exc:
+        if exc.errno != errno.ESRCH:
+            raise LifecycleRecoveryLockError(
+                "RECOVERY_LOCK_UNCERTAIN"
+            ) from None
+    except Exception:
+        raise LifecycleRecoveryLockError(
+            "RECOVERY_LOCK_UNCERTAIN"
+        ) from None
+    else:
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_LIVE")
+
+    try:
+        current = _read_recovery_lock_snapshot(
+            transactions_fd,
+            subject.transaction_id,
+        )
+    except LifecycleRecoveryLockError:
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_REPLACED") from None
+    if (
+        current is None
+        or current._device != snapshot._device
+        or current._inode != snapshot._inode
+        or current._size != snapshot._size
+        or not secrets.compare_digest(current._bytes, snapshot._bytes)
+    ):
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_REPLACED")
+    try:
+        os.unlink(_LOCK_NAME, dir_fd=transactions_fd)
+    except FileNotFoundError:
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_REPLACED") from None
+    except OSError as exc:
+        raise LifecycleRecoveryLockError(
+            "RECOVERY_LOCK_RECLAIM_FAILED"
+        ) from exc
+    try:
+        os.fsync(transactions_fd)
+    except OSError as exc:
+        raise LifecycleRecoveryLockError(
+            "RECOVERY_LOCK_RECLAIM_FAILED"
+        ) from exc
+
+
+@contextmanager
+def _exclusive_recovery_lock(
+    subject,
+    *,
+    clock=None,
+    pid=None,
+    token_factory=None,
+    pid_probe=None,
+):
+    """Reclaim only one proven stale owner, then yield a fresh recovery lock."""
+    if not isinstance(subject, _RecoverySubject):
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID")
+    probe = os.kill if pid_probe is None else pid_probe
+    if not callable(probe):
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID")
+    try:
+        owner_values = _lock_owner_values(
+            subject,
+            clock=clock,
+            pid=pid,
+            token_factory=token_factory,
+        )
+    except LifecycleLockError as exc:
+        raise LifecycleRecoveryLockError("RECOVERY_LOCK_INVALID") from exc
+    transactions_fd = _open_recovery_lock_directory(subject)
+    try:
+        existing = _read_recovery_lock_snapshot(
+            transactions_fd,
+            subject.transaction_id,
+        )
+        if existing is not None:
+            _reclaim_stale_recovery_lock(
+                transactions_fd,
+                subject,
+                existing,
+                probe,
+            )
+        try:
+            owner = _acquire_lifecycle_lock(
+                transactions_fd,
+                subject,
+                owner_values,
+            )
+        except LifecycleLockError as exc:
+            code = (
+                "RECOVERY_LOCK_LIVE"
+                if exc.code == "LOCK_HELD"
+                else "RECOVERY_LOCK_RECLAIM_FAILED"
+            )
+            raise LifecycleRecoveryLockError(code) from exc
+        try:
+            yield owner
+        except BaseException as body_error:
+            try:
+                _release_lifecycle_lock(transactions_fd, owner)
+            except LifecycleLockError as release_error:
+                raise LifecycleRecoveryLockError(
+                    "RECOVERY_LOCK_RECLAIM_FAILED"
+                ) from release_error
+            raise
+        else:
+            try:
+                _release_lifecycle_lock(transactions_fd, owner)
+            except LifecycleLockError as exc:
+                raise LifecycleRecoveryLockError(
+                    "RECOVERY_LOCK_RECLAIM_FAILED"
+                ) from exc
+    finally:
+        try:
+            os.close(transactions_fd)
+        except OSError:
+            pass
 
 
 @contextmanager

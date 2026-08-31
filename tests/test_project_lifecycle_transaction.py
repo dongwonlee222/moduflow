@@ -6792,6 +6792,246 @@ class TransactionPlanningTests(unittest.TestCase):
             self.assertEqual(owner_tokens, ["1" * 32, "2" * 32])
             self.assertTrue(lock_path.parent.is_dir())
 
+    def test_authorized_recovery_subject_denies_before_recovery_io(self):
+        entry = getattr(transaction, "_authorized_recovery_subject", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            denied_context = transaction._json_value(context)
+            denied_context.update(
+                transaction.project_operation.compute_project_policy(
+                    "archived",
+                    "internal",
+                )
+            )
+            with (
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "discover_recovery_workspaces",
+                ) as discover,
+                mock.patch.object(transaction.os, "kill") as kill_process,
+                mock.patch.object(transaction.os, "unlink") as unlink,
+                mock.patch.object(transaction.os, "fsync") as fsync,
+            ):
+                with self.assertRaises(
+                    transaction.project_operation.ProjectOperationDenied
+                ) as raised:
+                    entry(
+                        root,
+                        "txn-recovery",
+                        project_context=denied_context,
+                    )
+
+            self.assertEqual(
+                raised.exception.decision["reason_code"],
+                "PROJECT_OPERATION_DENIED_ARCHIVED",
+            )
+            discover.assert_not_called()
+            kill_process.assert_not_called()
+            unlink.assert_not_called()
+            fsync.assert_not_called()
+
+    def test_exclusive_recovery_lock_reclaims_only_exact_absent_pid_owner(self):
+        subject_entry = getattr(transaction, "_authorized_recovery_subject", None)
+        lock_entry = getattr(transaction, "_exclusive_recovery_lock", None)
+        self.assertIsNotNone(subject_entry)
+        self.assertIsNotNone(lock_entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            transactions = root / ".moduflow" / "transactions"
+            transactions.mkdir(mode=0o700)
+            subject = subject_entry(
+                root,
+                "txn-recovery",
+                project_context=context,
+            )
+            lock_path = transactions / "lifecycle.lock"
+            with mock.patch.object(transaction.os, "kill") as pid_probe:
+                with lock_entry(
+                    subject,
+                    clock="2030-01-02T03:04:05Z",
+                    pid=110,
+                    token_factory=lambda: "0" * 32,
+                ) as owner:
+                    self.assertEqual(owner.transaction_id, "txn-recovery")
+                    self.assertTrue(lock_path.is_file())
+            pid_probe.assert_not_called()
+            self.assertFalse(lock_path.exists())
+
+            stale = transaction.canonical_json_bytes(
+                {
+                    "schema": "moduflow.lifecycle-transaction-lock.v1",
+                    "transaction_id": "txn-recovery",
+                    "pid": 111,
+                    "acquired_at": "2030-01-02T03:04:05Z",
+                    "owner_token": "1" * 32,
+                }
+            ) + b"\n"
+            lock_path.write_bytes(stale)
+            lock_path.chmod(0o600)
+            stale_inode = lock_path.stat().st_ino
+            probes = []
+
+            def absent_pid(pid, signal):
+                probes.append((pid, signal))
+                raise ProcessLookupError(errno.ESRCH, "absent")
+
+            real_fsync = transaction.os.fsync
+            with mock.patch.object(
+                transaction.os,
+                "fsync",
+                wraps=real_fsync,
+            ) as fsync:
+                with lock_entry(
+                    subject,
+                    clock="2030-01-02T03:04:06Z",
+                    pid=222,
+                    token_factory=lambda: "2" * 32,
+                    pid_probe=absent_pid,
+                ) as owner:
+                    self.assertEqual(owner.transaction_id, "txn-recovery")
+                    self.assertNotEqual(lock_path.stat().st_ino, stale_inode)
+                    self.assertEqual(
+                        json.loads(lock_path.read_bytes()),
+                        {
+                            "schema": "moduflow.lifecycle-transaction-lock.v1",
+                            "transaction_id": "txn-recovery",
+                            "pid": 222,
+                            "acquired_at": "2030-01-02T03:04:06Z",
+                            "owner_token": "2" * 32,
+                        },
+                    )
+            self.assertEqual(probes, [(111, 0)])
+            self.assertGreaterEqual(fsync.call_count, 1)
+            self.assertFalse(lock_path.exists())
+
+    def test_exclusive_recovery_lock_preserves_unproven_owner(self):
+        subject_entry = getattr(transaction, "_authorized_recovery_subject", None)
+        lock_entry = getattr(transaction, "_exclusive_recovery_lock", None)
+        error_type = getattr(transaction, "LifecycleRecoveryLockError", None)
+        self.assertIsNotNone(subject_entry)
+        self.assertIsNotNone(lock_entry)
+        self.assertIsNotNone(error_type)
+
+        cases = (
+            ("live", "RECOVERY_LOCK_LIVE"),
+            ("uncertain", "RECOVERY_LOCK_UNCERTAIN"),
+            ("malformed", "RECOVERY_LOCK_INVALID"),
+            ("noncanonical", "RECOVERY_LOCK_INVALID"),
+            ("foreign", "RECOVERY_LOCK_FOREIGN"),
+            ("mode", "RECOVERY_LOCK_INVALID"),
+            ("hardlink", "RECOVERY_LOCK_INVALID"),
+            ("symlink", "RECOVERY_LOCK_INVALID"),
+        )
+        for case, expected_code in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root)
+                transactions = root / ".moduflow" / "transactions"
+                transactions.mkdir(mode=0o700)
+                subject = subject_entry(
+                    root,
+                    "txn-recovery",
+                    project_context=context,
+                )
+                lock_path = transactions / "lifecycle.lock"
+                record = {
+                    "schema": "moduflow.lifecycle-transaction-lock.v1",
+                    "transaction_id": "txn-recovery",
+                    "pid": 111,
+                    "acquired_at": "2030-01-02T03:04:05Z",
+                    "owner_token": "1" * 32,
+                }
+                payload = transaction.canonical_json_bytes(record) + b"\n"
+                if case == "malformed":
+                    payload = b"{private malformed lock\n"
+                elif case == "noncanonical":
+                    payload = json.dumps(record, indent=2).encode("utf-8") + b"\n"
+                elif case == "foreign":
+                    record["transaction_id"] = "txn-foreign"
+                    payload = transaction.canonical_json_bytes(record) + b"\n"
+                lock_path.write_bytes(payload)
+                lock_path.chmod(0o644 if case == "mode" else 0o600)
+                if case == "hardlink":
+                    os.link(lock_path, transactions / "owner-copy")
+                elif case == "symlink":
+                    decoy = root / "lock-decoy"
+                    decoy.write_bytes(payload)
+                    decoy.chmod(0o600)
+                    lock_path.unlink()
+                    lock_path.symlink_to(decoy)
+                before_bytes = lock_path.read_bytes()
+                before_inode = lock_path.stat().st_ino
+
+                def probe(_pid, _signal):
+                    if case == "uncertain":
+                        raise PermissionError(errno.EPERM, "uncertain")
+                    return None
+
+                with (
+                    mock.patch.object(transaction.os, "unlink") as unlink,
+                    mock.patch.object(transaction.os, "fsync") as fsync,
+                ):
+                    with self.assertRaises(error_type) as raised:
+                        with lock_entry(subject, pid_probe=probe):
+                            self.fail("unproven owner must remain blocking")
+
+                self.assertEqual(raised.exception.code, expected_code)
+                self.assertEqual(str(raised.exception), expected_code)
+                self.assertNotIn(str(root), repr(raised.exception))
+                unlink.assert_not_called()
+                fsync.assert_not_called()
+                self.assertEqual(lock_path.read_bytes(), before_bytes)
+                self.assertEqual(lock_path.stat().st_ino, before_inode)
+
+    def test_exclusive_recovery_lock_rejects_replaced_stale_candidate(self):
+        subject_entry = getattr(transaction, "_authorized_recovery_subject", None)
+        lock_entry = getattr(transaction, "_exclusive_recovery_lock", None)
+        self.assertIsNotNone(subject_entry)
+        self.assertIsNotNone(lock_entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            transactions = root / ".moduflow" / "transactions"
+            transactions.mkdir(mode=0o700)
+            subject = subject_entry(
+                root,
+                "txn-recovery",
+                project_context=context,
+            )
+            lock_path = transactions / "lifecycle.lock"
+            payload = transaction.canonical_json_bytes(
+                {
+                    "schema": "moduflow.lifecycle-transaction-lock.v1",
+                    "transaction_id": "txn-recovery",
+                    "pid": 111,
+                    "acquired_at": "2030-01-02T03:04:05Z",
+                    "owner_token": "1" * 32,
+                }
+            ) + b"\n"
+            lock_path.write_bytes(payload)
+            lock_path.chmod(0o600)
+            original_inode = lock_path.stat().st_ino
+
+            def replace_then_absent(_pid, _signal):
+                replacement = transactions / "replacement"
+                replacement.write_bytes(payload)
+                replacement.chmod(0o600)
+                os.replace(replacement, lock_path)
+                raise ProcessLookupError(errno.ESRCH, "absent")
+
+            with self.assertRaises(
+                transaction.LifecycleRecoveryLockError
+            ) as raised:
+                with lock_entry(subject, pid_probe=replace_then_absent):
+                    self.fail("replaced stale candidate must not be reclaimed")
+
+            self.assertEqual(raised.exception.code, "RECOVERY_LOCK_REPLACED")
+            self.assertNotEqual(lock_path.stat().st_ino, original_inode)
+            self.assertEqual(lock_path.read_bytes(), payload)
+
     def test_exclusive_lifecycle_lock_rejects_concurrent_owner_without_changes(self):
         entry = getattr(transaction, "_exclusive_lifecycle_lock", None)
         error_type = getattr(transaction, "LifecycleLockError", None)
