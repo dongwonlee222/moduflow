@@ -634,6 +634,13 @@ class _RecoveredCleanupState:
 
 
 @dataclass(frozen=True)
+class _PrivateCleanupOutcome:
+    status: str
+    terminal_kind: str
+    removed: bool
+
+
+@dataclass(frozen=True)
 class _PrivateEvidenceBinding:
     plan: LifecycleTransactionPlan = field(repr=False, compare=False)
     transaction_result: object = field(repr=False, compare=False)
@@ -3946,6 +3953,72 @@ def _private_recovered_cleanup_workspace(canonical_root, transaction_id):
         raise LifecycleRecoveryCleanupError(
             "RECOVERY_CLEANUP_REMAINDER_UNSAFE"
         ) from exc
+
+
+def _cleanup_recovery_candidate(
+    subject,
+    transaction_id,
+    *,
+    fault_injector=None,
+    clock=None,
+    lock_pid=None,
+    lock_token_factory=None,
+    pid_probe=None,
+):
+    """Remove one terminal cleanup candidate while owning the recovery lock."""
+    if (
+        not isinstance(subject, _RecoverySubject)
+        or not isinstance(transaction_id, str)
+        or transaction_id != subject.transaction_id
+        or not _LOGICAL_NAME.fullmatch(transaction_id)
+        or (fault_injector is not None and not callable(fault_injector))
+    ):
+        raise LifecycleRecoveryCleanupError(
+            "RECOVERY_CLEANUP_INELIGIBLE"
+        )
+    with _exclusive_recovery_lock(
+        subject,
+        clock=clock,
+        pid=lock_pid,
+        token_factory=lock_token_factory,
+        pid_probe=pid_probe,
+    ):
+        try:
+            selected = transaction_storage.discover_recovery_workspaces(
+                subject._root,
+                transaction_id,
+            )
+        except transaction_storage.LifecycleRecoveryStorageError as exc:
+            raise LifecycleRecoveryCleanupError(
+                "RECOVERY_CLEANUP_REMAINDER_UNSAFE"
+            ) from exc
+        if not selected:
+            return _PrivateCleanupOutcome(
+                status="noop",
+                terminal_kind="unknown",
+                removed=False,
+            )
+        try:
+            with _private_recovered_cleanup_workspace(
+                subject._root,
+                transaction_id,
+            ) as cleanup:
+                transaction_storage.delete_proven_cleanup_inventory(
+                    cleanup._workspace,
+                    cleanup._inventory,
+                    terminal_kind=cleanup.terminal_kind,
+                    fault_injector=fault_injector,
+                )
+                terminal_kind = cleanup.terminal_kind
+        except LifecycleRecoveryCleanupError:
+            raise
+        except transaction_storage.LifecycleCleanupStorageError as exc:
+            raise LifecycleRecoveryCleanupError(exc.code) from exc
+        return _PrivateCleanupOutcome(
+            status="removed",
+            terminal_kind=terminal_kind,
+            removed=True,
+        )
 
 
 def _serialized_recovery_journal_bytes(

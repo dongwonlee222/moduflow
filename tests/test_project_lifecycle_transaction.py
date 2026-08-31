@@ -5874,6 +5874,192 @@ class TransactionPlanningTests(unittest.TestCase):
             self.assertTrue(journal.exists())
             self.assertTrue((workspace / "preimages").is_dir())
 
+    def test_cleanup_orchestrator_resumes_after_every_durable_boundary(self):
+        cleanup_entry = getattr(
+            transaction,
+            "_cleanup_recovery_candidate",
+            None,
+        )
+        self.assertIsNotNone(cleanup_entry)
+
+        def prepare(root, terminal):
+            if terminal == "complete":
+                context, plan = self.prepare_restart_finalizing_case(
+                    root,
+                    "after-recorded",
+                )
+            else:
+                context, plan, _applied, _rollback = (
+                    self.prepare_restart_recovery_case(
+                        root,
+                        "applying-recorded",
+                        applied_count=1,
+                    )
+                )
+            recovery_times = iter(
+                f"2030-01-02T03:25:{second:02d}Z"
+                for second in range(50)
+            )
+            transaction.recover_incomplete_transaction(
+                root,
+                plan.transaction_id,
+                project_context=context,
+                clock=lambda: next(recovery_times),
+                lock_pid=222,
+                lock_token_factory=lambda: "f" * 32,
+            )
+            return context, plan
+
+        for terminal in ("complete", "rolled-back"):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context, plan = prepare(root, terminal)
+                subject = transaction._authorized_recovery_subject(
+                    root,
+                    plan.transaction_id,
+                    project_context=context,
+                )
+                boundaries = []
+                outcome = cleanup_entry(
+                    subject,
+                    plan.transaction_id,
+                    fault_injector=boundaries.append,
+                    clock="2030-01-02T03:26:00Z",
+                    lock_pid=223,
+                    lock_token_factory=lambda: "1" * 32,
+                )
+                self.assertTrue(outcome.removed)
+                self.assertTrue(boundaries)
+
+            for boundary in boundaries:
+                with (
+                    self.subTest(terminal=terminal, boundary=boundary),
+                    tempfile.TemporaryDirectory() as tmp,
+                ):
+                    root = Path(tmp)
+                    context, plan = prepare(root, terminal)
+                    subject = transaction._authorized_recovery_subject(
+                        root,
+                        plan.transaction_id,
+                        project_context=context,
+                    )
+                    canonical_before = {
+                        target.relative_path: (
+                            (root / target.relative_path).read_bytes()
+                            if (root / target.relative_path).exists()
+                            else None
+                        )
+                        for target in plan.targets
+                    }
+
+                    def interrupt(stage):
+                        if stage == boundary:
+                            raise RuntimeError("PRIVATE CLEANUP INTERRUPTION")
+
+                    with self.assertRaisesRegex(
+                        RuntimeError,
+                        "PRIVATE CLEANUP INTERRUPTION",
+                    ):
+                        cleanup_entry(
+                            subject,
+                            plan.transaction_id,
+                            fault_injector=interrupt,
+                            clock="2030-01-02T03:27:00Z",
+                            lock_pid=224,
+                            lock_token_factory=lambda: "2" * 32,
+                        )
+                    lock_path = root / ".moduflow/transactions/lifecycle.lock"
+                    self.assertFalse(lock_path.exists())
+                    retry = cleanup_entry(
+                        subject,
+                        plan.transaction_id,
+                        clock="2030-01-02T03:28:00Z",
+                        lock_pid=225,
+                        lock_token_factory=lambda: "3" * 32,
+                    )
+                    self.assertIn(retry.status, {"removed", "noop"})
+                    workspace = (
+                        root
+                        / ".moduflow"
+                        / "transactions"
+                        / plan.transaction_id
+                    )
+                    self.assertFalse(workspace.exists())
+                    self.assertEqual(
+                        {
+                            target.relative_path: (
+                                (root / target.relative_path).read_bytes()
+                                if (root / target.relative_path).exists()
+                                else None
+                            )
+                            for target in plan.targets
+                        },
+                        canonical_before,
+                    )
+
+    def test_cleanup_orchestrator_live_lock_blocks_before_deletion(self):
+        cleanup_entry = getattr(
+            transaction,
+            "_cleanup_recovery_candidate",
+            None,
+        )
+        self.assertIsNotNone(cleanup_entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context, plan = self.prepare_restart_finalizing_case(
+                root,
+                "after-recorded",
+            )
+            recovery_times = iter(
+                f"2030-01-02T03:29:{second:02d}Z"
+                for second in range(50)
+            )
+            transaction.recover_incomplete_transaction(
+                root,
+                plan.transaction_id,
+                project_context=context,
+                clock=lambda: next(recovery_times),
+                lock_pid=226,
+                lock_token_factory=lambda: "4" * 32,
+            )
+            lock_path = root / ".moduflow/transactions/lifecycle.lock"
+            lock_path.write_bytes(
+                transaction.canonical_json_bytes(
+                    {
+                        "schema": "moduflow.lifecycle-transaction-lock.v1",
+                        "transaction_id": plan.transaction_id,
+                        "pid": 111,
+                        "acquired_at": "2030-01-02T03:30:00Z",
+                        "owner_token": "5" * 32,
+                    }
+                )
+                + b"\n"
+            )
+            lock_path.chmod(0o600)
+            subject = transaction._authorized_recovery_subject(
+                root,
+                plan.transaction_id,
+                project_context=context,
+            )
+            with (
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "delete_proven_cleanup_inventory",
+                ) as delete,
+                self.assertRaises(
+                    transaction.LifecycleRecoveryLockError
+                ) as raised,
+            ):
+                cleanup_entry(
+                    subject,
+                    plan.transaction_id,
+                    pid_probe=lambda _pid, _signal: None,
+                )
+
+            self.assertEqual(raised.exception.code, "RECOVERY_LOCK_LIVE")
+            delete.assert_not_called()
+            self.assertTrue(lock_path.exists())
+
     def test_private_preimage_workspace_denies_or_rejects_before_side_effects(self):
         entry = getattr(transaction, "_private_preimage_workspace", None)
         self.assertIsNotNone(entry)
