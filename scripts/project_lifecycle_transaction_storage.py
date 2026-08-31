@@ -26,6 +26,12 @@ _RECOVERY_STORAGE_CODES = frozenset({
     "RECOVERY_DISCOVERY_UNSAFE",
     "RECOVERY_WORKSPACE_UNSAFE",
     "RECOVERY_CONTROL_FILE_UNSAFE",
+    "RECOVERY_MANIFEST_MISSING",
+    "RECOVERY_MANIFEST_INVALID",
+    "RECOVERY_MANIFEST_MISMATCH",
+    "RECOVERY_PAYLOAD_MISSING",
+    "RECOVERY_PAYLOAD_INVALID",
+    "RECOVERY_PAYLOAD_MISMATCH",
 })
 
 
@@ -146,6 +152,53 @@ class StorageTarget:
 
 
 @dataclass(frozen=True)
+class RecoveryTarget:
+    index: int
+    role: str
+    relative_path: str
+    existed: bool
+    before_sha256: str
+    after_sha256: str
+    after_size: int
+    changed: bool
+
+    def __post_init__(self):
+        expected_changed = (
+            not self.existed or self.before_sha256 != self.after_sha256
+        )
+        valid_before = (
+            isinstance(self.existed, bool)
+            and (
+                (
+                    self.existed
+                    and isinstance(self.before_sha256, str)
+                    and _SHA256.fullmatch(self.before_sha256)
+                )
+                or (not self.existed and self.before_sha256 == "absent")
+            )
+        )
+        if (
+            not isinstance(self.index, int)
+            or isinstance(self.index, bool)
+            or self.index < 0
+            or not isinstance(self.role, str)
+            or not _LOGICAL_NAME.fullmatch(self.role)
+            or not _safe_relative_path(self.relative_path)
+            or not valid_before
+            or not isinstance(self.after_sha256, str)
+            or not _SHA256.fullmatch(self.after_sha256)
+            or not isinstance(self.after_size, int)
+            or isinstance(self.after_size, bool)
+            or self.after_size < 0
+            or not isinstance(self.changed, bool)
+            or self.changed != expected_changed
+        ):
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_MANIFEST_MISMATCH"
+            )
+
+
+@dataclass(frozen=True)
 class StoredPreimage:
     index: int
     state: str
@@ -174,6 +227,17 @@ class RecoveryManifest:
     sha256: str
     _device: int = field(repr=False, compare=False)
     _inode: int = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
+class _RecoveredMaterials:
+    storage_targets: tuple[StorageTarget, ...] = field(repr=False, compare=False)
+    preimages: tuple[StoredPreimage, ...] = field(repr=False, compare=False)
+    staged_proposals: tuple[StagedProposal, ...] = field(
+        repr=False,
+        compare=False,
+    )
+    recovery_manifest: RecoveryManifest = field(repr=False, compare=False)
 
 
 @dataclass(frozen=True)
@@ -1876,6 +1940,510 @@ def finalize_recovery_manifest(
         proposal_records,
     )
     return _write_recovery_manifest(workspace, manifest_bytes)
+
+
+def _validated_recovery_targets(recovery_targets):
+    if (
+        not isinstance(recovery_targets, tuple)
+        or not recovery_targets
+        or not all(
+            isinstance(target, RecoveryTarget) for target in recovery_targets
+        )
+        or [target.index for target in recovery_targets]
+        != list(range(len(recovery_targets)))
+    ):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_MANIFEST_MISMATCH"
+        )
+    return recovery_targets
+
+
+def _require_manifest_keys(value, expected):
+    if not isinstance(value, dict) or set(value) != set(expected):
+        raise LifecycleRecoveryStorageError("RECOVERY_MANIFEST_INVALID")
+
+
+def _parse_recovery_manifest(
+    workspace,
+    targets,
+    manifest_snapshot,
+    expected_manifest_sha256,
+):
+    if manifest_snapshot.state != "present":
+        raise LifecycleRecoveryStorageError("RECOVERY_MANIFEST_MISSING")
+    if (
+        not isinstance(expected_manifest_sha256, str)
+        or not _SHA256.fullmatch(expected_manifest_sha256)
+        or manifest_snapshot.sha256 != expected_manifest_sha256
+    ):
+        raise LifecycleRecoveryStorageError("RECOVERY_MANIFEST_MISMATCH")
+    try:
+        manifest = json.loads(manifest_snapshot._bytes.decode("utf-8"))
+    except (AttributeError, TypeError, ValueError, UnicodeError):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_MANIFEST_INVALID"
+        ) from None
+    _require_manifest_keys(manifest, ("schema", "transaction_id", "targets"))
+    if (
+        manifest["schema"] != _RECOVERY_MANIFEST_SCHEMA
+        or manifest["transaction_id"] != workspace.transaction_id
+        or not isinstance(manifest["targets"], list)
+        or len(manifest["targets"]) != len(targets)
+    ):
+        raise LifecycleRecoveryStorageError("RECOVERY_MANIFEST_MISMATCH")
+    canonical = (
+        json.dumps(
+            manifest,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        + b"\n"
+    )
+    if not secrets.compare_digest(canonical, manifest_snapshot._bytes):
+        raise LifecycleRecoveryStorageError("RECOVERY_MANIFEST_INVALID")
+    return tuple(manifest["targets"])
+
+
+def _read_recovery_payload(
+    parent_fd,
+    name,
+    *,
+    expected_size,
+    expected_sha256,
+    expected_device=None,
+    expected_inode=None,
+):
+    descriptor = None
+    try:
+        try:
+            before = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_MISSING"
+            ) from None
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or stat.S_IMODE(before.st_mode) != 0o600
+            or before.st_nlink != 1
+            or (
+                expected_device is not None
+                and before.st_dev != expected_device
+            )
+            or (
+                expected_inode is not None
+                and before.st_ino != expected_inode
+            )
+        ):
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            )
+        descriptor = os.open(
+            name,
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            dir_fd=parent_fd,
+        )
+        opened = os.fstat(descriptor)
+        payload = _read_complete(descriptor, expected_size)
+        after = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        final_opened = os.fstat(descriptor)
+        same_entry = all(
+            _journal_metadata_matches(metadata, before)
+            for metadata in (opened, after, final_opened)
+        )
+        if not same_entry:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            )
+        if (
+            len(payload) != expected_size
+            or hashlib.sha256(payload).hexdigest() != expected_sha256
+        ):
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_MISMATCH"
+            )
+        return payload, before
+    except LifecycleRecoveryStorageError:
+        raise
+    except OSError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_PAYLOAD_INVALID"
+        ) from exc
+    finally:
+        _close_descriptors(descriptor)
+
+
+def _manifest_target_record(target, record):
+    _require_manifest_keys(
+        record,
+        (
+            "index",
+            "role",
+            "relative_path",
+            "existed",
+            "before_sha256",
+            "after_sha256",
+            "preimage",
+            "proposed",
+        ),
+    )
+    expected = {
+        "index": target.index,
+        "role": target.role,
+        "relative_path": target.relative_path,
+        "existed": target.existed,
+        "before_sha256": target.before_sha256,
+        "after_sha256": target.after_sha256,
+    }
+    if any(record[key] != value for key, value in expected.items()):
+        raise LifecycleRecoveryStorageError("RECOVERY_MANIFEST_MISMATCH")
+    return record["preimage"], record["proposed"]
+
+
+def _load_recovered_preimage(workspace, target, record):
+    if not target.existed:
+        if record != {"state": "absent"}:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_MANIFEST_MISMATCH"
+            )
+        return (
+            b"",
+            StoredPreimage(
+                index=target.index,
+                state="absent",
+                relative_name="absent",
+                size=0,
+                sha256="absent",
+                _device=-1,
+                _inode=-1,
+            ),
+        )
+    _require_manifest_keys(
+        record,
+        ("state", "relative_name", "size", "sha256"),
+    )
+    expected_name = f"preimages/{target.index:06d}.bin"
+    if (
+        record["state"] != "present"
+        or record["relative_name"] != expected_name
+        or not isinstance(record["size"], int)
+        or isinstance(record["size"], bool)
+        or record["size"] < 0
+        or record["sha256"] != target.before_sha256
+    ):
+        raise LifecycleRecoveryStorageError("RECOVERY_MANIFEST_MISMATCH")
+    payload, metadata = _read_recovery_payload(
+        workspace._preimages_fd,
+        f"{target.index:06d}.bin",
+        expected_size=record["size"],
+        expected_sha256=target.before_sha256,
+    )
+    return (
+        payload,
+        StoredPreimage(
+            index=target.index,
+            state="present",
+            relative_name=expected_name,
+            size=len(payload),
+            sha256=target.before_sha256,
+            _device=metadata.st_dev,
+            _inode=metadata.st_ino,
+        ),
+    )
+
+
+def _load_recovered_proposal(workspace, target, record, before_bytes):
+    if not target.changed:
+        if record != {"state": "unchanged"}:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_MANIFEST_MISMATCH"
+            )
+        if len(before_bytes) != target.after_size:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_MISMATCH"
+            )
+        return (
+            before_bytes,
+            StagedProposal(
+                index=target.index,
+                state="unchanged",
+                relative_name="unchanged",
+                size=0,
+                sha256="unchanged",
+                _device=-1,
+                _inode=-1,
+            ),
+        )
+    _require_manifest_keys(
+        record,
+        (
+            "state",
+            "relative_name",
+            "size",
+            "sha256",
+            "device",
+            "inode",
+        ),
+    )
+    parent_fd = None
+    try:
+        parent_fd, parent_metadata = _open_target_parent(workspace, target)
+        stage_name, relative_name = _staging_names(workspace, target)
+        if (
+            record["state"] != "staged"
+            or record["relative_name"] != relative_name
+            or record["size"] != target.after_size
+            or record["sha256"] != target.after_sha256
+            or not isinstance(record["device"], int)
+            or isinstance(record["device"], bool)
+            or not isinstance(record["inode"], int)
+            or isinstance(record["inode"], bool)
+            or record["device"] != parent_metadata.st_dev
+        ):
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_MANIFEST_MISMATCH"
+            )
+        payload, metadata = _read_recovery_payload(
+            parent_fd,
+            stage_name,
+            expected_size=target.after_size,
+            expected_sha256=target.after_sha256,
+            expected_device=record["device"],
+            expected_inode=record["inode"],
+        )
+        return (
+            payload,
+            StagedProposal(
+                index=target.index,
+                state="staged",
+                relative_name=relative_name,
+                size=len(payload),
+                sha256=target.after_sha256,
+                _device=metadata.st_dev,
+                _inode=metadata.st_ino,
+            ),
+        )
+    except LifecycleStorageError as exc:
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_PAYLOAD_INVALID"
+        ) from exc
+    finally:
+        _close_descriptors(parent_fd)
+
+
+def _verify_recovery_stage_inventory(workspace, targets, *, allow_missing=False):
+    digest = hashlib.sha256(workspace.transaction_id.encode("utf-8")).hexdigest()
+    prefix = f".moduflow-stage-{digest}-"
+    parents = {}
+    for target in targets:
+        parent_key = PurePosixPath(target.relative_path).parent.as_posix()
+        if parent_key not in parents:
+            parents[parent_key] = [target, set()]
+        if target.changed:
+            stage_name, _relative_name = _staging_names(workspace, target)
+            parents[parent_key][1].add(stage_name)
+    for representative, expected_names in parents.values():
+        parent_fd = None
+        try:
+            parent_fd, _metadata = _open_target_parent(
+                workspace,
+                representative,
+            )
+            current_names = {
+                name for name in os.listdir(parent_fd) if name.startswith(prefix)
+            }
+        except (OSError, LifecycleStorageError) as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            ) from exc
+        finally:
+            _close_descriptors(parent_fd)
+        if (
+            (not allow_missing and current_names != expected_names)
+            or (allow_missing and not current_names.issubset(expected_names))
+        ):
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_MISMATCH"
+            )
+
+
+def load_recovery_materials(
+    workspace,
+    recovery_targets,
+    manifest_snapshot,
+    expected_manifest_sha256,
+):
+    """Rehydrate exact manifest-bound recovery inputs without writes."""
+    if not isinstance(workspace, _PrivateTransactionWorkspace):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    targets = _validated_recovery_targets(recovery_targets)
+    records = _parse_recovery_manifest(
+        workspace,
+        targets,
+        manifest_snapshot,
+        expected_manifest_sha256,
+    )
+    _verify_recovery_stage_inventory(workspace, targets)
+    storage_targets = []
+    preimages = []
+    proposals = []
+    expected_preimage_entries = []
+    for target, record in zip(targets, records):
+        preimage_record, proposal_record = _manifest_target_record(
+            target,
+            record,
+        )
+        before_bytes, preimage = _load_recovered_preimage(
+            workspace,
+            target,
+            preimage_record,
+        )
+        after_bytes, proposal = _load_recovered_proposal(
+            workspace,
+            target,
+            proposal_record,
+            before_bytes,
+        )
+        storage_targets.append(
+            StorageTarget(
+                index=target.index,
+                role=target.role,
+                relative_path=target.relative_path,
+                existed=target.existed,
+                before_sha256=target.before_sha256,
+                after_sha256=target.after_sha256,
+                after_size=target.after_size,
+                changed=target.changed,
+                _before_bytes=before_bytes,
+                _after_bytes=after_bytes,
+            )
+        )
+        preimages.append(preimage)
+        proposals.append(proposal)
+        if target.existed:
+            expected_preimage_entries.append(f"{target.index:06d}.bin")
+    if tuple(expected_preimage_entries) != tuple(
+        sorted(os.listdir(workspace._preimages_fd))
+    ):
+        raise LifecycleRecoveryStorageError("RECOVERY_PAYLOAD_MISMATCH")
+    return _RecoveredMaterials(
+        storage_targets=tuple(storage_targets),
+        preimages=tuple(preimages),
+        staged_proposals=tuple(proposals),
+        recovery_manifest=RecoveryManifest(
+            relative_name=_RECOVERY_MANIFEST_NAME,
+            size=manifest_snapshot.size,
+            sha256=manifest_snapshot.sha256,
+            _device=manifest_snapshot._device,
+            _inode=manifest_snapshot._inode,
+        ),
+    )
+
+
+def verify_unbound_recovery_inventory(
+    workspace,
+    recovery_targets,
+    control_snapshot,
+):
+    """Verify present unbound payloads without returning recovery authority."""
+    if not isinstance(workspace, _PrivateTransactionWorkspace):
+        raise LifecycleRecoveryStorageError("RECOVERY_WORKSPACE_UNSAFE")
+    targets = _validated_recovery_targets(recovery_targets)
+    if not isinstance(control_snapshot, _RecoveryControlSnapshot):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_CONTROL_FILE_UNSAFE"
+        )
+    if control_snapshot.recovery_manifest.state == "present":
+        load_recovery_materials(
+            workspace,
+            targets,
+            control_snapshot.recovery_manifest,
+            control_snapshot.recovery_manifest.sha256,
+        )
+        return
+
+    expected_preimage_names = {
+        f"{target.index:06d}.bin"
+        for target in targets
+        if target.existed
+    }
+    current_preimage_names = set(control_snapshot._preimage_entries)
+    if not current_preimage_names.issubset(expected_preimage_names):
+        raise LifecycleRecoveryStorageError(
+            "RECOVERY_PAYLOAD_MISMATCH"
+        )
+    for name in current_preimage_names:
+        index = int(name[:6])
+        target = targets[index]
+        try:
+            metadata = os.stat(
+                name,
+                dir_fd=workspace._preimages_fd,
+                follow_symlinks=False,
+            )
+        except OSError as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            ) from exc
+        _read_recovery_payload(
+            workspace._preimages_fd,
+            name,
+            expected_size=metadata.st_size,
+            expected_sha256=target.before_sha256,
+        )
+
+    _verify_recovery_stage_inventory(
+        workspace,
+        targets,
+        allow_missing=True,
+    )
+    digest = hashlib.sha256(workspace.transaction_id.encode("utf-8")).hexdigest()
+    prefix = f".moduflow-stage-{digest}-"
+    inspected_parents = set()
+    for target in targets:
+        parent_key = PurePosixPath(target.relative_path).parent.as_posix()
+        if parent_key in inspected_parents:
+            continue
+        inspected_parents.add(parent_key)
+        parent_fd = None
+        try:
+            parent_fd, parent_metadata = _open_target_parent(workspace, target)
+            stage_names = tuple(
+                name
+                for name in os.listdir(parent_fd)
+                if name.startswith(prefix)
+            )
+            for stage_name in stage_names:
+                try:
+                    index = int(stage_name[-6:])
+                    selected = targets[index]
+                except (IndexError, TypeError, ValueError):
+                    raise LifecycleRecoveryStorageError(
+                        "RECOVERY_PAYLOAD_MISMATCH"
+                    ) from None
+                expected_name, _relative_name = _staging_names(
+                    workspace,
+                    selected,
+                )
+                if stage_name != expected_name or not selected.changed:
+                    raise LifecycleRecoveryStorageError(
+                        "RECOVERY_PAYLOAD_MISMATCH"
+                    )
+                _read_recovery_payload(
+                    parent_fd,
+                    stage_name,
+                    expected_size=selected.after_size,
+                    expected_sha256=selected.after_sha256,
+                    expected_device=parent_metadata.st_dev,
+                )
+        except LifecycleStorageError as exc:
+            raise LifecycleRecoveryStorageError(
+                "RECOVERY_PAYLOAD_INVALID"
+            ) from exc
+        finally:
+            _close_descriptors(parent_fd)
 
 
 def _journal_context(workspace, journal_bytes, expected_previous_sha256):

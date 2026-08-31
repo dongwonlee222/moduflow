@@ -3239,6 +3239,442 @@ class TransactionPlanningTests(unittest.TestCase):
             )
             self.assertEqual(next_path.read_bytes(), next_bytes)
 
+    def test_recovered_transaction_workspace_rehydrates_exact_manifest_payloads(self):
+        entry = getattr(
+            transaction,
+            "_private_recovered_transaction_workspace",
+            None,
+        )
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, nested=True)
+            (root / "product" / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            timestamps = iter(
+                (
+                    "2030-01-02T03:04:05Z",
+                    "2030-01-02T03:04:06Z",
+                    "2030-01-02T03:04:07Z",
+                )
+            )
+            with transaction._private_prepared_workspace(
+                plan,
+                journal_clock=lambda: next(timestamps),
+                lock_clock="2030-01-02T03:04:05Z",
+                lock_pid=123,
+                lock_token_factory=lambda: "1" * 32,
+            ):
+                pass
+            before = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+
+            with entry(root, plan.transaction_id) as recovered:
+                self.assertEqual(
+                    recovered.journal_state.journal["phase"],
+                    "prepared",
+                )
+                self.assertEqual(
+                    [
+                        target.relative_path
+                        for target in recovered.storage_targets
+                    ],
+                    [target.relative_path for target in plan.targets],
+                )
+                self.assertEqual(
+                    [target.before_sha256 for target in recovered.storage_targets],
+                    [target.before_sha256 for target in plan.targets],
+                )
+                self.assertEqual(
+                    [target.after_sha256 for target in recovered.storage_targets],
+                    [target.after_sha256 for target in plan.targets],
+                )
+                self.assertEqual(
+                    recovered.recovery_manifest.sha256,
+                    recovered.journal_state.journal[
+                        "recovery_manifest_sha256"
+                    ],
+                )
+                self.assertEqual(
+                    len(recovered.preimages),
+                    len(plan.targets),
+                )
+                self.assertEqual(
+                    len(recovered.staged_proposals),
+                    len(plan.targets),
+                )
+                self.assertNotIn(str(root), repr(recovered))
+                self.assertNotIn("Preserve issue prose", repr(recovered))
+
+            after = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*")
+                if path.is_file()
+            }
+            self.assertEqual(after, before)
+
+    def test_recovered_transaction_workspace_rejects_manifest_and_payload_mismatch(self):
+        cases = (
+            ("manifest-schema", "RECOVERY_MANIFEST_MISMATCH"),
+            ("manifest-transaction", "RECOVERY_MANIFEST_MISMATCH"),
+            ("manifest-order", "RECOVERY_MANIFEST_MISMATCH"),
+            ("manifest-role", "RECOVERY_MANIFEST_MISMATCH"),
+            ("manifest-path", "RECOVERY_MANIFEST_MISMATCH"),
+            ("manifest-hash", "RECOVERY_MANIFEST_MISMATCH"),
+            ("preimage-bytes", "RECOVERY_PAYLOAD_MISMATCH"),
+            ("preimage-mode", "RECOVERY_PAYLOAD_INVALID"),
+            ("stage-bytes", "RECOVERY_PAYLOAD_MISMATCH"),
+            ("stage-mode", "RECOVERY_PAYLOAD_INVALID"),
+            ("stage-inode", "RECOVERY_PAYLOAD_INVALID"),
+            ("stage-device", "RECOVERY_MANIFEST_MISMATCH"),
+            ("stage-missing", "RECOVERY_PAYLOAD_MISMATCH"),
+            ("nested-parent-symlink", "RECOVERY_PAYLOAD_INVALID"),
+        )
+        for mutation, expected_code in cases:
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root, nested=True)
+                (root / "product" / "workspace" / "transactions").mkdir()
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                timestamps = iter(
+                    (
+                        "2030-01-02T03:04:05Z",
+                        "2030-01-02T03:04:06Z",
+                        "2030-01-02T03:04:07Z",
+                    )
+                )
+                with transaction._private_prepared_workspace(
+                    plan,
+                    journal_clock=lambda: next(timestamps),
+                    lock_clock="2030-01-02T03:04:05Z",
+                    lock_pid=123,
+                    lock_token_factory=lambda: "1" * 32,
+                ):
+                    pass
+                workspace = (
+                    root / ".moduflow" / "transactions" / plan.transaction_id
+                )
+                manifest_path = workspace / "recovery-manifest.json"
+                journal_path = workspace / "journal.json"
+                changed_target = next(target for target in plan.targets if target.changed)
+                changed_index = plan.targets.index(changed_target)
+                digest = hashlib.sha256(
+                    plan.transaction_id.encode("utf-8")
+                ).hexdigest()
+                stage_path = (
+                    root
+                    / Path(changed_target.relative_path).parent
+                    / f".moduflow-stage-{digest}-{changed_index:06d}"
+                )
+
+                if mutation.startswith("manifest-") or mutation == "stage-device":
+                    manifest = json.loads(manifest_path.read_bytes())
+                    if mutation == "manifest-schema":
+                        manifest["schema"] = "moduflow.recovery-manifest.poison"
+                    elif mutation == "manifest-transaction":
+                        manifest["transaction_id"] = "foreign-transaction"
+                    elif mutation == "manifest-order":
+                        manifest["targets"].reverse()
+                    elif mutation == "manifest-role":
+                        manifest["targets"][0]["role"] = "state"
+                    elif mutation == "manifest-path":
+                        manifest["targets"][0]["relative_path"] = (
+                            "product/issues/OTHER.md"
+                        )
+                    elif mutation == "manifest-hash":
+                        manifest["targets"][0]["after_sha256"] = "0" * 64
+                    else:
+                        manifest["targets"][changed_index]["proposed"][
+                            "device"
+                        ] += 1
+                    manifest_bytes = transaction.canonical_json_bytes(manifest) + b"\n"
+                    manifest_path.write_bytes(manifest_bytes)
+                    journal = json.loads(journal_path.read_bytes())
+                    journal["recovery_manifest_sha256"] = hashlib.sha256(
+                        manifest_bytes
+                    ).hexdigest()
+                    journal_path.write_bytes(
+                        transaction.canonical_json_bytes(
+                            transaction.serialize_transaction_journal(journal)
+                        )
+                        + b"\n"
+                    )
+                elif mutation == "preimage-bytes":
+                    preimage = workspace / "preimages" / "000000.bin"
+                    preimage.write_bytes(b"corrupted recovery preimage\n")
+                elif mutation == "preimage-mode":
+                    (workspace / "preimages" / "000000.bin").chmod(0o644)
+                elif mutation == "stage-bytes":
+                    stage_path.write_bytes(b"corrupted recovery proposal\n")
+                elif mutation == "stage-mode":
+                    stage_path.chmod(0o644)
+                elif mutation == "stage-inode":
+                    replacement = stage_path.with_name(stage_path.name + ".replacement")
+                    replacement.write_bytes(stage_path.read_bytes())
+                    replacement.chmod(0o600)
+                    os.replace(replacement, stage_path)
+                elif mutation == "stage-missing":
+                    stage_path.unlink()
+                else:
+                    parent = root / Path(changed_target.relative_path).parent
+                    moved = parent.with_name(parent.name + "-real")
+                    parent.rename(moved)
+                    parent.symlink_to(moved, target_is_directory=True)
+
+                with self.assertRaises(
+                    transaction.transaction_storage.LifecycleRecoveryStorageError
+                ) as raised:
+                    with transaction._private_recovered_transaction_workspace(
+                        root,
+                        plan.transaction_id,
+                    ):
+                        self.fail("mismatched recovery material must be rejected")
+
+                self.assertEqual(raised.exception.code, expected_code)
+                self.assertEqual(str(raised.exception), expected_code)
+                self.assertNotIn(str(root), repr(raised.exception))
+
+    def test_recovered_transaction_workspace_classifies_all_journal_phases(self):
+        phases = (
+            "planned",
+            "staged",
+            "prepared",
+            "applying",
+            "post-validating",
+            "finalizing-canonical",
+            "finalizing-complete",
+            "rolling-back",
+            "complete",
+            "rolled-back",
+            "recovery-required",
+        )
+        for phase_case in phases:
+            with self.subTest(phase=phase_case), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root)
+                (root / "workspace" / "transactions").mkdir()
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                timestamps = iter(
+                    (
+                        "2030-01-02T03:04:05Z",
+                        "2030-01-02T03:04:06Z",
+                        "2030-01-02T03:04:07Z",
+                    )
+                )
+                with transaction._private_prepared_workspace(
+                    plan,
+                    journal_clock=lambda: next(timestamps),
+                    lock_clock="2030-01-02T03:04:05Z",
+                    lock_pid=123,
+                    lock_token_factory=lambda: "1" * 32,
+                ):
+                    pass
+                workspace = (
+                    root / ".moduflow" / "transactions" / plan.transaction_id
+                )
+                journal_path = workspace / "journal.json"
+                journal = json.loads(journal_path.read_bytes())
+                changed = [
+                    index
+                    for index, target in enumerate(plan.targets)
+                    if target.changed
+                ]
+                canonical_changed = [
+                    index
+                    for index in changed
+                    if plan.targets[index].role != "evidence"
+                ]
+                manifest_absent = phase_case in {
+                    "planned",
+                    "staged",
+                    "recovery-required",
+                }
+                journal["phase"] = phase_case.split("-canonical")[0].split(
+                    "-complete"
+                )[0]
+                journal["recovery_manifest_sha256"] = (
+                    "absent"
+                    if manifest_absent
+                    else hashlib.sha256(
+                        (workspace / "recovery-manifest.json").read_bytes()
+                    ).hexdigest()
+                )
+                journal["applied_target_indexes"] = []
+                journal["rollback_target_indexes"] = []
+                if phase_case == "applying":
+                    journal["applied_target_indexes"] = canonical_changed[:1]
+                elif phase_case == "post-validating":
+                    journal["applied_target_indexes"] = canonical_changed
+                elif phase_case == "finalizing-canonical":
+                    journal["applied_target_indexes"] = canonical_changed
+                elif phase_case in {"finalizing-complete", "complete"}:
+                    journal["applied_target_indexes"] = changed
+                elif phase_case == "rolling-back":
+                    journal["applied_target_indexes"] = changed
+                    journal["rollback_target_indexes"] = list(reversed(changed))[:1]
+                elif phase_case == "rolled-back":
+                    journal["applied_target_indexes"] = changed
+                    journal["rollback_target_indexes"] = list(reversed(changed))
+                journal["updated_at"] = "2030-01-02T03:04:08Z"
+                journal_path.write_bytes(
+                    transaction.canonical_json_bytes(
+                        transaction.serialize_transaction_journal(journal)
+                    )
+                    + b"\n"
+                )
+
+                with transaction._private_recovered_transaction_workspace(
+                    root,
+                    plan.transaction_id,
+                ) as recovered:
+                    self.assertEqual(
+                        recovered.journal_state.journal["phase"],
+                        journal["phase"],
+                    )
+                    if manifest_absent:
+                        self.assertEqual(recovered.storage_targets, ())
+                        self.assertIsNone(recovered.recovery_manifest)
+                    else:
+                        self.assertEqual(
+                            len(recovered.storage_targets),
+                            len(plan.targets),
+                        )
+                        self.assertIsNotNone(recovered.recovery_manifest)
+
+    def test_recovered_transaction_workspace_rejects_unbound_extra_stage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            timestamps = iter(
+                (
+                    "2030-01-02T03:04:05Z",
+                    "2030-01-02T03:04:06Z",
+                    "2030-01-02T03:04:07Z",
+                )
+            )
+            with transaction._private_prepared_workspace(
+                plan,
+                journal_clock=lambda: next(timestamps),
+                lock_clock="2030-01-02T03:04:05Z",
+                lock_pid=123,
+                lock_token_factory=lambda: "1" * 32,
+            ):
+                pass
+            digest = hashlib.sha256(
+                plan.transaction_id.encode("utf-8")
+            ).hexdigest()
+            extra = root / "issues" / f".moduflow-stage-{digest}-999999"
+            extra.write_bytes(b"foreign recovery stage\n")
+            extra.chmod(0o600)
+            before = extra.stat()
+
+            with self.assertRaises(
+                transaction.transaction_storage.LifecycleRecoveryStorageError
+            ) as raised:
+                with transaction._private_recovered_transaction_workspace(
+                    root,
+                    plan.transaction_id,
+                ):
+                    self.fail("unbound stage must not be adopted")
+
+            self.assertEqual(
+                raised.exception.code,
+                "RECOVERY_PAYLOAD_MISMATCH",
+            )
+            self.assertEqual(extra.read_bytes(), b"foreign recovery stage\n")
+            self.assertEqual(extra.stat().st_ino, before.st_ino)
+
+    def test_recovered_transaction_workspace_verifies_unbound_material(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            timestamps = iter(
+                (
+                    "2030-01-02T03:04:05Z",
+                    "2030-01-02T03:04:06Z",
+                    "2030-01-02T03:04:07Z",
+                )
+            )
+            with transaction._private_prepared_workspace(
+                plan,
+                journal_clock=lambda: next(timestamps),
+                lock_clock="2030-01-02T03:04:05Z",
+                lock_pid=123,
+                lock_token_factory=lambda: "1" * 32,
+            ):
+                pass
+            workspace = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            journal_path = workspace / "journal.json"
+            staged = json.loads(journal_path.read_bytes())
+            staged["phase"] = "staged"
+            staged["recovery_manifest_sha256"] = "absent"
+            staged["applied_target_indexes"] = []
+            staged["rollback_target_indexes"] = []
+            staged["updated_at"] = "2030-01-02T03:04:06Z"
+            journal_path.write_bytes(
+                transaction.canonical_json_bytes(
+                    transaction.serialize_transaction_journal(staged)
+                )
+                + b"\n"
+            )
+            preimage = workspace / "preimages" / "000000.bin"
+            preimage.write_bytes(b"corrupted unbound preimage\n")
+
+            with self.assertRaises(
+                transaction.transaction_storage.LifecycleRecoveryStorageError
+            ) as raised:
+                with transaction._private_recovered_transaction_workspace(
+                    root,
+                    plan.transaction_id,
+                ):
+                    self.fail("unbound private material must still verify")
+
+            self.assertEqual(
+                raised.exception.code,
+                "RECOVERY_PAYLOAD_MISMATCH",
+            )
+            self.assertEqual(
+                journal_path.read_bytes(),
+                transaction.canonical_json_bytes(
+                    transaction.serialize_transaction_journal(staged)
+                )
+                + b"\n",
+            )
+
     def test_private_preimage_workspace_denies_or_rejects_before_side_effects(self):
         entry = getattr(transaction, "_private_preimage_workspace", None)
         self.assertIsNotNone(entry)

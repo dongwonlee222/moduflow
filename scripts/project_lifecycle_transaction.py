@@ -502,6 +502,16 @@ class _RecoveredJournalState:
 
 
 @dataclass(frozen=True)
+class _RecoveredTransactionState:
+    journal_state: _RecoveredJournalState = field(repr=False, compare=False)
+    storage_targets: tuple = field(repr=False, compare=False)
+    preimages: tuple = field(repr=False, compare=False)
+    staged_proposals: tuple = field(repr=False, compare=False)
+    recovery_manifest: object = field(repr=False, compare=False)
+    _workspace: object = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
 class _PrivateEvidenceBinding:
     plan: LifecycleTransactionPlan = field(repr=False, compare=False)
     transaction_result: object = field(repr=False, compare=False)
@@ -3251,6 +3261,76 @@ def _private_recovered_journal_workspace(canonical_root, transaction_id):
             transaction_id,
             control,
             workspace,
+        )
+
+
+def _recovery_targets_from_journal(journal):
+    try:
+        return tuple(
+            transaction_storage.RecoveryTarget(
+                index=index,
+                role=target["role"],
+                relative_path=target["relative_path"],
+                existed=target["existed"],
+                before_sha256=target["before_sha256"],
+                after_sha256=target["after_sha256"],
+                after_size=target["after_bytes"],
+                changed=target["changed"],
+            )
+            for index, target in enumerate(journal["targets"])
+        )
+    except (
+        AttributeError,
+        KeyError,
+        TypeError,
+        ValueError,
+        transaction_storage.LifecycleRecoveryStorageError,
+    ):
+        raise LifecycleRecoveryReadError(
+            "RECOVERY_JOURNAL_INVALID"
+        ) from None
+
+
+@contextmanager
+def _private_recovered_transaction_workspace(canonical_root, transaction_id):
+    with _private_recovered_journal_workspace(
+        canonical_root,
+        transaction_id,
+    ) as journal_state:
+        expected_manifest = journal_state.journal[
+            "recovery_manifest_sha256"
+        ]
+        recovery_targets = _recovery_targets_from_journal(
+            journal_state.journal
+        )
+        if expected_manifest == "absent":
+            transaction_storage.verify_unbound_recovery_inventory(
+                journal_state._workspace,
+                recovery_targets,
+                journal_state._control_snapshot,
+            )
+            yield _RecoveredTransactionState(
+                journal_state=journal_state,
+                storage_targets=(),
+                preimages=(),
+                staged_proposals=(),
+                recovery_manifest=None,
+                _workspace=journal_state._workspace,
+            )
+            return
+        materials = transaction_storage.load_recovery_materials(
+            journal_state._workspace,
+            recovery_targets,
+            journal_state._control_snapshot.recovery_manifest,
+            expected_manifest,
+        )
+        yield _RecoveredTransactionState(
+            journal_state=journal_state,
+            storage_targets=materials.storage_targets,
+            preimages=materials.preimages,
+            staged_proposals=materials.staged_proposals,
+            recovery_manifest=materials.recovery_manifest,
+            _workspace=journal_state._workspace,
         )
 
 
