@@ -68,6 +68,23 @@ class LifecycleRecoveryStorageError(RuntimeError):
         super().__init__(code)
 
 
+_CLEANUP_STORAGE_CODES = frozenset({
+    "RECOVERY_CLEANUP_REPLACED",
+    "RECOVERY_CLEANUP_DELETE_FAILED",
+    "RECOVERY_CLEANUP_DURABILITY_UNCERTAIN",
+})
+
+
+class LifecycleCleanupStorageError(RuntimeError):
+    """Stable cleanup mutation failure without private entry details."""
+
+    def __init__(self, code):
+        if code not in _CLEANUP_STORAGE_CODES:
+            code = "RECOVERY_CLEANUP_DELETE_FAILED"
+        self.code = code
+        super().__init__(code)
+
+
 def _storage_context_failure():
     raise LifecycleStorageError("STORAGE_CONTEXT_INVALID")
 
@@ -353,6 +370,16 @@ class _CleanupResumeInventory:
         compare=False,
     )
     _recovery_targets: tuple[RecoveryTarget, ...] = field(
+        repr=False,
+        compare=False,
+    )
+    _preimages: tuple[StoredPreimage, ...] = field(
+        default=(),
+        repr=False,
+        compare=False,
+    )
+    _staged_proposals: tuple[StagedProposal, ...] = field(
+        default=(),
         repr=False,
         compare=False,
     )
@@ -3354,7 +3381,8 @@ def _verify_cleanup_payload_subsets(workspace, targets, control_snapshot):
         raise LifecycleRecoveryStorageError("RECOVERY_PAYLOAD_MISMATCH")
     if current_preimages and workspace._preimages_fd is None:
         raise LifecycleRecoveryStorageError("RECOVERY_PAYLOAD_INVALID")
-    for name in current_preimages:
+    preimage_records = []
+    for name in sorted(current_preimages):
         target = expected_preimages[name]
         try:
             metadata = os.stat(
@@ -3366,11 +3394,22 @@ def _verify_cleanup_payload_subsets(workspace, targets, control_snapshot):
             raise LifecycleRecoveryStorageError(
                 "RECOVERY_PAYLOAD_INVALID"
             ) from exc
-        _read_recovery_payload(
+        payload, metadata = _read_recovery_payload(
             workspace._preimages_fd,
             name,
             expected_size=metadata.st_size,
             expected_sha256=target.before_sha256,
+        )
+        preimage_records.append(
+            StoredPreimage(
+                index=target.index,
+                state="present",
+                relative_name=f"preimages/{name}",
+                size=len(payload),
+                sha256=target.before_sha256,
+                _device=metadata.st_dev,
+                _inode=metadata.st_ino,
+            )
         )
 
     digest = hashlib.sha256(workspace.transaction_id.encode("utf-8")).hexdigest()
@@ -3384,6 +3423,7 @@ def _verify_cleanup_payload_subsets(workspace, targets, control_snapshot):
             stage_name, _relative_name = _staging_names(workspace, target)
             expected_stages[(parent_key, stage_name)] = target
     present_stages = []
+    stage_records = []
     for parent_key, representative in parents.items():
         parent_fd = None
         try:
@@ -3400,7 +3440,7 @@ def _verify_cleanup_payload_subsets(workspace, targets, control_snapshot):
                     raise LifecycleRecoveryStorageError(
                         "RECOVERY_PAYLOAD_MISMATCH"
                     )
-                _read_recovery_payload(
+                payload, metadata = _read_recovery_payload(
                     parent_fd,
                     name,
                     expected_size=target.after_size,
@@ -3408,6 +3448,21 @@ def _verify_cleanup_payload_subsets(workspace, targets, control_snapshot):
                     expected_device=parent_metadata.st_dev,
                 )
                 present_stages.append((parent_key, name))
+                _stage_name, relative_name = _staging_names(
+                    workspace,
+                    target,
+                )
+                stage_records.append(
+                    StagedProposal(
+                        index=target.index,
+                        state="staged",
+                        relative_name=relative_name,
+                        size=len(payload),
+                        sha256=target.after_sha256,
+                        _device=metadata.st_dev,
+                        _inode=metadata.st_ino,
+                    )
+                )
         except LifecycleRecoveryStorageError:
             raise
         except (OSError, LifecycleStorageError) as exc:
@@ -3416,7 +3471,12 @@ def _verify_cleanup_payload_subsets(workspace, targets, control_snapshot):
             ) from exc
         finally:
             _close_descriptors(parent_fd)
-    return current_preimages, tuple(sorted(present_stages))
+    return (
+        current_preimages,
+        tuple(sorted(present_stages)),
+        tuple(sorted(preimage_records, key=lambda record: record.index)),
+        tuple(sorted(stage_records, key=lambda record: record.index)),
+    )
 
 
 def verify_cleanup_resume_inventory(
@@ -3475,10 +3535,12 @@ def verify_cleanup_resume_inventory(
             current.recovery_manifest,
             current.recovery_manifest.sha256,
         )
-    preimages, stages = _verify_cleanup_payload_subsets(
+    preimages, stages, preimage_records, stage_records = (
+        _verify_cleanup_payload_subsets(
         workspace,
         targets,
         current,
+        )
     )
     expected_preimages = {
         f"{target.index:06d}.bin" for target in targets if target.existed
@@ -3536,7 +3598,279 @@ def verify_cleanup_resume_inventory(
         _preimages_directory=directories_after[1],
         _control_snapshot=final,
         _recovery_targets=targets,
+        _preimages=preimage_records,
+        _staged_proposals=stage_records,
     )
+
+
+def _emit_cleanup_fault(fault_injector, stage):
+    if fault_injector is None:
+        return
+    if not callable(fault_injector):
+        raise TypeError("fault_injector must be callable or None")
+    fault_injector(stage)
+
+
+def _delete_cleanup_control_file(
+    workspace,
+    name,
+    snapshot,
+    *,
+    fault_injector,
+    stage_name,
+):
+    if snapshot.state == "absent":
+        return
+    try:
+        current = _read_recovery_file(workspace._workspace_fd, name)
+    except LifecycleRecoveryStorageError as exc:
+        raise LifecycleCleanupStorageError(
+            "RECOVERY_CLEANUP_REPLACED"
+        ) from exc
+    if not _same_recovery_file_snapshot(current, snapshot):
+        raise LifecycleCleanupStorageError("RECOVERY_CLEANUP_REPLACED")
+    try:
+        os.unlink(name, dir_fd=workspace._workspace_fd)
+    except OSError as exc:
+        raise LifecycleCleanupStorageError(
+            "RECOVERY_CLEANUP_DELETE_FAILED"
+        ) from exc
+    _emit_cleanup_fault(fault_injector, f"after-{stage_name}-unlink")
+    try:
+        os.fsync(workspace._workspace_fd)
+    except OSError as exc:
+        raise LifecycleCleanupStorageError(
+            "RECOVERY_CLEANUP_DURABILITY_UNCERTAIN"
+        ) from exc
+    _emit_cleanup_fault(fault_injector, f"after-{stage_name}-fsync")
+
+
+def delete_proven_cleanup_inventory(
+    workspace,
+    inventory,
+    *,
+    terminal_kind,
+    fault_injector=None,
+):
+    """Delete one exact proven cleanup remainder in durable protocol order."""
+    if (
+        not isinstance(workspace, _PrivateCleanupWorkspace)
+        or not isinstance(inventory, _CleanupResumeInventory)
+        or terminal_kind
+        not in {"complete", "rolled-back", "pre-journal-orphan", "unknown"}
+        or (fault_injector is not None and not callable(fault_injector))
+    ):
+        raise LifecycleCleanupStorageError(
+            "RECOVERY_CLEANUP_REPLACED"
+        )
+    directories = _cleanup_resume_directory_snapshots(workspace)
+    if not _same_cleanup_directory(
+        directories[0],
+        inventory._workspace_directory,
+    ):
+        raise LifecycleCleanupStorageError("RECOVERY_CLEANUP_REPLACED")
+    current_control = read_cleanup_control_snapshot(workspace)
+    if not _same_cleanup_control_snapshot(
+        current_control,
+        inventory._control_snapshot,
+    ):
+        raise LifecycleCleanupStorageError("RECOVERY_CLEANUP_REPLACED")
+    by_index = {target.index: target for target in inventory._recovery_targets}
+
+    for proposal in inventory._staged_proposals:
+        target = by_index[proposal.index]
+        parent_fd = None
+        try:
+            parent_fd, _parent_metadata = _open_target_parent(
+                workspace,
+                target,
+            )
+            stage_name, _relative_name = _staging_names(workspace, target)
+            _read_recovery_payload(
+                parent_fd,
+                stage_name,
+                expected_size=proposal.size,
+                expected_sha256=proposal.sha256,
+                expected_device=proposal._device,
+                expected_inode=proposal._inode,
+            )
+            os.unlink(stage_name, dir_fd=parent_fd)
+            _emit_cleanup_fault(
+                fault_injector,
+                f"after-stage-{proposal.index}-unlink",
+            )
+            try:
+                os.fsync(parent_fd)
+            except OSError as exc:
+                raise LifecycleCleanupStorageError(
+                    "RECOVERY_CLEANUP_DURABILITY_UNCERTAIN"
+                ) from exc
+            _emit_cleanup_fault(
+                fault_injector,
+                f"after-stage-{proposal.index}-fsync",
+            )
+        except LifecycleCleanupStorageError:
+            raise
+        except LifecycleRecoveryStorageError as exc:
+            raise LifecycleCleanupStorageError(
+                "RECOVERY_CLEANUP_REPLACED"
+            ) from exc
+        except OSError as exc:
+            raise LifecycleCleanupStorageError(
+                "RECOVERY_CLEANUP_DELETE_FAILED"
+            ) from exc
+        finally:
+            _close_descriptors(parent_fd)
+
+    for preimage in inventory._preimages:
+        name = f"{preimage.index:06d}.bin"
+        try:
+            _read_recovery_payload(
+                workspace._preimages_fd,
+                name,
+                expected_size=preimage.size,
+                expected_sha256=preimage.sha256,
+                expected_device=preimage._device,
+                expected_inode=preimage._inode,
+            )
+            os.unlink(name, dir_fd=workspace._preimages_fd)
+            _emit_cleanup_fault(
+                fault_injector,
+                f"after-preimage-{preimage.index}-unlink",
+            )
+            try:
+                os.fsync(workspace._preimages_fd)
+            except OSError as exc:
+                raise LifecycleCleanupStorageError(
+                    "RECOVERY_CLEANUP_DURABILITY_UNCERTAIN"
+                ) from exc
+            _emit_cleanup_fault(
+                fault_injector,
+                f"after-preimage-{preimage.index}-fsync",
+            )
+        except LifecycleCleanupStorageError:
+            raise
+        except LifecycleRecoveryStorageError as exc:
+            raise LifecycleCleanupStorageError(
+                "RECOVERY_CLEANUP_REPLACED"
+            ) from exc
+        except OSError as exc:
+            raise LifecycleCleanupStorageError(
+                "RECOVERY_CLEANUP_DELETE_FAILED"
+            ) from exc
+
+    if workspace._preimages_fd is not None:
+        try:
+            if os.listdir(workspace._preimages_fd):
+                raise LifecycleCleanupStorageError(
+                    "RECOVERY_CLEANUP_REPLACED"
+                )
+            current_preimages = os.stat(
+                _PREIMAGES_NAME,
+                dir_fd=workspace._workspace_fd,
+                follow_symlinks=False,
+            )
+            opened_preimages = os.fstat(workspace._preimages_fd)
+            expected_preimages = inventory._preimages_directory
+            if (
+                expected_preimages is None
+                or not _same_directory_metadata(
+                    current_preimages,
+                    opened_preimages,
+                )
+                or current_preimages.st_dev != expected_preimages._device
+                or current_preimages.st_ino != expected_preimages._inode
+            ):
+                raise LifecycleCleanupStorageError(
+                    "RECOVERY_CLEANUP_REPLACED"
+                )
+            os.rmdir(_PREIMAGES_NAME, dir_fd=workspace._workspace_fd)
+            _emit_cleanup_fault(fault_injector, "after-preimages-rmdir")
+            try:
+                os.fsync(workspace._workspace_fd)
+            except OSError as exc:
+                raise LifecycleCleanupStorageError(
+                    "RECOVERY_CLEANUP_DURABILITY_UNCERTAIN"
+                ) from exc
+            _emit_cleanup_fault(fault_injector, "after-preimages-fsync")
+        except LifecycleCleanupStorageError:
+            raise
+        except OSError as exc:
+            raise LifecycleCleanupStorageError(
+                "RECOVERY_CLEANUP_DELETE_FAILED"
+            ) from exc
+
+    control = inventory._control_snapshot
+    _delete_cleanup_control_file(
+        workspace,
+        _RECOVERY_MANIFEST_NAME,
+        control.recovery_manifest,
+        fault_injector=fault_injector,
+        stage_name="manifest",
+    )
+    _delete_cleanup_control_file(
+        workspace,
+        _JOURNAL_NEXT_NAME,
+        control.journal_next,
+        fault_injector=fault_injector,
+        stage_name="journal-next",
+    )
+    if control.journal.state == "present":
+        verified = verify_cleanup_canonical_state(
+            workspace,
+            inventory._recovery_targets,
+            after=terminal_kind == "complete",
+        )
+        if len(verified) != len(inventory._recovery_targets):
+            raise LifecycleCleanupStorageError(
+                "RECOVERY_CLEANUP_REPLACED"
+            )
+    _delete_cleanup_control_file(
+        workspace,
+        _JOURNAL_NAME,
+        control.journal,
+        fault_injector=fault_injector,
+        stage_name="journal",
+    )
+
+    try:
+        if os.listdir(workspace._workspace_fd):
+            raise LifecycleCleanupStorageError(
+                "RECOVERY_CLEANUP_REPLACED"
+            )
+        workspace_entry = os.stat(
+            workspace.transaction_id,
+            dir_fd=workspace._transactions_fd,
+            follow_symlinks=False,
+        )
+        workspace_opened = os.fstat(workspace._workspace_fd)
+        expected_workspace = inventory._workspace_directory
+        if (
+            not _same_directory_metadata(workspace_entry, workspace_opened)
+            or workspace_entry.st_dev != expected_workspace._device
+            or workspace_entry.st_ino != expected_workspace._inode
+        ):
+            raise LifecycleCleanupStorageError(
+                "RECOVERY_CLEANUP_REPLACED"
+            )
+        os.rmdir(
+            workspace.transaction_id,
+            dir_fd=workspace._transactions_fd,
+        )
+        _emit_cleanup_fault(fault_injector, "after-workspace-rmdir")
+        try:
+            os.fsync(workspace._transactions_fd)
+        except OSError as exc:
+            raise LifecycleCleanupStorageError(
+                "RECOVERY_CLEANUP_DURABILITY_UNCERTAIN"
+            ) from exc
+        _emit_cleanup_fault(fault_injector, "after-transactions-fsync")
+    except LifecycleCleanupStorageError:
+        raise
+    except OSError as exc:
+        raise LifecycleCleanupStorageError(
+            "RECOVERY_CLEANUP_DELETE_FAILED"
+        ) from exc
 
 
 def _journal_context(workspace, journal_bytes, expected_previous_sha256):

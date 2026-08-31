@@ -5727,6 +5727,153 @@ class TransactionPlanningTests(unittest.TestCase):
                 if changed.exists():
                     self.assertTrue(changed.exists())
 
+    def test_cleanup_storage_deletes_only_the_exact_proven_inventory_in_order(self):
+        delete = getattr(
+            transaction.transaction_storage,
+            "delete_proven_cleanup_inventory",
+            None,
+        )
+        self.assertIsNotNone(delete)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context, plan = self.prepare_restart_finalizing_case(
+                root,
+                "after-recorded",
+            )
+            recovery_times = iter(
+                f"2030-01-02T03:21:{second:02d}Z"
+                for second in range(50)
+            )
+            transaction.recover_incomplete_transaction(
+                root,
+                plan.transaction_id,
+                project_context=context,
+                clock=lambda: next(recovery_times),
+                lock_pid=218,
+                lock_token_factory=lambda: "b" * 32,
+            )
+            canonical_before = {
+                target.relative_path: (root / target.relative_path).read_bytes()
+                for target in plan.targets
+            }
+            subject = transaction._authorized_recovery_subject(
+                root,
+                plan.transaction_id,
+                project_context=context,
+            )
+            observed = []
+            with transaction._exclusive_recovery_lock(
+                subject,
+                clock="2030-01-02T03:22:00Z",
+                pid=219,
+                token_factory=lambda: "c" * 32,
+            ):
+                with transaction._private_recovered_cleanup_workspace(
+                    root,
+                    plan.transaction_id,
+                ) as cleanup:
+                    delete(
+                        cleanup._workspace,
+                        cleanup._inventory,
+                        terminal_kind=cleanup.terminal_kind,
+                        fault_injector=observed.append,
+                    )
+
+            workspace = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            self.assertFalse(workspace.exists())
+            self.assertEqual(
+                {
+                    target.relative_path: (root / target.relative_path).read_bytes()
+                    for target in plan.targets
+                },
+                canonical_before,
+            )
+            self.assertLess(
+                observed.index("after-preimages-rmdir"),
+                observed.index("after-manifest-unlink"),
+            )
+            self.assertLess(
+                observed.index("after-manifest-unlink"),
+                observed.index("after-journal-unlink"),
+            )
+            self.assertLess(
+                observed.index("after-journal-unlink"),
+                observed.index("after-workspace-rmdir"),
+            )
+            self.assertEqual(observed[-1], "after-transactions-fsync")
+
+    def test_cleanup_storage_rejects_same_byte_replacement_before_deletion(self):
+        delete = getattr(
+            transaction.transaction_storage,
+            "delete_proven_cleanup_inventory",
+            None,
+        )
+        error_type = getattr(
+            transaction.transaction_storage,
+            "LifecycleCleanupStorageError",
+            None,
+        )
+        self.assertIsNotNone(delete)
+        self.assertIsNotNone(error_type)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context, plan = self.prepare_restart_finalizing_case(
+                root,
+                "after-recorded",
+            )
+            recovery_times = iter(
+                f"2030-01-02T03:23:{second:02d}Z"
+                for second in range(50)
+            )
+            transaction.recover_incomplete_transaction(
+                root,
+                plan.transaction_id,
+                project_context=context,
+                clock=lambda: next(recovery_times),
+                lock_pid=220,
+                lock_token_factory=lambda: "d" * 32,
+            )
+            subject = transaction._authorized_recovery_subject(
+                root,
+                plan.transaction_id,
+                project_context=context,
+            )
+            workspace = (
+                root / ".moduflow" / "transactions" / plan.transaction_id
+            )
+            journal = workspace / "journal.json"
+            with transaction._exclusive_recovery_lock(
+                subject,
+                clock="2030-01-02T03:24:00Z",
+                pid=221,
+                token_factory=lambda: "e" * 32,
+            ):
+                with transaction._private_recovered_cleanup_workspace(
+                    root,
+                    plan.transaction_id,
+                ) as cleanup:
+                    payload = journal.read_bytes()
+                    original_inode = journal.stat().st_ino
+                    journal.unlink()
+                    journal.write_bytes(payload)
+                    journal.chmod(0o600)
+                    self.assertNotEqual(journal.stat().st_ino, original_inode)
+                    with self.assertRaises(error_type) as raised:
+                        delete(
+                            cleanup._workspace,
+                            cleanup._inventory,
+                            terminal_kind=cleanup.terminal_kind,
+                        )
+
+            self.assertEqual(
+                raised.exception.code,
+                "RECOVERY_CLEANUP_REPLACED",
+            )
+            self.assertTrue(journal.exists())
+            self.assertTrue((workspace / "preimages").is_dir())
+
     def test_private_preimage_workspace_denies_or_rejects_before_side_effects(self):
         entry = getattr(transaction, "_private_preimage_workspace", None)
         self.assertIsNotNone(entry)
