@@ -1780,6 +1780,17 @@ class TransactionPlanningTests(unittest.TestCase):
             )
         self.assertEqual(raised.exception.code, "JOURNAL_RECORD_INVALID")
 
+        with self.assertRaises(transaction.LifecycleJournalError) as raised:
+            transaction.LifecycleApplyRolledBack(
+                **defaults,
+                post_apply_validation={
+                    "valid": True,
+                    "rule_ids": ["project-artifacts"],
+                    "error_codes": [],
+                },
+            )
+        self.assertEqual(raised.exception.code, "JOURNAL_RECORD_INVALID")
+
     def test_plan_selects_required_and_only_explicit_optional_targets(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -2720,6 +2731,683 @@ class TransactionPlanningTests(unittest.TestCase):
                 canonical_before,
             )
 
+    def test_private_applied_workspace_finalizes_evidence_and_complete_journal_under_same_lock(self):
+        entry = getattr(transaction, "_private_applied_workspace", None)
+        completed_type = getattr(transaction, "_PrivateCompletedState", None)
+        self.assertIsNotNone(entry)
+        self.assertIsNotNone(completed_type)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            (root / "workspace" / "transactions").mkdir()
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(require_issue_index=True),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            completion = self.completion_input(plan)
+            n = sum(
+                target.changed and target.role != "evidence"
+                for target in plan.targets
+            )
+            timestamp_values = tuple(
+                f"2030-01-02T03:04:{second:02d}Z"
+                for second in range(5, 5 + 11 + 2 * n)
+            )
+            binding = transaction._bind_success_evidence(
+                plan,
+                completion,
+                timestamp_values,
+            )
+            evidence_path = root / binding.plan.targets[-1].relative_path
+            lock_path = root / ".moduflow" / "transactions" / "lifecycle.lock"
+            persisted = []
+            events = []
+            real_persist = transaction.transaction_storage.persist_serialized_journal
+            real_apply = transaction.transaction_storage.apply_staged_target
+            real_finalize = transaction.transaction_storage.finalize_staged_evidence
+            real_classify = transaction.transaction_storage.classify_canonical_target
+            real_evidence_classify = (
+                transaction.transaction_storage.classify_finalized_evidence
+            )
+
+            def tracked_persist(
+                workspace,
+                journal_bytes,
+                *,
+                expected_previous_sha256,
+            ):
+                self.assertTrue(lock_path.is_file())
+                journal = json.loads(journal_bytes)
+                persisted.append((journal, expected_previous_sha256, bytes(journal_bytes)))
+                events.append(("journal", journal["phase"]))
+                return real_persist(
+                    workspace,
+                    journal_bytes,
+                    expected_previous_sha256=expected_previous_sha256,
+                )
+
+            def tracked_apply(workspace, target, proposal):
+                self.assertTrue(lock_path.is_file())
+                self.assertNotEqual(target.role, "evidence")
+                events.append(("apply", target.index))
+                return real_apply(workspace, target, proposal)
+
+            def tracked_validate(*args, **kwargs):
+                self.assertTrue(lock_path.is_file())
+                self.assertFalse(evidence_path.exists())
+                events.append(("validate", None))
+                return self.validation_result()
+
+            def tracked_finalize(workspace, target, proposal):
+                self.assertTrue(lock_path.is_file())
+                self.assertEqual(target.role, "evidence")
+                self.assertFalse(evidence_path.exists())
+                self.assertEqual(events[-1], ("journal", "finalizing"))
+                events.append(("finalize", target.index))
+                return real_finalize(workspace, target, proposal)
+
+            def tracked_classify(workspace, target):
+                self.assertTrue(lock_path.is_file())
+                events.append(("classify", target.index))
+                return real_classify(workspace, target)
+
+            def tracked_evidence_classify(workspace, target):
+                self.assertTrue(lock_path.is_file())
+                events.append(("classify-evidence", target.index))
+                return real_evidence_classify(workspace, target)
+
+            with (
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "persist_serialized_journal",
+                    side_effect=tracked_persist,
+                ),
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "apply_staged_target",
+                    side_effect=tracked_apply,
+                ),
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "finalize_staged_evidence",
+                    side_effect=tracked_finalize,
+                ),
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "classify_canonical_target",
+                    side_effect=tracked_classify,
+                ),
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "classify_finalized_evidence",
+                    side_effect=tracked_evidence_classify,
+                ),
+                mock.patch.object(
+                    transaction.validate_project_artifacts,
+                    "validate_project",
+                    side_effect=tracked_validate,
+                ),
+            ):
+                timestamps = iter(timestamp_values)
+                with entry(
+                    plan,
+                    completion_input=completion,
+                    journal_clock=lambda: next(timestamps),
+                    lock_clock="2030-01-02T03:04:05Z",
+                    lock_pid=123,
+                    lock_token_factory=lambda: "1" * 32,
+                ) as state:
+                    self.assertTrue(lock_path.is_file())
+                    self.assertIsInstance(state, completed_type)
+                    self.assertEqual(
+                        state.applied_target_indexes,
+                        tuple(
+                            target.apply_order
+                            for target in binding.plan.targets
+                            if target.changed
+                        ),
+                    )
+                    self.assertEqual(
+                        state.verified_target_count,
+                        len(binding.plan.targets),
+                    )
+                    self.assertEqual(
+                        state.completed_at,
+                        timestamp_values[7 + n],
+                    )
+                    self.assertEqual(
+                        evidence_path.read_bytes(),
+                        binding.evidence_bytes,
+                    )
+                    self.assertEqual(
+                        binding.evidence_bytes,
+                        transaction.render_transaction_evidence(
+                            transaction._json_value(
+                                state.transaction_result
+                            )
+                        ),
+                    )
+                self.assertFalse(lock_path.exists())
+
+            phases = [journal["phase"] for journal, _previous, _raw in persisted]
+            self.assertEqual(
+                phases,
+                ["planned", "staged", "prepared", "applying"]
+                + ["applying"] * n
+                + ["post-validating", "finalizing", "finalizing", "complete"],
+            )
+            expected_previous = ["absent"] + [
+                hashlib.sha256(raw).hexdigest()
+                for _journal, _previous, raw in persisted[:-1]
+            ]
+            self.assertEqual(
+                [previous for _journal, previous, _raw in persisted],
+                expected_previous,
+            )
+            final_journal = persisted[-1][0]
+            self.assertEqual(
+                final_journal["applied_target_indexes"],
+                [
+                    target.apply_order
+                    for target in binding.plan.targets
+                    if target.changed
+                ],
+            )
+            self.assertEqual(final_journal["rollback_target_indexes"], [])
+            self.assertLess(
+                events.index(("validate", None)),
+                events.index(("journal", "finalizing")),
+            )
+            self.assertLess(
+                events.index(("journal", "finalizing")),
+                events.index(
+                    ("finalize", binding.plan.targets[-1].apply_order)
+                ),
+            )
+
+    def test_private_applied_workspace_rolls_back_finalization_failures_with_evidence_first(self):
+        failures = (
+            "first-finalizing",
+            "evidence-before-mutation",
+            "evidence-after-mutation",
+            "evidence-progress",
+            "complete-proof",
+            "complete-journal",
+        )
+        for failure in failures:
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root, issue_index=True)
+                (root / "workspace" / "transactions").mkdir()
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(require_issue_index=True),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                completion = self.completion_input(plan)
+                n = sum(
+                    target.changed and target.role != "evidence"
+                    for target in plan.targets
+                )
+                timestamp_values = tuple(
+                    f"2030-01-02T03:04:{second:02d}Z"
+                    for second in range(5, 5 + 11 + 2 * n)
+                )
+                binding = transaction._bind_success_evidence(
+                    plan,
+                    completion,
+                    timestamp_values,
+                )
+                changed_ordinary = tuple(
+                    target.apply_order
+                    for target in binding.plan.targets
+                    if target.changed and target.role != "evidence"
+                )
+                changed_all = tuple(
+                    target.apply_order
+                    for target in binding.plan.targets
+                    if target.changed
+                )
+                canonical_before = {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if target.existed
+                        else None
+                    )
+                    for target in binding.plan.targets
+                }
+                persisted_phases = []
+                rollback_order = []
+                real_persist = (
+                    transaction.transaction_storage.persist_serialized_journal
+                )
+                real_finalize = (
+                    transaction.transaction_storage.finalize_staged_evidence
+                )
+                real_verify = transaction._verify_complete_after_state
+                real_ordinary_rollback = (
+                    transaction.transaction_storage.rollback_canonical_target
+                )
+                real_evidence_rollback = (
+                    transaction.transaction_storage.rollback_finalized_evidence
+                )
+
+                def failing_persist(
+                    workspace,
+                    journal_bytes,
+                    *,
+                    expected_previous_sha256,
+                ):
+                    journal = json.loads(journal_bytes)
+                    phase = journal["phase"]
+                    applied = tuple(journal["applied_target_indexes"])
+                    if (
+                        failure == "first-finalizing"
+                        and phase == "finalizing"
+                        and applied == changed_ordinary
+                    ):
+                        raise transaction.LifecycleJournalError(
+                            "JOURNAL_RECORD_INVALID"
+                        )
+                    if (
+                        failure == "evidence-progress"
+                        and phase == "finalizing"
+                        and applied == changed_all
+                    ):
+                        raise transaction.LifecycleJournalError(
+                            "JOURNAL_RECORD_INVALID"
+                        )
+                    if failure == "complete-journal" and phase == "complete":
+                        raise transaction.LifecycleJournalError(
+                            "JOURNAL_RECORD_INVALID"
+                        )
+                    persisted_phases.append(phase)
+                    return real_persist(
+                        workspace,
+                        journal_bytes,
+                        expected_previous_sha256=expected_previous_sha256,
+                    )
+
+                def failing_finalize(workspace, target, proposal):
+                    if failure == "evidence-before-mutation":
+                        raise transaction.transaction_storage.LifecycleStorageError(
+                            "STORAGE_REPLACE_FAILED"
+                        )
+                    result = real_finalize(workspace, target, proposal)
+                    if failure == "evidence-after-mutation":
+                        raise transaction.transaction_storage.LifecycleStorageError(
+                            "STORAGE_REPLACE_FAILED"
+                        )
+                    return result
+
+                def failing_verify(state):
+                    if failure == "complete-proof":
+                        raise transaction.LifecycleFinalizationError(
+                            "FINALIZATION_TARGET_MISMATCH"
+                        )
+                    return real_verify(state)
+
+                def tracked_ordinary_rollback(workspace, target, preimage):
+                    rollback_order.append(("ordinary", target.index))
+                    return real_ordinary_rollback(workspace, target, preimage)
+
+                def tracked_evidence_rollback(workspace, target, preimage):
+                    rollback_order.append(("evidence", target.index))
+                    return real_evidence_rollback(workspace, target, preimage)
+
+                with (
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "persist_serialized_journal",
+                        side_effect=failing_persist,
+                    ),
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "finalize_staged_evidence",
+                        side_effect=failing_finalize,
+                    ),
+                    mock.patch.object(
+                        transaction,
+                        "_verify_complete_after_state",
+                        side_effect=failing_verify,
+                    ),
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "rollback_canonical_target",
+                        side_effect=tracked_ordinary_rollback,
+                    ),
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "rollback_finalized_evidence",
+                        side_effect=tracked_evidence_rollback,
+                    ),
+                    mock.patch.object(
+                        transaction.validate_project_artifacts,
+                        "validate_project",
+                        return_value=self.validation_result(),
+                    ) as validate_project,
+                ):
+                    timestamps = iter(timestamp_values)
+                    with self.assertRaises(
+                        transaction.LifecycleApplyRolledBack
+                    ) as raised:
+                        with transaction._private_applied_workspace(
+                            plan,
+                            completion_input=completion,
+                            journal_clock=lambda: next(timestamps),
+                            lock_clock="2030-01-02T03:04:05Z",
+                            lock_pid=123,
+                            lock_token_factory=lambda: "1" * 32,
+                        ):
+                            self.fail("failed finalization must not yield")
+
+                validate_project.assert_called_once()
+                signal = raised.exception
+                self.assertEqual(signal.code, "TRANSACTION_ROLLED_BACK")
+                self.assertIsNotNone(signal.post_apply_validation)
+                self.assertEqual(
+                    dict(signal.post_apply_validation),
+                    dict(transaction._successful_post_apply_summary()),
+                )
+                self.assertEqual(persisted_phases[-1], "rolled-back")
+                evidence_reached_after = failure in {
+                    "evidence-after-mutation",
+                    "evidence-progress",
+                    "complete-proof",
+                    "complete-journal",
+                }
+                if evidence_reached_after:
+                    self.assertEqual(signal.applied_target_indexes, changed_all)
+                    self.assertEqual(
+                        rollback_order[0],
+                        ("evidence", changed_all[-1]),
+                    )
+                else:
+                    self.assertEqual(
+                        signal.applied_target_indexes,
+                        changed_ordinary,
+                    )
+                    self.assertFalse(
+                        any(role == "evidence" for role, _index in rollback_order)
+                    )
+                self.assertEqual(
+                    signal.rollback_target_indexes,
+                    tuple(reversed(signal.applied_target_indexes)),
+                )
+                for target in binding.plan.targets:
+                    canonical = root / target.relative_path
+                    self.assertEqual(
+                        canonical.read_bytes() if canonical.exists() else None,
+                        canonical_before[target.relative_path],
+                    )
+                rendered = f"{signal!s} {signal!r}"
+                self.assertNotIn(str(root), rendered)
+
+    def test_private_applied_workspace_requires_recovery_for_unproven_final_evidence(self):
+        for failure in ("after-finalize", "during-evidence-rollback"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root, issue_index=True)
+                (root / "workspace" / "transactions").mkdir()
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(require_issue_index=True),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                completion = self.completion_input(plan)
+                n = sum(
+                    target.changed and target.role != "evidence"
+                    for target in plan.targets
+                )
+                timestamps = iter(
+                    f"2030-01-02T03:04:{second:02d}Z"
+                    for second in range(5, 5 + 11 + 2 * n)
+                )
+                evidence_path = root / plan.targets[-1].relative_path
+                workspace_path = (
+                    root
+                    / ".moduflow"
+                    / "transactions"
+                    / plan.transaction_id
+                )
+                foreign = f"PRIVATE FOREIGN {failure}\n".encode()
+                phases = []
+                real_finalize = (
+                    transaction.transaction_storage.finalize_staged_evidence
+                )
+                real_persist = (
+                    transaction.transaction_storage.persist_serialized_journal
+                )
+
+                def mutating_finalize(workspace, target, proposal):
+                    result = real_finalize(workspace, target, proposal)
+                    if failure == "after-finalize":
+                        evidence_path.write_bytes(foreign)
+                    return result
+
+                def failing_persist(
+                    workspace,
+                    journal_bytes,
+                    *,
+                    expected_previous_sha256,
+                ):
+                    journal = json.loads(journal_bytes)
+                    if (
+                        failure == "during-evidence-rollback"
+                        and journal["phase"] == "complete"
+                    ):
+                        raise transaction.LifecycleJournalError(
+                            "JOURNAL_RECORD_INVALID"
+                        )
+                    phases.append(journal["phase"])
+                    return real_persist(
+                        workspace,
+                        journal_bytes,
+                        expected_previous_sha256=expected_previous_sha256,
+                    )
+
+                def corrupting_rollback(workspace, target, preimage):
+                    evidence_path.write_bytes(foreign)
+                    raise transaction.transaction_storage.LifecycleStorageError(
+                        "STORAGE_CANONICAL_STATE_UNKNOWN"
+                    )
+
+                rollback_patch = (
+                    corrupting_rollback
+                    if failure == "during-evidence-rollback"
+                    else transaction.transaction_storage.rollback_finalized_evidence
+                )
+                with (
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "finalize_staged_evidence",
+                        side_effect=mutating_finalize,
+                    ),
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "persist_serialized_journal",
+                        side_effect=failing_persist,
+                    ),
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "rollback_finalized_evidence",
+                        side_effect=rollback_patch,
+                    ),
+                    mock.patch.object(
+                        transaction.validate_project_artifacts,
+                        "validate_project",
+                        return_value=self.validation_result(),
+                    ),
+                ):
+                    with self.assertRaises(
+                        transaction.LifecycleRecoveryRequired
+                    ) as raised:
+                        with transaction._private_applied_workspace(
+                            plan,
+                            completion_input=completion,
+                            journal_clock=lambda: next(timestamps),
+                            lock_clock="2030-01-02T03:04:05Z",
+                            lock_pid=123,
+                            lock_token_factory=lambda: "1" * 32,
+                        ):
+                            self.fail("foreign evidence must not yield")
+
+                self.assertEqual(
+                    raised.exception.code,
+                    "TRANSACTION_RECOVERY_REQUIRED",
+                )
+                self.assertEqual(evidence_path.read_bytes(), foreign)
+                self.assertNotIn("complete", phases)
+                self.assertNotIn("rolled-back", phases)
+                self.assertEqual(phases[-1], "recovery-required")
+                self.assertTrue((workspace_path / "preimages").is_dir())
+                self.assertTrue(
+                    (workspace_path / "recovery-manifest.json").is_file()
+                )
+                self.assertTrue((workspace_path / "journal.json").is_file())
+
+    def test_private_applied_workspace_does_not_claim_complete_when_target_changes_during_final_proof(self):
+        for target_class in ("changed", "unchanged", "evidence"):
+            with self.subTest(target_class=target_class), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root, issue_index=True)
+                (root / "workspace" / "transactions").mkdir()
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(require_issue_index=True),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+                targets = []
+                for target in plan.targets:
+                    if target.role == "dashboard":
+                        target = replace(
+                            target,
+                            after_sha256=target.before_sha256,
+                            after_size=len(target._before_bytes),
+                            changed=False,
+                            _after_bytes=target._before_bytes,
+                        )
+                    targets.append(target)
+                plan = replace(plan, targets=tuple(targets))
+                completion = self.completion_input(plan)
+                n = sum(
+                    target.changed and target.role != "evidence"
+                    for target in plan.targets
+                )
+                timestamp_values = tuple(
+                    f"2030-01-02T03:04:{second:02d}Z"
+                    for second in range(5, 5 + 11 + 2 * n)
+                )
+                binding = transaction._bind_success_evidence(
+                    plan,
+                    completion,
+                    timestamp_values,
+                )
+                selected = {
+                    "changed": next(
+                        target
+                        for target in binding.plan.targets
+                        if target.changed and target.role != "evidence"
+                    ),
+                    "unchanged": next(
+                        target for target in binding.plan.targets if not target.changed
+                    ),
+                    "evidence": binding.plan.targets[-1],
+                }[target_class]
+                canonical_before = {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if target.existed
+                        else None
+                    )
+                    for target in binding.plan.targets
+                }
+                phases = []
+                real_verify = transaction._verify_complete_after_state
+                real_persist = (
+                    transaction.transaction_storage.persist_serialized_journal
+                )
+
+                def mutate_then_verify(state):
+                    canonical = root / selected.relative_path
+                    if target_class == "unchanged":
+                        canonical.write_bytes(b"PRIVATE FOREIGN UNCHANGED")
+                    elif selected.existed:
+                        canonical.write_bytes(selected._before_bytes)
+                    elif canonical.exists():
+                        canonical.unlink()
+                    return real_verify(state)
+
+                def tracked_persist(
+                    workspace,
+                    journal_bytes,
+                    *,
+                    expected_previous_sha256,
+                ):
+                    journal = json.loads(journal_bytes)
+                    phases.append(journal["phase"])
+                    return real_persist(
+                        workspace,
+                        journal_bytes,
+                        expected_previous_sha256=expected_previous_sha256,
+                    )
+
+                expected_error = (
+                    transaction.LifecycleRecoveryRequired
+                    if target_class == "unchanged"
+                    else transaction.LifecycleApplyRolledBack
+                )
+                with (
+                    mock.patch.object(
+                        transaction,
+                        "_verify_complete_after_state",
+                        side_effect=mutate_then_verify,
+                    ),
+                    mock.patch.object(
+                        transaction.transaction_storage,
+                        "persist_serialized_journal",
+                        side_effect=tracked_persist,
+                    ),
+                    mock.patch.object(
+                        transaction.validate_project_artifacts,
+                        "validate_project",
+                        return_value=self.validation_result(),
+                    ),
+                ):
+                    timestamps = iter(timestamp_values)
+                    with self.assertRaises(expected_error):
+                        with transaction._private_applied_workspace(
+                            plan,
+                            completion_input=completion,
+                            journal_clock=lambda: next(timestamps),
+                            lock_clock="2030-01-02T03:04:05Z",
+                            lock_pid=123,
+                            lock_token_factory=lambda: "1" * 32,
+                        ):
+                            self.fail("changed final proof must not yield")
+
+                self.assertNotIn("complete", phases)
+                if target_class == "unchanged":
+                    self.assertEqual(
+                        (root / selected.relative_path).read_bytes(),
+                        b"PRIVATE FOREIGN UNCHANGED",
+                    )
+                    self.assertEqual(phases[-1], "recovery-required")
+                else:
+                    self.assertEqual(phases[-1], "rolled-back")
+                    for target in binding.plan.targets:
+                        canonical = root / target.relative_path
+                        self.assertEqual(
+                            canonical.read_bytes() if canonical.exists() else None,
+                            canonical_before[target.relative_path],
+                        )
+
     def test_private_applied_workspace_promotes_only_changed_ordinary_targets_and_persists_progress(self):
         entry = getattr(transaction, "_private_applied_workspace", None)
         self.assertIsNotNone(entry)
@@ -2779,10 +3467,21 @@ class TransactionPlanningTests(unittest.TestCase):
                 f"2030-01-02T03:04:{second:02d}Z"
                 for second in range(
                     5,
-                    5 + 8 + 2 * len(changed_ordinary),
+                    5 + 11 + 2 * len(changed_ordinary),
                 )
             )
             timestamps = iter(timestamp_values)
+            completion = self.completion_input(plan)
+            binding = transaction._bind_success_evidence(
+                plan,
+                completion,
+                timestamp_values,
+            )
+            changed_all = tuple(
+                target.apply_order
+                for target in binding.plan.targets
+                if target.changed
+            )
             persisted = []
             verified = []
             applied = []
@@ -2838,6 +3537,7 @@ class TransactionPlanningTests(unittest.TestCase):
             ):
                 with entry(
                     plan,
+                    completion_input=completion,
                     journal_clock=lambda: next(timestamps),
                     lock_clock="2030-01-02T03:04:05Z",
                     lock_pid=123,
@@ -2852,7 +3552,12 @@ class TransactionPlanningTests(unittest.TestCase):
                         [journal["phase"] for journal in journals],
                         ["planned", "staged", "prepared", "applying"]
                         + ["applying"] * len(changed_ordinary)
-                        + ["post-validating"],
+                        + [
+                            "post-validating",
+                            "finalizing",
+                            "finalizing",
+                            "complete",
+                        ],
                     )
                     self.assertEqual(
                         [
@@ -2869,6 +3574,9 @@ class TransactionPlanningTests(unittest.TestCase):
                                 )
                             ],
                             list(changed_ordinary),
+                            list(changed_ordinary),
+                            list(changed_all),
+                            list(changed_all),
                         ],
                     )
                     self.assertTrue(
@@ -2895,11 +3603,11 @@ class TransactionPlanningTests(unittest.TestCase):
                     )
                     self.assertEqual(
                         state.applied_target_indexes,
-                        changed_ordinary,
+                        changed_all,
                     )
                     self.assertIsInstance(
                         state,
-                        transaction._PrivatePostValidatedState,
+                        transaction._PrivateCompletedState,
                     )
                     self.assertEqual(state.created_at, timestamp_values[0])
                     self.assertEqual(
@@ -2917,25 +3625,30 @@ class TransactionPlanningTests(unittest.TestCase):
                             target.apply_order
                             for target in plan.targets
                             if not target.changed or target.role == "evidence"
+                        ]
+                        + [
+                            target.apply_order
+                            for target in plan.targets
+                            if not target.changed
                         ],
                     )
                     self.assertEqual(applied, list(changed_ordinary))
                     validate_project.assert_called_once()
                     evidence_proposal = state.staged_proposals[-1]
                     self.assertEqual(evidence_proposal.state, "staged")
-                    self.assertTrue(
-                        (root / evidence_proposal.relative_name).is_file()
+                    self.assertFalse(
+                        (root / evidence_proposal.relative_name).exists()
                     )
                     self.assertNotIn(str(root), repr(state))
 
             self.assertFalse(lock_path.exists())
             self.assertTrue(workspace_path.is_dir())
-            for target in plan.targets:
+            for target in binding.plan.targets:
                 canonical = root / target.relative_path
                 if target.role == "evidence":
                     self.assertEqual(
-                        canonical.read_bytes() if canonical.exists() else None,
-                        canonical_before[target.relative_path],
+                        canonical.read_bytes(),
+                        binding.evidence_bytes,
                     )
                 elif target.changed:
                     self.assertEqual(canonical.read_bytes(), target._after_bytes)
@@ -2996,9 +3709,10 @@ class TransactionPlanningTests(unittest.TestCase):
                 f"2030-01-02T03:04:{second:02d}Z"
                 for second in range(
                     5,
-                    5 + 8 + 2 * len(changed_ordinary),
+                    5 + 11 + 2 * len(changed_ordinary),
                 )
             )
+            completion = self.completion_input(plan)
             post_phase = False
             classified = []
             verified = []
@@ -3065,6 +3779,7 @@ class TransactionPlanningTests(unittest.TestCase):
             ):
                 with entry(
                     plan,
+                    completion_input=completion,
                     journal_clock=lambda: next(timestamps),
                     lock_clock="2030-01-02T03:04:05Z",
                     lock_pid=123,
@@ -3072,11 +3787,11 @@ class TransactionPlanningTests(unittest.TestCase):
                 ) as state:
                     self.assertIsInstance(
                         state,
-                        transaction._PrivatePostValidatedState,
+                        transaction._PrivateCompletedState,
                     )
                     self.assertEqual(
                         state.applied_target_indexes,
-                        changed_ordinary,
+                        changed_ordinary + (evidence.apply_order,),
                     )
                     self.assertEqual(
                         state.verified_target_count,
@@ -3096,8 +3811,19 @@ class TransactionPlanningTests(unittest.TestCase):
                             "error_codes": (),
                         },
                     )
-                    self.assertEqual(classified, list(changed_ordinary))
-                    self.assertEqual(verified, list(unchanged_or_evidence))
+                    self.assertEqual(
+                        classified,
+                        list(changed_ordinary) + list(changed_ordinary),
+                    )
+                    self.assertEqual(
+                        verified,
+                        list(unchanged_or_evidence)
+                        + [
+                            target.apply_order
+                            for target in plan.targets
+                            if not target.changed
+                        ],
+                    )
                     self.assertEqual(len(validator_calls), 1)
                     journal = json.loads(
                         (
@@ -3108,19 +3834,18 @@ class TransactionPlanningTests(unittest.TestCase):
                             / "journal.json"
                         ).read_bytes()
                     )
-                    self.assertEqual(journal["phase"], "post-validating")
+                    self.assertEqual(journal["phase"], "complete")
                     evidence_proposal = state.staged_proposals[-1]
                     self.assertEqual(evidence_proposal.state, "staged")
-                    self.assertTrue(
-                        (root / evidence_proposal.relative_name).is_file()
+                    self.assertFalse(
+                        (root / evidence_proposal.relative_name).exists()
                     )
                     self.assertEqual(
-                        (
-                            (root / evidence.relative_path).read_bytes()
-                            if (root / evidence.relative_path).exists()
-                            else None
+                        (root / evidence.relative_path).read_bytes(),
+                        state.transaction_result
+                        and transaction.render_transaction_evidence(
+                            transaction._json_value(state.transaction_result)
                         ),
-                        evidence_before,
                     )
 
     def test_private_applied_workspace_rolls_back_invalid_post_apply_validation_under_same_lock(self):
@@ -3183,7 +3908,7 @@ class TransactionPlanningTests(unittest.TestCase):
                     f"2030-01-02T03:04:{second:02d}Z"
                     for second in range(
                         5,
-                        5 + 8 + 2 * len(changed_ordinary),
+                        5 + 11 + 2 * len(changed_ordinary),
                     )
                 )
                 rollback_calls = []
@@ -3218,6 +3943,7 @@ class TransactionPlanningTests(unittest.TestCase):
                     ) as raised:
                         with transaction._private_applied_workspace(
                             plan,
+                            completion_input=self.completion_input(plan),
                             journal_clock=lambda: next(timestamps),
                             lock_clock="2030-01-02T03:04:05Z",
                             lock_pid=123,
@@ -3270,13 +3996,7 @@ class TransactionPlanningTests(unittest.TestCase):
                     plan.targets[-1].role,
                     "evidence",
                 )
-                self.assertTrue(
-                    any(
-                        proposal.read_bytes()
-                        == plan.targets[-1]._after_bytes
-                        for proposal in root.glob("**/.moduflow-stage-*")
-                    )
-                )
+                self.assertTrue(tuple(root.glob("**/.moduflow-stage-*")))
 
     def test_private_applied_workspace_rolls_back_exact_before_target_without_calling_validator(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -3310,7 +4030,7 @@ class TransactionPlanningTests(unittest.TestCase):
                 f"2030-01-02T03:04:{second:02d}Z"
                 for second in range(
                     5,
-                    5 + 8 + 2 * len(changed_ordinary),
+                    5 + 11 + 2 * len(changed_ordinary),
                 )
             )
             real_apply_prepared = transaction._apply_prepared_targets
@@ -3340,6 +4060,7 @@ class TransactionPlanningTests(unittest.TestCase):
                 ) as raised:
                     with transaction._private_applied_workspace(
                         plan,
+                        completion_input=self.completion_input(plan),
                         journal_clock=lambda: next(timestamps),
                         lock_clock="2030-01-02T03:04:05Z",
                         lock_pid=123,
@@ -3421,7 +4142,7 @@ class TransactionPlanningTests(unittest.TestCase):
                     f"2030-01-02T03:04:{second:02d}Z"
                     for second in range(
                         5,
-                        5 + 8 + 2 * len(changed_ordinary),
+                        5 + 11 + 2 * len(changed_ordinary),
                     )
                 )
                 lock_path = (
@@ -3458,6 +4179,7 @@ class TransactionPlanningTests(unittest.TestCase):
                     ) as raised:
                         with transaction._private_applied_workspace(
                             plan,
+                            completion_input=self.completion_input(plan),
                             journal_clock=lambda: next(timestamps),
                             lock_clock="2030-01-02T03:04:05Z",
                             lock_pid=123,
@@ -3527,7 +4249,7 @@ class TransactionPlanningTests(unittest.TestCase):
                 f"2030-01-02T03:04:{second:02d}Z"
                 for second in range(
                     5,
-                    5 + 8 + 2 * len(changed_ordinary),
+                    5 + 11 + 2 * len(changed_ordinary),
                 )
             )
 
@@ -3544,6 +4266,7 @@ class TransactionPlanningTests(unittest.TestCase):
                 ) as raised:
                     with transaction._private_applied_workspace(
                         plan,
+                        completion_input=self.completion_input(plan),
                         journal_clock=lambda: next(timestamps),
                         lock_clock="2030-01-02T03:04:05Z",
                         lock_pid=123,
@@ -3633,7 +4356,7 @@ class TransactionPlanningTests(unittest.TestCase):
                     f"2030-01-02T03:04:{second:02d}Z"
                     for second in range(
                         5,
-                        5 + 8 + 2 * len(changed_ordinary),
+                        5 + 11 + 2 * len(changed_ordinary),
                     )
                 )
                 lock_path = (
@@ -3697,6 +4420,7 @@ class TransactionPlanningTests(unittest.TestCase):
                     ) as raised:
                         with transaction._private_applied_workspace(
                             plan,
+                            completion_input=self.completion_input(plan),
                             journal_clock=lambda: next(timestamps),
                             lock_clock="2030-01-02T03:04:05Z",
                             lock_pid=123,
@@ -3711,7 +4435,11 @@ class TransactionPlanningTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     signal.rollback_error_code,
-                    "CANONICAL_PREIMAGE_CONFLICT",
+                    (
+                        "STORAGE_CANONICAL_STATE_UNKNOWN"
+                        if target_class == "evidence"
+                        else "CANONICAL_PREIMAGE_CONFLICT"
+                    ),
                 )
                 self.assertEqual(
                     signal.post_apply_validation["error_codes"],
@@ -3753,7 +4481,7 @@ class TransactionPlanningTests(unittest.TestCase):
                 for target in plan.targets
                 if target.changed and target.role != "evidence"
             )
-            required = 8 + 2 * len(changed_ordinary)
+            required = 11 + 2 * len(changed_ordinary)
             canonical_before = {
                 target.relative_path: (
                     (root / target.relative_path).read_bytes()
@@ -3812,6 +4540,12 @@ class TransactionPlanningTests(unittest.TestCase):
                             transaction.transaction_storage,
                             "classify_canonical_target",
                         ) as classify_target,
+                        mock.patch.multiple(
+                            transaction.transaction_storage,
+                            finalize_staged_evidence=mock.DEFAULT,
+                            classify_finalized_evidence=mock.DEFAULT,
+                            rollback_finalized_evidence=mock.DEFAULT,
+                        ) as evidence_operations,
                         mock.patch.object(
                             transaction.transaction_storage,
                             "rollback_canonical_target",
@@ -3825,6 +4559,7 @@ class TransactionPlanningTests(unittest.TestCase):
                         ) as raised:
                             with entry(
                                 plan,
+                                completion_input=self.completion_input(plan),
                                 journal_clock=lambda: next(timestamps),
                             ):
                                 self.fail("invalid timestamp must not yield")
@@ -3844,6 +4579,7 @@ class TransactionPlanningTests(unittest.TestCase):
                         apply_target,
                         classify_target,
                         rollback_target,
+                        *evidence_operations.values(),
                         replace_file,
                         unlink_file,
                         sync_file,
@@ -3897,7 +4633,7 @@ class TransactionPlanningTests(unittest.TestCase):
             )
             timestamp_values = tuple(
                 f"2030-01-02T03:04:{second:02d}Z"
-                for second in range(5, 5 + 8 + 2 * len(changed_ordinary))
+                for second in range(5, 5 + 11 + 2 * len(changed_ordinary))
             )
             timestamps = iter(timestamp_values)
             persisted = []
@@ -3978,6 +4714,7 @@ class TransactionPlanningTests(unittest.TestCase):
                 ) as raised:
                     with entry(
                         plan,
+                        completion_input=self.completion_input(plan),
                         journal_clock=lambda: next(timestamps),
                         lock_clock="2030-01-02T03:04:05Z",
                         lock_pid=123,
@@ -4012,11 +4749,7 @@ class TransactionPlanningTests(unittest.TestCase):
                     canonical.read_bytes() if canonical.exists() else None,
                     canonical_before[target.relative_path],
                 )
-            evidence_stages = tuple(
-                proposal
-                for proposal in root.glob("**/.moduflow-stage-*")
-                if proposal.read_bytes() == evidence._after_bytes
-            )
+            evidence_stages = tuple(root.glob("**/.moduflow-stage-*"))
             self.assertTrue(evidence_stages)
 
             journals = [json.loads(payload) for payload, _previous in persisted]
@@ -4119,7 +4852,7 @@ class TransactionPlanningTests(unittest.TestCase):
                     f"2030-01-02T03:04:{second:02d}Z"
                     for second in range(
                         5,
-                        5 + 8 + 2 * len(changed_ordinary),
+                        5 + 11 + 2 * len(changed_ordinary),
                     )
                 )
                 real_apply = transaction.transaction_storage.apply_staged_target
@@ -4239,6 +4972,7 @@ class TransactionPlanningTests(unittest.TestCase):
                     ) as raised:
                         with entry(
                             plan,
+                            completion_input=self.completion_input(plan),
                             journal_clock=lambda: next(timestamp_values),
                             lock_clock="2030-01-02T03:04:05Z",
                             lock_pid=123,
@@ -4326,13 +5060,22 @@ class TransactionPlanningTests(unittest.TestCase):
                 f"2030-01-02T03:04:{second:02d}Z"
                 for second in range(
                     5,
-                    5 + 8 + 2 * len(changed_ordinary),
+                    5 + 11 + 2 * len(changed_ordinary),
                 )
             )
             canonical_after = {}
-            classify_calls_at_yield = None
+            calls_at_yield = None
             real_classify = (
                 transaction.transaction_storage.classify_canonical_target
+            )
+            real_finalize = (
+                transaction.transaction_storage.finalize_staged_evidence
+            )
+            real_evidence_classify = (
+                transaction.transaction_storage.classify_finalized_evidence
+            )
+            real_persist = (
+                transaction.transaction_storage.persist_serialized_journal
             )
             with (
                 mock.patch.object(
@@ -4342,8 +5085,27 @@ class TransactionPlanningTests(unittest.TestCase):
                 ) as classify_target,
                 mock.patch.object(
                     transaction.transaction_storage,
+                    "finalize_staged_evidence",
+                    wraps=real_finalize,
+                ) as finalize_evidence,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "classify_finalized_evidence",
+                    wraps=real_evidence_classify,
+                ) as classify_evidence,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "persist_serialized_journal",
+                    wraps=real_persist,
+                ) as persist_journal,
+                mock.patch.object(
+                    transaction.transaction_storage,
                     "rollback_canonical_target",
                 ) as rollback_target,
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "rollback_finalized_evidence",
+                ) as rollback_evidence,
                 mock.patch.object(
                     transaction.validate_project_artifacts,
                     "validate_project",
@@ -4353,11 +5115,16 @@ class TransactionPlanningTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "CALLER FAILURE"):
                     with entry(
                         plan,
+                        completion_input=self.completion_input(plan),
                         journal_clock=lambda: next(timestamps),
                         lock_clock="2030-01-02T03:04:05Z",
                         lock_pid=123,
                         lock_token_factory=lambda: "1" * 32,
-                    ):
+                    ) as state:
+                        self.assertIsInstance(
+                            state,
+                            transaction._PrivateCompletedState,
+                        )
                         canonical_after = {
                             target.relative_path: (
                                 (root / target.relative_path).read_bytes()
@@ -4366,14 +5133,29 @@ class TransactionPlanningTests(unittest.TestCase):
                             )
                             for target in plan.targets
                         }
-                        classify_calls_at_yield = classify_target.call_count
+                        calls_at_yield = (
+                            classify_target.call_count,
+                            finalize_evidence.call_count,
+                            classify_evidence.call_count,
+                            persist_journal.call_count,
+                            rollback_target.call_count,
+                            rollback_evidence.call_count,
+                        )
                         raise RuntimeError("CALLER FAILURE")
             self.assertEqual(
-                classify_target.call_count,
-                classify_calls_at_yield,
+                (
+                    classify_target.call_count,
+                    finalize_evidence.call_count,
+                    classify_evidence.call_count,
+                    persist_journal.call_count,
+                    rollback_target.call_count,
+                    rollback_evidence.call_count,
+                ),
+                calls_at_yield,
             )
             validate_project.assert_called_once()
             rollback_target.assert_not_called()
+            rollback_evidence.assert_not_called()
             self.assertEqual(
                 {
                     target.relative_path: (
@@ -4394,7 +5176,7 @@ class TransactionPlanningTests(unittest.TestCase):
             )
             self.assertEqual(
                 json.loads(journal_path.read_bytes())["phase"],
-                "post-validating",
+                "complete",
             )
 
     def test_exclusive_lifecycle_lock_creates_redacted_owner_and_releases(self):

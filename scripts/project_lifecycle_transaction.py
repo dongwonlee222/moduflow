@@ -423,6 +423,35 @@ class _PrivatePostValidatedState:
 
 
 @dataclass(frozen=True)
+class _PrivateCompletedState:
+    storage_targets: tuple[transaction_storage.StorageTarget, ...] = field(
+        repr=False,
+        compare=False,
+    )
+    preimages: tuple[transaction_storage.StoredPreimage, ...] = field(
+        repr=False,
+        compare=False,
+    )
+    staged_proposals: tuple[transaction_storage.StagedProposal, ...] = field(
+        repr=False,
+        compare=False,
+    )
+    recovery_manifest: transaction_storage.RecoveryManifest = field(
+        repr=False,
+        compare=False,
+    )
+    applied_target_indexes: tuple[int, ...]
+    projected_validation: object = field(repr=False, compare=False)
+    post_apply_validation: object = field(repr=False, compare=False)
+    transaction_result: object = field(repr=False, compare=False)
+    verified_target_count: int
+    journal_sha256: str
+    created_at: str
+    completed_at: str
+    _workspace: object = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
 class _PrivateCompletionInput:
     intent: LifecycleIntent = field(repr=False, compare=False)
     next_command: str = field(repr=False, compare=False)
@@ -885,7 +914,10 @@ def _optional_post_apply_validation(summary):
     if summary is None:
         return None
     frozen = _frozen_validation_summary(summary)
-    if frozen["valid"]:
+    if frozen["valid"] and (
+        frozen["rule_ids"] != _POST_APPLY_VALIDATION_RULE_IDS
+        or frozen["error_codes"]
+    ):
         raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
     return frozen
 
@@ -2275,6 +2307,121 @@ def _post_validate_applied_state(
     )
 
 
+def _classify_changed_target(workspace, target):
+    if target.role == "evidence":
+        return transaction_storage.classify_finalized_evidence(
+            workspace,
+            target,
+        )
+    return transaction_storage.classify_canonical_target(
+        workspace,
+        target,
+    )
+
+
+def _rollback_changed_target(workspace, target, preimage):
+    if target.role == "evidence":
+        return transaction_storage.rollback_finalized_evidence(
+            workspace,
+            target,
+            preimage,
+        )
+    return transaction_storage.rollback_canonical_target(
+        workspace,
+        target,
+        preimage,
+    )
+
+
+def _verify_complete_after_state(state):
+    verified = 0
+    for target in state.storage_targets:
+        if target.changed:
+            if _classify_changed_target(state._workspace, target) != "after":
+                raise LifecycleFinalizationError(
+                    "FINALIZATION_TARGET_MISMATCH"
+                )
+        else:
+            transaction_storage.verify_canonical_target(
+                state._workspace,
+                target,
+            )
+        verified += 1
+    return verified
+
+
+def _finalize_post_validated_state(
+    state,
+    prepared,
+    plan,
+    binding,
+    completion_input,
+    timestamps,
+    successful_indexes,
+    journal_state,
+):
+    if (
+        dict(state.post_apply_validation)
+        != dict(_successful_post_apply_summary())
+    ):
+        raise LifecycleFinalizationError(
+            "FINALIZATION_POST_APPLY_MISMATCH"
+        )
+    n = len(successful_indexes)
+    journal_state["finalization_started"] = True
+    journal_state["sha256"] = _persist_progress_journal(
+        prepared,
+        plan,
+        phase="finalizing",
+        updated_at=timestamps[5 + n],
+        applied_target_indexes=tuple(successful_indexes),
+        rollback_target_indexes=(),
+        expected_previous_sha256=journal_state["sha256"],
+    )
+    evidence = prepared.storage_targets[-1]
+    proposal = prepared.staged_proposals[-1]
+    index = transaction_storage.finalize_staged_evidence(
+        prepared._workspace,
+        evidence,
+        proposal,
+    )
+    successful_indexes.append(index)
+    journal_state["sha256"] = _persist_progress_journal(
+        prepared,
+        plan,
+        phase="finalizing",
+        updated_at=timestamps[6 + n],
+        applied_target_indexes=tuple(successful_indexes),
+        rollback_target_indexes=(),
+        expected_previous_sha256=journal_state["sha256"],
+    )
+    verified = _verify_complete_after_state(state)
+    journal_state["sha256"] = _persist_progress_journal(
+        prepared,
+        plan,
+        phase="complete",
+        updated_at=timestamps[7 + n],
+        applied_target_indexes=tuple(successful_indexes),
+        rollback_target_indexes=(),
+        expected_previous_sha256=journal_state["sha256"],
+    )
+    return _PrivateCompletedState(
+        storage_targets=state.storage_targets,
+        preimages=state.preimages,
+        staged_proposals=state.staged_proposals,
+        recovery_manifest=state.recovery_manifest,
+        applied_target_indexes=tuple(successful_indexes),
+        projected_validation=completion_input.projected_validation,
+        post_apply_validation=state.post_apply_validation,
+        transaction_result=binding.transaction_result,
+        verified_target_count=verified,
+        journal_sha256=journal_state["sha256"],
+        created_at=state.created_at,
+        completed_at=binding.completed_at,
+        _workspace=state._workspace,
+    )
+
+
 def _reconciled_rollback_prefix(prepared, successful_indexes):
     changed = tuple(
         (target, preimage)
@@ -2282,10 +2429,10 @@ def _reconciled_rollback_prefix(prepared, successful_indexes):
             prepared.storage_targets,
             prepared.preimages,
         )
-        if target.changed and target.role != "evidence"
+        if target.changed
     )
     states = tuple(
-        transaction_storage.classify_canonical_target(
+        _classify_changed_target(
             prepared._workspace,
             target,
         )
@@ -2320,8 +2467,8 @@ def _reconciled_rollback_prefix(prepared, successful_indexes):
 def _verify_complete_rollback(prepared):
     verified = 0
     for target in prepared.storage_targets:
-        if target.changed and target.role != "evidence":
-            state = transaction_storage.classify_canonical_target(
+        if target.changed:
+            state = _classify_changed_target(
                 prepared._workspace,
                 target,
             )
@@ -2345,15 +2492,17 @@ def _rollback_failed_apply(
     successful_indexes,
     latest_sha256,
     timestamps,
-    changed_count,
+    rollback_timestamp_index,
+    post_apply_validation=None,
 ):
     confirmed_applied = tuple(successful_indexes)
     confirmed_rollback = []
-    post_apply_validation = getattr(
-        original_error,
-        "post_apply_validation",
-        None,
-    )
+    if post_apply_validation is None:
+        post_apply_validation = getattr(
+            original_error,
+            "post_apply_validation",
+            None,
+        )
     rollback_failure_types = (
         transaction_storage.LifecycleCanonicalConflict,
         transaction_storage.LifecycleStorageError,
@@ -2368,14 +2517,14 @@ def _rollback_failed_apply(
             prepared,
             plan,
             phase="rolling-back",
-            updated_at=timestamps[5 + changed_count],
+            updated_at=timestamps[rollback_timestamp_index],
             applied_target_indexes=confirmed_applied,
             rollback_target_indexes=(),
             expected_previous_sha256=latest_sha256,
         )
         for target, preimage, state in reversed(prefix):
             if state == "after":
-                transaction_storage.rollback_canonical_target(
+                _rollback_changed_target(
                     prepared._workspace,
                     target,
                     preimage,
@@ -2387,7 +2536,8 @@ def _rollback_failed_apply(
                 phase="rolling-back",
                 updated_at=(
                     timestamps[
-                        5 + changed_count + len(confirmed_rollback)
+                        rollback_timestamp_index
+                        + len(confirmed_rollback)
                     ]
                 ),
                 applied_target_indexes=confirmed_applied,
@@ -2399,7 +2549,11 @@ def _rollback_failed_apply(
             prepared,
             plan,
             phase="rolled-back",
-            updated_at=timestamps[6 + 2 * changed_count],
+            updated_at=timestamps[
+                rollback_timestamp_index
+                + len(confirmed_rollback)
+                + 1
+            ],
             applied_target_indexes=confirmed_applied,
             rollback_target_indexes=tuple(confirmed_rollback),
             expected_previous_sha256=latest_sha256,
@@ -2438,78 +2592,128 @@ def _rollback_failed_apply(
 def _private_applied_workspace(
     plan: LifecycleTransactionPlan,
     *,
+    completion_input,
     journal_clock=None,
     lock_clock=None,
     lock_pid=None,
     lock_token_factory=None,
 ):
-    """Apply ordinary targets and yield durable post-validating state."""
+    """Complete one private lifecycle transaction under the existing lock."""
     if not isinstance(plan, LifecycleTransactionPlan):
         raise TypeError("plan must be a LifecycleTransactionPlan")
-    canonical_root, canonical_context = _writable_projected_plan_context(plan)
-    storage_targets = _storage_targets_from_plan(plan)
+    changed_count = sum(
+        target.changed and target.role != "evidence"
+        for target in plan.targets
+    )
+    timestamps = _journal_timestamps(
+        journal_clock,
+        11 + 2 * changed_count,
+    )
+    if not isinstance(completion_input, _PrivateCompletionInput):
+        raise LifecycleFinalizationError(
+            "FINALIZATION_INPUT_INVALID"
+        )
+    completion_input = _prepare_completion_input(
+        plan,
+        completion_input.intent,
+        completion_input.next_command,
+        completion_input.projected_validation,
+    )
+    binding = _bind_success_evidence(plan, completion_input, timestamps)
+    rebound_plan = binding.plan
+    canonical_root, canonical_context = _writable_projected_plan_context(
+        rebound_plan
+    )
+    storage_targets = _storage_targets_from_plan(rebound_plan)
     changed_ordinary = tuple(
         target.index
         for target in storage_targets
         if target.changed and target.role != "evidence"
     )
-    changed_count = len(changed_ordinary)
-    timestamps = _journal_timestamps(
-        journal_clock,
-        8 + 2 * changed_count,
+    changed_targets = tuple(
+        target.index
+        for target in storage_targets
+        if target.changed
     )
     validate_journal_phase_transition("prepared", "applying")
     for _index in changed_ordinary:
         validate_journal_phase_transition("applying", "applying")
     validate_journal_phase_transition("applying", "post-validating")
-    for phase in ("prepared", "applying", "post-validating"):
+    validate_journal_phase_transition("post-validating", "finalizing")
+    validate_journal_phase_transition("finalizing", "finalizing")
+    validate_journal_phase_transition("finalizing", "complete")
+    for phase in ("prepared", "applying", "post-validating", "finalizing"):
         validate_journal_phase_transition(phase, "rolling-back")
         validate_journal_phase_transition(phase, "recovery-required")
-    for _index in changed_ordinary:
+    for _index in changed_targets:
         validate_journal_phase_transition("rolling-back", "rolling-back")
     validate_journal_phase_transition("rolling-back", "rolled-back")
     validate_journal_phase_transition("rolling-back", "recovery-required")
     prepared_clock = iter(timestamps[:3])
 
     with _private_prepared_workspace(
-        plan,
+        rebound_plan,
         journal_clock=lambda: next(prepared_clock),
         lock_clock=lock_clock,
         lock_pid=lock_pid,
         lock_token_factory=lock_token_factory,
     ) as prepared:
         successful_indexes = []
-        journal_state = {"sha256": prepared.journal_sha256}
+        post_validated_state = None
+        journal_state = {
+            "sha256": prepared.journal_sha256,
+            "finalization_started": False,
+        }
         try:
             applied_state = _apply_prepared_targets(
                 prepared,
-                plan,
+                rebound_plan,
                 timestamps,
                 successful_indexes,
                 journal_state,
             )
             post_validated_state = _post_validate_applied_state(
                 applied_state,
-                plan,
+                rebound_plan,
                 canonical_root,
                 canonical_context,
+            )
+            completed_state = _finalize_post_validated_state(
+                post_validated_state,
+                prepared,
+                rebound_plan,
+                binding,
+                completion_input,
+                timestamps,
+                successful_indexes,
+                journal_state,
             )
         except (
             transaction_storage.LifecycleCanonicalConflict,
             transaction_storage.LifecycleStorageError,
+            LifecycleFinalizationError,
             LifecycleJournalError,
             LifecyclePostApplyValidationError,
         ) as original_error:
             _rollback_failed_apply(
                 prepared,
-                plan,
+                rebound_plan,
                 original_error,
                 tuple(successful_indexes),
                 journal_state["sha256"],
                 timestamps,
-                changed_count,
+                (
+                    7 + changed_count
+                    if journal_state["finalization_started"]
+                    else 5 + changed_count
+                ),
+                post_apply_validation=(
+                    post_validated_state.post_apply_validation
+                    if post_validated_state is not None
+                    else None
+                ),
             )
-        yield post_validated_state
+        yield completed_state
 
 
 @contextmanager
