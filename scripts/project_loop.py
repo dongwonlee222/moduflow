@@ -244,6 +244,21 @@ def render_loop_projection(
     return (json.dumps(state, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
+def render_loop_state_update(loop_bytes, state):
+    """Return the normalized full loop state without mutating canonical files."""
+    if not isinstance(loop_bytes, bytes):
+        raise TypeError("loop_bytes must be bytes")
+    current = json.loads(loop_bytes.decode("utf-8")) if loop_bytes else {}
+    if not isinstance(current, dict):
+        raise ValueError("loop projection requires a JSON object")
+    if not isinstance(state, dict):
+        raise TypeError("loop state update requires a dictionary")
+    normalized = normalize_loop_state(state)
+    return (json.dumps(normalized, ensure_ascii=False, indent=2) + "\n").encode(
+        "utf-8"
+    )
+
+
 def load_loop_state(root, *, project_context=None):
     path = loop_state_path(root, project_context=project_context)
     if not path.exists():
@@ -565,19 +580,66 @@ def recommend_loop(root, *, project_context=None):
     return apply_attempts_guard(state, command)
 
 
-def write_loop_state(root, state, *, project_context=None):
+def _load_lifecycle_transaction_module():
+    try:
+        import project_lifecycle_transaction
+    except ImportError:  # pragma: no cover - package import fallback
+        from scripts import project_lifecycle_transaction
+    return project_lifecycle_transaction
+
+
+def write_loop_state(
+    root,
+    state,
+    *,
+    project_context=None,
+    actor="moduflow.loop",
+    source_event="write_loop_state",
+    idempotency_key="",
+    expected_issue_sha256="",
+    clock=None,
+    fault_injector=None,
+):
     root = Path(root).resolve()
     context = project_registry.context_for_operation(
         root,
         project_context=project_context,
     )
     project_operation.require_project_capability(context, "execute")
-    path = loop_state_path(root, project_context=context)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(normalize_loop_state(state), ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
+    normalized = normalize_loop_state(state)
+    issue_id = normalized.get("active_issue_id") or next(
+        iter(normalized.get("issue_ids") or ()),
+        "",
     )
+    if not issue_id:
+        raise ValueError("Loop state transaction requires an active issue")
+    boundary = _load_lifecycle_transaction_module()
+    intent = boundary.LifecycleIntent(
+        issue_id=issue_id,
+        action="update",
+        actor=actor,
+        source_event=source_event,
+        target_lifecycle=None,
+        next_command=normalized["next_command"],
+        idempotency_key=idempotency_key,
+        expected_issue_sha256=expected_issue_sha256,
+        loop_blocker=normalized.get("blocker") or "",
+        loop_change=normalized,
+    )
+    result = boundary.apply_lifecycle_transaction(
+        root,
+        intent,
+        project_context=context,
+        clock=clock,
+        fault_injector=fault_injector,
+    )
+    if result.get("status") not in {"applied", "noop"}:
+        error_code = result.get("error_code") or result.get("status") or "unknown"
+        raise RuntimeError(
+            f"{error_code}: Loop state transaction did not commit. "
+            "Run product:doctor before retrying."
+        )
+    path = loop_state_path(root, project_context=context)
     return path
 
 

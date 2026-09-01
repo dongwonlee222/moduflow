@@ -33,7 +33,7 @@ try:
         render_roadmap_projection,
         render_state_projection,
     )
-    from project_loop import render_loop_projection
+    from project_loop import render_loop_projection, render_loop_state_update
 except ModuleNotFoundError:  # pragma: no cover - package import fallback
     from scripts import (
         project_issue_schema,
@@ -50,7 +50,7 @@ except ModuleNotFoundError:  # pragma: no cover - package import fallback
         render_roadmap_projection,
         render_state_projection,
     )
-    from scripts.project_loop import render_loop_projection
+    from scripts.project_loop import render_loop_projection, render_loop_state_update
 
 
 PLAN_SCHEMA = "moduflow.lifecycle-transaction-plan.v1"
@@ -375,6 +375,7 @@ class LifecycleIntent:
     idempotency_key: str = ""
     expected_issue_sha256: str = ""
     loop_blocker: str = ""
+    loop_change: dict | None = None
     roadmap_change: dict | None = None
     production_change: dict | None = None
     require_issue_index: bool = False
@@ -1042,6 +1043,12 @@ def normalize_lifecycle_intent(intent):
         production_change = {**production_change, "version": version}
     elif production_change is not None:
         raise ValueError("production_change is only valid for production-version")
+    loop_change = intent.loop_change
+    if loop_change is not None:
+        if action != "update":
+            raise ValueError("loop_change is only valid for update")
+        if not isinstance(loop_change, Mapping):
+            raise ValueError("loop_change must be a dictionary")
     if intent.roadmap_change is not None and not isinstance(intent.roadmap_change, Mapping):
         raise ValueError("roadmap_change must be a dictionary")
 
@@ -1053,6 +1060,11 @@ def normalize_lifecycle_intent(intent):
         source_event=str(intent.source_event).strip(),
         target_lifecycle=fixed_target or supplied_target,
         loop_blocker=str(intent.loop_blocker or "").strip(),
+        loop_change=(
+            _freeze_json_value(loop_change)
+            if loop_change is not None
+            else None
+        ),
         roadmap_change=(
             _freeze_json_value(intent.roadmap_change)
             if intent.roadmap_change is not None
@@ -1073,7 +1085,7 @@ def _semantic_identity(project_context, intent):
     canonical_root = project_context.get("canonical_root")
     if not isinstance(canonical_root, str) or not canonical_root:
         raise ValueError("project_context requires canonical_root")
-    return {
+    identity = {
         "project_id": project_context.get("project_id") or "explicit-root",
         "canonical_root": canonical_root,
         "issue_id": normalized.issue_id,
@@ -1084,6 +1096,9 @@ def _semantic_identity(project_context, intent):
         "roadmap_change": normalized.roadmap_change,
         "production_change": normalized.production_change,
     }
+    if normalized.loop_change is not None:
+        identity["loop_change"] = normalized.loop_change
+    return identity
 
 
 def derive_idempotency_key(project_context, intent):
@@ -5925,18 +5940,27 @@ def plan_lifecycle_transaction(
         next_command=next_command,
         changed_on=changed_on,
     )
-    loop_after = _render_planning_target(
-        "loop",
-        _project_relative(root, loop_path),
-        render_loop_projection,
-        loop_before,
-        issue_id=normalized.issue_id,
-        action=normalized.action,
-        next_command=next_command,
-        blocker=normalized.loop_blocker,
-        changed_on=changed_on,
-        target_lifecycle=projected_status,
-    )
+    if normalized.loop_change is None:
+        loop_after = _render_planning_target(
+            "loop",
+            _project_relative(root, loop_path),
+            render_loop_projection,
+            loop_before,
+            issue_id=normalized.issue_id,
+            action=normalized.action,
+            next_command=next_command,
+            blocker=normalized.loop_blocker,
+            changed_on=changed_on,
+            target_lifecycle=projected_status,
+        )
+    else:
+        loop_after = _render_planning_target(
+            "loop",
+            _project_relative(root, loop_path),
+            render_loop_state_update,
+            loop_before,
+            _json_value(normalized.loop_change),
+        )
     dashboard_after = _render_planning_target(
         "dashboard",
         _project_relative(root, dashboard_path),

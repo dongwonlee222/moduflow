@@ -1,11 +1,15 @@
 import importlib.util
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
 
 
 def load_module(name, relative_path):
@@ -19,6 +23,112 @@ project_loop = load_module("project_loop", "scripts/project_loop.py")
 
 
 class ProjectLoopTests(unittest.TestCase):
+    def test_write_loop_state_builds_one_update_intent_without_direct_writes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = project_loop.normalize_loop_state(
+                {
+                    "goal_id": "goal-a",
+                    "issue_ids": ["BIZ-103"],
+                    "active_issue_id": "BIZ-103",
+                    "next_command": "product:execute BIZ-103",
+                    "last_action": "advance",
+                }
+            )
+            result = {
+                "schema": "moduflow.lifecycle-transaction.v1",
+                "status": "applied",
+            }
+            apply = mock.Mock(return_value=result)
+            boundary = SimpleNamespace(
+                LifecycleIntent=lambda **values: SimpleNamespace(**values),
+                apply_lifecycle_transaction=apply,
+            )
+            injector = lambda _stage: None
+
+            with (
+                mock.patch.object(
+                    project_loop,
+                    "_load_lifecycle_transaction_module",
+                    return_value=boundary,
+                ),
+                mock.patch.object(project_loop.Path, "mkdir") as make_directory,
+                mock.patch.object(project_loop.Path, "write_text") as write_text,
+            ):
+                written = project_loop.write_loop_state(
+                    root,
+                    state,
+                    actor="dongwon",
+                    source_event="request:C1c",
+                    idempotency_key="a" * 64,
+                    expected_issue_sha256="b" * 64,
+                    clock="clock",
+                    fault_injector=injector,
+                )
+
+            intent = apply.call_args.args[1]
+            self.assertEqual(intent.issue_id, "BIZ-103")
+            self.assertEqual(intent.action, "update")
+            self.assertEqual(intent.actor, "dongwon")
+            self.assertEqual(intent.source_event, "request:C1c")
+            self.assertEqual(intent.loop_change, state)
+            self.assertEqual(intent.next_command, "product:execute BIZ-103")
+            self.assertEqual(intent.loop_blocker, "")
+            apply.assert_called_once_with(
+                root.resolve(),
+                intent,
+                project_context=mock.ANY,
+                clock="clock",
+                fault_injector=injector,
+            )
+            self.assertEqual(written, (root / "workspace" / "loop-state.json").resolve())
+            make_directory.assert_not_called()
+            write_text.assert_not_called()
+
+    def test_write_loop_state_fails_closed_before_engine_without_issue_owner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state = project_loop.normalize_loop_state(
+                {
+                    "goal_id": "goal-a",
+                    "issue_ids": [],
+                    "active_issue_id": None,
+                    "next_command": "product:status",
+                }
+            )
+            with mock.patch.object(
+                project_loop,
+                "_load_lifecycle_transaction_module",
+            ) as load:
+                with self.assertRaisesRegex(ValueError, "requires an active issue"):
+                    project_loop.write_loop_state(tmp, state)
+            load.assert_not_called()
+
+    def test_write_loop_state_raises_bounded_error_for_transaction_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state = project_loop.normalize_loop_state(
+                {
+                    "issue_ids": ["BIZ-103"],
+                    "active_issue_id": "BIZ-103",
+                    "next_command": "product:execute BIZ-103",
+                }
+            )
+            boundary = SimpleNamespace(
+                LifecycleIntent=lambda **values: SimpleNamespace(**values),
+                apply_lifecycle_transaction=mock.Mock(
+                    return_value={
+                        "status": "conflict",
+                        "error_code": "EXPECTED_HASH_MISMATCH",
+                    }
+                ),
+            )
+            with mock.patch.object(
+                project_loop,
+                "_load_lifecycle_transaction_module",
+                return_value=boundary,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "EXPECTED_HASH_MISMATCH"):
+                    project_loop.write_loop_state(tmp, state)
+
     def test_render_loop_projection_keeps_issue_active_across_pause_and_resume(self):
         original = json.dumps(
             {
@@ -675,21 +785,20 @@ gate_state: passed
         self.assertEqual(result["status"], "active")
         self.assertEqual(loop_errors, [])
 
-    def test_write_loop_state_persists_v2_state(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            state = project_loop.normalize_loop_state({
-                "goal_id": "goal-a",
-                "issue_ids": ["019-loop-kernel-and-state-model"],
-                "active_issue_id": "019-loop-kernel-and-state-model",
-                "next_command": "product:plan 019-loop-kernel-and-state-model",
-            })
+    def test_render_loop_state_update_serializes_normalized_v2_state(self):
+        state = project_loop.normalize_loop_state({
+            "goal_id": "goal-a",
+            "issue_ids": ["019-loop-kernel-and-state-model"],
+            "active_issue_id": "019-loop-kernel-and-state-model",
+            "next_command": "product:plan 019-loop-kernel-and-state-model",
+        })
 
-            project_loop.write_loop_state(root, state)
-            saved = json.loads((root / "workspace" / "loop-state.json").read_text(encoding="utf-8"))
+        saved = json.loads(
+            project_loop.render_loop_state_update(b"{}\n", state)
+        )
 
-            self.assertEqual(saved["schema"], "moduflow.loop-state.v2")
-            self.assertEqual(saved["active_issue_id"], "019-loop-kernel-and-state-model")
+        self.assertEqual(saved["schema"], "moduflow.loop-state.v2")
+        self.assertEqual(saved["active_issue_id"], "019-loop-kernel-and-state-model")
 
     def test_loop_state_read_and_write_use_configured_workspace(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -708,8 +817,8 @@ gate_state: passed
                     {
                         "schema": "moduflow.loop-state.v2",
                         "goal_id": "configured-goal",
-                        "issue_ids": [],
-                        "active_issue_id": None,
+                        "issue_ids": ["BIZ-CUSTOM"],
+                        "active_issue_id": "BIZ-CUSTOM",
                         "status": "active",
                         "next_command": "product:goal",
                     }
@@ -725,13 +834,28 @@ gate_state: passed
 
             state = project_loop.load_loop_state(root)
             state["last_action"] = "configured-write"
-            written = project_loop.write_loop_state(root, state)
+            apply = mock.Mock(
+                return_value={
+                    "schema": "moduflow.lifecycle-transaction.v1",
+                    "status": "applied",
+                }
+            )
+            boundary = SimpleNamespace(
+                LifecycleIntent=lambda **values: SimpleNamespace(**values),
+                apply_lifecycle_transaction=apply,
+            )
+            with mock.patch.object(
+                project_loop,
+                "_load_lifecycle_transaction_module",
+                return_value=boundary,
+            ):
+                written = project_loop.write_loop_state(root, state)
 
             self.assertEqual(state["goal_id"], "configured-goal")
             self.assertEqual(written, (workspace / "loop-state.json").resolve())
-            self.assertIn(
+            self.assertEqual(
+                apply.call_args.args[1].loop_change["last_action"],
                 "configured-write",
-                (workspace / "loop-state.json").read_text(encoding="utf-8"),
             )
             self.assertNotIn("configured-write", decoy.read_text(encoding="utf-8"))
 

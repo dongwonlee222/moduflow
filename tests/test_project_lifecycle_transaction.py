@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import project_lifecycle_transaction as transaction
 import project_lifecycle
+import project_loop
 import project_registry
 from tests.lifecycle_transaction_fixture import (
     lifecycle_intent_fields,
@@ -27,6 +28,40 @@ from tests.lifecycle_transaction_fixture import (
 
 
 class TransactionContractTests(unittest.TestCase):
+    def test_loop_change_is_frozen_and_bound_to_update_identity(self):
+        change = {
+            "schema": "moduflow.loop-state.v2",
+            "goal_id": "goal-103",
+            "issue_ids": ["103-atomic-lifecycle-state-transaction"],
+            "active_issue_id": "103-atomic-lifecycle-state-transaction",
+            "next_command": "product:execute 103-atomic-lifecycle-state-transaction",
+        }
+        intent = transaction.normalize_lifecycle_intent(
+            transaction.LifecycleIntent(
+                **lifecycle_intent_fields("update"),
+                loop_change=change,
+            )
+        )
+        change["goal_id"] = "mutated"
+        change["issue_ids"].append("BIZ-OTHER")
+
+        self.assertEqual(intent.loop_change["goal_id"], "goal-103")
+        self.assertEqual(
+            tuple(intent.loop_change["issue_ids"]),
+            ("103-atomic-lifecycle-state-transaction",),
+        )
+        identity = transaction._semantic_identity(
+            resolved_transaction_context(), intent
+        )
+        self.assertEqual(identity["loop_change"]["goal_id"], "goal-103")
+        with self.assertRaisesRegex(ValueError, "loop_change is only valid for update"):
+            transaction.normalize_lifecycle_intent(
+                transaction.LifecycleIntent(
+                    **lifecycle_intent_fields("start"),
+                    loop_change={"goal_id": "goal-103"},
+                )
+            )
+
     def test_each_supported_action_normalizes_to_its_canonical_lifecycle(self):
         cases = [
             ("start", None, "active"),
@@ -5359,6 +5394,56 @@ class TransactionPlanningTests(unittest.TestCase):
                     for target in result["targets"]
                 )
             )
+
+    def test_loop_adapter_applies_full_state_only_to_nested_configured_workspace(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, nested=True)
+            issue_path = root / "product/issues" / f"{self.ISSUE_ID}.md"
+            issue_path.write_text(
+                issue_path.read_text(encoding="utf-8").replace(
+                    "**Status: backlog**", "**Status: active**"
+                ),
+                encoding="utf-8",
+            )
+            (root / "product/workspace/transactions").mkdir()
+            configured_loop = root / "product/workspace/loop-state.json"
+            state = project_loop.normalize_loop_state(
+                json.loads(configured_loop.read_text(encoding="utf-8"))
+            )
+            state.update(
+                {
+                    "issue_ids": [self.ISSUE_ID],
+                    "active_issue_id": self.ISSUE_ID,
+                    "next_command": f"product:execute {self.ISSUE_ID}",
+                    "last_action": "configured-loop-write",
+                }
+            )
+            poison = root / "workspace/loop-state.json"
+            poison_before = poison.read_bytes()
+
+            with mock.patch.object(
+                transaction.validate_project_artifacts,
+                "validate_project",
+                return_value=self.validation_result(),
+            ):
+                written = project_loop.write_loop_state(
+                    root,
+                    state,
+                    actor="dongwon",
+                    source_event="request:C1c",
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            self.assertEqual(written, configured_loop.resolve())
+            self.assertEqual(
+                json.loads(configured_loop.read_text(encoding="utf-8"))[
+                    "last_action"
+                ],
+                "configured-loop-write",
+            )
+            self.assertEqual(poison.read_bytes(), poison_before)
 
     def test_public_explicit_recovery_faults_only_at_durable_boundaries(self):
         entry = getattr(transaction, "recover_incomplete_transaction", None)
