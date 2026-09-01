@@ -3068,6 +3068,158 @@ class TransactionPlanningTests(unittest.TestCase):
                     ).changed
                 )
 
+    def test_transitions_derive_routes_from_projected_issue_evaluation(self):
+        cases = (
+            ("start", "backlog", "active", "spec", "product:plan BIZ-103"),
+            ("update", "active", "active", "spec", "product:plan BIZ-103"),
+            ("pause", "active", "active", "spec", "product:plan BIZ-103"),
+            ("resume", "active", "active", "spec", "product:plan BIZ-103"),
+            ("complete", "active", "done", "select", "product:status"),
+        )
+        for action, initial, projected, phase, command in cases:
+            with self.subTest(action=action), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root)
+                issue_path = root / "issues" / f"{self.ISSUE_ID}.md"
+                issue_path.write_text(
+                    issue_path.read_text(encoding="utf-8")
+                    .replace("**Status: backlog**", f"**Status: {initial}**")
+                    .replace("**Blocked-by: none**\n", ""),
+                    encoding="utf-8",
+                )
+                spec_root = root / "specs" / self.ISSUE_ID
+                spec_root.mkdir(parents=True)
+                (spec_root / "spec.md").write_text("# Spec\n", encoding="utf-8")
+
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(action=action),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+
+                issue = next(
+                    target for target in plan.targets if target.role == "issue"
+                )
+                state = json.loads(
+                    next(
+                        target for target in plan.targets if target.role == "state"
+                    )._after_bytes
+                )
+                loop = json.loads(
+                    next(
+                        target for target in plan.targets if target.role == "loop"
+                    )._after_bytes
+                )
+                dashboard = next(
+                    target for target in plan.targets if target.role == "dashboard"
+                )._after_bytes.decode("utf-8")
+                self.assertIn(
+                    f"**Status: {projected}**",
+                    issue._after_bytes.decode("utf-8"),
+                )
+                self.assertEqual(
+                    state["active_issue"],
+                    self.ISSUE_ID if projected == "active" else "",
+                )
+                self.assertEqual(state["phase"], phase)
+                self.assertEqual(state["next_command"], command)
+                self.assertEqual(loop["phase"], phase)
+                self.assertEqual(loop["next_command"], command)
+                if projected == "active":
+                    self.assertIn(f"phase: {phase}", dashboard)
+                else:
+                    self.assertIn("None active", dashboard)
+
+    def test_start_with_second_active_issue_projects_no_ambiguous_cursor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            (root / "issues" / "BIZ-200.md").write_text(
+                "# Issue: `BIZ-200`\n\n**Status: active** — created 2030-01-01.\n",
+                encoding="utf-8",
+            )
+
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(action="start"),
+                project_context=context,
+                clock="2030-01-02",
+            )
+
+            state = json.loads(
+                next(
+                    target for target in plan.targets if target.role == "state"
+                )._after_bytes
+            )
+            dashboard = next(
+                target for target in plan.targets if target.role == "dashboard"
+            )._after_bytes.decode("utf-8")
+            self.assertEqual(state["active_issue"], "")
+            self.assertEqual(state["phase"], "select")
+            self.assertEqual(state["next_command"], "product:status")
+            self.assertIn("None active", dashboard)
+
+    def test_loop_change_cannot_override_projected_lifecycle_route(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            issue_path = root / "issues" / f"{self.ISSUE_ID}.md"
+            issue_path.write_text(
+                issue_path.read_text(encoding="utf-8")
+                .replace("**Status: backlog**", "**Status: active**")
+                .replace("**Blocked-by: none**\n", ""),
+                encoding="utf-8",
+            )
+            spec_root = root / "specs" / self.ISSUE_ID
+            spec_root.mkdir(parents=True)
+            (spec_root / "spec.md").write_text("# Spec\n", encoding="utf-8")
+            loop_change = {
+                "schema": "moduflow.loop-state.v2",
+                "goal_id": "goal-1",
+                "issue_ids": ["BIZ-STALE"],
+                "active_issue_id": "BIZ-STALE",
+                "phase": "release",
+                "status": "active",
+                "next_command": "product:release BIZ-STALE",
+                "attempts": {
+                    "command": "product:execute BIZ-103",
+                    "count": 2,
+                    "max": 3,
+                },
+                "last_action": "preserve-this",
+            }
+
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(
+                    action="update",
+                    next_command="product:release BIZ-STALE",
+                    loop_change=loop_change,
+                ),
+                project_context=context,
+                clock="2030-01-02",
+            )
+
+            state = json.loads(
+                next(
+                    target for target in plan.targets if target.role == "state"
+                )._after_bytes
+            )
+            loop = json.loads(
+                next(
+                    target for target in plan.targets if target.role == "loop"
+                )._after_bytes
+            )
+            self.assertEqual(state["phase"], "spec")
+            self.assertEqual(state["next_command"], "product:plan BIZ-103")
+            self.assertEqual(loop["active_issue_id"], self.ISSUE_ID)
+            self.assertIn(self.ISSUE_ID, loop["issue_ids"])
+            self.assertEqual(loop["phase"], "spec")
+            self.assertEqual(loop["next_command"], "product:plan BIZ-103")
+            self.assertEqual(loop["attempts"]["count"], 2)
+            self.assertEqual(loop["last_action"], "preserve-this")
+
     def test_nested_context_owns_every_target_and_poisoned_defaults_are_not_read(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -3234,10 +3386,22 @@ class TransactionPlanningTests(unittest.TestCase):
             root = Path(tmp)
             context = self.scaffold(root)
             forbidden = AssertionError("path-based target read is forbidden")
+            specs_root = Path(context["paths"]["specs"])
+            original_is_file = Path.is_file
+            spec_checks = []
+
+            def specs_only_is_file(path):
+                candidate = Path(path)
+                try:
+                    candidate.relative_to(specs_root)
+                except ValueError:
+                    raise forbidden
+                spec_checks.append(candidate)
+                return original_is_file(candidate)
 
             with (
                 mock.patch.object(Path, "is_symlink", side_effect=forbidden),
-                mock.patch.object(Path, "is_file", side_effect=forbidden),
+                mock.patch.object(Path, "is_file", new=specs_only_is_file),
                 mock.patch.object(Path, "read_bytes", side_effect=forbidden),
             ):
                 plan = transaction.plan_lifecycle_transaction(
@@ -3248,6 +3412,10 @@ class TransactionPlanningTests(unittest.TestCase):
                 )
 
             self.assertEqual(plan.targets[0].role, "issue")
+            self.assertTrue(spec_checks)
+            self.assertTrue(
+                all(path.is_relative_to(specs_root) for path in spec_checks)
+            )
 
     def test_recovery_workspace_discovery_and_reopen_are_read_only(self):
         storage = transaction.transaction_storage

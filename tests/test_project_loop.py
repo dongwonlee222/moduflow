@@ -794,7 +794,13 @@ gate_state: passed
         })
 
         saved = json.loads(
-            project_loop.render_loop_state_update(b"{}\n", state)
+            project_loop.render_loop_state_update(
+                b"{}\n",
+                state,
+                active_issue="019-loop-kernel-and-state-model",
+                phase="plan",
+                next_command="product:plan 019-loop-kernel-and-state-model",
+            )
         )
 
         self.assertEqual(saved["schema"], "moduflow.loop-state.v2")

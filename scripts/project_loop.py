@@ -209,6 +209,7 @@ def render_loop_projection(
     next_command,
     blocker,
     changed_on,
+    phase=None,
     target_lifecycle=None,
 ):
     """Return loop-state bytes for a lifecycle intent without filesystem writes."""
@@ -239,12 +240,21 @@ def render_loop_projection(
     elif blocker:
         state["blocker"] = blocker
     state["next_command"] = next_command
+    if phase is not None:
+        state["phase"] = phase
     state["last_action"] = action
     state["updated_at"] = changed_on
     return (json.dumps(state, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
-def render_loop_state_update(loop_bytes, state):
+def render_loop_state_update(
+    loop_bytes,
+    state,
+    *,
+    active_issue,
+    phase,
+    next_command,
+):
     """Return the normalized full loop state without mutating canonical files."""
     if not isinstance(loop_bytes, bytes):
         raise TypeError("loop_bytes must be bytes")
@@ -254,6 +264,13 @@ def render_loop_state_update(loop_bytes, state):
     if not isinstance(state, dict):
         raise TypeError("loop state update requires a dictionary")
     normalized = normalize_loop_state(state)
+    issue_ids = list(normalized.get("issue_ids") or ())
+    if active_issue and active_issue not in issue_ids:
+        issue_ids.append(active_issue)
+    normalized["issue_ids"] = issue_ids
+    normalized["active_issue_id"] = active_issue or None
+    normalized["phase"] = phase
+    normalized["next_command"] = next_command
     return (json.dumps(normalized, ensure_ascii=False, indent=2) + "\n").encode(
         "utf-8"
     )

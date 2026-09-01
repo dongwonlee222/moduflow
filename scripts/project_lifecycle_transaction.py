@@ -5870,7 +5870,7 @@ def plan_lifecycle_transaction(
     )
     evaluation = None
     active_issue = None
-    if normalized.action == "reconcile":
+    if normalized.action != "production-version":
         evaluation = _render_planning_target(
             "issue",
             issue_relative,
@@ -5910,7 +5910,7 @@ def plan_lifecycle_transaction(
             evaluation,
             project_context=context,
         )
-        next_command = normalized.next_command or (
+        next_command = (
             active_issue.get("recommended_next_command")
             if active_issue
             else ""
@@ -5951,6 +5951,7 @@ def plan_lifecycle_transaction(
             next_command=next_command,
             blocker=normalized.loop_blocker,
             changed_on=changed_on,
+            phase=phase,
             target_lifecycle=projected_status,
         )
     else:
@@ -5960,6 +5961,9 @@ def plan_lifecycle_transaction(
             render_loop_state_update,
             loop_before,
             _json_value(normalized.loop_change),
+            active_issue=issue_active,
+            phase=phase,
+            next_command=next_command,
         )
     dashboard_after = _render_planning_target(
         "dashboard",
