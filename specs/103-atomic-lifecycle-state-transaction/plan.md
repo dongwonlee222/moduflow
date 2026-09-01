@@ -291,6 +291,12 @@ def derive_idempotency_key(project_context, intent):
 - Consumes: Task B2 apply/recovery boundary.
 - Produces: transaction-backed `transition_lifecycle()`, compatibility `sync_lifecycle()`, transaction-backed `write_loop_state()`, and CLI transition/recovery JSON.
 
+**Execution slices (updated 2026-09-01):**
+
+- [x] **C1a — transition/recovery adapter and CLI.** Added the public lifecycle adapter and strict CLI dispatch in `e8530cd` and `5001ada`.
+- [ ] **C1b — compatibility sync/reconcile adapter.** Replace `sync_lifecycle()` direct state/dashboard writes with one `reconcile` intent, derive lifecycle projections from one shared projected issue evaluation, and preserve legacy result keys with additive transaction evidence. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c1b-sync-reconcile-adapter.md`.
+- [ ] **C1c — loop mutation adapter.** Replace the remaining public loop-state writer with the transaction boundary and close the C1 direct-write bypass inventory.
+
 - [ ] **Step 1: Write RED public-boundary tests.** Verify `start`, `update`, `pause`, `resume`, `complete`, and `reconcile`; exact legacy compatibility keys; optional index behavior; conditional roadmap block behavior; and zero direct public writes.
 - [ ] **Step 2: Add CLI contract tests.** Cover `--transition`, `--issue-id`, `--target-status`, `--actor`, `--source-event`, `--idempotency-key`, `--expected-issue-sha256`, `--priority`, and `--recover`; invalid combinations exit `2` without writes.
 - [ ] **Step 3: Convert direct writers to renderers/internal helpers.** `sync_lifecycle()` creates a `reconcile` intent; `write_loop_state()` creates an `update` intent; only the transaction persistence layer calls canonical replace.
