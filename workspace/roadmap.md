@@ -1,5 +1,30 @@
 # ModuFlow Roadmap
 
+## Priority Refresh — 2026-09-01
+
+### Now
+
+- `103-atomic-lifecycle-state-transaction` — P0; transaction core and C1a lifecycle adapter/CLI are complete. Finish C1b/C1c, C2, D1, and D2 before starting another P0 implementation.
+- `111-runtime-provenance-and-validation-mode-separation` — P1; may proceed independently but remains required before the next plugin release.
+
+### Next
+
+- `112-execution-planner-and-backend-boundary` — P0; after 103, filter worker plans to concrete implementation tasks and select exactly one inline or Superpowers SDD path.
+- `105-schema-migration-and-doctor-triage` — P0; unblocks after 103 and may proceed alongside the later review-state work.
+- `113-review-lifecycle-and-exception-fix-approval` — P1; after 103 and 112, separate implementation, review, fixes, approval, and merge evidence.
+- `104-project-aware-natural-language-request-orchestrator` — P0; now also depends on 112 so it consumes one execution boundary instead of embedding the old worker model.
+
+### Later
+
+- `114-speckit-selective-adapter-1x-compatibility` — P1; after 112, review and pin one exact Spec Kit 1.x release for the four advisory functions only.
+- `106-korean-production-search-and-stable-ids` → `107-shared-approved-playbook-layer`.
+- `108-production-approval-and-verification-gates` after 104.
+- `084-worker-prompt-context-budget` stays separate as a later cost/context optimization.
+
+### Review Gate
+
+The 2026-09-01 official-source benchmark supports durable agent-neutral artifacts, bounded task execution, host-native subagents, and explicit review gates. It rejects a second ModuFlow execution engine, forced delegation, full Spec Kit lifecycle adoption, and unpinned adapter upgrades. See `knowledge/benchmarks/2026-09-01-agentic-execution-governance-trend.md`.
+
 ## Priority Refresh — 2026-08-21
 
 ### Now

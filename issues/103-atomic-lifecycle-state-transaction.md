@@ -1,6 +1,6 @@
 # Issue 103: Atomic Lifecycle State Transaction
 
-**Status: active** — created 2026-08-19; specification approved, dependencies completed, and implementation plan drafted 2026-08-21.
+**Status: active** — created 2026-08-19; implementation in progress, with the lifecycle transaction adapter and CLI completed through C1a on 2026-09-01.
 **Priority: p0**
 **Blocked-by: `109-canonical-project-context-consumer-convergence`, `110-project-operation-capability-enforcement`**
 
@@ -13,7 +13,7 @@ Replace best-effort lifecycle propagation with a validated application-level tra
 - Type: user multi-project orchestration improvement request
 - Link: local Codex attachment `pasted-text.txt`, 2026-08-19
 - Owner / decision maker: Dongwon Lee
-- Current phase: plan review; non-draft PR #43 is open with readiness and verification evidence
+- Current phase: execute; transaction core and C1a public adapter are implemented
 
 ## Opportunity
 
@@ -98,4 +98,4 @@ Do not change project resolution, migrate legacy schemas, or make remote GitHub 
 
 ## Next Command
 
-`product:review 103-atomic-lifecycle-state-transaction` — review PR #43; implementation begins only after explicit approval.
+`product:execute 103-atomic-lifecycle-state-transaction` — continue C1b/C1c, C2, D1, and D2.

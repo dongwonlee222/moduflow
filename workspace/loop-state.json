@@ -26,27 +26,30 @@
     "108-production-approval-and-verification-gates",
     "109-canonical-project-context-consumer-convergence",
     "110-project-operation-capability-enforcement",
-    "111-runtime-provenance-and-validation-mode-separation"
+    "111-runtime-provenance-and-validation-mode-separation",
+    "112-execution-planner-and-backend-boundary",
+    "113-review-lifecycle-and-exception-fix-approval",
+    "114-speckit-selective-adapter-1x-compatibility"
   ],
   "active_issue_id": "103-atomic-lifecycle-state-transaction",
-  "phase": "review",
+  "phase": "execute",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "active",
-  "next_command": "product:review 103-atomic-lifecycle-state-transaction",
+  "next_command": "product:execute 103-atomic-lifecycle-state-transaction",
   "attempts": {
-    "command": "product:review 103-atomic-lifecycle-state-transaction",
+    "command": "product:execute 103-atomic-lifecycle-state-transaction",
     "count": 0,
     "max": 3,
-    "last_changed_at": "2026-08-21"
+    "last_changed_at": "2026-09-01"
   },
-  "blocker": "Issue 103 plan PR #43 awaits review and explicit execution approval",
-  "last_action": "published Issue 103 specification, eight-task plan, readiness, and review packet as PR #43",
-  "last_verification": "2026-08-21: Issue 103 spec consistency clean and implementation readiness status ready",
-  "updated_at": "2026-08-21",
+  "blocker": null,
+  "last_action": "registered Issues 112-114 and linked the official-source execution governance benchmark",
+  "last_verification": "2026-09-01: Issue 103 C1a focused lifecycle/transaction/loop verification passed 199 tests",
+  "updated_at": "2026-09-01",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/103-atomic-lifecycle-state-transaction-plan",
+    "branch": "codex/103-atomic-lifecycle-state-transaction",
     "base_branch": "main",
     "commits": [
       "f980aef",
@@ -152,9 +155,9 @@
     "release": "Issue 110 PR #42 merged as 5f173f4; ModuFlow 0.3.52 post-merge source release validation passed",
     "execution_backend": {
       "type": "codex",
-      "status": "ready",
-      "reason": "Issue 103 planning is unblocked after Issues 109 and 110 completed",
-      "session": "codex-2026-08-21"
+      "status": "active",
+      "reason": "Issue 103 implementation is executing inline in the preserved Codex worktree",
+      "session": "codex-2026-09-01"
     }
   }
 }

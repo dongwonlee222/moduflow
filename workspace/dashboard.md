@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Goal `trustworthy-execution-and-project-knowledge`: Issues 109 and 110 are merged. Issue 103 plan/readiness PR #43 is open for review; implementation approval follows.
+Goal `trustworthy-execution-and-project-knowledge`: Issue 103 implementation is active. The transaction core and C1a lifecycle adapter/CLI are complete; C1b/C1c, C2, D1, and D2 remain.
 
 ## Active Goal
 
@@ -10,14 +10,18 @@ Goal `trustworthy-execution-and-project-knowledge`: Issues 109 and 110 are merge
 
 ## Active Issue
 
-- `103-atomic-lifecycle-state-transaction` (phase: review). Canonical: `issues/103-atomic-lifecycle-state-transaction.md`.
+- `103-atomic-lifecycle-state-transaction` (phase: execute). Canonical: `issues/103-atomic-lifecycle-state-transaction.md`.
 
-## Priority Queue — 2026-08-21
+## Priority Queue — 2026-09-01
 
 - Merged: `109` canonical project-context consumer convergence — PR #41 merged as `9df5f02` after local and GitHub CI verification.
 - Merged: `110` project operation capability enforcement — [PR #42](https://github.com/dongwonlee222/moduflow/pull/42) passed CI and merged as `5f173f4`; post-merge source release check passed.
-- Now: `103` atomic lifecycle state transaction — P0; [plan PR #43](https://github.com/dongwonlee222/moduflow/pull/43) is open, with 11/11 acceptance criteria mapped and readiness 7/7 passed.
+- Now: `103` atomic lifecycle state transaction — P0; transaction core and C1a lifecycle adapter/CLI are complete. Finish C1b/C1c, C2, D1, and D2.
 - Parallel before next release: `111` runtime provenance and validation-mode separation — P1, does not block 103.
+- Next: `112` execution planner/backend boundary — P0 after 103; concrete implementation tasks only, one inline or Superpowers SDD path, no second runtime.
+- Then: `105` migration/Doctor triage and `113` review lifecycle/exception approval; `104` now waits for 112's execution contract.
+- Later: `114` reviews one exact Spec Kit 1.x pin while preserving the four-function read-only boundary.
+- Trend evidence: `knowledge/benchmarks/2026-09-01-agentic-execution-governance-trend.md` confirms the boundary against official Spec Kit, OpenAI, Anthropic, and GitHub guidance.
 - Verified intake: four Issue 102 findings accepted and mapped to exactly three non-duplicate issues in `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`.
 - Shipped: `102` project registry/resolver merged as `010eee8`; 1,225 tests and source release check passed, package source version 0.3.49.
 - Shipped: `098` selective Spec Kit validation adapter merged via PR #37 as `513e08f`, installed locally as ModuFlow 0.3.48, and remains project-opt-in only.
