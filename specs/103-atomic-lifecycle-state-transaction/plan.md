@@ -294,7 +294,7 @@ def derive_idempotency_key(project_context, intent):
 **Execution slices (updated 2026-09-01):**
 
 - [x] **C1a — transition/recovery adapter and CLI.** Added the public lifecycle adapter and strict CLI dispatch in `e8530cd` and `5001ada`.
-- [ ] **C1b — compatibility sync/reconcile adapter.** Replace `sync_lifecycle()` direct state/dashboard writes with one `reconcile` intent, derive lifecycle projections from one shared projected issue evaluation, and preserve legacy result keys with additive transaction evidence. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c1b-sync-reconcile-adapter.md`.
+- [x] **C1b — compatibility sync/reconcile adapter.** Replaced `sync_lifecycle()` direct state/dashboard writes with one `reconcile` intent, derived lifecycle projections from one shared projected issue evaluation, and preserved legacy result keys with additive transaction evidence in `7b53a00`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c1b-sync-reconcile-adapter.md`.
 - [ ] **C1c — loop mutation adapter.** Replace the remaining public loop-state writer with the transaction boundary and close the C1 direct-write bypass inventory.
 
 - [ ] **Step 1: Write RED public-boundary tests.** Verify `start`, `update`, `pause`, `resume`, `complete`, and `reconcile`; exact legacy compatibility keys; optional index behavior; conditional roadmap block behavior; and zero direct public writes.
