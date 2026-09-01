@@ -157,6 +157,7 @@ def parse_production_record(project_root, path):
         "title": metadata["title"],
         "path": _relative_path(project_root, path),
         "issue_id": metadata.get("issue_id", ""),
+        "version": metadata.get("version", ""),
         "source_context": metadata.get("source_context", ""),
         "deliverable_type": metadata["deliverable_type"],
         "channel": metadata["channel"],
@@ -663,14 +664,17 @@ def _record_content(
     owner,
     variant,
     created,
+    version="",
 ):
+    normalized_version = str(version).strip()
+    version_line = f"version: {normalized_version}\n" if normalized_version else ""
     return f"""---
 schema: {RECORD_SCHEMA}
 id: {record_id}
 kind: production_record
 title: {title}
 issue_id: {issue_id}
-source_context: {source_context}
+{version_line}source_context: {source_context}
 deliverable_type: {deliverable_type}
 channel: {channel}
 audiences: {_format_list(audiences)}

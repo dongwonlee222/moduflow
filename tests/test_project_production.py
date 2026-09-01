@@ -177,6 +177,7 @@ class ProjectProductionParserTests(unittest.TestCase):
 
             record = production.parse_production_record(root, path)
 
+            self.assertEqual(record["version"], "")
             self.assertEqual(record["deliverable_type"], "banner")
             self.assertEqual(record["audiences"], ["customer", "internal"])
             self.assertEqual(record["variant"], "mobile")
@@ -188,6 +189,53 @@ class ProjectProductionParserTests(unittest.TestCase):
                 record["sections"]["External Copy"],
                 record["sections"]["Internal Reporting Copy"],
             )
+
+    def test_parse_and_render_version_metadata_without_migrating_legacy_records(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            versioned = VALID_RECORD.replace(
+                "issue_id: 123-summer-event\n",
+                "issue_id: 123-summer-event\nversion: 1.2.3\n",
+            )
+            record = production.parse_production_record(
+                root,
+                write_record(root, versioned),
+            )
+
+            rendered = production._record_content(
+                "record-103",
+                "Versioned record",
+                "BIZ-103",
+                "",
+                "document",
+                "internal",
+                ["team"],
+                "draft",
+                "when preparing release notes",
+                "dongwon",
+                "default",
+                "2026-09-01",
+                version="2.0.0",
+            )
+            legacy = production._record_content(
+                "record-legacy",
+                "Legacy record",
+                "BIZ-103",
+                "",
+                "document",
+                "internal",
+                ["team"],
+                "draft",
+                "when preparing release notes",
+                "dongwon",
+                "default",
+                "2026-09-01",
+            )
+
+            self.assertEqual(record["version"], "1.2.3")
+            self.assertEqual(rendered.count("\nversion: 2.0.0\n"), 1)
+            self.assertNotIn("\nversion:", legacy)
 
     def test_parse_record_requires_nine_sections_in_order(self):
         with tempfile.TemporaryDirectory() as tmp:
