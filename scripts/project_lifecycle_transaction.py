@@ -63,6 +63,7 @@ EVIDENCE_SCHEMA = "moduflow.lifecycle-transaction-evidence.v1"
 JOURNAL_SCHEMA = "moduflow.lifecycle-transaction-journal.v1"
 LOCK_SCHEMA = "moduflow.lifecycle-transaction-lock.v1"
 RECOVERY_SCHEMA = "moduflow.lifecycle-transaction-recovery.v1"
+RECOVERY_DIAGNOSTICS_SCHEMA = "moduflow.lifecycle-recovery-diagnostics.v1"
 
 _LOCK_NAME = "lifecycle.lock"
 _MAX_LOCK_BYTES = 4096
@@ -116,6 +117,16 @@ _JOURNAL_TRANSITIONS = {
     "recovery-required": frozenset(),
 }
 _JOURNAL_RECOVERY_TRANSITIONS = frozenset({"rolling-back", "finalizing"})
+_INCOMPLETE_JOURNAL_PHASES = frozenset({
+    "planned",
+    "staged",
+    "prepared",
+    "applying",
+    "post-validating",
+    "finalizing",
+    "rolling-back",
+    "recovery-required",
+})
 
 _ACTIONS = frozenset({
     "start",
@@ -3852,6 +3863,79 @@ def _private_recovered_journal_workspace(canonical_root, transaction_id):
             control,
             workspace,
         )
+
+
+def _recovery_diagnostic_target(target):
+    return {
+        "role": target["role"],
+        "relative_path": target["relative_path"],
+        "before_sha256": target["before_sha256"],
+        "after_sha256": target["after_sha256"],
+        "changed": target["changed"],
+    }
+
+
+def _unsafe_recovery_diagnostics(error_code):
+    return {
+        "schema": RECOVERY_DIAGNOSTICS_SCHEMA,
+        "status": "unsafe",
+        "error_code": error_code,
+        "transactions": [],
+    }
+
+
+def inspect_recovery_transactions(
+    project_root,
+    *,
+    project_context=None,
+):
+    """Inspect incomplete journal control metadata without recovery or writes."""
+    try:
+        root = Path(project_root).resolve()
+        context = project_registry.context_for_operation(
+            root,
+            project_context=project_context,
+        )
+    except (OSError, TypeError, ValueError):
+        return _unsafe_recovery_diagnostics("RECOVERY_DISCOVERY_UNSAFE")
+    project_operation.require_project_capability(context, "read")
+    try:
+        transaction_ids = transaction_storage.discover_recovery_workspaces(root)
+        records = []
+        for transaction_id in transaction_ids:
+            with _private_recovered_journal_workspace(
+                root,
+                transaction_id,
+            ) as recovered:
+                journal = _json_value(recovered.journal)
+            phase = journal["phase"]
+            if phase not in _INCOMPLETE_JOURNAL_PHASES:
+                continue
+            targets = [
+                _recovery_diagnostic_target(target)
+                for target in journal["targets"]
+            ]
+            records.append(
+                {
+                    "transaction_id": transaction_id,
+                    "phase": phase,
+                    "affected_roles": sorted(
+                        {target["role"] for target in targets}
+                    ),
+                    "targets": targets,
+                }
+            )
+    except (
+        LifecycleRecoveryReadError,
+        transaction_storage.LifecycleRecoveryStorageError,
+    ) as exc:
+        return _unsafe_recovery_diagnostics(exc.code)
+    return {
+        "schema": RECOVERY_DIAGNOSTICS_SCHEMA,
+        "status": "incomplete" if records else "healthy",
+        "error_code": "",
+        "transactions": records,
+    }
 
 
 def _recovery_targets_from_journal(journal):

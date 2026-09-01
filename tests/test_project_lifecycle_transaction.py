@@ -3532,6 +3532,136 @@ Versioned release record.
             ):
                 operation.assert_not_called()
 
+    def test_recovery_diagnostics_are_read_only_redacted_and_actionable(self):
+        entry = getattr(transaction, "inspect_recovery_transactions", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context, plan, _applied, _rollback = self.prepare_restart_recovery_case(
+                root,
+                "prepared",
+            )
+
+            with (
+                mock.patch.object(
+                    transaction,
+                    "recover_incomplete_transaction",
+                ) as recover,
+                mock.patch.object(
+                    transaction.transaction_storage.os,
+                    "mkdir",
+                ) as make_directory,
+                mock.patch.object(
+                    transaction.transaction_storage.os,
+                    "replace",
+                ) as replace_file,
+                mock.patch.object(
+                    transaction.transaction_storage.os,
+                    "unlink",
+                ) as unlink,
+                mock.patch.object(
+                    transaction.transaction_storage.os,
+                    "fsync",
+                ) as sync_file,
+            ):
+                result = entry(root, project_context=context)
+
+            self.assertEqual(
+                result["schema"],
+                "moduflow.lifecycle-recovery-diagnostics.v1",
+            )
+            self.assertEqual(result["status"], "incomplete")
+            self.assertEqual(result["error_code"], "")
+            self.assertEqual(len(result["transactions"]), 1)
+            record = result["transactions"][0]
+            self.assertEqual(record["transaction_id"], plan.transaction_id)
+            self.assertEqual(record["phase"], "prepared")
+            self.assertEqual(
+                record["affected_roles"],
+                sorted({target.role for target in plan.targets}),
+            )
+            self.assertTrue(record["targets"])
+            self.assertEqual(
+                set(record["targets"][0]),
+                {
+                    "role",
+                    "relative_path",
+                    "before_sha256",
+                    "after_sha256",
+                    "changed",
+                },
+            )
+            rendered = json.dumps(result, ensure_ascii=False)
+            self.assertNotIn(str(root), rendered)
+            self.assertNotIn("_bytes", rendered)
+            self.assertNotIn("preimage", rendered)
+            recover.assert_not_called()
+            for operation in (
+                make_directory,
+                replace_file,
+                unlink,
+                sync_file,
+            ):
+                operation.assert_not_called()
+
+    def test_recovery_diagnostics_filter_terminal_journal(self):
+        entry = getattr(transaction, "inspect_recovery_transactions", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context, plan, _applied, _rollback = self.prepare_restart_recovery_case(
+                root,
+                "prepared",
+            )
+            journal_path = (
+                root
+                / ".moduflow/transactions"
+                / plan.transaction_id
+                / "journal.json"
+            )
+            journal = json.loads(journal_path.read_text(encoding="utf-8"))
+            journal["phase"] = "complete"
+            journal["applied_target_indexes"] = [
+                index
+                for index, target in enumerate(journal["targets"])
+                if target["changed"]
+            ]
+            journal["updated_at"] = "2030-01-02T03:09:00Z"
+            journal_path.write_bytes(
+                transaction.canonical_json_bytes(
+                    transaction.serialize_transaction_journal(journal)
+                )
+                + b"\n"
+            )
+
+            result = entry(root, project_context=context)
+
+            self.assertEqual(result["status"], "healthy")
+            self.assertEqual(result["error_code"], "")
+            self.assertEqual(result["transactions"], [])
+
+    def test_recovery_diagnostics_fail_closed_on_unsafe_discovery(self):
+        entry = getattr(transaction, "inspect_recovery_transactions", None)
+        self.assertIsNotNone(entry)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            transactions = root / ".moduflow/transactions"
+            transactions.mkdir(mode=0o700)
+            unsafe = transactions / "foreign.txt"
+            unsafe.write_text("PRIVATE CONTENT\n", encoding="utf-8")
+
+            result = entry(root, project_context=context)
+
+            self.assertEqual(result["status"], "unsafe")
+            self.assertEqual(
+                result["error_code"],
+                "RECOVERY_DISCOVERY_UNSAFE",
+            )
+            self.assertEqual(result["transactions"], [])
+            self.assertNotIn("PRIVATE CONTENT", json.dumps(result))
+            self.assertEqual(unsafe.read_text(encoding="utf-8"), "PRIVATE CONTENT\n")
+
     def test_recovery_workspace_discovery_rejects_unsafe_entries_without_repair(self):
         storage = transaction.transaction_storage
         error_type = getattr(storage, "LifecycleRecoveryStorageError", None)
