@@ -3,7 +3,9 @@ import json
 import re
 import tempfile
 import unittest
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from scripts import project_operation, project_registry
@@ -168,6 +170,110 @@ def write_issue(root, issue_id):
     return path
 
 
+def write_transaction_project(root, issue_ids, *, nested=False):
+    paths = {
+        "issues": "product/issues" if nested else "issues",
+        "specs": "product/specs" if nested else "specs",
+        "workspace": "product/workspace" if nested else "workspace",
+        "knowledge": "product/knowledge" if nested else "knowledge",
+        "memory": "product/memory" if nested else "memory",
+        "production_records": (
+            "product/records" if nested else "memory/production-records"
+        ),
+        "playbooks": "product/playbooks" if nested else "playbooks",
+        "workflow": "product/workflow" if nested else "workflow",
+    }
+    moduflow = root / ".moduflow"
+    moduflow.mkdir()
+    (moduflow / "config.json").write_text(
+        json.dumps({"schema": "moduflow.config.v1", "paths": paths}) + "\n",
+        encoding="utf-8",
+    )
+    (moduflow / "state.json").write_text(
+        json.dumps(
+            {
+                "schema": "moduflow.state.v1",
+                "active_issue": "",
+                "phase": "select",
+                "active_goal": "",
+                "next_command": "product:status",
+                "blockers": [],
+                "updated_at": "2029-12-31",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    for relative in paths.values():
+        (root / relative).mkdir(parents=True, exist_ok=True)
+    for issue_id in issue_ids:
+        (root / paths["issues"] / f"{issue_id}.md").write_text(
+            f"# Issue: `{issue_id}`\n\n"
+            "**Status: backlog** — created 2029-12-01.\n"
+            "**Priority: p2**\n"
+            "**Blocked-by: none**\n\n"
+            "## Notes\n\nPreserve issue prose.\n",
+            encoding="utf-8",
+        )
+    workspace = root / paths["workspace"]
+    (workspace / "dashboard.md").write_text(
+        "# Dashboard\n\n## Active Issue\n\n- None active.\n\n"
+        "## Notes\n\nPreserve dashboard prose.\n",
+        encoding="utf-8",
+    )
+    (workspace / "loop-state.json").write_text(
+        json.dumps(
+            {
+                "schema": "moduflow.loop-state.v2",
+                "goal_id": "goal-103",
+                "issue_ids": [],
+                "active_issue_id": None,
+                "status": "active",
+                "next_command": "product:status",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (workspace / "transactions").mkdir()
+    if nested:
+        for relative, payload in (
+            ("issues/POISON.md", b"POISON DEFAULT ISSUE\n"),
+            ("workspace/dashboard.md", b"POISON DEFAULT DASHBOARD\n"),
+            ("workspace/loop-state.json", b"{broken-default\n"),
+            ("memory/production-records/poison.md", b"POISON DEFAULT RECORD\n"),
+        ):
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(payload)
+    return project_registry.project_context_for_root(root)
+
+
+def transaction_clock():
+    values = [date(2030, 1, 2)]
+    start = datetime(2030, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    values.extend(start + timedelta(seconds=index) for index in range(120))
+    iterator = iter(values)
+    return lambda: next(iterator)
+
+
+def transaction_validation_result():
+    return {
+        "schema": "moduflow.project-validation.v1",
+        "project_root": "PRIVATE OMITTED",
+        "valid": True,
+        "errors": [],
+        "warnings": [],
+        "issue_schema": {
+            "errors": 0,
+            "warnings": 0,
+            "codes": [],
+            "diagnostics": [],
+        },
+        "lifecycle_drift": [],
+    }
+
+
 class ProjectProductionParserTests(unittest.TestCase):
     def test_parse_record_normalizes_metadata_sections_and_artifacts(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -292,6 +398,148 @@ class ProjectProductionParserTests(unittest.TestCase):
 
 
 class ProjectProductionMutationTests(unittest.TestCase):
+    def test_create_record_routes_exact_versioned_intent_and_maps_result(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            transaction_result = {
+                "schema": "moduflow.lifecycle-transaction.v1",
+                "status": "applied",
+            }
+            apply = mock.Mock(return_value=transaction_result)
+            boundary = SimpleNamespace(
+                LifecycleIntent=lambda **values: SimpleNamespace(**values),
+                apply_lifecycle_transaction=apply,
+            )
+            context = project_registry.project_context_for_root(root)
+            injector = lambda _stage: None
+
+            with mock.patch.object(
+                production,
+                "_load_lifecycle_transaction_module",
+                return_value=boundary,
+                create=True,
+            ):
+                result = production.create_production_record(
+                    root,
+                    title="Release notes",
+                    issue_id="BIZ-103",
+                    version="1.2.3",
+                    deliverable_type="document",
+                    channel="internal",
+                    audiences=["team"],
+                    lifecycle="draft",
+                    retrieval_trigger="when preparing releases",
+                    owner="dongwon",
+                    variant="default",
+                    created="2030-01-02",
+                    actor="dongwon",
+                    source_event="request:C2c",
+                    idempotency_key="a" * 64,
+                    expected_issue_sha256="b" * 64,
+                    project_context=context,
+                    clock="clock",
+                    fault_injector=injector,
+                )
+
+            intent = apply.call_args.args[1]
+            self.assertEqual(intent.issue_id, "BIZ-103")
+            self.assertEqual(intent.action, "production-version")
+            self.assertEqual(intent.actor, "dongwon")
+            self.assertEqual(intent.source_event, "request:C2c")
+            self.assertEqual(intent.idempotency_key, "a" * 64)
+            self.assertEqual(intent.expected_issue_sha256, "b" * 64)
+            self.assertEqual(intent.production_change["version"], "1.2.3")
+            self.assertEqual(
+                intent.production_change["record_id"],
+                "2030-01-02-release-notes",
+            )
+            self.assertIn("version: 1.2.3", intent.production_change["content"])
+            apply.assert_called_once_with(
+                root.resolve(),
+                intent,
+                project_context=context,
+                clock="clock",
+                fault_injector=injector,
+            )
+            self.assertEqual(result["action"], "created")
+            self.assertEqual(result["id"], "2030-01-02-release-notes")
+            self.assertEqual(
+                result["path"],
+                "memory/production-records/2030-01-02-release-notes.md",
+            )
+            self.assertIs(result["transaction"], transaction_result)
+            self.assertFalse((root / "memory").exists())
+
+    def test_create_record_rejects_invalid_version_or_issue_before_engine(self):
+        invalid = (
+            {"issue_id": "BIZ-103", "version": ""},
+            {"issue_id": "BIZ-103", "version": "v1"},
+            {"issue_id": "", "version": "1.2.3"},
+        )
+        for values in invalid:
+            with self.subTest(values=values), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                with mock.patch.object(
+                    production,
+                    "_load_lifecycle_transaction_module",
+                    create=True,
+                ) as load:
+                    with self.assertRaises(ValueError):
+                        production.create_production_record(
+                            root,
+                            title="Release notes",
+                            deliverable_type="document",
+                            channel="internal",
+                            audiences=["team"],
+                            lifecycle="draft",
+                            retrieval_trigger="when preparing releases",
+                            **values,
+                        )
+                load.assert_not_called()
+                self.assertFalse((root / "memory").exists())
+
+    def test_create_record_maps_transaction_terminal_statuses(self):
+        for status, action in (
+            ("applied", "created"),
+            ("noop", "noop"),
+            ("conflict", "update_required"),
+            ("denied", "denied"),
+            ("recovery_required", "recovery_required"),
+        ):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                transaction_result = {
+                    "schema": "moduflow.lifecycle-transaction.v1",
+                    "status": status,
+                }
+                boundary = SimpleNamespace(
+                    LifecycleIntent=lambda **values: SimpleNamespace(**values),
+                    apply_lifecycle_transaction=mock.Mock(
+                        return_value=transaction_result
+                    ),
+                )
+                with mock.patch.object(
+                    production,
+                    "_load_lifecycle_transaction_module",
+                    return_value=boundary,
+                    create=True,
+                ):
+                    result = production.create_production_record(
+                        root,
+                        title="Release notes",
+                        issue_id="BIZ-103",
+                        version="1.2.3",
+                        deliverable_type="document",
+                        channel="internal",
+                        audiences=["team"],
+                        lifecycle="draft",
+                        retrieval_trigger="when preparing releases",
+                        created="2030-01-02",
+                    )
+
+                self.assertEqual(result["action"], action)
+                self.assertIs(result["transaction"], transaction_result)
+
     def test_archived_project_denies_all_production_mutators_before_reads_or_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -358,80 +606,111 @@ class ProjectProductionMutationTests(unittest.TestCase):
     def test_same_capture_key_returns_noop_then_update_required_without_overwrite(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            first = production.create_production_record(
-                root,
-                title="Summer banner",
-                issue_id="123-summer-event",
-                deliverable_type="banner",
-                channel="home-popup",
-                audiences=["customer"],
-                lifecycle="draft",
-                retrieval_trigger="when creating mobile banners",
-                variant="mobile",
-            )
+            write_transaction_project(root, ["123-summer-event"])
+            boundary = production._load_lifecycle_transaction_module()
+            values = {
+                "title": "Summer banner",
+                "issue_id": "123-summer-event",
+                "version": "1.2.3",
+                "deliverable_type": "banner",
+                "channel": "home-popup",
+                "audiences": ["customer"],
+                "lifecycle": "draft",
+                "retrieval_trigger": "when creating mobile banners",
+                "variant": "mobile",
+                "created": "2030-01-02",
+            }
+            with mock.patch.object(
+                boundary.validate_project_artifacts,
+                "validate_project",
+                return_value=transaction_validation_result(),
+            ):
+                first = production.create_production_record(
+                    root, clock=transaction_clock(), **values
+                )
             path = root / first["path"]
 
-            same = production.create_production_record(
-                root,
-                title="Summer banner",
-                issue_id="123-summer-event",
-                deliverable_type="banner",
-                channel="home-popup",
-                audiences=["customer"],
-                lifecycle="draft",
-                retrieval_trigger="when creating mobile banners",
-                variant="mobile",
-            )
+            with mock.patch.object(
+                boundary.validate_project_artifacts,
+                "validate_project",
+                return_value=transaction_validation_result(),
+            ):
+                same = production.create_production_record(
+                    root, clock=transaction_clock(), **values
+                )
             self.assertEqual(same["action"], "noop")
 
-            path.write_text(path.read_text(encoding="utf-8") + "\nHuman note\n", encoding="utf-8")
-            changed = production.create_production_record(
-                root,
-                title="Summer banner",
-                issue_id="123-summer-event",
-                deliverable_type="banner",
-                channel="home-popup",
-                audiences=["customer"],
-                lifecycle="draft",
-                retrieval_trigger="when creating mobile banners",
-                variant="mobile",
-            )
+            changed_values = {
+                **values,
+                "retrieval_trigger": "when creating changed mobile banners",
+            }
+            with mock.patch.object(
+                boundary.validate_project_artifacts,
+                "validate_project",
+                return_value=transaction_validation_result(),
+            ):
+                changed = production.create_production_record(
+                    root, clock=transaction_clock(), **changed_values
+                )
 
             self.assertEqual(changed["action"], "update_required")
-            self.assertIn("Human note", path.read_text(encoding="utf-8"))
+            self.assertNotIn(
+                "changed mobile banners",
+                path.read_text(encoding="utf-8"),
+            )
 
-    def test_same_day_and_title_with_different_source_gets_distinct_record(self):
+    def test_same_day_and_title_with_different_issue_never_overwrites(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            first = production.create_production_record(
+            write_transaction_project(
                 root,
-                title="Summer banner",
-                issue_id="123-summer-event",
-                deliverable_type="banner",
-                channel="home-popup",
-                audiences=["customer"],
-                lifecycle="draft",
-                retrieval_trigger="when creating banners",
+                ["123-summer-event", "124-partner-event"],
             )
-            second = production.create_production_record(
-                root,
-                title="Summer banner",
-                issue_id="124-partner-event",
-                deliverable_type="banner",
-                channel="home-popup",
-                audiences=["customer"],
-                lifecycle="draft",
-                retrieval_trigger="when creating partner banners",
-            )
+            boundary = production._load_lifecycle_transaction_module()
+            common = {
+                "title": "Summer banner",
+                "version": "1.2.3",
+                "deliverable_type": "banner",
+                "channel": "home-popup",
+                "audiences": ["customer"],
+                "lifecycle": "draft",
+                "created": "2030-01-02",
+            }
+            with mock.patch.object(
+                boundary.validate_project_artifacts,
+                "validate_project",
+                return_value=transaction_validation_result(),
+            ):
+                first = production.create_production_record(
+                    root,
+                    issue_id="123-summer-event",
+                    retrieval_trigger="when creating banners",
+                    clock=transaction_clock(),
+                    **common,
+                )
+            before = (root / first["path"]).read_bytes()
+            with mock.patch.object(
+                boundary.validate_project_artifacts,
+                "validate_project",
+                return_value=transaction_validation_result(),
+            ):
+                second = production.create_production_record(
+                    root,
+                    issue_id="124-partner-event",
+                    retrieval_trigger="when creating partner banners",
+                    clock=transaction_clock(),
+                    **common,
+                )
 
             self.assertEqual(first["action"], "created")
-            self.assertEqual(second["action"], "created")
-            self.assertNotEqual(first["path"], second["path"])
-            self.assertEqual(len(production.list_production_records(root)), 2)
+            self.assertEqual(second["action"], "update_required")
+            self.assertEqual(first["path"], second["path"])
+            self.assertEqual((root / first["path"]).read_bytes(), before)
+            self.assertEqual(len(production.list_production_records(root)), 1)
 
-    def test_capture_requires_issue_or_source_context(self):
+    def test_capture_requires_issue_and_explicit_semantic_version(self):
         with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaisesRegex(ValueError, "issue_id or source_context"):
+            with self.assertRaisesRegex(ValueError, "issue_id is required"):
                 production.create_production_record(
                     Path(tmp),
                     title="Banner",
@@ -440,6 +719,7 @@ class ProjectProductionMutationTests(unittest.TestCase):
                     audiences=["customer"],
                     lifecycle="draft",
                     retrieval_trigger="when creating banners",
+                    source_context="brief-only-is-not-an-owner",
                 )
 
 
@@ -447,31 +727,74 @@ class ProjectProductionCliTests(unittest.TestCase):
     def test_cli_init_and_new_record_emit_json(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            write_transaction_project(root, ["123-summer-event"])
             self.assertEqual(production.main([str(root), "--init"]), 0)
-            self.assertEqual(
-                production.main(
-                    [
-                        str(root),
-                        "--new-record",
-                        "--title",
-                        "Summer banner",
-                        "--issue-id",
-                        "123-summer-event",
-                        "--type",
-                        "banner",
-                        "--channel",
-                        "home-popup",
-                        "--audience",
-                        "customer",
-                        "--lifecycle",
-                        "draft",
-                        "--retrieval-trigger",
-                        "when creating banners",
-                    ]
-                ),
-                0,
-            )
+            boundary = production._load_lifecycle_transaction_module()
+            with mock.patch.object(
+                boundary.validate_project_artifacts,
+                "validate_project",
+                return_value=transaction_validation_result(),
+            ):
+                self.assertEqual(
+                    production.main(
+                        [
+                            str(root),
+                            "--new-record",
+                            "--title",
+                            "Summer banner",
+                            "--issue-id",
+                            "123-summer-event",
+                            "--version",
+                            "1.2.3",
+                            "--type",
+                            "banner",
+                            "--channel",
+                            "home-popup",
+                            "--audience",
+                            "customer",
+                            "--lifecycle",
+                            "draft",
+                            "--retrieval-trigger",
+                            "when creating banners",
+                        ]
+                    ),
+                    0,
+                )
             self.assertEqual(len(production.list_production_records(root)), 1)
+
+    def test_cli_new_record_returns_nonzero_for_transaction_conflict(self):
+        args = [
+            "/project",
+            "--new-record",
+            "--title",
+            "Summer banner",
+            "--issue-id",
+            "123-summer-event",
+            "--version",
+            "1.2.3",
+            "--type",
+            "banner",
+            "--channel",
+            "home-popup",
+            "--audience",
+            "customer",
+            "--lifecycle",
+            "draft",
+            "--retrieval-trigger",
+            "when creating banners",
+        ]
+        result = {
+            "action": "update_required",
+            "transaction": {"status": "conflict"},
+        }
+        with mock.patch.object(
+            production,
+            "create_production_record",
+            return_value=result,
+        ) as create:
+            self.assertEqual(production.main(args), 1)
+
+        self.assertEqual(create.call_args.kwargs["version"], "1.2.3")
 
     def test_cli_search_retrieve_and_validate_operations(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -513,6 +836,8 @@ class ProjectProductionCliTests(unittest.TestCase):
                         "--new-record",
                         "--title",
                         "Banner",
+                        "--issue-id",
+                        "123-summer-event",
                         "--type",
                         "banner",
                         "--channel",
@@ -898,26 +1223,12 @@ class ProjectProductionCanonicalPathTests(unittest.TestCase):
     def test_search_validation_and_create_use_only_configured_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / ".moduflow").mkdir()
-            (root / ".moduflow" / "config.json").write_text(
-                json.dumps(
-                    {
-                        "paths": {
-                            "issues": "product/issues",
-                            "memory": "product/memory",
-                            "production_records": "product/records",
-                            "playbooks": "product/playbooks",
-                        }
-                    }
-                ),
-                encoding="utf-8",
+            write_transaction_project(
+                root,
+                ["CONFIGURED-001", "CONFIGURED-002"],
+                nested=True,
             )
             configured_records = root / "product" / "records"
-            configured_playbooks = root / "product" / "playbooks"
-            configured_issues = root / "product" / "issues"
-            configured_records.mkdir(parents=True)
-            configured_playbooks.mkdir(parents=True)
-            configured_issues.mkdir(parents=True)
             configured_content = (
                 VALID_RECORD.replace(
                     "id: 2026-07-10-summer-banner",
@@ -934,31 +1245,37 @@ class ProjectProductionCanonicalPathTests(unittest.TestCase):
             (configured_records / "configured-banner.md").write_text(
                 configured_content, encoding="utf-8"
             )
-            (configured_issues / "CONFIGURED-001.md").write_text(
-                "# Configured issue\n\n**Status: done** — completed.\n",
-                encoding="utf-8",
-            )
             (root / "product" / "banner-final.png").write_bytes(b"image")
-            write_project(root)
-            decoy = VALID_RECORD.replace(
-                "id: 2026-07-10-summer-banner", "id: decoy-banner"
-            ).replace("playbook_refs: [banner-mobile]", "playbook_refs: []").replace(
-                "- banner-mobile — candidate", ""
+            poison_paths = (
+                root / "issues/POISON.md",
+                root / "workspace/dashboard.md",
+                root / "workspace/loop-state.json",
+                root / "memory/production-records/poison.md",
             )
-            write_record(root, decoy)
+            poison_before = {path: path.read_bytes() for path in poison_paths}
 
             result = production.search_production(root, "banner")
             validation = production.validate_production_project(root)
-            created = production.create_production_record(
-                root,
-                title="Configured follow-up",
-                source_context="campaign brief",
-                deliverable_type="banner",
-                channel="home-popup",
-                audiences=["customer"],
-                lifecycle="draft",
-                retrieval_trigger="when creating configured follow-ups",
-            )
+            boundary = production._load_lifecycle_transaction_module()
+            with mock.patch.object(
+                boundary.validate_project_artifacts,
+                "validate_project",
+                return_value=transaction_validation_result(),
+            ):
+                created = production.create_production_record(
+                    root,
+                    title="Configured follow-up",
+                    issue_id="CONFIGURED-002",
+                    version="1.2.3",
+                    source_context="campaign brief",
+                    deliverable_type="banner",
+                    channel="home-popup",
+                    audiences=["customer"],
+                    lifecycle="draft",
+                    retrieval_trigger="when creating configured follow-ups",
+                    created="2030-01-02",
+                    clock=transaction_clock(),
+                )
 
             self.assertEqual(
                 [item["id"] for item in result["items"]], ["configured-banner"]
@@ -969,6 +1286,25 @@ class ProjectProductionCanonicalPathTests(unittest.TestCase):
             )
             self.assertTrue(created["path"].startswith("product/records/"))
             self.assertTrue((root / created["path"]).exists())
+            self.assertEqual(created["transaction"]["status"], "applied")
+            self.assertEqual(
+                {target["role"] for target in created["transaction"]["targets"]},
+                {
+                    "issue",
+                    "state",
+                    "loop",
+                    "dashboard",
+                    "production-record",
+                    "evidence",
+                },
+            )
+            self.assertTrue(
+                list((root / "product/workspace/transactions").glob("*.json"))
+            )
+            self.assertEqual(
+                {path: path.read_bytes() for path in poison_paths},
+                poison_before,
+            )
 
 
 if __name__ == "__main__":

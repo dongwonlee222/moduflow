@@ -5886,6 +5886,8 @@ def _production_version_classification(plan):
         raise LifecycleProductionVersionConflict(
             "PRODUCTION_VERSION_SCAN_UNSAFE"
         ) from exc
+    if not matches and proposed.existed:
+        return "conflict"
     if not matches:
         return "absent"
     if (
