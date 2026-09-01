@@ -16,28 +16,28 @@
 
 ### Task 1: RED Adapter and Contract Tests
 
-- [ ] Add `write_loop_state()` tests for one exact `LifecycleIntent(action="update", loop_change=<normalized state>)`, configured context forwarding, canonical returned path, engine failure mapping, and zero direct file writes.
-- [ ] Add contract tests that `loop_change` is immutable, participates in idempotency, and is accepted only for `update`.
-- [ ] Confirm RED before implementation.
+- [x] Add `write_loop_state()` tests for one exact `LifecycleIntent(action="update", loop_change=<normalized state>)`, configured context forwarding, canonical returned path, engine failure mapping, and zero direct file writes.
+- [x] Add contract tests that `loop_change` is immutable, participates in idempotency, and is accepted only for `update`.
+- [x] Confirm RED before implementation.
 
 ### Task 2: Pure Loop Replacement Planning
 
-- [ ] Add `render_loop_state_update(loop_bytes, state)` as a pure renderer matching the prior normalized JSON bytes.
-- [ ] Extend `LifecycleIntent` normalization/identity with frozen `loop_change`.
-- [ ] When `loop_change` exists, render only the loop target from it; issue/state/dashboard/index/roadmap/evidence still follow the same transaction plan and validation gates.
-- [ ] Add a nested configured real-engine test proving the configured loop changes and poisoned defaults remain unchanged.
+- [x] Add `render_loop_state_update(loop_bytes, state)` as a pure renderer matching the prior normalized JSON bytes.
+- [x] Extend `LifecycleIntent` normalization/identity with frozen `loop_change`.
+- [x] When `loop_change` exists, render only the loop target from it; issue/state/dashboard/index/roadmap/evidence still follow the same transaction plan and validation gates.
+- [x] Add a nested configured real-engine test proving the configured loop changes and poisoned defaults remain unchanged.
 
 ### Task 3: Public Adapter and Verification
 
-- [ ] Replace `mkdir`/`write_text` in `write_loop_state()` with the lazy transaction boundary.
-- [ ] Select `active_issue_id` or the first normalized `issue_ids` entry; fail before engine loading when neither exists.
-- [ ] Preserve the configured loop path return for `applied`/`noop`; raise a bounded `RuntimeError` for failure statuses.
-- [ ] Run lifecycle, transaction, and loop focused suites, syntax compilation, and `git diff --check`.
-- [ ] Commit code as `feat(103): transact loop state writes`, then mark C1/C1c complete in canonical plans.
+- [x] Replace `mkdir`/`write_text` in `write_loop_state()` with the lazy transaction boundary.
+- [x] Select `active_issue_id` or the first normalized `issue_ids` entry; fail before engine loading when neither exists.
+- [x] Preserve the configured loop path return for `applied`/`noop`; raise a bounded `RuntimeError` for failure statuses.
+- [x] Run lifecycle, transaction, and loop focused suites, syntax compilation, and `git diff --check` (208 tests).
+- [x] Commit code as `a770e75 feat(103): transact loop state writes`; C1c is complete and C1d retains the remaining original C1 Step 4 work.
 
 ## Completion Gate
 
-- [ ] No public lifecycle or loop adapter directly writes canonical state/dashboard/loop artifacts.
-- [ ] Full loop-state compatibility is represented in the transaction idempotency identity.
-- [ ] Configured workspace selection and decoy preservation are proven.
-- [ ] Focused suites pass; C2/D1/D2 remain unclaimed.
+- [x] No public lifecycle or loop adapter directly writes canonical state/dashboard/loop artifacts.
+- [x] Full loop-state compatibility is represented in the transaction idempotency identity.
+- [x] Configured workspace selection and decoy preservation are proven.
+- [x] Focused suites pass; C1d/C2/D1/D2 remain unclaimed.

@@ -2,7 +2,7 @@
 
 Issue: `103-atomic-lifecycle-state-transaction`
 Plan: `specs/103-atomic-lifecycle-state-transaction/plan.md`
-Status: in_progress — transaction engine, C1a, and C1b are complete; C1c loop routing is the active slice
+Status: in_progress — transaction engine and C1a–C1c are complete; C1d projected transition/update routing is active
 
 ## Stream A — Contract, Planning, and Projected Validation
 
@@ -18,7 +18,8 @@ Status: in_progress — transaction engine, C1a, and C1b are complete; C1c loop 
 
 - [x] **C1a** Add the transaction-backed lifecycle transition adapter plus transition/recovery CLI modes. | Files: scripts/project_lifecycle.py, tests/test_project_lifecycle.py, tests/test_project_lifecycle_transaction.py | Depends: B2 | Commits: e8530cd,5001ada
 - [x] **C1b** Route compatibility `sync_lifecycle()` reconcile, state, dashboard, optional index, and shared projected routing through one transaction. | Files: scripts/project_lifecycle.py, scripts/project_lifecycle_transaction.py, focused tests | Depends: C1a | Commit: 7b53a00 | Plan: docs/superpowers/plans/2026-09-01-issue-103-c1b-sync-reconcile-adapter.md
-- [ ] **C1c** Route public loop-state mutation through the transaction and close the remaining C1 direct-write bypass. | Files: scripts/project_loop.py, scripts/project_lifecycle_transaction.py, focused tests | Depends: C1b | Plan: docs/superpowers/plans/2026-09-01-issue-103-c1c-loop-mutation-adapter.md
+- [x] **C1c** Route public loop-state mutation through the transaction and close the remaining C1 direct-write bypass. | Files: scripts/project_loop.py, scripts/project_lifecycle_transaction.py, focused tests | Depends: C1b | Commit: a770e75 | Plan: docs/superpowers/plans/2026-09-01-issue-103-c1c-loop-mutation-adapter.md
+- [ ] **C1d** Derive transition and loop-update state/dashboard/route projections from one shared projected issue evaluation without weakening canonical no-follow reads. | Files: scripts/project_lifecycle_transaction.py, focused tests | Depends: C1c
 - [ ] **C2** Add compatible versioned Production Records and route creation/deduplication through the transaction. | Files: scripts/project_production.py, scripts/project_lifecycle_transaction.py, focused tests | Depends: B2
 
 ## Stream D — Recovery Diagnostics, Audit, and Completion
@@ -40,4 +41,4 @@ Status: in_progress — transaction engine, C1a, and C1b are complete; C1c loop 
 
 ## Next Command
 
-`product:execute 103-atomic-lifecycle-state-transaction` — continue with C1b, then C1c; full discovery and release gates remain deferred to D2.
+`product:execute 103-atomic-lifecycle-state-transaction` — continue with C1d; full discovery and release gates remain deferred to D2.
