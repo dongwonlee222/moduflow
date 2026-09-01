@@ -1,8 +1,11 @@
 import json
+import shlex
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 from scripts import project_doctor, project_operation, project_registry
 
@@ -489,6 +492,145 @@ class CanonicalPathDoctorTests(unittest.TestCase):
 
 
 class ProjectCapabilityDoctorTests(unittest.TestCase):
+    def test_doctor_reports_incomplete_recovery_without_running_it(self):
+        diagnostics = {
+            "schema": "moduflow.lifecycle-recovery-diagnostics.v1",
+            "status": "incomplete",
+            "error_code": "",
+            "transactions": [
+                {
+                    "transaction_id": "txn-103",
+                    "phase": "prepared",
+                    "affected_roles": ["issue", "state"],
+                    "targets": [],
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow" / "config.json").write_text(
+                json.dumps({"schema": "moduflow.config.v1", "paths": {}}),
+                encoding="utf-8",
+            )
+            for relative in ("issues", "specs", "workspace"):
+                (root / relative).mkdir()
+            context = project_registry.project_context_for_root(root)
+            context["trust_scope"] = "read-only"
+            context.update(
+                project_operation.compute_project_policy(
+                    "archived",
+                    "read-only",
+                )
+            )
+            inspect = mock.Mock(return_value=diagnostics)
+            recover = mock.Mock(
+                side_effect=AssertionError("Doctor must not perform recovery")
+            )
+            boundary = SimpleNamespace(
+                inspect_recovery_transactions=inspect,
+                recover_incomplete_transaction=recover,
+            )
+
+            with mock.patch.object(
+                project_doctor,
+                "load_lifecycle_transaction",
+                return_value=boundary,
+                create=True,
+            ):
+                result = project_doctor.inspect_project(
+                    root,
+                    include_preflight=False,
+                    project_context=context,
+                )
+
+        self.assertEqual(result["recovery"], diagnostics)
+        inspect.assert_called_once_with(
+            root.resolve(),
+            project_context=context,
+        )
+        recover.assert_not_called()
+        expected = shlex.join(
+            [
+                "python3",
+                "scripts/project_lifecycle.py",
+                str(root.resolve()),
+                "--recover",
+                "txn-103",
+            ]
+        )
+        self.assertEqual(
+            [item for item in result["recommendation"] if "--recover" in item],
+            [expected],
+        )
+
+    def test_doctor_recovery_recommendations_distinguish_healthy_and_unsafe(self):
+        for status, error_code, has_unsafe_guidance in (
+            ("healthy", "", False),
+            ("unsafe", "RECOVERY_DISCOVERY_UNSAFE", True),
+        ):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / ".moduflow").mkdir()
+                (root / ".moduflow" / "config.json").write_text(
+                    json.dumps(
+                        {"schema": "moduflow.config.v1", "paths": {}}
+                    ),
+                    encoding="utf-8",
+                )
+                for relative in ("issues", "specs", "workspace"):
+                    (root / relative).mkdir()
+                diagnostics = {
+                    "schema": "moduflow.lifecycle-recovery-diagnostics.v1",
+                    "status": status,
+                    "error_code": error_code,
+                    "transactions": [],
+                }
+                boundary = SimpleNamespace(
+                    inspect_recovery_transactions=mock.Mock(
+                        return_value=diagnostics
+                    )
+                )
+                with mock.patch.object(
+                    project_doctor,
+                    "load_lifecycle_transaction",
+                    return_value=boundary,
+                    create=True,
+                ):
+                    result = project_doctor.inspect_project(
+                        root,
+                        include_preflight=False,
+                    )
+
+                recommendations = result["recommendation"]
+                self.assertEqual(
+                    any("transactions permissions" in item for item in recommendations),
+                    has_unsafe_guidance,
+                )
+                self.assertFalse(any("--recover" in item for item in recommendations))
+
+    def test_doctor_main_is_nonzero_for_incomplete_or_unsafe_recovery(self):
+        for status in ("incomplete", "unsafe"):
+            with self.subTest(status=status):
+                result = {
+                    "moduflow": {"initialized": True, "missing": []},
+                    "schema_gates": {"valid": True},
+                    "recovery": {"status": status},
+                }
+                with (
+                    mock.patch.object(
+                        project_doctor,
+                        "inspect_project",
+                        return_value=result,
+                    ),
+                    mock.patch(
+                        "sys.argv",
+                        ["project_doctor.py", "/project", "--no-preflight"],
+                    ),
+                    mock.patch("builtins.print"),
+                ):
+                    self.assertEqual(project_doctor.main(), 1)
+
     def test_doctor_projects_archived_read_only_capabilities_without_blocking_reads(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
