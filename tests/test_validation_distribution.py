@@ -437,9 +437,9 @@ gate_state: passed
         original_evaluate = schema.evaluate_project
         calls = []
 
-        def counting_evaluate(root):
-            calls.append(Path(root))
-            return original_evaluate(root)
+        def counting_evaluate(root, *, project_paths=None):
+            calls.append((Path(root), project_paths))
+            return original_evaluate(root, project_paths=project_paths)
 
         schema.evaluate_project = counting_evaluate
         validator.load_project_issue_schema = lambda: schema
@@ -449,7 +449,11 @@ gate_state: passed
 
             validator.validate_project(root)
 
-        self.assertEqual(calls, [root.resolve()])
+        self.assertEqual(
+            [path for path, _project_paths in calls],
+            [root.resolve()],
+        )
+        self.assertIsNotNone(calls[0][1])
 
     def test_validate_project_preserves_context_aware_dependency_severity(self):
         validator = load_module("validate_project_dependency_severity", "scripts/validate_project_artifacts.py")
