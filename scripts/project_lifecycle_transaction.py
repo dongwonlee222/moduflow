@@ -6380,6 +6380,44 @@ def apply_lifecycle_transaction(
         )
     try:
         replay = _completed_replay_result(plan, normalized)
+    except LifecycleReplayConflict:
+        replay = None
+    _emit_apply_fault(fault_injector, "after-replay-classification")
+    if replay is not None:
+        return replay
+    recovery = serialize_transaction_recovery(
+        recover_incomplete_transaction(
+            project_root,
+            "",
+            project_context=project_context,
+            clock=clock,
+        )
+    )
+    if recovery["status"] not in {"applied", "rolled_back", "noop"}:
+        record = recovery["transactions"][-1]
+        return _public_failure_result(
+            plan,
+            normalized,
+            status=recovery["status"],
+            failed_stage=(
+                "authorization"
+                if recovery["status"] == "denied"
+                else "recovery"
+            ),
+            error_code=record["error_code"],
+            rollback_status="not-required",
+            completed_at=_journal_timestamp(clock),
+            projected_validation=projected,
+            post_apply_validation=post_apply,
+        )
+    plan = plan_lifecycle_transaction(
+        project_root,
+        normalized,
+        project_context=project_context,
+        clock=clock,
+    )
+    try:
+        replay = _completed_replay_result(plan, normalized)
     except LifecycleReplayConflict as exc:
         return _public_failure_result(
             plan,
@@ -6392,7 +6430,6 @@ def apply_lifecycle_transaction(
             projected_validation=projected,
             post_apply_validation=post_apply,
         )
-    _emit_apply_fault(fault_injector, "after-replay-classification")
     if replay is not None:
         return replay
     try:

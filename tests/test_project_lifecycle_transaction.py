@@ -2219,8 +2219,11 @@ class TransactionPlanningTests(unittest.TestCase):
 
             self.assertEqual(result["status"], "recovery_required")
             self.assertEqual(result["failed_stage"], "recovery")
-            self.assertEqual(result["error_code"], "STORAGE_CONFLICT")
-            self.assertEqual(result["rollback_status"], "required")
+            self.assertEqual(
+                result["error_code"],
+                "RECOVERY_JOURNAL_MISSING",
+            )
+            self.assertEqual(result["rollback_status"], "not-required")
             self.assertTrue(workspace_path.is_dir())
             replacement.assert_not_called()
             remove_directory.assert_not_called()
@@ -4871,6 +4874,230 @@ class TransactionPlanningTests(unittest.TestCase):
             )
             self.assertEqual(retry["status"], "noop")
             self.assertEqual(retry["transactions"], [])
+
+    def test_public_apply_denial_precedes_project_recovery(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            denied_context = transaction._json_value(context)
+            denied_context.update(
+                transaction.project_operation.compute_project_policy(
+                    "archived",
+                    "internal",
+                )
+            )
+            with mock.patch.object(
+                transaction,
+                "recover_incomplete_transaction",
+            ) as recover:
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    self.intent(),
+                    project_context=denied_context,
+                    clock=self.public_clock(),
+                )
+
+            self.assertEqual(result["status"], "denied")
+            recover.assert_not_called()
+
+    def test_public_apply_exact_replay_skips_project_recovery(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            self.apply_privately_once(root, context, intent)
+
+            with mock.patch.object(
+                transaction,
+                "recover_incomplete_transaction",
+            ) as recover:
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock="2030-01-03",
+                )
+
+            self.assertEqual(result["status"], "noop")
+            recover.assert_not_called()
+
+    def test_public_apply_stops_when_project_recovery_is_unresolved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                intent,
+                project_context=context,
+                clock="2030-01-02",
+            )
+            blocked = transaction._recovery_public_report(
+                plan.project_id,
+                plan.canonical_root,
+                transaction._recovery_public_record(
+                    "txn-blocked",
+                    status="recovery_required",
+                    error_code="RECOVERY_STATE_AMBIGUOUS",
+                ),
+            )
+            invalid = transaction._public_failure_summary(
+                transaction._PROJECTED_VALIDATION_RULE_IDS,
+                "PROJECTED_VALIDATION_INVALID",
+            )
+            clock = self.public_clock()
+            with (
+                mock.patch.object(
+                    transaction,
+                    "recover_incomplete_transaction",
+                    return_value=blocked,
+                ) as recover,
+                mock.patch.object(
+                    transaction,
+                    "validate_projected_transaction",
+                    return_value=invalid,
+                ) as validator,
+                mock.patch.object(
+                    transaction,
+                    "_private_applied_workspace",
+                ) as private_apply,
+            ):
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=clock,
+                )
+
+            self.assertEqual(result["status"], "recovery_required")
+            self.assertEqual(result["failed_stage"], "recovery")
+            self.assertEqual(
+                result["error_code"],
+                "RECOVERY_STATE_AMBIGUOUS",
+            )
+            self.assertEqual(result["rollback_status"], "not-required")
+            recover.assert_called_once_with(
+                root,
+                "",
+                project_context=context,
+                clock=clock,
+            )
+            validator.assert_not_called()
+            private_apply.assert_not_called()
+
+    def test_public_apply_replans_after_project_recovery_clears(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                intent,
+                project_context=context,
+                clock="2030-01-02",
+            )
+            cleared = transaction.serialize_transaction_recovery(
+                {
+                    "schema": transaction.RECOVERY_SCHEMA,
+                    "project_id": plan.project_id,
+                    "canonical_root": plan.canonical_root,
+                    "status": "noop",
+                    "transactions": [],
+                }
+            )
+            invalid = transaction._public_failure_summary(
+                transaction._PROJECTED_VALIDATION_RULE_IDS,
+                "PROJECTED_VALIDATION_INVALID",
+            )
+            clock = self.public_clock()
+            real_planner = transaction.plan_lifecycle_transaction
+            with (
+                mock.patch.object(
+                    transaction,
+                    "plan_lifecycle_transaction",
+                    wraps=real_planner,
+                ) as planner,
+                mock.patch.object(
+                    transaction,
+                    "recover_incomplete_transaction",
+                    return_value=cleared,
+                ),
+                mock.patch.object(
+                    transaction,
+                    "validate_projected_transaction",
+                    return_value=invalid,
+                ) as validator,
+                mock.patch.object(
+                    transaction,
+                    "_private_applied_workspace",
+                ) as private_apply,
+            ):
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=clock,
+                )
+
+            self.assertEqual(planner.call_count, 2)
+            self.assertEqual(result["status"], "conflict")
+            validator.assert_called_once()
+            private_apply.assert_not_called()
+
+    def test_public_apply_recovery_completion_becomes_fresh_replay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            intent = self.intent(require_issue_index=True)
+            applied = self.apply_privately_once(root, context, intent)
+            transaction_id = applied["transaction_id"]
+            subject = transaction._authorized_recovery_subject(
+                root,
+                transaction_id,
+                project_context=context,
+            )
+            transaction._cleanup_recovery_candidate(
+                subject,
+                transaction_id,
+                clock="2030-01-02T03:06:00Z",
+                lock_pid=229,
+                lock_token_factory=lambda: "8" * 32,
+            )
+            evidence_path = root / applied["targets"][-1]["relative_path"]
+            evidence_bytes = evidence_path.read_bytes()
+            evidence_path.unlink()
+            cleared = transaction.serialize_transaction_recovery(
+                {
+                    "schema": transaction.RECOVERY_SCHEMA,
+                    "project_id": applied["project_id"],
+                    "canonical_root": applied["canonical_root"],
+                    "status": "noop",
+                    "transactions": [],
+                }
+            )
+
+            def complete_recovery(*_args, **_kwargs):
+                evidence_path.write_bytes(evidence_bytes)
+                return cleared
+
+            with mock.patch.object(
+                transaction,
+                "recover_incomplete_transaction",
+                side_effect=complete_recovery,
+            ) as recover:
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            self.assertEqual(result["status"], "noop")
+            self.assertEqual(result["transaction_id"], transaction_id)
+            recover.assert_called_once()
+            self.assertFalse(
+                (root / ".moduflow/transactions" / transaction_id).exists()
+            )
 
     def test_public_explicit_recovery_faults_only_at_durable_boundaries(self):
         entry = getattr(transaction, "recover_incomplete_transaction", None)
