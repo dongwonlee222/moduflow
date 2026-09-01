@@ -18,26 +18,26 @@
 
 ### Task 1: RED Metadata Tests
 
-- [ ] Assert a legacy record parses with `version == ""`.
-- [ ] Assert a versioned record parses with its explicit semantic version.
-- [ ] Assert the pure renderer includes exactly one `version:` field when supplied and none when omitted.
-- [ ] Run the named tests and confirm the missing return/renderer argument fails.
+- [x] Assert a legacy record parses with `version == ""`.
+- [x] Assert a versioned record parses with its explicit semantic version.
+- [x] Assert the pure renderer includes exactly one `version:` field when supplied and none when omitted.
+- [x] Run the named tests and confirm the missing return/renderer argument fails.
 
 ### Task 2: Minimal Parser and Renderer Change
 
-- [ ] Return `metadata.get("version", "")` from `parse_production_record()`.
-- [ ] Add optional `version=""` to `_record_content()` and conditionally render one frontmatter line.
-- [ ] Keep every existing `create_production_record()` caller and rendered legacy byte sequence unchanged.
+- [x] Return `metadata.get("version", "")` from `parse_production_record()`.
+- [x] Add optional `version=""` to `_record_content()` and conditionally render one frontmatter line.
+- [x] Keep every existing `create_production_record()` caller and rendered legacy byte sequence unchanged.
 
 ### Task 3: Verification and Completion
 
-- [ ] Run production parser/mutation tests and the full production module suite.
-- [ ] Run compilation and `git diff --check`.
-- [ ] Commit as `feat(103): parse production record versions`.
-- [ ] Mark C2a complete and activate C2b; leave C2/C2c/D1/D2 open.
+- [x] Run production parser/mutation tests and the full production module suite (27 tests passed).
+- [x] Run compilation and `git diff --check`.
+- [x] Commit as `feat(103): parse production record versions` (`3361e33`).
+- [x] Mark C2a complete and activate C2b; leave C2/C2c/D1/D2 open.
 
 ## Completion Gate
 
-- [ ] Legacy and versioned records both parse deterministically.
-- [ ] Version metadata emission is opt-in and pure.
-- [ ] No public mutation or transaction semantics changed in C2a.
+- [x] Legacy and versioned records both parse deterministically.
+- [x] Version metadata emission is opt-in and pure.
+- [x] No public mutation or transaction semantics changed in C2a.
