@@ -5099,6 +5099,156 @@ class TransactionPlanningTests(unittest.TestCase):
                 (root / ".moduflow/transactions" / transaction_id).exists()
             )
 
+    def test_public_apply_blocks_workspace_race_under_fresh_lock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            (root / "workspace/transactions").mkdir()
+            intent = self.intent(require_issue_index=True)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                intent,
+                project_context=context,
+                clock="2030-01-02",
+            )
+            canonical_before = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if (root / target.relative_path).exists()
+                    else None
+                )
+                for target in plan.targets
+            }
+            injected = root / ".moduflow/transactions/txn-race"
+
+            def inject(stage):
+                if stage == "before-private-apply":
+                    injected.mkdir(parents=True, mode=0o700)
+                    injected.chmod(0o700)
+
+            with (
+                mock.patch.object(
+                    transaction,
+                    "validate_projected_transaction",
+                    return_value=self.projected_summary(),
+                ),
+                mock.patch.object(
+                    transaction.validate_project_artifacts,
+                    "validate_project",
+                    return_value=self.validation_result(),
+                ),
+            ):
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=self.public_clock(),
+                    fault_injector=inject,
+                )
+
+            self.assertEqual(result["status"], "recovery_required")
+            self.assertEqual(result["failed_stage"], "recovery")
+            self.assertEqual(result["error_code"], "LOCK_RECOVERY_PENDING")
+            self.assertEqual(result["rollback_status"], "not-required")
+            self.assertEqual(
+                {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if (root / target.relative_path).exists()
+                        else None
+                    )
+                    for target in plan.targets
+                },
+                canonical_before,
+            )
+            self.assertTrue(injected.is_dir())
+            self.assertFalse(
+                (root / ".moduflow/transactions" / plan.transaction_id).exists()
+            )
+            self.assertFalse(
+                (root / ".moduflow/transactions/lifecycle.lock").exists()
+            )
+
+    def test_public_apply_blocks_unsafe_workspace_scan_under_fresh_lock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, issue_index=True)
+            (root / "workspace/transactions").mkdir()
+            intent = self.intent(require_issue_index=True)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                intent,
+                project_context=context,
+                clock="2030-01-02",
+            )
+            canonical_before = {
+                target.relative_path: (
+                    (root / target.relative_path).read_bytes()
+                    if (root / target.relative_path).exists()
+                    else None
+                )
+                for target in plan.targets
+            }
+            discovery_calls = []
+
+            def discover(_root, transaction_id=""):
+                discovery_calls.append(transaction_id)
+                if len(discovery_calls) == 1:
+                    return ()
+                raise transaction.transaction_storage.LifecycleRecoveryStorageError(
+                    "RECOVERY_DISCOVERY_UNSAFE"
+                )
+
+            with (
+                mock.patch.object(
+                    transaction.transaction_storage,
+                    "discover_recovery_workspaces",
+                    side_effect=discover,
+                ),
+                mock.patch.object(
+                    transaction,
+                    "validate_projected_transaction",
+                    return_value=self.projected_summary(),
+                ),
+                mock.patch.object(
+                    transaction.validate_project_artifacts,
+                    "validate_project",
+                    return_value=self.validation_result(),
+                ),
+            ):
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            self.assertEqual(discovery_calls, ["", ""])
+            self.assertEqual(result["status"], "recovery_required")
+            self.assertEqual(result["failed_stage"], "recovery")
+            self.assertEqual(
+                result["error_code"],
+                "LOCK_RECOVERY_SCAN_UNSAFE",
+            )
+            self.assertEqual(result["rollback_status"], "not-required")
+            self.assertEqual(
+                {
+                    target.relative_path: (
+                        (root / target.relative_path).read_bytes()
+                        if (root / target.relative_path).exists()
+                        else None
+                    )
+                    for target in plan.targets
+                },
+                canonical_before,
+            )
+            self.assertFalse(
+                (root / ".moduflow/transactions" / plan.transaction_id).exists()
+            )
+            self.assertFalse(
+                (root / ".moduflow/transactions/lifecycle.lock").exists()
+            )
+
     def test_public_explicit_recovery_faults_only_at_durable_boundaries(self):
         entry = getattr(transaction, "recover_incomplete_transaction", None)
         self.assertIsNotNone(entry)

@@ -2654,6 +2654,18 @@ def _private_staged_workspace(
         )
 
 
+def _require_empty_recovery_inventory(canonical_root):
+    """Fail closed when any recovery workspace appears under the apply lock."""
+    try:
+        selected = transaction_storage.discover_recovery_workspaces(
+            canonical_root,
+        )
+    except transaction_storage.LifecycleRecoveryStorageError as exc:
+        raise LifecycleLockError("LOCK_RECOVERY_SCAN_UNSAFE") from exc
+    if selected:
+        raise LifecycleLockError("LOCK_RECOVERY_PENDING")
+
+
 @contextmanager
 def _private_prepared_workspace(
     plan: LifecycleTransactionPlan,
@@ -2685,6 +2697,7 @@ def _private_prepared_workspace(
         pid=lock_pid,
         token_factory=lock_token_factory,
     ):
+        _require_empty_recovery_inventory(root)
         transaction_storage.verify_canonical_preimages(root, storage_targets)
         with transaction_storage.private_transaction_workspace(
             root,
@@ -6495,6 +6508,10 @@ def apply_lifecycle_transaction(
             post_apply_validation=post_apply,
         )
     except LifecycleLockError as exc:
+        recovery_barrier = exc.code in {
+            "LOCK_RECOVERY_PENDING",
+            "LOCK_RECOVERY_SCAN_UNSAFE",
+        }
         status = (
             "conflict"
             if exc.code == "LOCK_HELD"
@@ -6514,11 +6531,11 @@ def apply_lifecycle_transaction(
             plan,
             normalized,
             status=status,
-            failed_stage="lock",
+            failed_stage=("recovery" if recovery_barrier else "lock"),
             error_code=exc.code,
             rollback_status=(
                 "not-required"
-                if status == "conflict"
+                if status == "conflict" or recovery_barrier
                 else "required"
             ),
             completed_at=_journal_timestamp(clock),
