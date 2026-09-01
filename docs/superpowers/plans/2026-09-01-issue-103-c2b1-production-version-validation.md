@@ -18,25 +18,25 @@
 
 ### Task 1: RED Validation Tests
 
-- [ ] Add two different record IDs with the same version identity and assert one deterministic validation error.
-- [ ] Change one identity field and assert no version-identity error.
-- [ ] Keep two unversioned legacy records outside the version-identity rule.
+- [x] Add two different record IDs with the same version identity and assert one deterministic validation error.
+- [x] Change one identity field and assert no version-identity error.
+- [x] Keep two unversioned legacy records outside the version-identity rule.
 
 ### Task 2: Minimal Identity Validation
 
-- [ ] Add a private pure `_production_version_key(record)` helper.
-- [ ] Filter to non-empty versions and feed the key into the existing duplicate collector.
-- [ ] Preserve all existing capture-key and ID uniqueness checks.
+- [x] Add a private pure `_production_version_key(record)` helper.
+- [x] Filter to non-empty versions and feed the key into the existing duplicate collector.
+- [x] Preserve all existing capture-key and ID uniqueness checks.
 
 ### Task 3: Verification and Completion
 
-- [ ] Run named RED/GREEN tests and the full production suite.
-- [ ] Run the projected-validation production case, compilation, and `git diff --check`.
-- [ ] Commit as `feat(103): validate production version uniqueness`.
-- [ ] Mark C2b1 complete and activate C2b2.
+- [x] Run named RED/GREEN tests and the full production suite (29 tests passed).
+- [x] Run the projected-validation production case, compilation, and `git diff --check`.
+- [x] Commit as `feat(103): validate production version uniqueness` (`93f6d80`).
+- [x] Mark C2b1 complete and activate C2b2.
 
 ## Completion Gate
 
-- [ ] Canonical/projected validation rejects duplicate version identities.
-- [ ] Legacy unversioned compatibility is unchanged.
-- [ ] No lock, apply, or public writer behavior changes in C2b1.
+- [x] Canonical/projected validation rejects duplicate version identities.
+- [x] Legacy unversioned compatibility is unchanged.
+- [x] No lock, apply, or public writer behavior changes in C2b1.

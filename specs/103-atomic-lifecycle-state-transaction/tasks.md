@@ -2,7 +2,7 @@
 
 Issue: `103-atomic-lifecycle-state-transaction`
 Plan: `specs/103-atomic-lifecycle-state-transaction/plan.md`
-Status: in_progress — transaction engine, C1, and C2a are complete; C2b semantic-version uniqueness is active
+Status: in_progress — transaction engine, C1, C2a, and C2b1 are complete; C2b2 same-lock recheck is active
 
 ## Stream A — Contract, Planning, and Projected Validation
 
@@ -22,7 +22,7 @@ Status: in_progress — transaction engine, C1, and C2a are complete; C2b semant
 - [x] **C1d** Derive transition and loop-update state/dashboard/route projections from one shared projected issue evaluation without weakening canonical no-follow reads. | Files: scripts/project_lifecycle_transaction.py, scripts/project_loop.py, focused tests | Depends: C1c | Commit: 8ada787 | Plan: docs/superpowers/plans/2026-09-01-issue-103-c1d-projected-transition-routing.md
 - [x] **C1e** Connect public transition `--priority` to conditional roadmap projection without changing no-priority target selection. | Files: scripts/project_lifecycle.py, tests/test_project_lifecycle.py, transaction integration tests | Depends: C1d | Commit: c71a543 | Plan: docs/superpowers/plans/2026-09-01-issue-103-c1e-priority-roadmap-cli.md
 - [x] **C2a** Add legacy-safe Production Record version parsing and opt-in pure rendering. | Files: scripts/project_production.py, tests/test_project_production.py | Depends: B2 | Commit: 3361e33 | Plan: docs/superpowers/plans/2026-09-01-issue-103-c2a-production-version-metadata.md
-- [ ] **C2b1** Reject duplicate semantic versions in canonical/projected Production Record validation. | Files: scripts/project_production.py, tests/test_project_production.py | Depends: C2a | Plan: docs/superpowers/plans/2026-09-01-issue-103-c2b1-production-version-validation.md
+- [x] **C2b1** Reject duplicate semantic versions in canonical/projected Production Record validation. | Files: scripts/project_production.py, tests/test_project_production.py | Depends: C2a | Commit: 93f6d80 | Plan: docs/superpowers/plans/2026-09-01-issue-103-c2b1-production-version-validation.md
 - [ ] **C2b2** Recheck Production Record semantic uniqueness under the transaction lock before any durable side effect. | Files: scripts/project_lifecycle_transaction.py, tests/test_project_lifecycle_transaction.py | Depends: C2b1
 - [ ] **C2b** Add projected semantic-version uniqueness and same-lock recheck. | Files: scripts/project_lifecycle_transaction.py, tests/test_project_lifecycle_transaction.py | Depends: C2a
 - [ ] **C2c** Route public Production Record creation and CLI through the transaction. | Files: scripts/project_production.py, scripts/project_lifecycle_transaction.py, focused tests | Depends: C2b
@@ -47,4 +47,4 @@ Status: in_progress — transaction engine, C1, and C2a are complete; C2b semant
 
 ## Next Command
 
-`product:execute 103-atomic-lifecycle-state-transaction` — continue with C2b1 production-version validation; full discovery and release gates remain deferred to D2.
+`product:execute 103-atomic-lifecycle-state-transaction` — continue with C2b2 same-lock semantic recheck; full discovery and release gates remain deferred to D2.

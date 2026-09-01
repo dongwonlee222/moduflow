@@ -319,7 +319,7 @@ def derive_idempotency_key(project_context, intent):
 
 - [x] **C2a — backward-compatible version metadata.** Added legacy-safe parsing and opt-in pure rendering of Production Record versions in `3361e33`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c2a-production-version-metadata.md`.
 - [ ] **C2b — semantic uniqueness and locked recheck.** Reject duplicate or conflicting `(issue_id, deliverable_type, channel, variant, version)` records during projected planning and recheck under the transaction lock.
-  - [ ] **C2b1 — projected version validation.** Add legacy-safe semantic-version uniqueness to canonical/projected Production Record validation. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c2b1-production-version-validation.md`.
+  - [x] **C2b1 — projected version validation.** Added legacy-safe semantic-version uniqueness to canonical/projected Production Record validation in `93f6d80`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c2b1-production-version-validation.md`.
   - [ ] **C2b2 — same-lock semantic recheck.** Reclassify absent/identical/conflicting production versions after acquiring the transaction lock and before journal/staging/replacement.
 - [ ] **C2c — public production adapter and CLI.** Route explicit-version creation through `production-version`, preserve compatibility result keys with additive transaction evidence, and remove the direct canonical writer.
 
