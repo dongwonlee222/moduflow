@@ -297,13 +297,13 @@ def derive_idempotency_key(project_context, intent):
 - [x] **C1b — compatibility sync/reconcile adapter.** Replaced `sync_lifecycle()` direct state/dashboard writes with one `reconcile` intent, derived lifecycle projections from one shared projected issue evaluation, and preserved legacy result keys with additive transaction evidence in `7b53a00`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c1b-sync-reconcile-adapter.md`.
 - [x] **C1c — loop mutation adapter.** Replaced the remaining public loop-state writer with the transaction boundary and closed the C1 direct-write bypass inventory in `a770e75`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c1c-loop-mutation-adapter.md`.
 - [x] **C1d — projected transition/update routing.** Generalized the shared projected issue evaluation to transition and loop-update intents while retaining no-follow guarantees for canonical targets in `8ada787`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c1d-projected-transition-routing.md`.
-- [ ] **C1e — public priority/roadmap CLI connection.** Add the missing canonical C1 `--priority` transition option and route it to the existing conditional `roadmap_change` target. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c1e-priority-roadmap-cli.md`.
+- [x] **C1e — public priority/roadmap CLI connection.** Added the missing canonical C1 `--priority` transition option and routed it to the existing conditional `roadmap_change` target in `c71a543`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c1e-priority-roadmap-cli.md`.
 
-- [ ] **Step 1: Write RED public-boundary tests.** Verify `start`, `update`, `pause`, `resume`, `complete`, and `reconcile`; exact legacy compatibility keys; optional index behavior; conditional roadmap block behavior; and zero direct public writes.
-- [ ] **Step 2: Add CLI contract tests.** Cover `--transition`, `--issue-id`, `--target-status`, `--actor`, `--source-event`, `--idempotency-key`, `--expected-issue-sha256`, `--priority`, and `--recover`; invalid combinations exit `2` without writes.
-- [ ] **Step 3: Convert direct writers to renderers/internal helpers.** `sync_lifecycle()` creates a `reconcile` intent; `write_loop_state()` creates an `update` intent; only the transaction persistence layer calls canonical replace.
+- [x] **Step 1: Write RED public-boundary tests.** Verify `start`, `update`, `pause`, `resume`, `complete`, and `reconcile`; exact legacy compatibility keys; optional index behavior; conditional roadmap block behavior; and zero direct public writes.
+- [x] **Step 2: Add CLI contract tests.** Cover `--transition`, `--issue-id`, `--target-status`, `--actor`, `--source-event`, `--idempotency-key`, `--expected-issue-sha256`, `--priority`, and `--recover`; invalid combinations exit `2` without writes.
+- [x] **Step 3: Convert direct writers to renderers/internal helpers.** `sync_lifecycle()` creates a `reconcile` intent; `write_loop_state()` creates an `update` intent; only the transaction persistence layer calls canonical replace.
 - [x] **Step 4: Preserve phase/routing behavior.** After projected issue bytes are applied, compute state/dashboard/loop next command from the projected shared issue evaluation, never from independently supplied derived values.
-- [ ] **Step 5: Run GREEN and commit.** Run lifecycle, loop, issue-schema, and transaction suites; commit `feat(103): transact lifecycle state projections`.
+- [x] **Step 5: Run GREEN and commit.** Lifecycle, loop, issue-schema, and transaction suites passed across C1a–C1e; final public priority connection committed as `c71a543`.
 
 ### Task C2: Route versioned Production Record mutation through the transaction
 
@@ -391,4 +391,4 @@ flowchart LR
 
 ## Next Command
 
-`product:review 103-atomic-lifecycle-state-transaction` for plan PR #43; then `product:execute 103-atomic-lifecycle-state-transaction` after explicit execution approval.
+`product:execute 103-atomic-lifecycle-state-transaction` — begin C2 production-record versioning; full discovery and release gates remain deferred to D2.

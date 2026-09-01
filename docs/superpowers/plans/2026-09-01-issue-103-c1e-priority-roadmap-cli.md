@@ -18,26 +18,26 @@
 
 ### Task 1: RED Adapter and CLI Tests
 
-- [ ] Add an adapter test proving `priority="p1"` creates exactly `roadmap_change={"priority": "p1"}` and omission creates `None`.
-- [ ] Add CLI tests proving `--priority p1` is forwarded, an unsupported priority exits `2`, and priority outside transition mode exits `2` before dispatch.
-- [ ] Run the named tests and confirm the current adapter/parser rejects or ignores the missing option.
+- [x] Add an adapter test proving `priority="p1"` creates exactly `roadmap_change={"priority": "p1"}` and omission creates `None`.
+- [x] Add CLI tests proving `--priority p1` is forwarded, an unsupported priority exits `2`, and priority outside transition mode exits `2` before dispatch.
+- [x] Run the named tests and confirm the current adapter/parser rejects or ignores the missing option.
 
 ### Task 2: Minimal Public Connection
 
-- [ ] Add `priority=None` to `transition_lifecycle()` and validate it against `p0`–`p3` before loading the engine.
-- [ ] Pass `roadmap_change={"priority": priority}` only when non-empty.
-- [ ] Add `parser.add_argument("--priority", choices=("p0", "p1", "p2", "p3"))`, include it in transition-only option detection, and forward it to the adapter.
-- [ ] Add a real planner assertion that priority selects roadmap while omission does not; preserve all unmanaged roadmap prose.
+- [x] Add `priority=None` to `transition_lifecycle()` and validate it against `p0`–`p3` before loading the engine.
+- [x] Pass `roadmap_change={"priority": priority}` only when non-empty.
+- [x] Add `parser.add_argument("--priority", choices=("p0", "p1", "p2", "p3"))`, include it in transition-only option detection, and forward it to the adapter.
+- [x] Add a real planner assertion that priority selects roadmap while omission does not; preserve all unmanaged roadmap prose.
 
 ### Task 3: Verification and Completion
 
-- [ ] Run lifecycle, transaction, loop, and issue-schema focused suites plus compilation and `git diff --check`.
-- [ ] Commit C1e code as `feat(103): expose roadmap priority transition`.
-- [ ] Mark C1e and original C1 Steps 1–3 and 5 complete; leave C2/D1/D2 open.
+- [x] Run lifecycle, transaction, loop, and issue-schema focused suites plus compilation and `git diff --check` (310 focused tests passed).
+- [x] Commit C1e code as `feat(103): expose roadmap priority transition` (`c71a543`).
+- [x] Mark C1e and original C1 Steps 1–3 and 5 complete; leave C2/D1/D2 open.
 
 ## Completion Gate
 
-- [ ] Public Python and CLI priority paths reach one conditional roadmap target.
-- [ ] Invalid/out-of-mode priority values dispatch zero mutation calls.
-- [ ] No-priority lifecycle transitions retain their existing target set.
-- [ ] C1a–C1e collectively satisfy original C1; C2/D1/D2 remain unclaimed.
+- [x] Public Python and CLI priority paths reach one conditional roadmap target.
+- [x] Invalid/out-of-mode priority values dispatch zero mutation calls.
+- [x] No-priority lifecycle transitions retain their existing target set.
+- [x] C1a–C1e collectively satisfy original C1; C2/D1/D2 remain unclaimed.
