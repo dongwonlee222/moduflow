@@ -693,6 +693,90 @@ class ProjectProductionSearchTests(unittest.TestCase):
 
 
 class ProjectProductionValidationTests(unittest.TestCase):
+    def test_validation_rejects_duplicate_versioned_semantic_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            write_issue(root, "123-summer-event")
+            (root / "marketing").mkdir()
+            (root / "marketing/banner-final.png").write_bytes(b"image")
+
+            def versioned(record_id, title):
+                return (
+                    VALID_RECORD.replace(
+                        "id: 2026-07-10-summer-banner",
+                        f"id: {record_id}",
+                    )
+                    .replace("title: Summer banner", f"title: {title}")
+                    .replace(
+                        "issue_id: 123-summer-event\n",
+                        "issue_id: 123-summer-event\nversion: 1.2.3\n",
+                    )
+                    .replace("playbook_refs: [banner-mobile]", "playbook_refs: []")
+                    .replace("- banner-mobile — candidate", "")
+                )
+
+            write_record(root, versioned("record-one", "First title"))
+            write_record(root, versioned("record-two", "Second title"))
+
+            result = production.validate_production_project(root)
+            version_errors = [
+                error
+                for error in result["errors"]
+                if "duplicate production version identity" in error
+            ]
+
+            self.assertEqual(len(version_errors), 1)
+            self.assertIn("record-one.md", version_errors[0])
+            self.assertIn("record-two.md", version_errors[0])
+
+    def test_validation_excludes_legacy_and_distinct_version_identities(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            write_issue(root, "123-summer-event")
+            (root / "marketing").mkdir()
+            (root / "marketing/banner-final.png").write_bytes(b"image")
+
+            records = (
+                VALID_RECORD.replace(
+                    "id: 2026-07-10-summer-banner", "id: legacy-one"
+                ).replace("title: Summer banner", "title: Legacy one"),
+                VALID_RECORD.replace(
+                    "id: 2026-07-10-summer-banner", "id: legacy-two"
+                ).replace("title: Summer banner", "title: Legacy two"),
+                VALID_RECORD.replace(
+                    "id: 2026-07-10-summer-banner", "id: version-mobile"
+                ).replace(
+                    "issue_id: 123-summer-event\n",
+                    "issue_id: 123-summer-event\nversion: 1.2.3\n",
+                ),
+                VALID_RECORD.replace(
+                    "id: 2026-07-10-summer-banner", "id: version-desktop"
+                )
+                .replace(
+                    "issue_id: 123-summer-event\n",
+                    "issue_id: 123-summer-event\nversion: 1.2.3\n",
+                )
+                .replace("variant: mobile", "variant: desktop"),
+            )
+            for content in records:
+                write_record(
+                    root,
+                    content.replace(
+                        "playbook_refs: [banner-mobile]", "playbook_refs: []"
+                    ).replace("- banner-mobile — candidate", ""),
+                )
+
+            result = production.validate_production_project(root)
+
+            self.assertFalse(
+                any(
+                    "duplicate production version identity" in error
+                    for error in result["errors"]
+                )
+            )
+
     def test_validation_errors_on_missing_artifact_and_invalid_approval(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

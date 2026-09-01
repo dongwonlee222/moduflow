@@ -532,17 +532,24 @@ def validate_production_project(project_root, *, project_context=None):
         except (OSError, ValueError) as exc:
             errors.append(f"{_relative_path(root, path)}: {exc}")
 
-    def duplicates(items, key):
+    def duplicates(items, key, label="production identity"):
         seen = {}
         for item in items:
             value = key(item)
             if value in seen:
-                errors.append(f"{item['path']}: duplicate production identity with {seen[value]}")
+                errors.append(
+                    f"{item['path']}: duplicate {label} with {seen[value]}"
+                )
             else:
                 seen[value] = item["path"]
 
     duplicates(records + playbooks, lambda item: (item["kind"], item["id"]))
     duplicates(records, _capture_key)
+    duplicates(
+        [record for record in records if record["version"]],
+        _production_version_key,
+        "production version identity",
+    )
     record_ids = {record["id"] for record in records}
     playbook_ids = {playbook["id"] for playbook in playbooks}
 
@@ -736,6 +743,19 @@ def _capture_key(record):
             record.get("variant", ""),
             record.get("title", ""),
         )
+    )
+
+
+def _production_version_key(record):
+    version = str(record.get("version", "")).strip()
+    if not version:
+        return None
+    return (
+        str(record.get("issue_id", "")).strip(),
+        str(record.get("deliverable_type", "")).strip(),
+        str(record.get("channel", "")).strip(),
+        str(record.get("variant", "")).strip(),
+        version,
     )
 
 
