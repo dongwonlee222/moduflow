@@ -5563,6 +5563,42 @@ class TransactionPlanningTests(unittest.TestCase):
                 )
             )
 
+    def test_lifecycle_adapter_priority_updates_only_configured_roadmap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, nested=True)
+            (root / "product/workspace/transactions").mkdir()
+            configured_roadmap = root / "product/workspace/roadmap.md"
+            decoy_roadmap = root / "workspace/roadmap.md"
+            decoy_before = decoy_roadmap.read_bytes()
+
+            with mock.patch.object(
+                transaction.validate_project_artifacts,
+                "validate_project",
+                return_value=self.validation_result(),
+            ):
+                result = project_lifecycle.transition_lifecycle(
+                    root,
+                    self.ISSUE_ID,
+                    "update",
+                    actor="dongwon",
+                    source_event="request:C1e",
+                    priority="p1",
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            roadmap_text = configured_roadmap.read_text(encoding="utf-8")
+            self.assertEqual(result["status"], "applied")
+            self.assertIn("Human roadmap prose.", roadmap_text)
+            self.assertIn("BIZ-103", roadmap_text)
+            self.assertIn("p1", roadmap_text)
+            self.assertEqual(decoy_roadmap.read_bytes(), decoy_before)
+            self.assertIn(
+                "roadmap",
+                [target["role"] for target in result["targets"]],
+            )
+
     def test_loop_adapter_applies_full_state_only_to_nested_configured_workspace(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

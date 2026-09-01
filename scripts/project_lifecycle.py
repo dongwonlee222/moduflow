@@ -68,6 +68,7 @@ _SYNC_FATAL_DIAGNOSTICS = {
     "ISSUE_DUPLICATE_FIELD",
 }
 _TRANSITION_ACTIONS = frozenset({"start", "update", "pause", "resume", "complete"})
+_ROADMAP_PRIORITIES = frozenset({"p0", "p1", "p2", "p3"})
 
 _ROADMAP_START = "<!-- moduflow:roadmap-projection:start -->"
 _ROADMAP_END = "<!-- moduflow:roadmap-projection:end -->"
@@ -537,6 +538,7 @@ def transition_lifecycle(
     actor,
     source_event,
     target_status=None,
+    priority=None,
     idempotency_key="",
     expected_issue_sha256="",
     loop_blocker="",
@@ -558,11 +560,21 @@ def transition_lifecycle(
         raise ValueError(
             "Lifecycle transition requires issue_id, actor, and source_event"
         )
+    normalized_priority = None
+    if priority is not None:
+        normalized_priority = str(priority).strip().lower()
+        if normalized_priority not in _ROADMAP_PRIORITIES:
+            raise ValueError("Unsupported roadmap priority")
 
     boundary = _load_lifecycle_transaction_module()
     intent = boundary.LifecycleIntent(
         **values,
         target_lifecycle=target_status,
+        roadmap_change=(
+            {"priority": normalized_priority}
+            if normalized_priority is not None
+            else None
+        ),
         idempotency_key=idempotency_key,
         expected_issue_sha256=expected_issue_sha256,
         loop_blocker=loop_blocker,
@@ -725,6 +737,7 @@ def main():
     mutation.add_argument("--recover", nargs="?", const="", default=None)
     parser.add_argument("--issue-id")
     parser.add_argument("--target-status", choices=("backlog", "active", "done"))
+    parser.add_argument("--priority", choices=sorted(_ROADMAP_PRIORITIES))
     parser.add_argument("--actor")
     parser.add_argument("--source-event")
     parser.add_argument("--idempotency-key", default="")
@@ -738,6 +751,7 @@ def main():
         (
             args.issue_id,
             args.target_status,
+            args.priority,
             args.actor,
             args.source_event,
             args.idempotency_key,
@@ -776,6 +790,7 @@ def main():
             actor=args.actor,
             source_event=args.source_event,
             target_status=args.target_status,
+            priority=args.priority,
             idempotency_key=args.idempotency_key,
             expected_issue_sha256=args.expected_issue_sha256,
             loop_blocker=args.loop_blocker,

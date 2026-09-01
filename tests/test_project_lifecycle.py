@@ -115,6 +115,7 @@ class ProjectLifecycleTests(unittest.TestCase):
                 self.assertEqual(intent.issue_id, "BIZ-103")
                 self.assertEqual(intent.action, action)
                 self.assertEqual(intent.target_lifecycle, target)
+                self.assertIsNone(intent.roadmap_change)
                 self.assertEqual(intent.actor, "dongwon")
                 self.assertEqual(intent.source_event, "request:C1a")
                 self.assertEqual(intent.idempotency_key, "a" * 64)
@@ -142,6 +143,53 @@ class ProjectLifecycleTests(unittest.TestCase):
             for values in invalid:
                 with self.subTest(values=values), self.assertRaises(ValueError):
                     lc.transition_lifecycle("/project", **values)
+        load.assert_not_called()
+
+    def test_transition_lifecycle_maps_priority_to_one_roadmap_change(self):
+        lc = load_module(
+            "project_lifecycle_priority_adapter", "scripts/project_lifecycle.py"
+        )
+        expected = {
+            "schema": "moduflow.lifecycle-transaction.v1",
+            "status": "applied",
+        }
+        apply = mock.Mock(return_value=expected)
+        boundary = SimpleNamespace(
+            LifecycleIntent=lambda **values: SimpleNamespace(**values),
+            apply_lifecycle_transaction=apply,
+        )
+        with mock.patch.object(
+            lc,
+            "_load_lifecycle_transaction_module",
+            return_value=boundary,
+        ):
+            result = lc.transition_lifecycle(
+                "/project",
+                "BIZ-103",
+                "update",
+                actor="dongwon",
+                source_event="request:C1e",
+                priority="p1",
+            )
+
+        intent = apply.call_args.args[1]
+        self.assertEqual(intent.roadmap_change, {"priority": "p1"})
+        self.assertIs(result, expected)
+
+    def test_transition_lifecycle_rejects_invalid_priority_before_engine(self):
+        lc = load_module(
+            "project_lifecycle_invalid_priority", "scripts/project_lifecycle.py"
+        )
+        with mock.patch.object(lc, "_load_lifecycle_transaction_module") as load:
+            with self.assertRaisesRegex(ValueError, "roadmap priority"):
+                lc.transition_lifecycle(
+                    "/project",
+                    "BIZ-103",
+                    "update",
+                    actor="dongwon",
+                    source_event="request:C1e",
+                    priority="urgent",
+                )
         load.assert_not_called()
 
     def test_transition_lifecycle_adapter_owns_no_direct_file_mutation(self):
@@ -814,6 +862,8 @@ class ProjectLifecycleTests(unittest.TestCase):
                             "BIZ-103",
                             "--target-status",
                             "active",
+                            "--priority",
+                            "p1",
                             "--actor",
                             "dongwon",
                             "--source-event",
@@ -840,6 +890,7 @@ class ProjectLifecycleTests(unittest.TestCase):
                     actor="dongwon",
                     source_event="request:C1a",
                     target_status="active",
+                    priority="p1",
                     idempotency_key="a" * 64,
                     expected_issue_sha256="b" * 64,
                     loop_blocker="waiting",
@@ -926,6 +977,21 @@ class ProjectLifecycleTests(unittest.TestCase):
             ],
             ["/project", "--recover", "--actor", "dongwon"],
             ["/project", "--sync", "--actor", "dongwon"],
+            ["/project", "--priority", "p1"],
+            ["/project", "--recover", "--priority", "p1"],
+            [
+                "/project",
+                "--transition",
+                "update",
+                "--issue-id",
+                "BIZ-103",
+                "--actor",
+                "dongwon",
+                "--source-event",
+                "request:C1e",
+                "--priority",
+                "urgent",
+            ],
             [
                 "/project",
                 "--state",
