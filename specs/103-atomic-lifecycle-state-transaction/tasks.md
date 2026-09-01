@@ -25,7 +25,7 @@ Status: in_progress — transaction engine, C1, C2a, and C2b are complete; C2c p
 - [x] **C2b1** Reject duplicate semantic versions in canonical/projected Production Record validation. | Files: scripts/project_production.py, tests/test_project_production.py | Depends: C2a | Commit: 93f6d80 | Plan: docs/superpowers/plans/2026-09-01-issue-103-c2b1-production-version-validation.md
 - [x] **C2b2** Recheck Production Record semantic uniqueness under the transaction lock before any durable side effect. | Files: scripts/project_lifecycle_transaction.py, tests/test_project_lifecycle_transaction.py | Depends: C2b1 | Commit: 99c050b | Plan: docs/superpowers/plans/2026-09-01-issue-103-c2b2-locked-production-version-recheck.md
 - [x] **C2b** Add projected semantic-version uniqueness and same-lock recheck. | Files: scripts/project_lifecycle_transaction.py, tests/test_project_lifecycle_transaction.py | Depends: C2a | Commits: 93f6d80,99c050b
-- [ ] **C2c** Route public Production Record creation and CLI through the transaction. | Files: scripts/project_production.py, scripts/project_lifecycle_transaction.py, focused tests | Depends: C2b
+- [ ] **C2c** Route public Production Record creation and CLI through the transaction. | Files: scripts/project_production.py, scripts/project_lifecycle_transaction.py, focused tests | Depends: C2b | Plan: docs/superpowers/plans/2026-09-01-issue-103-c2c-public-production-adapter.md
 - [ ] **C2** Add compatible versioned Production Records and route creation/deduplication through the transaction. | Files: scripts/project_production.py, scripts/project_lifecycle_transaction.py, focused tests | Depends: B2
 
 ## Stream D — Recovery Diagnostics, Audit, and Completion
