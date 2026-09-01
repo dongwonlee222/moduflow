@@ -18,7 +18,7 @@ Status: in_progress — transaction engine, C1a, and C1b are complete; C1c loop 
 
 - [x] **C1a** Add the transaction-backed lifecycle transition adapter plus transition/recovery CLI modes. | Files: scripts/project_lifecycle.py, tests/test_project_lifecycle.py, tests/test_project_lifecycle_transaction.py | Depends: B2 | Commits: e8530cd,5001ada
 - [x] **C1b** Route compatibility `sync_lifecycle()` reconcile, state, dashboard, optional index, and shared projected routing through one transaction. | Files: scripts/project_lifecycle.py, scripts/project_lifecycle_transaction.py, focused tests | Depends: C1a | Commit: 7b53a00 | Plan: docs/superpowers/plans/2026-09-01-issue-103-c1b-sync-reconcile-adapter.md
-- [ ] **C1c** Route public loop-state mutation through the transaction and close the remaining C1 direct-write bypass. | Files: scripts/project_loop.py, scripts/project_lifecycle_transaction.py, focused tests | Depends: C1b
+- [ ] **C1c** Route public loop-state mutation through the transaction and close the remaining C1 direct-write bypass. | Files: scripts/project_loop.py, scripts/project_lifecycle_transaction.py, focused tests | Depends: C1b | Plan: docs/superpowers/plans/2026-09-01-issue-103-c1c-loop-mutation-adapter.md
 - [ ] **C2** Add compatible versioned Production Records and route creation/deduplication through the transaction. | Files: scripts/project_production.py, scripts/project_lifecycle_transaction.py, focused tests | Depends: B2
 
 ## Stream D — Recovery Diagnostics, Audit, and Completion
