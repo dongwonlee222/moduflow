@@ -345,9 +345,15 @@ def derive_idempotency_key(project_context, intent):
 - Consumes: all transaction persistence and public adapters.
 - Produces: read-only recovery diagnostics, exact recovery command, complete mutation inventory, distribution presence, and release gates.
 
-- [ ] **Step 1: Write RED Doctor tests.** A prepared/applying/recovery-required journal reports transaction ID, phase, affected logical roles, safe hashes, and `python3 scripts/project_lifecycle.py <root> --recover <id>` without reading payload bytes; healthy/complete journals are silent.
+**Execution slices (updated 2026-09-01):**
+
+- [x] **D1a — read-only Doctor recovery diagnostics.** Added strict journal-control inspection in `4feb071` and Doctor reporting/exit semantics in `7607e7d`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-d1a-doctor-recovery-diagnostics.md`.
+- [ ] **D1b — mutator-bypass audit.** Classify transaction persistence/recovery ownership, reject legacy public writer bypasses, and require a zero-gap operation inventory.
+- [ ] **D1c — distribution, release, and architecture gates.** Require transaction files/suites in distributions and document local atomicity plus remote-after-local sequencing.
+
+- [x] **Step 1: Write RED Doctor tests.** A prepared/applying/recovery-required journal reports transaction ID, phase, affected logical roles, safe hashes, and `python3 scripts/project_lifecycle.py <root> --recover <id>` without reading payload bytes; healthy/complete journals are silent.
 - [ ] **Step 2: Write RED audit tests.** Legacy public lifecycle/loop/production canonical writes fail classification; only transaction persistence may own target replacement/journal/temp writes, while renderer helpers are pure.
-- [ ] **Step 3: Implement read-only Doctor inspection.** Diagnostic reads work for archived/read-only projects and never acquire a lock or modify recovery state.
+- [x] **Step 3: Implement read-only Doctor inspection.** Diagnostic reads work for archived/read-only projects and never acquire a lock or modify recovery state.
 - [ ] **Step 4: Update operation inventory.** Classify the transaction apply/recover owners with operation `write`, remove obsolete direct-writer ownership, and require zero unclassified/unguarded/stale/duplicate/configuration errors.
 - [ ] **Step 5: Add distribution/release gates.** Require the new module, fixture, test, docs, and focused suite; keep release discovery non-recursive.
 - [ ] **Step 6: Document guarantees and recovery.** State local-only atomicity, denial order, journal privacy, terminal statuses, Doctor remediation, and remote-after-local sequencing.

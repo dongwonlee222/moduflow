@@ -30,7 +30,7 @@
 - Consumes: `transaction_storage.discover_recovery_workspaces(root)`, `_private_recovered_journal_workspace(root, transaction_id)`, strict serialized journal targets, and Issue 110 `read` capability.
 - Produces: `inspect_recovery_transactions(project_root, *, project_context=None) -> dict` with schema `moduflow.lifecycle-recovery-diagnostics.v1`.
 
-- [ ] **Step 1: Write RED diagnostic contract tests**
+- [x] **Step 1: Write RED diagnostic contract tests**
 
 Add tests in `TransactionPlanningTests` using `prepare_restart_recovery_case()`:
 
@@ -64,7 +64,7 @@ def test_recovery_diagnostics_are_read_only_redacted_and_actionable(self):
 
 Also parameterize `prepared`, `applying`, `post-validating`, `rolling-back`, and `recovery-required`; assert terminal journals are filtered; unsafe discovery and malformed journals return `status: unsafe` with only a stable `error_code`.
 
-- [ ] **Step 2: Run the diagnostic slice and verify RED**
+- [x] **Step 2: Run the diagnostic slice and verify RED**
 
 Run:
 
@@ -75,7 +75,7 @@ python3 -m unittest -v \
 
 Expected: `AttributeError` because `inspect_recovery_transactions` does not exist.
 
-- [ ] **Step 3: Implement the strict detached diagnostic envelope**
+- [x] **Step 3: Implement the strict detached diagnostic envelope**
 
 Add the constant and serializer helpers:
 
@@ -116,7 +116,7 @@ def _recovery_diagnostic_target(target):
 
 Catch only stable recovery discovery/read/storage failures and return `status: unsafe`, the exception code, and an empty transaction list. Do not catch project capability denial.
 
-- [ ] **Step 4: Run transaction diagnostics and recovery regression tests**
+- [x] **Step 4: Run transaction diagnostics and recovery regression tests**
 
 Run:
 
@@ -129,7 +129,7 @@ python3 -m unittest -v \
 
 Expected: all pass; no recovery mutation mock is called by diagnostics.
 
-- [ ] **Step 5: Commit the diagnostic boundary**
+- [x] **Step 5: Commit the diagnostic boundary** (`4feb071`)
 
 ```bash
 git add scripts/project_lifecycle_transaction.py tests/test_project_lifecycle_transaction.py
@@ -146,7 +146,7 @@ git commit -m "feat(103): inspect incomplete transactions read only"
 - Consumes: `inspect_recovery_transactions(project_root, project_context=context)` from Task 1.
 - Produces: `result["recovery"]`, shell-safe recovery recommendations, and nonzero Doctor CLI status for `incomplete` or `unsafe` recovery state.
 
-- [ ] **Step 1: Write RED Doctor adapter tests**
+- [x] **Step 1: Write RED Doctor adapter tests**
 
 Add a lazy-loader unit test with an archived/read-only context and a fake diagnostic boundary:
 
@@ -172,7 +172,7 @@ python3 scripts/project_lifecycle.py <canonical-project-root> --recover txn-103
 
 Add cases for `healthy` (no recommendation) and `unsafe` (generic repair guidance without a guessed transaction command). Patch the boundary's `recover_incomplete_transaction` to raise if Doctor calls it.
 
-- [ ] **Step 2: Run Doctor tests and verify RED**
+- [x] **Step 2: Run Doctor tests and verify RED**
 
 Run:
 
@@ -182,7 +182,7 @@ python3 -m unittest -v tests.test_project_doctor.ProjectCapabilityDoctorTests
 
 Expected: missing `recovery` result and loader calls.
 
-- [ ] **Step 3: Add the Doctor adapter**
+- [x] **Step 3: Add the Doctor adapter**
 
 Add `load_lifecycle_transaction()` beside the existing lazy loaders. In `inspect_project()`, call its read-only inspector after resolving `context`, then add:
 
@@ -198,7 +198,7 @@ Use `shlex.join()` with the list below so paths containing spaces cannot produce
 
 For `unsafe`, recommend inspecting `.moduflow/transactions` permissions and running Doctor again; do not emit a recovery command. Update `main()` so success additionally requires `result["recovery"]["status"] == "healthy"`.
 
-- [ ] **Step 4: Run Doctor and transaction focused suites**
+- [x] **Step 4: Run Doctor and transaction focused suites**
 
 Run:
 
@@ -208,7 +208,7 @@ python3 -m unittest -v tests.test_project_doctor tests.test_project_lifecycle_tr
 
 Expected: all pass, including archived/read-only diagnostics.
 
-- [ ] **Step 5: Commit Doctor integration**
+- [x] **Step 5: Commit Doctor integration** (`7607e7d`)
 
 ```bash
 git add scripts/project_doctor.py tests/test_project_doctor.py
@@ -227,7 +227,7 @@ git commit -m "feat(103): surface transaction recovery in doctor"
 - Consumes: Task 1 diagnostic schema and Task 2 Doctor result/recommendation semantics.
 - Produces: documented read-only behavior and a completed D1a slice with D1b audit work active.
 
-- [ ] **Step 1: Document the recovery diagnostic contract**
+- [x] **Step 1: Document the recovery diagnostic contract**
 
 Update `commands/product-doctor.md` to state:
 
@@ -236,7 +236,7 @@ Update `commands/product-doctor.md` to state:
 - Recovery occurs only through the exact `project_lifecycle.py <root> --recover <id>` command after a human reviews the diagnostic.
 - Archived/read-only projects may be diagnosed but recovery remains mutation-gated.
 
-- [ ] **Step 2: Run focused verification**
+- [x] **Step 2: Run focused verification**
 
 Run:
 
@@ -244,17 +244,16 @@ Run:
 python3 -m unittest \
   tests.test_project_doctor \
   tests.test_project_lifecycle_transaction \
-  tests.test_project_lifecycle \
-  tests.test_validation_distribution
+  tests.test_project_lifecycle
 python3 -m py_compile \
   scripts/project_doctor.py \
   scripts/project_lifecycle_transaction.py
 git diff --check
 ```
 
-Expected: all focused tests and static checks pass. Do not run full discovery or `scripts/release_check.py` in D1a.
+Expected: all D1a-focused tests and static checks pass. The fresh run passed 211 tests. `tests.test_validation_distribution` remains a D1c gate because its two current-repository release assertions also require D1b audit/path classifications and the later version gate; a diagnostic run passed its other 47 tests and exposed only those deferred gates.
 
-- [ ] **Step 3: Update tracking and commit**
+- [x] **Step 3: Update tracking and commit**
 
 Mark D1a complete, leave D1 open, and set D1b mutator-bypass audit as active. Then commit:
 
@@ -269,7 +268,7 @@ git commit -m "docs(103): record doctor recovery diagnostics"
 
 ## Completion Gate
 
-- [ ] Doctor exposes every valid incomplete transaction without reading payload bodies or performing recovery.
-- [ ] Unsafe recovery state fails closed with stable redacted output and a nonzero Doctor result.
-- [ ] Archived/read-only projects remain diagnosable, while the recovery command remains the only mutation path.
-- [ ] D1b audit and D1c distribution/release work remain open; D2 full gates remain deferred.
+- [x] Doctor exposes every valid incomplete transaction without reading payload bodies or performing recovery.
+- [x] Unsafe recovery state fails closed with stable redacted output and a nonzero Doctor result.
+- [x] Archived/read-only projects remain diagnosable, while the recovery command remains the only mutation path.
+- [x] D1b audit and D1c distribution/release work remain open; D2 full gates remain deferred.
