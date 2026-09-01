@@ -596,6 +596,184 @@ class ProjectLifecycleTests(unittest.TestCase):
             self.assertEqual(state_path.read_bytes(), state_before)
             self.assertEqual(dashboard_path.read_bytes(), dashboard_before)
 
+    def test_transition_cli_forwards_arguments_and_maps_status_exit_codes(self):
+        lc = load_module("project_lifecycle_transition_cli", "scripts/project_lifecycle.py")
+        for status, expected_exit in (
+            ("applied", 0),
+            ("noop", 0),
+            ("denied", 1),
+            ("conflict", 1),
+            ("rolled_back", 1),
+            ("recovery_required", 1),
+        ):
+            with self.subTest(status=status):
+                result = {
+                    "schema": "moduflow.lifecycle-transaction.v1",
+                    "status": status,
+                }
+                output = io.StringIO()
+                with (
+                    mock.patch.object(
+                        lc,
+                        "transition_lifecycle",
+                        return_value=result,
+                    ) as transition,
+                    mock.patch(
+                        "sys.argv",
+                        [
+                            "project_lifecycle.py",
+                            "/project",
+                            "--transition",
+                            "update",
+                            "--issue-id",
+                            "BIZ-103",
+                            "--target-status",
+                            "active",
+                            "--actor",
+                            "dongwon",
+                            "--source-event",
+                            "request:C1a",
+                            "--idempotency-key",
+                            "a" * 64,
+                            "--expected-issue-sha256",
+                            "b" * 64,
+                            "--loop-blocker",
+                            "waiting",
+                            "--require-issue-index",
+                        ],
+                    ),
+                    contextlib.redirect_stdout(output),
+                ):
+                    exit_code = lc.main()
+
+                self.assertEqual(exit_code, expected_exit)
+                self.assertEqual(json.loads(output.getvalue()), result)
+                transition.assert_called_once_with(
+                    "/project",
+                    "BIZ-103",
+                    "update",
+                    actor="dongwon",
+                    source_event="request:C1a",
+                    target_status="active",
+                    idempotency_key="a" * 64,
+                    expected_issue_sha256="b" * 64,
+                    loop_blocker="waiting",
+                    require_issue_index=True,
+                )
+
+    def test_recovery_cli_supports_all_and_one_transaction(self):
+        lc = load_module("project_lifecycle_recovery_cli", "scripts/project_lifecycle.py")
+        for extra, transaction_id, status, expected_exit in (
+            ([], "", "noop", 0),
+            (["txn-103"], "txn-103", "recovery_required", 1),
+        ):
+            with self.subTest(transaction_id=transaction_id or "all"):
+                result = {
+                    "schema": "moduflow.lifecycle-recovery.v1",
+                    "status": status,
+                }
+                recover = mock.Mock(return_value=result)
+                boundary = SimpleNamespace(
+                    recover_incomplete_transaction=recover,
+                )
+                output = io.StringIO()
+                with (
+                    mock.patch.object(
+                        lc,
+                        "_load_lifecycle_transaction_module",
+                        return_value=boundary,
+                    ),
+                    mock.patch(
+                        "sys.argv",
+                        ["project_lifecycle.py", "/project", "--recover", *extra],
+                    ),
+                    contextlib.redirect_stdout(output),
+                ):
+                    exit_code = lc.main()
+
+                self.assertEqual(exit_code, expected_exit)
+                self.assertEqual(json.loads(output.getvalue()), result)
+                recover.assert_called_once_with("/project", transaction_id)
+
+    def test_mutation_cli_rejects_invalid_combinations_before_entries(self):
+        lc = load_module("project_lifecycle_invalid_cli", "scripts/project_lifecycle.py")
+        cases = (
+            ["/project", "--transition", "start"],
+            [
+                "/project",
+                "--transition",
+                "start",
+                "--actor",
+                "dongwon",
+                "--source-event",
+                "request:C1a",
+            ],
+            [
+                "/project",
+                "--transition",
+                "start",
+                "--issue-id",
+                "BIZ-103",
+                "--source-event",
+                "request:C1a",
+            ],
+            [
+                "/project",
+                "--transition",
+                "start",
+                "--issue-id",
+                "BIZ-103",
+                "--actor",
+                "dongwon",
+            ],
+            [
+                "/project",
+                "--transition",
+                "start",
+                "--recover",
+                "txn-103",
+                "--issue-id",
+                "BIZ-103",
+                "--actor",
+                "dongwon",
+                "--source-event",
+                "request:C1a",
+            ],
+            ["/project", "--recover", "--actor", "dongwon"],
+            ["/project", "--sync", "--actor", "dongwon"],
+            [
+                "/project",
+                "--state",
+                "--transition",
+                "start",
+                "--issue-id",
+                "BIZ-103",
+                "--actor",
+                "dongwon",
+                "--source-event",
+                "request:C1a",
+            ],
+        )
+        for args in cases:
+            with self.subTest(args=args):
+                transition = mock.Mock()
+                load_boundary = mock.Mock()
+                with (
+                    mock.patch.object(lc, "transition_lifecycle", transition),
+                    mock.patch.object(
+                        lc,
+                        "_load_lifecycle_transaction_module",
+                        load_boundary,
+                    ),
+                    mock.patch("sys.argv", ["project_lifecycle.py", *args]),
+                    contextlib.redirect_stderr(io.StringIO()),
+                    self.assertRaises(SystemExit) as raised,
+                ):
+                    lc.main()
+                self.assertEqual(raised.exception.code, 2)
+                transition.assert_not_called()
+                load_boundary.assert_not_called()
+
     def test_infer_phase_from_spec_artifacts(self):
         lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
         with tempfile.TemporaryDirectory() as tmp:

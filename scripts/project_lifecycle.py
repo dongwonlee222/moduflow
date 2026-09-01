@@ -670,6 +670,10 @@ def sync_lifecycle(root, *, project_context=None):
     return {"active": active, "phase": phase, "dashboard_updated": changed_dashboard}
 
 
+def _mutation_exit_code(result):
+    return 0 if result.get("status") in {"applied", "noop"} else 1
+
+
 @project_operation.cli_denial_boundary
 def main():
     parser = argparse.ArgumentParser(description="ModuFlow artifact lifecycle sync (048).")
@@ -679,8 +683,77 @@ def main():
     parser.add_argument("--sync", action="store_true", help="Propagate issue Status to state.json + dashboard.")
     parser.add_argument("--issues", action="store_true", help="Print list_issues(root) JSON.")
     parser.add_argument("--ready", action="store_true", help="Print ready_issues(root) JSON.")
+    mutation = parser.add_mutually_exclusive_group()
+    mutation.add_argument("--transition", choices=sorted(_TRANSITION_ACTIONS))
+    mutation.add_argument("--recover", nargs="?", const="", default=None)
+    parser.add_argument("--issue-id")
+    parser.add_argument("--target-status", choices=("backlog", "active", "done"))
+    parser.add_argument("--actor")
+    parser.add_argument("--source-event")
+    parser.add_argument("--idempotency-key", default="")
+    parser.add_argument("--expected-issue-sha256", default="")
+    parser.add_argument("--loop-blocker", default="")
+    parser.add_argument("--require-issue-index", action="store_true")
     args = parser.parse_args()
 
+    legacy_mode = any((args.state, args.drift, args.sync, args.issues, args.ready))
+    transition_options = any(
+        (
+            args.issue_id,
+            args.target_status,
+            args.actor,
+            args.source_event,
+            args.idempotency_key,
+            args.expected_issue_sha256,
+            args.loop_blocker,
+            args.require_issue_index,
+        )
+    )
+    if args.transition:
+        if legacy_mode:
+            parser.error("--transition cannot be combined with legacy operation flags")
+        missing = [
+            flag
+            for flag, value in (
+                ("--issue-id", args.issue_id),
+                ("--actor", args.actor),
+                ("--source-event", args.source_event),
+            )
+            if not value or not value.strip()
+        ]
+        if missing:
+            parser.error(f"--transition requires {', '.join(missing)}")
+    elif args.recover is not None:
+        if legacy_mode:
+            parser.error("--recover cannot be combined with legacy operation flags")
+        if transition_options:
+            parser.error("transition-only arguments require --transition")
+    elif transition_options:
+        parser.error("transition-only arguments require --transition")
+
+    if args.transition:
+        result = transition_lifecycle(
+            args.project_path,
+            args.issue_id,
+            args.transition,
+            actor=args.actor,
+            source_event=args.source_event,
+            target_status=args.target_status,
+            idempotency_key=args.idempotency_key,
+            expected_issue_sha256=args.expected_issue_sha256,
+            loop_blocker=args.loop_blocker,
+            require_issue_index=args.require_issue_index,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return _mutation_exit_code(result)
+    if args.recover is not None:
+        boundary = _load_lifecycle_transaction_module()
+        result = boundary.recover_incomplete_transaction(
+            args.project_path,
+            args.recover,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return _mutation_exit_code(result)
     if args.issues:
         print(json.dumps(list_issues(args.project_path), ensure_ascii=False, indent=2))
         return 0
