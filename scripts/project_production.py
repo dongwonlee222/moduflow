@@ -547,7 +547,7 @@ def validate_production_project(project_root, *, project_context=None):
     duplicates(records, _capture_key)
     duplicates(
         [record for record in records if record["version"]],
-        _production_version_key,
+        production_version_identity,
         "production version identity",
     )
     record_ids = {record["id"] for record in records}
@@ -746,7 +746,8 @@ def _capture_key(record):
     )
 
 
-def _production_version_key(record):
+def production_version_identity(record):
+    """Return one semantic version identity, or None for legacy records."""
     version = str(record.get("version", "")).strip()
     if not version:
         return None

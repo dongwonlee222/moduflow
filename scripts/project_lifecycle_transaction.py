@@ -21,6 +21,8 @@ from types import MappingProxyType
 
 try:
     import project_issue_schema
+    import project_memory
+    import project_production
     import project_lifecycle_transaction_storage as transaction_storage
     import project_operation
     import project_registry
@@ -37,6 +39,8 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - package import fallback
     from scripts import (
         project_issue_schema,
+        project_memory,
+        project_production,
         project_lifecycle_transaction_storage as transaction_storage,
         project_operation,
         project_registry,
@@ -449,6 +453,7 @@ class LifecycleTransactionPlan:
     target_lifecycle: str | None
     targets: tuple[PlannedTarget, ...]
     _project_context: Mapping = field(repr=False, compare=False)
+    _production_version: str = field(default="", repr=False, compare=False)
 
     def __post_init__(self):
         if not isinstance(self.targets, tuple) or not all(
@@ -457,10 +462,17 @@ class LifecycleTransactionPlan:
             raise TypeError("targets must be a tuple of PlannedTarget values")
         if not isinstance(self._project_context, Mapping):
             raise TypeError("project context must be a mapping")
+        if not isinstance(self._production_version, str):
+            raise TypeError("production version must be a string")
         object.__setattr__(
             self,
             "_project_context",
             _freeze_json_value(self._project_context),
+        )
+        object.__setattr__(
+            self,
+            "_production_version",
+            self._production_version.strip(),
         )
 
     def to_public_dict(self):
@@ -688,6 +700,19 @@ class LifecyclePlanError(ValueError):
         if relative_path:
             fields.append(f"path={relative_path}")
         super().__init__("; ".join(fields))
+
+
+class LifecycleProductionVersionConflict(RuntimeError):
+    """Stable production-version classification failure without record data."""
+
+    def __init__(self, code="PRODUCTION_VERSION_CONFLICT"):
+        if code not in {
+            "PRODUCTION_VERSION_CONFLICT",
+            "PRODUCTION_VERSION_SCAN_UNSAFE",
+        }:
+            code = "PRODUCTION_VERSION_SCAN_UNSAFE"
+        self.code = code
+        super().__init__(code)
 
 
 class LifecycleProjectedValidationError(RuntimeError):
@@ -2732,6 +2757,8 @@ def _private_prepared_workspace(
         token_factory=lock_token_factory,
     ):
         _require_empty_recovery_inventory(root)
+        if _production_version_classification(plan) != "absent":
+            raise LifecycleProductionVersionConflict()
         transaction_storage.verify_canonical_preimages(root, storage_targets)
         with transaction_storage.private_transaction_workspace(
             root,
@@ -5287,6 +5314,44 @@ def _public_failure_result(
     })
 
 
+def _public_semantic_noop_result(
+    plan,
+    intent,
+    *,
+    projected_validation,
+    completed_at,
+):
+    """Return a validated semantic no-op without claiming post-apply work."""
+    normalized = normalize_lifecycle_intent(intent)
+    return serialize_transaction_result({
+        "schema": RESULT_SCHEMA,
+        "transaction_id": plan.transaction_id,
+        "idempotency_key": plan.idempotency_key,
+        "status": "noop",
+        "project_id": plan.project_id,
+        "canonical_root": plan.canonical_root,
+        "issue_id": plan.issue_id,
+        "action": plan.action,
+        "target_lifecycle": plan.target_lifecycle,
+        "targets": [target.to_public_dict() for target in plan.targets],
+        "projected_validation": projected_validation,
+        "post_apply_validation": _public_failure_summary(
+            _POST_APPLY_VALIDATION_RULE_IDS,
+            "POST_APPLY_VALIDATION_NOT_RUN",
+        ),
+        "failed_stage": "",
+        "error_code": "",
+        "rollback_status": "not-required",
+        "verified_target_count": 0,
+        "next_command": _planned_next_command(plan),
+        "actor": normalized.actor,
+        "source_event": normalized.source_event,
+        "created_at": completed_at,
+        "started_at": "",
+        "completed_at": completed_at,
+    })
+
+
 def _public_failure_stage(error_code):
     if not isinstance(error_code, str):
         raise LifecycleJournalError("JOURNAL_RECORD_INVALID")
@@ -5691,6 +5756,145 @@ def _read_planning_source(path, root, role, *, required):
         role,
         required=required,
     )
+
+
+def _production_record_paths_no_follow(root, records_root):
+    """List configured production Markdown names through no-follow directories."""
+    try:
+        relative = Path(records_root).relative_to(root)
+    except ValueError as exc:
+        raise LifecycleProductionVersionConflict(
+            "PRODUCTION_VERSION_SCAN_UNSAFE"
+        ) from exc
+    descriptors = []
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_DIRECTORY", 0)
+    )
+    try:
+        try:
+            descriptor = os.open(root, flags)
+        except OSError as exc:
+            raise LifecycleProductionVersionConflict(
+                "PRODUCTION_VERSION_SCAN_UNSAFE"
+            ) from exc
+        descriptors.append(descriptor)
+        for part in relative.parts:
+            try:
+                child = os.open(part, flags, dir_fd=descriptor)
+            except FileNotFoundError:
+                return ()
+            except OSError as exc:
+                raise LifecycleProductionVersionConflict(
+                    "PRODUCTION_VERSION_SCAN_UNSAFE"
+                ) from exc
+            descriptors.append(child)
+            descriptor = child
+        try:
+            names = os.listdir(descriptor)
+        except OSError as exc:
+            raise LifecycleProductionVersionConflict(
+                "PRODUCTION_VERSION_SCAN_UNSAFE"
+            ) from exc
+        if any(
+            not isinstance(name, str)
+            or name in {"", ".", ".."}
+            or "/" in name
+            or "\\" in name
+            for name in names
+        ):
+            raise LifecycleProductionVersionConflict(
+                "PRODUCTION_VERSION_SCAN_UNSAFE"
+            )
+        return tuple(
+            records_root / name
+            for name in sorted(names)
+            if name.endswith(".md")
+        )
+    finally:
+        for descriptor in reversed(descriptors):
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+
+def _production_record_metadata(contents):
+    try:
+        text = contents.decode("utf-8")
+        metadata, _body = project_memory.parse_frontmatter(text)
+        if (
+            not isinstance(metadata, dict)
+            or metadata.get("schema") != project_production.RECORD_SCHEMA
+            or metadata.get("kind") != "production_record"
+            or not str(metadata.get("id", "")).strip()
+        ):
+            raise ValueError("invalid production metadata")
+        return metadata
+    except (AttributeError, TypeError, UnicodeError, ValueError) as exc:
+        raise LifecycleProductionVersionConflict(
+            "PRODUCTION_VERSION_SCAN_UNSAFE"
+        ) from exc
+
+
+def _production_version_classification(plan):
+    """Return absent, identical, or conflict for one production plan."""
+    if plan.action != "production-version":
+        return "absent"
+    targets = tuple(
+        target for target in plan.targets if target.role == "production-record"
+    )
+    if len(targets) != 1:
+        raise LifecycleProductionVersionConflict(
+            "PRODUCTION_VERSION_SCAN_UNSAFE"
+        )
+    proposed = targets[0]
+    proposed_metadata = _production_record_metadata(proposed._after_bytes)
+    proposed_identity = project_production.production_version_identity(
+        proposed_metadata
+    )
+    if proposed_identity is None or proposed_identity[0] != plan.issue_id:
+        raise LifecycleProductionVersionConflict(
+            "PRODUCTION_VERSION_SCAN_UNSAFE"
+        )
+    if proposed_identity[-1] != plan._production_version:
+        raise LifecycleProductionVersionConflict(
+            "PRODUCTION_VERSION_SCAN_UNSAFE"
+        )
+    try:
+        root = Path(plan.canonical_root)
+        context = _json_value(plan._project_context)
+        records_root = _safe_planning_child(root, context, "production_records")
+        paths = _production_record_paths_no_follow(root, records_root)
+        matches = []
+        for path in paths:
+            _existed, contents = _read_regular_file_no_follow(
+                path,
+                root,
+                "production-record",
+                required=True,
+            )
+            metadata = _production_record_metadata(contents)
+            identity = project_production.production_version_identity(metadata)
+            if identity == proposed_identity:
+                matches.append((_project_relative(root, path), contents))
+    except LifecycleProductionVersionConflict:
+        raise
+    except (KeyError, LifecyclePlanError, TypeError, ValueError) as exc:
+        raise LifecycleProductionVersionConflict(
+            "PRODUCTION_VERSION_SCAN_UNSAFE"
+        ) from exc
+    if not matches:
+        return "absent"
+    if (
+        len(matches) == 1
+        and matches[0][0] == proposed.relative_path
+        and matches[0][1] == proposed._after_bytes
+    ):
+        return "identical"
+    return "conflict"
 
 
 def _project_relative(root, path):
@@ -6125,6 +6329,11 @@ def plan_lifecycle_transaction(
         target_lifecycle=normalized.target_lifecycle,
         targets=targets + (evidence,),
         _project_context=context,
+        _production_version=(
+            str(normalized.production_change["version"])
+            if normalized.production_change is not None
+            else ""
+        ),
     )
 
 
@@ -6600,6 +6809,32 @@ def apply_lifecycle_transaction(
     if replay is not None:
         return replay
     try:
+        production_version_state = _production_version_classification(plan)
+    except LifecycleProductionVersionConflict as exc:
+        return _public_failure_result(
+            plan,
+            normalized,
+            status="conflict",
+            failed_stage="preflight",
+            error_code=exc.code,
+            rollback_status="not-required",
+            completed_at=_journal_timestamp(clock),
+            projected_validation=projected,
+            post_apply_validation=post_apply,
+        )
+    if production_version_state == "conflict":
+        return _public_failure_result(
+            plan,
+            normalized,
+            status="conflict",
+            failed_stage="preflight",
+            error_code="PRODUCTION_VERSION_CONFLICT",
+            rollback_status="not-required",
+            completed_at=_journal_timestamp(clock),
+            projected_validation=projected,
+            post_apply_validation=post_apply,
+        )
+    try:
         projected = validate_projected_transaction(plan)
     except LifecycleProjectedValidationError as exc:
         return _public_failure_result(
@@ -6628,6 +6863,13 @@ def apply_lifecycle_transaction(
             projected_validation=projected,
             post_apply_validation=post_apply,
         )
+    if production_version_state == "identical":
+        return _public_semantic_noop_result(
+            plan,
+            normalized,
+            projected_validation=projected,
+            completed_at=_journal_timestamp(clock),
+        )
     _emit_apply_fault(fault_injector, "after-projected-validation")
     completion = _prepare_completion_input(
         plan,
@@ -6650,6 +6892,18 @@ def apply_lifecycle_transaction(
             _emit_apply_fault(fault_injector, "after-private-complete")
             result = completed_result
     except transaction_storage.LifecycleCanonicalConflict as exc:
+        return _public_failure_result(
+            plan,
+            normalized,
+            status="conflict",
+            failed_stage="preflight",
+            error_code=exc.code,
+            rollback_status="not-required",
+            completed_at=_journal_timestamp(clock),
+            projected_validation=projected,
+            post_apply_validation=post_apply,
+        )
+    except LifecycleProductionVersionConflict as exc:
         return _public_failure_result(
             plan,
             normalized,

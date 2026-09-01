@@ -1416,6 +1416,71 @@ class TransactionPlanningTests(unittest.TestCase):
         iterator = iter(values)
         return lambda: next(iterator)
 
+    def production_record_content(
+        self,
+        *,
+        record_id="biz-103-release",
+        title="BIZ-103 release",
+        version="1.2.3",
+        variant="default",
+    ):
+        return f"""---
+schema: moduflow.production-record.v1
+id: {record_id}
+kind: production_record
+title: {title}
+issue_id: {self.ISSUE_ID}
+version: {version}
+source_context:
+deliverable_type: document
+channel: internal
+audiences: [team]
+variant: {variant}
+lifecycle: draft
+owner: dongwon
+created: 2030-01-02
+updated: 2030-01-02
+playbook_refs: []
+retrieval_trigger: when preparing release notes
+---
+
+## Artifacts
+
+None recorded
+
+## Source Inputs
+
+Issue 103
+
+## Decisions
+
+Use the transaction boundary.
+
+## Failed Attempts
+
+None recorded
+
+## Reusable Patterns
+
+Use semantic versions.
+
+## Do Not Repeat
+
+Do not write directly.
+
+## Playbook Updates
+
+None recorded
+
+## External Copy
+
+Not applicable
+
+## Internal Reporting Copy
+
+Versioned release record.
+"""
+
     def apply_privately_once(self, root, context, intent):
         (root / "workspace" / "transactions").mkdir(exist_ok=True)
         plan = transaction.plan_lifecycle_transaction(
@@ -5598,6 +5663,270 @@ class TransactionPlanningTests(unittest.TestCase):
                 "roadmap",
                 [target["role"] for target in result["targets"]],
             )
+
+    def test_identical_production_version_returns_noop_without_apply_workspace(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, nested=True)
+            (root / "product/workspace/transactions").mkdir()
+            content = self.production_record_content()
+            configured = (
+                root
+                / "product/memory/production-records/biz-103-release.md"
+            )
+            configured.write_text(content, encoding="utf-8")
+            decoy = root / "memory/production-records/poison.md"
+            decoy_before = decoy.read_bytes()
+            intent = self.intent(
+                action="production-version",
+                production_change={
+                    "version": "1.2.3",
+                    "record_id": "biz-103-release",
+                    "content": content,
+                },
+            )
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                intent,
+                project_context=context,
+                clock="2030-01-02",
+            )
+
+            with mock.patch.object(
+                transaction.validate_project_artifacts,
+                "validate_project",
+                return_value=self.validation_result(),
+            ):
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            self.assertEqual(result["status"], "noop")
+            self.assertEqual(result["error_code"], "")
+            self.assertEqual(configured.read_text(encoding="utf-8"), content)
+            self.assertEqual(decoy.read_bytes(), decoy_before)
+            self.assertFalse(
+                (root / ".moduflow/transactions" / plan.transaction_id).exists()
+            )
+            self.assertFalse(
+                (
+                    root
+                    / "product/workspace/transactions"
+                    / f"{plan.transaction_id}.json"
+                ).exists()
+            )
+
+    def test_conflicting_production_version_never_overwrites_or_duplicates(self):
+        cases = (
+            ("same-path", "biz-103-release", "Existing human title"),
+            ("different-path", "other-record", "Existing human title"),
+        )
+        for label, existing_id, existing_title in cases:
+            with (
+                self.subTest(label=label),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
+                root = Path(tmp)
+                context = self.scaffold(root, nested=True)
+                (root / "product/workspace/transactions").mkdir()
+                records = root / "product/memory/production-records"
+                existing = records / f"{existing_id}.md"
+                existing_content = self.production_record_content(
+                    record_id=existing_id,
+                    title=existing_title,
+                )
+                existing.write_text(existing_content, encoding="utf-8")
+                proposed = self.production_record_content()
+                intended = records / "biz-103-release.md"
+                intent = self.intent(
+                    action="production-version",
+                    production_change={
+                        "version": "1.2.3",
+                        "record_id": "biz-103-release",
+                        "content": proposed,
+                    },
+                )
+
+                with mock.patch.object(
+                    transaction.validate_project_artifacts,
+                    "validate_project",
+                    return_value=self.validation_result(),
+                ):
+                    result = transaction.apply_lifecycle_transaction(
+                        root,
+                        intent,
+                        project_context=context,
+                        clock=self.public_clock(),
+                    )
+
+                self.assertEqual(result["status"], "conflict")
+                self.assertEqual(
+                    result["error_code"],
+                    "PRODUCTION_VERSION_CONFLICT",
+                )
+                self.assertEqual(
+                    existing.read_text(encoding="utf-8"),
+                    existing_content,
+                )
+                if existing != intended:
+                    self.assertFalse(intended.exists())
+
+    def test_racing_production_version_conflicts_before_workspace_creation(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, nested=True)
+            (root / "product/workspace/transactions").mkdir()
+            records = root / "product/memory/production-records"
+            intended = records / "biz-103-release.md"
+            raced = records / "racing-record.md"
+            proposed = self.production_record_content()
+            raced_content = self.production_record_content(
+                record_id="racing-record",
+                title="Concurrent release",
+            )
+            intent = self.intent(
+                action="production-version",
+                production_change={
+                    "version": "1.2.3",
+                    "record_id": "biz-103-release",
+                    "content": proposed,
+                },
+            )
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                intent,
+                project_context=context,
+                clock="2030-01-02",
+            )
+
+            def race(stage):
+                if stage == "before-private-apply":
+                    raced.write_text(raced_content, encoding="utf-8")
+
+            with mock.patch.object(
+                transaction.validate_project_artifacts,
+                "validate_project",
+                return_value=self.validation_result(),
+            ):
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=self.public_clock(),
+                    fault_injector=race,
+                )
+
+            self.assertEqual(result["status"], "conflict")
+            self.assertEqual(result["failed_stage"], "preflight")
+            self.assertEqual(
+                result["error_code"],
+                "PRODUCTION_VERSION_CONFLICT",
+            )
+            self.assertEqual(raced.read_text(encoding="utf-8"), raced_content)
+            self.assertFalse(intended.exists())
+            self.assertFalse(
+                (root / ".moduflow/transactions" / plan.transaction_id).exists()
+            )
+
+    def test_unsafe_production_version_scan_fails_closed_without_target_write(
+        self,
+    ):
+        for unsafe_kind in ("malformed", "symlink"):
+            with (
+                self.subTest(unsafe_kind=unsafe_kind),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
+                root = Path(tmp)
+                context = self.scaffold(root, nested=True)
+                (root / "product/workspace/transactions").mkdir()
+                records = root / "product/memory/production-records"
+                unsafe = records / "unsafe.md"
+                if unsafe_kind == "malformed":
+                    unsafe.write_text(
+                        "not production frontmatter\n",
+                        encoding="utf-8",
+                    )
+                else:
+                    outside = root / "outside.md"
+                    outside.write_text(
+                        self.production_record_content(record_id="outside"),
+                        encoding="utf-8",
+                    )
+                    unsafe.symlink_to(outside)
+                intended = records / "biz-103-release.md"
+                intent = self.intent(
+                    action="production-version",
+                    production_change={
+                        "version": "1.2.3",
+                        "record_id": "biz-103-release",
+                        "content": self.production_record_content(),
+                    },
+                )
+
+                with mock.patch.object(
+                    transaction.validate_project_artifacts,
+                    "validate_project",
+                    return_value=self.validation_result(),
+                ):
+                    result = transaction.apply_lifecycle_transaction(
+                        root,
+                        intent,
+                        project_context=context,
+                        clock=self.public_clock(),
+                    )
+
+                self.assertEqual(result["status"], "conflict")
+                self.assertEqual(
+                    result["error_code"],
+                    "PRODUCTION_VERSION_SCAN_UNSAFE",
+                )
+                self.assertFalse(intended.exists())
+
+    def test_production_content_version_must_match_intent_before_target_write(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, nested=True)
+            (root / "product/workspace/transactions").mkdir()
+            intended = (
+                root
+                / "product/memory/production-records/biz-103-release.md"
+            )
+            intent = self.intent(
+                action="production-version",
+                production_change={
+                    "version": "1.2.3",
+                    "record_id": "biz-103-release",
+                    "content": self.production_record_content(version="2.0.0"),
+                },
+            )
+
+            with mock.patch.object(
+                transaction.validate_project_artifacts,
+                "validate_project",
+                return_value=self.validation_result(),
+            ):
+                result = transaction.apply_lifecycle_transaction(
+                    root,
+                    intent,
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            self.assertEqual(result["status"], "conflict")
+            self.assertEqual(
+                result["error_code"],
+                "PRODUCTION_VERSION_SCAN_UNSAFE",
+            )
+            self.assertFalse(intended.exists())
 
     def test_loop_adapter_applies_full_state_only_to_nested_configured_workspace(self):
         with tempfile.TemporaryDirectory() as tmp:
