@@ -10,7 +10,6 @@ write back to issue files (canonical source is human-authored).
 import argparse
 import json
 import re
-from datetime import date
 from pathlib import Path
 
 try:
@@ -578,7 +577,18 @@ def transition_lifecycle(
     )
 
 
-def sync_lifecycle(root, *, project_context=None):
+def sync_lifecycle(
+    root,
+    *,
+    project_context=None,
+    actor="moduflow.lifecycle",
+    source_event="sync_lifecycle",
+    idempotency_key="",
+    expected_issue_sha256="",
+    require_issue_index=False,
+    clock=None,
+    fault_injector=None,
+):
     """Single propagation point: issue Status -> .moduflow/state.json + dashboard
     Active Issue section. Idempotent. Touches only structured fields/sections."""
     root = Path(root).resolve()
@@ -624,50 +634,77 @@ def sync_lifecycle(root, *, project_context=None):
         None,
     )
     phase = infer_phase(root, active, evaluation, project_context=context)
-    next_command = "product:status"
-    if active_issue:
-        next_command = (
-            active_issue.get("recommended_next_command") or next_command
+    owner = active_issue or next(
+        (
+            issue
+            for issue in sorted(
+                evaluation["issues"], key=lambda item: item["issue_id"]
+            )
+            if issue.get("lifecycle_state") in {"backlog", "active", "done"}
+        ),
+        None,
+    )
+    if owner is None:
+        return {
+            "status": "blocked",
+            "active": "",
+            "phase": "unresolved",
+            "dashboard_updated": False,
+            "errors": [
+                "ISSUE_RECONCILE_OWNER_UNAVAILABLE: No canonical issue can own "
+                "the lifecycle reconcile transaction. Recommendation: Create or "
+                "restore a valid issue and run product:doctor."
+            ],
+        }
+
+    boundary = _load_lifecycle_transaction_module()
+    intent = boundary.LifecycleIntent(
+        issue_id=owner["issue_id"],
+        action="reconcile",
+        actor=actor,
+        source_event=source_event,
+        target_lifecycle=None,
+        idempotency_key=idempotency_key,
+        expected_issue_sha256=expected_issue_sha256,
+        require_issue_index=require_issue_index,
+    )
+    transaction = boundary.apply_lifecycle_transaction(
+        root,
+        intent,
+        project_context=context,
+        clock=clock,
+        fault_injector=fault_injector,
+    )
+    dashboard_updated = (
+        transaction.get("status") == "applied"
+        and any(
+            target.get("role") == "dashboard" and target.get("changed") is True
+            for target in transaction.get("targets", [])
+            if isinstance(target, dict)
         )
-
-    # state.json — no prose; safe to set lifecycle fields, preserve the rest.
-    sp = root / ".moduflow" / "state.json"
-    state = read_json(sp) or {"schema": "moduflow.state.v1"}
-    state.setdefault("schema", "moduflow.state.v1")
-    state["active_issue"] = active
-    state["phase"] = phase
-    state.setdefault("active_goal", "")
-    state["next_command"] = next_command
-    state.setdefault("blockers", [])
-    state["updated_at"] = date.today().isoformat()
-    if sp.parent.exists():
-        sp.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-    # dashboard.md — regenerate ONLY the Active Issue section body; preserve prose.
-    dash = project_registry.canonical_path(context, "workspace") / "dashboard.md"
-    changed_dashboard = False
-    if dash.exists():
-        dtext = dash.read_text(encoding="utf-8")
-        if active:
-            source_path = active_issue["source_path"]
-            new_section = (
-                f"## Active Issue\n\n- `{active}` (phase: {phase}). "
-                f"Canonical: `{source_path}`.\n\n"
-            )
-        else:
-            new_section = (
-                "## Active Issue\n\n- None active. "
-                "Run `product:status` to pick the next issue.\n\n"
-            )
-        # Replace the whole header+body block with a fixed form → idempotent.
-        pattern = re.compile(r"^##\s+Active Issue\s*$.*?(?=^##\s|\Z)", re.M | re.S)
-        if pattern.search(dtext):
-            new_text = pattern.sub(lambda _m: new_section, dtext)
-            if new_text != dtext:
-                dash.write_text(new_text, encoding="utf-8")
-                changed_dashboard = True
-
-    return {"active": active, "phase": phase, "dashboard_updated": changed_dashboard}
+    )
+    result = {
+        "active": active,
+        "phase": phase,
+        "dashboard_updated": dashboard_updated,
+        "transaction": transaction,
+    }
+    if transaction.get("status") not in {"applied", "noop"}:
+        error_code = (
+            transaction.get("error_code")
+            or transaction.get("status")
+            or "unknown"
+        )
+        result.update(
+            {
+                "status": "blocked",
+                "errors": [
+                    f"{error_code}: Lifecycle reconcile transaction did not commit. "
+                    "Recommendation: Run product:doctor before retrying."
+                ],
+            }
+        )
+    return result
 
 
 def _mutation_exit_code(result):

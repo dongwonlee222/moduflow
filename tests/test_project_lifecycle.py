@@ -2,6 +2,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +11,21 @@ from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+
+def valid_transaction_validation():
+    return mock.patch(
+        "validate_project_artifacts.validate_project",
+        return_value={
+            "schema": "moduflow.project-validation.v1",
+            "valid": True,
+            "errors": [],
+            "warnings": [],
+            "issue_schema": {"errors": 0, "warnings": 0},
+            "lifecycle_drift": [],
+        },
+    )
 
 
 def load_module(name, relative_path):
@@ -35,6 +51,21 @@ def scaffold(root, issues, active_in_dashboard="048-x", state_active="048-x"):
         "# Dashboard\n\n## Active Issue\n\n- `" + active_in_dashboard + "` (phase: spec).\n\n"
         "## Recently Completed\n\n- IMPORTANT HUMAN PROSE that must survive sync.\n\n"
         "## Next Command\n\n`product:status`\n", encoding="utf-8")
+    (root / "workspace" / "loop-state.json").write_text(
+        json.dumps(
+            {
+                "schema": "moduflow.loop-state.v2",
+                "goal_id": "g",
+                "issue_ids": [state_active] if state_active else [],
+                "active_issue_id": state_active or None,
+                "status": "active",
+                "next_command": "product:status",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (root / "workspace" / "transactions").mkdir()
 
 
 class ProjectLifecycleTests(unittest.TestCase):
@@ -363,6 +394,128 @@ class ProjectLifecycleTests(unittest.TestCase):
             self.assertTrue(any("040-old" in d for d in drift))      # state mismatch
             self.assertTrue(any("045-y" in d and "done" in d for d in drift))  # done listed active
 
+    def test_sync_builds_one_reconcile_intent_and_preserves_legacy_result_keys(self):
+        lc = load_module("project_lifecycle_sync_adapter", "scripts/project_lifecycle.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scaffold(root, {"048-x": "active"})
+            transaction_result = {
+                "schema": "moduflow.lifecycle-transaction.v1",
+                "status": "applied",
+                "targets": [
+                    {"role": "dashboard", "changed": True},
+                ],
+            }
+            apply = mock.Mock(return_value=transaction_result)
+            boundary = SimpleNamespace(
+                LifecycleIntent=lambda **values: SimpleNamespace(**values),
+                apply_lifecycle_transaction=apply,
+            )
+            injector = lambda _stage: None
+
+            with mock.patch.object(
+                lc,
+                "_load_lifecycle_transaction_module",
+                return_value=boundary,
+            ):
+                result = lc.sync_lifecycle(
+                    root,
+                    actor="dongwon",
+                    source_event="request:C1b",
+                    idempotency_key="a" * 64,
+                    expected_issue_sha256="b" * 64,
+                    require_issue_index=True,
+                    clock="clock",
+                    fault_injector=injector,
+                )
+
+            intent = apply.call_args.args[1]
+            self.assertEqual(intent.issue_id, "048-x")
+            self.assertEqual(intent.action, "reconcile")
+            self.assertIsNone(intent.target_lifecycle)
+            self.assertEqual(intent.actor, "dongwon")
+            self.assertEqual(intent.source_event, "request:C1b")
+            self.assertEqual(intent.idempotency_key, "a" * 64)
+            self.assertEqual(intent.expected_issue_sha256, "b" * 64)
+            self.assertTrue(intent.require_issue_index)
+            apply.assert_called_once_with(
+                root.resolve(),
+                intent,
+                project_context=mock.ANY,
+                clock="clock",
+                fault_injector=injector,
+            )
+            self.assertEqual(
+                result,
+                {
+                    "active": "048-x",
+                    "phase": "select",
+                    "dashboard_updated": True,
+                    "transaction": transaction_result,
+                },
+            )
+
+    def test_sync_maps_transaction_failure_to_legacy_blocked_shape(self):
+        lc = load_module("project_lifecycle_sync_failure", "scripts/project_lifecycle.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scaffold(root, {"048-x": "active"})
+            transaction_result = {
+                "schema": "moduflow.lifecycle-transaction.v1",
+                "status": "rolled_back",
+                "error_code": "POST_APPLY_VALIDATION_FAILED",
+                "targets": [{"role": "dashboard", "changed": True}],
+            }
+            boundary = SimpleNamespace(
+                LifecycleIntent=lambda **values: SimpleNamespace(**values),
+                apply_lifecycle_transaction=mock.Mock(return_value=transaction_result),
+            )
+
+            with mock.patch.object(
+                lc,
+                "_load_lifecycle_transaction_module",
+                return_value=boundary,
+            ):
+                result = lc.sync_lifecycle(root)
+
+            self.assertEqual(result["status"], "blocked")
+            self.assertEqual(result["active"], "048-x")
+            self.assertEqual(result["phase"], "select")
+            self.assertFalse(result["dashboard_updated"])
+            self.assertEqual(result["transaction"], transaction_result)
+            self.assertIn("POST_APPLY_VALIDATION_FAILED", result["errors"][0])
+
+    def test_sync_adapter_owns_no_direct_file_mutation(self):
+        lc = load_module("project_lifecycle_sync_no_write", "scripts/project_lifecycle.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scaffold(root, {"048-x": "active"})
+            boundary = SimpleNamespace(
+                LifecycleIntent=lambda **values: SimpleNamespace(**values),
+                apply_lifecycle_transaction=mock.Mock(
+                    return_value={
+                        "schema": "moduflow.lifecycle-transaction.v1",
+                        "status": "noop",
+                        "targets": [{"role": "dashboard", "changed": False}],
+                    }
+                ),
+            )
+
+            with (
+                mock.patch.object(
+                    lc,
+                    "_load_lifecycle_transaction_module",
+                    return_value=boundary,
+                ),
+                mock.patch.object(lc.Path, "write_text") as write_text,
+                mock.patch.object(lc.Path, "write_bytes") as write_bytes,
+            ):
+                result = lc.sync_lifecycle(root)
+
+            self.assertFalse(result["dashboard_updated"])
+            write_text.assert_not_called()
+            write_bytes.assert_not_called()
+
     def test_sync_updates_views_idempotently_and_preserves_prose(self):
         lc = load_module("project_lifecycle", "scripts/project_lifecycle.py")
         with tempfile.TemporaryDirectory() as tmp:
@@ -371,7 +524,7 @@ class ProjectLifecycleTests(unittest.TestCase):
             (root / "specs" / "048-x").mkdir(parents=True)
             (root / "specs" / "048-x" / "spec.md").write_text("# s\n", encoding="utf-8")
 
-            with mock.patch.object(
+            with valid_transaction_validation(), mock.patch.object(
                 lc, "evaluate_project", wraps=lc.evaluate_project
             ) as evaluate:
                 first = lc.sync_lifecycle(root)
@@ -387,7 +540,8 @@ class ProjectLifecycleTests(unittest.TestCase):
             self.assertIn("IMPORTANT HUMAN PROSE", dash)   # prose preserved
             self.assertIn("048-x", dash)
 
-            second = lc.sync_lifecycle(root)               # idempotent
+            with valid_transaction_validation():
+                second = lc.sync_lifecycle(root)           # idempotent
             self.assertFalse(second["dashboard_updated"])
 
     def test_sync_replaces_stale_execute_command_for_dependency_blocked_active_issue(self):
@@ -419,7 +573,7 @@ class ProjectLifecycleTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with mock.patch.object(
+            with valid_transaction_validation(), mock.patch.object(
                 lc, "evaluate_project", wraps=lc.evaluate_project
             ) as evaluate:
                 result = lc.sync_lifecycle(root)
@@ -489,8 +643,23 @@ class ProjectLifecycleTests(unittest.TestCase):
                 "## Recently Completed\n\n- Preserve me.\n",
                 encoding="utf-8",
             )
+            (root / "workspace" / "loop-state.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.loop-state.v2",
+                        "goal_id": "g",
+                        "issue_ids": ["BIZ-CUSTOM"],
+                        "active_issue_id": "BIZ-CUSTOM",
+                        "status": "active",
+                        "next_command": "product:status",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (root / "workspace" / "transactions").mkdir()
 
-            with mock.patch.object(
+            with valid_transaction_validation(), mock.patch.object(
                 lc, "evaluate_project", wraps=lc.evaluate_project
             ) as evaluate:
                 result = lc.sync_lifecycle(root)
@@ -539,6 +708,21 @@ class ProjectLifecycleTests(unittest.TestCase):
                 "## Notes\n\n- CONFIGURED-PRESERVE\n",
                 encoding="utf-8",
             )
+            (workspace / "loop-state.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "moduflow.loop-state.v2",
+                        "goal_id": "g",
+                        "issue_ids": ["A-001"],
+                        "active_issue_id": "A-001",
+                        "status": "active",
+                        "next_command": "product:status",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (workspace / "transactions").mkdir()
             default_workspace = root / "workspace"
             default_workspace.mkdir()
             decoy = default_workspace / "dashboard.md"
@@ -548,7 +732,8 @@ class ProjectLifecycleTests(unittest.TestCase):
             )
             before = decoy.read_bytes()
 
-            result = lc.sync_lifecycle(root)
+            with valid_transaction_validation():
+                result = lc.sync_lifecycle(root)
 
             self.assertTrue(result["dashboard_updated"])
             self.assertIn(

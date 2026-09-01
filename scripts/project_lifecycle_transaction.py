@@ -19,19 +19,38 @@ import secrets
 import stat
 from types import MappingProxyType
 
-import project_issue_schema
-import project_lifecycle_transaction_storage as transaction_storage
-import project_operation
-import project_registry
-import validate_project_artifacts
-from project_lifecycle import (
-    render_dashboard_projection,
-    render_issue_index,
-    render_issue_transition,
-    render_roadmap_projection,
-    render_state_projection,
-)
-from project_loop import render_loop_projection
+try:
+    import project_issue_schema
+    import project_lifecycle_transaction_storage as transaction_storage
+    import project_operation
+    import project_registry
+    import validate_project_artifacts
+    from project_lifecycle import (
+        infer_phase,
+        render_dashboard_projection,
+        render_issue_index,
+        render_issue_transition,
+        render_roadmap_projection,
+        render_state_projection,
+    )
+    from project_loop import render_loop_projection
+except ModuleNotFoundError:  # pragma: no cover - package import fallback
+    from scripts import (
+        project_issue_schema,
+        project_lifecycle_transaction_storage as transaction_storage,
+        project_operation,
+        project_registry,
+        validate_project_artifacts,
+    )
+    from scripts.project_lifecycle import (
+        infer_phase,
+        render_dashboard_projection,
+        render_issue_index,
+        render_issue_transition,
+        render_roadmap_projection,
+        render_state_projection,
+    )
+    from scripts.project_loop import render_loop_projection
 
 
 PLAN_SCHEMA = "moduflow.lifecycle-transaction-plan.v1"
@@ -5680,7 +5699,59 @@ def _projected_issue_status(issue_bytes, fallback):
     return match.group(1).strip() if match else fallback
 
 
-def _projected_issue_index_records(root, context, issue_path, issue_after):
+def _projected_issue_evaluation(root, context, issue_path, issue_after):
+    """Evaluate every canonical issue once with the owning projection overlaid."""
+    issues_root = _safe_planning_child(root, context, "issues")
+    issues = []
+    owner_seen = False
+    for path in sorted(issues_root.glob("*.md")):
+        if path == issue_path:
+            source = issue_after
+            owner_seen = True
+        else:
+            _existed, source = _read_planning_source(
+                path,
+                root,
+                "issue",
+                required=True,
+            )
+        issues.append(
+            project_issue_schema.parse_issue(
+                path,
+                root,
+                source_text=source.decode("utf-8"),
+            )
+        )
+    if not owner_seen:
+        raise LifecyclePlanError(
+            "PLAN_TARGET_MISSING",
+            role="issue",
+            relative_path=_project_relative(root, issue_path),
+        )
+    return project_issue_schema._evaluate_issue_records(
+        root,
+        issues,
+        context["relative_paths"],
+    )
+
+
+def _projected_issue_index_records(evaluation):
+    return [
+        {
+            "id": issue["issue_id"],
+            "status": issue["lifecycle_state"],
+            "title": issue["title"] or issue["issue_id"],
+        }
+        for issue in sorted(evaluation["issues"], key=lambda item: item["issue_id"])
+    ]
+
+
+def _projected_issue_index_records_from_sources(
+    root,
+    context,
+    issue_path,
+    issue_after,
+):
     issues_root = _safe_planning_child(root, context, "issues")
     records = []
     for path in sorted(issues_root.glob("*.md")):
@@ -5698,12 +5769,11 @@ def _projected_issue_index_records(root, context, issue_path, issue_after):
             root,
             source_text=source.decode("utf-8"),
         )
-        issue_id = issue["issue_id"]
         records.append(
             {
-                "id": issue_id,
+                "id": issue["issue_id"],
                 "status": issue["lifecycle_state"],
-                "title": issue["title"] or issue_id,
+                "title": issue["title"] or issue["issue_id"],
             }
         )
     return records
@@ -5783,20 +5853,68 @@ def plan_lifecycle_transaction(
         normalized.target_lifecycle,
         changed_on=changed_on,
     )
-    projected_status = _render_planning_target(
-        "issue",
-        issue_relative,
-        _projected_issue_status,
-        issue_after,
-        normalized.target_lifecycle or "backlog",
-    )
-    issue_active = normalized.issue_id if projected_status == "active" else ""
-    phase = "execute" if projected_status == "active" else "select"
-    next_command = normalized.next_command or (
-        f"product:execute {normalized.issue_id}"
-        if projected_status == "active"
-        else "product:status"
-    )
+    evaluation = None
+    active_issue = None
+    if normalized.action == "reconcile":
+        evaluation = _render_planning_target(
+            "issue",
+            issue_relative,
+            _projected_issue_evaluation,
+            root,
+            context,
+            issue_path,
+            issue_after,
+        )
+        projected_issue = next(
+            (
+                issue
+                for issue in evaluation["issues"]
+                if issue["issue_id"] == normalized.issue_id
+            ),
+            None,
+        )
+        if projected_issue is None:
+            raise LifecyclePlanError(
+                "PLAN_RENDER_INVALID",
+                role="issue",
+                relative_path=issue_relative,
+            )
+        projected_status = projected_issue.get("lifecycle_state") or (
+            normalized.target_lifecycle or "backlog"
+        )
+        active_issues = [
+            issue
+            for issue in evaluation["issues"]
+            if issue.get("lifecycle_state") == "active"
+        ]
+        active_issue = active_issues[0] if len(active_issues) == 1 else None
+        issue_active = active_issue["issue_id"] if active_issue else ""
+        phase = infer_phase(
+            root,
+            issue_active,
+            evaluation,
+            project_context=context,
+        )
+        next_command = normalized.next_command or (
+            active_issue.get("recommended_next_command")
+            if active_issue
+            else ""
+        ) or "product:status"
+    else:
+        projected_status = _render_planning_target(
+            "issue",
+            issue_relative,
+            _projected_issue_status,
+            issue_after,
+            normalized.target_lifecycle or "backlog",
+        )
+        issue_active = normalized.issue_id if projected_status == "active" else ""
+        phase = "execute" if projected_status == "active" else "select"
+        next_command = normalized.next_command or (
+            f"product:execute {normalized.issue_id}"
+            if projected_status == "active"
+            else "product:status"
+        )
     state_after = _render_planning_target(
         "state",
         _project_relative(root, state_path),
@@ -5826,7 +5944,7 @@ def plan_lifecycle_transaction(
         dashboard_before,
         active_issue=issue_active,
         phase=phase,
-        source_path=issue_relative,
+        source_path=(active_issue or {}).get("source_path") or issue_relative,
     )
 
     selected = [
@@ -5856,15 +5974,23 @@ def plan_lifecycle_transaction(
     )
     if issue_index_existed or normalized.require_issue_index:
         existed, before = issue_index_existed, issue_index_before
-        index_records = _render_planning_target(
-            "issue-index",
-            _project_relative(root, issue_index_path),
-            _projected_issue_index_records,
-            root,
-            context,
-            issue_path,
-            issue_after,
-        )
+        if evaluation is None:
+            index_records = _render_planning_target(
+                "issue-index",
+                _project_relative(root, issue_index_path),
+                _projected_issue_index_records_from_sources,
+                root,
+                context,
+                issue_path,
+                issue_after,
+            )
+        else:
+            index_records = _render_planning_target(
+                "issue-index",
+                _project_relative(root, issue_index_path),
+                _projected_issue_index_records,
+                evaluation,
+            )
         after = _render_planning_target(
             "issue-index",
             _project_relative(root, issue_index_path),

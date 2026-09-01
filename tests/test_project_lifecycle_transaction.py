@@ -2976,6 +2976,63 @@ class TransactionPlanningTests(unittest.TestCase):
                 self.assertNotIn(self.ISSUE_ID, loop["issue_ids"])
                 self.assertIn("None active", dashboard)
 
+    def test_reconcile_derives_phase_and_route_from_shared_issue_evaluation(self):
+        cases = (
+            (("spec.md",), "spec", "product:plan BIZ-103"),
+            (("spec.md", "plan.md"), "plan", "product:plan BIZ-103"),
+            (
+                ("spec.md", "plan.md", "tasks.md"),
+                "execute",
+                "product:execute BIZ-103",
+            ),
+            (
+                ("spec.md", "plan.md", "tasks.md", "review.md"),
+                "review",
+                "product:execute BIZ-103",
+            ),
+            (
+                ("spec.md", "plan.md", "tasks.md", "review.md", "release.md"),
+                "release",
+                "product:execute BIZ-103",
+            ),
+        )
+        for artifacts, expected_phase, expected_command in cases:
+            with self.subTest(phase=expected_phase), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                context = self.scaffold(root)
+                issue_path = root / "issues" / f"{self.ISSUE_ID}.md"
+                issue_path.write_text(
+                    issue_path.read_text(encoding="utf-8").replace(
+                        "**Status: backlog**", "**Status: active**"
+                    ).replace("**Blocked-by: none**\n", ""),
+                    encoding="utf-8",
+                )
+                spec_root = root / "specs" / self.ISSUE_ID
+                spec_root.mkdir(parents=True)
+                for artifact in artifacts:
+                    (spec_root / artifact).write_text("# artifact\n", encoding="utf-8")
+
+                plan = transaction.plan_lifecycle_transaction(
+                    root,
+                    self.intent(action="reconcile"),
+                    project_context=context,
+                    clock="2030-01-02",
+                )
+
+                state = json.loads(
+                    next(
+                        target for target in plan.targets if target.role == "state"
+                    )._after_bytes
+                )
+                self.assertEqual(state["active_issue"], self.ISSUE_ID)
+                self.assertEqual(state["phase"], expected_phase)
+                self.assertEqual(state["next_command"], expected_command)
+                self.assertFalse(
+                    next(
+                        target for target in plan.targets if target.role == "issue"
+                    ).changed
+                )
+
     def test_nested_context_owns_every_target_and_poisoned_defaults_are_not_read(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
