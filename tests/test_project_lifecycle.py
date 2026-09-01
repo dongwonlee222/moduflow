@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 
@@ -37,6 +38,114 @@ def scaffold(root, issues, active_in_dashboard="048-x", state_active="048-x"):
 
 
 class ProjectLifecycleTests(unittest.TestCase):
+    def test_transition_lifecycle_builds_one_exact_intent_and_returns_engine_result(self):
+        lc = load_module("project_lifecycle_adapter", "scripts/project_lifecycle.py")
+        expected = {
+            "schema": "moduflow.lifecycle-transaction.v1",
+            "status": "noop",
+        }
+        for action, target in (
+            ("start", None),
+            ("update", "active"),
+            ("pause", None),
+            ("resume", None),
+            ("complete", None),
+        ):
+            with self.subTest(action=action):
+                apply = mock.Mock(return_value=expected)
+                boundary = SimpleNamespace(
+                    LifecycleIntent=lambda **values: SimpleNamespace(**values),
+                    apply_lifecycle_transaction=apply,
+                )
+                injector = lambda _stage: None
+                context = {"project_id": "project-103"}
+                with mock.patch.object(
+                    lc,
+                    "_load_lifecycle_transaction_module",
+                    return_value=boundary,
+                ):
+                    result = lc.transition_lifecycle(
+                        "/project",
+                        "BIZ-103",
+                        action,
+                        actor="dongwon",
+                        source_event="request:C1a",
+                        target_status=target,
+                        idempotency_key="a" * 64,
+                        expected_issue_sha256="b" * 64,
+                        loop_blocker="waiting",
+                        require_issue_index=True,
+                        project_context=context,
+                        clock="clock",
+                        fault_injector=injector,
+                    )
+
+                intent = apply.call_args.args[1]
+                self.assertEqual(intent.issue_id, "BIZ-103")
+                self.assertEqual(intent.action, action)
+                self.assertEqual(intent.target_lifecycle, target)
+                self.assertEqual(intent.actor, "dongwon")
+                self.assertEqual(intent.source_event, "request:C1a")
+                self.assertEqual(intent.idempotency_key, "a" * 64)
+                self.assertEqual(intent.expected_issue_sha256, "b" * 64)
+                self.assertEqual(intent.loop_blocker, "waiting")
+                self.assertTrue(intent.require_issue_index)
+                apply.assert_called_once_with(
+                    "/project",
+                    intent,
+                    project_context=context,
+                    clock="clock",
+                    fault_injector=injector,
+                )
+                self.assertIs(result, expected)
+
+    def test_transition_lifecycle_rejects_invalid_public_inputs_before_engine(self):
+        lc = load_module("project_lifecycle_adapter_invalid", "scripts/project_lifecycle.py")
+        invalid = (
+            {"issue_id": "BIZ-103", "action": "reconcile", "actor": "a", "source_event": "s"},
+            {"issue_id": "", "action": "start", "actor": "a", "source_event": "s"},
+            {"issue_id": "BIZ-103", "action": "start", "actor": "", "source_event": "s"},
+            {"issue_id": "BIZ-103", "action": "start", "actor": "a", "source_event": ""},
+        )
+        with mock.patch.object(lc, "_load_lifecycle_transaction_module") as load:
+            for values in invalid:
+                with self.subTest(values=values), self.assertRaises(ValueError):
+                    lc.transition_lifecycle("/project", **values)
+        load.assert_not_called()
+
+    def test_transition_lifecycle_adapter_owns_no_direct_file_mutation(self):
+        lc = load_module("project_lifecycle_adapter_no_write", "scripts/project_lifecycle.py")
+        boundary = SimpleNamespace(
+            LifecycleIntent=lambda **values: SimpleNamespace(**values),
+            apply_lifecycle_transaction=mock.Mock(
+                return_value={"schema": "transaction", "status": "noop"}
+            ),
+        )
+        with (
+            mock.patch.object(
+                lc,
+                "_load_lifecycle_transaction_module",
+                return_value=boundary,
+            ),
+            mock.patch.object(Path, "write_text") as write_text,
+            mock.patch.object(Path, "write_bytes") as write_bytes,
+            mock.patch("os.replace") as replace_file,
+            mock.patch("os.unlink") as unlink_file,
+        ):
+            lc.transition_lifecycle(
+                "/project",
+                "BIZ-103",
+                "start",
+                actor="dongwon",
+                source_event="request:C1a",
+            )
+
+        boundary.apply_lifecycle_transaction.assert_called_once()
+        write_text.assert_not_called()
+        write_bytes.assert_not_called()
+        replace_file.assert_not_called()
+        unlink_file.assert_not_called()
+
     def test_pure_renderers_transition_issue_and_preserve_unmanaged_bytes(self):
         lc = load_module("project_lifecycle_renderers", "scripts/project_lifecycle.py")
         issue = (

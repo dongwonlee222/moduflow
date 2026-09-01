@@ -68,6 +68,7 @@ _SYNC_FATAL_DIAGNOSTICS = {
     "ISSUE_SCHEMA_UNSUPPORTED",
     "ISSUE_DUPLICATE_FIELD",
 }
+_TRANSITION_ACTIONS = frozenset({"start", "update", "pause", "resume", "complete"})
 
 _ROADMAP_START = "<!-- moduflow:roadmap-projection:start -->"
 _ROADMAP_END = "<!-- moduflow:roadmap-projection:end -->"
@@ -518,6 +519,62 @@ def lifecycle_drift(root, *, project_context=None):
     return (
         _dependency_drift_from_evaluation(evaluation)
         + consensus_drift(root, evaluation, project_context=context)
+    )
+
+
+def _load_lifecycle_transaction_module():
+    try:
+        import project_lifecycle_transaction
+    except ImportError:  # pragma: no cover - package import fallback
+        from scripts import project_lifecycle_transaction
+    return project_lifecycle_transaction
+
+
+def transition_lifecycle(
+    root,
+    issue_id,
+    action,
+    *,
+    actor,
+    source_event,
+    target_status=None,
+    idempotency_key="",
+    expected_issue_sha256="",
+    loop_blocker="",
+    require_issue_index=False,
+    project_context=None,
+    clock=None,
+    fault_injector=None,
+):
+    """Apply one lifecycle transition through the transaction boundary."""
+    values = {
+        "issue_id": str(issue_id or "").strip(),
+        "action": str(action or "").strip().lower(),
+        "actor": str(actor or "").strip(),
+        "source_event": str(source_event or "").strip(),
+    }
+    if values["action"] not in _TRANSITION_ACTIONS:
+        raise ValueError("Unsupported lifecycle transition action")
+    if not values["issue_id"] or not values["actor"] or not values["source_event"]:
+        raise ValueError(
+            "Lifecycle transition requires issue_id, actor, and source_event"
+        )
+
+    boundary = _load_lifecycle_transaction_module()
+    intent = boundary.LifecycleIntent(
+        **values,
+        target_lifecycle=target_status,
+        idempotency_key=idempotency_key,
+        expected_issue_sha256=expected_issue_sha256,
+        loop_blocker=loop_blocker,
+        require_issue_index=require_issue_index,
+    )
+    return boundary.apply_lifecycle_transaction(
+        root,
+        intent,
+        project_context=project_context,
+        clock=clock,
+        fault_injector=fault_injector,
     )
 
 

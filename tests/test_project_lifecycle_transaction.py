@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import project_lifecycle_transaction as transaction
+import project_lifecycle
 import project_registry
 from tests.lifecycle_transaction_fixture import (
     lifecycle_intent_fields,
@@ -5247,6 +5248,59 @@ class TransactionPlanningTests(unittest.TestCase):
             )
             self.assertFalse(
                 (root / ".moduflow/transactions/lifecycle.lock").exists()
+            )
+
+    def test_lifecycle_adapter_applies_only_nested_configured_targets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root, nested=True)
+            (root / "product/workspace/transactions").mkdir()
+            poison_paths = (
+                root / "issues/BIZ-103.md",
+                root / "workspace/dashboard.md",
+                root / "workspace/loop-state.json",
+                root / "workspace/roadmap.md",
+                root / "memory/production-records/poison.md",
+            )
+            poison_before = {
+                str(path.relative_to(root)): path.read_bytes()
+                for path in poison_paths
+            }
+
+            with mock.patch.object(
+                transaction.validate_project_artifacts,
+                "validate_project",
+                return_value=self.validation_result(),
+            ):
+                result = project_lifecycle.transition_lifecycle(
+                    root,
+                    self.ISSUE_ID,
+                    "start",
+                    actor="dongwon",
+                    source_event="request:C1a",
+                    project_context=context,
+                    clock=self.public_clock(),
+                )
+
+            self.assertEqual(result["status"], "applied")
+            self.assertIn(
+                b"**Status: active**",
+                (root / "product/issues/BIZ-103.md").read_bytes(),
+            )
+            self.assertEqual(
+                {
+                    str(path.relative_to(root)): path.read_bytes()
+                    for path in poison_paths
+                },
+                poison_before,
+            )
+            self.assertTrue(
+                all(
+                    target["relative_path"].startswith(
+                        ("product/", ".moduflow/")
+                    )
+                    for target in result["targets"]
+                )
             )
 
     def test_public_explicit_recovery_faults_only_at_durable_boundaries(self):
