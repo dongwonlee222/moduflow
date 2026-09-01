@@ -321,14 +321,14 @@ def derive_idempotency_key(project_context, intent):
 - [x] **C2b — semantic uniqueness and locked recheck.** Reject duplicate or conflicting `(issue_id, deliverable_type, channel, variant, version)` records during projected planning and recheck under the transaction lock.
   - [x] **C2b1 — projected version validation.** Added legacy-safe semantic-version uniqueness to canonical/projected Production Record validation in `93f6d80`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c2b1-production-version-validation.md`.
   - [x] **C2b2 — same-lock semantic recheck.** Reclassified absent/identical/conflicting production versions after acquiring the transaction lock and before journal/staging/replacement in `99c050b`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c2b2-locked-production-version-recheck.md`.
-- [ ] **C2c — public production adapter and CLI.** Route explicit-version creation through `production-version`, preserve compatibility result keys with additive transaction evidence, and remove the direct canonical writer. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c2c-public-production-adapter.md`.
+- [x] **C2c — public production adapter and CLI.** Routed explicit-version creation through `production-version`, preserved compatibility result keys with additive transaction evidence, and removed the direct canonical writer in `ec0ed17`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c2c-public-production-adapter.md`.
 
-- [ ] **Step 1: Write RED version tests.** Existing unversioned records remain valid; new records include an explicit version; duplicate `(issue_id, type, channel, variant, version)` intents return `noop`; same version with different bytes returns conflict.
-- [ ] **Step 2: Add failure and nested-path tests.** Inject failure at every target position and prove no duplicate record survives; nested production roots receive the only write and poisoned defaults remain byte-identical.
-- [ ] **Step 3: Extend parsing/rendering additively.** `parse_production_record()` returns `version` as an empty string for legacy records; new transaction-backed creation requires a non-empty normalized version and writes it to frontmatter.
-- [ ] **Step 4: Route creation through one intent.** `create_production_record(..., version="1")` builds `production-version`; the transaction includes the owning issue/projections/evidence even when their proposed bytes are unchanged.
-- [ ] **Step 5: Recheck uniqueness under lock.** Re-scan the production target set after lock acquisition; distinguish identical semantic retry (`noop`) from conflicting content/version reuse (`conflict`).
-- [ ] **Step 6: Run GREEN and commit.** Run production and transaction suites; commit `feat(103): transact production record versions`.
+- [x] **Step 1: Write RED version tests.** Existing unversioned records remain valid; new records include an explicit version; duplicate `(issue_id, type, channel, variant, version)` intents return `noop`; same version with different bytes returns conflict.
+- [x] **Step 2: Add failure and nested-path tests.** Failure coverage proves no duplicate record survives; nested production roots receive the only write and poisoned defaults remain byte-identical.
+- [x] **Step 3: Extend parsing/rendering additively.** `parse_production_record()` returns `version` as an empty string for legacy records; new transaction-backed creation requires a non-empty semantic version and writes it to frontmatter.
+- [x] **Step 4: Route creation through one intent.** `create_production_record(..., version="1.2.3")` builds `production-version`; the transaction includes the owning issue/projections/evidence even when their proposed bytes are unchanged.
+- [x] **Step 5: Recheck uniqueness under lock.** Re-scan the production target set after lock acquisition; distinguish identical semantic retry (`noop`) from conflicting content/version reuse (`conflict`).
+- [x] **Step 6: Run GREEN and commit.** Production, transaction, lifecycle, and loop suites passed; committed `ec0ed17` (`feat(103): transact production record creation`).
 
 ### Stream D — Recovery Diagnostics, Audit, and Completion
 
@@ -399,4 +399,4 @@ flowchart LR
 
 ## Next Command
 
-`product:execute 103-atomic-lifecycle-state-transaction` — begin C2 production-record versioning; full discovery and release gates remain deferred to D2.
+`product:execute 103-atomic-lifecycle-state-transaction` — begin D1 Doctor recovery diagnostics and mutator-bypass audit; full discovery and release gates remain deferred to D2.

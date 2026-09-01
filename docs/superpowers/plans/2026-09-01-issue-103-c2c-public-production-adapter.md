@@ -20,34 +20,34 @@
 
 ### Task 1: RED Public Adapter Tests
 
-- [ ] Add an exact-intent unit test proving versioned content, actor/source event, idempotency input, context, clock, and fault injector reach one `production-version` transaction call.
-- [ ] Assert missing/invalid version and missing `issue_id` reject before engine dispatch and create no directories/files.
-- [ ] Assert compatibility mapping: `applied → created`, `noop → noop`, `conflict → update_required`, with stable `id/path` and additive full transaction result.
-- [ ] Assert the adapter owns no direct canonical write or lazy initialization.
+- [x] Add an exact-intent unit test proving versioned content, actor/source event, idempotency input, context, clock, and fault injector reach one `production-version` transaction call.
+- [x] Assert missing/invalid version and missing `issue_id` reject before engine dispatch and create no directories/files.
+- [x] Assert compatibility mapping: `applied → created`, `noop → noop`, `conflict → update_required`, with stable `id/path` and additive full transaction result.
+- [x] Assert the adapter owns no direct canonical write or lazy initialization.
 
 ### Task 2: RED Integration and CLI Tests
 
-- [ ] Apply a real versioned record only to a nested configured production root; issue/state/loop/dashboard/evidence participate and poisoned default roots remain byte-identical.
-- [ ] Repeat identical creation and assert `noop`; change same semantic version content and assert `update_required` without overwrite.
-- [ ] Require CLI `--version`, forward it through the wrapper, and return nonzero for non-success transaction statuses.
-- [ ] Update existing creation fixtures to initialize required canonical workspace/production parents explicitly.
+- [x] Apply a real versioned record only to a nested configured production root; issue/state/loop/dashboard/evidence participate and poisoned default roots remain byte-identical.
+- [x] Repeat identical creation and assert `noop`; change same semantic version content and assert `update_required` without overwrite.
+- [x] Require CLI `--version`, forward it through the wrapper, and return nonzero for non-success transaction statuses.
+- [x] Update existing creation fixtures to initialize required canonical workspace/production parents explicitly.
 
 ### Task 3: Minimal Public Routing
 
-- [ ] Add lazy `_load_lifecycle_transaction_module()` and `create_production_version()`.
-- [ ] Add `version`, actor/source-event/idempotency/hash/clock/fault inputs to `create_production_record()`; render one deterministic record ID/content and remove all direct-write/dedup/collision code.
-- [ ] Map the transaction status into compatibility keys without hiding the complete transaction result.
-- [ ] Add `--version` to the CLI required-field contract and status exit-code mapping.
+- [x] Add lazy `_load_lifecycle_transaction_module()` and `create_production_version()`.
+- [x] Add `version`, actor/source-event/idempotency/hash/clock/fault inputs to `create_production_record()`; render one deterministic record ID/content and remove all direct-write/dedup/collision code.
+- [x] Map the transaction status into compatibility keys without hiding the complete transaction result.
+- [x] Add `--version` to the CLI required-field contract and status exit-code mapping.
 
 ### Task 4: Verification and Completion
 
-- [ ] Run RED/GREEN named tests plus production, transaction, lifecycle, and loop focused suites.
-- [ ] Run compilation, direct-writer inventory checks, and `git diff --check`.
-- [ ] Commit as `feat(103): transact production record creation`.
-- [ ] Mark C2/C2c and original C2 Steps 1–6 complete; activate D1 and leave D2 open.
+- [x] Run RED/GREEN named tests plus production, transaction, lifecycle, and loop focused suites.
+- [x] Run compilation, direct-writer inventory checks, and `git diff --check`.
+- [x] Commit as `feat(103): transact production record creation` (`ec0ed17`).
+- [x] Mark C2/C2c and original C2 Steps 1–6 complete; activate D1 and leave D2 open.
 
 ## Completion Gate
 
-- [ ] Every public new-record path crosses the transaction boundary exactly once.
-- [ ] Identical retries are no-op and conflicts never overwrite canonical Production Records.
-- [ ] No Production Record creation bypass remains outside transaction persistence.
+- [x] Every public new-record path crosses the transaction boundary exactly once.
+- [x] Identical retries are no-op and conflicts never overwrite canonical Production Records.
+- [x] No Production Record creation bypass remains outside transaction persistence.
