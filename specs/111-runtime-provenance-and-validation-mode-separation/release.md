@@ -20,7 +20,7 @@ ModuFlow does not gain an execution engine, scheduler or host watcher. Missing h
 | Focused tests | Passed | 45 final MCP/simulation tests; earlier stream evidence in status |
 | Offline simulations | Passed | S01–S12; synthetic projects and fake homes only |
 | Packaged CLI/MCP smoke | Passed | Temporary installed layout, isolated imports, persistent MCP and fresh CLI |
-| Full source tests | Passed | 1,610 tests, 337.291s, exit 0 on `b5c3ce3`; no skipped tests |
+| Full source tests | Passed | Fresh PR verification on `8229170`: 1,610 tests, 359.621s, exit 0; no skipped tests |
 | Source release check | Passed | Exit 0 on `517ec64`, including strict source/version/security/linkage gates |
 | Review | Inline self-review complete | Not independent or human merge approval; see review |
 | Remote PR / merge / CI | Not performed | Requires integration decision and actual remote evidence |

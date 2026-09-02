@@ -6,6 +6,19 @@ Source: approved `spec.md` / `plan.md`; current user approval, 2026-09-02.
 Phase: inline self-review and final source verification complete; human integration approval pending.
 Next command: `product:review 111-runtime-provenance-and-validation-mode-separation`.
 
+## Findings
+
+- Inline self-review only; no independent reviewer or human merge approval is claimed.
+- Fixed the staged-manifest symlink write path before package validation, and preserved runtime evidence on MCP dispatch errors.
+- Corrected the existing downstream security/lint test fixture to identify its source role; source/release gates were not weakened.
+- No unresolved must-fix finding from the reviewed Issue 111 implementation. Real-host observations and explicit merge/publication approval remain outstanding.
+
+## Visual Handoff
+
+- No frontend/UI behavior changes in Issue 111; desktop/mobile screenshots are not applicable.
+- Existing generated project views: `memory/dashboard.html` and `memory/issue-111-runtime-provenance-and-validation-mode-separation.html`. They are local read models, not installation evidence.
+- Start human review with `human-review.ko.md`, then the canonical spec/status/review and GitHub diff.
+
 ## Plan Review and Approval
 
 The user approved the four-stream plan with “ㅇㅇ 이제 다음 뭐 할까 진행 하자고”. Baseline focused regression: 137 tests passed in 73.664 seconds. This records plan approval only, not approval of unwritten code, actual installation or publication.

@@ -375,6 +375,21 @@
       "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/43",
       "next_command": "product:review 103-atomic-lifecycle-state-transaction",
       "updated_at": "2026-08-21"
+    },
+    {
+      "issue_id": "111-runtime-provenance-and-validation-mode-separation",
+      "owner": "",
+      "assignee": "",
+      "reviewer": "Dongwon Lee",
+      "status": "review",
+      "branch": "",
+      "pr": "local:111-runtime-provenance-and-validation-mode-separation:draft-pr-ready",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: local:111-runtime-provenance-and-validation-mode-separation:draft-pr-ready",
+      "next_command": "product:review 111-runtime-provenance-and-validation-mode-separation",
+      "updated_at": "2026-09-02"
     }
   ]
 }
