@@ -3,8 +3,8 @@
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Source: approved `plan.md`; user approval on 2026-09-02.
-Phase: implementation; Streams A/B/C complete, D pending.
-Next command: `product:execute 111-runtime-provenance-and-validation-mode-separation`.
+Phase: local implementation, simulations, full suite and source release check passed; human integration review pending.
+Next command: `product:review 111-runtime-provenance-and-validation-mode-separation`.
 
 ## Evidence — 2026-09-02
 
@@ -16,7 +16,7 @@ Next command: `product:execute 111-runtime-provenance-and-validation-mode-separa
 
 ## Remaining
 
-Offline scenarios and full release verification (D). No real cache installation, publication, remote push or actual-host observation has occurred.
+Human integration review, remote PR/CI, then separately approved publication/installation and R01/R02. No real cache installation, publication, remote push or actual-host observation has occurred. R01/R02 remain not performed.
 
 ## Stream B Evidence
 
@@ -29,3 +29,36 @@ Offline scenarios and full release verification (D). No real cache installation,
 - RED: new consumer/inventory checks failed with 5 failures and 2 errors (9 existing inventory tests remained green).
 - GREEN: full MCP, Doctor, installed-staleness and runtime suites passed 82 tests in 1.439s.
 - Source/package identity no longer comes from a selected project or newest cache. MCP initialization and subsequent status/Doctor calls share injected startup evidence. Wrong-target checks run before parent Git/project discovery; valid unrelated-plugin projects remain project targets.
+
+## Stream D Evidence
+
+- Source under verification: `517ec64`; source version `0.3.55`. The 25 unrelated untracked Issue 103 plans remain unstaged and preserved.
+- `python3 -m unittest tests.test_runtime_provenance_simulation -v`: exit 0, 12 scenarios passed in 4.363s. Final MCP/error-path plus simulation run: `python3 -m unittest tests.test_mcp_server tests.test_runtime_provenance_simulation -q`, exit 0, 45 tests in 4.500s.
+- Inline review found a missing runtime object on internal MCP dispatch errors. RED raised `KeyError: data`; GREEN retains startup evidence in JSON-RPC error data. See `review.md`.
+- `python3 scripts/release_check.py .`: exit 0, valid=true, all 13 checks passed on `517ec64`. An earlier attempt failed only the HEAD version-bump gate while the 0.3.55 edits were uncommitted; it was not waived.
+- `python3 scripts/validate_project_artifacts.py .`: exit 0, valid=true, errors=[]; pre-existing optional/dependency warnings remain.
+- `python3 scripts/project_lifecycle.py . --drift`: exit 0, [].
+- `python3 scripts/spec_consistency.py . --issue-id 111-runtime-provenance-and-validation-mode-separation`: exit 0, 8 acceptance checks, 0 findings.
+- `git diff --check`: exit 0 before the release-preparation commit; repeat after evidence edits.
+- The first quiet full-suite run was interrupted (exit 130) after review added the dispatch-error regression, not recorded as passed. The last sampled stack was in an existing live `gh auth status` preflight. A new verbose full-suite run on the committed implementation is the final authority; do not infer a hang cause or passing result from that stack alone.
+- The verbose run exposed an existing security/lint regression fixture that was not a source target. The new early source guard correctly rejected it before downstream checks; the test then raised `KeyError: security_check`. `b5c3ce3` identifies that synthetic fixture as a source, retaining both security and syntax assertions. Focused regression passed (1 test, 0.723s). The final full rerun uses bundled native Git via process-local PATH/GIT_EXEC_PATH/GIT_TEMPLATE_DIR; no host configuration or test selection was changed.
+- That pre-fix verbose run finished with 1,610 tests in 567.758s, exit 1, exactly one error in the security/lint fixture. Retained as failure history, not counted as a pass.
+
+### Observed Synthetic Package
+
+Created and validated from `tests.runtime_provenance_fixture.make_distribution` via `copy_plugin_cache` in a temporary home on `517ec64`; temporary directory cleaned after inspection. This is an offline fixture, not a deployed package or the source commit's full distribution digest.
+
+| Field | Actual observation |
+|---|---|
+| Package version | `0.2.0+codex.test` |
+| Injected installation time | `2026-09-02T00:00:00Z` |
+| Payload SHA-256 | `346bbfeff98bf94a3e3b506527f580936e08596d0310c8170335b005772f149e` |
+| Receipt / installed self-check | valid / true |
+| Receipt source commit / dirty | null / null; `source_not_git_checkout` (synthetic fixture) |
+| Evidence error codes / exit | [] / 0 |
+| Actual host loading | Not observed; not implied by any simulation |
+## Final Local Verification
+
+- Final full suite on `b5c3ce3`: `python3 -m unittest discover -s tests -v` with the process-local bundled Git environment described above — exit 0, **1,610 tests passed in 337.291s**. Includes the repaired downstream security/lint fixture and both nested release-check regressions; no tests skipped or removed.
+- Lifecycle/state/dashboard are refreshed through Issue 103's atomic API, not direct JSON edits. The legacy structural router still recommends execute for an active issue with complete spec/plan/tasks; that is not authorization to repeat implementation or publish. The human next action is implementation review; review-lifecycle refinement remains Issue 113.
+- Final evidence transaction: `txn-4d457511ed8638cc47c65f1f4b3dc54e` applied with projected/post-apply validation true (earlier checkpoint: `txn-ab4884a1f626a10d714923c0eb7ffe7b`). After evidence edits, artifact validation passed with 0 errors / 21 existing warnings, lifecycle drift [], spec consistency 8 checks / 0 findings, and `git diff --check` exit 0.

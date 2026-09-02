@@ -10,7 +10,7 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 103 implementation is 
 
 ## Active Issue
 
-- `111-runtime-provenance-and-validation-mode-separation` (phase: review). Canonical: `issues/111-runtime-provenance-and-validation-mode-separation.md`.
+- `111-runtime-provenance-and-validation-mode-separation` (phase: release). Canonical: `issues/111-runtime-provenance-and-validation-mode-separation.md`.
 
 ## Priority Queue — 2026-09-01
 

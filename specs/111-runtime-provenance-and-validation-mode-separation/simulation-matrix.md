@@ -3,7 +3,7 @@
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Source: `spec.md`, `plan.md`, user's 2026-09-02 request for simulation testing.
-Phase: test design only; no listed scenario has been executed by this planning update.
+Phase: S01–S12 executed and passed on 2026-09-02; real-host observations R01/R02 not performed.
 Next command: `product:review 111-runtime-provenance-and-validation-mode-separation`.
 
 ## Offline Scenarios
@@ -34,4 +34,4 @@ The packaged-process smoke itself may launch local test subprocesses with a 10-s
 | R01 | After separately authorized installation, in a fresh Codex task | Invoked CLI/MCP package path, version, source evidence and process startup; host-exposed skill package evidence if available | Host skill loading stays unknown when the host supplies no direct evidence |
 | R02 | After separately authorized installation, in a fresh Claude task | Same fields, explicitly distinguishing host registration, MCP process and prompt skills | An unavailable host or unobserved field is marked unavailable, not passed |
 
-Each eventual result records scenario ID, source commit, fixture/package digest, command, observed fields, exit code, pass/fail/unavailable, and evidence path. Keep implementation, unit tests, simulations, packaged smoke, remote merge, publication, installed package and actual host application in separate columns. Do not fill these with expected results during planning.
+Observed results and fixture digest are recorded in `status.md`; executable assertions and synthetic inputs are in `tests/test_runtime_provenance_simulation.py` (`test_S01_` through `test_S12_`). Keep implementation, unit tests, simulations, packaged smoke, remote merge, publication, installed package and actual host application separate. The package tested was temporary, not the user's installed plugin.

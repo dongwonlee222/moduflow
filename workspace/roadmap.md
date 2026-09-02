@@ -4,7 +4,7 @@
 
 - Owner / decision maker: Dongwon Lee.
 - Source: requests in the current Codex task for project home/wiki/material discovery, continuity across projects and chats, company analysis/document standards, and replaceable automation runners; followed by the request to reorder priorities.
-- Goal: `trustworthy-execution-and-project-knowledge`; phase: roadmap selection, not implementation approval.
+- Goal: `trustworthy-execution-and-project-knowledge`; Issue 111 implementation approved 2026-09-02 and locally implemented; later slices remain planning scope.
 - This is the current execution order. It supersedes older ordering below, including the earlier instruction to start 112 immediately after 103. Issue status, declared P0/P1/P2/P3 priority, hard dependencies, and approved acceptance criteria remain unchanged.
 - No duplicate issues are created. New requirements below must be reconciled with the existing issue/spec before implementation; a roadmap entry is not proof that the feature exists.
 
@@ -25,7 +25,7 @@ Keep Git-native records and the existing Issue DB/table/tab UI. A dashboard is a
 
 | Issue | Outcome | Reason | Confidence | Dependency / gate | Next command |
 |---|---|---|---|---|---|
-| `111-runtime-provenance-and-validation-mode-separation` | Separate source/package/project checks and identify the actually loaded package, including explicit unknowns | The source is ahead of the connected cache; implementation, installation and active-session reload must not be confused | High | No open issue dependency; existing prerequisite for next publication; spec/plan drafted, not yet approved | `product:review 111-runtime-provenance-and-validation-mode-separation` (plan review) |
+| `111-runtime-provenance-and-validation-mode-separation` | Separate source/package/project checks and identify the actually loaded package, including explicit unknowns | The source is ahead of the connected cache; implementation, installation and active-session reload must not be confused | High | Active: implementation, 1,610 tests, simulations and source release check passed; human integration review pending | `product:review 111-runtime-provenance-and-validation-mode-separation` (implementation review) |
 
 Issue 103 is complete and merged through PR #44; do not restart it. Source version 0.3.54 is not evidence of deployment. After 111 passes its approved acceptance criteria and normal release checks, resume the held release and verify the installed package and a fresh host session separately. Issues 090–092 and 112 are not new prerequisites for that release. Any newly observed release safety failure must be triaged rather than waived.
 
@@ -67,7 +67,7 @@ The user explicitly requested simulations while implementing this roadmap. Each 
 | 112/113/104/108 | Route through one execution backend; mocked specialist failure, review findings and missing approval | No second executor; implementation, review and approval remain distinct |
 | Later automation scope | Mocked trigger/retry/pause/result events before any live pilot | No real external sends, paid execution or publication without separate authorization |
 
-Issue 111 now has `specs/111-runtime-provenance-and-validation-mode-separation/plan.md` and `simulation-matrix.md`: four inline work streams, twelve offline scenarios, and two real-host observation cases. These documents are drafts for review, not implementation or simulation-success evidence.
+Issue 111's approved `specs/111-runtime-provenance-and-validation-mode-separation/plan.md` has been implemented inline. Twelve offline scenarios and packaged CLI/MCP smoke passed; source version 0.3.55 and the strict release check are local evidence only. Final full-suite results are recorded in `status.md`; two real-host observations remain unperformed. No real cache or default checkout was changed.
 
 ### Later — Simplify Execution, Then Expand Reuse and Automation
 
@@ -99,12 +99,12 @@ These are queued work, not additional gates on every knowledge task. Pull a safe
 
 `product:review 111-runtime-provenance-and-validation-mode-separation`
 
-Review the written spec/plan, then implement its four streams inline after approval. Do not combine 111 with the dashboard, company-profile engine, Spec Kit upgrade, or all remaining Doctor debt. See the linked simulation matrix; no tests or host observations are claimed by this planning update.
+Review Issue 111's implementation and final verification evidence, then decide remote integration/publication. Do not combine 111 with dashboard/company-profile/Spec Kit work or all remaining Doctor debt. After the held release, start `product:spec 090-project-knowledge-and-artifact-registry`; preserve the existing 090 → 091 → 086 → 092 order and role-reduction boundaries.
 
 ## Completion and Release Gate — 2026-09-02
 
 - `103-atomic-lifecycle-state-transaction` — implementation and D2 complete; Linux CI passed 1,571 tests plus package/release validation. Dongwon Lee authorized PR #44 merge; the PR and its merge-commit CI are authoritative integration evidence.
-- `111-runtime-provenance-and-validation-mode-separation` — still backlog and still required before the next plugin publication. The Issue 103 merge approval does not waive this release prerequisite or start Issue 111 implementation.
+- `111-runtime-provenance-and-validation-mode-separation` — active after separate implementation approval; local implementation, 1,610 tests, simulations and source release check passed; human integration review pending. The Issue 103 merge approval does not authorize Issue 111 publication.
 - Publication record: `specs/103-atomic-lifecycle-state-transaction/release.md`. Source version `0.3.54` has not been installed through this release workflow.
 - The newer Product Direction and Priority Refresh above supersedes the execution ordering below. Older Issue 103 progress snapshots are historical.
 

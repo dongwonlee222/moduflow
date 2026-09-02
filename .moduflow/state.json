@@ -1,6 +1,6 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "review",
+  "phase": "release",
   "active_goal": "trustworthy-execution-and-project-knowledge",
   "active_issue": "111-runtime-provenance-and-validation-mode-separation",
   "last_command": "product:issue 112-114 execution governance scope",

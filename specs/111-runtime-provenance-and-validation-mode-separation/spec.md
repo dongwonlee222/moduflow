@@ -4,7 +4,7 @@ Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Phase: approved for inline implementation by Dongwon Lee on 2026-09-02 ("ㅇㅇ 이제 다음 뭐 할까 진행 하자고"); publication remains separately gated.
 Source: `issues/111-runtime-provenance-and-validation-mode-separation.md`; confirmed findings F-003/F-004 in `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`; 2026-09-02 user request to proceed with the next plan and simulation tests.
-Prev: issue and review packet · Next: `product:review 111-runtime-provenance-and-validation-mode-separation` for this spec and `plan.md`.
+Prev: issue and review packet · Next: `product:review 111-runtime-provenance-and-validation-mode-separation` for implementation evidence in `review.md` / `status.md`.
 
 ## Problem
 
@@ -111,4 +111,4 @@ flowchart TD
 
 No unresolved product choice blocks the draft implementation plan. Technical risks to verify are backward-compatible result shapes, a copied source tree being mistaken for a project, and receipt/version conflicts during repeated installation. Host-level skill loading may not be observable; that is an explicit unknown, not a reason to invent a new host watcher. Real-host publication/reload remains a separately authorized release action.
 
-Constitution: `workspace/constitution.md` v1.0. Scope/acceptance review is required before behavior implementation. Canonical implementation plan: `plan.md`; progress checklist: `tasks.md`; simulation matrix: `simulation-matrix.md`.
+Constitution: `workspace/constitution.md` v1.0. Scope/acceptance approved by Dongwon Lee on 2026-09-02 before implementation. Canonical implementation plan: `plan.md`; progress checklist: `tasks.md`; simulation matrix: `simulation-matrix.md`. Integration/publication approval remains separate.

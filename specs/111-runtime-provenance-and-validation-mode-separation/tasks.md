@@ -3,8 +3,8 @@
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Source: `spec.md`, `plan.md`, 2026-09-02 planning and simulation request.
-Phase: approved implementation; Streams A/B/C complete, Stream D next.
-Next command: `product:execute 111-runtime-provenance-and-validation-mode-separation`.
+Phase: all local A–D work complete; human integration and separately approved host observations pending.
+Next command: `product:review 111-runtime-provenance-and-validation-mode-separation`.
 
 This is the progress checklist for the canonical plan, not a second implementation design. Execute inline without subagents; review once per stream, not once per edit.
 
@@ -36,10 +36,10 @@ This is the progress checklist for the canonical plan, not a second implementati
 
 ## Stream D — Simulations, Review and Release Evidence
 
-- [ ] Run S01–S12: source, installed, stale, missing/invalid metadata, mismatched source/runtime, wrong target, two projects, separate worktree, interrupted installation and no-write/no-network behavior.
-- [ ] Run packaged CLI/MCP smoke without source imports; verify repeated requests and exact executing package path.
-- [ ] Run focused/full tests, artifact validation, lifecycle drift, source release gates and diff checks; record actual results.
-- [ ] Review AC1–AC8 and resolve required findings; prepare release/rollback evidence.
+- [x] Run S01–S12: source, installed, stale, missing/invalid metadata, mismatched source/runtime, wrong target, two projects, separate worktree, interrupted installation and no-write/no-network behavior.
+- [x] Run packaged CLI/MCP smoke without source imports; verify repeated requests and exact executing package path.
+- [x] Run focused/full tests, artifact validation, lifecycle drift, source release gates and diff checks; record actual results.
+- [x] Review AC1–AC8 and resolve required findings; prepare release/rollback evidence.
 - [ ] Following explicit publication approval, distinguish remote integration, publication, installed metadata and actual Codex/Claude observations R01/R02. Unknown host evidence stays unavailable, not passed.
 
 ## Deferred Beyond 111

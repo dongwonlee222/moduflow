@@ -14,7 +14,7 @@ Separate source-release validation, installed-plugin self-check, and target-proj
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`
 - Verified against: source `010eee8eeec37edd6902f2dd008e7164f715e7b1` and installed package `0.3.49+codex.20260810222010`
 - Owner / decision maker: Dongwon Lee
-- Current phase: spec/plan review; lifecycle remains backlog and implementation has not started; required before the next plugin release
+- Current phase: implementation, inline self-review, 1,610 tests and source release gates passed; human integration review pending. Lifecycle remains active; required before the next plugin release.
 
 ## Opportunity
 
@@ -71,9 +71,9 @@ Do not relax source validation or report guessed provenance. This issue does not
 
 ## Workflow Tasks
 
-- [x] spec draft → `specs/111-runtime-provenance-and-validation-mode-separation/spec.md` (Korean sidecar available; approval pending)
-- [x] plan draft → `specs/111-runtime-provenance-and-validation-mode-separation/plan.md` (four inline streams; approval pending)
-- [ ] execute → validation modes, provenance metadata/reporting, and tests
+- [x] spec draft → `specs/111-runtime-provenance-and-validation-mode-separation/spec.md` (Korean sidecar; approved 2026-09-02)
+- [x] plan draft → `specs/111-runtime-provenance-and-validation-mode-separation/plan.md` (four inline streams; approved 2026-09-02)
+- [x] execute → validation modes, provenance metadata/reporting, and tests; final verification in status.md
 - [ ] review → `specs/111-runtime-provenance-and-validation-mode-separation/review.md`
 
 ## Related Issues
@@ -102,4 +102,4 @@ Do not relax source validation or report guessed provenance. This issue does not
 
 ## Next Command
 
-`product:review 111-runtime-provenance-and-validation-mode-separation` — review the spec/plan before implementation.
+`product:review 111-runtime-provenance-and-validation-mode-separation` — review implementation and recorded source gates; authorize integration/publication separately. Actual host observations remain pending.

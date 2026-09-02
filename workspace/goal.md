@@ -18,6 +18,8 @@ The 2026-09-02 user requests prioritize material discovery, cross-session handof
 
 ## Issues
 
+Current checkpoint (2026-09-02): Issue 111 is active with approved implementation, 1,610 passing tests, offline simulations and source release check; human integration review remains pending in its status/review/release artifacts. Source 0.3.55 is not installed-host evidence. Next product slice after the held release remains 090; no new runtime/scheduler has been introduced.
+
 - `088-canonical-repository-remote-identity-gate` — P0; canonical repo/base identity and pre-write blocking.
 - `089-verified-code-review-intake-and-remediation-routing` — P1; evidence-backed review disposition.
 - `093-frontmatter-issue-schema-readiness-gate` — P1; contradictory readiness/dependency blocking.
