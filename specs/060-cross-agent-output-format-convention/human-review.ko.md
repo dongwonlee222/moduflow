@@ -26,6 +26,7 @@
 - 이전 집중 검증: PR·설치기·프로젝트 식별·권한 테스트 78개 통과.
 - 임시 패키지: 공통 규칙 파일과 스킬의 상대 링크 포함 확인, 설치본 검사 통과. 실제 사용자 캐시는 변경하지 않았습니다.
 - 최종 전체 테스트: 1,614개 통과(315.623초, 종료 코드 0, 생략 없음). 준비된 0.3.56 후속 코드에서 실행했고 이후 구현은 변경하지 않았습니다.
+- 원본 릴리스 검사: 구현 커밋 `434f782`에서 13개 항목 모두 통과. 이 문서 기록 시점의 원격 CI는 대기 중이며 [최신 PR 검사](https://github.com/dongwonlee222/moduflow/pull/46/checks)를 확인합니다.
 - 독립 에이전트 검토·실제 Codex/Claude 세션의 준수 실험은 수행하지 않았습니다. 별도 스킬 검사기는 PyYAML 부재로 실행되지 않았으며 ModuFlow 자체 패키지 검사를 사용했습니다.
 
 ## PR 관계와 남은 단계
@@ -33,7 +34,7 @@
 - 이슈 111의 목적 설명 보강은 `d5e143b`로 [PR #45](https://github.com/dongwonlee222/moduflow/pull/45)에 별도로 반영했습니다.
 - 이 후속 PR은 `codex/111-runtime-provenance-and-validation-mode-separation` 브랜치를 기준으로 060 변경만 검토합니다. PR #45 병합 후 main 기준으로 재검증해야 합니다.
 - 작업 브랜치: `codex/060-purpose-first-output-rule`.
-- PR: `local:060-cross-agent-output-format-convention:draft-pr-ready`.
+- PR: [#46 — 공통 목적 중심 출력 규칙](https://github.com/dongwonlee222/moduflow/pull/46).
 - 이슈 060의 과거 완료 기록은 유지합니다. 이번 후속 변경은 별도 검토 대상이며, 111의 활성 작업 상태를 앞당기지 않습니다.
 - 기존 미추적 이슈 103 계획 25개와 별도 090·086 작업은 제외했습니다.
 - 사람의 병합 승인, 원격 반영 이후 배포·실제 설치는 별도 단계입니다. 이번 PR 준비는 그 승인을 대신하지 않습니다.
@@ -41,6 +42,8 @@
 ## 검토·복구
 
 검토자는 Dongwon Lee입니다. 원문은 `purpose-first-followup.md`, `status.md`, `review.md`, `pr.md`이며, 화면 변경이 없어 스크린샷 검증은 해당하지 않습니다.
+
+바로 보기: [공통 규칙](https://github.com/dongwonlee222/moduflow/blob/codex/060-purpose-first-output-rule/docs/output-format.md), [구현·검증 기록](https://github.com/dongwonlee222/moduflow/blob/codex/060-purpose-first-output-rule/specs/060-cross-agent-output-format-convention/purpose-first-followup.md).
 
 병합 전에는 이전 승인된 소스와 패키지를 그대로 유지합니다. 추후 되돌리기가 필요하면 승인된 후속 커밋만 revert하고 기존 캐시·사용자 파일은 삭제하지 않습니다.
 

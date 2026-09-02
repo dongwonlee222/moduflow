@@ -398,11 +398,11 @@
       "reviewer": "Dongwon Lee",
       "status": "review",
       "branch": "codex/060-purpose-first-output-rule",
-      "pr": "local:060-cross-agent-output-format-convention:draft-pr-ready",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/46",
       "lock_state": "active",
       "locked_by": "",
       "blocker": "",
-      "last_handoff": "PR ready for review: local:060-cross-agent-output-format-convention:draft-pr-ready",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/46",
       "next_command": "product:review 060-cross-agent-output-format-convention",
       "updated_at": "2026-09-02"
     }

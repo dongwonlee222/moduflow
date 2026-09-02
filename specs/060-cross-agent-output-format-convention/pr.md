@@ -16,9 +16,9 @@ PRs and reports explain why work is needed, the concrete problem and expected be
 
 - Review base: `codex/111-runtime-provenance-and-validation-mode-separation` at `d5e143b`; stacked after PR #45 to isolate this follow-up. Canonical integration target remains `main`; retarget and revalidate after #45 merges. Neither PR is approved for merge by this handoff.
 - Branch: `codex/060-purpose-first-output-rule`
-- PR: `local:060-cross-agent-output-format-convention:draft-pr-ready`
+- PR: https://github.com/dongwonlee222/moduflow/pull/46
 - Reviewer: `Dongwon Lee`
-- Fallback reason: GitHub Draft PR URL is not recorded yet. This local PR-ready marker preserves review state until GitHub sync creates or mirrors the PR.
+- Remote handoff: Draft PR #46 created; latest-head CI pending at this snapshot. Human merge approval, publication and installation remain separate.
 - Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
 - Commit mode: `local-git-write`
@@ -30,7 +30,7 @@ python3 scripts/project_pr.py . --issue-id 060-cross-agent-output-format-convent
 ```
 
 ```bash
-python3 scripts/project_workflow.py . --pr-state --issue-id 060-cross-agent-output-format-convention --pr "local:060-cross-agent-output-format-convention:draft-pr-ready" --reviewer "Dongwon Lee"
+python3 scripts/project_workflow.py . --pr-state --issue-id 060-cross-agent-output-format-convention --pr "https://github.com/dongwonlee222/moduflow/pull/46" --reviewer "Dongwon Lee"
 ```
 
 - Continue review: `product:review 060-cross-agent-output-format-convention`
@@ -54,7 +54,7 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 060-cross-agent-outp
 - Previous focused run: 78 PR/installer/registry/operation tests passed in 2.363s; source/package validation and temporary packaged-rule checks passed.
 - Fresh full suite passed on 2026-09-02: 1,614 tests in 315.623s, exit 0, no skipped tests, on `d5e143b` plus this follow-up and source version 0.3.56. Implementation is unchanged after the run.
 - Code/skill changes and temporary package inclusion are not actual Codex/Claude host observations. PyYAML-less Skill Creator validation limitation is recorded in `purpose-first-followup.md`.
-- Remote CI for this follow-up, human merge approval, publication and actual installation are not complete.
+- Source release check on `434f782` passed all 13 checks. Latest-head CI for PR #46 was pending at handoff; read its live checks. Human merge approval, publication and actual installation are not complete.
 
 ### Review Findings
 
