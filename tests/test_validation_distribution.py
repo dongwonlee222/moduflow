@@ -1462,6 +1462,10 @@ issue_id: BIZ-ADVISORY
         release_check = load_module("release_check", "scripts/release_check.py")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            # Exercise downstream source gates, not the installed/non-source guard.
+            from tests.runtime_provenance_fixture import make_package
+            make_package(root)
+            (root / ".git").write_text("gitdir: /synthetic/source-checkout", encoding="utf-8")
             for relative in ["docs", "scripts"]:
                 (root / relative).mkdir()
             (root / "docs" / "release-checklist.md").write_text("# Checklist\n", encoding="utf-8")
