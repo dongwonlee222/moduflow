@@ -3,7 +3,7 @@
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Source: approved `plan.md`; user approval on 2026-09-02.
-Phase: local implementation, simulations, full suite and source release check passed; human integration review pending.
+Phase: implementation and local verification passed; Draft PR #45 created, remote CI and human integration review pending at handoff.
 Next command: `product:review 111-runtime-provenance-and-validation-mode-separation`.
 
 ## Verification
@@ -12,7 +12,8 @@ Next command: `product:review 111-runtime-provenance-and-validation-mode-separat
 - Current PR handoff: fresh full suite on `8229170` passed on 2026-09-02: `python3 -m unittest discover -s tests -q`, 1,610 tests in 359.621s, exit 0, no skipped tests. Process-local bundled Git environment matches the final implementation verification below; implementation code is unchanged.
 - Offline coverage: S01–S12 and packaged CLI/MCP smoke passed; these are not actual Codex/Claude host observations.
 - GitHub identity/auth/API preflight passed for `dongwonlee222/moduflow`, base `main`; local commit/push capability is `local-git-write`.
-- Remote CI, human merge approval, publication and installation are not yet complete.
+- Source release check on review-document commit `83b338e`: exit 0, all 13 checks passed.
+- Branch push and Draft PR creation completed: https://github.com/dongwonlee222/moduflow/pull/45. Remote CI was pending at this handoff; latest-head checks on the PR are the live authority. Human merge approval, publication and installation are not complete.
 
 ## PR Authorization — 2026-09-02
 
@@ -28,7 +29,7 @@ The user approved proceeding after the parallel planning handoff. This authorize
 
 ## Remaining
 
-Human integration review, remote PR/CI, then separately approved publication/installation and R01/R02. No real cache installation, publication, remote push or actual-host observation has occurred. R01/R02 remain not performed.
+Remote CI and human integration review, then separately approved merge/publication/installation and R01/R02. The branch is pushed and Draft PR #45 exists. No merge, real cache installation, publication or actual-host observation has occurred. R01/R02 remain not performed.
 
 ## Stream B Evidence
 

@@ -6,7 +6,7 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-111-runtime-provenance-and-validation-mode-separation.html`
-- PR/로컬 마커: `local:111-runtime-provenance-and-validation-mode-separation:draft-pr-ready`
+- Draft PR: [#45 — 실행 근거·검증 모드 분리](https://github.com/dongwonlee222/moduflow/pull/45)
 - 브랜치: `codex/111-runtime-provenance-and-validation-mode-separation`
 - 리뷰어: `Dongwon Lee`
 
@@ -49,7 +49,10 @@
 - 이번 PR 재검증: `8229170`에서 전체 1,610개 테스트 통과(359.621초, 종료 코드 0, 생략 없음). 구현 코드는 이전 검증 이후 바꾸지 않았습니다.
 - 오프라인 시뮬레이션 S01–S12와 패키지 CLI/MCP 점검은 통과했습니다. 실제 Codex·Claude 새 세션 적용 확인(R01/R02)은 아닙니다.
 - `dongwonlee222/moduflow`, 기준 브랜치 `main`의 저장소 식별·인증·API 사전 검사가 통과했습니다.
-- 원격 CI, 사람의 병합 승인, 배포, 설치는 아직 완료되지 않았습니다.
+- 검토 문서 커밋 `83b338e`에서도 원본 릴리스 검사 13개 항목이 모두 통과했습니다.
+- 브랜치를 원격에 올리고 Draft PR #45를 생성했습니다. 이 문서 기록 시점의 CI는 대기 중이며, 최신 결과는 [PR 검사](https://github.com/dongwonlee222/moduflow/pull/45/checks)에서 확인합니다. 병합·배포·설치는 아직 하지 않았습니다.
+
+원격 검토 링크: [명세](https://github.com/dongwonlee222/moduflow/blob/codex/111-runtime-provenance-and-validation-mode-separation/specs/111-runtime-provenance-and-validation-mode-separation/spec.md), [검증 기록](https://github.com/dongwonlee222/moduflow/blob/codex/111-runtime-provenance-and-validation-mode-separation/specs/111-runtime-provenance-and-validation-mode-separation/status.md), [릴리스·복구 절차](https://github.com/dongwonlee222/moduflow/blob/codex/111-runtime-provenance-and-validation-mode-separation/specs/111-runtime-provenance-and-validation-mode-separation/release.md).
 
 ## no-issue 선언 (issue 075)
 

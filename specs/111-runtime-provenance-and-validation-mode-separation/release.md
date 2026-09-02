@@ -21,9 +21,11 @@ ModuFlow does not gain an execution engine, scheduler or host watcher. Missing h
 | Offline simulations | Passed | S01–S12; synthetic projects and fake homes only |
 | Packaged CLI/MCP smoke | Passed | Temporary installed layout, isolated imports, persistent MCP and fresh CLI |
 | Full source tests | Passed | Fresh PR verification on `8229170`: 1,610 tests, 359.621s, exit 0; no skipped tests |
-| Source release check | Passed | Exit 0 on `517ec64`, including strict source/version/security/linkage gates |
+| Source release check | Passed | Repeated on `83b338e`: exit 0, all 13 checks, including strict source/version/security/linkage gates |
 | Review | Inline self-review complete | Not independent or human merge approval; see review |
-| Remote PR / merge / CI | Not performed | Requires integration decision and actual remote evidence |
+| Remote PR | Draft created | https://github.com/dongwonlee222/moduflow/pull/45; issue branch pushed |
+| Remote CI | Pending at handoff | Use latest-head checks on PR #45, not this static snapshot, for the current result |
+| Merge | Not performed | Requires explicit human integration approval |
 | Publication | Not performed | Requires human approval; Issue 103's previous approval does not authorize this release |
 | Installed package | Not performed | Real user caches/registrations have not been changed |
 | Codex R01 / Claude R02 | Not performed | Fresh-host observations follow separately authorized installation |

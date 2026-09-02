@@ -8,9 +8,9 @@ Use a Draft PR or a local PR-ready marker early, then attach review, verificatio
 ## Draft PR
 
 - Branch: `codex/111-runtime-provenance-and-validation-mode-separation`
-- PR: `local:111-runtime-provenance-and-validation-mode-separation:draft-pr-ready`
+- PR: https://github.com/dongwonlee222/moduflow/pull/45
 - Reviewer: `Dongwon Lee`
-- Fallback reason: GitHub Draft PR URL is not recorded yet. This local PR-ready marker preserves review state until GitHub sync creates or mirrors the PR.
+- Remote handoff: branch pushed and Draft PR created on 2026-09-02; live CI results are authoritative at the PR. Merge, publication and installation remain unperformed.
 - Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
 - Commit mode: `local-git-write`
@@ -22,7 +22,7 @@ python3 scripts/project_pr.py . --issue-id 111-runtime-provenance-and-validation
 ```
 
 ```bash
-python3 scripts/project_workflow.py . --pr-state --issue-id 111-runtime-provenance-and-validation-mode-separation --pr "local:111-runtime-provenance-and-validation-mode-separation:draft-pr-ready" --reviewer "Dongwon Lee"
+python3 scripts/project_workflow.py . --pr-state --issue-id 111-runtime-provenance-and-validation-mode-separation --pr "https://github.com/dongwonlee222/moduflow/pull/45" --reviewer "Dongwon Lee"
 ```
 
 - Continue review: `product:review 111-runtime-provenance-and-validation-mode-separation`
@@ -46,7 +46,8 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 111-runtime-provenan
 - Current PR handoff: fresh full suite on `8229170` passed on 2026-09-02: 1,610 tests in 359.621s, exit 0, no skipped tests. Implementation code is unchanged.
 - Offline coverage: S01–S12 and packaged CLI/MCP smoke passed; these are not actual Codex/Claude host observations.
 - GitHub identity/auth/API preflight passed for `dongwonlee222/moduflow`, base `main`; local commit/push capability is `local-git-write`.
-- Remote CI, human merge approval, publication and installation are not yet complete.
+- Source release check after PR-document commit `83b338e`: exit 0, all 13 checks passed. No implementation changes since full-suite verification.
+- Remote CI was pending at this handoff; consult PR #45 checks for the latest head. Human merge approval, publication and installation are not complete.
 
 ### Review Findings
 
