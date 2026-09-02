@@ -1,5 +1,6 @@
 """Synthetic package evidence, deliberately separate from full distributions."""
 import json
+import shutil
 from pathlib import Path
 
 
@@ -25,3 +26,22 @@ def receipt_for(version="0.0.1"):
             "package_version", "source_commit", "source_dirty", "installed_at", "payload_sha256")},
         "unavailable_reasons": {},
     }
+
+
+def make_distribution(root, *, version="0.2.0"):
+    from scripts.validate_moduflow import REQUIRED_FILES, SOURCE_ONLY_REQUIRED_FILES
+    root = Path(root)
+    source = Path(__file__).resolve().parents[1]
+    for name in REQUIRED_FILES:
+        if name not in SOURCE_ONLY_REQUIRED_FILES:
+            target = root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source / name, target)
+    # Runtime imports include helpers beyond the required-entrypoint inventory.
+    shutil.copytree(source / "scripts", root / "scripts", dirs_exist_ok=True,
+                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    make_package(root, version=version)
+    codex = root / ".codex-plugin/plugin.json"
+    codex.parent.mkdir(exist_ok=True)
+    codex.write_text(json.dumps({"name": "moduflow", "version": version + "+codex.test"}))
+    return root

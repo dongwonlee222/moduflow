@@ -3,7 +3,7 @@
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Source: approved `plan.md`; user approval on 2026-09-02.
-Phase: implementation; Stream A complete, B/C/D pending.
+Phase: implementation; Streams A/B complete, C/D pending.
 Next command: `product:execute 111-runtime-provenance-and-validation-mode-separation`.
 
 ## Evidence — 2026-09-02
@@ -16,4 +16,10 @@ Next command: `product:execute 111-runtime-provenance-and-validation-mode-separa
 
 ## Remaining
 
-Atomic package receipt/cache preservation (B), Doctor/MCP consumers (C), offline scenarios and full release verification (D). No real cache installation, publication, remote push or actual-host observation has occurred.
+Doctor/MCP consumers (C), offline scenarios and full release verification (D). No real cache installation, publication, remote push or actual-host observation has occurred.
+
+## Stream B Evidence
+
+- RED: five installer tests failed for missing receipts, conflicting-version overwrite, invalid-payload exposure and missing atomic/Git-evidence helpers.
+- GREEN: installer/runtime/operation-audit suite passed 59 tests. A further symlink test then reproduced an external-manifest write before payload rejection; moving link validation before staged manifest writes fixed it. The expanded suite passed 60 tests.
+- Cache tests use temporary homes only. Repeated identical packages retain receipt bytes; conflicting versions and invalid payloads never replace/activate the prior cache. New receipt writes are classified as package-maintenance.

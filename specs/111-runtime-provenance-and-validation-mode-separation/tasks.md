@@ -3,7 +3,7 @@
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Source: `spec.md`, `plan.md`, 2026-09-02 planning and simulation request.
-Phase: approved implementation; Stream A complete, Stream B next.
+Phase: approved implementation; Streams A/B complete, Stream C next.
 Next command: `product:execute 111-runtime-provenance-and-validation-mode-separation`.
 
 This is the progress checklist for the canonical plan, not a second implementation design. Execute inline without subagents; review once per stream, not once per edit.
@@ -21,10 +21,10 @@ This is the progress checklist for the canonical plan, not a second implementati
 
 ## Stream B — Package Receipt and Cache Preservation
 
-- [ ] RED/GREEN the injected-runner provenance builder and atomic receipt writer.
-- [ ] Prepare and validate packages before exposure; preserve existing cache on write/rename failure.
-- [ ] Reuse identical validated packages; reject conflicting same-version payloads without overwriting.
-- [ ] Classify package-maintenance writes, update installer fixtures, verify and commit.
+- [x] RED/GREEN the injected-runner provenance builder and atomic receipt writer.
+- [x] Prepare and validate packages before exposure; preserve existing cache on write/rename failure.
+- [x] Reuse identical validated packages; reject conflicting same-version payloads without overwriting.
+- [x] Classify package-maintenance writes, update installer fixtures, verify and commit.
 
 ## Stream C — Doctor, Status and Persistent MCP
 
