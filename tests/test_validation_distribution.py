@@ -653,6 +653,50 @@ next_command: {next_command}
         self.assertIn('"tests.test_project_operation"', release_source)
         self.assertIn('"tests.test_project_operation_audit"', release_source)
 
+    def test_distribution_ships_lifecycle_transaction_and_release_suites(self):
+        validator = load_module(
+            "validate_moduflow_lifecycle_transaction",
+            "scripts/validate_moduflow.py",
+        )
+        packaged = {
+            "scripts/project_doctor.py",
+            "scripts/project_lifecycle.py",
+            "scripts/project_lifecycle_transaction.py",
+            "scripts/project_lifecycle_transaction_storage.py",
+            "scripts/project_loop.py",
+            "scripts/project_production.py",
+        }
+        source_only = {
+            "tests/lifecycle_transaction_fixture.py",
+            "tests/test_project_doctor.py",
+            "tests/test_project_lifecycle.py",
+            "tests/test_project_lifecycle_transaction.py",
+            "tests/test_project_lifecycle_transaction_storage.py",
+            "tests/test_project_loop.py",
+            "tests/test_project_production.py",
+        }
+
+        self.assertTrue(packaged.issubset(set(validator.REQUIRED_FILES)))
+        self.assertTrue(source_only.issubset(set(validator.REQUIRED_FILES)))
+        self.assertTrue(source_only.issubset(set(validator.SOURCE_ONLY_REQUIRED_FILES)))
+        self.assertTrue(all((ROOT / path).is_file() for path in packaged | source_only))
+
+        release_source = (ROOT / "scripts" / "release_check.py").read_text(
+            encoding="utf-8"
+        )
+        for module in (
+            "tests.test_project_doctor",
+            "tests.test_project_lifecycle",
+            "tests.test_project_lifecycle_transaction",
+            "tests.test_project_lifecycle_transaction_storage",
+            "tests.test_project_loop",
+            "tests.test_project_production",
+        ):
+            with self.subTest(module=module):
+                self.assertIn(f'"{module}"', release_source)
+        self.assertIn("test_validation_distribution is intentionally excluded", release_source)
+        self.assertNotIn('"tests.test_validation_distribution",', release_source)
+
     def test_issue_consumers_import_shared_schema_without_duplicate_parsers(self):
         forbidden_definitions = {
             "parse_issue_frontmatter",
