@@ -697,6 +697,42 @@ next_command: {next_command}
         self.assertIn("test_validation_distribution is intentionally excluded", release_source)
         self.assertNotIn('"tests.test_validation_distribution",', release_source)
 
+    def test_lifecycle_transaction_docs_define_local_and_remote_boundaries(self):
+        architecture = (ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        ).lower()
+        workflow = (ROOT / "docs" / "workflow.md").read_text(
+            encoding="utf-8"
+        ).lower()
+        combined = architecture + "\n" + workflow
+
+        for phrase in (
+            "local project filesystem",
+            "same filesystem",
+            "git commit",
+            "git push",
+            "github",
+            "deployment",
+            "external message",
+            "remote-after-local",
+            "only after the local result is `applied` or `noop`",
+            "python3 scripts/project_lifecycle.py <root> --recover <transaction-id>",
+            "never guess",
+            "never manually delete",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, combined)
+        for status in (
+            "applied",
+            "noop",
+            "denied",
+            "conflict",
+            "rolled_back",
+            "recovery_required",
+        ):
+            with self.subTest(status=status):
+                self.assertIn(f"`{status}`", combined)
+
     def test_issue_consumers_import_shared_schema_without_duplicate_parsers(self):
         forbidden_definitions = {
             "parse_issue_frontmatter",

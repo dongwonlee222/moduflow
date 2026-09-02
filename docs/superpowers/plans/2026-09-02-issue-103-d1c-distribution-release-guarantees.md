@@ -32,7 +32,7 @@
 - Consumes: `validate_moduflow.REQUIRED_FILES`, `SOURCE_ONLY_REQUIRED_FILES`, and the static release test command.
 - Produces: one failing current-repository contract for all Issue 103 runtime/source/release registrations.
 
-- [ ] **Step 1: Add `test_distribution_ships_lifecycle_transaction_and_release_suites`**
+- [x] **Step 1: Add `test_distribution_ships_lifecycle_transaction_and_release_suites`**
 
 Assert these packaged runtime files are in `REQUIRED_FILES` and exist:
 
@@ -63,7 +63,7 @@ source_only = {
 
 Read `scripts/release_check.py` and assert it contains each corresponding `tests.test_*` module while still containing the comment and exclusion for `test_validation_distribution`.
 
-- [ ] **Step 2: Run the new test and verify RED**
+- [x] **Step 2: Run the new test and verify RED**
 
 ```bash
 python3 -m unittest -v \
@@ -71,6 +71,8 @@ python3 -m unittest -v \
 ```
 
 Expected: failure because the transaction runtime/source assets and focused suites are not yet completely registered.
+
+Actual: failed on the missing packaged subset before any validator or release-list change.
 
 ---
 
@@ -85,11 +87,11 @@ Expected: failure because the transaction runtime/source assets and focused suit
 - Consumes: Task 1 exact file/module sets.
 - Produces: package-presence enforcement and one non-recursive release test command.
 
-- [ ] **Step 1: Add runtime and source-only files to the package validator**
+- [x] **Step 1: Add runtime and source-only files to the package validator**
 
 Add the six runtime files to `REQUIRED_FILES`. Add the seven source assets to `REQUIRED_FILES`, and also add the same seven to `SOURCE_ONLY_REQUIRED_FILES` so installed plugin validation does not require source tests.
 
-- [ ] **Step 2: Add focused suites to the release command**
+- [x] **Step 2: Add focused suites to the release command**
 
 Register these modules before `tests.test_release_check`:
 
@@ -104,7 +106,7 @@ Register these modules before `tests.test_release_check`:
 
 Do not add `tests.test_validation_distribution`.
 
-- [ ] **Step 3: Run the registration contract GREEN**
+- [x] **Step 3: Run the registration contract GREEN**
 
 ```bash
 python3 -m unittest -v \
@@ -115,7 +117,7 @@ python3 -m py_compile scripts/validate_moduflow.py scripts/release_check.py
 
 Expected: both tests and compilation pass.
 
-- [ ] **Step 4: Commit the executable gate**
+- [x] **Step 4: Commit the executable gate**
 
 ```bash
 git add \
@@ -124,6 +126,8 @@ git add \
   tests/test_validation_distribution.py
 git commit -m "test(103): register transaction release gates"
 ```
+
+Actual: committed as `99e0605` after both registration/importable package tests and Python compilation passed.
 
 ---
 
@@ -138,7 +142,7 @@ git commit -m "test(103): register transaction release gates"
 - Consumes: Issue 103 terminal statuses, Doctor recovery command, and existing publication gates.
 - Produces: user-facing local/remote boundary text protected by a distribution test.
 
-- [ ] **Step 1: Add `test_lifecycle_transaction_docs_define_local_and_remote_boundaries`**
+- [x] **Step 1: Add `test_lifecycle_transaction_docs_define_local_and_remote_boundaries`**
 
 Read both Markdown files, lowercase them, and assert the combined contract contains:
 
@@ -149,7 +153,7 @@ Read both Markdown files, lowercase them, and assert the combined contract conta
 - the exact recovery command shape `python3 scripts/project_lifecycle.py <root> --recover <transaction-id>`;
 - a statement that ambiguous recovery evidence is preserved rather than guessed or manually deleted.
 
-- [ ] **Step 2: Run the documentation contract and verify RED**
+- [x] **Step 2: Run the documentation contract and verify RED**
 
 ```bash
 python3 -m unittest -v \
@@ -158,7 +162,9 @@ python3 -m unittest -v \
 
 Expected: failure because architecture/workflow do not yet describe the lifecycle transaction boundary.
 
-- [ ] **Step 3: Add the architecture guarantee section**
+Actual: the contract failed for all 12 guarantee phrases and six terminal statuses.
+
+- [x] **Step 3: Add the architecture guarantee section**
 
 Document:
 
@@ -169,7 +175,7 @@ Document:
 - local project-filesystem scope and remote exclusions;
 - read-only Doctor diagnosis and preserved `recovery_required` evidence.
 
-- [ ] **Step 4: Add the workflow sequence and remote-after-local rule**
+- [x] **Step 4: Add the workflow sequence and remote-after-local rule**
 
 Document the operational sequence:
 
@@ -182,7 +188,7 @@ plan -> authorize -> recover barrier -> re-plan/projected validate
 
 State that remote failure is handled by that remote workflow and does not cause speculative local rollback.
 
-- [ ] **Step 5: Run documentation GREEN**
+- [x] **Step 5: Run documentation GREEN**
 
 ```bash
 python3 -m unittest -v \
@@ -204,7 +210,7 @@ Expected: pass.
 - Consumes: Tasks 1-3.
 - Produces: completed D1/D1c evidence with D2 active.
 
-- [ ] **Step 1: Run focused D1c verification**
+- [x] **Step 1: Run focused D1c verification**
 
 ```bash
 python3 -m unittest -v \
@@ -229,7 +235,9 @@ git diff --check
 
 Expected: all focused tests/static checks pass and both audits remain zero-gap. Do not run or claim the D2 full discovery, version gate, or source release result.
 
-- [ ] **Step 2: Commit docs and tracking**
+Actual: 313 focused tests passed; all four Python modules compiled; operation audit classified 93/93 findings with every gap zero; canonical-path guard classified 24/24 with no prohibited/unclassified/stale/duplicate findings; `git diff --check` passed.
+
+- [x] **Step 2: Commit docs and tracking**
 
 Mark D1c and aggregate D1 complete, make D2 active, record fresh test counts, and commit:
 
@@ -237,6 +245,7 @@ Mark D1c and aggregate D1 complete, make D2 active, record fresh test counts, an
 git add \
   docs/architecture.md \
   docs/workflow.md \
+  tests/test_validation_distribution.py \
   specs/103-atomic-lifecycle-state-transaction/plan.md \
   specs/103-atomic-lifecycle-state-transaction/tasks.md \
   docs/superpowers/plans/2026-09-02-issue-103-d1c-distribution-release-guarantees.md
@@ -245,7 +254,7 @@ git commit -m "docs(103): define transaction release guarantees"
 
 ## Completion Gate
 
-- [ ] Installed/source package validation cannot omit required transaction runtime or source-test assets.
-- [ ] The non-recursive release suite runs Doctor, transaction, storage, lifecycle, loop, and production coverage.
-- [ ] Architecture/workflow docs state local-only atomicity, exact terminal/recovery behavior, and remote-after-local sequencing.
-- [ ] D1 is complete; D2 full verification, version/release gate, review evidence, PR publication, merge, and cleanup remain open.
+- [x] Installed/source package validation cannot omit required transaction runtime or source-test assets.
+- [x] The non-recursive release suite runs Doctor, transaction, storage, lifecycle, loop, and production coverage.
+- [x] Architecture/workflow docs state local-only atomicity, exact terminal/recovery behavior, and remote-after-local sequencing.
+- [x] D1 is complete; D2 full verification, version/release gate, review evidence, PR publication, merge, and cleanup remain open.

@@ -2,7 +2,7 @@
 
 Issue: `103-atomic-lifecycle-state-transaction`
 Plan: `specs/103-atomic-lifecycle-state-transaction/plan.md`
-Status: in_progress — transaction engine, public adapters, Doctor diagnostics, and D1b mutator-bypass audit are complete; D1c distribution/release/architecture gates are active
+Status: in_progress — implementation and D1 recovery/audit/distribution gates are complete; D2 full verification, review evidence, and PR publication are active
 
 ## Stream A — Contract, Planning, and Projected Validation
 
@@ -32,8 +32,8 @@ Status: in_progress — transaction engine, public adapters, Doctor diagnostics,
 
 - [x] **D1a** Add read-only lifecycle transaction diagnostics to Doctor with exact recovery commands and nonzero incomplete/unsafe status. | Files: scripts/project_lifecycle_transaction.py, scripts/project_doctor.py, commands/product-doctor.md, focused tests | Depends: C1,C2 | Commits: 4feb071,7607e7d | Plan: docs/superpowers/plans/2026-09-01-issue-103-d1a-doctor-recovery-diagnostics.md
 - [x] **D1b** Close transaction/public-writer audit gaps and require a zero-gap operation inventory. | Files: scripts/project_operation_audit.py, config/project-operation-entrypoints.json, config/canonical-path-literals.json, tests/test_project_operation_audit.py | Depends: D1a | Commit: 294487a | Plan: docs/superpowers/plans/2026-09-02-issue-103-d1b-mutator-bypass-audit.md
-- [ ] **D1c** Require transaction files and focused suites in distribution/release gates and document local/remote guarantees. | Files: scripts/validate_moduflow.py, scripts/release_check.py, tests/test_validation_distribution.py, docs/architecture.md, docs/workflow.md | Depends: D1b
-- [ ] **D1** Add read-only Doctor recovery diagnostics, close direct-writer audit gaps, require distribution files, and integrate focused release gates/docs. | Files: scripts/project_doctor.py, scripts/project_operation_audit.py, config/project-operation-entrypoints.json, scripts/validate_moduflow.py, scripts/release_check.py, docs/commands/tests | Depends: C1,C2
+- [x] **D1c** Require transaction files and focused suites in distribution/release gates and document local/remote guarantees. | Files: scripts/validate_moduflow.py, scripts/release_check.py, tests/test_validation_distribution.py, docs/architecture.md, docs/workflow.md | Depends: D1b | Commit: 99e0605 | Plan: docs/superpowers/plans/2026-09-02-issue-103-d1c-distribution-release-guarantees.md
+- [x] **D1** Add read-only Doctor recovery diagnostics, close direct-writer audit gaps, require distribution files, and integrate focused release gates/docs. | Files: scripts/project_doctor.py, scripts/project_operation_audit.py, config/project-operation-entrypoints.json, scripts/validate_moduflow.py, scripts/release_check.py, docs/commands/tests | Depends: C1,C2 | Commits: 4feb071,7607e7d,294487a,99e0605
 - [ ] **D2** Run focused/full/release validation, generate review evidence and visual handoff, update lifecycle artifacts, and publish one non-draft PR. | Files: Issue 103 status/review/handoff and project state views | Depends: D1
 
 ## Required Gates
@@ -50,4 +50,4 @@ Status: in_progress — transaction engine, public adapters, Doctor diagnostics,
 
 ## Next Command
 
-`product:execute 103-atomic-lifecycle-state-transaction` — continue with D1c distribution, release-suite registration, and local/remote guarantee documentation; full discovery and final release validation remain deferred to D2.
+`product:execute 103-atomic-lifecycle-state-transaction` — run D2 full discovery, project/spec/drift/version/release gates, review evidence, and PR publication.

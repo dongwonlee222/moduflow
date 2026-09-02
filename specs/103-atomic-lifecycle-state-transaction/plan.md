@@ -349,15 +349,15 @@ def derive_idempotency_key(project_context, intent):
 
 - [x] **D1a — read-only Doctor recovery diagnostics.** Added strict journal-control inspection in `4feb071` and Doctor reporting/exit semantics in `7607e7d`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-d1a-doctor-recovery-diagnostics.md`.
 - [x] **D1b — mutator-bypass audit.** Added exact cross-module transaction persistence ownership and delegated write-guard dominance checks in `294487a`; all 93 mutation findings are classified with zero audit gaps, and legacy lifecycle/loop/production adapters own no direct writes. Detailed plan: `docs/superpowers/plans/2026-09-02-issue-103-d1b-mutator-bypass-audit.md`.
-- [ ] **D1c — distribution, release, and architecture gates.** Require transaction files/suites in distributions and document local atomicity plus remote-after-local sequencing.
+- [x] **D1c — distribution, release, and architecture gates.** Registered transaction runtime/source assets and six focused release suites in `99e0605`; documented local project-filesystem atomicity, recovery, and remote-after-local sequencing. Detailed plan: `docs/superpowers/plans/2026-09-02-issue-103-d1c-distribution-release-guarantees.md`.
 
 - [x] **Step 1: Write RED Doctor tests.** A prepared/applying/recovery-required journal reports transaction ID, phase, affected logical roles, safe hashes, and `python3 scripts/project_lifecycle.py <root> --recover <id>` without reading payload bytes; healthy/complete journals are silent.
 - [x] **Step 2: Write RED audit tests.** Legacy public lifecycle/loop/production canonical writes fail classification; only transaction persistence may own target replacement/journal/temp writes, while renderer helpers are pure.
 - [x] **Step 3: Implement read-only Doctor inspection.** Diagnostic reads work for archived/read-only projects and never acquire a lock or modify recovery state.
 - [x] **Step 4: Update operation inventory.** Classified 32 actual transaction mutation functions under qualified apply/recover owners, removed three obsolete adapter owners, distinguished composed read-only descriptor flags, and reached zero unclassified/unguarded/stale/duplicate/configuration errors.
-- [ ] **Step 5: Add distribution/release gates.** Require the new module, fixture, test, docs, and focused suite; keep release discovery non-recursive.
-- [ ] **Step 6: Document guarantees and recovery.** State local-only atomicity, denial order, journal privacy, terminal statuses, Doctor remediation, and remote-after-local sequencing.
-- [ ] **Step 7: Run GREEN and commit.** Run Doctor, audit, validation-distribution, and release-focused suites; commit `test(103): gate lifecycle transaction recovery`.
+- [x] **Step 5: Add distribution/release gates.** Required the transaction modules, public adapters, fixture, and seven source suites; registered six focused release modules while keeping validation-distribution non-recursive.
+- [x] **Step 6: Document guarantees and recovery.** Documented local project-filesystem atomicity, denial order, same-filesystem journal privacy, six terminal statuses, exact Doctor remediation, and remote-after-local sequencing.
+- [x] **Step 7: Run GREEN and commit.** The D1c registration/docs contracts plus Doctor, lifecycle, transaction, storage, loop, and production suites passed 313 tests; operation audit remained 93/93 zero-gap and canonical-path guard 24/24 clean.
 
 ### Task D2: Full verification, review evidence, and PR publication
 
@@ -405,4 +405,4 @@ flowchart LR
 
 ## Next Command
 
-`product:execute 103-atomic-lifecycle-state-transaction` — begin D1 Doctor recovery diagnostics and mutator-bypass audit; full discovery and release gates remain deferred to D2.
+`product:execute 103-atomic-lifecycle-state-transaction` — begin D2 full discovery, version/release validation, review evidence, and PR publication.
