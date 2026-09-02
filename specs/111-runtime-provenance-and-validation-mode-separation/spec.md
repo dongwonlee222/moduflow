@@ -2,7 +2,7 @@
 
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
-Phase: spec/plan review; implementation not started and approval not recorded.
+Phase: approved for inline implementation by Dongwon Lee on 2026-09-02 ("ㅇㅇ 이제 다음 뭐 할까 진행 하자고"); publication remains separately gated.
 Source: `issues/111-runtime-provenance-and-validation-mode-separation.md`; confirmed findings F-003/F-004 in `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`; 2026-09-02 user request to proceed with the next plan and simulation tests.
 Prev: issue and review packet · Next: `product:review 111-runtime-provenance-and-validation-mode-separation` for this spec and `plan.md`.
 

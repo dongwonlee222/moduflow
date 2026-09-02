@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
+import argparse
 import json
 import sys
 from pathlib import Path
+
+try:
+    from scripts import runtime_provenance
+except ImportError:
+    import runtime_provenance
 
 
 REQUIRED_FILES = [
@@ -150,6 +156,7 @@ REQUIRED_FILES = [
     "templates/moduflow-config.json",
     "templates/moduflow-state.json",
     "scripts/project_doctor.py",
+    "scripts/runtime_provenance.py",
     "scripts/project_lifecycle.py",
     "scripts/project_lifecycle_transaction.py",
     "scripts/project_lifecycle_transaction_storage.py",
@@ -188,6 +195,8 @@ REQUIRED_FILES = [
     "tests/project_operation_fixture.py",
     "tests/lifecycle_transaction_fixture.py",
     "tests/test_project_doctor.py",
+    "tests/test_runtime_provenance.py",
+    "tests/runtime_provenance_fixture.py",
     "tests/test_project_lifecycle.py",
     "tests/test_project_lifecycle_transaction.py",
     "tests/test_project_lifecycle_transaction_storage.py",
@@ -207,6 +216,8 @@ REQUIRED_FILES = [
 ]
 
 SOURCE_ONLY_REQUIRED_FILES = {
+    "tests/test_runtime_provenance.py",
+    "tests/runtime_provenance_fixture.py",
     "tests/test_project_registry.py",
     "tests/test_canonical_path_guard.py",
     "tests/test_project_operation.py",
@@ -227,9 +238,12 @@ def load_json(path: Path) -> object:
         return json.load(handle)
 
 
-def validate_moduflow(path) -> dict:
+def validate_moduflow(path, *, mode="auto") -> dict:
     root = Path(path).resolve()
-    source_checkout = (root / ".git").exists()
+    if mode not in {"source", "installed", "auto"}:
+        raise ValueError("unsupported validation mode")
+    role = runtime_provenance.inspect_validation_target(root, requested_role=mode)
+    source_checkout = role["validation_role"] == "source"
     required_files = [
         name
         for name in REQUIRED_FILES
@@ -237,7 +251,15 @@ def validate_moduflow(path) -> dict:
     ]
     missing = [name for name in required_files if not (root / name).is_file()]
 
-    errors = []
+    errors = list(role["error_codes"])
+    evidence = runtime_provenance.inspect_package(root)
+    errors.extend(evidence["error_codes"])
+    if not source_checkout and evidence["receipt_state"] == "valid":
+        try:
+            if runtime_provenance.package_payload_sha256(root) != evidence["payload_sha256"]:
+                errors.append("PACKAGE_PAYLOAD_MISMATCH")
+        except (OSError, ValueError) as exc:
+            errors.append(f"PACKAGE_PAYLOAD_INVALID: {exc}")
     if missing:
         errors.append("Missing required files:")
         errors.extend(f"  - {name}" for name in missing)
@@ -273,12 +295,26 @@ def validate_moduflow(path) -> dict:
         "errors": errors,
         "checked_files": len(required_files),
         "missing": missing,
+        "validation_role": role["validation_role"],
+        "role_source": role["role_source"],
+        "warnings": evidence["warnings"],
+        "error_codes": list(dict.fromkeys(role["error_codes"] + evidence["error_codes"] + [
+            error.split(":", 1)[0] for error in errors if error.startswith("PACKAGE_PAYLOAD_")
+        ])),
     }
 
 
 def main() -> int:
-    root = Path(sys.argv[1] if len(sys.argv) > 1 else ".").resolve()
-    result = validate_moduflow(root)
+    parser = argparse.ArgumentParser(description="Validate source or installed ModuFlow assets.")
+    parser.add_argument("path", nargs="?", default=".")
+    parser.add_argument("--mode", choices=("source", "installed", "auto"), default="auto")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args()
+    root = Path(args.path).resolve()
+    result = validate_moduflow(root, mode=args.mode)
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["valid"] else 1
 
     if result["errors"]:
         print("ModuFlow validation failed")

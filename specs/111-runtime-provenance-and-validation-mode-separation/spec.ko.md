@@ -2,7 +2,7 @@
 
 이슈: `111-runtime-provenance-and-validation-mode-separation`
 결정자: Dongwon Lee
-단계: 명세·계획 검토. 구현과 승인 기록은 아직 없음.
+단계: 2026-09-02 Dongwon Lee가 "ㅇㅇ 이제 다음 뭐 할까 진행 하자고"로 명세·계획의 직접 구현을 승인함. 실제 설치·배포는 별도 승인 대상.
 원본: `spec.md`. 근거: 기존 이슈, 102 외부 검증 F-003/F-004, 2026-09-02 다음 계획·시뮬레이션 요청.
 다음: `product:review 111-runtime-provenance-and-validation-mode-separation`.
 

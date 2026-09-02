@@ -341,6 +341,13 @@ def run_release_check(path):
     checks = {}
     errors = []
 
+    provenance = load_script_module("runtime_provenance", "scripts/runtime_provenance.py")
+    role = provenance.inspect_validation_target(root, requested_role="source")
+    if not role["valid"]:
+        return {"schema": "moduflow.release-check.v1", "project_root": str(root),
+                "valid": False, "errors": role["error_codes"], "error_codes": role["error_codes"],
+                "validation_role": "source", "checks": {"target_role": role}}
+
     validate_moduflow = load_script_module("validate_moduflow", "scripts/validate_moduflow.py")
     validate_project_artifacts = load_script_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
     canonical_path_guard = load_script_module("canonical_path_guard", "scripts/canonical_path_guard.py")
@@ -350,7 +357,7 @@ def run_release_check(path):
     )
 
     importable_checks = {
-        "validate_moduflow": (validate_moduflow.validate_moduflow, root),
+        "validate_moduflow": (lambda target: validate_moduflow.validate_moduflow(target, mode="source"), root),
         "validate_project_artifacts": (validate_project_artifacts.validate_project, root),
         "canonical_path_guard": (canonical_path_guard.inspect_project, root),
         "project_operation_audit": (project_operation_audit.inspect_project, root),

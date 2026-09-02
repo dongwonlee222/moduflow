@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "select",
+  "phase": "review",
   "active_goal": "trustworthy-execution-and-project-knowledge",
-  "active_issue": "",
+  "active_issue": "111-runtime-provenance-and-validation-mode-separation",
   "last_command": "product:issue 112-114 execution governance scope",
-  "next_command": "product:status",
+  "next_command": "product:execute 111-runtime-provenance-and-validation-mode-separation",
   "blockers": [],
   "updated_at": "2026-09-02"
 }

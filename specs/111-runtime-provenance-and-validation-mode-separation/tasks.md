@@ -3,21 +3,21 @@
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Source: `spec.md`, `plan.md`, 2026-09-02 planning and simulation request.
-Phase: plan review; no implementation tasks completed.
-Next command: `product:review 111-runtime-provenance-and-validation-mode-separation` (spec/plan review).
+Phase: approved implementation; Stream A complete, Stream B next.
+Next command: `product:execute 111-runtime-provenance-and-validation-mode-separation`.
 
 This is the progress checklist for the canonical plan, not a second implementation design. Execute inline without subagents; review once per stream, not once per edit.
 
 ## Review Gate
 
-- [ ] Review and approve the written spec/plan before behavior implementation; do not infer implementation approval from document creation.
+- [x] Dongwon Lee approved the written spec/plan on 2026-09-02 in response to the implementation approval question: "ㅇㅇ 이제 다음 뭐 할까 진행 하자고". This does not authorize real installation or publication.
 
 ## Stream A — Shared Evidence and Explicit Validation Modes
 
-- [ ] RED/GREEN the shared package reader, startup snapshot and explicit unknown evidence reasons.
-- [ ] Add explicit source/installed modes, backward-compatible auto mode and strict source release role checks.
-- [ ] Retain runtime assets/fixtures and every existing source gate; reject invalid metadata and runtime omissions.
-- [ ] Verify focused tests and commit the reviewed contract changes with Issue 111 linkage.
+- [x] RED/GREEN the shared package reader, startup snapshot and explicit unknown evidence reasons.
+- [x] Add explicit source/installed modes, backward-compatible auto mode and strict source release role checks.
+- [x] Retain runtime assets/fixtures and every existing source gate; reject invalid metadata and runtime omissions.
+- [x] Verify focused tests and commit the reviewed contract changes with Issue 111 linkage.
 
 ## Stream B — Package Receipt and Cache Preservation
 

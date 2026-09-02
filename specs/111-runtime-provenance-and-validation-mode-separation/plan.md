@@ -10,7 +10,7 @@
 
 Issue: `111-runtime-provenance-and-validation-mode-separation` · Owner: Dongwon Lee.
 Source: `spec.md`, its linked F-003/F-004 findings, and the 2026-09-02 planning/simulation request.
-Phase: draft for joint spec/plan review; no execution approval recorded.
+Phase: approved for inline implementation by Dongwon Lee on 2026-09-02; proceed through A–D without per-edit approval. Real installation/publication remains separately gated.
 Prev: `spec.md` · Checklist: `tasks.md` · Next: `product:review 111-runtime-provenance-and-validation-mode-separation` (plan review).
 
 ## Global Constraints

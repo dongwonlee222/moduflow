@@ -1,6 +1,6 @@
 # Issue 111: Runtime Provenance and Validation Mode Separation
 
-**Status: backlog** — created 2026-08-21.
+**Status: active** — created 2026-08-21; started 2026-09-02.
 **Priority: p1**
 **Blocked-by:**
 
