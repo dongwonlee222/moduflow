@@ -23,6 +23,7 @@
 - Spec consistency: 0 errors, 0 warnings, 11/11 acceptance criteria covered.
 - Lifecycle drift: `[]`.
 - Operation audit: `valid: true`; 93 classified and zero gaps.
+- Fresh source release check: `valid: true`, `errors: []`; all 12 release checks passed.
 - Diff hygiene: `git diff --check` clean.
 - Visual handoff: `memory/dashboard.html` and `memory/issue-103-atomic-lifecycle-state-transaction.html` regenerated.
 

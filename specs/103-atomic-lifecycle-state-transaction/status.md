@@ -1,6 +1,6 @@
 # Issue 103 Implementation Status
 
-**Status: review-ready** — implementation, full discovery, project/spec/drift/audit gates, direct review, and visual handoff are complete; final source release validation and non-draft PR publication remain.
+**Status: review-ready** — implementation, full discovery, project/spec/drift/audit gates, direct review, visual handoff, and source release validation are complete; non-draft PR publication remains.
 
 ## Snapshot
 
@@ -16,6 +16,7 @@
 | Spec consistency | 0 errors, 0 warnings, 11/11 acceptance criteria covered |
 | Lifecycle drift | `[]` |
 | Operation audit | `valid: true`; 93 classified, 0 unclassified/unguarded/stale |
+| Source release check | `valid: true`, `errors: []`; all 12 checks passed |
 | Review | P0/P1/P2 findings: 0 |
 
 ## Implementation Result
@@ -34,10 +35,11 @@
 - Spec consistency: 11/11 covered, no findings.
 - Lifecycle drift: `[]`.
 - Operation audit: 93/93 classified, zero gaps.
+- Fresh source release check: `valid: true`, `errors: []`; validation, audit, provenance, linkage, lint, security, version, tests, Doctor, and release docs all passed.
 - `git diff --check`: clean.
 - Dashboard: `memory/dashboard.html`.
 - Issue drill-down: `memory/issue-103-atomic-lifecycle-state-transaction.html`.
 
 ## Remaining Gate
 
-Run fresh `python3 scripts/release_check.py .`, commit the final review evidence, push the branch, and open one non-draft PR against `main`. Merge and release remain separately human-gated.
+Commit this final release evidence, push the branch, and open one non-draft PR against `main`. Merge and plugin release remain separately human-gated.

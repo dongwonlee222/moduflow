@@ -2,7 +2,7 @@
 
 Issue: `103-atomic-lifecycle-state-transaction`
 Plan: `specs/103-atomic-lifecycle-state-transaction/plan.md`
-Status: review_ready — implementation and D2 verification/review evidence are complete; final source release validation and PR publication are active
+Status: review_ready — implementation, D2 verification/review evidence, and source release validation are complete; PR publication is active
 
 ## Stream A — Contract, Planning, and Projected Validation
 
@@ -46,8 +46,8 @@ Status: review_ready — implementation and D2 verification/review evidence are 
 - [x] Production semantic versions cannot duplicate, and legacy unversioned records remain readable without migration.
 - [x] Existing public mutation entry points route through the central transaction and the operation audit reports zero gaps.
 - [x] Doctor reports incomplete recovery safely for read-only projects and emits the exact recovery command.
-- [ ] Project validation is valid, spec consistency is clean, lifecycle drift is `[]`, full discovery passes (1,571 tests), and source release check is valid.
+- [x] Project validation is valid, spec consistency is clean, lifecycle drift is `[]`, full discovery passes (1,571 tests), and source release check is valid.
 
 ## Next Command
 
-`product:pr 103-atomic-lifecycle-state-transaction` — finish source release validation and publish the non-draft implementation PR.
+`product:pr 103-atomic-lifecycle-state-transaction` — publish the non-draft implementation PR; merge remains separately human-gated.

@@ -2,16 +2,13 @@
 
 ## Purpose
 
-Make the pull request the visible review surface instead of waiting until all local review work is finished.
-Use a Draft PR or a local PR-ready marker early, then attach review, verification, and dashboard evidence to it as work progresses.
+Publish the verified implementation as the visible human-review surface, with local review, verification, and dashboard evidence attached.
 
-## Draft PR
+## Publication
 
 - Branch: `codex/103-atomic-lifecycle-state-transaction`
-- PR: `local:103-atomic-lifecycle-state-transaction:draft-pr-ready`
+- PR: non-draft GitHub PR against `main` pending publication
 - Reviewer: `Dongwon Lee`
-- Fallback reason: GitHub Draft PR URL is not recorded yet. This local PR-ready marker preserves review state until GitHub sync creates or mirrors the PR.
-- Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
 - Commit mode: `local-git-write`
 
@@ -19,10 +16,6 @@ Use a Draft PR or a local PR-ready marker early, then attach review, verificatio
 
 ```bash
 python3 scripts/project_pr.py . --issue-id 103-atomic-lifecycle-state-transaction --write
-```
-
-```bash
-python3 scripts/project_workflow.py . --pr-state --issue-id 103-atomic-lifecycle-state-transaction --pr "local:103-atomic-lifecycle-state-transaction:draft-pr-ready" --reviewer "Dongwon Lee"
 ```
 
 - Continue review: `product:review 103-atomic-lifecycle-state-transaction`
@@ -45,6 +38,7 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 103-atomic-lifecycle
 - Focused D2 suite before full discovery: 495 tests passed.
 - Post-fix RED/GREEN: final transaction/lifecycle/loop/Stop-hook/migration set — 252 tests passed.
 - Final full discovery after all D2 fixes: 1,571 tests passed in 462.485s, 0 failures.
+- Fresh source release check: `valid: true`, `errors: []`; all 12 release checks passed.
 - Project artifacts: `valid: true`, `errors: []`.
 - Spec consistency: 11/11 covered, no findings.
 - Lifecycle drift: `[]`.

@@ -371,11 +371,11 @@ def derive_idempotency_key(project_context, intent):
 - Consumes: Tasks A1–D1 and every acceptance criterion.
 - Produces: review-ready evidence and one non-draft PR; no merge or plugin release without a new explicit human decision.
 
-- [ ] **Step 1: Run focused suites.** Run transaction, lifecycle, loop, production, Doctor, audit, issue-schema, and validation-distribution suites; fix failures only through a new RED/GREEN cycle.
-- [ ] **Step 2: Run full local gates.** Run `python3 -m unittest discover -s tests -v`, project artifact validation, Issue 103 spec consistency, lifecycle drift, operation audit, and `git diff --check`.
-- [ ] **Step 3: Generate review handoff.** Run `python3 scripts/project_execution.py . --issue-id 103-atomic-lifecycle-state-transaction --review-handoff --write` and regenerate dashboard plus Issue 103 drill-down.
-- [ ] **Step 4: Review every acceptance criterion.** Record implementation, QA, PM/spec, security/privacy, crash recovery, and Constitution v1.0 findings; fix every P0/P1/P2 defect before proceeding.
-- [ ] **Step 5: Run fresh release validation.** Require `valid: true`, empty errors, complete operation audit, passing version gate, and all focused tests.
+- [x] **Step 1: Run focused suites.** Run transaction, lifecycle, loop, production, Doctor, audit, issue-schema, and validation-distribution suites; fix failures only through a new RED/GREEN cycle.
+- [x] **Step 2: Run full local gates.** Run `python3 -m unittest discover -s tests -v`, project artifact validation, Issue 103 spec consistency, lifecycle drift, operation audit, and `git diff --check`.
+- [x] **Step 3: Generate review handoff.** Run `python3 scripts/project_execution.py . --issue-id 103-atomic-lifecycle-state-transaction --review-handoff --write` and regenerate dashboard plus Issue 103 drill-down.
+- [x] **Step 4: Review every acceptance criterion.** Record implementation, QA, PM/spec, security/privacy, crash recovery, and Constitution v1.0 findings; fix every P0/P1/P2 defect before proceeding.
+- [x] **Step 5: Run fresh release validation.** Require `valid: true`, empty errors, complete operation audit, passing version gate, and all focused tests.
 - [ ] **Step 6: Publish only after evidence is committed.** Update lifecycle artifacts, commit review evidence, run Git/GitHub preflights, push, and open one non-draft PR against `main`; merge remains separately human-gated.
 
 ## Execution Order and Rollback
@@ -405,4 +405,4 @@ flowchart LR
 
 ## Next Command
 
-`product:execute 103-atomic-lifecycle-state-transaction` — begin D2 full discovery, version/release validation, review evidence, and PR publication.
+`product:pr 103-atomic-lifecycle-state-transaction` — publish the verified implementation as one non-draft PR against `main`; merge remains separately human-gated.

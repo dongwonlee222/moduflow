@@ -13,7 +13,7 @@ Replace best-effort lifecycle propagation with a validated application-level tra
 - Type: user multi-project orchestration improvement request
 - Link: local Codex attachment `pasted-text.txt`, 2026-08-19
 - Owner / decision maker: Dongwon Lee
-- Current phase: review complete; final release validation and implementation PR publication are active
+- Current phase: review and final release validation complete; implementation PR publication is active
 
 ## Opportunity
 

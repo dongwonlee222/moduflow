@@ -6,7 +6,7 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-103-atomic-lifecycle-state-transaction.html`
-- PR/로컬 마커: `local:103-atomic-lifecycle-state-transaction:draft-pr-ready`
+- PR: 비초안 PR 게시 진행 중
 - 브랜치: `codex/103-atomic-lifecycle-state-transaction`
 - 리뷰어: `Dongwon Lee`
 
@@ -44,6 +44,7 @@
 - Spec consistency: 11/11 covered, no findings.
 - Lifecycle drift: `[]`.
 - Operation audit: 93/93 classified, zero gaps.
+- Fresh source release check: `valid: true`, `errors: []`; all 12 release checks passed.
 - `git diff --check`: clean.
 - Dashboard: `memory/dashboard.html`.
 - Issue drill-down: `memory/issue-103-atomic-lifecycle-state-transaction.html`.
