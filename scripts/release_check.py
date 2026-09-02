@@ -435,6 +435,8 @@ def run_release_check(path):
             "tests.test_issue_dependencies",
             "tests.test_codex_personal_install",
             "tests.test_installed_plugin_staleness",
+            "tests.test_runtime_provenance",
+            "tests.test_runtime_provenance_simulation",
             "tests.test_mcp_server",
             "tests.test_spec_consistency",
             "tests.test_linkage_check",

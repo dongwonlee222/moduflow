@@ -1,5 +1,13 @@
 # Upgrade Guide
 
+## Validation and Runtime Identity (111)
+
+Source maintenance uses `validate_moduflow.py <source> --mode source --json` and the existing strict release check. An installed distribution uses `--mode installed --json`; target projects use `project_doctor.py <project>`. The compatibility default `auto` reports its inference but is not a replacement for explicit release roles.
+
+The Codex installer stages and validates the package, records an atomic `.moduflow-package.json`, and only then exposes the cache. Identical validated retries preserve the original receipt; differing content/source identity at the same version fails without deleting the old cache. Preparation failure leaves activation untouched. Later registration/link failures are separate activation failures, not a claim that all host configuration rolled back atomically.
+
+Status/Doctor/MCP show `runtime_provenance`: known fields have sources and unknown fields have null/reasons. A persistent MCP keeps its original startup snapshot until restarted. A CLI reports only itself. Neither implies the host's prompt skills reloaded. Legacy hosts/packages without receipts remain explicitly unknown; diagnostics do not install metadata into them. The receipt is local build evidence, not a signed attestation. A Codex build suffix is not an installation timestamp.
+
 ## Claude Code Plugin
 
 The installed plugin does NOT auto-update when new versions are pushed to the repo. The marketplace clone under `~/.claude/plugins/marketplaces/moduflow` and the install pointer in `installed_plugins.json` both stay frozen until updated explicitly:

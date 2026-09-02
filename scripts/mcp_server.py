@@ -419,7 +419,12 @@ def _handle_line(line, root, *, runtime_snapshot=None):
         # A persistent server must survive any single request — internal
         # errors become -32603 responses, never a process exit.
         req_id = req.get("id") if isinstance(req.get("id"), (str, int)) else None
-        return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32603, "message": f"internal error: {exc}"}}
+        error = {"code": -32603, "message": f"internal error: {exc}"}
+        params = req.get("params")
+        if (req.get("method") == "tools/call" and isinstance(params, dict)
+                and params.get("name") in {"moduflow_status", "moduflow_doctor"}):
+            error["data"] = {"runtime_provenance": _runtime_snapshot(runtime_snapshot)}
+        return {"jsonrpc": "2.0", "id": req_id, "error": error}
 
 
 def main():

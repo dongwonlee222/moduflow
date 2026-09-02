@@ -196,6 +196,7 @@ REQUIRED_FILES = [
     "tests/lifecycle_transaction_fixture.py",
     "tests/test_project_doctor.py",
     "tests/test_runtime_provenance.py",
+    "tests/test_runtime_provenance_simulation.py",
     "tests/runtime_provenance_fixture.py",
     "tests/test_project_lifecycle.py",
     "tests/test_project_lifecycle_transaction.py",
@@ -216,6 +217,7 @@ REQUIRED_FILES = [
 ]
 
 SOURCE_ONLY_REQUIRED_FILES = {
+    "tests/test_runtime_provenance_simulation.py",
     "tests/test_runtime_provenance.py",
     "tests/runtime_provenance_fixture.py",
     "tests/test_project_registry.py",

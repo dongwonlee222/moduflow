@@ -21,6 +21,21 @@ mcp_server = load_module("mcp_server", "scripts/mcp_server.py")
 
 
 class RuntimeSurfaceTests(unittest.TestCase):
+    def test_dispatch_error_retains_runtime_evidence(self):
+        from scripts.runtime_provenance import capture_runtime
+        from tests.runtime_provenance_fixture import make_package
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = capture_runtime(make_package(root / "package"), runtime_kind="mcp_process")
+            for name in ("moduflow_status", "moduflow_doctor"):
+                with self.subTest(name=name), mock.patch.object(
+                    mcp_server.project_registry, "project_context_for_root", side_effect=RuntimeError("injected")
+                ):
+                    response = mcp_server._handle_line(json.dumps({"id": 1, "method": "tools/call",
+                        "params": {"name": name}}), root, runtime_snapshot=snapshot)
+                self.assertEqual(response["error"]["code"], -32603)
+                self.assertEqual(response["error"]["data"]["runtime_provenance"], snapshot)
+
     def test_status_and_doctor_keep_injected_process_identity_across_projects(self):
         from scripts.runtime_provenance import capture_runtime
         from tests.runtime_provenance_fixture import make_package
