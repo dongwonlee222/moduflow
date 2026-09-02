@@ -56,6 +56,12 @@
       "rationale": "Lifecycle state is intentionally stored in the fixed .moduflow control directory."
     },
     {
+      "module": "scripts/project_lifecycle_transaction.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "Transaction locks, journals, and private recovery data intentionally use the fixed .moduflow control directory; canonical artifact targets still come from the resolved project context."
+    },
+    {
       "module": "scripts/project_memory.py",
       "pattern": "fragment:issues/",
       "classification": "canonical_default_declaration",

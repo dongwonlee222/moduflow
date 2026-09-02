@@ -8,9 +8,9 @@ dashboard's Active Issue section) and detects drift by consensus. It does NOT
 write back to issue files (canonical source is human-authored).
 """
 import argparse
+import hashlib
 import json
 import re
-from datetime import date
 from pathlib import Path
 
 try:
@@ -68,6 +68,138 @@ _SYNC_FATAL_DIAGNOSTICS = {
     "ISSUE_SCHEMA_UNSUPPORTED",
     "ISSUE_DUPLICATE_FIELD",
 }
+_TRANSITION_ACTIONS = frozenset({"start", "update", "pause", "resume", "complete"})
+_ROADMAP_PRIORITIES = frozenset({"p0", "p1", "p2", "p3"})
+
+_ROADMAP_START = "<!-- moduflow:roadmap-projection:start -->"
+_ROADMAP_END = "<!-- moduflow:roadmap-projection:end -->"
+
+
+def _utf8_bytes(value, label):
+    if not isinstance(value, bytes):
+        raise TypeError(f"{label} must be bytes")
+    value.decode("utf-8")
+    return value
+
+
+def _json_bytes(value):
+    return (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
+def render_issue_transition(issue_bytes, target_lifecycle, *, changed_on):
+    """Return issue Markdown with only its canonical lifecycle line changed."""
+    text = _utf8_bytes(issue_bytes, "issue_bytes").decode("utf-8")
+    if target_lifecycle is None:
+        return bytes(issue_bytes)
+    if target_lifecycle not in {"backlog", "active", "done"}:
+        raise ValueError("Unsupported target lifecycle")
+    match = re.search(r"^\*\*Status:\s*[^*]+\*\*(?P<suffix>[^\n]*)$", text, re.M)
+    if not match:
+        raise ValueError("Owning issue requires a canonical Status line")
+    suffix = match.group("suffix").strip()
+    if suffix.startswith("—"):
+        suffix = suffix[1:].strip()
+    facts = [part.strip() for part in suffix.rstrip(".").split(";") if part.strip()]
+    facts = [fact for fact in facts if not fact.startswith(("started ", "done "))]
+    if target_lifecycle in {"active", "done"}:
+        facts.append(f"started {changed_on}")
+    if target_lifecycle == "done":
+        facts.append(f"done {changed_on}")
+    rendered_suffix = f" — {'; '.join(facts)}." if facts else ""
+    replacement = f"**Status: {target_lifecycle}**{rendered_suffix}"
+    return (text[: match.start()] + replacement + text[match.end() :]).encode("utf-8")
+
+
+def render_state_projection(
+    state_bytes,
+    *,
+    active_issue,
+    phase,
+    next_command,
+    changed_on,
+):
+    """Return deterministic state JSON while preserving unrelated keys."""
+    _utf8_bytes(state_bytes, "state_bytes")
+    state = json.loads(state_bytes.decode("utf-8")) if state_bytes else {}
+    if not isinstance(state, dict):
+        raise ValueError("state projection requires a JSON object")
+    state.setdefault("schema", "moduflow.state.v1")
+    state["active_issue"] = active_issue
+    state["phase"] = phase
+    state.setdefault("active_goal", "")
+    state["next_command"] = next_command
+    state.setdefault("blockers", [])
+    state["updated_at"] = changed_on
+    return _json_bytes(state)
+
+
+def render_dashboard_projection(
+    dashboard_bytes,
+    *,
+    active_issue,
+    phase,
+    source_path,
+):
+    """Return dashboard bytes with only the Active Issue section replaced."""
+    text = _utf8_bytes(dashboard_bytes, "dashboard_bytes").decode("utf-8")
+    if active_issue:
+        section = (
+            "## Active Issue\n\n"
+            f"- `{active_issue}` (phase: {phase}). Canonical: `{source_path}`.\n\n"
+        )
+    else:
+        section = (
+            "## Active Issue\n\n- None active. "
+            "Run `product:status` to pick the next issue.\n\n"
+        )
+    pattern = re.compile(r"^##\s+Active Issue\s*$.*?(?=^##\s|\Z)", re.M | re.S)
+    if not pattern.search(text):
+        raise ValueError("dashboard requires an Active Issue section")
+    return pattern.sub(lambda _match: section, text).encode("utf-8")
+
+
+def render_issue_index(issues):
+    """Return a deterministic physical compatibility index from projected issues."""
+    if not isinstance(issues, list):
+        raise TypeError("issues must be a list")
+    detached = [dict(issue) for issue in issues]
+    return _json_bytes(
+        {
+            "schema": "moduflow.issue-index.v1",
+            "issues": sorted(detached, key=lambda issue: issue["id"]),
+        }
+    )
+
+
+def render_roadmap_projection(
+    roadmap_bytes,
+    *,
+    issue_id,
+    priority,
+    dependencies,
+    release_order,
+):
+    """Replace or append the one bounded ModuFlow roadmap projection block."""
+    text = _utf8_bytes(roadmap_bytes, "roadmap_bytes").decode("utf-8")
+    dependency_text = ", ".join(dependencies) if dependencies else "none"
+    release_text = str(release_order) if release_order not in (None, "") else "none"
+    block = (
+        f"{_ROADMAP_START}\n"
+        f"- `{issue_id}` — priority `{priority}`; dependencies `{dependency_text}`; "
+        f"release order `{release_text}`.\n"
+        f"{_ROADMAP_END}"
+    )
+    pattern = re.compile(
+        rf"{re.escape(_ROADMAP_START)}.*?{re.escape(_ROADMAP_END)}",
+        re.S,
+    )
+    matches = list(pattern.finditer(text))
+    if len(matches) > 1:
+        raise ValueError("roadmap contains duplicate managed projection blocks")
+    if matches:
+        return pattern.sub(lambda _match: block, text).encode("utf-8")
+    separator = "" if not text else ("\n\n" if not text.endswith("\n\n") else "")
+    return (text + separator + block + "\n").encode("utf-8")
 
 
 def read_json(path):
@@ -391,7 +523,100 @@ def lifecycle_drift(root, *, project_context=None):
     )
 
 
-def sync_lifecycle(root, *, project_context=None):
+def _load_lifecycle_transaction_module():
+    try:
+        import project_lifecycle_transaction
+    except ImportError:  # pragma: no cover - package import fallback
+        from scripts import project_lifecycle_transaction
+    return project_lifecycle_transaction
+
+
+def _reconcile_source_event(root, evaluation, source_event, idempotency_key):
+    """Make default reconcile retries stable for one exact issue snapshot."""
+    if source_event != "sync_lifecycle" or idempotency_key:
+        return source_event
+    digest = hashlib.sha256()
+    for issue in sorted(evaluation["issues"], key=lambda item: item["source_path"]):
+        source_path = issue["source_path"]
+        source_bytes = (root / source_path).read_bytes()
+        digest.update(source_path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(len(source_bytes).to_bytes(8, "big"))
+        digest.update(source_bytes)
+    return f"sync_lifecycle:{digest.hexdigest()}"
+
+
+def transition_lifecycle(
+    root,
+    issue_id,
+    action,
+    *,
+    actor,
+    source_event,
+    target_status=None,
+    priority=None,
+    idempotency_key="",
+    expected_issue_sha256="",
+    loop_blocker="",
+    require_issue_index=False,
+    project_context=None,
+    clock=None,
+    fault_injector=None,
+):
+    """Apply one lifecycle transition through the transaction boundary."""
+    values = {
+        "issue_id": str(issue_id or "").strip(),
+        "action": str(action or "").strip().lower(),
+        "actor": str(actor or "").strip(),
+        "source_event": str(source_event or "").strip(),
+    }
+    if values["action"] not in _TRANSITION_ACTIONS:
+        raise ValueError("Unsupported lifecycle transition action")
+    if not values["issue_id"] or not values["actor"] or not values["source_event"]:
+        raise ValueError(
+            "Lifecycle transition requires issue_id, actor, and source_event"
+        )
+    normalized_priority = None
+    if priority is not None:
+        normalized_priority = str(priority).strip().lower()
+        if normalized_priority not in _ROADMAP_PRIORITIES:
+            raise ValueError("Unsupported roadmap priority")
+
+    boundary = _load_lifecycle_transaction_module()
+    intent = boundary.LifecycleIntent(
+        **values,
+        target_lifecycle=target_status,
+        roadmap_change=(
+            {"priority": normalized_priority}
+            if normalized_priority is not None
+            else None
+        ),
+        idempotency_key=idempotency_key,
+        expected_issue_sha256=expected_issue_sha256,
+        loop_blocker=loop_blocker,
+        require_issue_index=require_issue_index,
+    )
+    return boundary.apply_lifecycle_transaction(
+        root,
+        intent,
+        project_context=project_context,
+        clock=clock,
+        fault_injector=fault_injector,
+    )
+
+
+def sync_lifecycle(
+    root,
+    *,
+    project_context=None,
+    actor="moduflow.lifecycle",
+    source_event="sync_lifecycle",
+    idempotency_key="",
+    expected_issue_sha256="",
+    require_issue_index=False,
+    clock=None,
+    fault_injector=None,
+):
     """Single propagation point: issue Status -> .moduflow/state.json + dashboard
     Active Issue section. Idempotent. Touches only structured fields/sections."""
     root = Path(root).resolve()
@@ -437,50 +662,86 @@ def sync_lifecycle(root, *, project_context=None):
         None,
     )
     phase = infer_phase(root, active, evaluation, project_context=context)
-    next_command = "product:status"
-    if active_issue:
-        next_command = (
-            active_issue.get("recommended_next_command") or next_command
+    owner = active_issue or next(
+        (
+            issue
+            for issue in sorted(
+                evaluation["issues"], key=lambda item: item["issue_id"]
+            )
+            if issue.get("lifecycle_state") in {"backlog", "active", "done"}
+        ),
+        None,
+    )
+    if owner is None:
+        return {
+            "status": "blocked",
+            "active": "",
+            "phase": "unresolved",
+            "dashboard_updated": False,
+            "errors": [
+                "ISSUE_RECONCILE_OWNER_UNAVAILABLE: No canonical issue can own "
+                "the lifecycle reconcile transaction. Recommendation: Create or "
+                "restore a valid issue and run product:doctor."
+            ],
+        }
+
+    boundary = _load_lifecycle_transaction_module()
+    intent = boundary.LifecycleIntent(
+        issue_id=owner["issue_id"],
+        action="reconcile",
+        actor=actor,
+        source_event=_reconcile_source_event(
+            root,
+            evaluation,
+            source_event,
+            idempotency_key,
+        ),
+        target_lifecycle=None,
+        idempotency_key=idempotency_key,
+        expected_issue_sha256=expected_issue_sha256,
+        require_issue_index=require_issue_index,
+    )
+    transaction = boundary.apply_lifecycle_transaction(
+        root,
+        intent,
+        project_context=context,
+        clock=clock,
+        fault_injector=fault_injector,
+    )
+    dashboard_updated = (
+        transaction.get("status") == "applied"
+        and any(
+            target.get("role") == "dashboard" and target.get("changed") is True
+            for target in transaction.get("targets", [])
+            if isinstance(target, dict)
         )
+    )
+    result = {
+        "active": active,
+        "phase": phase,
+        "dashboard_updated": dashboard_updated,
+        "transaction": transaction,
+    }
+    if transaction.get("status") not in {"applied", "noop"}:
+        error_code = (
+            transaction.get("error_code")
+            or transaction.get("status")
+            or "unknown"
+        )
+        result.update(
+            {
+                "status": "blocked",
+                "errors": [
+                    f"{error_code}: Lifecycle reconcile transaction did not commit. "
+                    "Recommendation: Run product:doctor before retrying."
+                ],
+            }
+        )
+    return result
 
-    # state.json — no prose; safe to set lifecycle fields, preserve the rest.
-    sp = root / ".moduflow" / "state.json"
-    state = read_json(sp) or {"schema": "moduflow.state.v1"}
-    state.setdefault("schema", "moduflow.state.v1")
-    state["active_issue"] = active
-    state["phase"] = phase
-    state.setdefault("active_goal", "")
-    state["next_command"] = next_command
-    state.setdefault("blockers", [])
-    state["updated_at"] = date.today().isoformat()
-    if sp.parent.exists():
-        sp.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
-    # dashboard.md — regenerate ONLY the Active Issue section body; preserve prose.
-    dash = project_registry.canonical_path(context, "workspace") / "dashboard.md"
-    changed_dashboard = False
-    if dash.exists():
-        dtext = dash.read_text(encoding="utf-8")
-        if active:
-            source_path = active_issue["source_path"]
-            new_section = (
-                f"## Active Issue\n\n- `{active}` (phase: {phase}). "
-                f"Canonical: `{source_path}`.\n\n"
-            )
-        else:
-            new_section = (
-                "## Active Issue\n\n- None active. "
-                "Run `product:status` to pick the next issue.\n\n"
-            )
-        # Replace the whole header+body block with a fixed form → idempotent.
-        pattern = re.compile(r"^##\s+Active Issue\s*$.*?(?=^##\s|\Z)", re.M | re.S)
-        if pattern.search(dtext):
-            new_text = pattern.sub(lambda _m: new_section, dtext)
-            if new_text != dtext:
-                dash.write_text(new_text, encoding="utf-8")
-                changed_dashboard = True
-
-    return {"active": active, "phase": phase, "dashboard_updated": changed_dashboard}
+def _mutation_exit_code(result):
+    return 0 if result.get("status") in {"applied", "noop"} else 1
 
 
 @project_operation.cli_denial_boundary
@@ -492,8 +753,80 @@ def main():
     parser.add_argument("--sync", action="store_true", help="Propagate issue Status to state.json + dashboard.")
     parser.add_argument("--issues", action="store_true", help="Print list_issues(root) JSON.")
     parser.add_argument("--ready", action="store_true", help="Print ready_issues(root) JSON.")
+    mutation = parser.add_mutually_exclusive_group()
+    mutation.add_argument("--transition", choices=sorted(_TRANSITION_ACTIONS))
+    mutation.add_argument("--recover", nargs="?", const="", default=None)
+    parser.add_argument("--issue-id")
+    parser.add_argument("--target-status", choices=("backlog", "active", "done"))
+    parser.add_argument("--priority", choices=sorted(_ROADMAP_PRIORITIES))
+    parser.add_argument("--actor")
+    parser.add_argument("--source-event")
+    parser.add_argument("--idempotency-key", default="")
+    parser.add_argument("--expected-issue-sha256", default="")
+    parser.add_argument("--loop-blocker", default="")
+    parser.add_argument("--require-issue-index", action="store_true")
     args = parser.parse_args()
 
+    legacy_mode = any((args.state, args.drift, args.sync, args.issues, args.ready))
+    transition_options = any(
+        (
+            args.issue_id,
+            args.target_status,
+            args.priority,
+            args.actor,
+            args.source_event,
+            args.idempotency_key,
+            args.expected_issue_sha256,
+            args.loop_blocker,
+            args.require_issue_index,
+        )
+    )
+    if args.transition:
+        if legacy_mode:
+            parser.error("--transition cannot be combined with legacy operation flags")
+        missing = [
+            flag
+            for flag, value in (
+                ("--issue-id", args.issue_id),
+                ("--actor", args.actor),
+                ("--source-event", args.source_event),
+            )
+            if not value or not value.strip()
+        ]
+        if missing:
+            parser.error(f"--transition requires {', '.join(missing)}")
+    elif args.recover is not None:
+        if legacy_mode:
+            parser.error("--recover cannot be combined with legacy operation flags")
+        if transition_options:
+            parser.error("transition-only arguments require --transition")
+    elif transition_options:
+        parser.error("transition-only arguments require --transition")
+
+    if args.transition:
+        result = transition_lifecycle(
+            args.project_path,
+            args.issue_id,
+            args.transition,
+            actor=args.actor,
+            source_event=args.source_event,
+            target_status=args.target_status,
+            priority=args.priority,
+            idempotency_key=args.idempotency_key,
+            expected_issue_sha256=args.expected_issue_sha256,
+            loop_blocker=args.loop_blocker,
+            require_issue_index=args.require_issue_index,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return _mutation_exit_code(result)
+    if args.recover is not None:
+        boundary = _load_lifecycle_transaction_module()
+        result = boundary.recover_incomplete_transaction(
+            args.project_path,
+            args.recover,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return _mutation_exit_code(result)
     if args.issues:
         print(json.dumps(list_issues(args.project_path), ensure_ascii=False, indent=2))
         return 0

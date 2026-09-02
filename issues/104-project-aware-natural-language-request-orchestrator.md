@@ -2,7 +2,7 @@
 
 **Status: backlog** — created 2026-08-19.
 **Priority: p0**
-**Blocked-by: `102-project-registry-and-resolver`, `103-atomic-lifecycle-state-transaction`**
+**Blocked-by: `102-project-registry-and-resolver`, `103-atomic-lifecycle-state-transaction`, `112-execution-planner-and-backend-boundary`**
 
 ## Summary
 
@@ -29,11 +29,13 @@ Issues 020, 022, 076, and 097 already provide simple aliases, intake-to-goal rou
 - Search only the selected project's issues, approved playbooks, production records, and then approved shared playbooks.
 - Attach revisions, resizes, compressions, and copy edits to the existing issue/record version when applicable.
 - Invoke at most the capability selected by Issue 097 and pass only scoped context, prohibitions, and expected output artifact.
+- Route implementation through Issue 112's single `inline` or `superpowers-sdd` execution decision without creating a second dispatcher.
 - Validate the output, then commit canonical/derived state through Issue 103's transaction.
 
 ### Out
 
 - Replacing the router or capability adapters delivered by Issue 097.
+- Building a host-specific subagent runtime or maintaining an independent worker completion state.
 - Cross-project raw record search.
 - Automatic execution when project resolution is ambiguous or capability permission is not allowed.
 - Creating a new issue for every production revision.
@@ -77,7 +79,7 @@ Do not create a second public entry point by default, scan unregistered projects
 ## Related Issues
 
 - blocks: `108-production-approval-and-verification-gates`
-- blocked_by: `102-project-registry-and-resolver`, `103-atomic-lifecycle-state-transaction`
+- blocked_by: `102-project-registry-and-resolver`, `103-atomic-lifecycle-state-transaction`, `112-execution-planner-and-backend-boundary`
 - duplicates:
 - follows_up: `020-user-facing-simple-loop-ux`, `022-intake-to-goal-graph`, `076-product-context-interview-and-readiness-loop`, `097-single-entry-capability-routing-contract`
 - supersedes:
@@ -91,4 +93,4 @@ Do not create a second public entry point by default, scan unregistered projects
 
 ## Next Command
 
-After Issues 102 and 103 are done: `product:spec 104-project-aware-natural-language-request-orchestrator`.
+After Issues 102, 103, and 112 are done: `product:spec 104-project-aware-natural-language-request-orchestrator`.

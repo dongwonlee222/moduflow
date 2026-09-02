@@ -75,16 +75,57 @@ class LifecycleIntent:
     production_change: dict | None = None
     require_issue_index: bool = False
 
+@dataclass(frozen=True)
+class PlannedTarget:
+    role: str
+    relative_path: str
+    existed: bool
+    before_sha256: str
+    after_sha256: str
+    after_size: int
+    changed: bool
+    validation_rules: tuple[str, ...]
+    apply_order: int
+    rollback_order: int
+    _before_bytes: bytes = field(repr=False)
+    _after_bytes: bytes = field(repr=False)
+
+@dataclass(frozen=True)
+class LifecycleTransactionPlan:
+    schema: str
+    transaction_id: str
+    idempotency_key: str
+    project_id: str
+    canonical_root: str
+    issue_id: str
+    action: str
+    target_lifecycle: str | None
+    targets: tuple[PlannedTarget, ...]
+    _project_context: Mapping = field(repr=False)
+
+    def to_public_dict(self) -> dict:
+        return serialize_transaction_plan({
+            "schema": self.schema,
+            "transaction_id": self.transaction_id,
+            "idempotency_key": self.idempotency_key,
+            "project_id": self.project_id,
+            "canonical_root": self.canonical_root,
+            "issue_id": self.issue_id,
+            "action": self.action,
+            "target_lifecycle": self.target_lifecycle,
+            "targets": [target.to_public_dict() for target in self.targets],
+        })
+
 def plan_lifecycle_transaction(
     project_root,
     intent: LifecycleIntent,
     *,
     project_context=None,
     clock=None,
-) -> dict:
-    """Return schema moduflow.lifecycle-transaction-plan.v1 without canonical writes."""
+) -> LifecycleTransactionPlan:
+    """Compute one immutable transaction plan without filesystem writes."""
 
-def validate_projected_transaction(plan: dict) -> dict:
+def validate_projected_transaction(plan: LifecycleTransactionPlan) -> dict:
     """Materialize and validate a private projected root; never replace canonical targets."""
 
 def apply_lifecycle_transaction(
@@ -112,7 +153,7 @@ def recover_incomplete_transaction(
 
 ## Implementation Readiness Contracts
 
-- **API contract mapping:** No HTTP API. The four Python transaction functions and `LifecycleIntent` above are new. Existing lifecycle/loop/production functions retain positional parameters and add only keyword-only transaction inputs. CLI JSON keeps existing compatibility keys and adds `transaction` where needed.
+- **API contract mapping:** No HTTP API. The four Python transaction functions, `LifecycleIntent`, `PlannedTarget`, and `LifecycleTransactionPlan` above are new. Existing lifecycle/loop/production functions retain positional parameters and add only keyword-only transaction inputs. CLI JSON keeps existing compatibility keys and adds `transaction` where needed.
 - **Test strategy:** Pure contract tests prove hashes, target order, action mapping, conditional targets, and deterministic IDs. Integration tests prove nested paths, zero-write denial, projected validation, expected-hash conflicts, idempotency, production-version uniqueness, exact rollback, and recovery at each persisted phase.
 - **Storybook required states:** Not applicable; no frontend component changes.
 - **MSW fixture baseline:** Not applicable; no browser or API-backed UI.
@@ -157,20 +198,19 @@ def derive_idempotency_key(project_context, intent):
 - [ ] **Step 4: Implement stable plan/result envelopes.** Reject unknown keys in persisted journal/result records, use the exact schemas in this plan, and expose logical paths plus hashes only.
 - [ ] **Step 5: Run GREEN and commit.** Run the contract slice, then commit `feat(103): define lifecycle transaction contract`.
 
-### Task A2: Pure target renderers and complete projected-state validation
+### Task A2: Read-only lifecycle transaction planner
 
 **Files:**
 - Modify: `scripts/project_lifecycle_transaction.py`, `tests/test_project_lifecycle_transaction.py`
 - Modify: `scripts/project_lifecycle.py`, `tests/test_project_lifecycle.py`
 - Modify: `scripts/project_loop.py`, `tests/test_project_loop.py`
-- Modify: `scripts/validate_project_artifacts.py`, `tests/test_validation_distribution.py`
 
 **Interfaces:**
 - Consumes: Task A1 intent/identity contract and canonical roles from the resolved context.
-- Produces: `plan_lifecycle_transaction()`, target renderers, deterministic target ordering, and `validate_projected_transaction()`.
+- Produces: immutable `PlannedTarget`/`LifecycleTransactionPlan`, redacted `to_public_dict()`, `plan_lifecycle_transaction()`, target renderers, deterministic target ordering, and safe `LifecyclePlanError` metadata.
 
 - [ ] **Step 1: Write RED target-selection tests.** Cover owning issue, state, loop, dashboard, evidence; optional `workspace/issue-index.json`; roadmap only with `roadmap_change`; Production Record only with `production_change`; and absent optional files staying absent.
-- [ ] **Step 2: Add nested/decoy tests.** Configure all Issue 109 roles below `product/*`, poison default folders, and assert every target remains inside the canonical root with no default-path reads.
+- [ ] **Step 2: Define the immutable plan boundary.** Add frozen `PlannedTarget` and `LifecycleTransactionPlan` values, recursively detach/freeze the bound project context, hide private bytes from representations, and delegate `to_public_dict()` to `serialize_transaction_plan()`.
 - [ ] **Step 3: Extract pure renderers.** Add `render_issue_transition()`, `render_state_projection()`, `render_dashboard_projection()`, `render_loop_projection()`, `render_issue_index()`, and `render_roadmap_projection()`; the last renderer owns only this bounded block:
 
 ```markdown
@@ -180,9 +220,26 @@ def derive_idempotency_key(project_context, intent):
 ```
 
 - [ ] **Step 4: Build immutable planned targets.** Read each potential target once, record exact original bytes privately in memory, render proposed bytes, and sort roles as `issue`, `state`, `loop`, `dashboard`, `issue-index`, `roadmap`, `production-record`, `evidence`.
-- [ ] **Step 5: Implement private projected-root validation.** After authorization, create a mode-`0700` validation root inside the transaction staging directory, copy canonical artifact roles without following symlinks, overlay proposed bytes, then call `validate_project_artifacts.validate_project()` plus lifecycle and production validators against that root.
-- [ ] **Step 6: Prove validation-before-replace.** Inject malformed projected issue/state/production bytes and assert validation fails with zero canonical replacement calls.
-- [ ] **Step 7: Run GREEN and commit.** Run transaction, lifecycle, loop, and validation-distribution focused suites; commit `feat(103): plan and validate projected lifecycle state`.
+- [ ] **Step 5: Prove canonical-path and no-write behavior.** Configure all Issue 109 roles below `product/*`, poison default folders, assert every selected source is read at most once, and prove planning does not create directories, temporary files, writes, replacements, Git, subprocess, or network calls.
+- [ ] **Step 6: Enforce safe planner failures.** Reject invalid context, missing/unreadable/non-regular/symlink targets, path escape, and invalid renderer output with the stable codes `PLAN_CONTEXT_INVALID`, `PLAN_TARGET_MISSING`, `PLAN_TARGET_UNREADABLE`, `PLAN_TARGET_NOT_REGULAR`, `PLAN_TARGET_SYMLINK`, `PLAN_PATH_ESCAPE`, and `PLAN_RENDER_INVALID` without absolute temporary paths or artifact payloads.
+- [ ] **Step 7: Run GREEN and commit.** Run transaction, lifecycle, loop, and nested-context focused suites; commit `feat(103): plan lifecycle transactions`.
+
+### Task A3: Private projected-state validation
+
+**Files:**
+- Modify: `scripts/project_lifecycle_transaction.py`, `tests/test_project_lifecycle_transaction.py`
+- Modify: `scripts/validate_project_artifacts.py`, `tests/test_validation_distribution.py`
+
+**Interfaces:**
+- Consumes: Task A2 immutable plan with private preimages/proposed bytes and the detached resolved context.
+- Produces: `validate_projected_transaction(plan: LifecycleTransactionPlan) -> dict` without canonical replacement.
+
+- [ ] **Step 1: Write RED projected-validation tests.** Inject malformed projected issue/state/production bytes and assert validation reports stable rule/error IDs with zero canonical replacement calls.
+- [ ] **Step 2: Prove denial before side effects.** Substitute archived/read-only/malformed detached contexts and assert zero calls to mkdir, tempfile, staging, replacement, Git, subprocess, or network boundaries.
+- [ ] **Step 3: Materialize the private projected root.** After Issue 110 `write` authorization, create a mode-`0700` validation root inside transaction-private staging, copy canonical artifact roles without following symlinks, and overlay only `PlannedTarget._after_bytes`.
+- [ ] **Step 4: Validate the projected state.** Call `validate_project_artifacts.validate_project()` plus lifecycle and Production Record validators against the projected root and return only redacted validation summaries.
+- [ ] **Step 5: Prove canonical byte stability.** Snapshot all canonical selected targets before validation and assert byte-for-byte equality plus zero canonical replacement calls after both valid and invalid projected runs.
+- [ ] **Step 6: Run GREEN and commit.** Run transaction and validation-distribution focused suites; commit `feat(103): validate projected lifecycle state`.
 
 ### Stream B — Durable Apply, Rollback, and Crash Recovery
 
@@ -210,7 +267,7 @@ def derive_idempotency_key(project_context, intent):
 - Modify: `tests/test_project_lifecycle_transaction.py`
 
 **Interfaces:**
-- Consumes: Tasks A2/B1 plan, staging, lock, and journal primitives.
+- Consumes: Tasks A2/A3/B1 plan, projected-validation, staging, lock, and journal primitives.
 - Produces: `apply_lifecycle_transaction()` and `recover_incomplete_transaction()` with all six terminal statuses.
 
 - [ ] **Step 1: Write RED failure-matrix tests.** Parameterize every journal boundary and every target index; before first replacement expect unchanged bytes, after replacement expect verified reverse-order restoration, and an injected restore failure must retain payloads and return `recovery_required`.
@@ -234,11 +291,19 @@ def derive_idempotency_key(project_context, intent):
 - Consumes: Task B2 apply/recovery boundary.
 - Produces: transaction-backed `transition_lifecycle()`, compatibility `sync_lifecycle()`, transaction-backed `write_loop_state()`, and CLI transition/recovery JSON.
 
-- [ ] **Step 1: Write RED public-boundary tests.** Verify `start`, `update`, `pause`, `resume`, `complete`, and `reconcile`; exact legacy compatibility keys; optional index behavior; conditional roadmap block behavior; and zero direct public writes.
-- [ ] **Step 2: Add CLI contract tests.** Cover `--transition`, `--issue-id`, `--target-status`, `--actor`, `--source-event`, `--idempotency-key`, `--expected-issue-sha256`, `--priority`, and `--recover`; invalid combinations exit `2` without writes.
-- [ ] **Step 3: Convert direct writers to renderers/internal helpers.** `sync_lifecycle()` creates a `reconcile` intent; `write_loop_state()` creates an `update` intent; only the transaction persistence layer calls canonical replace.
-- [ ] **Step 4: Preserve phase/routing behavior.** After projected issue bytes are applied, compute state/dashboard/loop next command from the projected shared issue evaluation, never from independently supplied derived values.
-- [ ] **Step 5: Run GREEN and commit.** Run lifecycle, loop, issue-schema, and transaction suites; commit `feat(103): transact lifecycle state projections`.
+**Execution slices (updated 2026-09-02):**
+
+- [x] **C1a — transition/recovery adapter and CLI.** Added the public lifecycle adapter and strict CLI dispatch in `e8530cd` and `5001ada`.
+- [x] **C1b — compatibility sync/reconcile adapter.** Replaced `sync_lifecycle()` direct state/dashboard writes with one `reconcile` intent, derived lifecycle projections from one shared projected issue evaluation, and preserved legacy result keys with additive transaction evidence in `7b53a00`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c1b-sync-reconcile-adapter.md`.
+- [x] **C1c — loop mutation adapter.** Replaced the remaining public loop-state writer with the transaction boundary and closed the C1 direct-write bypass inventory in `a770e75`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c1c-loop-mutation-adapter.md`.
+- [x] **C1d — projected transition/update routing.** Generalized the shared projected issue evaluation to transition and loop-update intents while retaining no-follow guarantees for canonical targets in `8ada787`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c1d-projected-transition-routing.md`.
+- [x] **C1e — public priority/roadmap CLI connection.** Added the missing canonical C1 `--priority` transition option and routed it to the existing conditional `roadmap_change` target in `c71a543`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c1e-priority-roadmap-cli.md`.
+
+- [x] **Step 1: Write RED public-boundary tests.** Verify `start`, `update`, `pause`, `resume`, `complete`, and `reconcile`; exact legacy compatibility keys; optional index behavior; conditional roadmap block behavior; and zero direct public writes.
+- [x] **Step 2: Add CLI contract tests.** Cover `--transition`, `--issue-id`, `--target-status`, `--actor`, `--source-event`, `--idempotency-key`, `--expected-issue-sha256`, `--priority`, and `--recover`; invalid combinations exit `2` without writes.
+- [x] **Step 3: Convert direct writers to renderers/internal helpers.** `sync_lifecycle()` creates a `reconcile` intent; `write_loop_state()` creates an `update` intent; only the transaction persistence layer calls canonical replace.
+- [x] **Step 4: Preserve phase/routing behavior.** After projected issue bytes are applied, compute state/dashboard/loop next command from the projected shared issue evaluation, never from independently supplied derived values.
+- [x] **Step 5: Run GREEN and commit.** Lifecycle, loop, issue-schema, and transaction suites passed across C1a–C1e; final public priority connection committed as `c71a543`.
 
 ### Task C2: Route versioned Production Record mutation through the transaction
 
@@ -250,12 +315,20 @@ def derive_idempotency_key(project_context, intent):
 - Consumes: Task C1 public adapter pattern and Task B2 transaction engine.
 - Produces: optional `version` parsing, `create_production_version()`, and transaction-backed `create_production_record()` compatibility.
 
-- [ ] **Step 1: Write RED version tests.** Existing unversioned records remain valid; new records include an explicit version; duplicate `(issue_id, type, channel, variant, version)` intents return `noop`; same version with different bytes returns conflict.
-- [ ] **Step 2: Add failure and nested-path tests.** Inject failure at every target position and prove no duplicate record survives; nested production roots receive the only write and poisoned defaults remain byte-identical.
-- [ ] **Step 3: Extend parsing/rendering additively.** `parse_production_record()` returns `version` as an empty string for legacy records; new transaction-backed creation requires a non-empty normalized version and writes it to frontmatter.
-- [ ] **Step 4: Route creation through one intent.** `create_production_record(..., version="1")` builds `production-version`; the transaction includes the owning issue/projections/evidence even when their proposed bytes are unchanged.
-- [ ] **Step 5: Recheck uniqueness under lock.** Re-scan the production target set after lock acquisition; distinguish identical semantic retry (`noop`) from conflicting content/version reuse (`conflict`).
-- [ ] **Step 6: Run GREEN and commit.** Run production and transaction suites; commit `feat(103): transact production record versions`.
+**Execution slices (updated 2026-09-01):**
+
+- [x] **C2a — backward-compatible version metadata.** Added legacy-safe parsing and opt-in pure rendering of Production Record versions in `3361e33`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c2a-production-version-metadata.md`.
+- [x] **C2b — semantic uniqueness and locked recheck.** Reject duplicate or conflicting `(issue_id, deliverable_type, channel, variant, version)` records during projected planning and recheck under the transaction lock.
+  - [x] **C2b1 — projected version validation.** Added legacy-safe semantic-version uniqueness to canonical/projected Production Record validation in `93f6d80`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c2b1-production-version-validation.md`.
+  - [x] **C2b2 — same-lock semantic recheck.** Reclassified absent/identical/conflicting production versions after acquiring the transaction lock and before journal/staging/replacement in `99c050b`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c2b2-locked-production-version-recheck.md`.
+- [x] **C2c — public production adapter and CLI.** Routed explicit-version creation through `production-version`, preserved compatibility result keys with additive transaction evidence, and removed the direct canonical writer in `ec0ed17`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-c2c-public-production-adapter.md`.
+
+- [x] **Step 1: Write RED version tests.** Existing unversioned records remain valid; new records include an explicit version; duplicate `(issue_id, type, channel, variant, version)` intents return `noop`; same version with different bytes returns conflict.
+- [x] **Step 2: Add failure and nested-path tests.** Failure coverage proves no duplicate record survives; nested production roots receive the only write and poisoned defaults remain byte-identical.
+- [x] **Step 3: Extend parsing/rendering additively.** `parse_production_record()` returns `version` as an empty string for legacy records; new transaction-backed creation requires a non-empty semantic version and writes it to frontmatter.
+- [x] **Step 4: Route creation through one intent.** `create_production_record(..., version="1.2.3")` builds `production-version`; the transaction includes the owning issue/projections/evidence even when their proposed bytes are unchanged.
+- [x] **Step 5: Recheck uniqueness under lock.** Re-scan the production target set after lock acquisition; distinguish identical semantic retry (`noop`) from conflicting content/version reuse (`conflict`).
+- [x] **Step 6: Run GREEN and commit.** Production, transaction, lifecycle, and loop suites passed; committed `ec0ed17` (`feat(103): transact production record creation`).
 
 ### Stream D — Recovery Diagnostics, Audit, and Completion
 
@@ -272,13 +345,19 @@ def derive_idempotency_key(project_context, intent):
 - Consumes: all transaction persistence and public adapters.
 - Produces: read-only recovery diagnostics, exact recovery command, complete mutation inventory, distribution presence, and release gates.
 
-- [ ] **Step 1: Write RED Doctor tests.** A prepared/applying/recovery-required journal reports transaction ID, phase, affected logical roles, safe hashes, and `python3 scripts/project_lifecycle.py <root> --recover <id>` without reading payload bytes; healthy/complete journals are silent.
-- [ ] **Step 2: Write RED audit tests.** Legacy public lifecycle/loop/production canonical writes fail classification; only transaction persistence may own target replacement/journal/temp writes, while renderer helpers are pure.
-- [ ] **Step 3: Implement read-only Doctor inspection.** Diagnostic reads work for archived/read-only projects and never acquire a lock or modify recovery state.
-- [ ] **Step 4: Update operation inventory.** Classify the transaction apply/recover owners with operation `write`, remove obsolete direct-writer ownership, and require zero unclassified/unguarded/stale/duplicate/configuration errors.
-- [ ] **Step 5: Add distribution/release gates.** Require the new module, fixture, test, docs, and focused suite; keep release discovery non-recursive.
-- [ ] **Step 6: Document guarantees and recovery.** State local-only atomicity, denial order, journal privacy, terminal statuses, Doctor remediation, and remote-after-local sequencing.
-- [ ] **Step 7: Run GREEN and commit.** Run Doctor, audit, validation-distribution, and release-focused suites; commit `test(103): gate lifecycle transaction recovery`.
+**Execution slices (updated 2026-09-01):**
+
+- [x] **D1a — read-only Doctor recovery diagnostics.** Added strict journal-control inspection in `4feb071` and Doctor reporting/exit semantics in `7607e7d`. Detailed plan: `docs/superpowers/plans/2026-09-01-issue-103-d1a-doctor-recovery-diagnostics.md`.
+- [x] **D1b — mutator-bypass audit.** Added exact cross-module transaction persistence ownership and delegated write-guard dominance checks in `294487a`; all 93 mutation findings are classified with zero audit gaps, and legacy lifecycle/loop/production adapters own no direct writes. Detailed plan: `docs/superpowers/plans/2026-09-02-issue-103-d1b-mutator-bypass-audit.md`.
+- [x] **D1c — distribution, release, and architecture gates.** Registered transaction runtime/source assets and six focused release suites in `99e0605`; documented local project-filesystem atomicity, recovery, and remote-after-local sequencing. Detailed plan: `docs/superpowers/plans/2026-09-02-issue-103-d1c-distribution-release-guarantees.md`.
+
+- [x] **Step 1: Write RED Doctor tests.** A prepared/applying/recovery-required journal reports transaction ID, phase, affected logical roles, safe hashes, and `python3 scripts/project_lifecycle.py <root> --recover <id>` without reading payload bytes; healthy/complete journals are silent.
+- [x] **Step 2: Write RED audit tests.** Legacy public lifecycle/loop/production canonical writes fail classification; only transaction persistence may own target replacement/journal/temp writes, while renderer helpers are pure.
+- [x] **Step 3: Implement read-only Doctor inspection.** Diagnostic reads work for archived/read-only projects and never acquire a lock or modify recovery state.
+- [x] **Step 4: Update operation inventory.** Classified 32 actual transaction mutation functions under qualified apply/recover owners, removed three obsolete adapter owners, distinguished composed read-only descriptor flags, and reached zero unclassified/unguarded/stale/duplicate/configuration errors.
+- [x] **Step 5: Add distribution/release gates.** Required the transaction modules, public adapters, fixture, and seven source suites; registered six focused release modules while keeping validation-distribution non-recursive.
+- [x] **Step 6: Document guarantees and recovery.** Documented local project-filesystem atomicity, denial order, same-filesystem journal privacy, six terminal statuses, exact Doctor remediation, and remote-after-local sequencing.
+- [x] **Step 7: Run GREEN and commit.** The D1c registration/docs contracts plus Doctor, lifecycle, transaction, storage, loop, and production suites passed 313 tests; operation audit remained 93/93 zero-gap and canonical-path guard 24/24 clean.
 
 ### Task D2: Full verification, review evidence, and PR publication
 
@@ -292,19 +371,20 @@ def derive_idempotency_key(project_context, intent):
 - Consumes: Tasks A1–D1 and every acceptance criterion.
 - Produces: review-ready evidence and one non-draft PR; no merge or plugin release without a new explicit human decision.
 
-- [ ] **Step 1: Run focused suites.** Run transaction, lifecycle, loop, production, Doctor, audit, issue-schema, and validation-distribution suites; fix failures only through a new RED/GREEN cycle.
-- [ ] **Step 2: Run full local gates.** Run `python3 -m unittest discover -s tests -v`, project artifact validation, Issue 103 spec consistency, lifecycle drift, operation audit, and `git diff --check`.
-- [ ] **Step 3: Generate review handoff.** Run `python3 scripts/project_execution.py . --issue-id 103-atomic-lifecycle-state-transaction --review-handoff --write` and regenerate dashboard plus Issue 103 drill-down.
-- [ ] **Step 4: Review every acceptance criterion.** Record implementation, QA, PM/spec, security/privacy, crash recovery, and Constitution v1.0 findings; fix every P0/P1/P2 defect before proceeding.
-- [ ] **Step 5: Run fresh release validation.** Require `valid: true`, empty errors, complete operation audit, passing version gate, and all focused tests.
-- [ ] **Step 6: Publish only after evidence is committed.** Update lifecycle artifacts, commit review evidence, run Git/GitHub preflights, push, and open one non-draft PR against `main`; merge remains separately human-gated.
+- [x] **Step 1: Run focused suites.** Run transaction, lifecycle, loop, production, Doctor, audit, issue-schema, and validation-distribution suites; fix failures only through a new RED/GREEN cycle.
+- [x] **Step 2: Run full local gates.** Run `python3 -m unittest discover -s tests -v`, project artifact validation, Issue 103 spec consistency, lifecycle drift, operation audit, and `git diff --check`.
+- [x] **Step 3: Generate review handoff.** Run `python3 scripts/project_execution.py . --issue-id 103-atomic-lifecycle-state-transaction --review-handoff --write` and regenerate dashboard plus Issue 103 drill-down.
+- [x] **Step 4: Review every acceptance criterion.** Record implementation, QA, PM/spec, security/privacy, crash recovery, and Constitution v1.0 findings; fix every P0/P1/P2 defect before proceeding.
+- [x] **Step 5: Run fresh release validation.** Require `valid: true`, empty errors, complete operation audit, passing version gate, and all focused tests.
+- [x] **Step 6: Publish only after evidence is committed.** Updated lifecycle artifacts, committed review evidence, ran Git/GitHub preflights, pushed, and opened non-draft PR #44 against `main`; merge remains separately human-gated.
 
 ## Execution Order and Rollback
 
 ```mermaid
 flowchart LR
-    A1[Contract + identity] --> A2[Plan + projected validation]
-    A2 --> B1[Lock + journal]
+    A1[Contract + identity] --> A2[Read-only plan]
+    A2 --> A3[Projected validation]
+    A3 --> B1[Lock + journal]
     B1 --> B2[Apply + recovery]
     B2 --> C1[Lifecycle adapters]
     B2 --> C2[Production versions]
@@ -319,10 +399,10 @@ flowchart LR
 
 ## Self-Review
 
-- **Spec coverage:** All eleven acceptance criteria map to A2 (targets/projected state), B1/B2 (journal/failure/recovery/conflict), C1 (lifecycle/roadmap/index), C2 (production idempotency), or D1/D2 (bypass/release evidence).
+- **Spec coverage:** All eleven acceptance criteria map to A2 (targets and immutable planning), A3 (projected state), B1/B2 (journal/failure/recovery/conflict), C1 (lifecycle/roadmap/index), C2 (production idempotency), or D1/D2 (bypass/release evidence).
 - **Placeholder scan:** The plan contains no deferred implementation marker; every task names exact files, interfaces, commands, expected RED/GREEN behavior, and commit boundary.
 - **Type consistency:** All later tasks consume the same `LifecycleIntent`, transaction plan/result schemas, six terminal statuses, and four public function names defined above.
 
 ## Next Command
 
-`product:review 103-atomic-lifecycle-state-transaction` for plan PR #43; then `product:execute 103-atomic-lifecycle-state-transaction` after explicit execution approval.
+`product:review 103-atomic-lifecycle-state-transaction` — inspect non-draft PR #44 and its status checks; merge remains separately human-gated.

@@ -6,8 +6,8 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-103-atomic-lifecycle-state-transaction.html`
-- PR/로컬 마커: `https://github.com/dongwonlee222/moduflow/pull/43`
-- 브랜치: `codex/103-atomic-lifecycle-state-transaction-plan`
+- PR: `https://github.com/dongwonlee222/moduflow/pull/44` (비초안)
+- 브랜치: `codex/103-atomic-lifecycle-state-transaction`
 - 리뷰어: `Dongwon Lee`
 
 ## 이슈 요약
@@ -37,14 +37,17 @@
 
 ## 검증 요약
 
-- Issue 110 PR #42 GitHub CI passed and merged as `5f173f4`.
-- Merge commit `5f173f4` source release check: `valid: true`, `errors: []`.
-- Issue 103 spec consistency: 0 errors, 0 warnings, 0 info; 11/11 acceptance criteria covered.
-- Implementation readiness: `ready`; API, tests, frontend N/A declarations, permission model, and release/rollback contracts passed 7/7.
-- Project artifact validation: `valid: true`, `errors: []`.
+- Focused D2 suite before full discovery: 495 tests passed.
+- Post-fix RED/GREEN: final transaction/lifecycle/loop/Stop-hook/migration set — 252 tests passed.
+- Final full discovery after all D2 fixes: 1,571 tests passed in 462.485s, 0 failures.
+- Project artifacts: `valid: true`, `errors: []`.
+- Spec consistency: 11/11 covered, no findings.
 - Lifecycle drift: `[]`.
-- Plan-branch source release check: `valid: true`, `errors: []`; tests, operation audit, and version gate passed.
-- Diff hygiene: `git diff --check` clean.
+- Operation audit: 93/93 classified, zero gaps.
+- Fresh source release check: `valid: true`, `errors: []`; all 12 release checks passed.
+- `git diff --check`: clean.
+- Dashboard: `memory/dashboard.html`.
+- Issue drill-down: `memory/issue-103-atomic-lifecycle-state-transaction.html`.
 
 ## no-issue 선언 (issue 075)
 
@@ -81,5 +84,6 @@
 
 ## 다음 액션
 
-- 승인 가능하면 PR에서 approve 또는 로컬에 승인 기록을 남깁니다.
-- 보류하면 `product:review 103-atomic-lifecycle-state-transaction`로 되돌려 수정합니다.
+- 2026-09-02 Dongwon Lee가 대화에서 병합·검증·플러그인 업데이트 절차의 진행을 승인했습니다. 승인 범위와 검토 자료는 `release.md`에 기록했습니다. 위 수동 체크리스트를 실제 확인한 것으로 대신 표시하지 않습니다.
+- Linux CI에서 1,571개 테스트, 패키지 검사, release check가 통과했습니다. 초기 inode 재사용 테스트 오류는 런타임 코드 변경 없이 수정했습니다.
+- 103 병합은 진행하되, 설치본 검증·출처 표시를 다루는 Issue 111 완료 전에는 기존 로드맵에 따라 배포를 보류합니다. 설치된 Codex·Claude 플러그인은 아직 업데이트하지 않습니다.

@@ -20,6 +20,7 @@ Validate setup.
 9. Render the versioned `repository_identity` result as expected identity, observed identity, lifecycle, capabilities, reason codes, and exact remediation. Doctor is report-only even on mismatch.
 10. For approval-sensitive hosts, call `inspect_project(path, include_preflight=False)` or `scripts/project_doctor.py <project-path> --no-preflight` first, then run full preflight only when Git/GitHub sync state is needed. The result explicitly lists `repository_identity` as skipped.
 11. Render project operation policy independently from resolution: raw `policy_inputs`, normalized `project_status` / `policy_trust_scope`, all four `capabilities`, and each `capability_reasons` entry. Doctor remains a diagnostic read even when mutation is denied.
+12. Render `recovery` as `healthy`, `incomplete`, or `unsafe`. Doctor reads journal control metadata only; it never performs recovery.
 
 ## Korean Output
 
@@ -72,11 +73,20 @@ An archived, read-only, or unknown-policy project may still be inspected. Do not
 
 Git and GitHub CLI checks are preflight checks. They are skipped in local-only mode so routine doctor/status rendering can avoid approval popups.
 
+## Transaction Recovery
+
+- `healthy`: no valid incomplete transaction journal is present; emit no recovery action.
+- `incomplete`: show each exact transaction ID, journal phase, affected logical role/path, and expected/proposed hash. Show the shell-safe `python3 scripts/project_lifecycle.py <project-root> --recover <transaction-id>` command, but do not run it.
+- `unsafe`: discovery or strict control-journal parsing failed. Fail closed, show the stable error code, and do not guess a transaction ID or recovery command.
+
+Doctor never acquires a lifecycle lock, reads preimage or staged payload bodies, changes a journal, or removes a recovery workspace. Archived/read-only projects remain diagnosable because inspection requires only `read`; the separately invoked recovery command remains subject to the project `write` gate.
+
 ## Next
 
 - `product:start` if project is not initialized
 - `product:migrate` if existing artifact folders should be mapped first
 - `product:status` if healthy
+- Review and explicitly run the reported `project_lifecycle.py --recover` command if recovery is incomplete
 
 ## Hook Health (issue 072)
 

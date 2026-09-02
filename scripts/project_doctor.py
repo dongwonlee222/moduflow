@@ -2,6 +2,7 @@
 import argparse
 import importlib.util
 import json
+import shlex
 import shutil
 import subprocess
 from datetime import datetime, timedelta, timezone
@@ -99,6 +100,17 @@ def load_project_memory():
 def load_project_lifecycle():
     path = Path(__file__).resolve().parent / "project_lifecycle.py"
     spec = importlib.util.spec_from_file_location("project_lifecycle", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_lifecycle_transaction():
+    path = Path(__file__).resolve().parent / "project_lifecycle_transaction.py"
+    spec = importlib.util.spec_from_file_location(
+        "project_lifecycle_transaction_doctor",
+        path,
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -489,6 +501,20 @@ def inspect_project(path, include_preflight=True, *, project_context=None):
     context = project_context or project_registry.project_context_for_root(
         project_root
     )
+    try:
+        recovery_diagnostics = (
+            load_lifecycle_transaction().inspect_recovery_transactions(
+                project_root,
+                project_context=context,
+            )
+        )
+    except Exception:
+        recovery_diagnostics = {
+            "schema": "moduflow.lifecycle-recovery-diagnostics.v1",
+            "status": "unsafe",
+            "error_code": "RECOVERY_DIAGNOSTICS_UNAVAILABLE",
+            "transactions": [],
+        }
     missing = missing_project_paths(project_root, project_context=context)
     missing_profile = missing_profile_paths(project_root)
     missing_knowledge = missing_knowledge_paths(
@@ -612,6 +638,7 @@ def inspect_project(path, include_preflight=True, *, project_context=None):
         "hooks": {
             "warnings": hook_log_warnings,
         },
+        "recovery": recovery_diagnostics,
         "recommendation": [],
     }
 
@@ -682,6 +709,25 @@ def inspect_project(path, include_preflight=True, *, project_context=None):
             "review .moduflow/logs/hooks.log for details."
         )
 
+    if recovery_diagnostics["status"] == "incomplete":
+        for record in recovery_diagnostics["transactions"]:
+            result["recommendation"].append(
+                shlex.join(
+                    [
+                        "python3",
+                        "scripts/project_lifecycle.py",
+                        str(project_root),
+                        "--recover",
+                        record["transaction_id"],
+                    ]
+                )
+            )
+    elif recovery_diagnostics["status"] == "unsafe":
+        result["recommendation"].append(
+            "Inspect .moduflow/transactions permissions and control files, "
+            "then run product:doctor again; do not guess a recovery command."
+        )
+
     result["recommendation"].extend(plugin_staleness["recommendations"])
 
     return result
@@ -709,6 +755,7 @@ def main():
             moduflow.get("initialized")
             and not moduflow.get("missing")
             and schema_gates.get("valid", False)
+            and result.get("recovery", {}).get("status") == "healthy"
         )
         else 1
     )

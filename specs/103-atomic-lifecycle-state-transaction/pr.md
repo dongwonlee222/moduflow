@@ -2,16 +2,13 @@
 
 ## Purpose
 
-Make the pull request the visible review surface instead of waiting until all local review work is finished.
-Use a Draft PR or a local PR-ready marker early, then attach review, verification, and dashboard evidence to it as work progresses.
+Publish the verified implementation as the visible human-review surface, with local review, verification, and dashboard evidence attached.
 
-## Draft PR
+## Publication
 
-- Branch: `codex/103-atomic-lifecycle-state-transaction-plan`
-- PR: `https://github.com/dongwonlee222/moduflow/pull/43`
+- Branch: `codex/103-atomic-lifecycle-state-transaction`
+- PR: `https://github.com/dongwonlee222/moduflow/pull/44` (non-draft, base `main`)
 - Reviewer: `Dongwon Lee`
-- Fallback reason: GitHub Draft PR URL is available or expected to be supplied by the workflow.
-- Preferred timing: create a Draft PR after the first meaningful commit, or record a local PR-ready marker when GitHub write access is unavailable.
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
 - Commit mode: `local-git-write`
 
@@ -19,10 +16,6 @@ Use a Draft PR or a local PR-ready marker early, then attach review, verificatio
 
 ```bash
 python3 scripts/project_pr.py . --issue-id 103-atomic-lifecycle-state-transaction --write
-```
-
-```bash
-python3 scripts/project_workflow.py . --pr-state --issue-id 103-atomic-lifecycle-state-transaction --pr "https://github.com/dongwonlee222/moduflow/pull/43" --reviewer "Dongwon Lee"
 ```
 
 - Continue review: `product:review 103-atomic-lifecycle-state-transaction`
@@ -42,14 +35,17 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 103-atomic-lifecycle
 
 ### Verification
 
-- Issue 110 PR #42 GitHub CI passed and merged as `5f173f4`.
-- Merge commit `5f173f4` source release check: `valid: true`, `errors: []`.
-- Issue 103 spec consistency: 0 errors, 0 warnings, 0 info; 11/11 acceptance criteria covered.
-- Implementation readiness: `ready`; API, tests, frontend N/A declarations, permission model, and release/rollback contracts passed 7/7.
-- Project artifact validation: `valid: true`, `errors: []`.
+- Focused D2 suite before full discovery: 495 tests passed.
+- Post-fix RED/GREEN: final transaction/lifecycle/loop/Stop-hook/migration set — 252 tests passed.
+- Final full discovery after all D2 fixes: 1,571 tests passed in 462.485s, 0 failures.
+- Fresh source release check: `valid: true`, `errors: []`; all 12 release checks passed.
+- Project artifacts: `valid: true`, `errors: []`.
+- Spec consistency: 11/11 covered, no findings.
 - Lifecycle drift: `[]`.
-- Plan-branch source release check: `valid: true`, `errors: []`; tests, operation audit, and version gate passed.
-- Diff hygiene: `git diff --check` clean.
+- Operation audit: 93/93 classified, zero gaps.
+- `git diff --check`: clean.
+- Dashboard: `memory/dashboard.html`.
+- Issue drill-down: `memory/issue-103-atomic-lifecycle-state-transaction.html`.
 
 ### Review Findings
 
@@ -90,7 +86,7 @@ python3 scripts/project_workflow.py . --pr-state --issue-id 103-atomic-lifecycle
 
 ## Source Snapshot
 
-- Issue bytes: 5488
+- Issue bytes: 5599
 - Spec bytes: 14441
-- Status bytes: 2691
-- Review bytes: 2305
+- Status bytes: 2593
+- Review bytes: 8960

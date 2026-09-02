@@ -89,6 +89,48 @@ class ValidationDistributionTests(unittest.TestCase):
             self.assertTrue(result["valid"], result["errors"])
             self.assertEqual(decoy.read_text(encoding="utf-8"), '{"schema":"broken","items":{}}\n')
 
+    def test_validate_project_evaluates_only_roles_from_supplied_nested_context(self):
+        validator = load_module("validate_project_context_roles", "scripts/validate_project_artifacts.py")
+        project_registry = load_module("project_registry_context_roles", "scripts/project_registry.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.create_minimal_project(root)
+            nested = {
+                "issues": "product/issues",
+                "specs": "product/specs",
+                "workspace": "product/workspace",
+                "knowledge": "product/knowledge",
+                "memory": "product/memory",
+                "production_records": "product/memory/production-records",
+                "playbooks": "product/playbooks",
+                "workflow": "product/workflow",
+            }
+            for role in ("issues", "specs", "workspace", "knowledge", "workflow"):
+                source = root / role
+                target = root / nested[role]
+                target.parent.mkdir(parents=True, exist_ok=True)
+                source.rename(target)
+            for role in ("memory", "production_records", "playbooks"):
+                (root / nested[role]).mkdir(parents=True, exist_ok=True)
+            context = project_registry.project_context_for_root(root)
+            context["relative_paths"] = dict(nested)
+            context["paths"] = {
+                role: str((root / relative).resolve())
+                for role, relative in nested.items()
+            }
+            poisoned = root / "issues" / "POISON.md"
+            poisoned.parent.mkdir()
+            poisoned.write_text(
+                "---\nschema_version: 9.9.9\nissue_id: POISON\n---\n"
+                "# Poison\n\n**Status: backlog**\n",
+                encoding="utf-8",
+            )
+
+            result = validator.validate_project(root, project_context=context)
+
+            self.assertTrue(result["valid"], result["errors"])
+            self.assertFalse(any("POISON" in error for error in result["errors"]))
+
     def test_validate_project_artifacts_warns_on_issue_missing_status_line(self):
         validator = load_module("validate_project_artifacts", "scripts/validate_project_artifacts.py")
         with tempfile.TemporaryDirectory() as tmp:
@@ -395,9 +437,9 @@ gate_state: passed
         original_evaluate = schema.evaluate_project
         calls = []
 
-        def counting_evaluate(root):
-            calls.append(Path(root))
-            return original_evaluate(root)
+        def counting_evaluate(root, *, project_paths=None):
+            calls.append((Path(root), project_paths))
+            return original_evaluate(root, project_paths=project_paths)
 
         schema.evaluate_project = counting_evaluate
         validator.load_project_issue_schema = lambda: schema
@@ -407,7 +449,11 @@ gate_state: passed
 
             validator.validate_project(root)
 
-        self.assertEqual(calls, [root.resolve()])
+        self.assertEqual(
+            [path for path, _project_paths in calls],
+            [root.resolve()],
+        )
+        self.assertIsNotNone(calls[0][1])
 
     def test_validate_project_preserves_context_aware_dependency_severity(self):
         validator = load_module("validate_project_dependency_severity", "scripts/validate_project_artifacts.py")
@@ -606,6 +652,86 @@ next_command: {next_command}
         self.assertIn('"project_operation_audit"', release_source)
         self.assertIn('"tests.test_project_operation"', release_source)
         self.assertIn('"tests.test_project_operation_audit"', release_source)
+
+    def test_distribution_ships_lifecycle_transaction_and_release_suites(self):
+        validator = load_module(
+            "validate_moduflow_lifecycle_transaction",
+            "scripts/validate_moduflow.py",
+        )
+        packaged = {
+            "scripts/project_doctor.py",
+            "scripts/project_lifecycle.py",
+            "scripts/project_lifecycle_transaction.py",
+            "scripts/project_lifecycle_transaction_storage.py",
+            "scripts/project_loop.py",
+            "scripts/project_production.py",
+        }
+        source_only = {
+            "tests/lifecycle_transaction_fixture.py",
+            "tests/test_project_doctor.py",
+            "tests/test_project_lifecycle.py",
+            "tests/test_project_lifecycle_transaction.py",
+            "tests/test_project_lifecycle_transaction_storage.py",
+            "tests/test_project_loop.py",
+            "tests/test_project_production.py",
+        }
+
+        self.assertTrue(packaged.issubset(set(validator.REQUIRED_FILES)))
+        self.assertTrue(source_only.issubset(set(validator.REQUIRED_FILES)))
+        self.assertTrue(source_only.issubset(set(validator.SOURCE_ONLY_REQUIRED_FILES)))
+        self.assertTrue(all((ROOT / path).is_file() for path in packaged | source_only))
+
+        release_source = (ROOT / "scripts" / "release_check.py").read_text(
+            encoding="utf-8"
+        )
+        for module in (
+            "tests.test_project_doctor",
+            "tests.test_project_lifecycle",
+            "tests.test_project_lifecycle_transaction",
+            "tests.test_project_lifecycle_transaction_storage",
+            "tests.test_project_loop",
+            "tests.test_project_production",
+        ):
+            with self.subTest(module=module):
+                self.assertIn(f'"{module}"', release_source)
+        self.assertIn("test_validation_distribution is intentionally excluded", release_source)
+        self.assertNotIn('"tests.test_validation_distribution",', release_source)
+
+    def test_lifecycle_transaction_docs_define_local_and_remote_boundaries(self):
+        architecture = (ROOT / "docs" / "architecture.md").read_text(
+            encoding="utf-8"
+        ).lower()
+        workflow = (ROOT / "docs" / "workflow.md").read_text(
+            encoding="utf-8"
+        ).lower()
+        combined = architecture + "\n" + workflow
+
+        for phrase in (
+            "local project filesystem",
+            "same filesystem",
+            "git commit",
+            "git push",
+            "github",
+            "deployment",
+            "external message",
+            "remote-after-local",
+            "only after the local result is `applied` or `noop`",
+            "python3 scripts/project_lifecycle.py <root> --recover <transaction-id>",
+            "never guess",
+            "never manually delete",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, combined)
+        for status in (
+            "applied",
+            "noop",
+            "denied",
+            "conflict",
+            "rolled_back",
+            "recovery_required",
+        ):
+            with self.subTest(status=status):
+                self.assertIn(f"`{status}`", combined)
 
     def test_issue_consumers_import_shared_schema_without_duplicate_parsers(self):
         forbidden_definitions = {

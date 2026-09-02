@@ -169,11 +169,12 @@ def normalize_loop_state(raw):
     if not isinstance(issue_ids, list) or not issue_ids:
         issue_id = raw.get("issue_id") or raw.get("active_issue_id")
         issue_ids = [issue_id] if issue_id else []
-    active_issue_id = (
-        raw.get("active_issue_id")
-        or raw.get("issue_id")
-        or (issue_ids[0] if issue_ids else None)
-    )
+    if "active_issue_id" in raw:
+        active_issue_id = raw.get("active_issue_id")
+    else:
+        active_issue_id = raw.get("issue_id") or (
+            issue_ids[0] if issue_ids else None
+        )
     status = raw.get("status") or "active"
     if status not in VALID_LOOP_STATUSES:
         status = "active"
@@ -199,6 +200,84 @@ def normalize_loop_state(raw):
         "git_binding": normalize_git_binding(raw.get("git_binding")),
         "updated_at": raw.get("updated_at") or raw.get("updated") or date.today().isoformat(),
     }
+
+
+def render_loop_projection(
+    loop_bytes,
+    *,
+    issue_id,
+    action,
+    next_command,
+    blocker,
+    changed_on,
+    phase=None,
+    target_lifecycle=None,
+):
+    """Return loop-state bytes for a lifecycle intent without filesystem writes."""
+    if not isinstance(loop_bytes, bytes):
+        raise TypeError("loop_bytes must be bytes")
+    raw = json.loads(loop_bytes.decode("utf-8")) if loop_bytes else {}
+    if not isinstance(raw, dict):
+        raise ValueError("loop projection requires a JSON object")
+    state = normalize_loop_state(raw)
+    state.update({key: value for key, value in raw.items() if key not in state})
+    keeps_active_cursor = target_lifecycle == "active" or (
+        target_lifecycle is None and action in {"start", "pause", "resume"}
+    )
+    if not keeps_active_cursor:
+        state["active_issue_id"] = None
+    else:
+        issue_ids = list(state.get("issue_ids") or [])
+        if issue_id not in issue_ids:
+            issue_ids.append(issue_id)
+        state["issue_ids"] = issue_ids
+        state["active_issue_id"] = issue_id
+    if action == "pause":
+        state["status"] = "blocked"
+        state["blocker"] = blocker or "Lifecycle transaction paused"
+    elif action == "complete":
+        state["status"] = "done"
+        state["blocker"] = None
+    elif action in {"start", "resume"}:
+        state["status"] = "active"
+        state["blocker"] = None
+    elif blocker:
+        state["blocker"] = blocker
+    state["next_command"] = next_command
+    if phase is not None:
+        state["phase"] = phase
+    state["last_action"] = action
+    state["updated_at"] = changed_on
+    return (json.dumps(state, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
+def render_loop_state_update(
+    loop_bytes,
+    state,
+    *,
+    active_issue,
+    phase,
+    next_command,
+):
+    """Return the normalized full loop state without mutating canonical files."""
+    if not isinstance(loop_bytes, bytes):
+        raise TypeError("loop_bytes must be bytes")
+    current = json.loads(loop_bytes.decode("utf-8")) if loop_bytes else {}
+    if not isinstance(current, dict):
+        raise ValueError("loop projection requires a JSON object")
+    if not isinstance(state, dict):
+        raise TypeError("loop state update requires a dictionary")
+    normalized = normalize_loop_state(state)
+    issue_ids = list(normalized.get("issue_ids") or ())
+    if active_issue and active_issue not in issue_ids:
+        issue_ids.append(active_issue)
+    normalized["issue_ids"] = issue_ids
+    normalized["active_issue_id"] = active_issue or None
+    normalized["phase"] = phase
+    normalized["next_command"] = next_command
+    return (json.dumps(normalized, ensure_ascii=False, indent=2) + "\n").encode(
+        "utf-8"
+    )
 
 
 def load_loop_state(root, *, project_context=None):
@@ -522,19 +601,66 @@ def recommend_loop(root, *, project_context=None):
     return apply_attempts_guard(state, command)
 
 
-def write_loop_state(root, state, *, project_context=None):
+def _load_lifecycle_transaction_module():
+    try:
+        import project_lifecycle_transaction
+    except ImportError:  # pragma: no cover - package import fallback
+        from scripts import project_lifecycle_transaction
+    return project_lifecycle_transaction
+
+
+def write_loop_state(
+    root,
+    state,
+    *,
+    project_context=None,
+    actor="moduflow.loop",
+    source_event="write_loop_state",
+    idempotency_key="",
+    expected_issue_sha256="",
+    clock=None,
+    fault_injector=None,
+):
     root = Path(root).resolve()
     context = project_registry.context_for_operation(
         root,
         project_context=project_context,
     )
     project_operation.require_project_capability(context, "execute")
-    path = loop_state_path(root, project_context=context)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(normalize_loop_state(state), ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
+    normalized = normalize_loop_state(state)
+    issue_id = normalized.get("active_issue_id") or next(
+        iter(normalized.get("issue_ids") or ()),
+        "",
     )
+    if not issue_id:
+        raise ValueError("Loop state transaction requires an active issue")
+    boundary = _load_lifecycle_transaction_module()
+    intent = boundary.LifecycleIntent(
+        issue_id=issue_id,
+        action="update",
+        actor=actor,
+        source_event=source_event,
+        target_lifecycle=None,
+        next_command=normalized["next_command"],
+        idempotency_key=idempotency_key,
+        expected_issue_sha256=expected_issue_sha256,
+        loop_blocker=normalized.get("blocker") or "",
+        loop_change=normalized,
+    )
+    result = boundary.apply_lifecycle_transaction(
+        root,
+        intent,
+        project_context=context,
+        clock=clock,
+        fault_injector=fault_injector,
+    )
+    if result.get("status") not in {"applied", "noop"}:
+        error_code = result.get("error_code") or result.get("status") or "unknown"
+        raise RuntimeError(
+            f"{error_code}: Loop state transaction did not commit. "
+            "Run product:doctor before retrying."
+        )
+    path = loop_state_path(root, project_context=context)
     return path
 
 

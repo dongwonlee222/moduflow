@@ -45,6 +45,11 @@ ARTIFACT_RE = re.compile(
 PLAYBOOK_UPDATE_RE = re.compile(
     r"^-\s*(?P<playbook_id>.+?)\s+(?:—|-)\s+(?P<state>\w[\w-]*)(?:\s+.*)?$"
 )
+SEMANTIC_VERSION_RE = re.compile(
+    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+    r"(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?"
+    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+)
 
 
 class UsageError(ValueError):
@@ -157,6 +162,7 @@ def parse_production_record(project_root, path):
         "title": metadata["title"],
         "path": _relative_path(project_root, path),
         "issue_id": metadata.get("issue_id", ""),
+        "version": metadata.get("version", ""),
         "source_context": metadata.get("source_context", ""),
         "deliverable_type": metadata["deliverable_type"],
         "channel": metadata["channel"],
@@ -531,17 +537,24 @@ def validate_production_project(project_root, *, project_context=None):
         except (OSError, ValueError) as exc:
             errors.append(f"{_relative_path(root, path)}: {exc}")
 
-    def duplicates(items, key):
+    def duplicates(items, key, label="production identity"):
         seen = {}
         for item in items:
             value = key(item)
             if value in seen:
-                errors.append(f"{item['path']}: duplicate production identity with {seen[value]}")
+                errors.append(
+                    f"{item['path']}: duplicate {label} with {seen[value]}"
+                )
             else:
                 seen[value] = item["path"]
 
     duplicates(records + playbooks, lambda item: (item["kind"], item["id"]))
     duplicates(records, _capture_key)
+    duplicates(
+        [record for record in records if record["version"]],
+        production_version_identity,
+        "production version identity",
+    )
     record_ids = {record["id"] for record in records}
     playbook_ids = {playbook["id"] for playbook in playbooks}
 
@@ -663,14 +676,17 @@ def _record_content(
     owner,
     variant,
     created,
+    version="",
 ):
+    normalized_version = str(version).strip()
+    version_line = f"version: {normalized_version}\n" if normalized_version else ""
     return f"""---
 schema: {RECORD_SCHEMA}
 id: {record_id}
 kind: production_record
 title: {title}
 issue_id: {issue_id}
-source_context: {source_context}
+{version_line}source_context: {source_context}
 deliverable_type: {deliverable_type}
 channel: {channel}
 audiences: {_format_list(audiences)}
@@ -735,6 +751,89 @@ def _capture_key(record):
     )
 
 
+def production_version_identity(record):
+    """Return one semantic version identity, or None for legacy records."""
+    version = str(record.get("version", "")).strip()
+    if not version:
+        return None
+    return (
+        str(record.get("issue_id", "")).strip(),
+        str(record.get("deliverable_type", "")).strip(),
+        str(record.get("channel", "")).strip(),
+        str(record.get("variant", "")).strip(),
+        version,
+    )
+
+
+def _load_lifecycle_transaction_module():
+    try:
+        import project_lifecycle_transaction
+    except ImportError:  # pragma: no cover - package import fallback
+        from scripts import project_lifecycle_transaction
+    return project_lifecycle_transaction
+
+
+def create_production_version(
+    project_root,
+    issue_id,
+    record_id,
+    content,
+    *,
+    version,
+    actor="moduflow.production",
+    source_event="production-record:create",
+    idempotency_key="",
+    expected_issue_sha256="",
+    project_context=None,
+    clock=None,
+    fault_injector=None,
+):
+    """Apply one versioned Production Record through the transaction boundary."""
+    root = Path(project_root).resolve()
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    project_operation.require_project_capability(context, "write")
+    values = {
+        "issue_id": str(issue_id or "").strip(),
+        "record_id": str(record_id or "").strip(),
+        "version": str(version or "").strip(),
+        "actor": str(actor or "").strip(),
+        "source_event": str(source_event or "").strip(),
+    }
+    if not values["issue_id"]:
+        raise ValueError("issue_id is required for Production Record creation")
+    if not SEMANTIC_VERSION_RE.fullmatch(values["version"]):
+        raise ValueError("Production Record version must be semantic")
+    if not values["record_id"] or not values["actor"] or not values["source_event"]:
+        raise ValueError("record_id, actor, and source_event are required")
+    if not isinstance(content, str) or not content:
+        raise ValueError("Production Record content is required")
+
+    boundary = _load_lifecycle_transaction_module()
+    intent = boundary.LifecycleIntent(
+        issue_id=values["issue_id"],
+        action="production-version",
+        actor=values["actor"],
+        source_event=values["source_event"],
+        idempotency_key=idempotency_key,
+        expected_issue_sha256=expected_issue_sha256,
+        production_change={
+            "version": values["version"],
+            "record_id": values["record_id"],
+            "content": content,
+        },
+    )
+    return boundary.apply_lifecycle_transaction(
+        root,
+        intent,
+        project_context=context,
+        clock=clock,
+        fault_injector=fault_injector,
+    )
+
+
 def create_production_record(
     project_root,
     *,
@@ -744,79 +843,77 @@ def create_production_record(
     audiences,
     lifecycle,
     retrieval_trigger,
+    version=None,
     issue_id="",
     source_context="",
     owner="",
     variant="",
     created=None,
+    actor="moduflow.production",
+    source_event="production-record:create",
+    idempotency_key="",
+    expected_issue_sha256="",
     project_context=None,
+    clock=None,
+    fault_injector=None,
 ):
-    if not issue_id and not source_context:
-        raise ValueError("issue_id or source_context is required")
     root = Path(project_root).resolve()
     context = project_registry.context_for_operation(
         root,
         project_context=project_context,
     )
     project_operation.require_project_capability(context, "write")
-    apply_production_plan(
-        build_production_plan(root, dry_run=False, project_context=context),
-        project_context=context,
-    )
+    issue_id = str(issue_id or "").strip()
+    normalized_version = str(version or "").strip()
+    if not issue_id:
+        raise ValueError("issue_id is required for Production Record creation")
+    if not SEMANTIC_VERSION_RE.fullmatch(normalized_version):
+        raise ValueError("Production Record version must be semantic")
     records_root = project_registry.canonical_path(context, "production_records")
     created = created or date.today().isoformat()
-    base_record_id = f"{created}-{project_memory.slugify(title)}"
-
-    def render(record_id):
-        return _record_content(
-            record_id,
-            title,
-            issue_id,
-            source_context,
-            deliverable_type,
-            channel,
-            audiences,
-            lifecycle,
-            retrieval_trigger,
-            owner,
-            variant,
-            created,
-        )
-
-    candidate = {
-        "issue_id": issue_id,
-        "source_context": source_context,
-        "deliverable_type": deliverable_type,
-        "channel": channel,
-        "variant": variant,
-        "title": title,
-    }
-    for existing in list_production_records(root, project_context=context):
-        if _capture_key(existing) == _capture_key(candidate):
-            existing_path = root / existing["path"]
-            action = (
-                "noop"
-                if existing_path.read_text(encoding="utf-8") == render(existing["id"])
-                else "update_required"
-            )
-            return {"action": action, "id": existing["id"], "path": existing["path"]}
-    record_id = base_record_id
+    record_id = f"{created}-{project_memory.slugify(title)}"
     target = records_root / f"{record_id}.md"
     relative = target.relative_to(root).as_posix()
-    if target.exists():
-        source_slug = project_memory.slugify(issue_id or source_context)
-        record_id = f"{base_record_id}-{source_slug}"
-        target = records_root / f"{record_id}.md"
-        relative = target.relative_to(root).as_posix()
-        suffix = 2
-        while target.exists():
-            record_id = f"{base_record_id}-{source_slug}-{suffix}"
-            target = records_root / f"{record_id}.md"
-            relative = target.relative_to(root).as_posix()
-            suffix += 1
-    content = render(record_id)
-    target.write_text(content, encoding="utf-8")
-    return {"action": "created", "id": record_id, "path": relative}
+    content = _record_content(
+        record_id,
+        title,
+        issue_id,
+        source_context,
+        deliverable_type,
+        channel,
+        audiences,
+        lifecycle,
+        retrieval_trigger,
+        owner,
+        variant,
+        created,
+        version=normalized_version,
+    )
+    transaction = create_production_version(
+        root,
+        issue_id,
+        record_id,
+        content,
+        version=normalized_version,
+        actor=actor,
+        source_event=source_event,
+        idempotency_key=idempotency_key,
+        expected_issue_sha256=expected_issue_sha256,
+        project_context=context,
+        clock=clock,
+        fault_injector=fault_injector,
+    )
+    action = {
+        "applied": "created",
+        "noop": "noop",
+        "conflict": "update_required",
+    }.get(transaction.get("status"), transaction.get("status", "error"))
+    return {
+        "action": action,
+        "id": record_id,
+        "path": relative,
+        "transaction": transaction,
+    }
 
 
 def _parser():
@@ -831,6 +928,7 @@ def _parser():
     operations.add_argument("--decide-playbook", choices=("approve", "reject", "defer"))
     parser.add_argument("--title")
     parser.add_argument("--issue-id", default="")
+    parser.add_argument("--version")
     parser.add_argument("--source-context", default="")
     parser.add_argument("--type", dest="deliverable_type")
     parser.add_argument("--channel")
@@ -859,6 +957,7 @@ def main(argv=None):
         elif args.new_record:
             required = {
                 "title": args.title,
+                "version": args.version,
                 "type": args.deliverable_type,
                 "channel": args.channel,
                 "audience": args.audience,
@@ -866,14 +965,15 @@ def main(argv=None):
                 "retrieval_trigger": args.retrieval_trigger,
             }
             missing = [name for name, value in required.items() if not value]
-            if not args.issue_id and not args.source_context:
-                missing.append("issue-id or --source-context")
+            if not args.issue_id:
+                missing.append("issue-id")
             if missing:
                 parser.error("--new-record requires " + ", ".join(f"--{name}" for name in missing))
             result = create_production_record(
                 args.project_root,
                 title=args.title,
                 issue_id=args.issue_id,
+                version=args.version,
                 source_context=args.source_context,
                 deliverable_type=args.deliverable_type,
                 channel=args.channel,
@@ -883,6 +983,9 @@ def main(argv=None):
                 owner=args.owner,
                 variant=args.variant,
             )
+            transaction = result.get("transaction", {})
+            if transaction.get("status") not in {"applied", "noop"}:
+                return_code = 1
         elif args.search is not None:
             result = search_production(
                 args.project_root,

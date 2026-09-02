@@ -35,6 +35,9 @@ Repository sync, review handoff, production records, and dashboard foundations a
 - `109-canonical-project-context-consumer-convergence` — P0; eliminate remaining direct project-path assumptions before Issue 103 implementation.
 - `110-project-operation-capability-enforcement` — P0; separate resolved identity from read/write/execute/publish authorization before Issue 103 implementation.
 - `111-runtime-provenance-and-validation-mode-separation` — P1; distinguish source, installed package, and target-project validation and expose active runtime provenance before the next plugin release.
+- `112-execution-planner-and-backend-boundary` — P0; plan only concrete implementation work and select one inline or Superpowers SDD execution path without building another runtime.
+- `113-review-lifecycle-and-exception-fix-approval` — P1; separate implementation, review, fixes, approval, and merge states and record user-approved exception fix rounds.
+- `114-speckit-selective-adapter-1x-compatibility` — P1; review and pin one exact Spec Kit 1.x version for the four read-only advisory functions only.
 
 ## Workstream: Safe Multi-Project Request Orchestration
 
@@ -50,6 +53,12 @@ flowchart LR
     I102 --> I109[109 Canonical consumers\nP0]
     I102 --> I110[110 Capability enforcement\nP0]
     I102 --> I111[111 Runtime diagnostics\nP1]
+    I103 --> I112[112 Execution boundary\nP0]
+    I112 --> I104
+    I103 --> I113[113 Review lifecycle\nP1]
+    I112 --> I113
+    I098[098 Selective Spec Kit adapter\ndone] --> I114[114 Spec Kit 1.x compatibility\nP1]
+    I112 --> I114
     I109 --> I103
     I110 --> I103
     I102 --> I104
@@ -82,6 +91,10 @@ flowchart LR
 - Korean multi-token production search returns explained matches and Korean-titled records receive stable meaningful IDs.
 - Only explicitly approved, redacted shared playbooks cross project boundaries.
 - Production artifacts cannot become final, approved, published, or upload-ready without required verification evidence.
+- Worker plans contain only unfinished executable tasks with concrete file/dependency boundaries; simple or shared-state work remains inline.
+- ModuFlow selects one execution path and records truthful evidence while the active host/Superpowers runtime performs actual execution.
+- Implementation completion, review findings, explicit approval, and verified merge remain distinct states.
+- Spec Kit stays optional and read-only; any 1.x refresh is exact-version/hash pinned after compatibility review.
 
 ## Constraints
 
@@ -92,13 +105,15 @@ flowchart LR
 - Existing Issues 085 and 086 are extended through follow-ups, not replaced or rewritten.
 - Registered projects only; no arbitrary sibling-project crawling or cross-project raw-record search.
 - No automatic shared-playbook promotion, approver authorization, or unverified final-state transition.
-- Issue 102 is merged and externally revalidated. Issue 103 implementation cannot begin until Issues 109 and 110 complete; Issue 111 may run in parallel but must complete before the next plugin release.
+- Issue 102 is merged and externally revalidated. Issues 109 and 110 completed before Issue 103 implementation began; Issue 111 may run in parallel but must complete before the next plugin release.
+- No second ModuFlow subagent runtime, scheduler, queue, or full Spec Kit implementation lifecycle.
+- Issue 104 consumes Issue 112's execution-routing contract; Issue 113 consumes Issues 103 and 112; Issue 114 never blocks projects that keep the approved 0.16.1 adapter disabled or pinned.
 
 ## Status
 
 - State: `active`
-- Blocker: Issues 109 and 110 must complete before Issue 103 implementation.
-- Updated: 2026-08-21
+- Blocker: none; Issue 103 implementation is in progress.
+- Updated: 2026-09-01
 
 ## History
 
@@ -107,6 +122,6 @@ flowchart LR
 
 ## Next Command
 
-`product:spec 109-canonical-project-context-consumer-convergence`
+`product:execute 103-atomic-lifecycle-state-transaction`
 
-Issue 103 specification is ready for human review now; its implementation plan follows after Issues 109 and 110 complete.
+Finish Issue 103 before starting Issue 112. Issue 111 may proceed independently but remains required before the next plugin release.

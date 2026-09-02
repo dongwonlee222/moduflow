@@ -1081,34 +1081,39 @@ def normalize_unsupported_frontmatter(
     return issue
 
 
-def parse_issue(path, project_root):
-    """Read one Markdown issue and return the normalized issue read model."""
+def parse_issue(path, project_root, *, source_text=None):
+    """Return one normalized issue, reading it only when text is not supplied."""
     path = Path(path)
     source_path = _relative_source_path(path, project_root)
-    try:
-        text = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeError) as exc:
-        issue = _base_issue(path, project_root, "")
-        issue["source_format"] = "unreadable"
-        issue["lifecycle_state"] = None
-        issue["projection_status"] = None
-        issue["readiness"] = "blocked"
-        issue["diagnostics"].append(
-            _diagnostic(
-                "ISSUE_SOURCE_UNREADABLE",
-                path.stem,
-                source_path,
-                f"Issue source could not be read as UTF-8: {exc}",
-                field="source",
-                current=type(exc).__name__,
-                expected="a readable UTF-8 issue file",
-                recommendation=(
-                    "Restore file readability and permissions, ensure the issue "
-                    "is valid UTF-8, then run product:doctor."
-                ),
+    if source_text is None:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            issue = _base_issue(path, project_root, "")
+            issue["source_format"] = "unreadable"
+            issue["lifecycle_state"] = None
+            issue["projection_status"] = None
+            issue["readiness"] = "blocked"
+            issue["diagnostics"].append(
+                _diagnostic(
+                    "ISSUE_SOURCE_UNREADABLE",
+                    path.stem,
+                    source_path,
+                    f"Issue source could not be read as UTF-8: {exc}",
+                    field="source",
+                    current=type(exc).__name__,
+                    expected="a readable UTF-8 issue file",
+                    recommendation=(
+                        "Restore file readability and permissions, ensure the issue "
+                        "is valid UTF-8, then run product:doctor."
+                    ),
+                )
             )
-        )
-        return issue
+            return issue
+    elif not isinstance(source_text, str):
+        raise TypeError("source_text must be a string")
+    else:
+        text = source_text
 
     frontmatter, body = split_frontmatter(text)
     if frontmatter is None:

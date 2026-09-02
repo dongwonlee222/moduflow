@@ -17,6 +17,7 @@ ALLOWED_CLASSIFICATIONS = frozenset(
     {
         "guarded_boundary",
         "internal_guarded_helper",
+        "transaction_persistence",
         "package_maintenance",
         "external_control",
     }
@@ -165,35 +166,81 @@ def _resolve_local_value(node, assignments, before_position, seen=None):
     return node
 
 
+def _resolve_open_flag_names(node, assignments, before_position, seen=None):
+    seen = set(seen or ())
+    if isinstance(node, ast.Name):
+        if node.id.startswith("O_") and node.id not in assignments:
+            return {node.id}
+        if node.id in seen:
+            return None
+        candidates = [
+            item
+            for item in assignments.get(node.id, ())
+            if item["position"] < before_position
+        ]
+        if len(candidates) != 1 or candidates[0]["augmented"]:
+            return None
+        assignment = candidates[0]
+        return _resolve_open_flag_names(
+            assignment["value"],
+            assignments,
+            assignment["position"],
+            seen | {node.id},
+        )
+    if isinstance(node, ast.Attribute) and node.attr.startswith("O_"):
+        return {node.attr}
+    if isinstance(node, ast.Constant) and isinstance(node.value, int):
+        return set()
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        left = _resolve_open_flag_names(
+            node.left,
+            assignments,
+            before_position,
+            seen,
+        )
+        right = _resolve_open_flag_names(
+            node.right,
+            assignments,
+            before_position,
+            seen,
+        )
+        if left is None or right is None:
+            return None
+        return left | right
+    if (
+        isinstance(node, ast.Call)
+        and _call_name(node) == "getattr"
+        and len(node.args) >= 2
+        and isinstance(node.args[1], ast.Constant)
+        and isinstance(node.args[1].value, str)
+        and node.args[1].value.startswith("O_")
+        and (
+            len(node.args) == 2
+            or (
+                isinstance(node.args[2], ast.Constant)
+                and isinstance(node.args[2].value, int)
+            )
+        )
+    ):
+        return {node.args[1].value}
+    return None
+
+
 def _open_mutation_kind(call, name, assignments):
     if name == "os.open":
         flags = _keyword_or_positional(call, "flags", 1)
         if flags is None:
             return "os.open:dynamic"
-        flags = _resolve_local_value(
+        flag_names = _resolve_open_flag_names(
             flags,
             assignments,
             _node_position(call),
         )
-        if flags is _DYNAMIC_VALUE:
+        if flag_names is None:
             return "os.open:dynamic"
-        flag_names = {
-            node.attr
-            for node in ast.walk(flags)
-            if isinstance(node, ast.Attribute)
-        }
-        flag_names.update(
-            node.id
-            for node in ast.walk(flags)
-            if isinstance(node, ast.Name) and node.id.startswith("O_")
-        )
         if flag_names & _OS_OPEN_WRITE_FLAGS:
             return "os.open:create"
-        if flag_names:
-            return ""
-        if isinstance(flags, ast.Constant) and flags.value == 0:
-            return ""
-        return "os.open:dynamic"
+        return ""
     if name != "open" and not name.endswith(".open"):
         return ""
     position = 1 if name == "open" else 0
@@ -364,14 +411,47 @@ def _dominates(guard, target, blocks, parents):
     if guard_statement is None:
         return False
     guard_block, guard_index = blocks[id(guard_statement)]
-    return any(
+    if any(
         blocks[id(statement)][0] == guard_block
         and guard_index < blocks[id(statement)][1]
         for statement in _statement_chain(target, blocks, parents)
-    )
+    ):
+        return True
+
+    current = guard_statement
+    while current is not None:
+        parent = parents.get(id(current))
+        if isinstance(parent, ast.Try) and guard_block == id(parent.body):
+            if not parent.handlers or not all(
+                _block_always_terminates(handler.body)
+                for handler in parent.handlers
+            ):
+                return False
+            try_block = blocks.get(id(parent))
+            if try_block is None:
+                return False
+            return any(
+                blocks[id(statement)][0] == try_block[0]
+                and try_block[1] < blocks[id(statement)][1]
+                for statement in _statement_chain(target, blocks, parents)
+            )
+        current = parent
+    return False
 
 
-def _function_metadata(function):
+def _block_always_terminates(statements):
+    for statement in statements:
+        if isinstance(statement, (ast.Return, ast.Raise)):
+            return True
+        if isinstance(statement, ast.If) and statement.orelse:
+            if _block_always_terminates(statement.body) and _block_always_terminates(
+                statement.orelse
+            ):
+                return True
+    return False
+
+
+def _function_metadata(function, module_aliases):
     blocks, parents = _statement_blocks(function)
     guards = []
     calls = []
@@ -383,7 +463,14 @@ def _function_metadata(function):
                 guards.append({"line": node.lineno, "operations": operations, "node": node})
             name = _call_name(node).rsplit(".", 1)[-1]
             if name:
-                calls.append({"name": name, "line": node.lineno, "node": node})
+                calls.append(
+                    {
+                        "name": name,
+                        "qualified_name": _call_name(node),
+                        "line": node.lineno,
+                        "node": node,
+                    }
+                )
         elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
             references.append({"name": node.id, "line": node.lineno, "node": node})
     mutations = _mutation_events(function)
@@ -395,7 +482,31 @@ def _function_metadata(function):
         "mutations": mutations,
         "blocks": blocks,
         "parents": parents,
+        "body_block": id(function.body),
+        "module_aliases": module_aliases,
     }
+
+
+def _script_module_path(module_name):
+    leaf = module_name.rsplit(".", 1)[-1]
+    return f"scripts/{leaf}.py"
+
+
+def _module_aliases(tree):
+    aliases = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for imported in node.names:
+                alias = imported.asname or imported.name.rsplit(".", 1)[-1]
+                aliases[alias] = _script_module_path(imported.name)
+        elif isinstance(node, ast.ImportFrom):
+            for imported in node.names:
+                alias = imported.asname or imported.name
+                if node.module == "scripts":
+                    aliases[alias] = _script_module_path(imported.name)
+                elif node.module:
+                    aliases[alias] = _script_module_path(node.module)
+    return aliases
 
 
 def _iter_functions(nodes, prefix=""):
@@ -423,8 +534,9 @@ def scan_scripts(root, *, errors=None):
         except (OSError, SyntaxError, UnicodeError) as exc:
             errors.append(f"production source scan failed for {module}: {exc}")
             continue
+        module_aliases = _module_aliases(tree)
         for function_name, node in _iter_functions(tree.body):
-            metadata = _function_metadata(node)
+            metadata = _function_metadata(node, module_aliases)
             functions[(module, function_name)] = metadata
             mutation_kinds = sorted({event["kind"] for event in metadata["mutations"]})
             if mutation_kinds:
@@ -466,9 +578,39 @@ def _entry_errors(entry, index):
         errors.append(f"{prefix}.module must be non-empty")
     if not isinstance(entry.get("function"), str) or not entry["function"].strip():
         errors.append(f"{prefix}.function must be non-empty")
-    if entry.get("scope") in {"target-project", "portfolio-control"}:
+    classification = entry.get("classification")
+    if (
+        entry.get("scope") in {"target-project", "portfolio-control"}
+        and classification != "transaction_persistence"
+    ):
         if not isinstance(entry.get("guard_owner"), str) or not entry["guard_owner"].strip():
             errors.append(f"{prefix}.guard_owner must be non-empty")
+    if classification == "transaction_persistence":
+        if entry.get("scope") != "target-project":
+            errors.append(
+                f"{prefix} transaction persistence requires target-project scope"
+            )
+        if entry.get("operation") != "write":
+            errors.append(
+                f"{prefix} transaction persistence requires write operation"
+            )
+        owners = entry.get("guard_owners")
+        if not isinstance(owners, list) or not owners:
+            errors.append(f"{prefix}.guard_owners must be a non-empty list")
+        else:
+            for owner_index, owner in enumerate(owners):
+                owner_prefix = f"{prefix}.guard_owners[{owner_index}]"
+                if not isinstance(owner, dict):
+                    errors.append(f"{owner_prefix} must be an object")
+                    continue
+                if not isinstance(owner.get("module"), str) or not owner["module"].strip():
+                    errors.append(f"{owner_prefix}.module must be non-empty")
+                if not isinstance(owner.get("function"), str) or not owner["function"].strip():
+                    errors.append(f"{owner_prefix}.function must be non-empty")
+    elif "guard_owners" in entry:
+        errors.append(
+            f"{prefix}.guard_owners is only supported for transaction persistence"
+        )
     if entry.get("scope") == "package-maintenance" and entry.get("classification") != "package_maintenance":
         errors.append(f"{prefix} package maintenance requires package_maintenance classification")
     if entry.get("scope") == "external-control" and entry.get("classification") != "external_control":
@@ -499,6 +641,139 @@ def _function_reaches(functions, module, start_name, target_name, seen=None):
         ):
             return True
     return False
+
+
+def _call_target_keys(functions, module, metadata, call):
+    targets = []
+    same_module = (module, call["name"])
+    if same_module in functions:
+        targets.append(same_module)
+
+    qualified_name = call.get("qualified_name") or ""
+    if "." in qualified_name:
+        alias, function_name = qualified_name.split(".", 1)
+        target_module = metadata.get("module_aliases", {}).get(alias)
+        cross_module = (target_module, function_name)
+        if target_module and cross_module in functions and cross_module not in targets:
+            targets.append(cross_module)
+    return targets
+
+
+def _qualified_function_reaches(functions, start_key, target_key, seen=None):
+    if start_key == target_key:
+        return True
+    seen = set(seen or ())
+    if start_key in seen:
+        return False
+    seen.add(start_key)
+    metadata = functions.get(start_key)
+    if metadata is None:
+        return False
+    module = start_key[0]
+    return any(
+        _qualified_function_reaches(functions, called_key, target_key, seen)
+        for call in metadata["calls"]
+        for called_key in _call_target_keys(functions, module, metadata, call)
+    )
+
+
+def _direct_top_level_guard_operations(metadata):
+    operations = set()
+    for guard in metadata["guards"]:
+        statement = _innermost_statement(
+            guard["node"],
+            metadata["blocks"],
+            metadata["parents"],
+        )
+        if (
+            statement is not None
+            and metadata["blocks"][id(statement)][0] == metadata["body_block"]
+        ):
+            operations.update(guard["operations"])
+    return operations
+
+
+def _transaction_owner_guard_nodes(functions, owner_key, operation):
+    owner = functions[owner_key]
+    nodes = [
+        guard["node"]
+        for guard in owner["guards"]
+        if operation in guard["operations"]
+    ]
+    for call in owner["calls"]:
+        for called_key in _call_target_keys(
+            functions,
+            owner_key[0],
+            owner,
+            call,
+        ):
+            if (
+                called_key[0] == owner_key[0]
+                and operation
+                in _direct_top_level_guard_operations(functions[called_key])
+            ):
+                nodes.append(call["node"])
+                break
+    return nodes
+
+
+def _transaction_owner_targets(functions, owner_key, target_key):
+    owner = functions[owner_key]
+    targets = []
+    for call in owner["calls"]:
+        called_keys = _call_target_keys(
+            functions,
+            owner_key[0],
+            owner,
+            call,
+        )
+        if any(
+            _qualified_function_reaches(functions, called_key, target_key)
+            for called_key in called_keys
+        ):
+            targets.append(call["node"])
+    return targets
+
+
+def _transaction_entry_unguarded(entry, functions):
+    target_key = (entry.get("module"), entry.get("function"))
+    failures = []
+    for owner_record in entry.get("guard_owners") or ():
+        if not isinstance(owner_record, dict):
+            continue
+        owner_key = (owner_record.get("module"), owner_record.get("function"))
+        owner_label = f"{owner_key[0]}:{owner_key[1]}"
+        owner = functions.get(owner_key)
+        if owner is None:
+            failures.append((owner_label, "guard owner is missing"))
+            continue
+        targets = _transaction_owner_targets(functions, owner_key, target_key)
+        if not targets:
+            failures.append((owner_label, "guard owner does not reach mutation helper"))
+            continue
+        guards = _transaction_owner_guard_nodes(
+            functions,
+            owner_key,
+            entry.get("operation"),
+        )
+        if not guards:
+            failures.append(
+                (owner_label, f"guard does not declare {entry.get('operation')} operation")
+            )
+            continue
+        for target in targets:
+            if not any(
+                _dominates(
+                    guard,
+                    target,
+                    owner["blocks"],
+                    owner["parents"],
+                )
+                for guard in guards
+            ):
+                failures.append((owner_label, "guard does not dominate mutation path"))
+                break
+    return failures
 
 
 def _guard_targets(entry, functions, owner):
@@ -610,6 +885,21 @@ def inspect_project(root=".", entries_path=None):
             continue
         function_key = (entry.get("module"), entry.get("function"))
         if function_key not in functions:
+            continue
+        if entry.get("classification") == "transaction_persistence":
+            for owner_label, reason in _transaction_entry_unguarded(
+                entry,
+                functions,
+            ):
+                unguarded.append(
+                    {
+                        "module": entry.get("module"),
+                        "function": entry.get("function"),
+                        "mode": entry.get("mode"),
+                        "guard_owner": owner_label,
+                        "reason": reason,
+                    }
+                )
             continue
         owner_key = (entry.get("module"), entry.get("guard_owner"))
         owner = functions.get(owner_key)

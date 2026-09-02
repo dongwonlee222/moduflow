@@ -34,6 +34,7 @@ WORKSPACE_FILES = {
     "roadmap.md": "# Roadmap\n\n",
     "dashboard.md": "# Dashboard\n\n",
     "goal.md": "# Goal\n\n## Objective\n\nTBD\n\n## Status\n\nactive\n\n## Next Command\n\n`product:loop`\n",
+    "transactions/.gitkeep": "",
 }
 
 

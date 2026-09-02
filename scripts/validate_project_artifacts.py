@@ -619,7 +619,10 @@ def validate_project(path, *, project_context=None):
         if "next_command" not in state:
             errors.append(".moduflow/state.json: missing next_command")
 
-    issue_evaluation = issue_schema_module.evaluate_project(root)
+    issue_evaluation = issue_schema_module.evaluate_project(
+        root,
+        project_paths=project_paths,
+    )
     issue_schema = issue_schema_summary(issue_evaluation)
     for diagnostic in issue_schema["diagnostics"]:
         rendered = format_issue_diagnostic(diagnostic)
