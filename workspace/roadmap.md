@@ -1,11 +1,112 @@
 # ModuFlow Roadmap
 
+## Product Direction and Priority Refresh — 2026-09-02
+
+- Owner / decision maker: Dongwon Lee.
+- Source: requests in the current Codex task for project home/wiki/material discovery, continuity across projects and chats, company analysis/document standards, and replaceable automation runners; followed by the request to reorder priorities.
+- Goal: `trustworthy-execution-and-project-knowledge`; phase: roadmap selection, not implementation approval.
+- This is the current execution order. It supersedes older ordering below, including the earlier instruction to start 112 immediately after 103. Issue status, declared P0/P1/P2/P3 priority, hard dependencies, and approved acceptance criteria remain unchanged.
+- No duplicate issues are created. New requirements below must be reconciled with the existing issue/spec before implementation; a roadmap entry is not proof that the feature exists.
+
+### Direction: A Small Project Control Plane
+
+ModuFlow owns project identity, discoverable context, issues, artifact/run references, decisions, verification/approval evidence, and next actions. Humans and AI use the same short project home to find selected source material. Company standards and specialist execution stay outside the core behind explicit, replaceable contracts.
+
+| Layer | Owns | Does not own |
+|---|---|---|
+| ModuFlow | Project home and indexes; issue/run/output links; policy selection; evidence, decisions and follow-up intent | A second execution engine, scheduler, document editor, analytical database, or copied raw source library |
+| Company/project profiles and skills | Versioned analysis rules, approved document templates, terminology and applicable checks | Unreviewed weakening of privacy/access constraints or implicit cross-project data sharing |
+| Specialist adapters and host | Analysis, documents, design and implementation; one selected execution path | Independent copies of ModuFlow's canonical issue/spec/plan state |
+| External automation runner | Scheduling, execution, retry and operational events through an adapter | Authority to approve results or silently change project policy |
+
+Keep Git-native records and the existing Issue DB/table/tab UI. A dashboard is a projection of those records, not another database. A new chat reads a short home, finds relevant index entries, then reads selected originals; it does not inherit another chat's hidden memory. Company data, credentials and private originals remain outside shared Git/plugin packages.
+
+### Now — Runtime Trust and the Held Release
+
+| Issue | Outcome | Reason | Confidence | Dependency / gate | Next command |
+|---|---|---|---|---|---|
+| `111-runtime-provenance-and-validation-mode-separation` | Separate source/package/project checks and identify the actually loaded package, including explicit unknowns | The source is ahead of the connected cache; implementation, installation and active-session reload must not be confused | High | No open issue dependency; existing prerequisite for next publication; spec/plan drafted, not yet approved | `product:review 111-runtime-provenance-and-validation-mode-separation` (plan review) |
+
+Issue 103 is complete and merged through PR #44; do not restart it. Source version 0.3.54 is not evidence of deployment. After 111 passes its approved acceptance criteria and normal release checks, resume the held release and verify the installed package and a fresh host session separately. Issues 090–092 and 112 are not new prerequisites for that release. Any newly observed release safety failure must be triaged rather than waived.
+
+### Next — Find, Reuse, and Continue Project Work
+
+Default implementation order is **090 → 091 → 086 → 092**. Issue 086 can be planned independently of 091, but 092 cannot be called complete before all three declared dependencies are complete. This prioritizes the user's daily retrieval/continuity problem before richer execution orchestration.
+
+| Issue | Outcome | Reason | Confidence | Dependency / gate | Next command |
+|---|---|---|---|---|---|
+| `090-project-knowledge-and-artifact-registry` | One project wiki and source-linked material catalog | All later views and run records need a durable, project-scoped place to find evidence | High | No declared blocker; reconcile added discovery/handoff requirements in its spec | `product:spec 090-project-knowledge-and-artifact-registry` |
+| `091-reproducible-analysis-runs-and-template-pack` | Reproducible run history, five existing analysis templates, and a bounded company-standard integration pilot | Makes recurring analysis traceable without moving calculation into ModuFlow | Medium for added profile/gate scope; high for existing run contract | 090; review additions without silently dropping the five accepted templates | `product:spec 091-reproducible-analysis-runs-and-template-pack` |
+| `086-project-aware-production-library-dashboard` | A consistent project selector across Issue DB, production records and playbooks | A project switch must not leave related tabs on a different project's data | High | 102 complete; refresh the existing design's registry contract before planning | `product:plan 086-project-aware-production-library-dashboard` |
+| `092-project-home-dashboard` | A compact project home for people and AI: current work, blockers, approvals, recent results and next actions | Provides the shared entry point once the underlying records are reliable | Medium until existing spec/design refresh | 086, 090 and 091; replace stale fixed counts with source-derived criteria | `product:plan 092-project-home-dashboard` after spec/design reconciliation |
+
+#### Scope Reconciliation Before Implementation
+
+- **090 — discovery and sharing:** give each item an ID, one-line description, when-to-read guidance, as-of date, state, original link and related issue. Distinguish draft/approved/superseded and public-summary/private-original. Check missing links, stale records and Git-committed accessibility; an uncommitted local file must not rescue a broken shared snapshot. Saving an output must also maintain its catalog/issue references, using existing transaction boundaries where applicable rather than assuming every new artifact is already covered by 103.
+- **091 — standards and evidence:** define an external `company → project → issue` profile reference and record the effective version/hash and rule sources. Lower levels cannot relax higher-level privacy/access constraints. Record the decision question, population/comparison, numerator/denominator, time window, maturity, applicable costs, method and checks. Require checks appropriate to exploratory, profitability or causal claims; allow explained non-applicability, never silently treat unknown costs as zero. Record actual skill/adapter versions, query/code hashes and snapshots when available, with explicit missing evidence. The proposed `company-data-analysis` skill is an external integration target, not a verified installed dependency.
+- **091 — separate states:** preserve append-oriented runs keyed by project/issue/run, with links to analysis, metrics, validation and decisions. Distinguish run completion, validation, human approval and a decision waiting for mature data. A D+30 follow-up date/condition is stored intent, not proof that any scheduler has been registered. A formal final result needs a real issue association; `unassigned` is only an exploratory holding state.
+- **Company documents:** reuse existing business-document and production-record workflows with external approved templates linked by 090. Do not turn 091 into a new document-generation framework. Sharing/promoting organization-wide rules remains bounded by 107; production final-state enforcement remains in 108.
+- **086/092 — lightweight projections:** preserve the existing Issue DB default and table/tab design. Consume registry v2/canonical project context. A hidden tab is not a privacy boundary: do not bundle private records from every project into a single portfolio HTML payload. The short machine-readable home and human view must point to the same sources, not duplicate full documents.
+
+#### Pilot and Completion Evidence
+
+- Use the 모두의충전 `data-context.md` / `data-manifest.json` pattern and reference commits `d07c468` / `1668a91` as an application example only; do not copy its data, metrics, or company calculations into the plugin.
+- Validate with two distinct projects and synthetic/non-sensitive fixtures: project switching, search and source linkage; empty projects; stale materials; missing required links; absent optional private originals; and a separate worktree reading only committed shared files.
+- Separately test a fresh AI task reading the short home and retrieving the relevant source. The reference's 20 shared files / 7 tests demonstrate file-based handoff checks, not automatic cross-chat loading.
+- Report implementation, tests, remote merge, plugin publication, installed package and actual-session application as separate evidence. Deliver this project-knowledge slice before expanding automation scope.
+
+#### Cross-Phase Simulation Contract — 2026-09-02 Addition
+
+The user explicitly requested simulations while implementing this roadmap. Each issue's plan must carry scenario inputs, expected outcomes and recorded observations; an expected result is not a passing test. Start with synthetic fixtures/fake runners, then packaged smoke, then separately authorized actual project/host use.
+
+| Owning issues | Simulation | Required boundary |
+|---|---|---|
+| 111 | Source/package/project roles; stale cache, old/new process, unknown host load, failed install | No guessed runtime identity, no real cache replacement during tests |
+| 090/086/092 | Project A→B switching, fresh-task home lookup, missing/stale/private/uncommitted links and separate worktree | No cross-project leakage; selected originals only; shared snapshot must be committed |
+| 091 | Company/project/issue profile selection, template applicability, missing validation and immature observation window | No unsupported completion/causal/profit claim; follow-up intent is not a live schedule |
+| 112/113/104/108 | Route through one execution backend; mocked specialist failure, review findings and missing approval | No second executor; implementation, review and approval remain distinct |
+| Later automation scope | Mocked trigger/retry/pause/result events before any live pilot | No real external sends, paid execution or publication without separate authorization |
+
+Issue 111 now has `specs/111-runtime-provenance-and-validation-mode-separation/plan.md` and `simulation-matrix.md`: four inline work streams, twelve offline scenarios, and two real-host observation cases. These documents are drafts for review, not implementation or simulation-success evidence.
+
+### Later — Simplify Execution, Then Expand Reuse and Automation
+
+These are queued work, not additional gates on every knowledge task. Pull a safety/compatibility fix forward only when a concrete release or pilot blocker demonstrates the need; preserve that finding and its owning issue.
+
+| Issue | Outcome / reason | Confidence | Dependency / trigger | Next command |
+|---|---|---|---|---|
+| `112-execution-planner-and-backend-boundary` | Executable tasks only; one inline or Superpowers path, removing duplicate execution responsibility | High | 103 complete; precedes expanded orchestration | `product:spec 112-execution-planner-and-backend-boundary` |
+| `105-schema-migration-and-doctor-triage` | Reversible migration and actionable Doctor output; bring forward if a real pilot cannot use its records | High | 102/103 complete | `product:spec 105-schema-migration-and-doctor-triage` |
+| `113-review-lifecycle-and-exception-fix-approval` | Separate implementation/review/fixes/approval/merge and approved extra fix rounds | High | 103 complete, 112 | `product:spec 113-review-lifecycle-and-exception-fix-approval` |
+| `104-project-aware-natural-language-request-orchestrator` | Route a request through the already proven context and execution contracts | High | 102/103 complete, 112 | `product:spec 104-project-aware-natural-language-request-orchestrator` |
+| `108-production-approval-and-verification-gates` | Evidence-backed final production approval rather than equating generated output with approval | High | 104; any analysis-specific extension needs scope review | `product:spec 108-production-approval-and-verification-gates` |
+| `106-korean-production-search-and-stable-ids` | Improve Korean retrieval and record IDs based on the pilot's actual search needs | High | No declared blocker | `product:spec 106-korean-production-search-and-stable-ids` |
+| `107-shared-approved-playbook-layer` | Promote only approved/redacted reusable company rules, not raw project records | High | 102 complete, 106 | `product:spec 107-shared-approved-playbook-layer` |
+| `114-speckit-selective-adapter-1x-compatibility` | Compatibility-tested exact-version refresh of four optional advisory functions | Medium until compatibility review | 112; no automatic upgrade or full Spec Kit lifecycle | `product:spec 114-speckit-selective-adapter-1x-compatibility` |
+| `099-vendor-and-host-sync-drift-detection` | Detect source/vendor/host drift; check overlap with 111 before implementation | Medium | Concrete drift findings; not an automatic updater | `product:spec 099-vendor-and-host-sync-drift-detection` |
+| `096-read-shaped-commands-that-write` | Remove misleading read/write behavior; re-audit overlap with 103/110 | Medium | Current mutation-surface evidence; safety findings may move it forward | `product:spec 096-read-shaped-commands-that-write` |
+| `100-residue-check-after-removal` | Find stale references after removal | High | Removal work or a demonstrated residue defect | `product:spec 100-residue-check-after-removal` |
+| `087-korean-github-pr-review-surface` | Improve Korean review readability without blocking core retrieval | High | No declared blocker | `product:spec 087-korean-github-pr-review-surface` |
+| `101-production-record-schema-friction` | Better record templates/examples/errors, not weaker schema guarantees | High | Repeated record-entry friction in the pilot | `product:spec 101-production-record-schema-friction` |
+| `094-risk-based-security-and-quality-review-gate` | Optional risk-sensitive review adapter, not mandatory review machinery for every task | Medium | 089 complete; explicit policy or observed release risk | `product:spec 094-risk-based-security-and-quality-review-gate` |
+| `082-cross-host-model-capability-routing` | Host-aware capability selection when cross-host execution is actually needed | Medium | No declared blocker; later optimization | `product:spec 082-cross-host-model-capability-routing` |
+| `083-model-routing-evaluation-harness` | Measure routing quality before widening model-policy use | Medium | 082 | `product:spec 083-model-routing-evaluation-harness` |
+| `084-worker-prompt-context-budget` | Bound worker context cost after execution boundaries stabilize | Medium | 082; no prerequisite for the project home | `product:spec 084-worker-prompt-context-budget` |
+
+**Automation direction, not a newly registered issue:** after the manual project/run pilot is stable, reconcile existing issues and define a separate bounded registration/status/approval/playbook interface. An external runner such as the previously proposed Prefect remains replaceable and owns schedules/retries. Start with the three previously proposed automations only after confirming their project owners, inputs and side-effect permissions. Do not add a ModuFlow scheduler, silently schedule follow-ups, or treat a stored schedule as a live automation. No runner installation or automation migration is authorized by this roadmap refresh.
+
+### Immediate Next Action
+
+`product:review 111-runtime-provenance-and-validation-mode-separation`
+
+Review the written spec/plan, then implement its four streams inline after approval. Do not combine 111 with the dashboard, company-profile engine, Spec Kit upgrade, or all remaining Doctor debt. See the linked simulation matrix; no tests or host observations are claimed by this planning update.
+
 ## Completion and Release Gate — 2026-09-02
 
 - `103-atomic-lifecycle-state-transaction` — implementation and D2 complete; Linux CI passed 1,571 tests plus package/release validation. Dongwon Lee authorized PR #44 merge; the PR and its merge-commit CI are authoritative integration evidence.
 - `111-runtime-provenance-and-validation-mode-separation` — still backlog and still required before the next plugin publication. The Issue 103 merge approval does not waive this release prerequisite or start Issue 111 implementation.
 - Publication record: `specs/103-atomic-lifecycle-state-transaction/release.md`. Source version `0.3.54` has not been installed through this release workflow.
-- The execution ordering for 112/105 and later issues below is unchanged. Older Issue 103 progress snapshots are historical.
+- The newer Product Direction and Priority Refresh above supersedes the execution ordering below. Older Issue 103 progress snapshots are historical.
 
 ## Priority Refresh — 2026-09-01
 
