@@ -2,8 +2,13 @@
 
 ## Purpose
 
-Make the pull request the visible review surface instead of waiting until all local review work is finished.
-Use a Draft PR or a local PR-ready marker early, then attach review, verification, and dashboard evidence to it as work progresses.
+Prevent false diagnoses of healthy installed plugins and unsupported claims that a source-code update is already active in the current chat.
+
+The confirmed Issue 102 post-release findings F-003 and F-004 identified two defects: installed packages were evaluated against source/project-only requirements, and status/Doctor lacked sufficient evidence to distinguish source, installed package and active process identity. Issue 111 fixes those diagnostic boundaries while keeping source release checks strict.
+
+User benefit: determine which target was checked and which package is executing, separate code defects from installation/runtime mismatches, and avoid unnecessary reinstallations or false deployment-completion reports. Host skill-load information remains unknown when no evidence is available.
+
+This is maintenance of the existing plugin, not a dashboard, wiki, automation engine, automatic chat reload or an actual publication/installation. PR summaries should lead with the purpose, observed problem, expected user benefit and exclusions before implementation details.
 
 ## Draft PR
 
