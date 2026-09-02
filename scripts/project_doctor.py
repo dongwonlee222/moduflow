@@ -9,9 +9,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 try:
-    from scripts import project_registry
+    from scripts import project_registry, runtime_provenance
 except ImportError:  # pragma: no cover - direct script execution fallback
     import project_registry
+    import runtime_provenance
 
 try:
     from scripts.project_repository_identity import inspect_repository_identity
@@ -338,24 +339,16 @@ def skipped_preflight_status():
 def installed_plugin_staleness(project_root, home=None):
     """Soft check: is the installed ModuFlow plugin copy behind this repo's version?"""
     home = Path(home) if home is not None else Path.home()
-    empty = {"checked": False, "stale": [], "recommendations": []}
-
-    plugin_manifest_path = Path(project_root) / ".claude-plugin" / "plugin.json"
-    try:
-        manifest = json.loads(plugin_manifest_path.read_text(encoding="utf-8"))
-    except Exception:
-        return empty
-    # Only the moduflow source repo's own version is comparable to the
-    # installed moduflow copies — any other plugin's manifest must not
-    # produce a spurious staleness warning.
-    if manifest.get("name") != "moduflow":
-        return empty
-    repo_version = manifest.get("version")
+    empty = {"checked": False, "stale": [], "recommendations": [], "inventory": [], "diagnostics": []}
+    package = runtime_provenance.inspect_package(project_root)
+    repo_version = package["package_version"]
     if not repo_version:
         return empty
+    repo_version = repo_version.split("+", 1)[0]
 
     stale = []
     recommendations = []
+    inventory, diagnostics = [], []
 
     installed_plugins_path = home / ".claude" / "plugins" / "installed_plugins.json"
     try:
@@ -364,6 +357,12 @@ def installed_plugin_staleness(project_root, home=None):
             entries = data.get("plugins", {}).get("moduflow@moduflow", [])
             for entry in entries:
                 installed_version = entry.get("version")
+                record = {"host": "claude-code", "version": installed_version,
+                          "evidence_scope": "installed_inventory", "source": "host_registration"}
+                location = entry.get("installPath")
+                if isinstance(location, str) and Path(location).is_absolute():
+                    record["package"] = runtime_provenance.inspect_package(location)
+                inventory.append(record)
                 if installed_version and installed_version != repo_version:
                     stale.append(
                         {"host": "claude-code", "installed": installed_version, "repo": repo_version}
@@ -371,13 +370,22 @@ def installed_plugin_staleness(project_root, home=None):
                     recommendations.append(
                         "claude plugin marketplace update moduflow && claude plugin update moduflow@moduflow"
                     )
-    except Exception:
-        pass
+    except (OSError, ValueError, TypeError, AttributeError) as exc:
+        diagnostics.append(f"CLAUDE_INVENTORY_INVALID: {type(exc).__name__}")
 
     codex_cache_dir = home / ".codex" / "plugins" / "cache" / "personal" / "moduflow"
     try:
         if codex_cache_dir.exists():
-            versions = [d.name for d in codex_cache_dir.iterdir() if d.is_dir()]
+            versions = []
+            for directory in sorted(codex_cache_dir.iterdir()):
+                if not directory.is_dir() or directory.name.startswith("."):
+                    continue
+                versions.append(directory.name)
+                record = {"host": "codex", "version": directory.name,
+                          "evidence_scope": "installed_inventory", "source": "cache_directory"}
+                if (directory / ".claude-plugin/plugin.json").is_file() or (directory / ".codex-plugin/plugin.json").is_file():
+                    record["package"] = runtime_provenance.inspect_package(directory)
+                inventory.append(record)
             if versions and not any(name.split("+")[0] == repo_version for name in versions):
 
                 def _numeric_base(name):
@@ -389,10 +397,11 @@ def installed_plugin_staleness(project_root, home=None):
                 newest = max(versions, key=_numeric_base)
                 stale.append({"host": "codex", "installed": newest, "repo": repo_version})
                 recommendations.append("python3 scripts/register_codex_personal_marketplace.py .")
-    except Exception:
-        pass
+    except (OSError, ValueError, TypeError, AttributeError) as exc:
+        diagnostics.append(f"CODEX_INVENTORY_INVALID: {type(exc).__name__}")
 
-    return {"checked": True, "stale": stale, "recommendations": recommendations}
+    return {"checked": True, "stale": stale, "recommendations": recommendations,
+            "inventory": inventory, "diagnostics": diagnostics}
 
 
 def check_hook_log(root):
@@ -483,8 +492,21 @@ def check_hook_log(root):
     return recent_entries[:20]
 
 
-def inspect_project(path, include_preflight=True, *, project_context=None):
+def inspect_project(path, include_preflight=True, *, project_context=None, runtime_snapshot=None):
     requested = Path(path).resolve()
+    snapshot = runtime_snapshot if runtime_snapshot is not None else runtime_provenance.capture_runtime(
+        Path(__file__).resolve().parent.parent, runtime_kind="cli_process")
+    role = runtime_provenance.inspect_validation_target(requested, requested_role="project")
+    if not role["valid"]:
+        return {"requested_path": str(requested), "project_root": str(requested),
+                "validation_role": "project", "role_source": role["role_source"],
+                "error_codes": role["error_codes"], "runtime_provenance": snapshot,
+                "moduflow": {"initialized": False, "missing": []},
+                "schema_gates": {"valid": False, "errors": role["error_codes"], "warnings": []},
+                "lifecycle": {"drift": []}, "recovery": {"status": "not_applicable", "transactions": []},
+                "installed_plugin": {"checked": False, "stale": [], "recommendations": []},
+                "preflight": {"enabled": False, "skipped": ["target_role_mismatch"]},
+                "recommendation": role["recommendation"]}
     if include_preflight:
         detected_git_root = git_root(requested)
         project_root = detected_git_root or requested
@@ -565,6 +587,10 @@ def inspect_project(path, include_preflight=True, *, project_context=None):
     mode = detect_mode(project_root)
     result = {
         "requested_path": str(requested),
+        "validation_role": "project",
+        "role_source": role["role_source"],
+        "error_codes": [],
+        "runtime_provenance": snapshot,
         "project_root": str(project_root),
         "project_context": {
             "status": context["status"],
@@ -742,7 +768,10 @@ def main():
         help="Skip Git and GitHub CLI preflight checks for local-only validation.",
     )
     args = parser.parse_args()
-    result = inspect_project(args.project_path, include_preflight=not args.no_preflight)
+    snapshot = runtime_provenance.capture_runtime(Path(__file__).resolve().parent.parent,
+        runtime_kind="cli_process", observed_at=datetime.now(timezone.utc).isoformat())
+    result = inspect_project(args.project_path, include_preflight=not args.no_preflight,
+                             runtime_snapshot=snapshot)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     moduflow = result.get("moduflow", {})
     schema_gates = result.get("schema_gates", {})

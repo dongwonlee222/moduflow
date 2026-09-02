@@ -20,6 +20,55 @@ def load_module(name, relative_path):
 mcp_server = load_module("mcp_server", "scripts/mcp_server.py")
 
 
+class RuntimeSurfaceTests(unittest.TestCase):
+    def test_status_and_doctor_keep_injected_process_identity_across_projects(self):
+        from scripts.runtime_provenance import capture_runtime
+        from tests.runtime_provenance_fixture import make_package
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package = make_package(root / "package", version="0.1.0")
+            snapshot = capture_runtime(package, runtime_kind="mcp_process", observed_at="2026-09-02T01:00:00Z")
+            make_package(package, version="0.2.0")
+            for project_name in ("A", "B"):
+                project = root / project_name
+                project.mkdir()
+                scaffold(project)
+                state_path = project / ".moduflow/state.json"
+                state = json.loads(state_path.read_text())
+                state["active_goal"] = project_name
+                state_path.write_text(json.dumps(state))
+                for name in ("moduflow_status", "moduflow_doctor"):
+                    req = {"id": 1, "method": "tools/call", "params": {"name": name}}
+                    response = mcp_server.handle_request(req, project, runtime_snapshot=snapshot)
+                    payload = json.loads(response["result"]["content"][0]["text"])
+                    self.assertEqual(payload["runtime_provenance"], snapshot)
+                    self.assertEqual(payload["runtime_provenance"]["package_version"], "0.1.0")
+                    if name == "moduflow_status":
+                        self.assertEqual(payload["active_goal"], project_name)
+            init = mcp_server.handle_request({"id": 2, "method": "initialize"}, root, runtime_snapshot=snapshot)
+            self.assertEqual(init["result"]["serverInfo"]["version"], "0.1.0")
+
+    def test_runtime_is_present_even_when_status_state_is_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            response = mcp_server.handle_request({"id": 1, "method": "tools/call",
+                "params": {"name": "moduflow_status"}}, Path(tmp))
+            payload = json.loads(response["result"]["content"][0]["text"])
+            self.assertIn("error", payload)
+            self.assertIn("runtime_provenance", payload)
+            self.assertIsNone(payload["runtime_provenance"]["loaded_at"])
+
+    def test_cache_target_rejected_before_mcp_project_resolution(self):
+        from tests.runtime_provenance_fixture import make_package, receipt_for
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_package(Path(tmp), receipt=receipt_for())
+            with mock.patch.object(mcp_server.project_registry, "project_context_for_root",
+                                   side_effect=AssertionError("cache is not a project")):
+                response = mcp_server.handle_request({"id": 1, "method": "tools/call",
+                    "params": {"name": "moduflow_doctor"}}, root)
+            payload = json.loads(response["result"]["content"][0]["text"])
+            self.assertIn("TARGET_ROLE_MISMATCH", payload["error_codes"])
+
+
 def scaffold(root):
     (root / "issues").mkdir()
     (root / "issues" / "001-alpha.md").write_text(

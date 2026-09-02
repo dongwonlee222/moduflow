@@ -3,7 +3,7 @@
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Source: `spec.md`, `plan.md`, 2026-09-02 planning and simulation request.
-Phase: approved implementation; Streams A/B complete, Stream C next.
+Phase: approved implementation; Streams A/B/C complete, Stream D next.
 Next command: `product:execute 111-runtime-provenance-and-validation-mode-separation`.
 
 This is the progress checklist for the canonical plan, not a second implementation design. Execute inline without subagents; review once per stream, not once per edit.
@@ -28,11 +28,11 @@ This is the progress checklist for the canonical plan, not a second implementati
 
 ## Stream C — Doctor, Status and Persistent MCP
 
-- [ ] RED/GREEN Doctor/MCP early target-role guard, including empty project and source dogfooding cases.
-- [ ] Add the same process-scoped runtime provenance to status/Doctor success and error responses.
-- [ ] Retain one startup snapshot per persistent MCP; distinguish old process, new process and unknown host skill loading.
-- [ ] Preserve Issue 065 soft inventory/staleness diagnostics and recommendations without claiming active runtime.
-- [ ] Verify two-project isolation, payload compatibility, command wording and focused tests; commit.
+- [x] RED/GREEN Doctor/MCP early target-role guard, including empty project and source dogfooding cases.
+- [x] Add the same process-scoped runtime provenance to status/Doctor success and error responses.
+- [x] Retain one startup snapshot per persistent MCP; distinguish old process, new process and unknown host skill loading.
+- [x] Preserve Issue 065 soft inventory/staleness diagnostics and recommendations without claiming active runtime.
+- [x] Verify two-project isolation, payload compatibility, command wording and focused tests; commit.
 
 ## Stream D — Simulations, Review and Release Evidence
 

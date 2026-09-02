@@ -124,7 +124,14 @@ def inspect_validation_target(path, *, requested_role):
     root = Path(path).resolve()
     receipt = root / RECEIPT_NAME
     packaged = receipt.exists() or receipt.is_symlink()
-    manifest = any((root / f".{host}-plugin/plugin.json").exists() for host in ("claude", "codex"))
+    manifest = False
+    for host in ("claude", "codex"):
+        candidate = root / f".{host}-plugin/plugin.json"
+        if candidate.exists() or candidate.is_symlink():
+            try:
+                manifest = manifest or _object(candidate).get("name") == "moduflow"
+            except (OSError, ValueError, UnicodeError):
+                manifest = True  # Package-looking, but not safe to treat as a project.
     git = (root / ".git").exists()
     role = requested_role
     if role == "auto":

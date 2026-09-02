@@ -13,6 +13,12 @@ Make progress visible.
 
 Sessions in a ModuFlow project now open with a SessionStart hook banner (goal, active issue, next command, unpromoted-record count) — `product:status` is no longer required just to learn where you are. Status remains the detailed view: queue, blockers, team state, retention, and sync freshness live here, not in the banner.
 
+## Runtime Evidence (issue 111)
+
+Use the `runtime_provenance` object from `moduflow_status`/`moduflow_doctor`. Without MCP, run `scripts/runtime_provenance.py` from the executing ModuFlow package, not from the target project's directory. Report package version/path, source revision/dirty state, installed-at and the observed process startup when available. Preserve null values with their reasons.
+
+Distinguish source checkout, installed inventory, current CLI/MCP process and conversational host skill loading. A CLI invocation proves only that CLI's package; a persistent MCP reports its startup snapshot even if files later change. Neither proves that Codex/Claude reloaded prompt skills. Do not select the newest cache as the active runtime and do not install/reload while displaying status.
+
 ## Do
 
 1. Run repo sync preflight. `project_sync.py` fetches remote refs itself (5s timeout, non-interactive) before comparing — no manual `git fetch` step needed:

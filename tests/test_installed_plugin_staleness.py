@@ -117,6 +117,22 @@ class InstalledPluginStalenessTests(unittest.TestCase):
         self.assertFalse(result["checked"])
         self.assertEqual(result["stale"], [])
 
+    def test_corrupt_inventory_is_a_diagnostic_not_successful_silence(self):
+        self._write_installed_plugins([])
+        (self.home / ".claude/plugins/installed_plugins.json").write_text("{invalid")
+        result = project_doctor.installed_plugin_staleness(self.project_root, home=self.home)
+        self.assertTrue(result.get("diagnostics"))
+        self.assertNotIn("runtime_provenance", result)
+
+    def test_located_packages_are_inventory_not_active_runtime(self):
+        from tests.runtime_provenance_fixture import make_package
+        path = self.home / ".codex/plugins/cache/personal/moduflow/0.3.4+codex.123"
+        make_package(path, version="0.3.4")
+        result = project_doctor.installed_plugin_staleness(self.project_root, home=self.home)
+        self.assertEqual(result["inventory"][0]["evidence_scope"], "installed_inventory")
+        self.assertEqual(result["inventory"][0]["package"]["package_version"], "0.3.4")
+        self.assertNotIn("loaded_at", result["inventory"][0])
+
 
 if __name__ == "__main__":
     unittest.main()

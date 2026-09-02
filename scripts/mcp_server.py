@@ -11,11 +11,13 @@ import os
 import re
 import sys
 from pathlib import Path
+from datetime import datetime, timezone
 
 try:
-    from scripts import project_registry
+    from scripts import project_registry, runtime_provenance
 except ImportError:  # pragma: no cover - direct script execution fallback
     import project_registry
+    import runtime_provenance
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -98,13 +100,13 @@ def _text_result(payload):
     return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)}]}
 
 
-def _server_version():
-    try:
-        plugin_json = Path(__file__).resolve().parent.parent / ".claude-plugin" / "plugin.json"
-        data = json.loads(plugin_json.read_text(encoding="utf-8"))
-        return data.get("version", "0")
-    except Exception:
-        return "0"
+def _runtime_snapshot(snapshot=None):
+    return snapshot if snapshot is not None else runtime_provenance.capture_runtime(
+        Path(__file__).resolve().parent.parent, runtime_kind="mcp_process")
+
+
+def _server_version(runtime_snapshot=None):
+    return _runtime_snapshot(runtime_snapshot).get("package_version") or "0"
 
 
 def _links_section(text):
@@ -203,14 +205,15 @@ def _rpc_result(req_id, result):
     return {"jsonrpc": "2.0", "id": req_id, "result": result}
 
 
-def _tool_moduflow_status(root, *, project_context=None):
+def _tool_moduflow_status(root, *, project_context=None, runtime_snapshot=None):
     from collections import Counter
 
     state_path = root / ".moduflow" / "state.json"
     try:
         state = json.loads(state_path.read_text(encoding="utf-8"))
     except Exception as exc:
-        return _text_result({"error": f"could not read .moduflow/state.json: {exc}"})
+        return _text_result({"error": f"could not read .moduflow/state.json: {exc}",
+                             "runtime_provenance": _runtime_snapshot(runtime_snapshot)})
 
     _evaluation, items = _evaluated_items(
         root, project_context=project_context
@@ -220,6 +223,7 @@ def _tool_moduflow_status(root, *, project_context=None):
     if "schema" in payload:
         payload["state_schema"] = payload.pop("schema")
     payload["issue_counts"] = dict(counts)
+    payload["runtime_provenance"] = _runtime_snapshot(runtime_snapshot)
     return _text_result(payload)
 
 
@@ -295,7 +299,7 @@ def _tool_moduflow_ready(root, *, project_context=None):
     return _text_result({"ready": _ready_items(evaluation)})
 
 
-def _tool_moduflow_doctor(root, *, project_context=None):
+def _tool_moduflow_doctor(root, *, project_context=None, runtime_snapshot=None):
     try:
         from scripts.project_doctor import inspect_project
 
@@ -303,6 +307,7 @@ def _tool_moduflow_doctor(root, *, project_context=None):
             root,
             include_preflight=False,
             project_context=project_context,
+            runtime_snapshot=_runtime_snapshot(runtime_snapshot),
         )
         summary = {
             "initialized": d["moduflow"]["initialized"],
@@ -311,13 +316,17 @@ def _tool_moduflow_doctor(root, *, project_context=None):
             "schema_gates_valid": d["schema_gates"]["valid"],
             "installed_plugin": d.get("installed_plugin", {}),
             "recommendation": d.get("recommendation", []),
+            "runtime_provenance": d["runtime_provenance"],
+            "validation_role": d["validation_role"],
+            "error_codes": d["error_codes"],
         }
         return _text_result(summary)
     except Exception as exc:
-        return _text_result({"error": f"doctor inspection failed: {exc}"})
+        return _text_result({"error": f"doctor inspection failed: {exc}",
+                             "runtime_provenance": _runtime_snapshot(runtime_snapshot)})
 
 
-def handle_request(req, root, *, project_context=None):
+def handle_request(req, root, *, project_context=None, runtime_snapshot=None):
     """Pure request handler: same input -> same output. Returns a response
     dict, or None for notifications (no id / notifications/* methods)."""
     method = req.get("method")
@@ -332,7 +341,7 @@ def handle_request(req, root, *, project_context=None):
         return _rpc_result(req_id, {
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "moduflow", "version": _server_version()},
+            "serverInfo": {"name": "moduflow", "version": _server_version(runtime_snapshot)},
         })
 
     if method == "ping":
@@ -342,6 +351,10 @@ def handle_request(req, root, *, project_context=None):
         return _rpc_result(req_id, {"tools": TOOLS})
 
     if method == "tools/call":
+        role = runtime_provenance.inspect_validation_target(root, requested_role="project")
+        if not role["valid"]:
+            return _rpc_result(req_id, _text_result({**role, "error": "target is not a project",
+                "runtime_provenance": _runtime_snapshot(runtime_snapshot)}))
         context = project_context or project_registry.project_context_for_root(root)
         tool_name = params.get("name")
         arguments = params.get("arguments") or {}
@@ -349,7 +362,7 @@ def handle_request(req, root, *, project_context=None):
         if tool_name == "moduflow_status":
             return _rpc_result(
                 req_id,
-                _tool_moduflow_status(root, project_context=context),
+                _tool_moduflow_status(root, project_context=context, runtime_snapshot=runtime_snapshot),
             )
         if tool_name == "moduflow_issues":
             return _rpc_result(
@@ -370,7 +383,7 @@ def handle_request(req, root, *, project_context=None):
         if tool_name == "moduflow_doctor":
             return _rpc_result(
                 req_id,
-                _tool_moduflow_doctor(root, project_context=context),
+                _tool_moduflow_doctor(root, project_context=context, runtime_snapshot=runtime_snapshot),
             )
         if tool_name == "moduflow_ready":
             return _rpc_result(
@@ -387,7 +400,7 @@ def handle_request(req, root, *, project_context=None):
     return _rpc_error(req_id, -32601, f"Method not found: {method}")
 
 
-def _handle_line(line, root):
+def _handle_line(line, root, *, runtime_snapshot=None):
     """Parse one newline-delimited JSON-RPC request line and dispatch it.
     Malformed JSON -> a -32700 parse-error response (id null); otherwise
     delegates to handle_request (which may itself return None)."""
@@ -401,7 +414,7 @@ def _handle_line(line, root):
     if not isinstance(req, dict):
         return {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "invalid request: not an object"}}
     try:
-        return handle_request(req, root)
+        return handle_request(req, root, runtime_snapshot=runtime_snapshot)
     except Exception as exc:
         # A persistent server must survive any single request — internal
         # errors become -32603 responses, never a process exit.
@@ -411,8 +424,10 @@ def _handle_line(line, root):
 
 def main():
     root = _resolve_root()
+    snapshot = runtime_provenance.capture_runtime(Path(__file__).resolve().parent.parent,
+        runtime_kind="mcp_process", observed_at=datetime.now(timezone.utc).isoformat())
     for line in sys.stdin:
-        response = _handle_line(line, root)
+        response = _handle_line(line, root, runtime_snapshot=snapshot)
         if response is not None:
             print(json.dumps(response, ensure_ascii=False), flush=True)
     return 0
