@@ -6,7 +6,7 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-103-atomic-lifecycle-state-transaction.html`
-- PR: 비초안 PR 게시 진행 중
+- PR: `https://github.com/dongwonlee222/moduflow/pull/44` (비초안)
 - 브랜치: `codex/103-atomic-lifecycle-state-transaction`
 - 리뷰어: `Dongwon Lee`
 

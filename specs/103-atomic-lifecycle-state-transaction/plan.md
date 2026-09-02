@@ -376,7 +376,7 @@ def derive_idempotency_key(project_context, intent):
 - [x] **Step 3: Generate review handoff.** Run `python3 scripts/project_execution.py . --issue-id 103-atomic-lifecycle-state-transaction --review-handoff --write` and regenerate dashboard plus Issue 103 drill-down.
 - [x] **Step 4: Review every acceptance criterion.** Record implementation, QA, PM/spec, security/privacy, crash recovery, and Constitution v1.0 findings; fix every P0/P1/P2 defect before proceeding.
 - [x] **Step 5: Run fresh release validation.** Require `valid: true`, empty errors, complete operation audit, passing version gate, and all focused tests.
-- [ ] **Step 6: Publish only after evidence is committed.** Update lifecycle artifacts, commit review evidence, run Git/GitHub preflights, push, and open one non-draft PR against `main`; merge remains separately human-gated.
+- [x] **Step 6: Publish only after evidence is committed.** Updated lifecycle artifacts, committed review evidence, ran Git/GitHub preflights, pushed, and opened non-draft PR #44 against `main`; merge remains separately human-gated.
 
 ## Execution Order and Rollback
 
@@ -405,4 +405,4 @@ flowchart LR
 
 ## Next Command
 
-`product:pr 103-atomic-lifecycle-state-transaction` — publish the verified implementation as one non-draft PR against `main`; merge remains separately human-gated.
+`product:review 103-atomic-lifecycle-state-transaction` — inspect non-draft PR #44 and its status checks; merge remains separately human-gated.

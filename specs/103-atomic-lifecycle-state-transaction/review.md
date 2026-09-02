@@ -68,7 +68,7 @@ Constitution: v1.0 checked — no violations.
 
 ## Next
 
-Human reviews this plan PR. After explicit execution approval, run `product:execute 103-atomic-lifecycle-state-transaction`; the implementation will use RED/GREEN task boundaries and require a separate implementation PR/merge approval.
+Implementation review is published at `https://github.com/dongwonlee222/moduflow/pull/44`. Inspect its diff and status checks before any separate human merge decision.
 
 ---
 

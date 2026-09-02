@@ -7,7 +7,7 @@ Publish the verified implementation as the visible human-review surface, with lo
 ## Publication
 
 - Branch: `codex/103-atomic-lifecycle-state-transaction`
-- PR: non-draft GitHub PR against `main` pending publication
+- PR: `https://github.com/dongwonlee222/moduflow/pull/44` (non-draft, base `main`)
 - Reviewer: `Dongwon Lee`
 - Do not merge from this handoff. Merge remains gated by Human approval, required reviews, and Required status checks.
 - Commit mode: `local-git-write`

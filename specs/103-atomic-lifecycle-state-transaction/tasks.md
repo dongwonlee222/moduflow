@@ -2,7 +2,7 @@
 
 Issue: `103-atomic-lifecycle-state-transaction`
 Plan: `specs/103-atomic-lifecycle-state-transaction/plan.md`
-Status: review_ready — implementation, D2 verification/review evidence, and source release validation are complete; PR publication is active
+Status: completed — implementation, D2 verification/review evidence, source release validation, and non-draft PR #44 publication are complete; merge is separately human-gated
 
 ## Stream A — Contract, Planning, and Projected Validation
 
@@ -34,7 +34,7 @@ Status: review_ready — implementation, D2 verification/review evidence, and so
 - [x] **D1b** Close transaction/public-writer audit gaps and require a zero-gap operation inventory. | Files: scripts/project_operation_audit.py, config/project-operation-entrypoints.json, config/canonical-path-literals.json, tests/test_project_operation_audit.py | Depends: D1a | Commit: 294487a | Plan: docs/superpowers/plans/2026-09-02-issue-103-d1b-mutator-bypass-audit.md
 - [x] **D1c** Require transaction files and focused suites in distribution/release gates and document local/remote guarantees. | Files: scripts/validate_moduflow.py, scripts/release_check.py, tests/test_validation_distribution.py, docs/architecture.md, docs/workflow.md | Depends: D1b | Commit: 99e0605 | Plan: docs/superpowers/plans/2026-09-02-issue-103-d1c-distribution-release-guarantees.md
 - [x] **D1** Add read-only Doctor recovery diagnostics, close direct-writer audit gaps, require distribution files, and integrate focused release gates/docs. | Files: scripts/project_doctor.py, scripts/project_operation_audit.py, config/project-operation-entrypoints.json, scripts/validate_moduflow.py, scripts/release_check.py, docs/commands/tests | Depends: C1,C2 | Commits: 4feb071,7607e7d,294487a,99e0605
-- [ ] **D2** Run focused/full/release validation, generate review evidence and visual handoff, update lifecycle artifacts, and publish one non-draft PR. | Files: Issue 103 status/review/handoff and project state views | Depends: D1
+- [x] **D2** Run focused/full/release validation, generate review evidence and visual handoff, update lifecycle artifacts, and publish one non-draft PR. | Files: Issue 103 status/review/handoff and project state views | Depends: D1 | PR: https://github.com/dongwonlee222/moduflow/pull/44
 
 ## Required Gates
 
@@ -50,4 +50,4 @@ Status: review_ready — implementation, D2 verification/review evidence, and so
 
 ## Next Command
 
-`product:pr 103-atomic-lifecycle-state-transaction` — publish the non-draft implementation PR; merge remains separately human-gated.
+`product:review 103-atomic-lifecycle-state-transaction` — inspect PR #44 and status checks; merge remains separately human-gated.
