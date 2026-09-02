@@ -7,6 +7,10 @@ description: Use when the ModuFlow plugin is at-mentioned directly, or when the 
 
 ModuFlow routes product work through Git-native artifacts.
 
+## User-Facing Output
+
+For PR descriptions and work reports, read and follow the bundled [purpose-first output rule](../../docs/output-format.md): 왜 필요한지 → 해결해야 할 문제 → 기대 효과, then implementation and verification. Resolve this rule inside the executing ModuFlow package, not the target project. Brief progress updates use its compact form.
+
 ## Codex Invocation
 
 Codex reserves leading `/` for native slash commands. Treat these as equivalent:

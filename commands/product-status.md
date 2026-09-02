@@ -7,6 +7,8 @@ argument-hint: "[issue id]"
 
 Make progress visible.
 
+Read the executing ModuFlow package's `docs/output-format.md` for user-facing work reports. After the brief current-state line, explain **왜 필요한지 → 해결해야 할 문제 → 기대 효과** before technical progress; use the compact form for short status requests and leave machine-readable output unchanged.
+
 > MCP alternative: if the `moduflow` MCP server is connected, `moduflow_status` and `moduflow_issues` return the same state as steps 1-2 below without a Bash approval prompt — prefer it for a quick read.
 
 ## Session Banner (issue 072)

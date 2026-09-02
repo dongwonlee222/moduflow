@@ -7,6 +7,8 @@ argument-hint: "[portfolio path]"
 
 Generate `weekly-status.md` from registered project state.
 
+Read the executing ModuFlow package's `docs/output-format.md`. For each substantive work summary, explain **왜 필요한지 → 해결해야 할 문제 → 기대 효과** before implementation and verification; keep portfolio summaries concise and project evidence separate.
+
 ## Do
 
 1. Read `projects.json`.

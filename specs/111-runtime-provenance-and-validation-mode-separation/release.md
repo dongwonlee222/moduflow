@@ -3,8 +3,12 @@
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Source: approved `spec.md` / `plan.md`; implementation `517ec64`; `status.md` / `review.md`.
-Phase: local release preparation; not published or installed.
-Next command: `product:review 111-runtime-provenance-and-validation-mode-separation`.
+Phase: sequential merge and 0.3.56 publication approved on 2026-09-02; execution evidence pending.
+Next command: `product:release 111-runtime-provenance-and-validation-mode-separation`.
+
+## Current Approval and Joint Release
+
+Dongwon Lee approved PR #45 then #46 and plugin 0.3.56 publication in the current integration task. [Approval record](https://github.com/dongwonlee222/moduflow/pull/45#issuecomment-5507008053). The Korean scope/CI summary was the approval surface; no separate dashboard/diff-view observation is claimed. Latest-head CI for `d5e143b` passed. The evidence table below preserves the earlier 0.3.55 preparation snapshot, not the current approval state. See [0.3.56 joint release](../060-cross-agent-output-format-convention/release.md) for the final merged source, installation, rollback and runtime observations. No standalone 0.3.55 publication is planned.
 
 ## What Changes
 

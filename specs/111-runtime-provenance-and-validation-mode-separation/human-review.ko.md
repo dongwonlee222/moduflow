@@ -1,5 +1,9 @@
 # 한글 검토 패킷: 111-runtime-provenance-and-validation-mode-separation
 
+## 승인 갱신 — 2026-09-02
+
+Dongwon Lee가 현재 통합 작업에서 **PR #45 → #46 순차 병합과 0.3.56 플러그인 배포**를 명시한 한국어 확인에 “ㅇㅇ 그럽시다.”로 승인했습니다. [승인 기록](https://github.com/dongwonlee222/moduflow/pull/45#issuecomment-5507008053). `d5e143b`의 CI는 통과했습니다. 아래 승인 대기·CI 대기 문구는 이전 인계 시점의 기록이며, 사용자가 개별 화면/diff를 직접 열람했다고 추정하지 않습니다. 검증 실패는 우회하지 않습니다. Issue 111은 0.3.56 배포에 포함되며, 실제 원격·설치·프로세스 결과는 [공동 배포 기록](../060-cross-agent-output-format-convention/release.md)에서 구분합니다.
+
 ## 목적 — 왜 111을 했는가
 
 **정상 설치를 고장으로 오진하거나, 원본 코드 수정만으로 현재 채팅에도 적용됐다고 착각하지 않도록 플러그인의 상태 판정을 바로잡는 작업입니다.**

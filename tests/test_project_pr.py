@@ -18,6 +18,105 @@ MATCHING_IDENTITY = {
 
 
 class ProjectPrHandoffTests(unittest.TestCase):
+    def test_purpose_first_packets_preserve_issue_rationale_before_verification(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "060-purpose-first"
+            (root / "issues").mkdir()
+            (root / "issues" / f"{issue_id}.md").write_text(
+                "# Issue\n\n## Why Needed\n\nUsers need trustworthy installation checks.\n\n"
+                "## Problem\n\nHealthy packages are diagnosed as broken.\n\n"
+                "## Expected Benefits\n\nFewer unnecessary reinstalls (expected, not measured).\n",
+                encoding="utf-8",
+            )
+            path = project_pr.write_pr_handoff(root, issue_id)
+            for filename, headings, verification in (
+                ("pr.md", ("## Why Needed", "## Problem", "## Expected Benefits"), "### Verification"),
+                ("human-review.ko.md", ("## 왜 필요한지", "## 해결해야 할 문제", "## 기대 효과"), "## 검증 요약"),
+            ):
+                with self.subTest(filename=filename):
+                    output = (path.parent / filename).read_text(encoding="utf-8")
+                    self.assertTrue(all(heading in output for heading in headings))
+                    positions = [output.index(heading) for heading in (*headings, verification)]
+                    self.assertEqual(positions, sorted(positions))
+                    for heading, evidence in zip(headings, (
+                        "Users need trustworthy installation checks.",
+                        "Healthy packages are diagnosed as broken.",
+                        "Fewer unnecessary reinstalls (expected, not measured).",
+                    )):
+                        content = output.split(heading + "\n", 1)[1].split("\n## ", 1)[0]
+                        self.assertIn(evidence, content)
+
+    def test_korean_issue_rationale_overrides_spec_per_field(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "060-korean-purpose"
+            (root / "issues").mkdir()
+            spec_dir = root / "specs" / issue_id
+            spec_dir.mkdir(parents=True)
+            (root / "issues" / f"{issue_id}.md").write_text(
+                "# Issue\n\n## 왜 필요한지\n\n이슈에서 확정한 필요성.\n\n"
+                "## 기대 효과\n\n재작업 감소 예상, 아직 미측정.\n", encoding="utf-8",
+            )
+            (spec_dir / "spec.md").write_text(
+                "# Spec\n\n## Why Needed\n\nSuperseded rationale.\n\n"
+                "## Problem\n\n검사 대상 혼동.\n", encoding="utf-8",
+            )
+            for builder in (project_pr.build_pr_handoff, project_pr.build_human_review_packet_ko):
+                with self.subTest(builder=builder.__name__):
+                    output = builder(root, issue_id)
+                    self.assertIn("이슈에서 확정한 필요성.", output)
+                    self.assertIn("검사 대상 혼동.", output)
+                    self.assertIn("재작업 감소 예상, 아직 미측정.", output)
+                    self.assertNotIn("Superseded rationale.", output)
+
+    def test_purpose_first_uses_configured_spec_without_cross_project_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "060-configured-purpose"
+            (root / ".moduflow").mkdir()
+            (root / ".moduflow/config.json").write_text(json.dumps({"paths": {
+                "issues": "product/issues", "specs": "product/specs",
+            }}), encoding="utf-8")
+            for location, text in (
+                (root / "product/specs" / issue_id / "spec.md",
+                 "# Spec\n\n## Why Needed\n\nSelected project need.\n\n"
+                 "## Problem\n\nSelected project problem.\n\n"
+                 "## Expected Benefits\n\nSelected project benefit.\n"),
+                (root / "issues" / f"{issue_id}.md",
+                 "# Issue\n\n## Why Needed\n\nWRONG_PROJECT_CANARY\n"),
+            ):
+                location.parent.mkdir(parents=True, exist_ok=True)
+                location.write_text(text, encoding="utf-8")
+            for builder in (project_pr.build_pr_handoff, project_pr.build_human_review_packet_ko):
+                with self.subTest(builder=builder.__name__):
+                    output = builder(root, issue_id)
+                    self.assertIn("Selected project need.", output)
+                    self.assertIn("Selected project problem.", output)
+                    self.assertIn("Selected project benefit.", output)
+                    self.assertNotIn("WRONG_PROJECT_CANARY", output)
+
+    def test_missing_purpose_is_unknown_not_inferred_from_summary_or_test_success(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            issue_id = "060-missing-purpose"
+            (root / "issues").mkdir()
+            (root / "issues" / f"{issue_id}.md").write_text(
+                "# Issue\n\n## Summary\n\nChanged 9 files; 100 tests passed.\n",
+                encoding="utf-8",
+            )
+            for builder, headings, missing in (
+                (project_pr.build_pr_handoff, ("## Why Needed", "## Problem", "## Expected Benefits"), "Not recorded"),
+                (project_pr.build_human_review_packet_ko, ("## 왜 필요한지", "## 해결해야 할 문제", "## 기대 효과"), "미기록"),
+            ):
+                with self.subTest(builder=builder.__name__):
+                    output = builder(root, issue_id)
+                    for heading in headings:
+                        self.assertIn(heading, output)
+                        content = output.split(heading + "\n", 1)[1].split("\n## ", 1)[0]
+                        self.assertIn(missing, content)
+                        self.assertNotIn("100 tests passed", content)
+
     def test_archived_project_denies_pr_handoff_before_build_or_write(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

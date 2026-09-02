@@ -14,6 +14,22 @@ Issue 059's session surfaced a concrete failure mode of *not* having this: issue
 
 The user separately asked (2026-07-05) to make Antigravity, Claude Code, and Codex communicate the same way — specifically calling out list style (numbered vs bulleted) as the example. Scoped to **output formatting only** for this issue; artifact schema fields (Status/Phase, etc.) and cross-tool artifact sync are `029-antigravity-artifact-sync-connector`'s concern, not this one.
 
+## Purpose-first follow-up (2026-09-02)
+
+The original completion above is historical. The following explanation contract is a separately reviewed follow-up, tracked in `specs/060-cross-agent-output-format-convention/purpose-first-followup.md`; local verification is not release completion.
+
+## Why Needed
+
+Users must understand why work matters before reviewing technical changes. The same explanation rule needs to travel with ModuFlow across projects and hosts, not stay only in the development repository's AGENTS.md.
+
+## Problem
+
+PRs and work reports could lead with implementation/test details while omitting the actual problem and user benefit. The PR generator's generic Purpose described the review workflow, not the owning issue's purpose, and the repository-only instruction did not reach installed plugin entry points.
+
+## Expected Benefits
+
+PRs and reports explain why work is needed, the concrete problem and expected benefits before implementation and tests. Users should need fewer clarification exchanges; this is an expected benefit, not a measured improvement or a guarantee of model compliance.
+
 ## Scope
 
 - A project-root `AGENTS.md`, read natively by all three tools (Antigravity ≥ v1.20.3, Claude Code, Codex CLI — confirmed in benchmark), covering a **situation → shape** table rather than one fixed style:
@@ -57,6 +73,7 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 ## Links
 
+- Follow-up: `specs/060-cross-agent-output-format-convention/purpose-first-followup.md` — 2026-09-02 plugin-wide purpose-first rule; local implementation/verification, not remotely integrated or deployed. Original completion status remains historical.
 - Roadmap: `workspace/roadmap.md`
 - Benchmark: `knowledge/benchmarks/2026-07-05-cross-agent-output-format-benchmark.md`
 - Spec: `specs/060-cross-agent-output-format-convention/spec.md`

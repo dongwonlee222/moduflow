@@ -390,6 +390,21 @@
       "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/45",
       "next_command": "product:review 111-runtime-provenance-and-validation-mode-separation",
       "updated_at": "2026-09-02"
+    },
+    {
+      "issue_id": "060-cross-agent-output-format-convention",
+      "owner": "Dongwon Lee",
+      "assignee": "Codex",
+      "reviewer": "Dongwon Lee",
+      "status": "review",
+      "branch": "codex/060-purpose-first-output-rule",
+      "pr": "https://github.com/dongwonlee222/moduflow/pull/46",
+      "lock_state": "active",
+      "locked_by": "",
+      "blocker": "",
+      "last_handoff": "PR ready for review: https://github.com/dongwonlee222/moduflow/pull/46",
+      "next_command": "product:review 060-cross-agent-output-format-convention",
+      "updated_at": "2026-09-02"
     }
   ]
 }

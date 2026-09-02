@@ -59,6 +59,29 @@ def _evidence_or_fallback(text, fallback):
     return text if text else fallback
 
 
+def _purpose_first_lines(issue_text, spec_text, *, korean=False):
+    fields = (
+        ("Why Needed", "왜 필요한지"),
+        ("Problem", "해결해야 할 문제"),
+        ("Expected Benefits", "기대 효과"),
+    )
+    missing = (
+        "미기록 — 이슈·명세 근거로 작성하세요. 구현 내용이나 테스트 통과로 추정하지 않습니다."
+        if korean else
+        "Not recorded — fill from issue/spec evidence; do not infer from implementation or passing tests."
+    )
+    lines = []
+    for english, translated in fields:
+        evidence = next((
+            content
+            for source in (issue_text, spec_text)
+            for heading in (english, translated)
+            if (content := _section(source, f"## {heading}"))
+        ), missing)
+        lines.extend([f"## {translated if korean else english}", "", evidence, ""])
+    return lines
+
+
 def _run_command(args, cwd):
     try:
         completed = subprocess.run(
@@ -238,6 +261,7 @@ def build_human_review_packet_ko(
     branch = branch or _default_branch(issue_id)
     pr = pr or _default_pr(issue_id)
     issue_text = _read_if_exists(issue_path)
+    spec_text = _read_if_exists(spec_dir / "spec.md")
     status_text = _read_if_exists(status_path)
     review_text = _read_if_exists(review_path)
     descriptions = _load_ko_descriptions(root, context)
@@ -267,6 +291,7 @@ def build_human_review_packet_ko(
     lines = [
         f"# 한글 검토 패킷: {issue_id}",
         "",
+        *_purpose_first_lines(issue_text, spec_text, korean=True),
         "> 영어 산출물은 canonical입니다. 이 파일은 사람이 PR을 검토하기 위한 한국어 읽기용 패킷입니다.",
         "",
         "## 먼저 볼 것",
@@ -307,6 +332,7 @@ def build_human_review_packet_ko(
         "",
         "## 보류 조건",
         "",
+        "- 왜 필요한지·해결해야 할 문제·기대 효과가 미기록이거나 근거 없이 추정됐습니다.",
         "- 테스트 또는 release check가 실패했습니다.",
         "- 대시보드/상세 페이지가 생성되지 않았거나 최신 변경을 반영하지 않습니다.",
         "- PR diff가 이슈 범위를 벗어났습니다.",
@@ -385,11 +411,7 @@ def build_pr_handoff(
     lines = [
         f"# PR Handoff: {issue_id}",
         "",
-        "## Purpose",
-        "",
-        "Make the pull request the visible review surface instead of waiting until all local review work is finished.",
-        "Use a Draft PR or a local PR-ready marker early, then attach review, verification, and dashboard evidence to it as work progresses.",
-        "",
+        *_purpose_first_lines(issue_text, spec_text),
         "## Draft PR",
         "",
         f"- Branch: `{branch}`",
@@ -413,7 +435,8 @@ def build_pr_handoff(
         "",
         "## PR Body Contract",
         "",
-        "- Summary: what changed and why.",
+        "- Why Needed, Problem, Expected Benefits: source-backed rationale before implementation; flag missing information and distinguish expected from measured benefits.",
+        "- Summary: implementation changes after the rationale.",
         "- Verification: local tests, release checks, CI/status checks, and known gaps.",
         f"- Dashboard: `{dashboard_path}`.",
         f"- Issue drill-down: `{issue_html_path}`.",
