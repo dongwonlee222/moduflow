@@ -7,6 +7,10 @@ argument-hint: "<issue id>"
 
 Prepare or refresh the pull request review surface.
 
+## Purpose First
+
+Read `docs/output-format.md` from the executing ModuFlow package (not the target project). Begin the PR with **왜 필요한지 → 해결해야 할 문제 → 기대 효과** before implementation and tests. Refresh these sections from the owning issue/spec, translate the Korean packet faithfully, and resolve or flag missing rationale before review. This applies equally to direct commands and migrated command skills.
+
 ## Do
 
 1. Check branch, commits, changed files, tests, linked issue, and whether a Draft PR already exists.
@@ -46,7 +50,7 @@ The preflight resolves the repository only from canonical `git.identity` and ver
 python3 scripts/project_pr.py <project-path> --issue-id <issue id> --write
 ```
 
-5. Draft PR summary, test evidence, risk, screenshots, dashboard path, issue drill-down path, review findings, and rollout notes.
+5. Draft why this work is needed, the concrete problem and expected user benefit first; then implementation summary, test evidence, risk, screenshots, dashboard path, issue drill-down path, review findings, and rollout notes.
 6. Save to `specs/<issue>/pr.md` and `specs/<issue>/human-review.ko.md`.
 7. Record PR state in team workflow:
 

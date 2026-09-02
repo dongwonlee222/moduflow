@@ -1,5 +1,13 @@
 # Upgrade Guide
 
+## Purpose-First PRs and Work Reports (060 follow-up / 0.3.56)
+
+The bundled `docs/output-format.md` now governs why work is needed, the concrete problem and expected user benefits before implementation/tests. Entry/artifact skills and PR/report/update/status/weekly commands load it from the executing package, not the target project's AGENTS.md.
+
+PR generation copies explicit `Why Needed`, `Problem`, `Expected Benefits` sections (or Korean equivalents) from the issue, then its configured spec per missing field. Legacy artifacts without those sections remain readable; their generated rationale is marked unrecorded until the author fills it from evidence. No existing project files are bulk-migrated, and generated Korean packets preserve source language for faithful author translation.
+
+This source version is release preparation, not proof of publication, installation or host reload. Existing installations need the separately approved upgrade process below. Short status updates remain compact; JSON/MCP schemas are unchanged.
+
 ## Validation and Runtime Identity (111)
 
 Source maintenance uses `validate_moduflow.py <source> --mode source --json` and the existing strict release check. An installed distribution uses `--mode installed --json`; target projects use `project_doctor.py <project>`. The compatibility default `auto` reports its inference but is not a replacement for explicit release roles.

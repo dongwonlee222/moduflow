@@ -7,6 +7,10 @@ description: Use when ModuFlow needs to create, update, validate, or explain iss
 
 Git is the durable state store.
 
+## PR and Work Report Output
+
+Read and follow the bundled [purpose-first output rule](../../docs/output-format.md) when writing PR descriptions or work reports: 왜 필요한지 → 해결해야 할 문제 → 기대 효과, followed by implementation and verification. Use this package's rule even when the target project's AGENTS.md is absent.
+
 ## Git Preflight
 
 Before initializing or executing GitHub Spec Kit-style work, verify:

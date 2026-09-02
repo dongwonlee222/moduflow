@@ -20,6 +20,10 @@ Don't force one shape onto all three situations. A status snapshot forced into a
 2. **Label before explanation.** A table header, a bold badge, or a `key:` prefix — the reader should know what a line is about before reading its content.
 3. **Tables/checklists need 2+ comparable fields.** Don't reach for a table to describe one item.
 
+## Purpose First — ModuFlow Rule
+
+Follow the bundled [ModuFlow output rule](docs/output-format.md): **왜 필요한지 → 해결해야 할 문제 → 기대 효과**, followed by implementation and verification. This is the plugin's shared rule, not a personal preference confined to this repository. Preserve the short bottom-line status sentence and situation-to-shape rules above.
+
 ## Whitespace Rhythm
 
 Spacing is a signal, not decoration:
