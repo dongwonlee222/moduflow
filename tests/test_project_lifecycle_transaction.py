@@ -3191,6 +3191,10 @@ Versioned release record.
                 self.assertEqual(state["next_command"], command)
                 self.assertEqual(loop["phase"], phase)
                 self.assertEqual(loop["next_command"], command)
+                self.assertEqual(
+                    loop["active_issue_id"],
+                    self.ISSUE_ID if projected == "active" else None,
+                )
                 if projected == "active":
                     self.assertIn(f"phase: {phase}", dashboard)
                 else:

@@ -6,8 +6,8 @@
 
 - 대시보드: `memory/dashboard.html#issue-db`
 - 이슈 상세: `memory/issue-103-atomic-lifecycle-state-transaction.html`
-- PR/로컬 마커: `https://github.com/dongwonlee222/moduflow/pull/43`
-- 브랜치: `codex/103-atomic-lifecycle-state-transaction-plan`
+- PR/로컬 마커: `local:103-atomic-lifecycle-state-transaction:draft-pr-ready`
+- 브랜치: `codex/103-atomic-lifecycle-state-transaction`
 - 리뷰어: `Dongwon Lee`
 
 ## 이슈 요약
@@ -37,14 +37,16 @@
 
 ## 검증 요약
 
-- Issue 110 PR #42 GitHub CI passed and merged as `5f173f4`.
-- Merge commit `5f173f4` source release check: `valid: true`, `errors: []`.
-- Issue 103 spec consistency: 0 errors, 0 warnings, 0 info; 11/11 acceptance criteria covered.
-- Implementation readiness: `ready`; API, tests, frontend N/A declarations, permission model, and release/rollback contracts passed 7/7.
-- Project artifact validation: `valid: true`, `errors: []`.
+- Focused D2 suite before full discovery: 495 tests passed.
+- Post-fix RED/GREEN: final transaction/lifecycle/loop/Stop-hook/migration set — 252 tests passed.
+- Final full discovery after all D2 fixes: 1,571 tests passed in 462.485s, 0 failures.
+- Project artifacts: `valid: true`, `errors: []`.
+- Spec consistency: 11/11 covered, no findings.
 - Lifecycle drift: `[]`.
-- Plan-branch source release check: `valid: true`, `errors: []`; tests, operation audit, and version gate passed.
-- Diff hygiene: `git diff --check` clean.
+- Operation audit: 93/93 classified, zero gaps.
+- `git diff --check`: clean.
+- Dashboard: `memory/dashboard.html`.
+- Issue drill-down: `memory/issue-103-atomic-lifecycle-state-transaction.html`.
 
 ## no-issue 선언 (issue 075)
 

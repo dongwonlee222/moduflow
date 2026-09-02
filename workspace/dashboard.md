@@ -10,7 +10,7 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 103 implementation is 
 
 ## Active Issue
 
-- `103-atomic-lifecycle-state-transaction` (phase: execute). Canonical: `issues/103-atomic-lifecycle-state-transaction.md`.
+- None active. Run `product:status` to pick the next issue.
 
 ## Priority Queue — 2026-09-01
 

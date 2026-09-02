@@ -1,4 +1,43 @@
-# Issue 103 Plan Review
+# Issue 103 Implementation Review
+
+**Verdict: pass** — all eleven acceptance criteria are implemented and verified; direct D2 review found no open P0, P1, or P2 defect.
+
+## D2 Findings
+
+1. **Resolved — repeated lifecycle reconciliation could become unrecoverable after a human issue edit.** Full discovery exposed the legacy Stop-hook regression. Commit `476d9f3` gives default reconcile intents an exact issue-snapshot identity and removes only proven successful private recovery state before subsequent edits.
+2. **Resolved — first real transaction lacked its evidence parent.** Test fixtures pre-created `workspace/transactions`, but an initialized real project did not. Migration now creates and tracks `workspace/transactions/.gitkeep`, and the real Issue 103 completion transaction applied with projected/post-apply validation both valid.
+3. **Resolved — completed reconcile could restore a false loop cursor.** Loop rendering now clears cursors for non-active lifecycles, and normalization preserves an explicit null cursor instead of falling back to the first historical issue ID.
+4. **Pass — authorization and containment.** Write denial precedes lock, journal, staging, temporary, evidence, and canonical side effects; nested contexts, decoys, traversal, symlink, non-regular, and unreadable targets are covered.
+5. **Pass — failure, rollback, and crash recovery.** Every durable phase and target position has failure/restart coverage; outcomes are exact rollback, terminal completion, or explicit `recovery_required`.
+6. **Pass — idempotency and concurrency.** Identical lifecycle and production intents replay as `noop`; key, evidence, preimage, and semantic-version conflicts fail closed without overwriting external edits.
+7. **Pass — conditional targets.** Optional issue index remains absent unless selected, roadmap prose changes only for roadmap-owned priority changes, and Production Record versions are explicit and unique while legacy records remain readable.
+8. **Pass — evidence and privacy.** Public results and Git-tracked evidence contain logical paths, hashes, bounded error codes, validation summaries, status, and next command; private preimages and payload bytes remain in restrictive local recovery storage only.
+9. **Pass — adapters and bypass audit.** Lifecycle, loop, and Production public writers delegate to transaction persistence; operation audit classifies 93/93 mutation surfaces with zero unclassified, unguarded, or stale entries.
+10. **Pass — distribution and compatibility.** Required runtime/test assets and focused release modules are registered; Issue 048 drift checks and the Stop hook remain compatible on a current minimal project.
+
+## Acceptance and QA Evidence
+
+- Final full discovery: 1,571 tests passed in 462.485s.
+- Focused D2 suite: 495 tests passed; final post-fix targeted suites: 252 tests passed.
+- Project artifact validation: `valid: true`, `errors: []`.
+- Spec consistency: 0 errors, 0 warnings, 11/11 acceptance criteria covered.
+- Lifecycle drift: `[]`.
+- Operation audit: `valid: true`; 93 classified and zero gaps.
+- Diff hygiene: `git diff --check` clean.
+- Visual handoff: `memory/dashboard.html` and `memory/issue-103-atomic-lifecycle-state-transaction.html` regenerated.
+
+## Review Roles
+
+- Implementation review: performed directly by the main Codex agent because the user explicitly prohibited subagents.
+- QA review: fresh focused and full local gates plus release-gate inputs.
+- PM/spec review: implementation mapped line-by-line to all acceptance criteria and issue non-goals.
+- Security/privacy review: containment, no-follow descriptors, restrictive recovery storage, redaction, denial ordering, and cleanup paths reviewed with no open P0/P1/P2 finding.
+
+Constitution: v1.0 checked — no violations.
+
+---
+
+# Historical Plan Review
 
 **Verdict: plan-ready** — the specification is approved, dependencies are complete, all acceptance criteria map to implementation tasks, and readiness checks pass; implementation has not started.
 

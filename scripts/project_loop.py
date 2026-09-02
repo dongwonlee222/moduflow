@@ -169,11 +169,12 @@ def normalize_loop_state(raw):
     if not isinstance(issue_ids, list) or not issue_ids:
         issue_id = raw.get("issue_id") or raw.get("active_issue_id")
         issue_ids = [issue_id] if issue_id else []
-    active_issue_id = (
-        raw.get("active_issue_id")
-        or raw.get("issue_id")
-        or (issue_ids[0] if issue_ids else None)
-    )
+    if "active_issue_id" in raw:
+        active_issue_id = raw.get("active_issue_id")
+    else:
+        active_issue_id = raw.get("issue_id") or (
+            issue_ids[0] if issue_ids else None
+        )
     status = raw.get("status") or "active"
     if status not in VALID_LOOP_STATUSES:
         status = "active"
@@ -220,7 +221,10 @@ def render_loop_projection(
         raise ValueError("loop projection requires a JSON object")
     state = normalize_loop_state(raw)
     state.update({key: value for key, value in raw.items() if key not in state})
-    if target_lifecycle == "backlog":
+    keeps_active_cursor = target_lifecycle == "active" or (
+        target_lifecycle is None and action in {"start", "pause", "resume"}
+    )
+    if not keeps_active_cursor:
         state["active_issue_id"] = None
     else:
         issue_ids = list(state.get("issue_ids") or [])

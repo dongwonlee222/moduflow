@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "execute",
+  "phase": "select",
   "active_goal": "trustworthy-execution-and-project-knowledge",
-  "active_issue": "103-atomic-lifecycle-state-transaction",
+  "active_issue": "",
   "last_command": "product:issue 112-114 execution governance scope",
-  "next_command": "product:execute 103-atomic-lifecycle-state-transaction",
+  "next_command": "product:status",
   "blockers": [],
-  "updated_at": "2026-09-01"
+  "updated_at": "2026-09-02"
 }

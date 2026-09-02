@@ -1,6 +1,6 @@
 # Issue 103: Atomic Lifecycle State Transaction
 
-**Status: active** — created 2026-08-19; implementation in progress, with the lifecycle transaction adapter and CLI completed through C1a on 2026-09-01.
+**Status: done** — created 2026-08-19; implementation, D2 verification, and direct review completed 2026-09-02; started 2026-09-02; done 2026-09-02.
 **Priority: p0**
 **Blocked-by: `109-canonical-project-context-consumer-convergence`, `110-project-operation-capability-enforcement`**
 
@@ -13,7 +13,7 @@ Replace best-effort lifecycle propagation with a validated application-level tra
 - Type: user multi-project orchestration improvement request
 - Link: local Codex attachment `pasted-text.txt`, 2026-08-19
 - Owner / decision maker: Dongwon Lee
-- Current phase: execute; transaction core and C1a public adapter are implemented
+- Current phase: review complete; final release validation and implementation PR publication are active
 
 ## Opportunity
 
@@ -74,8 +74,8 @@ Do not change project resolution, migrate legacy schemas, or make remote GitHub 
 
 - [x] spec approved → `specs/103-atomic-lifecycle-state-transaction/spec.md` + `spec.ko.md` (approved 2026-08-21)
 - [x] plan → `specs/103-atomic-lifecycle-state-transaction/plan.md` + `tasks.md`
-- [ ] execute → transaction planner, staged validation, rollback, evidence, and tests
-- [ ] review → create after implementation verification
+- [x] execute → transaction planner, staged validation, rollback, evidence, and tests
+- [x] review → D2 implementation/QA/PM/security review evidence and visual handoff
 
 ## Related Issues
 
@@ -94,8 +94,9 @@ Do not change project resolution, migrate legacy schemas, or make remote GitHub 
 - Spec: `specs/103-atomic-lifecycle-state-transaction/spec.md`
 - Korean spec: `specs/103-atomic-lifecycle-state-transaction/spec.ko.md`
 - Issue 102 follow-up review: `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`
-- Pull request: `https://github.com/dongwonlee222/moduflow/pull/43`
+- Plan pull request: `https://github.com/dongwonlee222/moduflow/pull/43`
+- Implementation pull request: pending D2 publication
 
 ## Next Command
 
-`product:execute 103-atomic-lifecycle-state-transaction` — continue C1b/C1c, C2, D1, and D2.
+`product:pr 103-atomic-lifecycle-state-transaction` — publish the reviewed implementation as one non-draft PR against `main`.

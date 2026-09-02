@@ -23,6 +23,17 @@ project_loop = load_module("project_loop", "scripts/project_loop.py")
 
 
 class ProjectLoopTests(unittest.TestCase):
+    def test_normalize_loop_state_preserves_explicit_empty_active_cursor(self):
+        state = project_loop.normalize_loop_state(
+            {
+                "issue_ids": ["BIZ-DONE", "BIZ-NEXT"],
+                "active_issue_id": None,
+                "status": "done",
+            }
+        )
+
+        self.assertIsNone(state["active_issue_id"])
+
     def test_write_loop_state_builds_one_update_intent_without_direct_writes(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

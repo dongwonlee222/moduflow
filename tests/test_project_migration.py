@@ -145,6 +145,7 @@ class ProjectMigrationTests(unittest.TestCase):
                 "workspace/dashboard.md",
                 "workspace/loop-state.json",
                 "workspace/goal.md",
+                "workspace/transactions/.gitkeep",
             ]:
                 self.assertTrue((root / relative).exists(), relative)
                 self.assertIn(relative, result["written"])
@@ -168,6 +169,7 @@ class ProjectMigrationTests(unittest.TestCase):
             self.assertNotIn(".moduflow/state.json", plan["writes"])
             self.assertNotIn("workspace/dashboard.md", plan["writes"])
             self.assertIn("workspace/inbox.md", plan["writes"])
+            self.assertIn("workspace/transactions/.gitkeep", plan["writes"])
 
     def test_overlay_migration_preserves_existing_configured_workspace(self):
         project_migrate = load_module("project_migrate", "scripts/project_migrate.py")
@@ -196,6 +198,9 @@ class ProjectMigrationTests(unittest.TestCase):
                 plan["config"]["paths"]["workspace"], "product/workspace"
             )
             self.assertIn("product/workspace/inbox.md", plan["writes"])
+            self.assertIn(
+                "product/workspace/transactions/.gitkeep", plan["writes"]
+            )
             self.assertNotIn("workspace/inbox.md", plan["writes"])
 
 

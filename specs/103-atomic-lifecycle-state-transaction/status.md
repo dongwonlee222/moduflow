@@ -1,49 +1,43 @@
-# Issue 103 Planning Status
+# Issue 103 Implementation Status
 
-**Status: plan-ready** — specification approved, Issues 109/110 complete, eight implementation tasks defined, and implementation readiness passed on 2026-08-21.
+**Status: review-ready** — implementation, full discovery, project/spec/drift/audit gates, direct review, and visual handoff are complete; final source release validation and non-draft PR publication remain.
 
 ## Snapshot
 
 | Field | Value |
 | --- | --- |
-| Branch | `codex/103-atomic-lifecycle-state-transaction-plan` |
-| Base | `origin/main` at `5f173f4` |
-| Pull request | [#43](https://github.com/dongwonlee222/moduflow/pull/43), non-draft |
-| Scope | application-level lifecycle transaction; no remote transaction |
-| Work graph | A1 → A2 → B1 → B2 → C1/C2 → D1 → D2 |
-| Spec consistency | 0 errors, 0 warnings, 11/11 acceptance criteria covered |
-| Implementation readiness | `ready`; 7/7 contracts passed |
+| Branch | `codex/103-atomic-lifecycle-state-transaction` |
+| Base | `origin/main` |
+| Plugin version | `0.3.54` |
+| Scope | local project-filesystem lifecycle transaction; remote writes remain after local success |
+| Implementation | A1–D1 complete; D2 verification/review complete |
+| Full discovery | 1,571 tests passed in 462.485s |
 | Project validation | `valid: true`, `errors: []` |
+| Spec consistency | 0 errors, 0 warnings, 11/11 acceptance criteria covered |
 | Lifecycle drift | `[]` |
-| Source release check | `valid: true`, `errors: []` |
+| Operation audit | `valid: true`; 93 classified, 0 unclassified/unguarded/stale |
+| Review | P0/P1/P2 findings: 0 |
 
-## Decisions Locked by the Plan
+## Implementation Result
 
-- Issue Markdown remains canonical; pause/resume change loop metadata without inventing a new issue lifecycle state.
-- The optional physical issue index is `workspace/issue-index.json`; the in-memory dependency index is always rebuilt from projected issue bytes.
-- Roadmap automation is limited to one bounded managed block and is selected only for roadmap-owned changes.
-- Production transaction intents require an explicit semantic version while legacy unversioned records remain readable.
-- Capability denial precedes every lock, journal, staging, temporary, evidence, and canonical write.
-- Crash recovery either proves finalization/rollback or blocks further mutation with `recovery_required`.
-
-## Risk Concentration
-
-1. Journal/fsync ordering and reverse rollback correctness.
-2. Complete projected validation without touching canonical files.
-3. Idempotency and version uniqueness under concurrent external edits.
-4. Compatibility while removing direct lifecycle/loop/production writer bypasses.
+- One transaction boundary now owns planning, projected validation, locking, durable journal state, canonical replacement, reverse rollback, recovery, redacted evidence, and terminal cleanup.
+- Lifecycle, loop, dashboard/index/roadmap projections, and versioned Production Record creation route through that boundary.
+- Doctor reports incomplete recovery read-only; operation and distribution gates reject bypasses or missing transaction assets.
+- D2 full discovery found the legacy Stop-hook fixture/repeated-reconcile gap. Final dogfood transitions then exposed a missing first-evidence parent and a completed-loop cursor normalization gap. The fixes derive default reconcile identity from exact issue snapshots, remove only proven successful private recovery state, initialize the evidence directory through migration, and preserve explicit empty active cursors.
 
 ## Verification
 
-- Issue 110 PR #42 GitHub CI passed and merged as `5f173f4`.
-- Merge commit `5f173f4` source release check: `valid: true`, `errors: []`.
-- Issue 103 spec consistency: 0 errors, 0 warnings, 0 info; 11/11 acceptance criteria covered.
-- Implementation readiness: `ready`; API, tests, frontend N/A declarations, permission model, and release/rollback contracts passed 7/7.
-- Project artifact validation: `valid: true`, `errors: []`.
+- Focused D2 suite before full discovery: 495 tests passed.
+- Post-fix RED/GREEN: final transaction/lifecycle/loop/Stop-hook/migration set — 252 tests passed.
+- Final full discovery after all D2 fixes: 1,571 tests passed in 462.485s, 0 failures.
+- Project artifacts: `valid: true`, `errors: []`.
+- Spec consistency: 11/11 covered, no findings.
 - Lifecycle drift: `[]`.
-- Plan-branch source release check: `valid: true`, `errors: []`; tests, operation audit, and version gate passed.
-- Diff hygiene: `git diff --check` clean.
+- Operation audit: 93/93 classified, zero gaps.
+- `git diff --check`: clean.
+- Dashboard: `memory/dashboard.html`.
+- Issue drill-down: `memory/issue-103-atomic-lifecycle-state-transaction.html`.
 
-## Next Command
+## Remaining Gate
 
-Run `product:review 103-atomic-lifecycle-state-transaction` for PR #43. After explicit execution approval: `product:execute 103-atomic-lifecycle-state-transaction`.
+Run fresh `python3 scripts/release_check.py .`, commit the final review evidence, push the branch, and open one non-draft PR against `main`. Merge and release remain separately human-gated.
