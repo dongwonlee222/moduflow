@@ -25,7 +25,9 @@ Keep Git-native records and the existing Issue DB/table/tab UI. A dashboard is a
 
 | Issue | Outcome | Reason | Confidence | Dependency / gate | Next command |
 |---|---|---|---|---|---|
-| `111-runtime-provenance-and-validation-mode-separation` | Separate source/package/project checks and identify the actually loaded package, including explicit unknowns | The source is ahead of the connected cache; implementation, installation and active-session reload must not be confused | High | Active: implementation, 1,610 tests, simulations and source release check passed; human integration review pending | `product:review 111-runtime-provenance-and-validation-mode-separation` (implementation review) |
+| `111-runtime-provenance-and-validation-mode-separation` | Separate source/package/project checks and identify the actually loaded package, including explicit unknowns | The source is ahead of the connected cache; implementation, installation and active-session reload must not be confused | High | PR #45 merged as `973f342`; joint 0.3.56 release with 060 follow-up authorized, publication/installation pending | `product:release 111-runtime-provenance-and-validation-mode-separation` |
+
+Current release authority: [0.3.56 joint release](../specs/060-cross-agent-output-format-convention/release.md). Dongwon Lee approved sequential #45/#46 merge and deployment on 2026-09-02. The 060 common output-rule follow-up remains separate from 090/086 implementation. Earlier approval-pending snapshots below are historical; implementation, merge, publication, installation and actual host loading are still separate evidence.
 
 Issue 103 is complete and merged through PR #44; do not restart it. Source version 0.3.54 is not evidence of deployment. After 111 passes its approved acceptance criteria and normal release checks, resume the held release and verify the installed package and a fresh host session separately. Issues 090–092 and 112 are not new prerequisites for that release. Any newly observed release safety failure must be triaged rather than waived.
 
@@ -35,10 +37,33 @@ Default implementation order is **090 → 091 → 086 → 092**. Issue 086 can b
 
 | Issue | Outcome | Reason | Confidence | Dependency / gate | Next command |
 |---|---|---|---|---|---|
-| `090-project-knowledge-and-artifact-registry` | One project wiki and source-linked material catalog | All later views and run records need a durable, project-scoped place to find evidence | High | No declared blocker; reconcile added discovery/handoff requirements in its spec | `product:spec 090-project-knowledge-and-artifact-registry` |
+| `090-project-knowledge-and-artifact-registry` | One project wiki and source-linked material catalog | All later views and run records need a durable, project-scoped place to find evidence | High | Spec/plan prepared separately at `7779b42`; combined review and implementation approval pending | `product:review 090-project-knowledge-and-artifact-registry` (spec/plan only) |
 | `091-reproducible-analysis-runs-and-template-pack` | Reproducible run history, five existing analysis templates, and a bounded company-standard integration pilot | Makes recurring analysis traceable without moving calculation into ModuFlow | Medium for added profile/gate scope; high for existing run contract | 090; review additions without silently dropping the five accepted templates | `product:spec 091-reproducible-analysis-runs-and-template-pack` |
-| `086-project-aware-production-library-dashboard` | A consistent project selector across Issue DB, production records and playbooks | A project switch must not leave related tabs on a different project's data | High | 102 complete; refresh the existing design's registry contract before planning | `product:plan 086-project-aware-production-library-dashboard` |
+| `086-project-aware-production-library-dashboard` | A consistent project selector across Issue DB, production records and playbooks | A project switch must not leave related tabs on a different project's data | High | Updated spec/design/plan prepared separately at `0f7aeb7`; combined review and implementation approval pending | `product:review 086-project-aware-production-library-dashboard` (spec/design/plan only) |
 | `092-project-home-dashboard` | A compact project home for people and AI: current work, blockers, approvals, recent results and next actions | Provides the shared entry point once the underlying records are reliable | Medium until existing spec/design refresh | 086, 090 and 091; replace stale fixed counts with source-derived criteria | `product:plan 092-project-home-dashboard` after spec/design reconciliation |
+
+#### Ongoing Parallelism Check — 2026-09-02
+
+- **Why needed:** reduce avoidable waiting while retaining a small control plane and the approved delivery priorities.
+- **Problem:** issue numbers and separate worktrees do not prove independence. The 090 and 086 plans share integration files, and PR #46 is stacked on PR #45.
+- **Expected benefit:** independent preparation can continue during release review without duplicate parsers, conflicting shared-file changes or premature completion claims. No elapsed-time saving has been measured.
+- Owner / decision maker: Dongwon Lee. Source: request to check parallel execution opportunities while proceeding in the current task. Phase: coordination and plan review; no new implementation, merge or deployment approval is recorded here.
+
+Recheck at each work boundary: **approved scope → producer/consumer contract → exact file overlap → shared state/side effects → independent verification → integration order**. Reuse the existing separate tasks; do not create duplicate tasks or dispatch subagents. A design sketch, acceptance gate or approval decision is not an executable worker. Recheck changed files against the latest integration base before future implementation; worktree isolation alone is insufficient.
+
+| Lane / owning issue | Can proceed concurrently now | Must remain ordered / held | Next action |
+|---|---|---|---|
+| Integration: 111 and 060 follow-up | Inspect review/CI evidence while 090 and 086 review their plans | Approval → merge PR #45 → retarget PR #46 to main and revalidate → approved merge/publication/install → fresh-host verification | `product:review 111-runtime-provenance-and-validation-mode-separation`; keep PR #46 separate |
+| Knowledge: 090 | Read-only contract, file-scope and synthetic-scenario review in its existing task | Future A1 → B1 → C1 → C2 → D1 → D2 stays inline; transaction changes and common integration files have one writer | Combined spec/plan review; do not rerun completed baseline tests merely for planning |
+| Dashboard: 086 | Read-only selector/projection, privacy and navigation-scenario review in its existing task | Future A → B → C → D stays inline around the shared renderer; optional 090/091 consumption waits for its owning contract | Combined spec/design/plan review; preserve the existing Issue DB/table design |
+| Analysis: 091 | Identify the fields and evidence it needs from 090; no implementation dispatched | Registry-backed implementation follows 090; no invented registry API or separate parser | `product:spec 091-reproducible-analysis-runs-and-template-pack` after contract review |
+| Home: 092 | Retain existing requirements and dependency map | Integrated home completion depends on 086, 090 and 091 | Reconcile spec/design after producer contracts; no new implementation lane now |
+
+**Concrete collision set from the two prepared plans:** `scripts/validate_moduflow.py`, `scripts/release_check.py`, `config/project-operation-entrypoints.json`, `tests/test_project_memory.py`, `tests/test_project_operation_audit.py`, and `tests/test_validation_distribution.py`. The 090 Doctor/validator integration must also be checked against merged 111 changes. Issue 090 alone owns its proposed registry parser and bounded 103 transaction extension; 086 must not add a second registry parser or transaction engine. Version manifests, release evidence and common lifecycle state remain integration-owned.
+
+**Evidence snapshot, not implementation approval:** PR #45 at `d5e143b` and PR #46 at `c6ed2ab` are open drafts with successful CI. PR #46 currently targets the 111 branch, not main. Source 0.3.56 is prepared, not published or verified in a fresh host. The 090 plan commit `7779b42` (7 files) and 086 plan commit `0f7aeb7` (17 files) are local, separate-task work, not integrated into this branch or main; their proposed APIs and new simulation matrices are not delivered features. Review inputs are each commit's issue-scoped `specs/` documents, not this roadmap as a second specification.
+
+This adds concurrent preparation, not a new execution engine or automatic scheduler. The default implementation priority remains **090 → 091 → 086 → 092**. Overlapping implementation needs a reviewed file split and contract first; the current plans do not authorize it. Neither knowledge planning nor its later implementation becomes a new gate on the held release.
 
 #### Scope Reconciliation Before Implementation
 
@@ -97,9 +122,9 @@ These are queued work, not additional gates on every knowledge task. Pull a safe
 
 ### Immediate Next Action
 
-`product:review 111-runtime-provenance-and-validation-mode-separation`
+`product:release 111-runtime-provenance-and-validation-mode-separation`
 
-Review Issue 111's implementation and final verification evidence, then decide remote integration/publication. Do not combine 111 with dashboard/company-profile/Spec Kit work or all remaining Doctor debt. After the held release, start `product:spec 090-project-knowledge-and-artifact-registry`; preserve the existing 090 → 091 → 086 → 092 order and role-reduction boundaries.
+Finish the authorized #45 → #46 integration and 0.3.56 deployment with final CI, source/package verification and explicit host-load limits. Do not combine 111 with dashboard/company-profile/Spec Kit work or all remaining Doctor debt. The separately prepared 090 and 086 plan packets can be reviewed concurrently. After the release and combined 090 spec/plan approval, begin 090 implementation; preserve the existing 090 → 091 → 086 → 092 order and role-reduction boundaries. PR #46's common output-rule follow-up stays a separate ordered review/merge, not a reason to restart 111 implementation.
 
 ## Completion and Release Gate — 2026-09-02
 

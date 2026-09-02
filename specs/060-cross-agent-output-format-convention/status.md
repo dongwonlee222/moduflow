@@ -3,8 +3,10 @@
 Issue: `060-cross-agent-output-format-convention`.
 Owner: Dongwon Lee.
 Source: explicit user request to make purpose/problem/benefit a ModuFlow rule, and subsequent approval to continue the remote handoff.
-Phase: implementation, full suite and source release check passed; Draft PR #46 created, latest-head CI pending at handoff.
-Next command: `product:review 060-cross-agent-output-format-convention`.
+Phase: implementation verified; #45 merged as `973f342`; #46 retargeted to main; 0.3.56 publication approved 2026-09-02, final CI/integration/install pending.
+Next command: `product:release 060-cross-agent-output-format-convention`.
+
+Current approval/evidence authority: [release.md](release.md). Verification and pending-approval wording below is the earlier handoff snapshot. The user approved the Korean scope/CI summary; a direct dashboard or diff viewing event was not observed.
 
 ## Verification
 
