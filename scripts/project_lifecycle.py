@@ -8,6 +8,7 @@ dashboard's Active Issue section) and detects drift by consensus. It does NOT
 write back to issue files (canonical source is human-authored).
 """
 import argparse
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -530,6 +531,21 @@ def _load_lifecycle_transaction_module():
     return project_lifecycle_transaction
 
 
+def _reconcile_source_event(root, evaluation, source_event, idempotency_key):
+    """Make default reconcile retries stable for one exact issue snapshot."""
+    if source_event != "sync_lifecycle" or idempotency_key:
+        return source_event
+    digest = hashlib.sha256()
+    for issue in sorted(evaluation["issues"], key=lambda item: item["source_path"]):
+        source_path = issue["source_path"]
+        source_bytes = (root / source_path).read_bytes()
+        digest.update(source_path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(len(source_bytes).to_bytes(8, "big"))
+        digest.update(source_bytes)
+    return f"sync_lifecycle:{digest.hexdigest()}"
+
+
 def transition_lifecycle(
     root,
     issue_id,
@@ -674,7 +690,12 @@ def sync_lifecycle(
         issue_id=owner["issue_id"],
         action="reconcile",
         actor=actor,
-        source_event=source_event,
+        source_event=_reconcile_source_event(
+            root,
+            evaluation,
+            source_event,
+            idempotency_key,
+        ),
         target_lifecycle=None,
         idempotency_key=idempotency_key,
         expected_issue_sha256=expected_issue_sha256,

@@ -42,16 +42,53 @@ def _make_project(root, branch="main", issue_status="active"):
     root = Path(root)
     _init_repo(root, branch=branch)
     (root / ".moduflow").mkdir()
+    (root / ".moduflow" / "config.json").write_text(
+        json.dumps({"schema": "moduflow.config.v1", "paths": {}}) + "\n",
+        encoding="utf-8",
+    )
     (root / ".moduflow" / "state.json").write_text(
-        json.dumps({"schema": "moduflow.state.v1", "active_issue": "", "phase": "select"})
+        json.dumps(
+            {
+                "schema": "moduflow.state.v1",
+                "active_issue": "",
+                "phase": "select",
+                "next_command": "product:status",
+            }
+        )
         + "\n",
         encoding="utf-8",
     )
     (root / "issues").mkdir()
+    (root / "specs").mkdir()
     (root / "issues" / "001-sample-issue.md").write_text(
         f"# Issue: sample issue\n\n**Status: {issue_status}**\n\n## Problem\n\nx\n",
         encoding="utf-8",
     )
+    active_issue = "001-sample-issue" if issue_status == "active" else ""
+    (root / "workspace").mkdir()
+    for filename in ("inbox.md", "opportunities.md", "roadmap.md"):
+        (root / "workspace" / filename).write_text(
+            "# Workspace\n", encoding="utf-8"
+        )
+    (root / "workspace" / "dashboard.md").write_text(
+        "# Dashboard\n\n## Active Issue\n\n- None active.\n",
+        encoding="utf-8",
+    )
+    (root / "workspace" / "loop-state.json").write_text(
+        json.dumps(
+            {
+                "schema": "moduflow.loop-state.v2",
+                "goal_id": "",
+                "issue_ids": [active_issue] if active_issue else [],
+                "active_issue_id": active_issue or None,
+                "status": "active" if active_issue else "completed",
+                "next_command": "product:status",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (root / "workspace" / "transactions").mkdir()
     _git(root, "add", "-A")
     _git(root, "commit", "-q", "-m", "fixture project")
     return root

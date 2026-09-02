@@ -6977,6 +6977,17 @@ def apply_lifecycle_transaction(
             )
             _emit_apply_fault(fault_injector, "after-private-complete")
             result = completed_result
+        cleanup_subject = _RecoverySubject(
+            transaction_id=plan.transaction_id,
+            project_id=plan.project_id,
+            _root=Path(plan.canonical_root),
+            _project_context=plan._project_context,
+        )
+        _cleanup_recovery_candidate(
+            cleanup_subject,
+            plan.transaction_id,
+            clock=clock,
+        )
     except transaction_storage.LifecycleCanonicalConflict as exc:
         return _public_failure_result(
             plan,
@@ -7088,6 +7099,36 @@ def apply_lifecycle_transaction(
             completed_at=_journal_timestamp(clock),
             projected_validation=projected,
             post_apply_validation=post_summary,
+        )
+    except (LifecycleRecoveryCleanupError, LifecycleRecoveryLockError) as exc:
+        return _public_failure_result(
+            plan,
+            normalized,
+            status="recovery_required",
+            failed_stage="recovery",
+            error_code=exc.code,
+            rollback_status="not-required",
+            completed_at=_journal_timestamp(clock),
+            projected_validation=(
+                completed_result["projected_validation"]
+                if completed_result is not None
+                else projected
+            ),
+            post_apply_validation=(
+                completed_result["post_apply_validation"]
+                if completed_result is not None
+                else post_apply
+            ),
+            verified_target_count=(
+                completed_result["verified_target_count"]
+                if completed_result is not None
+                else 0
+            ),
+            targets=(
+                completed_result["targets"]
+                if completed_result is not None
+                else None
+            ),
         )
     except transaction_storage.LifecycleStorageError as exc:
         return _public_failure_result(
