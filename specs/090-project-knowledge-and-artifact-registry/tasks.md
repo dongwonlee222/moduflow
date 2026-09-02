@@ -1,0 +1,43 @@
+# Tasks: Project Knowledge and Artifact Registry
+
+Issue: `090-project-knowledge-and-artifact-registry` · Owner: Dongwon Lee
+Source: [existing issue](../../issues/090-project-knowledge-and-artifact-registry.md), 2026-09-02 delegated request.
+Phase: planning draft; no implementation task started.
+Prev: [spec](spec.md) / [plan](plan.md) · Next: combined `product:review 090-project-knowledge-and-artifact-registry`.
+
+## Stream A — Canonical Schema and Initialization
+
+- [ ] A1: Implement one fenced-JSON Markdown parser and deterministic renderer for stable IDs, purpose/read_when, owner, period/as-of/update dates, state and optional original links (AC2/AC3).
+- [ ] A1: Add six wiki sections and two missing-only workspace templates; preserve legacy memory/knowledge files, reject automatic unstructured migration, report partial initialization and retry remaining files (AC1/AC7).
+- [ ] A1: Pass schema, empty-project, non-default path, archived-denial and no-overwrite tests before committing.
+
+## Stream B — Metadata Retrieval and Committed Handoff
+
+- [ ] B1: Deliver the exact project-scoped R6 read envelope for 086/091/092; metadata-first home/search, total/omitted/truncated, match reasons and read traces; no source body scans (AC4/AC8).
+- [ ] B1: Implement selected-ID source reads, optional private/external handoff and required/broken/stale diagnostics; state/approval/freshness remain separate (AC3).
+- [ ] B1: Pin a single commit for wiki/catalog/issue/approval/source reads; reject dirty/uncommitted/ignored rescue, symlink sources, invalid refs and unknown Git evidence (AC5).
+- [ ] B1: Prove A/B isolation, reused IDs across project scopes, renamed paths with stable IDs, null identity, supersession and limits (AC2/AC4/AC8).
+
+## Stream C — Issue-Linked Output Registration
+
+- [ ] C1: Add bounded artifact-register intent/target branch to existing 103 transaction; no arbitrary-file API, direct registry writer or new lock engine (AC6).
+- [ ] C1: Validate owning issue, safe source and metadata preimages; registered output/catalog/backlink succeeds together; lifecycle/state/goal/loop/roadmap/dashboard remain byte-identical (AC6).
+- [ ] C1: Prove replay noop, conflicting same-ID content, concurrent edits, fault rollback/recovery, and archived/read-only denial before writes (AC6/AC7).
+- [ ] C2: Integrate opted-in knowledge creation before source write; legacy saves explicitly report unregistered; existing memory/decision registration does not copy or rewrite originals (AC6/AC7).
+- [ ] C2: Document preview/apply, selected-source reads, missing-prerequisite and migration guidance; external source creation is not part of local atomic rollback.
+
+## Stream D — Diagnostics, Simulation and Handoff
+
+- [ ] D1: Integrate the sole parser in Validator/Doctor, distinguish missing optional capability from malformed present registry, and keep original availability separate from metadata validity (AC3/AC7).
+- [ ] D1: Register exact mutation ownership and package/template/test assets; reconcile 111 source/package validation surfaces without changing its release scope.
+- [ ] D2: Execute S01–S14 with synthetic A/B, empty/legacy/stale/missing/private/uncommitted sources and a separate committed worktree; record actual observations, read trace and assertion outcomes (AC9).
+- [ ] D2: Pass focused/full tests, artifact validation, operation/path audits, spec consistency, release check and diff check; run temporary packaged smoke (AC9).
+- [ ] D2: Append PM/spec, privacy and transaction review evidence; keep implementation, simulated fresh task, real host observation, remote merge, publication and install claims separate.
+
+## Approval and Exit Conditions
+
+- [ ] Joint spec/plan/tasks/simulation approval is recorded by Dongwon Lee before A1 begins.
+- [ ] Parent-task 111 release checkpoint is respected; no PR/push/merge/install/release action is inferred from this plan.
+- [ ] Every AC maps to observed passing evidence or an explicit remaining blocker; planned expected outcomes are never marked passed.
+
+This checklist is intentionally unchecked. Document preparation is complete separately from implementation progress.
