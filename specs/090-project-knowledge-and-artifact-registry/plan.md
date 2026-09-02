@@ -9,9 +9,9 @@
 **Tech Stack:** Existing Python 3 standard library, Markdown, JSON, `unittest`, injected Git runner and existing 103 lock/journal/recovery. No new dependencies.
 
 Issue: `090-project-knowledge-and-artifact-registry` · Owner: Dongwon Lee
-Phase: planning draft, awaiting one combined approval; issue backlog unchanged.
+Phase: spec/plan implementation approved by Dongwon Lee on 2026-09-02; see [implementation approval](implementation-approval.md). Earlier draft language below preserves the original planning boundary; the approved file map is now executable.
 Source / Prev: [spec](spec.md), [existing issue](../../issues/090-project-knowledge-and-artifact-registry.md), 2026-09-02 delegated request and `8229170:workspace/roadmap.md`.
-Next: [joint review](review-handoff.ko.md), not execution.
+Next: `product:execute 090-project-knowledge-and-artifact-registry`, inline in the existing 090 task, after the recorded readiness check.
 
 ## Global Constraints
 
@@ -186,9 +186,11 @@ Release check remains the original issue's criterion; use 111's source-mode equi
 
 ## Implementation Readiness Inputs
 
-- API: R6 Python/JSON envelope; no HTTP API or live connector required.
+- API contract mapping: the Contract and Dependencies table maps each Python facade's request/response to spec R1–R7. R6 defines the project-scoped read envelope and explicit-ID source-read response; R4 defines safe diagnostics and error/unknown states; R5 defines registration/replay/failure results. There are no HTTP endpoints or live connectors.
 - Test strategy: schema + path/policy unit tests, transaction failure injection, real temporary committed-worktree handoff, packaged smoke, and full regressions.
-- Storybook/MSW/Playwright: not applicable; UI is outside 090 and belongs to 086/092.
+- Storybook required states: not applicable; 090 has no screen/component implementation. Empty, malformed, stale, denied and unavailable states are Python/JSON cases in S01–S14, not Storybook renders.
+- MSW fixture baseline: not applicable; no HTTP client/server is introduced. Existing injected Git runners and local synthetic fixtures cover the actual interfaces.
+- Playwright smoke matrix: not applicable; UI belongs to 086/092. S03/S08/S09 prove project isolation and fresh-reader/committed-worktree lookup without claiming browser or actual host execution.
 - Permission: existing read/write project capabilities, no grant from a registry state or hidden tab; external retrieval remains host-authorized.
 - Deployment: none in this planning task. Future release requires source/package evidence and independent publication/install/runtime reporting.
 - Rollback: revert approved code commits in reverse dependency order; do not remove catalogs, material IDs, legacy records or recovery evidence. Older readers may report unsupported schema, never silently erase it. Recover unfinished transactions through existing 103 recovery before code downgrade; no manual journal cleanup.
@@ -211,4 +213,4 @@ Execution is inline and ordered A1 → B1 → C1 → C2 → D1 → D2. Shared pa
 
 ## Next Command
 
-`product:review 090-project-knowledge-and-artifact-registry` — joint planning approval; do not execute now.
+`product:execute 090-project-knowledge-and-artifact-registry` — approval and scope are recorded in implementation-approval.md; merge/publication remain separate.

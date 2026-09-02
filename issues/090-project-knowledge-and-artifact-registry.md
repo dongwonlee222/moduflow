@@ -12,7 +12,7 @@ Make `workspace/knowledge.md` a structured project wiki and add `workspace/artif
 - Type: user product direction
 - Link: local Codex session, 2026-07-16
 - Owner / decision maker: Dongwon Lee
-- Current phase: backlog
+- Current phase: spec/plan implementation approved 2026-09-02; existing task to execute inline. The canonical backlog projection is retained because 111 occupies the single active lifecycle slot while awaiting real-host observations; see implementation approval for the failed, non-writing start attempt.
 
 ## Problem
 
@@ -109,6 +109,7 @@ Do not create a second database or copy external/sensitive source files into Git
 ## Sessions
 
 - 2026-07-16: User prioritized the project wiki and artifact registry as the first project-knowledge improvement.
+- 2026-09-02: User approved the existing spec/plan for implementation and independent 086 QA preparation. Implementation, integration, release and actual application remain separate evidence.
 
 ## Links
 
@@ -120,7 +121,8 @@ Do not create a second database or copy external/sensitive source files into Git
 - Tasks: [Unchecked implementation tasks](../specs/090-project-knowledge-and-artifact-registry/tasks.md)
 - Simulation: [Synthetic scenario matrix](../specs/090-project-knowledge-and-artifact-registry/simulation-matrix.md)
 - Planning review: [한국어 검토·통합 인계](../specs/090-project-knowledge-and-artifact-registry/review-handoff.ko.md)
+- Implementation authority: [Approval, ownership and lifecycle limitation](../specs/090-project-knowledge-and-artifact-registry/implementation-approval.md)
 
 ## Next Command
 
-`product:spec 090-project-knowledge-and-artifact-registry`
+`product:execute 090-project-knowledge-and-artifact-registry`
