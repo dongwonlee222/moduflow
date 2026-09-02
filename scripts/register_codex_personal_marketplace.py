@@ -2,9 +2,19 @@
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
+
+try:
+    from scripts import runtime_provenance, validate_moduflow, linkage_check
+except ImportError:
+    import runtime_provenance
+    import validate_moduflow
+    import linkage_check
 
 
 PLUGIN_NAME = "moduflow"
@@ -123,33 +133,122 @@ def plugin_version(source: Path) -> str:
     # so the resulting version stays deterministic, but sync the base.
     suffix = existing.split("+", 1)[1] if "+" in existing else ""
     version = f"{base}+{suffix}" if suffix else base
-    if manifest.get("version") != version:
-        manifest["version"] = version
-        write_json(codex_manifest_path, manifest)
     return version
 
 
-def copy_plugin_cache(source: Path, home: Path, version: str) -> Path:
+def build_package_provenance(source, payload_root, *, version, installed_at, runner):
+    sources = {"package_version": "distribution_manifest", "installed_at": "installer_clock",
+               "payload_sha256": "prepared_payload"}
+    reasons = {}
+    revision, dirty = None, None
+    if not (Path(source) / ".git").exists():
+        reasons.update(source_commit="source_not_git_checkout", source_dirty="source_not_git_checkout")
+    else:
+        for field, args in (("source_commit", ["git", "rev-parse", "HEAD"]),
+                            ("source_dirty", ["git", "status", "--porcelain", "--untracked-files=normal"])):
+            try:
+                outcome = runner(args, source, timeout=5)
+                code = outcome["returncode"] if isinstance(outcome, dict) else outcome.returncode
+                output = outcome.get("stdout", "") if isinstance(outcome, dict) else outcome.stdout
+                if code != 0 or not isinstance(output, str):
+                    reasons[field] = "source_git_observation_failed"
+                elif field == "source_commit":
+                    if re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", output.strip()):
+                        revision = output.strip()
+                        sources[field] = "git_head"
+                    else:
+                        reasons[field] = "source_git_revision_invalid"
+                else:
+                    dirty = bool(output.strip())
+                    sources[field] = "git_status"
+            except (OSError, ValueError, TypeError, AttributeError, KeyError) as exc:
+                reasons[field] = f"source_git_observation_failed:{type(exc).__name__}"
+    return {"schema": runtime_provenance.RECEIPT_SCHEMA, "package_version": version,
+            "source_commit": revision, "source_dirty": dirty, "installed_at": installed_at,
+            "payload_sha256": runtime_provenance.package_payload_sha256(payload_root),
+            "provenance_source": sources, "unavailable_reasons": reasons}
+
+
+def write_package_provenance(staging_root, receipt):
+    staging_root = Path(staging_root)
+    fd, name = tempfile.mkstemp(prefix=".receipt-", dir=staging_root)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(receipt, stream, ensure_ascii=False, sort_keys=True)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, staging_root / runtime_provenance.RECEIPT_NAME)
+        directory_fd = os.open(staging_root, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def copy_plugin_cache(source: Path, home: Path, version: str, *, runner=None, installed_at=None) -> Path:
     source = source.resolve()
-    destination = home / ".codex" / "plugins" / "cache" / MARKETPLACE_NAME / PLUGIN_NAME / version
-    if destination.exists():
-        shutil.rmtree(destination)
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][a-zA-Z0-9.+-]+)?", version):
+        raise ValueError("invalid package version path")
+    if version.split("+", 1)[0] != canonical_base(source).split("+", 1)[0]:
+        raise ValueError("distribution version must match canonical source base")
+    cache_root = Path(home).resolve()
+    for segment in (".codex", "plugins", "cache", MARKETPLACE_NAME, PLUGIN_NAME):
+        cache_root = cache_root / segment
+        if cache_root.is_symlink():
+            raise RuntimeError("PACKAGE_DESTINATION_CONFLICT: cache ancestor is a symlink")
+    destination = cache_root / version
+    if destination.is_symlink() or destination.resolve().is_relative_to(source):
+        raise RuntimeError("PACKAGE_DESTINATION_CONFLICT: unsafe cache destination")
+    cache_root.mkdir(parents=True, exist_ok=True)
     base_ignore = shutil.ignore_patterns(*PLUGIN_CACHE_EXCLUDES)
 
     def ignore(directory, names):
         ignored = set(base_ignore(directory, names))
         if Path(directory).resolve() == source:
             ignored.update(name for name in names if name in TOP_LEVEL_CACHE_EXCLUDES)
+            ignored.add(runtime_provenance.RECEIPT_NAME)
         return ignored
 
-    shutil.copytree(source, destination, ignore=ignore)
-    for relative_path in (*RUNTIME_TEST_FIXTURES, *RUNTIME_EVIDENCE_FILES):
-        source_file = source / relative_path
-        if not source_file.is_file():
-            continue
-        destination_file = destination / relative_path
-        destination_file.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source_file, destination_file)
+    stage = Path(tempfile.mkdtemp(prefix=".prepare-", dir=cache_root))
+    try:
+        shutil.copytree(source, stage, ignore=ignore, dirs_exist_ok=True, symlinks=True)
+        # Reject links before any prepared-manifest write can follow them outside staging.
+        runtime_provenance.package_payload_sha256(stage)
+        for relative_path in (*RUNTIME_TEST_FIXTURES, *RUNTIME_EVIDENCE_FILES):
+            source_file = source / relative_path
+            if not source_file.is_file():
+                continue
+            destination_file = stage / relative_path
+            destination_file.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_file, destination_file, follow_symlinks=False)
+        codex_manifest = read_json(stage / ".codex-plugin/plugin.json")
+        codex_manifest.update(name=PLUGIN_NAME, version=version)
+        write_json(stage / ".codex-plugin/plugin.json", codex_manifest)
+        receipt = build_package_provenance(source, stage, version=version,
+            installed_at=installed_at or datetime.now(timezone.utc).isoformat(),
+            runner=runner or linkage_check.run_command)
+        write_package_provenance(stage, receipt)
+        validation = validate_moduflow.validate_moduflow(stage, mode="installed")
+        if not validation["valid"]:
+            raise RuntimeError("PACKAGE_VALIDATION_FAILED: " + "; ".join(validation["errors"]))
+        if destination.exists():
+            existing = runtime_provenance.inspect_package(destination)
+            existing_validation = validate_moduflow.validate_moduflow(destination, mode="installed")
+            same_identity = all(existing.get(key) == receipt[key] for key in
+                                ("package_version", "payload_sha256", "source_commit", "source_dirty"))
+            if not existing_validation["valid"] or existing["receipt_state"] != "valid" or not same_identity:
+                raise RuntimeError("PACKAGE_DESTINATION_CONFLICT: existing package differs")
+            return destination
+        # Rename publishes only a fully prepared package; no existing cache is removed.
+        stage.rename(destination)
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
     return destination
 
 
@@ -199,10 +298,10 @@ def install_codex_personal_plugin(source: Path, home: Path, installation_policy:
     marketplace_path = home / ".agents" / "plugins" / "marketplace.json"
     config_path = home / ".codex" / "config.toml"
 
+    cache_path = copy_plugin_cache(source, home, version)
     ensure_plugin_link(source, user_link)
     ensure_marketplace_entry(marketplace_path, installation_policy)
     codex_local_link = ensure_codex_local_link(source, home)
-    cache_path = copy_plugin_cache(source, home, version)
     ensure_codex_plugin_enabled(config_path)
 
     return {

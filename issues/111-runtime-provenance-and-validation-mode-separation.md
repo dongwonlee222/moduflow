@@ -1,6 +1,6 @@
 # Issue 111: Runtime Provenance and Validation Mode Separation
 
-**Status: backlog** — created 2026-08-21.
+**Status: active** — created 2026-08-21; started 2026-09-02.
 **Priority: p1**
 **Blocked-by:**
 
@@ -14,7 +14,7 @@ Separate source-release validation, installed-plugin self-check, and target-proj
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.json`
 - Verified against: source `010eee8eeec37edd6902f2dd008e7164f715e7b1` and installed package `0.3.49+codex.20260810222010`
 - Owner / decision maker: Dongwon Lee
-- Current phase: backlog; required before the next plugin release
+- Current phase: implementation, inline self-review, 1,610 tests and source release gates passed; human integration review pending. Lifecycle remains active; required before the next plugin release.
 
 ## Opportunity
 
@@ -61,7 +61,7 @@ Source checks correctly expect Git history, tests, issues, and specs, but those 
 - `scripts/release_check.py`
 - `scripts/validate_moduflow.py`
 - `scripts/project_doctor.py`
-- `scripts/project_status.py`
+- `scripts/mcp_server.py` and `commands/product-status.md` (there is no `scripts/project_status.py` in the inspected source)
 - plugin packaging and installation scripts
 - MCP product/status response adapters
 
@@ -71,9 +71,9 @@ Do not relax source validation or report guessed provenance. This issue does not
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/111-runtime-provenance-and-validation-mode-separation/spec.md`
-- [ ] plan → `specs/111-runtime-provenance-and-validation-mode-separation/plan.md`
-- [ ] execute → validation modes, provenance metadata/reporting, and tests
+- [x] spec draft → `specs/111-runtime-provenance-and-validation-mode-separation/spec.md` (Korean sidecar; approved 2026-09-02)
+- [x] plan draft → `specs/111-runtime-provenance-and-validation-mode-separation/plan.md` (four inline streams; approved 2026-09-02)
+- [x] execute → validation modes, provenance metadata/reporting, and tests; final verification in status.md
 - [ ] review → `specs/111-runtime-provenance-and-validation-mode-separation/review.md`
 
 ## Related Issues
@@ -91,7 +91,15 @@ Do not relax source validation or report guessed provenance. This issue does not
 - Roadmap: `workspace/roadmap.md`
 - Review packet: `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`
 - Finding source: `specs/102-project-registry-and-resolver/external-review-2026-08-21.json`
+- Spec: `specs/111-runtime-provenance-and-validation-mode-separation/spec.md`
+- Plan: `specs/111-runtime-provenance-and-validation-mode-separation/plan.md`
+- Tasks: `specs/111-runtime-provenance-and-validation-mode-separation/tasks.md`
+- Simulation matrix: `specs/111-runtime-provenance-and-validation-mode-separation/simulation-matrix.md`
+
+## Sessions
+
+- 2026-09-02: User requested the next plan and simulation testing after the priority refresh and role-reduction confirmation. Drafted spec/plan/tasks plus 12 offline scenarios and 2 separately authorized host observations. Existing partial source-file exclusion is retained. No implementation, installer execution, version bump, remote publication or completion claim is authorized by creating these drafts.
 
 ## Next Command
 
-`product:spec 111-runtime-provenance-and-validation-mode-separation`
+`product:review 111-runtime-provenance-and-validation-mode-separation` — review implementation and recorded source gates; authorize integration/publication separately. Actual host observations remain pending.

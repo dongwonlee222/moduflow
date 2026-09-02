@@ -10,6 +10,30 @@ from unittest import mock
 from scripts import project_doctor, project_operation, project_registry
 
 
+class RuntimeTargetGuardTests(unittest.TestCase):
+    def test_cache_is_rejected_before_parent_git_or_project_discovery(self):
+        from tests.runtime_provenance_fixture import make_package, receipt_for
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_package(Path(tmp), receipt=receipt_for())
+            with mock.patch.object(project_doctor, "git_root", side_effect=AssertionError("must not discover parent")), \
+                 mock.patch.object(project_registry, "project_context_for_root", side_effect=AssertionError("not a project")):
+                result = project_doctor.inspect_project(root)
+            self.assertIn("TARGET_ROLE_MISMATCH", result["error_codes"])
+            self.assertEqual(result["moduflow"]["missing"], [])
+            self.assertEqual(result["recovery"]["status"], "not_applicable")
+            self.assertEqual(result["validation_role"], "project")
+
+    def test_other_plugin_project_is_not_misclassified_as_moduflow_cache(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".claude-plugin").mkdir()
+            (root / ".claude-plugin/plugin.json").write_text(json.dumps({"name": "other", "version": "1.0.0"}))
+            result = project_doctor.inspect_project(root, include_preflight=False)
+            self.assertEqual(result.get("validation_role"), "project")
+            self.assertNotIn("TARGET_ROLE_AMBIGUOUS", result.get("error_codes", []))
+            self.assertTrue(result["moduflow"]["missing"])
+
+
 class CheckHookLogTests(unittest.TestCase):
     """Test hook log parsing and filtering."""
 

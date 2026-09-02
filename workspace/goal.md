@@ -4,6 +4,8 @@
 
 Make ModuFlow stop unsafe work before it reaches the wrong repository, turn external review into evidence-backed remediation, and give each project a reproducible knowledge, artifact, analysis, and dashboard home.
 
+The current product focus is continuity across projects and AI tasks: people and AI find selected evidence through one short project home. ModuFlow manages context, records, decisions and next actions; external company standards and replaceable specialist tools/runners perform the work.
+
 ## Owner
 
 Dongwon Lee
@@ -12,7 +14,11 @@ Dongwon Lee
 
 Repository sync, review handoff, production records, and dashboard foundations already exist. The remaining risk is trust and continuity: remote names can conceal the wrong repository, external review can be accepted without proof, and project conclusions or artifacts can become scattered across files and Sheets.
 
+The 2026-09-02 user requests prioritize material discovery, cross-session handoff and reusable company standards over further execution expansion. See `workspace/roadmap.md` for the authoritative Now/Next/Later ordering. Issue 103 is merged; Issue 111 remains the next-publication prerequisite. After that release, prioritize 090 → 091 → 086 → 092 before richer orchestration. This changes execution order, not issue lifecycle states or hard dependencies.
+
 ## Issues
+
+Current checkpoint (2026-09-02): Issue 111 is active with approved implementation, 1,610 passing tests, offline simulations and source release check; human integration review remains pending in its status/review/release artifacts. Source 0.3.55 is not installed-host evidence. Next product slice after the held release remains 090; no new runtime/scheduler has been introduced.
 
 - `088-canonical-repository-remote-identity-gate` — P0; canonical repo/base identity and pre-write blocking.
 - `089-verified-code-review-intake-and-remediation-routing` — P1; evidence-backed review disposition.
@@ -47,11 +53,11 @@ Route natural-language work to one explicit project, reuse only permitted projec
 flowchart LR
     I085[085 Production records\ndone] --> I106[106 Korean search + stable IDs\nP1]
     I085 --> I104[104 Request orchestrator\nP0]
-    I048[048 Lifecycle sync\ndone] --> I103[103 Atomic state transaction\nP0 spec review]
-    I004[004 Portfolio registry\ndone] --> I102[102 Registry v2 + resolver\nP0]
+    I048[048 Lifecycle sync\ndone] --> I103[103 Atomic state transaction\ndone]
+    I004[004 Portfolio registry\ndone] --> I102[102 Registry v2 + resolver\ndone]
     I002[002 Project profile\ndone] --> I102
-    I102 --> I109[109 Canonical consumers\nP0]
-    I102 --> I110[110 Capability enforcement\nP0]
+    I102 --> I109[109 Canonical consumers\ndone]
+    I102 --> I110[110 Capability enforcement\ndone]
     I102 --> I111[111 Runtime diagnostics\nP1]
     I103 --> I112[112 Execution boundary\nP0]
     I112 --> I104
@@ -80,6 +86,10 @@ flowchart LR
 - Mixed issue schemas cannot report ready/execute while dependencies or readiness are unmet.
 - Projects maintain structured knowledge, artifact, and reproducible analysis records.
 - The project home shows current work, recent outputs, key Sheets, conclusions, and next actions.
+- People and fresh AI tasks use the same short home and source-linked catalog; validate two-project isolation, committed-worktree handoff, stale/missing links and optional private-source absence separately from actual host/session loading.
+- Company analysis/document standards are external versioned references, not copied business logic; record effective rules and applicable validation evidence without weakening privacy/access constraints.
+- Analysis run completion, validation, human approval, observation-pending decisions and actually scheduled follow-ups remain distinguishable.
+- Each phase proves its user-facing boundaries with synthetic simulation scenarios before actual use; unit tests, simulated execution, packaged smoke and actual project/host observations remain separate evidence.
 - A request resolves exactly one registered project before any project-local read or write.
 - Every project-aware path consumer uses that resolved context, including non-default registered folders.
 - Archived/read-only projects remain readable but cannot write, execute, or publish.
@@ -107,21 +117,25 @@ flowchart LR
 - No automatic shared-playbook promotion, approver authorization, or unverified final-state transition.
 - Issue 102 is merged and externally revalidated. Issues 109 and 110 completed before Issue 103 implementation began; Issue 111 may run in parallel but must complete before the next plugin release.
 - No second ModuFlow subagent runtime, scheduler, queue, or full Spec Kit implementation lifecycle.
+- Keep the Issue DB/table/tab UI and Git-native source records; do not introduce a second dashboard database or embed private cross-project payloads in a shared HTML page.
+- Reconcile new requirements within 086/090/091/092 before implementation; preserve existing acceptance criteria, including 091's five templates. Automation expansion remains a later bounded scope, not a newly authorized runner installation or schedule.
 - Issue 104 consumes Issue 112's execution-routing contract; Issue 113 consumes Issues 103 and 112; Issue 114 never blocks projects that keep the approved 0.16.1 adapter disabled or pinned.
 
 ## Status
 
 - State: `active`
-- Blocker: none; Issue 103 implementation is in progress.
-- Updated: 2026-09-01
+- Blocker: next plugin publication is held for Issue 111. Its spec/plan and simulation matrix are drafted and await review before implementation. Issue 103 implementation and PR #44 merge are complete.
+- Updated: 2026-09-02
 
 ## History
 
 - `team-visibility-onboarding` — closed before 2026-07-16.
 - `visual-workbench` — closed 2026-07-05.
+- 2026-09-02: refreshed priorities for project discovery, cross-session continuity and external company standards; retained Issue 111's release gate and deferred expanded execution/automation. No new issues or implementation started by this refresh.
+- 2026-09-02: added the cross-phase simulation contract and Issue 111's four-stream spec/plan with twelve offline scenarios and two actual-host observations. Document preparation does not count as execution approval or passing tests.
 
 ## Next Command
 
-`product:execute 103-atomic-lifecycle-state-transaction`
+`product:review 111-runtime-provenance-and-validation-mode-separation`
 
-Finish Issue 103 before starting Issue 112. Issue 111 may proceed independently but remains required before the next plugin release.
+Review the drafted 111 spec/plan, then implement and verify its four inline streams before resuming publication. Next deliver the 090/091/086/092 project-knowledge slice; 112 still precedes 104/113/114, but is not a new prerequisite for that slice.

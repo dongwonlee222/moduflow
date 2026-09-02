@@ -9,7 +9,7 @@ Validate setup.
 
 ## Do
 
-1. Run `scripts/validate_moduflow.py` for the plugin package.
+1. Run `scripts/validate_moduflow.py <package-path> --mode installed --json` for an installed plugin, or `--mode source --json` for the source checkout. Select the role explicitly; source release gates must never fall back to installed mode. This package path is separate from the project path below.
 2. Run `scripts/project_doctor.py <project-path>` for the target project.
 3. Run `scripts/validate_project_artifacts.py <project-path>` when the project is initialized.
 4. Separate required setup errors from optional capability warnings.
@@ -21,6 +21,7 @@ Validate setup.
 10. For approval-sensitive hosts, call `inspect_project(path, include_preflight=False)` or `scripts/project_doctor.py <project-path> --no-preflight` first, then run full preflight only when Git/GitHub sync state is needed. The result explicitly lists `repository_identity` as skipped.
 11. Render project operation policy independently from resolution: raw `policy_inputs`, normalized `project_status` / `policy_trust_scope`, all four `capabilities`, and each `capability_reasons` entry. Doctor remains a diagnostic read even when mutation is denied.
 12. Render `recovery` as `healthy`, `incomplete`, or `unsafe`. Doctor reads journal control metadata only; it never performs recovery.
+13. Render `runtime_provenance` separately from project health and installed inventory. Unknown fields remain null with reasons; process startup is not proof of AI-host skill loading. For `TARGET_ROLE_MISMATCH` or `TARGET_ROLE_AMBIGUOUS`, use the recommended package check instead of initializing/repairing the cache as a project. Diagnostics never install, update or reload.
 
 ## Korean Output
 
