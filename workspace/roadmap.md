@@ -1,5 +1,12 @@
 # ModuFlow Roadmap
 
+## Completion and Release Gate — 2026-09-02
+
+- `103-atomic-lifecycle-state-transaction` — implementation and D2 complete; Linux CI passed 1,571 tests plus package/release validation. Dongwon Lee authorized PR #44 merge; the PR and its merge-commit CI are authoritative integration evidence.
+- `111-runtime-provenance-and-validation-mode-separation` — still backlog and still required before the next plugin publication. The Issue 103 merge approval does not waive this release prerequisite or start Issue 111 implementation.
+- Publication record: `specs/103-atomic-lifecycle-state-transaction/release.md`. Source version `0.3.54` has not been installed through this release workflow.
+- The execution ordering for 112/105 and later issues below is unchanged. Older Issue 103 progress snapshots are historical.
+
 ## Priority Refresh — 2026-09-01
 
 ### Now

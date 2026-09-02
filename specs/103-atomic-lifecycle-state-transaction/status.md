@@ -1,6 +1,6 @@
 # Issue 103 Implementation Status
 
-**Status: review-ready** — implementation and every D2 local gate are complete; non-draft PR #44 is published for the separately human-gated merge decision.
+**Status: implementation-complete** — implementation and D2 gates are complete; Dongwon Lee authorized PR #44 merge on 2026-09-02. Plugin publication remains held for Issue 111.
 
 ## Snapshot
 
@@ -41,6 +41,6 @@
 - Dashboard: `memory/dashboard.html`.
 - Issue drill-down: `memory/issue-103-atomic-lifecycle-state-transaction.html`.
 
-## Remaining Human Gate
+## Release Gate
 
-Inspect PR #44 and its status checks. Merge and plugin release remain separately human-gated and were not performed by D2.
+Merge authorization is recorded in `release.md`; the exact PR and merged-result CI remain the integration evidence. Issue 111 must complete before plugin publication. Source version `0.3.54` does not imply an installed update or host reload.
