@@ -17,6 +17,8 @@
 
 ## Acceptance and QA Evidence
 
+- PR #44 Linux CI follow-up: the initial CI run failed three inode-sensitive cases and two enclosing release-check cases. Fault injection now allocates replacement journals before replacement and pins the stale lock inode with an open descriptor. Production code and rejection assertions are unchanged; the transaction/storage suite passed 190 tests locally. Remote full-suite verification is required before merge.
+
 - Final full discovery: 1,571 tests passed in 462.485s.
 - Focused D2 suite: 495 tests passed; final post-fix targeted suites: 252 tests passed.
 - Project artifact validation: `valid: true`, `errors: []`.

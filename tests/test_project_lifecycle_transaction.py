@@ -10672,11 +10672,15 @@ Versioned release record.
                 raise ProcessLookupError(errno.ESRCH, "absent")
 
             real_fsync = transaction.os.fsync
-            with mock.patch.object(
-                transaction.os,
-                "fsync",
-                wraps=real_fsync,
-            ) as fsync:
+            # Pin the old inode: an unlinked, closed inode may be reused on Linux.
+            with (
+                lock_path.open("rb") as stale_file,
+                mock.patch.object(
+                    transaction.os,
+                    "fsync",
+                    wraps=real_fsync,
+                ) as fsync,
+            ):
                 with lock_entry(
                     subject,
                     clock="2030-01-02T03:04:06Z",
@@ -10686,6 +10690,7 @@ Versioned release record.
                 ) as owner:
                     self.assertEqual(owner.transaction_id, "txn-recovery")
                     self.assertNotEqual(lock_path.stat().st_ino, stale_inode)
+                    self.assertEqual(stale_file.read(), stale)
                     self.assertEqual(
                         json.loads(lock_path.read_bytes()),
                         {

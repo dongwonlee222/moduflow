@@ -973,14 +973,19 @@ class PrivatePreimageStorageTests(unittest.TestCase):
                     def mutate_after_temp_sync(descriptor):
                         result = real_fsync(descriptor)
                         if not changed and not stat.S_ISDIR(os.fstat(descriptor).st_mode):
-                            journal_path.unlink()
                             if failure == "replaced":
-                                journal_path.write_bytes(planned)
-                                journal_path.chmod(0o600)
-                            elif failure == "symlink":
-                                external = root / "external-journal"
-                                external.write_bytes(planned)
-                                journal_path.symlink_to(external)
+                                # Allocate while the old inode still exists so this
+                                # injection guarantees a distinct file on Linux too.
+                                replacement = workspace_path / "foreign-journal"
+                                replacement.write_bytes(planned)
+                                replacement.chmod(0o600)
+                                os.replace(replacement, journal_path)
+                            else:
+                                journal_path.unlink()
+                                if failure == "symlink":
+                                    external = root / "external-journal"
+                                    external.write_bytes(planned)
+                                    journal_path.symlink_to(external)
                             changed.append(True)
                         return result
 
@@ -1094,9 +1099,12 @@ class PrivatePreimageStorageTests(unittest.TestCase):
 
                         def replace_then_substitute(source, destination, **kwargs):
                             result = real_replace(source, destination, **kwargs)
-                            journal_path.unlink()
-                            journal_path.write_bytes(payload)
-                            journal_path.chmod(0o600)
+                            # Allocate before replacing; unlink/recreate can reuse
+                            # the original inode and fail to inject an identity change.
+                            replacement = workspace_path / "foreign-journal"
+                            replacement.write_bytes(payload)
+                            replacement.chmod(0o600)
+                            real_replace(replacement, journal_path)
                             return result
 
                         patcher = mock.patch.object(
