@@ -3,8 +3,8 @@
 Issue: `060-cross-agent-output-format-convention`.
 Owner: Dongwon Lee.
 Source: explicit user request to make purpose/problem/benefit a ModuFlow rule, and subsequent approval to continue the remote handoff.
-Phase: implementation verified; #45 merged as `973f342`; #46 retargeted to main; 0.3.56 publication approved 2026-09-02, final CI/integration/install pending.
-Next command: `product:release 060-cross-agent-output-format-convention`.
+Phase: merged in `2d857dd`, published as v0.3.56 and installed; CLI/MCP verified, fresh host prompt-skill observations remain unperformed.
+Next command: `product:status` in a fresh host task.
 
 Current approval/evidence authority: [release.md](release.md). Verification and pending-approval wording below is the earlier handoff snapshot. The user approved the Korean scope/CI summary; a direct dashboard or diff viewing event was not observed.
 
@@ -26,4 +26,4 @@ Current approval/evidence authority: [release.md](release.md). Verification and 
 
 ## Release Boundary
 
-Source version 0.3.56 is prepared for the changed plugin output behavior. It is not published or installed. The inherited Codex build suffix is not an installation timestamp. Run release checks on the approved source and use separately approved packaging/host observations for actual application. Existing installed caches and registration settings stay untouched.
+Version 0.3.56 is now [published](https://github.com/dongwonlee222/moduflow/releases/tag/v0.3.56) and the existing local Codex/Claude connections are updated. The old cache and rollback records remain; configuration/marketplace contents are unchanged. The inherited Codex suffix is not an installation timestamp. See [release.md](release.md) for source/archive/payload hashes and actual process observations. Current AI prompt-skill loading remains unverified, not silently marked complete.

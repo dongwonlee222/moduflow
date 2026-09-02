@@ -25,9 +25,11 @@ Keep Git-native records and the existing Issue DB/table/tab UI. A dashboard is a
 
 | Issue | Outcome | Reason | Confidence | Dependency / gate | Next command |
 |---|---|---|---|---|---|
-| `111-runtime-provenance-and-validation-mode-separation` | Separate source/package/project checks and identify the actually loaded package, including explicit unknowns | The source is ahead of the connected cache; implementation, installation and active-session reload must not be confused | High | PR #45 merged as `973f342`; joint 0.3.56 release with 060 follow-up authorized, publication/installation pending | `product:release 111-runtime-provenance-and-validation-mode-separation` |
+| `111-runtime-provenance-and-validation-mode-separation` | Separate source/package/project checks and identify the actually loaded package, including explicit unknowns | Installation and current host prompt-skill loading must not be confused | High | PR #45/#46 merged; 0.3.56 published/installed; CLI/MCP pass; R01/R02 fresh-host observations remain | `product:status` in a fresh host task; record R01/R02 |
 
 Current release authority: [0.3.56 joint release](../specs/060-cross-agent-output-format-convention/release.md). Dongwon Lee approved sequential #45/#46 merge and deployment on 2026-09-02. The 060 common output-rule follow-up remains separate from 090/086 implementation. Earlier approval-pending snapshots below are historical; implementation, merge, publication, installation and actual host loading are still separate evidence.
+
+Deployment update: [v0.3.56](https://github.com/dongwonlee222/moduflow/releases/tag/v0.3.56) is published from `2d857dd`; main CI and merged-source release checks passed. Codex cache and the existing Claude local connection now use the validated distribution. Old caches and settings backups are retained. The held publication is finished; do not repeat it. Fresh-host observations, not implementation or another release, are the remaining Issue 111 verification step.
 
 Issue 103 is complete and merged through PR #44; do not restart it. Source version 0.3.54 is not evidence of deployment. After 111 passes its approved acceptance criteria and normal release checks, resume the held release and verify the installed package and a fresh host session separately. Issues 090–092 and 112 are not new prerequisites for that release. Any newly observed release safety failure must be triaged rather than waived.
 
@@ -122,9 +124,9 @@ These are queued work, not additional gates on every knowledge task. Pull a safe
 
 ### Immediate Next Action
 
-`product:release 111-runtime-provenance-and-validation-mode-separation`
+`product:status` in a fresh Codex/Claude task for the remaining R01/R02 observation.
 
-Finish the authorized #45 → #46 integration and 0.3.56 deployment with final CI, source/package verification and explicit host-load limits. Do not combine 111 with dashboard/company-profile/Spec Kit work or all remaining Doctor debt. The separately prepared 090 and 086 plan packets can be reviewed concurrently. After the release and combined 090 spec/plan approval, begin 090 implementation; preserve the existing 090 → 091 → 086 → 092 order and role-reduction boundaries. PR #46's common output-rule follow-up stays a separate ordered review/merge, not a reason to restart 111 implementation.
+The authorized #45 → #46 integration and 0.3.56 deployment are complete. Record fresh-host R01/R02 separately without treating unknown prompt-skill loading as passed. Do not restart 111 implementation/publication or combine it with dashboard/company-profile/Spec Kit work. Review the existing 090/086 plan packets; 090 implementation still needs its combined spec/plan approval. Preserve the 090 → 091 → 086 → 092 implementation priority and independent preparation boundaries.
 
 ## Completion and Release Gate — 2026-09-02
 

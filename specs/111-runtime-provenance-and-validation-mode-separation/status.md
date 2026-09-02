@@ -3,8 +3,10 @@
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Source: approved `plan.md`; user approval on 2026-09-02.
-Phase: implementation and local verification passed; Draft PR #45 created, remote CI and human integration review pending at handoff.
-Next command: `product:review 111-runtime-provenance-and-validation-mode-separation`.
+Phase: PR #45 merged; 0.3.56 published/installed after #46 integration and successful main CI; CLI/MCP verified, R01/R02 fresh-host observations pending.
+Next command: `product:status` in a fresh host task, then record R01/R02 outcomes.
+
+Current authority: [joint 0.3.56 release record](../060-cross-agent-output-format-convention/release.md). The older PR/approval/publication-pending entries below are historical handoff snapshots. The issue is not automatically marked done: direct installed CLI/MCP observations do not satisfy a fresh Codex/Claude task's host observation. Unavailable source Git metadata and host fields remain explicit.
 
 ## Verification
 
@@ -29,7 +31,7 @@ The user approved proceeding after the parallel planning handoff. This authorize
 
 ## Remaining
 
-Remote CI and human integration review, then separately approved merge/publication/installation and R01/R02. The branch is pushed and Draft PR #45 exists. No merge, real cache installation, publication or actual-host observation has occurred. R01/R02 remain not performed.
+R01/R02 in fresh Codex/Claude tasks remain unperformed. Merge, publication and installation are complete and verified separately; the new CLI/MCP process evidence is recorded in the joint release. No second publication or repeated implementation is needed. Do not treat unknown host prompt-skill loading as passed or overwrite the valid installed receipt to fill missing Git provenance.
 
 ## Stream B Evidence
 

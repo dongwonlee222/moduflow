@@ -3,8 +3,8 @@
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Source: approved `spec.md` / `plan.md`; implementation `517ec64`; `status.md` / `review.md`.
-Phase: sequential merge and 0.3.56 publication approved on 2026-09-02; execution evidence pending.
-Next command: `product:release 111-runtime-provenance-and-validation-mode-separation`.
+Phase: merged as `973f342`, included in published/installed 0.3.56 at `2d857dd`; process verification passed, R01/R02 fresh-host observations pending.
+Next command: `product:status` in a fresh host task; record R01/R02 without inferring prompt-skill reload from CLI output.
 
 ## Current Approval and Joint Release
 

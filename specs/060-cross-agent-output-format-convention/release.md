@@ -3,8 +3,8 @@
 Issue: `060-cross-agent-output-format-convention`; includes `111-runtime-provenance-and-validation-mode-separation`.
 Owner / decision maker: Dongwon Lee.
 Source: approved issue/spec/PR scopes and explicit sequential merge/deployment approval in the current Codex integration task, 2026-09-02.
-Phase: PR #45 merged; PR #46 retargeted to main; publication authorized, final CI and installation pending.
-Next command: `product:release 060-cross-agent-output-format-convention`.
+Phase: PR #45/#46 merged; 0.3.56 published and installed; CLI/MCP verified, fresh Codex/Claude prompt-skill observations pending.
+Next command: `product:status` in a fresh host task for post-install observation; 090 implementation is not started by this release.
 
 ## 왜 필요한지
 
@@ -12,7 +12,7 @@ Next command: `product:release 060-cross-agent-output-format-convention`.
 
 ## 해결해야 할 문제
 
-기존 Codex 캐시는 0.3.48이며, Codex와 Claude 로컬 플러그인 연결은 기본 체크아웃을 가리킵니다. 원격 병합만으로 캐시·연결·이미 실행 중인 AI 세션이 함께 갱신되지 않습니다.
+배포 전 Codex 캐시는 0.3.48이고 Codex와 Claude 로컬 연결은 기본 체크아웃을 가리켰습니다. 원격 병합만으로 캐시·연결·이미 실행 중인 AI 세션이 함께 갱신되지 않는 문제를 배포 단계별로 확인했습니다.
 
 ## 기대 효과
 
@@ -31,16 +31,23 @@ Next command: `product:release 060-cross-agent-output-format-convention`.
 | Stage | Observed status |
 |---|---|
 | PR #45 | Latest-head CI passed at `d5e143b`; merged 2026-09-02 as `973f342a7a78b38a16315a9583a7725582452756` |
-| PR #46 | Retargeted to main after #45 merge; prior `c6ed2ab` CI passed; approval/evidence documentation update and latest-head CI pending |
-| Fresh local source release check | All 13 checks passed on the `c6ed2ab` implementation plus the local roadmap-only update |
+| PR #46 | Retargeted to main; latest-head `ceb6508` CI passed; merged as `2d857dd56369248b57358103cd439ffd089f69f4` at 2026-09-02T09:01:01Z |
+| Merged-source CI | Passed: [run 33611811305](https://github.com/dongwonlee222/moduflow/actions/runs/33611811305), exact source `2d857dd`; earlier #45 merge CI also passed |
+| Fresh local source release check | All 13 checks passed again on `2d857dd`; source tree is identical to tested PR head `ceb6508` |
 | Fresh local full suite | 1,614 tests passed in 290.759s, exit 0; `c6ed2ab` implementation and local roadmap update, with approval-only documentation added during the run; no code changes |
-| GitHub 0.3.56 publication | Not performed |
-| Codex installed package / Claude local connection | Not changed yet |
-| Actual CLI / host prompt-skill load | Not observed yet; existing task must not be reported as reloaded |
+| GitHub 0.3.56 publication | [v0.3.56](https://github.com/dongwonlee222/moduflow/releases/tag/v0.3.56), published 2026-09-02T09:05:58Z; tag resolves to `2d857dd56369248b57358103cd439ffd089f69f4` |
+| Codex installed package | `0.3.56+codex.20260810222010`; installed at 2026-09-02T09:03:54.901494+00:00; explicit installed validation passed with 0 errors / 0 warnings |
+| Claude existing local connection | Updated to the same validated distribution; Claude manifest base 0.3.56; no marketplace install or fresh Claude-host load claimed |
+| Actual new CLI / MCP | Both exit 0, report the installed cache/version; CLI startup 09:04:45.692533Z and MCP startup 09:04:45.827831Z on 2026-09-02; MCP initialize and status agree |
+| Fresh Codex/Claude prompt skills (R01/R02) | Not observed. `host`/`session_id` are null; direct CLI/MCP proof is not a host-session reload. Do not mark these plan checkboxes passed |
+
+Archive proof: `git get-tar-commit-id` returned `2d857dd56369248b57358103cd439ffd089f69f4`. Uploaded source SHA-256 is `3952eb116df016c6f204d647f649a73f87caad1802d3f53f280280908581c314`; GitHub's uploaded-asset digest matches. Installed payload SHA-256 is `7704888df1d00333f9baf40212293d75dc36f9c9520ab53ee0bdee619c34cf54` and matches the valid immutable receipt. `docs/output-format.md` matches the approved source byte-for-byte.
+
+Preservation: all 25 existing untracked Issue 103 plans retain their original SHA-256 values and are absent from the export. Old 0.3.48 cache remains. Codex config and personal marketplace JSON are byte-identical to their backups; only the intended plugin symlinks/cache were changed. No default-checkout files or 090/086 task files were edited. Final evidence-only source records may follow the tag; they do not change or overwrite the immutable published package.
 
 ## Packaging and Rollback Boundary
 
-Use only a committed approved source export. Do not package the 25 untracked Issue 103 plans or silently include working-tree changes. Keep the default checkout and existing task worktrees unchanged. Preserve the existing Codex 0.3.48 cache, exact previous symlink targets and relevant host registration/configuration backups outside Git before activation.
+Used only the committed approved source export. The persistent source and rollback records are outside Git under the local ModuFlow release directory, with its exact location recorded in the integration task. Previous Codex/user/Claude links all targeted the default ModuFlow checkout. Their link copies and Codex configuration/marketplace backups are preserved; the release directory is owner-only (0700).
 
 A source export has no `.git`; the installer must honestly report unavailable Git provenance rather than borrowing a nearby checkout. Record the exact export commit and archive digest as separate deployment evidence. Keep the published source export in a persistent deployment directory, never an auto-deleted temporary source target. The retained Codex build suffix is not an installation timestamp; 0.3.56 is a new cache identity relative to the installed 0.3.48.
 
