@@ -23,6 +23,8 @@ Keep Git-native records and the existing Issue DB/table/tab UI. A dashboard is a
 
 ### Now — Knowledge Implementation and Remaining Host Observation
 
+**Latest checkpoint — 2026-09-03:** 090 source 0.3.57 is integrated locally at `c89fc65`, with 1,680 full tests and all 13 release checks passing. The user approved version/full-verification/PR preparation, not main merge or deployment. Next is its Draft PR review; see [integration verification](../specs/090-project-knowledge-and-artifact-registry/integration-verification.md). 086 synthetic QA inputs are prepared separately at `e7cd118`, not integrated product UI. The existing implementation priority and 111 host-observation boundary remain unchanged.
+
 **Current execution decision:** the user approved the existing 090 spec/plan (`7779b42`, integrated at `5ff27e6`) for A1 → B1 → C1 → C2 → D1 → D2 inline implementation. The existing 090 task owns its plan's code/tests; the existing 086 task prepares only issue-scoped QA documents and synthetic inputs. Common overlapping implementation files have one writer (090); lifecycle/goal/roadmap and release decisions remain integration-owned. See [approval and ownership](../specs/090-project-knowledge-and-artifact-registry/implementation-approval.md). No new subagents, duplicate issues or release authorization are introduced.
 
 **Lifecycle limitation:** 111 remains active for R01/R02. Starting 090 was rejected before canonical writes because the current lifecycle model permits only one active issue. Leave the canonical cursor and 111 completion evidence unchanged; the approval record and task-specific progress describe 090 execution until integration reconciles this limitation. Do not treat backlog in this projection as revoked implementation approval or claim that the start transaction succeeded.
@@ -43,7 +45,7 @@ Default implementation order is **090 → 091 → 086 → 092**. Issue 086 can b
 
 | Issue | Outcome | Reason | Confidence | Dependency / gate | Next command |
 |---|---|---|---|---|---|
-| `090-project-knowledge-and-artifact-registry` | One project wiki and source-linked material catalog | All later views and run records need a durable, project-scoped place to find evidence | High | Existing spec/plan approved; integrated readiness ready; existing task executes inline, publication not authorized | `product:execute 090-project-knowledge-and-artifact-registry` |
+| `090-project-knowledge-and-artifact-registry` | One project wiki and source-linked material catalog | All later views and run records need a durable, project-scoped place to find evidence | High | 0.3.57 source verified (1,680 tests / 13 release checks); Draft PR approved, main merge/publication not authorized | `product:pr 090-project-knowledge-and-artifact-registry` |
 | `091-reproducible-analysis-runs-and-template-pack` | Reproducible run history, five existing analysis templates, and a bounded company-standard integration pilot | Makes recurring analysis traceable without moving calculation into ModuFlow | Medium for added profile/gate scope; high for existing run contract | 090; review additions without silently dropping the five accepted templates | `product:spec 091-reproducible-analysis-runs-and-template-pack` |
 | `086-project-aware-production-library-dashboard` | A consistent project selector across Issue DB, production records and playbooks | A project switch must not leave related tabs on a different project's data | High | Updated spec/design/plan prepared separately at `0f7aeb7`; combined review and implementation approval pending | `product:review 086-project-aware-production-library-dashboard` (spec/design/plan only) |
 | `092-project-home-dashboard` | A compact project home for people and AI: current work, blockers, approvals, recent results and next actions | Provides the shared entry point once the underlying records are reliable | Medium until existing spec/design refresh | 086, 090 and 091; replace stale fixed counts with source-derived criteria | `product:plan 092-project-home-dashboard` after spec/design reconciliation |
@@ -130,7 +132,7 @@ These are queued work, not additional gates on every knowledge task. Pull a safe
 
 ### Immediate Next Action
 
-`product:execute 090-project-knowledge-and-artifact-registry` in its existing task; independent 086 QA preparation in its existing task.
+`product:pr 090-project-knowledge-and-artifact-registry` from the verified integration branch; retain 086's separately prepared QA inputs for its later implementation.
 
 The authorized #45 → #46 integration and 0.3.56 deployment are complete. Record fresh-host R01/R02 separately without treating unknown prompt-skill loading as passed. Do not restart 111 implementation/publication or combine it with dashboard/company-profile/Spec Kit work. Execute approved 090 tasks without repeated per-step approval; 086 product-code implementation remains unapproved. Preserve the 090 → 091 → 086 → 092 implementation priority and independent preparation boundaries.
 

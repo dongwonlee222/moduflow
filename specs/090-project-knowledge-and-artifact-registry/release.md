@@ -2,8 +2,8 @@
 
 Issue: `090-project-knowledge-and-artifact-registry` · Owner: Dongwon Lee.
 Source: approved 2026-09-03 integration/version/full-verification/PR request.
-Phase: source candidate 0.3.57; final integrated gates pending. Not published or installed.
-Next: verify integrated feature commit, then open a Draft PR against main. Main merge, publication and installation are not authorized by this request.
+Phase: source candidate 0.3.57 verified at c89fc65. Not published or installed.
+Next: open the authorized Draft PR against main. Main merge, publication and installation are not authorized by this request.
 
 ## Purpose and Scope
 
@@ -18,13 +18,13 @@ Original implementation `594575b` remains on `codex/090-knowledge-registry-plan`
 | Layer | Current state |
 | --- | --- |
 | Implementation | A1–D2 handed off at 594575b; implementation self-review and integration inspection recorded |
-| Focused/synthetic/package checks | 317 passing in incoming-source recheck; integrated-source rerun pending record |
-| Full integrated regression / release gates | Pending after versioned integration commit |
+| Focused/synthetic/package checks | Integrated source: 317 passed in 13.531s, including S01–S14 and temporary packaged CLI |
+| Full integrated regression / release gates | c89fc65: 1,680 passed in 290.354s; complete release check valid=true, all 13 checks passed |
 | Remote PR / CI | Pending |
 | Main merge / publication / installation | Not authorized or performed |
 | Real project / fresh host use | Not performed; synthetic handoff is not real-host evidence |
 
-The incoming source's two release-policy failures remain in historical status evidence. Only actual integrated gate results may supersede them. 111 real-host observations and canonical cursor are unchanged. All prior Issue 103 untracked plans, company data, original implementation post-stop state writes, and installed caches are excluded.
+The incoming source's two release-policy failures remain in historical status evidence and are superseded for c89fc65 by observed passing integrated gates. The feature commit contains the patch version increase and explicit Issue linkage; no original history or gate code was rewritten. 111 real-host observations and canonical cursor are unchanged. All prior Issue 103 untracked plans, company data, original implementation post-stop state writes, and installed caches are excluded.
 
 ## Rollback and Adoption
 

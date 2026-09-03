@@ -12,7 +12,7 @@ Make `workspace/knowledge.md` a structured project wiki and add `workspace/artif
 - Type: user product direction
 - Link: local Codex session, 2026-07-16
 - Owner / decision maker: Dongwon Lee
-- Current phase: spec/plan implementation approved 2026-09-02; existing task to execute inline. The canonical backlog projection is retained because 111 occupies the single active lifecycle slot while awaiting real-host observations; see implementation approval for the failed, non-writing start attempt.
+- Current phase: source 0.3.57 implemented and locally verified at c89fc65 (1,680 tests and 13 release checks passed); Draft PR preparation separately approved 2026-09-03. The canonical backlog projection is retained because 111 occupies the single active lifecycle slot while awaiting real-host observations. Main merge, publication and actual project use remain separate.
 
 ## Problem
 
@@ -110,6 +110,7 @@ Do not create a second database or copy external/sensitive source files into Git
 
 - 2026-07-16: User prioritized the project wiki and artifact registry as the first project-knowledge improvement.
 - 2026-09-02: User approved the existing spec/plan for implementation and independent 086 QA preparation. Implementation, integration, release and actual application remain separate evidence.
+- 2026-09-03: User approved history-preserving integration, version increase, full verification and PR creation. Integrated source gates passed; see integration-verification.md. Original implementation branch preserved.
 
 ## Links
 
@@ -122,7 +123,9 @@ Do not create a second database or copy external/sensitive source files into Git
 - Simulation: [Synthetic scenario matrix](../specs/090-project-knowledge-and-artifact-registry/simulation-matrix.md)
 - Planning review: [한국어 검토·통합 인계](../specs/090-project-knowledge-and-artifact-registry/review-handoff.ko.md)
 - Implementation authority: [Approval, ownership and lifecycle limitation](../specs/090-project-knowledge-and-artifact-registry/implementation-approval.md)
+- Integration evidence: [Verified source and remaining approval boundaries](../specs/090-project-knowledge-and-artifact-registry/integration-verification.md)
+- PR review: [Purpose-first review packet](../specs/090-project-knowledge-and-artifact-registry/pr.md)
 
 ## Next Command
 
-`product:execute 090-project-knowledge-and-artifact-registry`
+`product:pr 090-project-knowledge-and-artifact-registry`

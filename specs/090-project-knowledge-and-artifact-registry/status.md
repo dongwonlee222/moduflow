@@ -2,8 +2,12 @@
 
 Issue: `090-project-knowledge-and-artifact-registry` · Owner: Dongwon Lee
 Authority: [implementation approval](implementation-approval.md), 2026-09-02 user approval.
-Phase: A1–D2 implementation and evidence ready for integration review; full regression 1,678 passed / 2 release-policy failures. Release policy remains blocked. Canonical lifecycle remains backlog and shared cursor remains 111 by instruction.
-Next: integration owner reviews this local implementation and resolves release linkage/version plus lifecycle conditions; no release or lifecycle mutation is authorized here.
+Phase: integrated source 0.3.57 at c89fc65; full regression 1,680/1,680 and all 13 release checks passed. Draft PR preparation; not merged, published or installed. Canonical lifecycle remains backlog and shared cursor remains 111 by instruction.
+Next: publish the authorized Draft PR against main, then obtain human merge/deployment approval separately. See integration-verification.md and release.md; older failures below describe the preserved original implementation history.
+
+## Latest Integration Verification — 2026-09-03
+
+The original 594575b implementation branch is preserved. Integration commit `c89fc657fc08e6653dbc59a0fda8182f9f5ecea7` has an explicit Issue trailer and both source manifests at 0.3.57. No runtime/test/command/template/config differences exist between the original implementation and this integrated commit. Local focused tests passed **317 in 13.531s**; full regression passed **1,680 in 290.354s**; the separate complete release check returned valid=true with all **13 checks** passing, including linkage/version. Package/project/operation/path validation and 9-criterion spec consistency also passed. This supersedes the incoming source's two release-policy failures, without rewriting its history or weakening checks.
 
 ## Why Needed / Problem / Expected Benefits
 

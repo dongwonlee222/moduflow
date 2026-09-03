@@ -2,8 +2,8 @@
 
 Issue: `090-project-knowledge-and-artifact-registry` · Owner: Dongwon Lee
 Source: [existing issue](../../issues/090-project-knowledge-and-artifact-registry.md), 2026-09-02 delegated request.
-Phase: A1–D2 implementation, simulations and self-review recorded. Full regression: 1,678 passed / 2 release-policy failures. Release readiness and canonical backlog/cursor remain integration-owned.
-Prev: [spec](spec.md) / [plan](plan.md) / [approval](implementation-approval.md) · Next: integration-owner review of status.md and implementation-review.md; no release action from this task.
+Phase: A1–D2 source implementation verified at integrated c89fc65: 1,680 tests and all 13 release checks passed. Draft PR preparation; canonical backlog/cursor unchanged, publication not approved.
+Prev: [spec](spec.md) / [plan](plan.md) / [approval](implementation-approval.md) · Next: authorized Draft PR; human merge/deployment approval remains separate. See [integration verification](integration-verification.md).
 
 ## Stream A — Canonical Schema and Initialization
 
@@ -31,13 +31,13 @@ Prev: [spec](spec.md) / [plan](plan.md) / [approval](implementation-approval.md)
 - [x] D1: Integrate the sole parser in Validator/Doctor, distinguish missing optional capability from malformed present registry, and keep original availability separate from metadata validity (AC3/AC7).
 - [x] D1: Register exact mutation ownership and package/template/test assets; reconcile 111 source/package validation surfaces without changing its release scope.
 - [x] D2: Execute S01–S14 with synthetic A/B, empty/legacy/stale/missing/private/uncommitted sources and a separate committed worktree; record actual observations, read trace and assertion outcomes (AC9).
-- [ ] D2: Pass focused/full tests, artifact validation, operation/path audits, spec consistency, release check and diff check; run temporary packaged smoke (AC9). Focused 317 and packaged smoke pass. Full regression ran 1,680 tests: 1,678 passed, 2 release-check wrapper failures. Release linkage/version policy gates remain failing, not waived; details in status.md.
+- [x] D2: Pass focused/full tests, artifact validation, operation/path audits, spec consistency, release check and diff check; run temporary packaged smoke (AC9). Integrated c89fc65: focused 317, full 1,680 and all 13 release checks pass. Incoming-source linkage/version failures remain historical evidence; details in integration-verification.md.
 - [x] D2: Append PM/spec, privacy and transaction self-review evidence in implementation-review.md; keep implementation, simulated fresh task, real host observation, remote merge, publication and install claims separate. No independent reviewer or subagent is claimed.
 
 ## Approval and Exit Conditions
 
 - [x] Joint spec/plan/tasks/simulation approval is recorded by Dongwon Lee before A1 begins.
-- [x] Parent-task 111 release checkpoint is respected; no PR/push/merge/install/release action is inferred from this plan.
-- [x] Every AC maps to observed passing evidence or an explicit remaining blocker in implementation-review.md; AC9 release policy remains partial. Planned expected outcomes are never marked passed.
+- [x] Parent-task 111 release checkpoint is respected; integration/version/PR preparation has separate 2026-09-03 user approval. Main merge/install/publication remain unapproved.
+- [x] Every AC maps to observed passing source evidence in implementation-review.md and the later integration-verification.md; the incoming AC9 policy blocker is resolved at c89fc65. Actual host/project use remains unperformed. Planned expected outcomes are never marked passed.
 
-Checked implementation items link to actual evidence in status.md; the all-gates-pass condition remains unchecked because release policy is still unmet.
+Checked source implementation items link to actual evidence in status.md and integration-verification.md. They do not represent main merge, publication, installation or actual project adoption.

@@ -2,7 +2,7 @@
 
 Issue: `090-project-knowledge-and-artifact-registry` · [GitHub #20](https://github.com/dongwonlee222/moduflow/issues/20)
 Owner / decision maker: Dongwon Lee
-Phase: planning draft; implementation not approved; issue remains backlog.
+Phase: approved contract implemented in source 0.3.57; see implementation-approval.md, status.md and integration-verification.md. Original planning observations below are historical; canonical backlog remains the documented single-active limitation, not absence of implementation authority.
 Source: [existing issue](../../issues/090-project-knowledge-and-artifact-registry.md), 2026-09-02 delegated planning request, and `8229170:workspace/roadmap.md` / `8229170:workspace/goal.md` (Git reference, not local lifecycle authority).
 Prev: existing issue · Next: joint review of this spec and [plan](plan.md).
 

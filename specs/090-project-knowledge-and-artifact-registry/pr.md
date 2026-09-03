@@ -2,8 +2,8 @@
 
 Issue: `090-project-knowledge-and-artifact-registry` · Refs #20
 Owner / decision maker: Dongwon Lee
-Phase: integration/version/PR preparation approved; integrated full checks pending.
-Next: complete integrated verification and open a Draft PR against `main`; merge and deployment need separate approval.
+Phase: integrated source 0.3.57 locally verified; Draft PR creation approved.
+Next: human PR review and remote CI; merge and deployment need separate approval.
 
 ## 왜 필요한지
 
@@ -35,9 +35,10 @@ Next: complete integrated verification and open a Draft PR against `main`; merge
 
 구현 원본은 `594575b`, 승인 기준은 `22c01c9`입니다. 원본 구현 브랜치를 변경하지 않고 PR 브랜치에 squash 통합하며, 정식 Issue trailer와 버전 상승을 같은 feature commit에 넣습니다.
 
-- 사전 통합 검증: 집중 317개 통과, S01–S14 및 임시 패키지 CLI 포함.
-- 원본 전체 검증: 1,680개 중 1,678 통과 / 2개 릴리스 정책 실패. 이 기록은 보존하며 통합 후 결과로 대체 완료를 추정하지 않습니다.
-- 통합 후 전체 테스트·릴리스 검사·GitHub CI 결과는 실행 후 기록합니다.
+- 통합 커밋 `c89fc65`: 집중 **317개 통과(13.531초)**, S01–S14 및 임시 패키지 CLI 포함.
+- 통합 후 전체 **1,680개 통과(290.354초)**, 릴리스 검사 **13개 항목 모두 통과**. 패키지·프로젝트·권한/경로 검사와 9개 완료조건 정합성 검사도 통과했습니다.
+- 원본의 이슈 연결·버전 정책 실패는 정식 이슈 연결과 버전 상승을 포함한 통합 커밋에서 해결했습니다. 원본 브랜치와 실패 이력은 보존했고 검사 코드를 완화하지 않았습니다.
+- GitHub CI는 PR 생성 후 별도 확인 대상입니다. 로컬 통과를 원격 CI 통과로 표시하지 않습니다.
 - 근거: `specs/090-project-knowledge-and-artifact-registry/integration-verification.md`, `status.md`, `simulation-matrix.md`, `implementation-review.md`.
 
 ## 하지 않은 것 / 승인 경계

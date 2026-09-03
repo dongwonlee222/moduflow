@@ -3,14 +3,25 @@
 Issue: `090-project-knowledge-and-artifact-registry`.
 Owner / decision maker: Dongwon Lee.
 Source: approved implementation and 2026-09-03 restart, followed by the existing 090 task's completion handoff.
-Phase: local implementation handed off; integration/version/PR preparation authorized on 2026-09-03; final integrated gates pending.
-Next: finish integrated verification, then create a Draft PR against main. Main merge, publication and installation remain separately approval-gated.
+Phase: integrated 0.3.57 source verified: 1,680 full tests and 13 release checks passed; Draft PR preparation authorized.
+Next: create the Draft PR against main. Main merge, publication and installation remain separately approval-gated.
 
 ## Integration Authority — 2026-09-03
 
 Dongwon Lee approved the proposed history-preserving integration, version increase, full revalidation and PR creation with “그럽시다. 90으로 인하여 뭐가 좋아지는거야? 90”. This authorizes the integration branch only, not main merge or deployment. The existing implementation branch and its commits remain intact. Apply its committed change as a squash into `codex/090-knowledge-registry-integration`, with explicit Issue linkage and the 0.x policy patch increase from 0.3.56 to 0.3.57 in the same feature commit. Neither the author's post-stop synchronization files nor the 25 old Issue 103 plans participate.
 
 Earlier pending-authority and failing-policy statements below describe the incoming implementation snapshot, not the integrated result. Final command results will be appended after execution; no green result is inferred from changing a manifest.
+
+## Verified Integrated Source — c89fc65
+
+- Exact feature commit: `c89fc657fc08e6653dbc59a0fda8182f9f5ecea7`; source 0.3.57 / Codex 0.3.57+codex.20260810222010, Issue trailer included in that commit.
+- `git diff 594575b HEAD -- scripts tests commands templates config` returned no differences at this feature commit. The source author's history and post-stop state remain untouched.
+- Focused command above, rerun in the integration worktree: **317 passed, 13.531s, exit 0**.
+- `PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -q`: **1,680 passed, 290.354s, exit 0**. This run used the bundled native Git through `PATH`, `GIT_EXEC_PATH` and `GIT_TEMPLATE_DIR`; Python was the local 3.14 runtime. Invalid CLI-input messages printed by negative cases did not represent test failures.
+- Separate `release_check.run_release_check(".")`: **valid=true, errors=[], all 13 checks passed**, including linkage, version, lint, security, focused release suites and Doctor. The two incoming-source policy failures are resolved in the integration history, not ignored.
+- Source-package and project artifact validation: valid, zero errors and no lifecycle drift. Operation/path audits: valid, zero errors. Spec consistency: 9 criteria, zero findings. Diff whitespace: passed.
+- Direct integration review covered the parser/read boundary, pinned source selection, normalization/source preconditions/recovery entrypoints, opt-in knowledge/CLI behavior, Validator/Doctor and distribution changes, and representative denial/fault/replay/snapshot tests against spec R1–R7 and AC1–AC9. No new blocking finding was identified in that review; it is a direct review, not a subagent review or human approval.
+- Main merge, GitHub CI, publication, installed-host reload and actual company-project use are not established by these local results. Canonical 090 backlog / 111 active state remain explicitly unchanged.
 
 ## Why Needed / Problem / Expected Benefit
 
