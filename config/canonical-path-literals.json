@@ -2,6 +2,12 @@
   "schema": "moduflow.canonical-path-classifications.v1",
   "entries": [
     {
+      "module": "scripts/project_knowledge.py",
+      "pattern": "join:workspace",
+      "classification": "package_source_layout",
+      "rationale": "Reads templates/workspace from the installed package; target-project wiki and catalog paths use the resolved canonical workspace role."
+    },
+    {
       "module": "scripts/mcp_server.py",
       "pattern": "join:.moduflow",
       "classification": "project_control_path",

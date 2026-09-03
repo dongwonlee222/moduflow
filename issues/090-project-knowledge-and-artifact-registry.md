@@ -12,7 +12,7 @@ Make `workspace/knowledge.md` a structured project wiki and add `workspace/artif
 - Type: user product direction
 - Link: local Codex session, 2026-07-16
 - Owner / decision maker: Dongwon Lee
-- Current phase: backlog
+- Current phase: source 0.3.57 implemented and locally verified at c89fc65 (1,680 tests and 13 release checks passed); Draft PR preparation separately approved 2026-09-03. The canonical backlog projection is retained because 111 occupies the single active lifecycle slot while awaiting real-host observations. Main merge, publication and actual project use remain separate.
 
 ## Problem
 
@@ -43,6 +43,17 @@ Analysis knowledge and deliverable links become scattered across sessions, issue
 - Copying sensitive originals into the repository.
 - Replacing detailed reports, Sheets, issues, memory entries, or decision records.
 - Building the dashboard UI in this issue.
+
+### Discovery and Handoff Requirements — 2026-09-02 Planning Draft
+
+- Extend the existing scope with a stable material ID, one-line purpose, when-to-read guidance, as-of date/reference period, draft/approved/superseded state, owner, optional original locators and related issue IDs.
+- Read the short project wiki/catalog first, then only explicitly selected originals; do not copy source bodies or company data into shared Git/plugin assets.
+- Distinguish a missing required link from an unavailable optional private original, and separate metadata validity, freshness, source availability and committed-share readiness.
+- Diagnose stale, broken, uncommitted and dirty sources; a local file cannot rescue a missing source in a committed snapshot used by another worktree.
+- Register a saved result with its catalog entry and owning-issue backlink through a bounded extension of existing transaction ownership; do not assume Issue 103 already covers arbitrary output paths.
+- Expose the same project-scoped stable ID/original/state read contract to 086, 091 and 092; UI and analysis-profile execution remain out of scope.
+- Plan synthetic A/B, empty/legacy, stale/missing/private-source and separate committed-worktree scenarios without importing actual company data. The referenced data-context/data-manifest pattern is an application example, not a verified universal API.
+- The linked spec/plan are prepared for one combined approval. These additions do not start implementation, change backlog state, or alter the parent task's 111 release gate.
 
 ## Acceptance Criteria
 
@@ -77,8 +88,8 @@ Do not create a second database or copy external/sensitive source files into Git
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/090-project-knowledge-and-artifact-registry/spec.md`
-- [ ] plan → `specs/090-project-knowledge-and-artifact-registry/plan.md`
+- [x] spec draft prepared → `specs/090-project-knowledge-and-artifact-registry/spec.md` (joint approval pending)
+- [x] plan draft prepared → `specs/090-project-knowledge-and-artifact-registry/plan.md` (joint approval pending)
 - [ ] execute → templates, parser, validation, migration guidance, command updates, and tests
 - [ ] review → `specs/090-project-knowledge-and-artifact-registry/review.md`
 
@@ -98,13 +109,23 @@ Do not create a second database or copy external/sensitive source files into Git
 ## Sessions
 
 - 2026-07-16: User prioritized the project wiki and artifact registry as the first project-knowledge improvement.
+- 2026-09-02: User approved the existing spec/plan for implementation and independent 086 QA preparation. Implementation, integration, release and actual application remain separate evidence.
+- 2026-09-03: User approved history-preserving integration, version increase, full verification and PR creation. Integrated source gates passed; see integration-verification.md. Original implementation branch preserved.
 
 ## Links
 
 - Roadmap: `workspace/roadmap.md`
 - Goal: `workspace/goal.md`
 - GitHub: https://github.com/dongwonlee222/moduflow/issues/20
+- Spec: [English](../specs/090-project-knowledge-and-artifact-registry/spec.md) / [한국어](../specs/090-project-knowledge-and-artifact-registry/spec.ko.md)
+- Plan: [Implementation plan](../specs/090-project-knowledge-and-artifact-registry/plan.md)
+- Tasks: [Unchecked implementation tasks](../specs/090-project-knowledge-and-artifact-registry/tasks.md)
+- Simulation: [Synthetic scenario matrix](../specs/090-project-knowledge-and-artifact-registry/simulation-matrix.md)
+- Planning review: [한국어 검토·통합 인계](../specs/090-project-knowledge-and-artifact-registry/review-handoff.ko.md)
+- Implementation authority: [Approval, ownership and lifecycle limitation](../specs/090-project-knowledge-and-artifact-registry/implementation-approval.md)
+- Integration evidence: [Verified source and remaining approval boundaries](../specs/090-project-knowledge-and-artifact-registry/integration-verification.md)
+- PR review: [Purpose-first review packet](../specs/090-project-knowledge-and-artifact-registry/pr.md)
 
 ## Next Command
 
-`product:spec 090-project-knowledge-and-artifact-registry`
+`product:pr 090-project-knowledge-and-artifact-registry`

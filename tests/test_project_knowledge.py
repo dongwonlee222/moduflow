@@ -18,6 +18,22 @@ project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
 
 
 class ProjectKnowledgeTests(unittest.TestCase):
+    def test_missing_only_initialization_never_overwrites_concurrently_created_file(self):
+        from unittest import mock
+        project_knowledge = load_module("project_knowledge_concurrent", "scripts/project_knowledge.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "knowledge.md"
+            original_exists = Path.exists
+            def concurrent_create(candidate):
+                if candidate == path and not original_exists(candidate):
+                    candidate.write_text("Human-created concurrently")
+                    return False
+                return original_exists(candidate)
+            with mock.patch.object(Path, "exists", concurrent_create):
+                created = project_knowledge.write_text_if_missing(path, "Generated template")
+            self.assertFalse(created)
+            self.assertEqual(path.read_text(), "Human-created concurrently")
+
     def nested_context(self, root):
         project_registry = load_module("project_registry", "scripts/project_registry.py")
         context = project_registry.project_context_for_root(root)
@@ -94,6 +110,7 @@ class ProjectKnowledgeTests(unittest.TestCase):
             artifact_path = root / artifact["path"]
             content = artifact_path.read_text(encoding="utf-8")
             self.assertEqual(artifact["kind"], "decision")
+            self.assertFalse(artifact["registered"])
             self.assertIn("issue_id: 003-payment", content)
             self.assertIn("spec: specs/003-payment/spec.md", content)
             self.assertIn("decision_supported: Prioritize card onboarding", content)

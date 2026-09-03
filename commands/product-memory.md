@@ -60,6 +60,9 @@ python3 scripts/project_memory.py <project-path> --export-guidance google-drive
 
 ## Rules
 
+- A saved/approved memory entry is not automatically registered in the project artifact catalog. For an explicit issue-linked handoff, list existing memory IDs, select the exact source path and preview `project_knowledge.py <project-path> --register <entry.json> --issue-id <actual-issue-id>`. Apply with `--write` only after the preview is approved. Registry IDs are separate stable `art-UUIDv4` IDs; preserve the original memory ID, content and relationships.
+- Registry metadata search uses `product:knowledge --query`; do not substitute memory body search for metadata-first discovery. Read only selected artifact IDs. Registration failure leaves the already-created memory/source intact and must be reported as **saved, unregistered**, not as a completed/shared handoff.
+
 - `memory/` is the source of truth.
 - External indexes, MCP servers, vector stores, and databases are rebuildable caches/adapters.
 - Prefer relative project-local links so projects remain portable when copied, cloned, or zipped.

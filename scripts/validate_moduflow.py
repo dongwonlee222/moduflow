@@ -112,6 +112,8 @@ REQUIRED_FILES = [
     "templates/workspace/loop-state.json",
     "templates/workspace/opportunities.md",
     "templates/workspace/reference-improvements.md",
+    "templates/workspace/knowledge.md",
+    "templates/workspace/artifacts.md",
     "templates/profile/project-profile.md",
     "templates/profile/environments.json",
     "templates/profile/integrations.json",
@@ -164,6 +166,7 @@ REQUIRED_FILES = [
     "scripts/project_migrate.py",
     "scripts/project_profile.py",
     "scripts/project_knowledge.py",
+    "scripts/project_artifact_registry.py",
     "scripts/project_memory.py",
     "scripts/project_issue_schema.py",
     "scripts/project_registry.py",
@@ -195,6 +198,10 @@ REQUIRED_FILES = [
     "tests/project_operation_fixture.py",
     "tests/lifecycle_transaction_fixture.py",
     "tests/test_project_doctor.py",
+    "tests/test_project_knowledge_registry.py",
+    "tests/test_project_knowledge_registry_transaction.py",
+    "tests/test_project_knowledge_registry_simulation.py",
+    "tests/knowledge_registry_fixture.py",
     "tests/test_runtime_provenance.py",
     "tests/test_runtime_provenance_simulation.py",
     "tests/runtime_provenance_fixture.py",
@@ -217,6 +224,10 @@ REQUIRED_FILES = [
 ]
 
 SOURCE_ONLY_REQUIRED_FILES = {
+    "tests/test_project_knowledge_registry_simulation.py",
+    "tests/test_project_knowledge_registry.py",
+    "tests/test_project_knowledge_registry_transaction.py",
+    "tests/knowledge_registry_fixture.py",
     "tests/test_runtime_provenance_simulation.py",
     "tests/test_runtime_provenance.py",
     "tests/runtime_provenance_fixture.py",

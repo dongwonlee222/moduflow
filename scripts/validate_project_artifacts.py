@@ -11,8 +11,10 @@ except ModuleNotFoundError:
     from project_repository_identity import audit_repository_links
 
 try:
-    from scripts import project_registry
+    from scripts import project_artifact_registry, project_operation, project_registry
 except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_artifact_registry
+    import project_operation
     import project_registry
 
 
@@ -556,6 +558,20 @@ def deduplicate_messages(messages):
     return list(dict.fromkeys(messages))
 
 
+def validate_artifact_registry(root, context):
+    """Use the canonical metadata reader, including links beyond the UI-sized limit."""
+    try:
+        read = project_artifact_registry.read_artifact_registry(root, project_context=context, limit=sys.maxsize)
+    except (ValueError, project_operation.ProjectOperationDenied):
+        return {"initialized": False, "metadata_valid": False, "total": 0, "entries": [],
+                "diagnostics": [project_artifact_registry.diagnostic("REGISTRY_READ_UNAVAILABLE")]}
+    missing_codes = {"REGISTRY_NOT_INITIALIZED", "KNOWLEDGE_HOME_MISSING"}
+    return {"initialized": not any(d["code"] in missing_codes for d in read["diagnostics"]),
+            "metadata_valid": read["metadata_valid"], "total": read["total"],
+            "entries": [{k: entry[k] for k in ("id", "metadata_valid", "source_availability", "freshness", "share_status")}
+                        for entry in read["entries"]], "diagnostics": read["diagnostics"]}
+
+
 def validate_project(path, *, project_context=None):
     root = Path(path).resolve()
     errors = []
@@ -660,6 +676,13 @@ def validate_project(path, *, project_context=None):
         warnings,
         project_context=context,
     )
+    artifact_registry = validate_artifact_registry(root, context)
+    for finding in artifact_registry["diagnostics"]:
+        message = f"{finding['code']} [{finding['artifact_id']}:{finding['field']}]: {finding['next_action']}"
+        if finding["severity"] == "error":
+            errors.append(message)
+        elif finding["severity"] == "warning":
+            warnings.append(message)
     errors = deduplicate_messages(errors)
     warnings = deduplicate_messages(warnings)
 
@@ -671,6 +694,7 @@ def validate_project(path, *, project_context=None):
         "warnings": warnings,
         "issue_schema": issue_schema,
         "lifecycle_drift": lifecycle_drift,
+        "artifact_registry": artifact_registry,
     }
 
 

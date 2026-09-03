@@ -14,11 +14,11 @@ Dongwon Lee
 
 Repository sync, review handoff, production records, and dashboard foundations already exist. The remaining risk is trust and continuity: remote names can conceal the wrong repository, external review can be accepted without proof, and project conclusions or artifacts can become scattered across files and Sheets.
 
-The 2026-09-02 user requests prioritize material discovery, cross-session handoff and reusable company standards over further execution expansion. See `workspace/roadmap.md` for the authoritative Now/Next/Later ordering. Issue 103 is merged; Issue 111 remains the next-publication prerequisite. After that release, prioritize 090 → 091 → 086 → 092 before richer orchestration. This changes execution order, not issue lifecycle states or hard dependencies.
+The 2026-09-02 user requests prioritize material discovery, cross-session handoff and reusable company standards over further execution expansion. See `workspace/roadmap.md` for the authoritative Now/Next/Later ordering. Issue 103 is merged; the 111/060 release 0.3.56 is published and installed. Prioritize 090 → 091 → 086 → 092 before richer orchestration. This changes execution order, not hard dependencies.
 
 ## Issues
 
-Current checkpoint (2026-09-02): Issue 111 is active with approved implementation, 1,610 passing tests, offline simulations and source release check; human integration review remains pending in its status/review/release artifacts. Source 0.3.55 is not installed-host evidence. Next product slice after the held release remains 090; no new runtime/scheduler has been introduced.
+Current checkpoint (2026-09-02): 111/060 implementation, approved PR #45/#46 integration, 0.3.56 publication/installation and fresh CLI/MCP checks are complete; R01/R02 actual Codex/Claude prompt-skill observations remain pending. The user approved the existing 090 spec/plan for implementation, with 086 limited to independent QA-document/synthetic-input preparation. See `specs/090-project-knowledge-and-artifact-registry/implementation-approval.md` for authority, ownership and readiness. The one-active-issue lifecycle projection still points at 111: the attempted 090 start was rejected before canonical writes because it would create two active issues. Preserve that state rather than falsely completing 111; 090 implementation authority is recorded separately. No runtime/scheduler has been introduced.
 
 - `088-canonical-repository-remote-identity-gate` — P0; canonical repo/base identity and pre-write blocking.
 - `089-verified-code-review-intake-and-remediation-routing` — P1; evidence-backed review disposition.
