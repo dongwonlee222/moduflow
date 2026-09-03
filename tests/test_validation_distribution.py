@@ -19,6 +19,17 @@ def load_module(name, relative_path):
 
 
 class ValidationDistributionTests(unittest.TestCase):
+    def test_registry_assets_are_required_in_package_but_tests_only_in_source(self):
+        validator = load_module("validate_registry_distribution", "scripts/validate_moduflow.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            installed = validator.validate_moduflow(tmp, mode="installed")
+            for asset in ("scripts/project_artifact_registry.py", "templates/workspace/knowledge.md", "templates/workspace/artifacts.md"):
+                self.assertIn(asset, installed["missing"])
+            source = validator.validate_moduflow(tmp, mode="source")
+            for test in ("tests/test_project_knowledge_registry.py", "tests/test_project_knowledge_registry_transaction.py", "tests/knowledge_registry_fixture.py"):
+                self.assertIn(test, source["missing"])
+                self.assertNotIn(test, installed["missing"])
+
     def create_minimal_project(self, root):
         (root / ".moduflow").mkdir()
         (root / ".moduflow" / "config.json").write_text(

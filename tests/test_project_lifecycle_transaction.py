@@ -11398,9 +11398,13 @@ Versioned release record.
                     "candidates",
                     "question",
                     "warnings",
-                    "reason_code",
                 ):
                     self.assertNotIn(omitted, projected.context)
+                # Preserve explicit-root policy authority when rebinding paths;
+                # otherwise downstream permission-checked readers deny this view.
+                transaction.project_operation.require_project_capability(
+                    projected.context, "read"
+                )
                 transaction.project_registry.context_for_operation(
                     projected.root,
                     project_context=projected.context,

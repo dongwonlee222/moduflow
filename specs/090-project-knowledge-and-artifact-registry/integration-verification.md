@@ -3,8 +3,14 @@
 Issue: `090-project-knowledge-and-artifact-registry`.
 Owner / decision maker: Dongwon Lee.
 Source: approved implementation and 2026-09-03 restart, followed by the existing 090 task's completion handoff.
-Phase: local implementation handed off; focused verification repeated; not release-ready or merged.
-Next: review the remaining integration boundaries and obtain authority for history-preserving integration/version/PR preparation. Publication and installation remain separate.
+Phase: local implementation handed off; integration/version/PR preparation authorized on 2026-09-03; final integrated gates pending.
+Next: finish integrated verification, then create a Draft PR against main. Main merge, publication and installation remain separately approval-gated.
+
+## Integration Authority — 2026-09-03
+
+Dongwon Lee approved the proposed history-preserving integration, version increase, full revalidation and PR creation with “그럽시다. 90으로 인하여 뭐가 좋아지는거야? 90”. This authorizes the integration branch only, not main merge or deployment. The existing implementation branch and its commits remain intact. Apply its committed change as a squash into `codex/090-knowledge-registry-integration`, with explicit Issue linkage and the 0.x policy patch increase from 0.3.56 to 0.3.57 in the same feature commit. Neither the author's post-stop synchronization files nor the 25 old Issue 103 plans participate.
+
+Earlier pending-authority and failing-policy statements below describe the incoming implementation snapshot, not the integrated result. Final command results will be appended after execution; no green result is inferred from changing a manifest.
 
 ## Why Needed / Problem / Expected Benefit
 

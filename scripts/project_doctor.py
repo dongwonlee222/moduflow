@@ -562,7 +562,7 @@ def inspect_project(path, include_preflight=True, *, project_context=None, runti
     migration_mode = recommended_migration_mode(missing, candidates)
     project_loop = load_project_loop()
     project_validator = load_project_validator()
-    schema_gates = project_validator.validate_project(project_root)
+    schema_gates = project_validator.validate_project(project_root, project_context=context)
     lifecycle_drift = schema_gates.get("lifecycle_drift", [])
     issue_schema = schema_gates.get(
         "issue_schema",
@@ -637,6 +637,7 @@ def inspect_project(path, include_preflight=True, *, project_context=None, runti
             "initialized": not missing_knowledge,
             "missing": missing_knowledge,
         },
+        "artifact_registry": schema_gates.get("artifact_registry", {}),
         "memory": {
             "initialized": not missing_memory,
             "missing": missing_memory,
@@ -694,6 +695,10 @@ def inspect_project(path, include_preflight=True, *, project_context=None, runti
 
     if missing_knowledge:
         result["recommendation"].append("Run product:knowledge --write to create knowledge evidence structure.")
+    if not result["artifact_registry"].get("initialized", False):
+        result["recommendation"].append("Preview product:knowledge, then --write to create only missing wiki/catalog files; preserve legacy text.")
+    elif not result["artifact_registry"].get("metadata_valid", False):
+        result["recommendation"].append("Review artifact_registry diagnostics and explicitly curate invalid metadata; do not migrate or overwrite automatically.")
 
     if missing_memory:
         result["recommendation"].append("Run product:memory --write to create portable project memory structure.")

@@ -688,5 +688,53 @@ class ProjectCapabilityDoctorTests(unittest.TestCase):
         )
 
 
+class ArtifactRegistryDiagnosticsTests(unittest.TestCase):
+    def test_missing_registry_is_optional_but_present_malformed_registry_is_error(self):
+        from tests.knowledge_registry_fixture import transaction_project
+        from scripts import validate_project_artifacts
+        with tempfile.TemporaryDirectory() as tmp:
+            project = transaction_project(tmp)
+            for name in ("artifacts.md", "knowledge.md"):
+                (project.root / "workspace" / name).unlink()
+            missing = validate_project_artifacts.validate_project(project.root, project_context=project.context)
+            self.assertTrue(missing["valid"], missing["errors"])
+            self.assertIn("artifact_registry", missing)
+            self.assertFalse(missing["artifact_registry"]["initialized"])
+            project.write("workspace/artifacts.md", "Unstructured legacy notes stay unchanged.\n")
+            invalid = validate_project_artifacts.validate_project(project.root, project_context=project.context)
+            self.assertFalse(invalid["valid"])
+            self.assertTrue(any("REGISTRY_SCHEMA_UNSUPPORTED" in e for e in invalid["errors"]), invalid)
+
+    def test_doctor_uses_supplied_nested_context_for_registry_and_keeps_axes_separate(self):
+        from tests.knowledge_registry_fixture import transaction_project, registry_text, make_entry
+        with tempfile.TemporaryDirectory() as tmp:
+            project = transaction_project(tmp, nested=True)
+            entry = make_entry(local_path=None, private_ref="private:synthetic-source", source_requirement="optional", review_after="2000-01-01")
+            project.write("product/workspace/artifacts.md", registry_text([entry]))
+            project.write("workspace/artifacts.md", "POISON OUTSIDE SELECTED ROLE")
+            with mock.patch.object(project_doctor, "installed_plugin_staleness", return_value={"checked": False, "stale": [], "recommendations": []}):
+                result = project_doctor.inspect_project(project.root, include_preflight=False, project_context=project.context)
+            self.assertIn("artifact_registry", result)
+            summary = result["artifact_registry"]
+            self.assertTrue(summary["metadata_valid"], summary)
+            self.assertTrue(result["schema_gates"]["valid"], result["schema_gates"])
+            self.assertEqual(summary["entries"][0]["source_availability"], "unavailable")
+            self.assertEqual(summary["entries"][0]["freshness"], "stale")
+            self.assertEqual(summary["entries"][0]["share_status"], "unknown")
+            self.assertNotIn("POISON", repr(result))
+
+    def test_validator_checks_links_beyond_the_default_twenty_read_results(self):
+        from tests.knowledge_registry_fixture import transaction_project, registry_text, make_entry
+        from scripts import validate_project_artifacts
+        with tempfile.TemporaryDirectory() as tmp:
+            project = transaction_project(tmp)
+            entries = [make_entry(id=f"art-{i:08x}-1111-4111-8111-111111111111") for i in range(21)]
+            entries[-1]["local_path"] = "knowledge/references/missing.md"
+            project.write("workspace/artifacts.md", registry_text(entries))
+            result = validate_project_artifacts.validate_project(project.root, project_context=project.context)
+            self.assertFalse(result["valid"], result)
+            self.assertTrue(any("LOCAL_LINK_BROKEN" in e for e in result["errors"]))
+
+
 if __name__ == "__main__":
     unittest.main()

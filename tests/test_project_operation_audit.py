@@ -86,6 +86,23 @@ class ProjectOperationAuditTests(unittest.TestCase):
         self.assertEqual(result["unclassified"][0]["function"], "write_record")
         self.assertIn("write_text", result["unclassified"][0]["mutation_kinds"])
 
+    def test_registry_facade_inventory_rejects_direct_unowned_writer(self):
+        repository = Path(__file__).resolve().parents[1]
+        entries = json.loads((repository / "config/project-operation-entrypoints.json").read_text())["entries"]
+        boundary = [e for e in entries if e["module"] == "scripts/project_artifact_registry.py"]
+        # Delegating facades have no direct mutation to classify; a new direct
+        # catalog writer must still fail under the exact production inventory.
+        self.assertEqual(boundary, [])
+        root = self.multi_module_project({"scripts/project_artifact_registry.py":
+            "def apply_artifact_registration(root, plan, project_context):\n"
+            "    project_operation.require_project_capability(project_context, 'write')\n"
+            "    return engine.apply(plan)\n\n"
+            "def direct_registry_writer(path):\n"
+            "    path.write_text('unowned catalog')\n"}, boundary)
+        result = project_operation_audit.inspect_project(root)
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["unclassified"][0]["function"], "direct_registry_writer")
+
     def test_github_create_runner_call_is_discovered_as_external_mutation(self):
         root = self.project(
             "def publish(runner, root):\n"

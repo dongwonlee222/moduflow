@@ -136,6 +136,7 @@ _ACTIONS = frozenset({
     "complete",
     "reconcile",
     "production-version",
+    "artifact-register",
 })
 _LIFECYCLES = frozenset({"backlog", "active", "done"})
 _ACTION_TARGETS = {
@@ -394,6 +395,7 @@ class LifecycleIntent:
     roadmap_change: dict | None = None
     production_change: dict | None = None
     require_issue_index: bool = False
+    artifact_change: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -465,6 +467,7 @@ class LifecycleTransactionPlan:
     targets: tuple[PlannedTarget, ...]
     _project_context: Mapping = field(repr=False, compare=False)
     _production_version: str = field(default="", repr=False, compare=False)
+    _artifact_change: Mapping | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self):
         if not isinstance(self.targets, tuple) or not all(
@@ -485,6 +488,8 @@ class LifecycleTransactionPlan:
             "_production_version",
             self._production_version.strip(),
         )
+        if self._artifact_change is not None:
+            object.__setattr__(self, "_artifact_change", _freeze_json_value(self._artifact_change))
 
     def to_public_dict(self):
         return serialize_transaction_plan(
@@ -1087,6 +1092,14 @@ def normalize_lifecycle_intent(intent):
             raise ValueError("loop_change must be a dictionary")
     if intent.roadmap_change is not None and not isinstance(intent.roadmap_change, Mapping):
         raise ValueError("roadmap_change must be a dictionary")
+    artifact_change = intent.artifact_change
+    if action == "artifact-register":
+        if (supplied_target is not None or intent.loop_change is not None or intent.roadmap_change is not None
+                or intent.production_change is not None or intent.require_issue_index or intent.loop_blocker or intent.next_command):
+            raise ValueError("artifact-register cannot change lifecycle projections")
+        artifact_change = _normalize_artifact_change(artifact_change, str(intent.issue_id).strip())
+    elif artifact_change is not None:
+        raise ValueError("artifact_change is only valid for artifact-register")
 
     return replace(
         intent,
@@ -1111,6 +1124,7 @@ def normalize_lifecycle_intent(intent):
             if production_change is not None
             else None
         ),
+        artifact_change=_freeze_json_value(artifact_change) if artifact_change is not None else None,
     )
 
 
@@ -1134,6 +1148,8 @@ def _semantic_identity(project_context, intent):
     }
     if normalized.loop_change is not None:
         identity["loop_change"] = normalized.loop_change
+    if normalized.artifact_change is not None:
+        identity["artifact_change"] = {k: v for k, v in normalized.artifact_change.items() if k != "expected"}
     return identity
 
 
@@ -1544,6 +1560,9 @@ def _projected_project_context(plan, projected_root):
         for field_name in _PROJECTED_POLICY_FIELDS:
             if field_name in source:
                 context[field_name] = source[field_name]
+        # Explicit-root compatibility is an authority input, unlike resolver prose.
+        if source.get("reason_code") == "explicit_root":
+            context["reason_code"] = "explicit_root"
         return project_registry.context_for_operation(
             root,
             project_context=context,
@@ -2770,6 +2789,7 @@ def _private_prepared_workspace(
         _require_empty_recovery_inventory(root)
         if _production_version_classification(plan) != "absent":
             raise LifecycleProductionVersionConflict()
+        _verify_artifact_sources(plan)
         transaction_storage.verify_canonical_preimages(root, storage_targets)
         with transaction_storage.private_transaction_workspace(
             root,
@@ -2970,6 +2990,8 @@ def _post_validate_applied_state(
             canonical_root,
             project_context=canonical_context,
         )
+        _validate_artifact_registration_links(plan, canonical_root, canonical_context)
+        _verify_artifact_sources(plan)
     except Exception as exc:
         raise LifecyclePostApplyValidationError(
             "POST_APPLY_VALIDATION_FAILED",
@@ -3519,6 +3541,7 @@ def validate_projected_transaction(plan: LifecycleTransactionPlan) -> dict:
                 projected.root,
                 project_context=projected.context,
             )
+            _validate_artifact_registration_links(plan, projected.root, projected.context)
             return _summarize_projected_validation(validation_result)
     except (
         project_operation.ProjectOperationDenied,
@@ -6101,6 +6124,202 @@ def _planned_target(role, relative_path, existed, before_bytes, after_bytes, rul
     )
 
 
+def _artifact_registry_module():
+    try:
+        import project_artifact_registry
+    except ImportError:
+        from scripts import project_artifact_registry
+    return project_artifact_registry
+
+
+def _normalize_artifact_change(change, issue_id):
+    registry = _artifact_registry_module()
+    if not isinstance(change, Mapping) or set(change) != {"entry", "new_knowledge", "amend", "expected"}:
+        raise ValueError("ARTIFACT_CHANGE_INVALID")
+    change = _json_value(change)
+    entry = change["entry"]
+    if registry.validate_entry(entry) or issue_id not in entry["issue_ids"]:
+        raise ValueError("ARTIFACT_ENTRY_INVALID")
+    if not isinstance(change["amend"], bool):
+        raise ValueError("ARTIFACT_CHANGE_INVALID")
+    new = change["new_knowledge"]
+    if new is not None:
+        if not isinstance(new, dict) or set(new) != {"kind", "title", "spec_path", "decision_supported"}:
+            raise ValueError("ARTIFACT_OUTPUT_INVALID")
+        if new["kind"] not in ("decision", "benchmark", "report", "research", "data-note", "reference"):
+            raise ValueError("ARTIFACT_OUTPUT_INVALID")
+        if any(not isinstance(v, str) or any(ord(c) < 32 for c in v) for v in new.values()) or not new["title"].strip():
+            raise ValueError("ARTIFACT_OUTPUT_INVALID")
+        if new["spec_path"] and not registry.safe_relative_path(new["spec_path"]):
+            raise ValueError("ARTIFACT_OUTPUT_INVALID")
+    expected = change["expected"]
+    if expected is not None:
+        if not isinstance(expected, dict) or set(expected) != {"catalog", "issue", "sources"} or not isinstance(expected["sources"], dict):
+            raise ValueError("ARTIFACT_PRECONDITION_INVALID")
+        for value in (expected["catalog"], expected["issue"], *expected["sources"].values()):
+            if not isinstance(value, str) or (value != "absent" and not _SHA256.fullmatch(value)):
+                raise ValueError("ARTIFACT_PRECONDITION_INVALID")
+        if any(not registry.safe_relative_path(path) for path in expected["sources"]):
+            raise ValueError("ARTIFACT_PRECONDITION_INVALID")
+        permitted = {entry["local_path"], entry["approval_ref"]} - {None}
+        if new is not None:
+            permitted.discard(entry["local_path"])
+        if set(expected["sources"]) != permitted:
+            raise ValueError("ARTIFACT_PRECONDITION_INVALID")
+    return change
+
+
+def _artifact_source_fingerprint(root, relative):
+    """Bind locally observable source identity and content, without publishing either."""
+    path = root / relative
+    try:
+        try:
+            before = path.lstat()
+        except FileNotFoundError:
+            before = None
+        existed, contents = _read_planning_source(path, root, "artifact-source", required=False)
+        try:
+            after = path.lstat()
+        except FileNotFoundError:
+            after = None
+        if not existed and before is None and after is None:
+            return "absent"
+        if (not existed or before is None or after is None
+                or (before.st_dev, before.st_ino, before.st_mtime_ns, before.st_size)
+                != (after.st_dev, after.st_ino, after.st_mtime_ns, after.st_size)):
+            raise LifecyclePlanError("PLAN_ARTIFACT_SOURCE_CONFLICT")
+        identity = f"{after.st_dev}:{after.st_ino}:{target_sha256(contents)}"
+        return target_sha256(identity.encode("ascii"))
+    except OSError as exc:
+        raise LifecyclePlanError("PLAN_ARTIFACT_SOURCE_CONFLICT") from exc
+
+
+def _verify_artifact_sources(plan):
+    if plan.action != "artifact-register":
+        return
+    root = Path(plan.canonical_root)
+    for relative, expected in plan._artifact_change["expected"]["sources"].items():
+        try:
+            actual = _artifact_source_fingerprint(root, relative)
+        except LifecyclePlanError as exc:
+            raise transaction_storage.LifecycleCanonicalConflict(0) from exc
+        if actual != expected:
+            raise transaction_storage.LifecycleCanonicalConflict(0)
+
+
+def _plan_artifact_registration(root, context, intent, idempotency_key, transaction_id):
+    registry = _artifact_registry_module()
+    change = _json_value(intent.artifact_change)
+    entry = change["entry"]
+    evidence_parent = _safe_planning_child(root, context, "workspace", "transactions")
+    if not evidence_parent.is_dir():
+        raise LifecyclePlanError("PLAN_ARTIFACT_PREREQUISITE_MISSING")
+    selected = []
+    # Immutable prerequisites remain participants, but are never re-rendered.
+    for role, path in (
+        ("state", root / ".moduflow/state.json"),
+        ("loop", _safe_planning_child(root, context, "workspace", "loop-state.json")),
+        ("dashboard", _safe_planning_child(root, context, "workspace", "dashboard.md")),
+    ):
+        existed, before = _read_planning_source(path, root, role, required=True)
+        selected.append((role, _project_relative(root, path), existed, before, before, ("unchanged-prerequisite",)))
+    issue_path = _safe_planning_child(root, context, "issues", intent.issue_id + ".md")
+    _, issue_before = _read_planning_source(issue_path, root, "artifact-owning-issue", required=True)
+    catalog_path = _safe_planning_child(root, context, "workspace", "artifacts.md")
+    _, catalog_before = _read_planning_source(catalog_path, root, "artifact-registry", required=True)
+    try:
+        catalog_after = registry.render_registration(catalog_before.decode("utf-8"), entry, amend=change["amend"]).encode("utf-8")
+        issue_text = issue_before.decode("utf-8")
+    except (UnicodeError, ValueError) as exc:
+        raise LifecyclePlanError("PLAN_ARTIFACT_INVALID") from exc
+    issue_relative = _project_relative(root, issue_path)
+    catalog_relative = _project_relative(root, catalog_path)
+    backlink = os.path.relpath(catalog_path, issue_path.parent).replace(os.sep, "/") + "#" + entry["id"]
+    line = f"- [{entry['id']}]({backlink})"
+    if line not in issue_text.splitlines():
+        header = "\n## Artifact References\n\n" if "\n## Artifact References\n" not in issue_text else "\n"
+        issue_text += ("" if issue_text.endswith("\n") else "\n") + header + line + "\n"
+    issue_after = issue_text.encode("utf-8")
+    expected = change["expected"]
+    if expected is not None:
+        for before, after, key in ((catalog_before, catalog_after, "catalog"), (issue_before, issue_after, "issue")):
+            if target_sha256(before) != expected[key] and before != after:
+                raise LifecyclePlanError("PLAN_ARTIFACT_PREIMAGE_CONFLICT")
+    selected.extend((
+        ("artifact-registry", catalog_relative, True, catalog_before, catalog_after, ("artifact-registry-schema",)),
+        ("artifact-owning-issue", issue_relative, True, issue_before, issue_after, ("issue-schema",)),
+    ))
+    new = change["new_knowledge"]
+    if new is not None:
+        try:
+            import project_knowledge
+        except ImportError:
+            from scripts import project_knowledge
+        output = _safe_planning_child(root, context, "knowledge", project_knowledge.KIND_TO_DIR[new["kind"]],
+            entry["updated_at"] + "-" + project_knowledge.slugify(new["title"]) + ".md")
+        relative = _project_relative(root, output)
+        if relative != entry["local_path"]:
+            raise LifecyclePlanError("PLAN_ARTIFACT_OUTPUT_MISMATCH")
+        existed, before = _read_planning_source(output, root, "knowledge-output", required=False)
+        after = project_knowledge.artifact_body(new["kind"], new["title"], issue_id=intent.issue_id,
+            spec_path=new["spec_path"], decision_supported=new["decision_supported"], created_on=entry["updated_at"]).encode("utf-8")
+        if existed and before != after:
+            raise LifecyclePlanError("PLAN_ARTIFACT_OUTPUT_CONFLICT")
+        selected.append(("knowledge-output", relative, existed, before, after, ("knowledge-output-schema",)))
+    source_paths = {entry["local_path"], entry["approval_ref"]} - {None}
+    if new:
+        source_paths.discard(entry["local_path"])
+    fingerprints = {}
+    for relative in sorted(source_paths):
+        fingerprints[relative] = _artifact_source_fingerprint(root, relative)
+    if expected is not None and expected["sources"] != fingerprints:
+        raise LifecyclePlanError("PLAN_ARTIFACT_SOURCE_CONFLICT")
+    change["expected"] = expected or {"catalog": target_sha256(catalog_before), "issue": target_sha256(issue_before), "sources": fingerprints}
+    total = len(selected) + 1
+    targets = tuple(_planned_target(*target, order=index, total=total) for index, target in enumerate(selected))
+    evidence_path = _safe_planning_child(root, context, "workspace", "transactions", transaction_id + ".json")
+    existed, before = _read_planning_source(evidence_path, root, "evidence", required=False)
+    after = (json.dumps({"schema": EVIDENCE_SCHEMA, "transaction_id": transaction_id,
+                        "targets": [t.to_public_dict() for t in targets]}, indent=2) + "\n").encode("utf-8")
+    evidence = _planned_target("evidence", _project_relative(root, evidence_path), existed, before, after,
+                               ("transaction-evidence-schema",), len(targets), total)
+    return LifecycleTransactionPlan(schema=PLAN_SCHEMA, transaction_id=transaction_id, idempotency_key=idempotency_key,
+        project_id=context.get("project_id") or "explicit-root", canonical_root=str(root), issue_id=intent.issue_id,
+        action="artifact-register", target_lifecycle=None, targets=targets + (evidence,),
+        _project_context=context, _artifact_change=change)
+
+
+def _validate_artifact_registration_links(plan, root, context):
+    if plan.action != "artifact-register":
+        return
+    result = _artifact_registry_module().read_artifact_registry(root, project_context=context,
+        artifact_ids=[plan._artifact_change["entry"]["id"]])
+    if not result["metadata_valid"] or any(d["severity"] == "error" for d in result["diagnostics"]):
+        raise ValueError("ARTIFACT_LINKS_INVALID")
+
+
+def apply_artifact_registration_plan(project_root, plan, *, project_context):
+    """Apply only a validated bounded artifact intent; never consume caller-supplied target bytes."""
+    context = project_registry.context_for_operation(project_root, project_context=project_context)
+    project_operation.require_project_capability(context, "write")
+    if (not isinstance(plan, LifecycleTransactionPlan) or plan.action != "artifact-register"
+            or plan.canonical_root != str(Path(project_root).resolve())
+            or plan.project_id != (context.get("project_id") or "explicit-root")):
+        raise ValueError("ARTIFACT_PLAN_CONTEXT_INVALID")
+    intent = normalize_lifecycle_intent(LifecycleIntent(issue_id=plan.issue_id, action="artifact-register",
+        actor="authorized-user", source_event="artifact-register:" + plan._artifact_change["entry"]["id"],
+        artifact_change=plan._artifact_change))
+    if derive_idempotency_key(context, intent) != plan.idempotency_key:
+        raise ValueError("ARTIFACT_PLAN_IDENTITY_INVALID")
+    try:
+        return apply_lifecycle_transaction(project_root, intent, project_context=context)
+    except LifecyclePlanError:
+        return _public_failure_result(plan, intent, status="conflict", failed_stage="preflight",
+            error_code="ARTIFACT_PRECONDITION_CONFLICT", rollback_status="not-required", completed_at=_journal_timestamp(None),
+            projected_validation=_public_failure_summary(_PROJECTED_VALIDATION_RULE_IDS, "PROJECTED_VALIDATION_NOT_RUN"),
+            post_apply_validation=_public_failure_summary(_POST_APPLY_VALIDATION_RULE_IDS, "POST_APPLY_VALIDATION_NOT_RUN"))
+
+
 def plan_lifecycle_transaction(
     project_root,
     intent: LifecycleIntent,
@@ -6125,6 +6344,8 @@ def plan_lifecycle_transaction(
         assert_idempotency_key_matches(context, idempotency_key, normalized)
     transaction_id = derive_transaction_id(context, normalized)
     changed_on = _planning_date(clock)
+    if normalized.action == "artifact-register":
+        return _plan_artifact_registration(root, context, normalized, idempotency_key, transaction_id)
 
     issue_path = _safe_planning_child(
         root, context, "issues", f"{normalized.issue_id}.md"
