@@ -3,8 +3,14 @@
 Issue: `090-project-knowledge-and-artifact-registry`.
 Owner / decision maker: Dongwon Lee.
 Source: the current integration task's proposal to confirm/implement 090 next while independently preparing 086, followed by the user's approval, “ㅇㅇ 그렇게 하자고”, 2026-09-02.
-Phase: implementation authorized; not complete, merged or deployed.
-Next command: `product:execute 090-project-knowledge-and-artifact-registry` in the existing 090 task.
+Phase: implementation verified; PR #47 merged. Final publication/installation explicitly authorized below; actual results are recorded in release.md.
+Next command: complete the approved 0.3.57 delivery in the integration task, then hand off without starting another implementation issue.
+
+## Final Integration and Delivery Approval — 2026-09-03
+
+After requesting that 090 be finished before handing work to Claude, Dongwon Lee answered “ㅇㅇ 그러자고” to: “90번을 마무리할 때, CI 통과 후 PR #47의 main 병합과 0.3.57 배포·설치까지 진행해도 될까요? 기존 설치의 복구용 백업은 보존하겠습니다.” This explicitly authorizes PR #47 main integration, 0.3.57 publication/installation and the corresponding 090 completion records. It does not authorize company-data migration, 086/091 implementation, old-cache deletion, or claiming unobserved host prompt-skill loading.
+
+The original implementation scope/ownership and failed-start observation below are historical. Integration must use the existing lifecycle transaction to complete 090 while retaining 111's active status for its real-host observations; it must not invent a successful earlier start or weaken the single-active validator. Final evidence and rollback boundaries are in [release.md](release.md).
 
 ## Why Needed / Problem / Expected Benefit
 

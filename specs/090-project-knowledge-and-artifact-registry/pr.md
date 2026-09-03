@@ -2,8 +2,8 @@
 
 Issue: `090-project-knowledge-and-artifact-registry` · Refs #20
 Owner / decision maker: Dongwon Lee
-Phase: integrated source 0.3.57 locally verified; [Draft PR #47](https://github.com/dongwonlee222/moduflow/pull/47) opened against main.
-Next: human PR review and remote CI; merge and deployment need separate approval.
+Phase: [PR #47](https://github.com/dongwonlee222/moduflow/pull/47) merged as 8869afa after CI and explicit owner approval; 0.3.57 published/installed. See release.md for final delivery proof.
+Next: source handoff. The PR-preparation narrative below is historical; it does not supersede the final release evidence or assert company adoption/host prompt-skill loading.
 
 ## 왜 필요한지
 

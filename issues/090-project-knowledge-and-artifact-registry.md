@@ -1,6 +1,6 @@
 # Issue 090: Project Knowledge and Artifact Registry
 
-**Status: backlog** — created 2026-07-16.
+**Status: done** — created 2026-07-16; started 2026-09-03; done 2026-09-03.
 **Priority: p1**
 
 ## Summary
@@ -12,7 +12,7 @@ Make `workspace/knowledge.md` a structured project wiki and add `workspace/artif
 - Type: user product direction
 - Link: local Codex session, 2026-07-16
 - Owner / decision maker: Dongwon Lee
-- Current phase: source 0.3.57 implemented and locally verified at c89fc65 (1,680 tests and 13 release checks passed); Draft PR preparation separately approved 2026-09-03. The canonical backlog projection is retained because 111 occupies the single active lifecycle slot while awaiting real-host observations. Main merge, publication and actual project use remain separate.
+- Current phase: complete. PR #47 merged as 8869afa; 0.3.57 published/installed after explicit 2026-09-03 approval. Full tests, merged-source CI, release gates, installed validation and fresh CLI/MCP passed. Canonical completion retains 111 active; actual company adoption and fresh host prompt-skill loading remain separate. See specs/090-project-knowledge-and-artifact-registry/release.md.
 
 ## Problem
 
@@ -88,10 +88,11 @@ Do not create a second database or copy external/sensitive source files into Git
 
 ## Workflow Tasks
 
-- [x] spec draft prepared → `specs/090-project-knowledge-and-artifact-registry/spec.md` (joint approval pending)
-- [x] plan draft prepared → `specs/090-project-knowledge-and-artifact-registry/plan.md` (joint approval pending)
-- [ ] execute → templates, parser, validation, migration guidance, command updates, and tests
-- [ ] review → `specs/090-project-knowledge-and-artifact-registry/review.md`
+- [x] spec approved → `specs/090-project-knowledge-and-artifact-registry/spec.md`
+- [x] plan approved → `specs/090-project-knowledge-and-artifact-registry/plan.md`
+- [x] execute → templates, parser, validation, migration guidance, command updates, and tests; A1–D2 verified
+- [x] review → `specs/090-project-knowledge-and-artifact-registry/implementation-review.md` and `integration-verification.md`; direct review, CI and explicit owner merge/deployment approval
+- [x] release → PR #47 merged; v0.3.57 published/installed; proof and exclusions in `specs/090-project-knowledge-and-artifact-registry/release.md`
 
 ## Related Issues
 
@@ -111,6 +112,7 @@ Do not create a second database or copy external/sensitive source files into Git
 - 2026-07-16: User prioritized the project wiki and artifact registry as the first project-knowledge improvement.
 - 2026-09-02: User approved the existing spec/plan for implementation and independent 086 QA preparation. Implementation, integration, release and actual application remain separate evidence.
 - 2026-09-03: User approved history-preserving integration, version increase, full verification and PR creation. Integrated source gates passed; see integration-verification.md. Original implementation branch preserved.
+- 2026-09-03: User separately approved PR #47 main merge and 0.3.57 publication/installation with rollback backups retained. Delivered from 8869afa; canonical complete transaction txn-0183cd493b66664aea8eebcba03644db passed projected/post-apply validation. No company data migration or fresh host-loading claim.
 
 ## Links
 
@@ -119,13 +121,20 @@ Do not create a second database or copy external/sensitive source files into Git
 - GitHub: https://github.com/dongwonlee222/moduflow/issues/20
 - Spec: [English](../specs/090-project-knowledge-and-artifact-registry/spec.md) / [한국어](../specs/090-project-knowledge-and-artifact-registry/spec.ko.md)
 - Plan: [Implementation plan](../specs/090-project-knowledge-and-artifact-registry/plan.md)
-- Tasks: [Unchecked implementation tasks](../specs/090-project-knowledge-and-artifact-registry/tasks.md)
+- Tasks: [Completed implementation tasks](../specs/090-project-knowledge-and-artifact-registry/tasks.md)
 - Simulation: [Synthetic scenario matrix](../specs/090-project-knowledge-and-artifact-registry/simulation-matrix.md)
 - Planning review: [한국어 검토·통합 인계](../specs/090-project-knowledge-and-artifact-registry/review-handoff.ko.md)
 - Implementation authority: [Approval, ownership and lifecycle limitation](../specs/090-project-knowledge-and-artifact-registry/implementation-approval.md)
-- Integration evidence: [Verified source and remaining approval boundaries](../specs/090-project-knowledge-and-artifact-registry/integration-verification.md)
+- Integration evidence: [Verified integration and delivery](../specs/090-project-knowledge-and-artifact-registry/integration-verification.md)
 - PR review: [Purpose-first review packet](../specs/090-project-knowledge-and-artifact-registry/pr.md)
+- Release: [0.3.57 delivery evidence](../specs/090-project-knowledge-and-artifact-registry/release.md)
+
+## Outcome
+
+완료: 프로젝트와 채팅을 옮겨도 이전 보고서·정의·결정 근거를 찾도록 짧은 위키와 자료 등록부를 구현했습니다. 흩어진 경로·승인 상태와 결과 저장 후 이슈 연결 누락을 줄이기 위한 기능이며, 실제 회사 도입 효과는 아직 측정하지 않았습니다.
+
+PR #47이 main에 병합됐고 v0.3.57을 배포·설치했습니다. 전체 1,680개 테스트, 합성 시나리오 S01–S14, 병합 CI, 13개 릴리스 검사, 설치 패키지 검증과 새 CLI/MCP 확인을 통과했습니다. 기존 원본·캐시·복구 백업은 보존했습니다. 회사 자료 자동 이관, 086/092 UI와 실제 Codex/Claude 프롬프트 스킬 로딩은 완료 주장에 포함하지 않습니다.
 
 ## Next Command
 
-`product:pr 090-project-knowledge-and-artifact-registry`
+`product:status`

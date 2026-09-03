@@ -2,9 +2,9 @@
 
 이슈: `090-project-knowledge-and-artifact-registry` · [GitHub #20](https://github.com/dongwonlee222/moduflow/issues/20)
 책임자 / 결정권자: Dongwon Lee
-단계: 승인된 명세를 소스 0.3.57에 구현·로컬 검증 완료. 이후 승인·검증은 implementation-approval.md, status.md, integration-verification.md 참조. 아래 최초 설계 시점 설명은 이력이며, backlog는 단일 활성 이슈 제약으로 유지한 상태다.
+단계: 승인된 명세 구현·검증과 PR #47 병합, 0.3.57 배포·설치 완료. 정본 090 상태는 done이며 release.md에 근거를 기록했다. 아래 최초 설계 시점 설명은 이력이고, 111의 실제 호스트 확인은 별도로 남아 있다.
 근거: [기존 이슈](../../issues/090-project-knowledge-and-artifact-registry.md), 2026-09-02 병렬 사전 설계 요청, `8229170:workspace/roadmap.md`·`8229170:workspace/goal.md`.
-이전: 기존 이슈 · 다음: [구현계획](plan.md)과 함께 한 번에 검토.
+이전: 기존 이슈 · 다음: 검증된 소스 인계; 후속 기능은 이 승인된 계약을 재사용.
 정본: [영문 spec.md](spec.md). 이 문서는 동일 계약의 한국어 설명이며 별도 상태 저장소가 아니다.
 
 ## 문제와 목표

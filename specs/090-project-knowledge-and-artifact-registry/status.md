@@ -2,8 +2,16 @@
 
 Issue: `090-project-knowledge-and-artifact-registry` · Owner: Dongwon Lee
 Authority: [implementation approval](implementation-approval.md), 2026-09-02 user approval.
-Phase: integrated source 0.3.57 at c89fc65; full regression 1,680/1,680 and all 13 release checks passed. Draft PR preparation; not merged, published or installed. Canonical lifecycle remains backlog and shared cursor remains 111 by instruction.
-Next: review [Draft PR #47](https://github.com/dongwonlee222/moduflow/pull/47) and its latest-head CI, then obtain human merge/deployment approval separately. See integration-verification.md and release.md; older failures below describe the preserved original implementation history.
+Phase: complete. PR #47 merged as 8869afa; 0.3.57 published/installed, installed validation and fresh CLI/MCP passed. The completion transaction set 090 to done while retaining 111 active for unobserved host checks.
+Next: source handoff; 091 → 086 → 092 remain later implementation. See release.md for actual delivery evidence. Older failures and incomplete-phase entries below describe preserved implementation history, not current status.
+
+## Final Delivery — 2026-09-03
+
+Dongwon Lee explicitly approved PR #47 main merge, 0.3.57 publication/installation and preserving rollback backups. Latest PR and exact merged-source CI passed; local merged-source release check passed all 13 checks. Published tag/source is 8869afa3e9e7f0a2f89bd9ea8b77c67ee0480495. Installed 0.3.57 cache validation has zero errors/warnings; fresh CLI and MCP report that cache/version. Existing Claude local connection points to the same package. See [release.md](release.md) for hashes, timestamps and boundaries.
+
+Canonical transaction txn-0183cd493b66664aea8eebcba03644db applied complete → done with successful projected/post-apply validation. This directly reconciles the prior backlog projection without inventing a successful start, activating a second issue, completing 111 or changing the validator. Its started/done date is the completion-projection date; actual earlier implementation authority/progress remains in this history. Company-project adoption, 086 UI and fresh host prompt-skill observations are not claimed complete.
+
+The completion renderer cleared the shared loop cursor although canonical 111 remained active. Follow-up txn-0f295f85e881c50fd4b96e524248943f restored active 111/active loop through the existing transaction; issue/state/dashboard targets were unchanged. Both validations passed, and final project validation has no lifecycle drift. This delivery reconciliation is not a generic lifecycle-engine fix; the detailed observation remains in release.md for later 113 review.
 
 ## Latest Integration Verification — 2026-09-03
 

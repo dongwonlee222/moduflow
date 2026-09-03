@@ -2,8 +2,8 @@
 
 Issue: `090-project-knowledge-and-artifact-registry` · Owner: Dongwon Lee
 Source: [existing issue](../../issues/090-project-knowledge-and-artifact-registry.md), 2026-09-02 delegated request.
-Phase: A1–D2 source implementation verified at integrated c89fc65: 1,680 tests and all 13 release checks passed. Draft PR preparation; canonical backlog/cursor unchanged, publication not approved.
-Prev: [spec](spec.md) / [plan](plan.md) / [approval](implementation-approval.md) · Next: authorized Draft PR; human merge/deployment approval remains separate. See [integration verification](integration-verification.md).
+Phase: A1–D2 complete; 1,680 tests and all 13 release checks passed. Approved PR #47 merged; 0.3.57 published/installed and canonical 090 done. 111 host observation remains separate.
+Prev: [spec](spec.md) / [plan](plan.md) / [approval](implementation-approval.md) · Next: source handoff; see [release evidence](release.md).
 
 ## Stream A — Canonical Schema and Initialization
 
@@ -37,7 +37,7 @@ Prev: [spec](spec.md) / [plan](plan.md) / [approval](implementation-approval.md)
 ## Approval and Exit Conditions
 
 - [x] Joint spec/plan/tasks/simulation approval is recorded by Dongwon Lee before A1 begins.
-- [x] Parent-task 111 release checkpoint is respected; integration/version/PR preparation has separate 2026-09-03 user approval. Main merge/install/publication remain unapproved.
+- [x] Parent-task 111 release checkpoint is respected; integration/version/PR preparation and subsequent main merge/install/publication have explicit 2026-09-03 user approval.
 - [x] Every AC maps to observed passing source evidence in implementation-review.md and the later integration-verification.md; the incoming AC9 policy blocker is resolved at c89fc65. Actual host/project use remains unperformed. Planned expected outcomes are never marked passed.
 
-Checked source implementation items link to actual evidence in status.md and integration-verification.md. They do not represent main merge, publication, installation or actual project adoption.
+Checked source implementation items link to status.md and integration-verification.md. Approved merge, publication, installation and canonical completion are separately evidenced in release.md. Actual company-project adoption and fresh Codex/Claude prompt-skill observation remain unperformed; these source checks do not assert them.

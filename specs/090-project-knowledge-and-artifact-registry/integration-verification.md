@@ -3,8 +3,14 @@
 Issue: `090-project-knowledge-and-artifact-registry`.
 Owner / decision maker: Dongwon Lee.
 Source: approved implementation and 2026-09-03 restart, followed by the existing 090 task's completion handoff.
-Phase: integrated 0.3.57 source verified: 1,680 full tests and 13 release checks passed; Draft PR preparation authorized.
-Next: review [Draft PR #47](https://github.com/dongwonlee222/moduflow/pull/47) and latest-head CI. Main merge, publication and installation remain separately approval-gated.
+Phase: complete; explicitly approved PR #47 merged, 0.3.57 published/installed and canonical 090 completed. See release.md for final proof and honest actual-host boundaries.
+Next: hand off source; 091 → 086 → 092 later, without starting those tasks here.
+
+## Final Integration and Delivery
+
+The user separately approved main merge/publication/installation with “ㅇㅇ 그러자고” after the explicit consolidated question in implementation-approval.md. PR #47 latest-head CI passed, including 1,680 tests and 13 release checks. It merged as 8869afa3e9e7f0a2f89bd9ea8b77c67ee0480495; exact merged CI and a fresh local complete release check also passed. The source tree matches the tested PR head. [release.md](release.md) records the immutable tag/archive, installed receipt, fresh CLI/MCP and rollback evidence.
+
+The existing lifecycle transaction completed 090 from its documented backlog projection; 111 remains active. No fictional earlier start, gate waiver, host-loading pass or company adoption is asserted. The approval-pending/no-mutation statements below are historical checkpoints superseded by this section, not current blockers.
 
 Remote handoff: the integration branch was pushed and Draft PR #47 created against main. Final pre-push source `957c448` passed the complete release check again (13/13); runtime/tests/manifests were unchanged from full-suite-tested c89fc65. The following PR-link bookkeeping is documentation-only. Remote CI remains separate evidence, not inferred from local results.
 
