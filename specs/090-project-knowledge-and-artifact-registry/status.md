@@ -3,7 +3,7 @@
 Issue: `090-project-knowledge-and-artifact-registry` · Owner: Dongwon Lee
 Authority: [implementation approval](implementation-approval.md), 2026-09-02 user approval.
 Phase: integrated source 0.3.57 at c89fc65; full regression 1,680/1,680 and all 13 release checks passed. Draft PR preparation; not merged, published or installed. Canonical lifecycle remains backlog and shared cursor remains 111 by instruction.
-Next: publish the authorized Draft PR against main, then obtain human merge/deployment approval separately. See integration-verification.md and release.md; older failures below describe the preserved original implementation history.
+Next: review [Draft PR #47](https://github.com/dongwonlee222/moduflow/pull/47) and its latest-head CI, then obtain human merge/deployment approval separately. See integration-verification.md and release.md; older failures below describe the preserved original implementation history.
 
 ## Latest Integration Verification — 2026-09-03
 

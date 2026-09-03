@@ -2,7 +2,7 @@
 
 Issue: `090-project-knowledge-and-artifact-registry` · Refs #20
 Owner / decision maker: Dongwon Lee
-Phase: integrated source 0.3.57 locally verified; Draft PR creation approved.
+Phase: integrated source 0.3.57 locally verified; [Draft PR #47](https://github.com/dongwonlee222/moduflow/pull/47) opened against main.
 Next: human PR review and remote CI; merge and deployment need separate approval.
 
 ## 왜 필요한지

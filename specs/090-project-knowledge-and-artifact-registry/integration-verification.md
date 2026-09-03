@@ -4,7 +4,9 @@ Issue: `090-project-knowledge-and-artifact-registry`.
 Owner / decision maker: Dongwon Lee.
 Source: approved implementation and 2026-09-03 restart, followed by the existing 090 task's completion handoff.
 Phase: integrated 0.3.57 source verified: 1,680 full tests and 13 release checks passed; Draft PR preparation authorized.
-Next: create the Draft PR against main. Main merge, publication and installation remain separately approval-gated.
+Next: review [Draft PR #47](https://github.com/dongwonlee222/moduflow/pull/47) and latest-head CI. Main merge, publication and installation remain separately approval-gated.
+
+Remote handoff: the integration branch was pushed and Draft PR #47 created against main. Final pre-push source `957c448` passed the complete release check again (13/13); runtime/tests/manifests were unchanged from full-suite-tested c89fc65. The following PR-link bookkeeping is documentation-only. Remote CI remains separate evidence, not inferred from local results.
 
 ## Integration Authority — 2026-09-03
 
