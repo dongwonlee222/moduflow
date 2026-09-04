@@ -811,3 +811,58 @@ def check_playbook_binding(root, entry, *, project_context=None):
     if named and playbook["playbook_id"] not in named:
         findings.append(diagnostic("PLAYBOOK_MISMATCH", "playbook_ref", entry.get("id", "")))
     return findings
+
+
+def find_run(text, run_id):
+    """The stored record for one id, or None. Used to enforce the amendment boundary."""
+    for entry in parse_analysis_runs(text)["entries"]:
+        if entry["id"] == run_id:
+            return entry
+    return None
+
+
+def render_append(text, entry, *, amend=False):
+    """Append one run, or replace exactly one existing record's block when amending.
+
+    Append-only in both directions: an amend replaces only the named record and
+    leaves every other byte, including surrounding prose, untouched.
+    """
+    rendered = render_run_entry(entry)
+    if not isinstance(text, str) or not text.startswith("---\n"):
+        raise ValueError("RUNS_SCHEMA_UNSUPPORTED")
+    heading = f"## {entry['id']}"
+    headings = list(re.finditer(r"^## ([^\n]+)(?:\n|\Z)", text, re.M))
+    for index, match in enumerate(headings):
+        if match.group(1).strip() != entry["id"]:
+            continue
+        end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
+        if not amend:
+            if text[match.start():end] == rendered:
+                return text  # identical replay: a retry must change nothing
+            raise ValueError("RUN_ID_DUPLICATE")
+        return text[: match.start()] + rendered + text[end:]
+    if amend:
+        raise ValueError("RUN_ID_UNKNOWN")
+    body = text if text.endswith("\n") else text + "\n"
+    if not body.endswith("\n\n"):
+        body += "\n"
+    return body + rendered
+
+
+def plan_analysis_run_append(root, entry, *, project_context=None, amend=False, expected=None):
+    """Preview a bounded append or six-field amendment. Writes nothing."""
+    transaction = _module("project_lifecycle_transaction")
+    intent = transaction.LifecycleIntent(
+        issue_id=entry["issue_id"],
+        action="analysis-run-append",
+        actor="authorized-user",
+        source_event="analysis-run-append:" + entry["id"],
+        run_change={"entry": entry, "amend": bool(amend), "expected": expected},
+    )
+    return transaction.plan_lifecycle_transaction(root, intent, project_context=project_context)
+
+
+def apply_analysis_run_append(root, plan, *, project_context=None):
+    """Apply a previously planned append through the existing transaction owner."""
+    transaction = _module("project_lifecycle_transaction")
+    return transaction.apply_analysis_run_plan(root, plan, project_context=project_context)
