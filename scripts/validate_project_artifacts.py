@@ -11,8 +11,9 @@ except ModuleNotFoundError:
     from project_repository_identity import audit_repository_links
 
 try:
-    from scripts import project_artifact_registry, project_operation, project_registry
+    from scripts import project_analysis_run, project_artifact_registry, project_operation, project_registry
 except ImportError:  # pragma: no cover - direct script execution fallback
+    import project_analysis_run
     import project_artifact_registry
     import project_operation
     import project_registry
@@ -572,6 +573,27 @@ def validate_artifact_registry(root, context):
                         for entry in read["entries"]], "diagnostics": read["diagnostics"]}
 
 
+def validate_analysis_runs(root, context):
+    """Use the canonical analysis-run reader (working view), including the full list."""
+    try:
+        read = project_analysis_run.read_analysis_runs(root, project_context=context, limit=sys.maxsize)
+    except (ValueError, project_operation.ProjectOperationDenied):
+        return {"initialized": False, "metadata_valid": False, "total": 0, "entries": [],
+                "diagnostics": [project_analysis_run.diagnostic("RUNS_READ_UNAVAILABLE")]}
+    # RUNS_NOT_INITIALIZED must surface as a warning (missing workspace/analysis-runs.md
+    # is a "not set up yet" signal, not a defect), mirroring REGISTRY_NOT_INITIALIZED.
+    diagnostics = [
+        dict(item, severity="warning") if item["code"] == "RUNS_NOT_INITIALIZED" else item
+        for item in read["diagnostics"]
+    ]
+    not_initialized = any(item["code"] == "RUNS_NOT_INITIALIZED" for item in diagnostics)
+    metadata_valid = not not_initialized and not any(item["severity"] == "error" for item in diagnostics)
+    return {"initialized": not not_initialized, "metadata_valid": metadata_valid, "total": read["total"],
+            "entries": [{k: entry[k] for k in ("id", "issue_id", "run_state", "validation_state",
+                                                 "approval_state", "decision_state")}
+                        for entry in read["entries"]], "diagnostics": diagnostics}
+
+
 def validate_project(path, *, project_context=None):
     root = Path(path).resolve()
     errors = []
@@ -683,6 +705,16 @@ def validate_project(path, *, project_context=None):
             errors.append(message)
         elif finding["severity"] == "warning":
             warnings.append(message)
+    analysis_runs = validate_analysis_runs(root, context)
+    for finding in analysis_runs["diagnostics"]:
+        message = (
+            f"{finding['code']} [{finding.get('run_id', '')}:{finding['field']}]: "
+            "Review workspace/analysis-runs.md diagnostics; run product:doctor for next steps."
+        )
+        if finding["severity"] == "error":
+            errors.append(message)
+        elif finding["severity"] == "warning":
+            warnings.append(message)
     errors = deduplicate_messages(errors)
     warnings = deduplicate_messages(warnings)
 
@@ -695,6 +727,7 @@ def validate_project(path, *, project_context=None):
         "issue_schema": issue_schema,
         "lifecycle_drift": lifecycle_drift,
         "artifact_registry": artifact_registry,
+        "analysis_runs": analysis_runs,
     }
 
 
