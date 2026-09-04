@@ -349,3 +349,138 @@ class AnalysisRunFileTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AnalysisRunReadTest(unittest.TestCase):
+    def _project(self, tmp, *entries):
+        import tempfile as _t
+        root = Path(tmp)
+        (root / "workspace").mkdir(parents=True, exist_ok=True)
+        (root / "playbooks").mkdir(parents=True, exist_ok=True)
+        (root / "workspace" / "analysis-runs.md").write_text(
+            runs_file(*entries), encoding="utf-8"
+        )
+        return root
+
+    def test_uninitialized_project_reports_it(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "workspace").mkdir()
+            envelope = runs.read_analysis_runs(tmp)
+            self.assertEqual(codes(envelope["diagnostics"]), ["RUNS_NOT_INITIALIZED"])
+            self.assertEqual(envelope["entries"], [])
+
+    def test_envelope_reports_its_bounds(self):
+        import tempfile
+        many = []
+        for index in range(25):
+            suffix = f"{index:012d}"
+            many.append(valid_run(id=f"run-22222222-2222-4222-8222-{suffix}"))
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, *many)
+            envelope = runs.read_analysis_runs(tmp, limit=20)
+            self.assertEqual(envelope["total"], 25)
+            self.assertEqual(envelope["returned"], 20)
+            self.assertEqual(envelope["omitted"], 5)
+            self.assertTrue(envelope["truncated"])
+            self.assertEqual(envelope["schema"], runs.READ_SCHEMA)
+
+    def test_states_stay_separate_in_the_envelope(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, valid_run())
+            entry = runs.read_analysis_runs(tmp)["entries"][0]
+            for field in (
+                "run_state",
+                "validation_state",
+                "approval_state",
+                "decision_state",
+            ):
+                self.assertIn(field, entry)
+            self.assertEqual(entry["run_state"], "completed")
+            self.assertEqual(entry["validation_state"], "unvalidated")
+            self.assertTrue(entry["run_anchor"].endswith(RUN_ID))
+
+    def test_query_and_issue_filters_report_reasons(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, valid_run())
+            hit = runs.read_analysis_runs(tmp, query="weekly usage")
+            self.assertEqual(hit["returned"], 1)
+            self.assertIn("title", hit["entries"][0]["match_reasons"])
+            miss = runs.read_analysis_runs(tmp, query="정책 영향")
+            self.assertEqual(miss["returned"], 0)
+            other = runs.read_analysis_runs(tmp, issue_id="999-nope")
+            self.assertEqual(other["returned"], 0)
+
+    def test_unknown_requested_id_is_explicit(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, valid_run())
+            envelope = runs.read_analysis_runs(tmp, run_ids=[OTHER_ID])
+            self.assertIn("RUN_ID_UNKNOWN", codes(envelope["diagnostics"]))
+            self.assertEqual(envelope["returned"], 0)
+
+    def test_invalid_view_and_limit_are_rejected(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, valid_run())
+            with self.assertRaises(ValueError):
+                runs.read_analysis_runs(tmp, view="anything")
+            with self.assertRaises(ValueError):
+                runs.read_analysis_runs(tmp, limit=0)
+
+    def test_shared_view_needs_a_runner_and_uses_the_resolved_oid(self):
+        import tempfile
+        from types import SimpleNamespace
+
+        calls = []
+
+        def runner(args, cwd, timeout=None):
+            calls.append(args)
+            if args[1] == "rev-parse":
+                return SimpleNamespace(returncode=0, stdout="a" * 40 + "\n", stderr="")
+            return SimpleNamespace(returncode=0, stdout=runs_file(valid_run()), stderr="")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, valid_run())
+            with self.assertRaises(ValueError):
+                runs.read_analysis_runs(tmp, view="shared")
+            envelope = runs.read_analysis_runs(tmp, view="shared", runner=runner)
+            self.assertEqual(envelope["snapshot_commit"], "a" * 40)
+            self.assertEqual(envelope["returned"], 1)
+            self.assertTrue(any("show" in call for call in calls))
+
+
+class AnalysisPlaybookResolutionTest(unittest.TestCase):
+    def test_unresolvable_name_raises_without_falling_back(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "playbooks").mkdir()
+            with self.assertRaises(runs.PlaybookUnresolved):
+                runs.resolve_playbook(tmp, "no-such-playbook")
+
+    def test_prefill_reads_the_playbook_not_the_run(self):
+        playbook = {
+            "id": "pb-weekly-usage",
+            "version": "1.0",
+            "deliverable_type": "analysis",
+            "process_ref": None,
+            "required_checks": [
+                {"id": "CHK001", "kind": "auto", "text": "section:본문", "rule": {"form": "section", "value": "본문"}, "retired": False},
+                {"id": "CHK002", "kind": "review", "text": "확인", "rule": None, "retired": False},
+                {"id": "CHK003", "kind": "review", "text": "옛 규칙", "rule": None, "retired": True},
+            ],
+            "sections": {
+                "Reusable Patterns": "- 기본 주장 종류: exploratory\n- 기간을 명시합니다.",
+                "Do Not Repeat": "- 단정적 표현을 쓰지 않습니다.",
+                "Approved Structures": "- 배경, 결과, 다음 행동.",
+            },
+        }
+        prefill = runs.prefill_run(playbook)
+        self.assertEqual(prefill["claim_class"], "exploratory")
+        self.assertEqual(prefill["required_code_checks"], ["population-defined"])
+        self.assertEqual(prefill["playbook_check_ids"], ["CHK001", "CHK002"])
+        self.assertEqual(prefill["auto_check_ids"], ["CHK001"])
+        self.assertEqual(prefill["caveats"], ["단정적 표현을 쓰지 않습니다."])
+        self.assertEqual(prefill["playbook_ref"]["playbook_id"], "pb-weekly-usage")

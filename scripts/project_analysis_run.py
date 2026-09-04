@@ -5,8 +5,23 @@ One parser for `moduflow.analysis-runs.v1`. Mirrors the structure of
 reviewable side by side. No I/O beyond the caller's text.
 """
 
+import importlib
 import json
 import re
+from pathlib import Path
+
+_HERE = Path(__file__).resolve().parent
+
+
+def _module(name):
+    """Load a sibling script whether imported as a package or by file path."""
+    try:
+        return importlib.import_module(f"scripts.{name}")
+    except ImportError:
+        spec = importlib.util.spec_from_file_location(name, _HERE / f"{name}.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
 
 SCHEMA = "moduflow.analysis-runs.v1"
 ID_RE = re.compile(
@@ -481,3 +496,187 @@ def check_amendment(before, after):
         findings.append(diagnostic("RUN_AMENDMENT_FORBIDDEN", "state_history", after["id"]))
     findings.extend(validate_run(after))
     return findings
+
+
+READ_SCHEMA = "moduflow.analysis-run-read.v1"
+DEFAULT_LIMIT = 20
+CLAIM_LINE_RE = re.compile(r"^\s*-?\s*기본 주장 종류:\s*([a-z]+)", re.M)
+
+
+class PlaybookUnresolved(ValueError):
+    def __init__(self, name):
+        super().__init__(f"PLAYBOOK_UNRESOLVED: {name}")
+        self.name = name
+
+
+def default_playbook_dir():
+    return _HERE.parent / "templates" / "analysis-playbooks"
+
+
+def _slug(value):
+    return re.sub(r"[^a-z0-9]+", "-", str(value).casefold()).strip("-")
+
+
+def resolve_playbook(root, name, *, project_context=None):
+    """R7 resolution: a project playbook of the same name wins over a read-only default."""
+    production = _module("project_production")
+    registry = _module("project_registry")
+    operation = _module("project_operation")
+    context = registry.context_for_operation(root, project_context=project_context)
+    operation.require_project_capability(context, "read")
+
+    wanted = {_slug(name), _slug(f"pb-{name}")}
+    for playbook in production.list_playbooks(root, project_context=context):
+        if _slug(playbook["id"]) in wanted or _slug(playbook.get("title", "")) in wanted:
+            return {
+                "source": "project",
+                "reason": "project playbook overrides the default",
+                "playbook": playbook,
+            }
+
+    path = default_playbook_dir() / f"{name}.md"
+    if path.is_file():
+        return {
+            "source": "default",
+            "reason": "no project playbook of this name; using the read-only default",
+            "playbook": production.parse_playbook(_HERE.parent, path),
+        }
+    raise PlaybookUnresolved(name)
+
+
+def prefill_run(playbook):
+    """R7 prefill. Returns a starting point, never a complete run."""
+    sections = playbook.get("sections", {})
+    match = CLAIM_LINE_RE.search(sections.get("Reusable Patterns", ""))
+    claim = match.group(1) if match and match.group(1) in CLAIM_CLASSES else None
+    active = [item for item in playbook.get("required_checks", []) if not item["retired"]]
+    return {
+        "playbook_ref": {
+            "playbook_id": playbook["id"],
+            "version": str(playbook["version"]),
+            "deliverable_type": playbook["deliverable_type"],
+        },
+        "claim_class": claim,
+        "required_code_checks": list(CODE_CHECKS.get(claim, ())),
+        "playbook_check_ids": [item["id"] for item in active],
+        "auto_check_ids": [item["id"] for item in active if item["kind"] == "auto"],
+        "caveats": [
+            line.lstrip("- ").strip()
+            for line in sections.get("Do Not Repeat", "").splitlines()
+            if line.strip().startswith("-")
+        ],
+        "structure_ref": sections.get("Approved Structures", ""),
+        "process_ref": playbook.get("process_ref"),
+    }
+
+
+def _match_reasons(entry, tokens):
+    haystacks = {
+        "title": entry.get("title", ""),
+        "decision_question": entry.get("decision_question", ""),
+        "issue_id": entry.get("issue_id", ""),
+        "conclusion": entry.get("conclusion", ""),
+    }
+    playbook = entry.get("playbook_ref") or {}
+    haystacks["playbook_id"] = playbook.get("playbook_id", "")
+    reasons = []
+    for field, value in haystacks.items():
+        text = str(value).casefold()
+        if all(token in text for token in tokens):
+            reasons.append(field)
+    return reasons
+
+
+def _read_runs_text(root, relative, *, view, ref, runner):
+    if view == "working":
+        path = Path(root) / relative
+        return (path.read_text(encoding="utf-8") if path.is_file() else None), None
+    if runner is None:
+        raise ValueError("RUNS_GIT_RUNNER_REQUIRED")
+    resolved = runner(["git", "rev-parse", f"{ref}^{{commit}}"], Path(root))
+    if resolved.returncode != 0:
+        raise ValueError("GIT_SNAPSHOT_UNAVAILABLE")
+    oid = resolved.stdout.strip()
+    shown = runner(["git", "show", f"{oid}:{relative}"], Path(root))
+    if shown.returncode != 0:
+        return None, oid
+    return shown.stdout, oid
+
+
+def read_analysis_runs(
+    root,
+    *,
+    project_context=None,
+    view="working",
+    ref="HEAD",
+    query="",
+    run_ids=(),
+    issue_id=None,
+    limit=DEFAULT_LIMIT,
+    runner=None,
+    today=None,
+):
+    """R8 read facade. One resolved context, explicit bounds, no source bodies."""
+    if view not in ("working", "shared"):
+        raise ValueError("RUNS_VIEW_UNSUPPORTED")
+    if not isinstance(limit, int) or limit < 1:
+        raise ValueError("RUNS_LIMIT_INVALID")
+
+    registry = _module("project_registry")
+    operation = _module("project_operation")
+    context = registry.context_for_operation(root, project_context=project_context)
+    operation.require_project_capability(context, "read")
+
+    relative = context["relative_paths"]["workspace"] + "/analysis-runs.md"
+    envelope = {
+        "schema": READ_SCHEMA,
+        "project_id": context.get("project_id") or None,
+        "identity_status": context.get("status") or "unbound",
+        "view": view,
+        "snapshot_commit": None,
+        "runs_path": relative,
+        "entries": [],
+        "diagnostics": [],
+        "total": 0,
+        "returned": 0,
+        "omitted": 0,
+        "truncated": False,
+        "read_trace": [{"path": relative, "operation": "read"}],
+    }
+
+    text, oid = _read_runs_text(root, relative, view=view, ref=ref, runner=runner)
+    envelope["snapshot_commit"] = oid
+    if text is None:
+        envelope["diagnostics"].append(diagnostic("RUNS_NOT_INITIALIZED", "runs_path"))
+        return envelope
+
+    parsed = parse_analysis_runs(text)
+    envelope["diagnostics"].extend(parsed["diagnostics"])
+
+    tokens = [token for token in str(query or "").casefold().split() if token]
+    wanted = {str(value) for value in run_ids}
+    matched = []
+    for entry in parsed["entries"]:
+        if wanted and entry["id"] not in wanted:
+            continue
+        if issue_id and entry.get("issue_id") != issue_id:
+            continue
+        reasons = _match_reasons(entry, tokens) if tokens else ["all"]
+        if not reasons:
+            continue
+        matched.append((entry, reasons))
+
+    for requested in sorted(wanted - {entry["id"] for entry, _ in matched}):
+        envelope["diagnostics"].append(diagnostic("RUN_ID_UNKNOWN", "run_ids", requested))
+
+    envelope["total"] = len(matched)
+    for entry, reasons in matched[:limit]:
+        item = dict(entry)
+        item["run_anchor"] = f"{relative}#{entry['id']}"
+        item["match_reasons"] = reasons
+        item["diagnostics"] = validate_run(entry, today=today)
+        envelope["entries"].append(item)
+    envelope["returned"] = len(envelope["entries"])
+    envelope["omitted"] = envelope["total"] - envelope["returned"]
+    envelope["truncated"] = envelope["omitted"] > 0
+    return envelope
