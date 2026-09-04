@@ -1433,5 +1433,95 @@ class ProjectMemoryCanonicalPathTests(unittest.TestCase):
             self.assertNotIn("WRONG DECOY ISSUE", html)
 
 
+
+class ExistingDashboardRegressionFloor(unittest.TestCase):
+    """Issue 086 T03: pin what must survive adding tabs.
+
+    The two new tabs are additive, but the project selector that follows them
+    rewires every tab to one payload. That is the only structural change in the
+    issue, so the existing three tabs are pinned here first. Counts are never
+    pinned: they change with the repository. Structure and order are.
+    """
+
+    EXISTING_TABS = ("tab-db", "tab-issues", "tab-memory")
+    MUST_SURVIVE = (
+        'id="rel-toggle"',
+        'id="badge-toggle"',
+        'id="legend-issues"',
+        'id="info"',
+        "__ISSUE_ROWS__",
+        "__ISSUE_ELEMENTS__",
+        "__MEMORY_ELEMENTS__",
+    )
+
+    def _render(self, tmp):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        root = Path(tmp)
+        (root / "issues").mkdir()
+        (root / "issues" / "001-floor.md").write_text(
+            "# Issue: `001-floor`\n\n**Status: done** — created 2026-09-04.\n",
+            encoding="utf-8",
+        )
+        return project_memory.render_project_view(root)
+
+    def test_the_three_existing_tabs_keep_their_identity_and_order(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(tmp)
+        positions = []
+        for tab in self.EXISTING_TABS:
+            marker = f'id="{tab}"'
+            self.assertEqual(html.count(marker), 1, f"{tab} must appear exactly once")
+            positions.append(html.index(marker))
+        self.assertEqual(positions, sorted(positions), "existing tab order changed")
+
+    def test_no_tab_is_inserted_before_the_issue_db(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(tmp)
+        self.assertLess(
+            html.index('id="tab-db"'),
+            html.index('id="tab-issues"'),
+            "Issue DB must remain the first tab",
+        )
+        # The first tab element in the bar must be the Issue DB one: no element
+        # closes between the first `class="tab"` and `id="tab-db"`.
+        first_tab = html.index('class="tab"')
+        self.assertNotIn(
+            "</div>",
+            html[first_tab:html.index('id="tab-db"')],
+            "a tab was inserted before Issue DB",
+        )
+
+    def test_controls_graphs_and_payload_placeholders_survive(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(tmp)
+            project_memory = load_module("project_memory", "scripts/project_memory.py")
+        for marker in self.MUST_SURVIVE:
+            if marker.startswith("__"):
+                self.assertIn(marker, project_memory.PROJECT_VIEW_TEMPLATE, marker)
+            else:
+                self.assertIn(marker, html, marker)
+
+    def test_hash_routing_for_the_existing_views_is_retained(self):
+        project_memory = load_module("project_memory", "scripts/project_memory.py")
+        template = project_memory.PROJECT_VIEW_TEMPLATE
+        for target in ("#issues", "#memory"):
+            self.assertIn(target, template, f"hash route {target} was removed")
+
+    def test_the_floor_does_not_pin_counts(self):
+        """Two projects of different size must both satisfy this floor."""
+        with tempfile.TemporaryDirectory() as small, tempfile.TemporaryDirectory() as large:
+            project_memory = load_module("project_memory", "scripts/project_memory.py")
+            for root, count in ((Path(small), 1), (Path(large), 12)):
+                (root / "issues").mkdir()
+                for index in range(count):
+                    (root / "issues" / f"{index + 1:03d}-floor.md").write_text(
+                        f"# Issue: `{index + 1:03d}-floor`\n\n**Status: done** — created 2026-09-04.\n",
+                        encoding="utf-8",
+                    )
+                html = project_memory.render_project_view(root)
+                for tab in self.EXISTING_TABS:
+                    self.assertIn(f'id="{tab}"', html)
+
+
 if __name__ == "__main__":
     unittest.main()

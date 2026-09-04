@@ -115,7 +115,7 @@
     {
       "id": "T03",
       "text": "QA: 기존 세 탭의 생성 결과 동등성 고정",
-      "status": "ready",
+      "status": "done",
       "worker": "qa-reviewer",
       "worker_file": "workers/qa-reviewer.md",
       "parallel_group": "group-2",
@@ -140,7 +140,7 @@
     {
       "id": "T04",
       "text": "Docs: 대시보드 명령에 두 탭과 읽기 전용 경계 기술",
-      "status": "ready",
+      "status": "done",
       "worker": "release-manager",
       "worker_file": "workers/release-manager.md",
       "parallel_group": "group-3",

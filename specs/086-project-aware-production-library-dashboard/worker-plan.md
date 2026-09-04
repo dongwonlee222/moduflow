@@ -9,8 +9,8 @@ Parallel eligible: `false`
 | --- | --- | --- | --- | --- | --- | --- |
 | T01 | `implementation-worker` | `group-1` | done | scripts/project_memory.py | - | Implementation: 제작 기록·플레이북 수집기와 세 상태 판정 |
 | T02 | `qa-reviewer` | `group-2` | done | tests/test_dashboard_production_views.py | T01 | QA: 수집기와 판정 테스트 |
-| T03 | `qa-reviewer` | `group-2` | ready | tests/test_project_memory.py | - | QA: 기존 세 탭의 생성 결과 동등성 고정 |
-| T04 | `release-manager` | `group-3` | ready | commands/product-dashboard.md | - | Docs: 대시보드 명령에 두 탭과 읽기 전용 경계 기술 |
+| T03 | `qa-reviewer` | `group-2` | done | tests/test_project_memory.py | - | QA: 기존 세 탭의 생성 결과 동등성 고정 |
+| T04 | `release-manager` | `group-3` | done | commands/product-dashboard.md | - | Docs: 대시보드 명령에 두 탭과 읽기 전용 경계 기술 |
 | T05 | `implementation-worker` | `group-1` | ready | scripts/project_memory.py | T01 | Implementation: 제작 기록 탭 렌더링 |
 | T06 | `implementation-worker` | `group-1` | ready | scripts/project_memory.py | T05 | Implementation: 플레이북 탭 렌더링 |
 | T07 | `implementation-worker` | `group-1` | ready | scripts/project_memory.py | T06 | Implementation: 제작 기록·플레이북 상세 모달 |
