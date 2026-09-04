@@ -10,8 +10,11 @@ Prepare implementation.
 ## Do
 
 1. Create or update `specs/<issue>/plan.md`.
-2. Create or update `specs/<issue>/tasks.md`.
-3. Split tasks by independent work streams for possible parallel workers.
+2. Create or update `specs/<issue>/tasks.md`. Declare each task's boundary inline so the
+   orchestrator can read it: `[files: a.py, b.py]`, `[depends: T01]`, `[shared_state: true]`.
+   Prose streams in `plan.md` are for humans; only this metadata reaches `worker_orchestrator.py`.
+3. Split tasks by independent work streams for possible parallel workers. Do not decide parallel
+   eligibility by hand — declare the boundaries and let `/product:workers` compute it.
 4. Define test, review, deploy, and rollback gates.
 5. Structure the plan for handoff quality (absorbed from Superpowers v6 writing-plans, issue `067`):
    - **Global Constraints** block at the top (issue 073): open with the constitution reference — `Constitution v<X.Y> applies (workspace/constitution.md). Plan-specific additions:` — then author ONLY the additions this issue needs. Never restate constitution principles; a per-issue *tightening* of a principle is an addition, not an amendment (no constitution log entry needed). Additions remain binding rules every task must honor verbatim, so per-task workers can't drift from them.
@@ -68,5 +71,7 @@ python3 scripts/project_reference_backlog.py . --issue-id <id> --title "<short t
 ## Next
 
 - Recommended: `python3 scripts/spec_consistency.py . --issue-id <id>` once plan.md and tasks.md exist, to catch coverage gaps, vague terms, and stream mismatches before execution.
+- `/product:workers` once `tasks.md` exists, to get the file-overlap, shared-state and
+  parallel-eligibility verdict before building. A `sequential` verdict is a complete answer.
 - `/product:execute` when ready to build
 - `/product:review` if the plan needs challenge

@@ -20,7 +20,9 @@ The machinery is already built and already correct. `worker_orchestrator.py` com
 
 What is missing is that nothing says any of this until a human invokes it. On 2026-09-04 the owner had to ask three times before the tooling was run at all, and the hand analysis it replaced had already missed two dispatchable lanes and one file collision.
 
-Documentation and agent memory were both tried for this class of problem earlier the same day and both failed. A check is what works.
+The command chain was repaired the same day: `product:plan` now states the `[files:]`, `[depends:]` and `[shared_state:]` metadata that `worker_orchestrator.py` actually reads, and its `Next` section routes to `/product:workers`, which nothing had pointed at before. That is the prevention, and it is the better fix.
+
+This issue is the backstop for when the chain is bypassed anyway, which is exactly what happened on 2026-09-04: the plan artifacts were hand-written instead of produced by `/product:plan`, so the step that would have named `tasks.md` was never read. Documentation and agent memory were both tried for this class of problem earlier the same day and both failed on their own.
 
 ## Scope
 
