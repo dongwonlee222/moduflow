@@ -6,9 +6,10 @@ from datetime import date
 from pathlib import Path
 
 try:
-    from scripts import project_operation, project_registry
+    from scripts import project_operation, project_production, project_registry
 except ImportError:  # pragma: no cover - direct script execution fallback
     import project_operation
+    import project_production
     import project_registry
 
 try:
@@ -1853,6 +1854,116 @@ def _json_for_script(value, indent=None):
         ensure_ascii=False,
         indent=indent,
     ).replace("</", "<\\/")
+
+
+
+def playbook_coverage(record, playbooks):
+    """Three states, not two. Pure: no I/O, no HTML.
+
+    A record with no playbook reference means one of two opposite things. No
+    approved standard exists for its kind yet, which is the normal state while
+    material accumulates, or one does exist and this record names none. The
+    match is exact `deliverable_type` membership against approved playbooks
+    only; channel and audience are deliberately not consulted, because widening
+    it would turn a projection into a matching engine.
+    """
+    if record.get("playbook_refs"):
+        return "named"
+    kind = str(record.get("deliverable_type", "")).strip()
+    if not kind:
+        return "no-standard"
+    for playbook in playbooks:
+        if playbook.get("status") != "approved":
+            continue
+        if kind in [str(value).strip() for value in playbook.get("deliverable_types", [])]:
+            return "unapplied"
+    return "no-standard"
+
+
+def _production_warning(path, exc):
+    return {"path": str(path), "warning": type(exc).__name__ + ": " + str(exc)[:160]}
+
+
+def _parse_each(root, context, key, parser):
+    """Parse one directory file by file so a single bad record cannot blank a tab.
+
+    The public parser is used unchanged; only the iteration is local. Listing the
+    directory here avoids swallowing every row behind one failure, which is what
+    calling the batch lister would do.
+    """
+    project_root = Path(root).resolve()
+    directory = Path(project_registry.canonical_path(context, key))
+    if not directory.is_absolute():
+        directory = project_root / directory
+    if not directory.exists():
+        return [], []
+    parsed, warnings = [], []
+    for path in sorted(directory.glob("*.md")):
+        try:
+            parsed.append(parser(project_root, path))
+        except (OSError, ValueError) as exc:
+            warnings.append(_production_warning(path.relative_to(project_root), exc))
+    return parsed, warnings
+
+
+def _collect_production_records(root, *, project_context=None):
+    """Rows for the production records tab. All parsing stays in project_production."""
+    context = project_registry.context_for_operation(root, project_context=project_context)
+    project_operation.require_project_capability(context, "read")
+    records, warnings = _parse_each(
+        root, context, "production_records", project_production.parse_production_record
+    )
+    playbooks = _collect_playbooks(root, project_context=context)["rows"]
+    rows = []
+    for record in records:
+        rows.append(
+            {
+                "id": record["id"],
+                "title": record["title"],
+                "deliverable_type": record.get("deliverable_type", ""),
+                "audiences": record.get("audiences", []),
+                "retrieval_trigger": record.get("retrieval_trigger", ""),
+                "lifecycle": record.get("lifecycle", ""),
+                "playbook_refs": record.get("playbook_refs", []),
+                "coverage": playbook_coverage(record, playbooks),
+                "path": record["path"],
+            }
+        )
+    return {"rows": rows, "warnings": warnings}
+
+
+def _collect_playbooks(root, *, project_context=None):
+    """Rows for the playbooks tab, including the three fields Issue 115 added."""
+    context = project_registry.context_for_operation(root, project_context=project_context)
+    project_operation.require_project_capability(context, "read")
+    playbooks, warnings = _parse_each(
+        root, context, "playbooks", project_production.parse_playbook
+    )
+    rows = []
+    for playbook in playbooks:
+        checks = playbook.get("required_checks", [])
+        active = [item for item in checks if not item.get("retired")]
+        process = playbook.get("process_ref")
+        rows.append(
+            {
+                "id": playbook["id"],
+                "title": playbook["title"],
+                "deliverable_types": playbook.get("deliverable_types", []),
+                "retrieval_trigger": playbook.get("retrieval_trigger", ""),
+                "process_ref_kind": (process or {}).get("kind", ""),
+                "process_ref": (process or {}).get("ref", ""),
+                "process_ref_version": (process or {}).get("version", ""),
+                "auto_checks": sum(1 for item in active if item.get("kind") == "auto"),
+                "review_checks": sum(1 for item in active if item.get("kind") == "review"),
+                "version": str(playbook.get("version", "")),
+                "status": playbook.get("status", ""),
+                "approved_by": playbook.get("approved_by", ""),
+                "approved_at": playbook.get("approved_at", ""),
+                "source_records": playbook.get("source_records", []),
+                "path": playbook["path"],
+            }
+        )
+    return {"rows": rows, "warnings": warnings}
 
 
 def render_project_view(root, *, project_context=None):

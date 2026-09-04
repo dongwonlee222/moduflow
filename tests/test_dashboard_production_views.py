@@ -1,0 +1,175 @@
+import importlib.util
+import re
+import tempfile
+import unittest
+from pathlib import Path
+
+from tests.test_project_production import (
+    VALID_PLAYBOOK,
+    VALID_RECORD,
+    write_playbook,
+    write_project,
+    write_record,
+)
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def load_module(name, relative_path):
+    spec = importlib.util.spec_from_file_location(name, ROOT / relative_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+memory = load_module("project_memory", "scripts/project_memory.py")
+production = load_module("project_production", "scripts/project_production.py")
+
+
+def record_type():
+    return re.search(r"^deliverable_type:\s*(.+)$", VALID_RECORD, re.M).group(1).strip()
+
+
+class PlaybookCoverageTest(unittest.TestCase):
+    """A record with no playbook reference means one of two opposite things."""
+
+    APPROVED = {"status": "approved", "deliverable_types": ["banner"]}
+    CANDIDATE = {"status": "candidate", "deliverable_types": ["banner"]}
+
+    def test_a_named_playbook_wins_over_everything(self):
+        record = {"playbook_refs": ["pb-x"], "deliverable_type": "banner"}
+        self.assertEqual(memory.playbook_coverage(record, [self.APPROVED]), "named")
+        self.assertEqual(memory.playbook_coverage(record, []), "named")
+
+    def test_an_approved_standard_of_the_same_type_means_unapplied(self):
+        record = {"playbook_refs": [], "deliverable_type": "banner"}
+        self.assertEqual(memory.playbook_coverage(record, [self.APPROVED]), "unapplied")
+
+    def test_a_candidate_standard_never_triggers_unapplied(self):
+        record = {"playbook_refs": [], "deliverable_type": "banner"}
+        self.assertEqual(memory.playbook_coverage(record, [self.CANDIDATE]), "no-standard")
+
+    def test_a_different_type_is_not_a_match(self):
+        record = {"playbook_refs": [], "deliverable_type": "email"}
+        self.assertEqual(memory.playbook_coverage(record, [self.APPROVED]), "no-standard")
+
+    def test_channel_and_audience_are_deliberately_not_consulted(self):
+        record = {
+            "playbook_refs": [],
+            "deliverable_type": "banner",
+            "channel": "somewhere-else",
+            "audiences": ["nobody"],
+        }
+        self.assertEqual(memory.playbook_coverage(record, [self.APPROVED]), "unapplied")
+
+    def test_a_record_without_a_type_claims_nothing(self):
+        record = {"playbook_refs": [], "deliverable_type": ""}
+        self.assertEqual(memory.playbook_coverage(record, [self.APPROVED]), "no-standard")
+
+    def test_the_function_is_pure(self):
+        record = {"playbook_refs": [], "deliverable_type": "banner"}
+        playbooks = [dict(self.APPROVED)]
+        before = (dict(record), [dict(p) for p in playbooks])
+        memory.playbook_coverage(record, playbooks)
+        self.assertEqual((record, playbooks), before)
+
+
+class ProductionCollectorTest(unittest.TestCase):
+    def test_an_empty_project_is_empty_not_broken(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            write_project(Path(tmp))
+            records = memory._collect_production_records(tmp)
+            playbooks = memory._collect_playbooks(tmp)
+            self.assertEqual((records["rows"], records["warnings"]), ([], []))
+            self.assertEqual((playbooks["rows"], playbooks["warnings"]), ([], []))
+
+    def test_records_carry_only_the_fields_the_table_needs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            write_record(root)
+            row = memory._collect_production_records(tmp)["rows"][0]
+            self.assertEqual(
+                sorted(row),
+                sorted([
+                    "id", "title", "deliverable_type", "audiences", "retrieval_trigger",
+                    "lifecycle", "playbook_refs", "coverage", "path",
+                ]),
+            )
+            self.assertNotIn("sections", row)
+
+    def test_one_unparseable_file_does_not_blank_the_tab(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            write_record(root)
+            broken = root / "memory" / "production-records" / "broken.md"
+            broken.write_text("no frontmatter here\n", encoding="utf-8")
+            result = memory._collect_production_records(tmp)
+            self.assertEqual(len(result["rows"]), 1)
+            self.assertEqual(len(result["warnings"]), 1)
+            self.assertIn("broken.md", result["warnings"][0]["path"])
+
+    def test_coverage_uses_the_projects_own_playbooks(self):
+        """A record with no reference reads differently depending on what exists."""
+        stripped = re.sub(r"^playbook_refs:.*$", "playbook_refs: []", VALID_RECORD, flags=re.M)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            write_record(root, stripped)
+            self.assertEqual(
+                memory._collect_production_records(tmp)["rows"][0]["coverage"], "no-standard"
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            write_record(root, stripped)
+            write_playbook(root, re.sub(
+                r"^applies_to_types:.*$", f"applies_to_types: [{record_type()}]",
+                VALID_PLAYBOOK, flags=re.M,
+            ))
+            self.assertEqual(
+                memory._collect_production_records(tmp)["rows"][0]["coverage"], "unapplied"
+            )
+
+    def test_playbook_rows_expose_the_issue_115_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            text = VALID_PLAYBOOK.replace(
+                "version: 1.0\n",
+                "version: 1.0\nretrieval_trigger: 배너를 새로 만들 때\n"
+                "process_ref_kind: document\nprocess_ref: docs/banner.md\nprocess_ref_version: 2.0\n",
+            ).replace(
+                "## Approved Copy Blocks",
+                "## Required Checks\n\n- CHK001 [auto] section:Artifacts\n"
+                "- CHK002 [review] 문구 확인\n- CHK003 [review] 옛 규칙 (retired)\n\n## Approved Copy Blocks",
+            )
+            write_playbook(root, text)
+            row = memory._collect_playbooks(tmp)["rows"][0]
+            self.assertEqual(row["retrieval_trigger"], "배너를 새로 만들 때")
+            self.assertEqual(row["process_ref_kind"], "document")
+            self.assertEqual(row["process_ref_version"], "2.0")
+            self.assertEqual((row["auto_checks"], row["review_checks"]), (1, 1))
+
+    def test_absent_and_none_process_ref_stay_distinguishable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            write_playbook(root, VALID_PLAYBOOK)
+            self.assertEqual(memory._collect_playbooks(tmp)["rows"][0]["process_ref_kind"], "")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            write_playbook(root, VALID_PLAYBOOK.replace(
+                "version: 1.0\n",
+                "version: 1.0\nprocess_ref_kind: none\nprocess_ref:\nprocess_ref_version:\n"
+                "process_ref_missing:\n  - process_ref: 아직 없습니다\n",
+            ))
+            self.assertEqual(memory._collect_playbooks(tmp)["rows"][0]["process_ref_kind"], "none")
+
+
+if __name__ == "__main__":
+    unittest.main()
