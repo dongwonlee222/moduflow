@@ -90,7 +90,7 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 - [x] spec → `specs/086-project-aware-production-library-dashboard/spec.md` (+ `spec.ko.md`)
 - [x] design → `specs/086-project-aware-production-library-dashboard/design.md` (+ `design.ko.md`)
 - [x] prototype → `specs/086-project-aware-production-library-dashboard/prototype.md` + `prototype.html`
-- [ ] plan → pending `product:plan 086-project-aware-production-library-dashboard`
+- [x] plan → `specs/086-project-aware-production-library-dashboard/plan.md` (2026-09-04, reconciled with Issues 115 and 091)
 - [ ] execute → project selector, production views, URL state, responsive UI, and tests
 - [ ] review → pending `product:review 086-project-aware-production-library-dashboard`
 
