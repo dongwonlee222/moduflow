@@ -46,6 +46,7 @@ Current checkpoint (2026-09-03): 090 implementation, full verification, explicit
 - `114-speckit-selective-adapter-1x-compatibility` — P1; review and pin one exact Spec Kit 1.x version for the four read-only advisory functions only.
 - `115-playbook-process-and-checklist-extension` — P1; add an external `process_ref` and a numbered human-owned `Required Checks` checklist to `moduflow.playbook.v1` as an Issue 085 follow-up; blocks 091.
 - `116-merged-issue-completion-parity` — P1; report an issue whose commits are merged on the canonical remote while its own lifecycle state is not `done`, using the Issue 095 attribution index.
+- `117-plan-execution-readiness-surfacing` — P1; report a plan that no execution tool can read: no `tasks.md`, no declared file boundaries, or a stale worker plan. Detection only; generates nothing and blocks nothing.
 
 ## Workstream: Safe Multi-Project Request Orchestration
 
