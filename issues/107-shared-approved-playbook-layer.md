@@ -79,7 +79,11 @@ Do not search source projects from another project, auto-approve candidates, or 
 - duplicates:
 - follows_up: `085-project-production-records-and-playbooks`
 - supersedes:
-- related: `034-memory-capture-and-sync-workflow`, `075-issue-less-context-capture`, `090-project-knowledge-and-artifact-registry`
+- related: `034-memory-capture-and-sync-workflow`, `075-issue-less-context-capture`, `090-project-knowledge-and-artifact-registry`, `115-playbook-process-and-checklist-extension`
+
+## Playbook Extension Note — 2026-09-03
+
+[Issue 115](115-playbook-process-and-checklist-extension.md) adds an external `process_ref` and a numbered `Required Checks` checklist to `moduflow.playbook.v1`. This issue was written before they existed. Decide explicitly whether an approved shared playbook may carry `process_ref` and `Required Checks` across projects, and whether a shared checklist item ID must stay stable in the receiving project. Issue 115 deliberately left that decision here.
 
 ## Links
 

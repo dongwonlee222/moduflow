@@ -83,7 +83,11 @@ Do not auto-approve users, claim universal quality coverage, or let optional che
 - duplicates:
 - follows_up: `085-project-production-records-and-playbooks`, `094-risk-based-security-and-quality-review-gate`
 - supersedes:
-- related: `075-issue-less-context-capture`, `101-production-record-schema-friction`
+- related: `075-issue-less-context-capture`, `101-production-record-schema-friction`, `115-playbook-process-and-checklist-extension`
+
+## Playbook Extension Note — 2026-09-03
+
+[Issue 115](115-playbook-process-and-checklist-extension.md) adds an external `process_ref` and a numbered `Required Checks` checklist to `moduflow.playbook.v1`. This issue was written before they existed. `Required Checks` is a reviewer assertion recorded on the playbook, not evidence. Deciding whether a final-state gate requires those items to be confirmed, and with what evidence, is this issue's call. Issue 115 stores the list and enforces nothing.
 
 ## Links
 

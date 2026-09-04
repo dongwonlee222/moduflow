@@ -44,6 +44,7 @@ Current checkpoint (2026-09-03): 090 implementation, full verification, explicit
 - `112-execution-planner-and-backend-boundary` — P0; plan only concrete implementation work and select one inline or Superpowers SDD execution path without building another runtime.
 - `113-review-lifecycle-and-exception-fix-approval` — P1; separate implementation, review, fixes, approval, and merge states and record user-approved exception fix rounds.
 - `114-speckit-selective-adapter-1x-compatibility` — P1; review and pin one exact Spec Kit 1.x version for the four read-only advisory functions only.
+- `115-playbook-process-and-checklist-extension` — P1; add an external `process_ref` and a numbered human-owned `Required Checks` checklist to `moduflow.playbook.v1` as an Issue 085 follow-up; blocks 091.
 
 ## Workstream: Safe Multi-Project Request Orchestration
 

@@ -2,7 +2,7 @@
 
 **Status: backlog** — created 2026-07-16.
 **Priority: p1**
-**Blocked-by: `090-project-knowledge-and-artifact-registry`**
+**Blocked-by: `115-playbook-process-and-checklist-extension`**
 
 ## Summary
 
@@ -75,17 +75,18 @@ Do not store production datasets or credentials in Git. Templates define reprodu
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/091-reproducible-analysis-runs-and-template-pack/spec.md`
-- [ ] plan → `specs/091-reproducible-analysis-runs-and-template-pack/plan.md`
-- [ ] execute → run schema, history, five templates, routing, validation, and tests
+- [x] benchmark → `knowledge/benchmarks/2026-09-03-deliverable-playbook-and-analysis-run-benchmark.md`
+- [x] spec → `specs/091-reproducible-analysis-runs-and-template-pack/spec.md`
+- [x] plan → `specs/091-reproducible-analysis-runs-and-template-pack/plan.md` + `simulation-matrix.md`
+- [ ] execute → run schema, history, default analysis playbooks, routing, validation, and tests
 - [ ] review → `specs/091-reproducible-analysis-runs-and-template-pack/review.md`
 
 ## Related Issues
 
 - follows_up: `033-business-document-workflow`, `034-memory-capture-and-sync-workflow`, `090-project-knowledge-and-artifact-registry`
-- related: `070-spec-consistency-analyze`, `092-project-home-dashboard`
+- related: `070-spec-consistency-analyze`, `085-project-production-records-and-playbooks`, `092-project-home-dashboard`, `107-shared-approved-playbook-layer`, `108-production-approval-and-verification-gates`
 - blocks: `092-project-home-dashboard`
-- blocked_by: `090-project-knowledge-and-artifact-registry`
+- blocked_by: `115-playbook-process-and-checklist-extension`
 
 ## Reference Implementations
 

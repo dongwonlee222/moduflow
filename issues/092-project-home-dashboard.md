@@ -90,7 +90,7 @@ Do not add dashboard-only source data or browser-side writes. The home view is a
 ## Related Issues
 
 - follows_up: `036-portfolio-team-dashboard`, `044-product-dashboard-command`, `056-dashboard-database-list-view`, `086-project-aware-production-library-dashboard`, `090-project-knowledge-and-artifact-registry`, `091-reproducible-analysis-runs-and-template-pack`
-- related: `085-project-production-records-and-playbooks`, `087-korean-github-pr-review-surface`
+- related: `085-project-production-records-and-playbooks`, `087-korean-github-pr-review-surface`, `115-playbook-process-and-checklist-extension`
 - blocks:
 - blocked_by: `086-project-aware-production-library-dashboard`, `090-project-knowledge-and-artifact-registry`, `091-reproducible-analysis-runs-and-template-pack`
 
@@ -98,6 +98,10 @@ Do not add dashboard-only source data or browser-side writes. The home view is a
 
 - Renovate Dependency Dashboard as an issue-backed operational overview: `https://docs.renovatebot.com/key-concepts/dashboard/`
 - Backstage project identity and project-scoped integrations: `https://backstage.io/docs/features/software-catalog/well-known-annotations/`
+
+## Playbook Extension Note — 2026-09-03
+
+[Issue 115](115-playbook-process-and-checklist-extension.md) adds two optional elements to `moduflow.playbook.v1`: an external `process_ref` and a numbered, human-owned `Required Checks` checklist. This issue was written before they existed. Issue 091 also changed shape on 2026-09-03: its analysis templates are now playbooks, and each run pins the playbook id and version it used. The home view surfaces that pin, and must keep run completion, validation, approval and decision maturity as four separate states. Reconcile this when writing this issue's spec; do not assume the pre-115 playbook shape.
 
 ## Sessions
 

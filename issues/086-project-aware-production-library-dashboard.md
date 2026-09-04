@@ -101,7 +101,11 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 - duplicates:
 - follows_up: `056-dashboard-database-list-view`, `047-issue-artifact-drilldown`
 - supersedes:
-- related: `004-portfolio-workspace`, `036-portfolio-team-dashboard`, `042-decision-graph-dashboard`, `045-issue-graph-visualization`
+- related: `004-portfolio-workspace`, `036-portfolio-team-dashboard`, `042-decision-graph-dashboard`, `045-issue-graph-visualization`, `115-playbook-process-and-checklist-extension`
+
+## Playbook Extension Note — 2026-09-03
+
+[Issue 115](115-playbook-process-and-checklist-extension.md) adds two optional elements to `moduflow.playbook.v1`: an external `process_ref` and a numbered, human-owned `Required Checks` checklist. This issue was written before they existed. The playbook tab must render the two new elements read-only, and must not mark, complete or evaluate a checklist item. Reconcile this when writing this issue's spec; do not assume the pre-115 playbook shape.
 
 ## Sessions
 
