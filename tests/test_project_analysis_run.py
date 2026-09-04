@@ -1,4 +1,5 @@
 import importlib.util
+import re
 import unittest
 from pathlib import Path
 
@@ -484,3 +485,168 @@ class AnalysisPlaybookResolutionTest(unittest.TestCase):
         self.assertEqual(prefill["auto_check_ids"], ["CHK001"])
         self.assertEqual(prefill["caveats"], ["단정적 표현을 쓰지 않습니다."])
         self.assertEqual(prefill["playbook_ref"]["playbook_id"], "pb-weekly-usage")
+
+
+class AnalysisRunSourceBindingTest(unittest.TestCase):
+    ART = "art-11111111-1111-4111-8111-111111111111"
+    COMMIT = "b" * 40
+
+    def _source(self, **overrides):
+        source = {
+            "project_id": "",
+            "artifact_id": self.ART,
+            "snapshot_commit": self.COMMIT,
+            "locator": "knowledge/references/population.md",
+            "recorded_state": "draft",
+            "tab_or_range": "sheet1!A1:D200",
+            "extracted_at": "2026-09-07",
+            "content_hash": None,
+        }
+        source.update(overrides)
+        return source
+
+    def _project(self, tmp, entry):
+        root = Path(tmp)
+        (root / "workspace").mkdir(parents=True, exist_ok=True)
+        (root / "playbooks").mkdir(parents=True, exist_ok=True)
+        (root / "workspace" / "analysis-runs.md").write_text(
+            runs_file(entry), encoding="utf-8"
+        )
+        return root
+
+    def _patched(self, result):
+        from unittest import mock
+
+        registry = runs._module("project_artifact_registry")
+        return mock.patch.object(registry, "read_artifact_registry", **result)
+
+    def test_unknown_run_is_explicit(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, valid_run())
+            found = runs.resolve_run_sources(tmp, OTHER_ID)
+            self.assertIn("RUN_ID_UNKNOWN", codes(found["diagnostics"]))
+            self.assertEqual(found["sources"], [])
+
+    def test_pinned_source_reopens_at_its_own_commit(self):
+        import tempfile
+        entry = valid_run(sources=[self._source()])
+        payload = {
+            "return_value": {
+                "entries": [{"id": self.ART, "state": "draft"}],
+                "diagnostics": [],
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, entry)
+            with self._patched(payload) as patched:
+                found = runs.resolve_run_sources(tmp, RUN_ID)
+            self.assertEqual(len(found["sources"]), 1)
+            self.assertEqual(found["sources"][0]["snapshot_commit"], self.COMMIT)
+            self.assertEqual(patched.call_args.kwargs["ref"], self.COMMIT)
+            self.assertEqual(patched.call_args.kwargs["view"], "shared")
+
+    def test_unknown_artifact_is_never_substituted(self):
+        import tempfile
+        entry = valid_run(sources=[self._source()])
+        payload = {"return_value": {"entries": [{"id": "art-other", "state": "draft"}], "diagnostics": []}}
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, entry)
+            with self._patched(payload):
+                found = runs.resolve_run_sources(tmp, RUN_ID)
+            self.assertIn("SOURCE_ARTIFACT_UNKNOWN", codes(found["diagnostics"]))
+            self.assertEqual(found["sources"], [])
+
+    def test_superseded_source_warns_but_stays_readable(self):
+        import tempfile
+        entry = valid_run(sources=[self._source()])
+        payload = {"return_value": {"entries": [{"id": self.ART, "state": "superseded"}], "diagnostics": []}}
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, entry)
+            with self._patched(payload):
+                found = runs.resolve_run_sources(tmp, RUN_ID)
+            self.assertIn("SOURCE_SUPERSEDED", codes(found["diagnostics"]))
+            self.assertEqual(found["sources"][0]["current_state"], "superseded")
+            self.assertEqual(found["sources"][0]["recorded_state"], "draft")
+
+    def test_git_failure_never_falls_back_to_local_bytes(self):
+        import tempfile
+        entry = valid_run(sources=[self._source()])
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, entry)
+            with self._patched({"side_effect": ValueError("GIT_SNAPSHOT_UNAVAILABLE")}):
+                found = runs.resolve_run_sources(tmp, RUN_ID)
+            self.assertIn("GIT_SNAPSHOT_UNAVAILABLE", codes(found["diagnostics"]))
+            self.assertEqual(found["sources"], [])
+
+    def test_unbound_identity_does_not_claim_a_cross_project_pin(self):
+        import tempfile
+        entry = valid_run(sources=[self._source(project_id="synthetic-b")])
+        payload = {"return_value": {"entries": [{"id": self.ART, "state": "draft"}], "diagnostics": []}}
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, entry)
+            with self._patched(payload):
+                found = runs.resolve_run_sources(tmp, RUN_ID)
+            self.assertIn("SOURCE_IDENTITY_UNVERIFIED", codes(found["diagnostics"]))
+
+    def test_one_registry_call_per_pinned_commit(self):
+        import tempfile
+        other = "c" * 40
+        entry = valid_run(
+            sources=[self._source(), self._source(snapshot_commit=other)]
+        )
+        payload = {"return_value": {"entries": [{"id": self.ART, "state": "draft"}], "diagnostics": []}}
+        with tempfile.TemporaryDirectory() as tmp:
+            self._project(tmp, entry)
+            with self._patched(payload) as patched:
+                runs.resolve_run_sources(tmp, RUN_ID)
+            self.assertEqual(patched.call_count, 2)
+            refs = sorted(call.kwargs["ref"] for call in patched.call_args_list)
+            self.assertEqual(refs, sorted([self.COMMIT, other]))
+
+
+class PlaybookBindingTest(unittest.TestCase):
+    """Reuses the delivered production record fixture; it has nine required sections."""
+
+    def _record(self, root, refs):
+        from tests.test_project_production import VALID_RECORD
+
+        text = re.sub(
+            r"^playbook_refs:.*$", f"playbook_refs: [{refs}]", VALID_RECORD, flags=re.M
+        )
+        if "playbook_refs:" not in text:
+            text = text.replace("\nowner:", f"\nplaybook_refs: [{refs}]\nowner:", 1)
+        relative = "memory/production-records/2026-07-10-summer-banner.md"
+        path = Path(root) / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return relative
+
+    def test_matching_playbook_is_silent(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            reference = self._record(tmp, "pb-weekly-usage")
+            entry = valid_run(production_record_ref=reference)
+            self.assertEqual(runs.check_playbook_binding(tmp, entry), [])
+
+    def test_divergent_playbook_is_reported(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            reference = self._record(tmp, "pb-something-else")
+            entry = valid_run(production_record_ref=reference)
+            self.assertIn(
+                "PLAYBOOK_MISMATCH", codes(runs.check_playbook_binding(tmp, entry))
+            )
+
+    def test_missing_record_is_reported_not_ignored(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            entry = valid_run(production_record_ref="memory/production-records/gone.md")
+            self.assertIn(
+                "PRODUCTION_RECORD_MISSING", codes(runs.check_playbook_binding(tmp, entry))
+            )
+
+    def test_no_reference_means_nothing_to_check(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(runs.check_playbook_binding(tmp, valid_run()), [])

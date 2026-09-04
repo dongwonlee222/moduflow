@@ -684,3 +684,130 @@ def read_analysis_runs(
     envelope["omitted"] = envelope["total"] - envelope["returned"]
     envelope["truncated"] = envelope["omitted"] > 0
     return envelope
+
+
+SOURCE_FIELDS = (
+    "project_id",
+    "artifact_id",
+    "snapshot_commit",
+    "locator",
+    "recorded_state",
+    "tab_or_range",
+    "extracted_at",
+    "content_hash",
+)
+
+
+def _run_by_id(root, run_id, *, project_context, runner):
+    envelope = read_analysis_runs(
+        root, project_context=project_context, run_ids=[run_id], runner=runner
+    )
+    for entry in envelope["entries"]:
+        if entry["id"] == run_id:
+            return entry, envelope
+    return None, envelope
+
+
+def resolve_run_sources(root, run_id, *, project_context=None, runner=None):
+    """R8 source binding. Reopens each pinned source through the delivered 090 facades.
+
+    This module implements no registry parsing. A mismatch, an unknown id or a
+    superseded input is reported; a similarly titled record is never substituted
+    and the snapshot is never switched.
+    """
+    registry_module = _module("project_artifact_registry")
+    registry = _module("project_registry")
+    context = registry.context_for_operation(root, project_context=project_context)
+
+    entry, envelope = _run_by_id(root, run_id, project_context=context, runner=runner)
+    result = {
+        "run_id": run_id,
+        "project_id": envelope["project_id"],
+        "sources": [],
+        "diagnostics": list(envelope["diagnostics"]),
+        "read_trace": list(envelope["read_trace"]),
+    }
+    if entry is None:
+        result["diagnostics"].append(diagnostic("RUN_ID_UNKNOWN", "run_ids", run_id))
+        return result
+
+    by_commit = {}
+    for source in entry.get("sources", []):
+        if not _mapping(source, SOURCE_FIELDS):
+            result["diagnostics"].append(diagnostic("SOURCE_RECORD_INVALID", "sources", run_id))
+            continue
+        project_id = envelope["project_id"]
+        if project_id and source["project_id"] and source["project_id"] != project_id:
+            result["diagnostics"].append(
+                diagnostic("SOURCE_PROJECT_MISMATCH", source["artifact_id"], run_id)
+            )
+            continue
+        if not project_id and source["project_id"]:
+            # Unbound identity cannot verify a cross-project pin; say so rather than assume.
+            result["diagnostics"].append(
+                diagnostic("SOURCE_IDENTITY_UNVERIFIED", source["artifact_id"], run_id, "info")
+            )
+        by_commit.setdefault(source["snapshot_commit"], []).append(source)
+
+    for commit, pinned in sorted(by_commit.items()):
+        ids = [source["artifact_id"] for source in pinned]
+        try:
+            found = registry_module.read_artifact_registry(
+                root,
+                project_context=context,
+                view="shared",
+                ref=commit,
+                artifact_ids=tuple(ids),
+                runner=runner,
+            )
+        except Exception:  # surfaced, never swallowed
+            result["diagnostics"].append(diagnostic("GIT_SNAPSHOT_UNAVAILABLE", "snapshot_commit", run_id))
+            continue
+        result["diagnostics"].extend(found.get("diagnostics", []))
+        known = {item.get("id"): item for item in found.get("entries", [])}
+        for source in pinned:
+            item = known.get(source["artifact_id"])
+            if item is None:
+                result["diagnostics"].append(
+                    diagnostic("SOURCE_ARTIFACT_UNKNOWN", source["artifact_id"], run_id)
+                )
+                continue
+            if item.get("state") == "superseded":
+                result["diagnostics"].append(
+                    diagnostic("SOURCE_SUPERSEDED", source["artifact_id"], run_id, "warning")
+                )
+            result["sources"].append(
+                {
+                    "artifact_id": source["artifact_id"],
+                    "snapshot_commit": commit,
+                    "locator": source["locator"],
+                    "recorded_state": source["recorded_state"],
+                    "current_state": item.get("state"),
+                    "tab_or_range": source["tab_or_range"],
+                    "extracted_at": source["extracted_at"],
+                }
+            )
+    return result
+
+
+def check_playbook_binding(root, entry, *, project_context=None):
+    """R3: a run's output must not claim a playbook its production record disowns."""
+    findings = []
+    reference = entry.get("production_record_ref")
+    playbook = entry.get("playbook_ref") or {}
+    if not reference or not playbook.get("playbook_id"):
+        return findings
+    production = _module("project_production")
+    path = Path(root) / reference
+    if not path.is_file():
+        findings.append(diagnostic("PRODUCTION_RECORD_MISSING", "production_record_ref", entry.get("id", "")))
+        return findings
+    try:
+        record = production.parse_production_record(root, path)
+    except ValueError:
+        findings.append(diagnostic("PRODUCTION_RECORD_INVALID", "production_record_ref", entry.get("id", "")))
+        return findings
+    named = [str(value) for value in record.get("playbook_refs", [])]
+    if named and playbook["playbook_id"] not in named:
+        findings.append(diagnostic("PLAYBOOK_MISMATCH", "playbook_ref", entry.get("id", "")))
+    return findings
