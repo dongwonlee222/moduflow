@@ -31,11 +31,11 @@
     "113-review-lifecycle-and-exception-fix-approval",
     "114-speckit-selective-adapter-1x-compatibility"
   ],
-  "active_issue_id": "111-runtime-provenance-and-validation-mode-separation",
+  "active_issue_id": null,
   "phase": "release",
   "mode": "recommend",
   "delegation_level": "review_required",
-  "status": "active",
+  "status": "done",
   "next_command": "product:execute 111-runtime-provenance-and-validation-mode-separation",
   "attempts": {
     "command": "product:review 111-runtime-provenance-and-validation-mode-separation",
@@ -44,7 +44,7 @@
     "last_changed_at": "2026-09-02"
   },
   "blocker": null,
-  "last_action": "090-delivery-complete-preserve-111",
+  "last_action": "complete",
   "last_verification": "1610 full tests, 12 simulations and source release gates passed; human PR/publication review pending",
   "git_binding": {
     "mode": "git-files",
@@ -66,5 +66,5 @@
       "session": null
     }
   },
-  "updated_at": "2026-09-03"
+  "updated_at": "2026-09-04"
 }

@@ -1,6 +1,6 @@
 # Issue 091: Reproducible Analysis Runs and Template Pack
 
-**Status: backlog** — created 2026-07-16.
+**Status: done** — created 2026-07-16; started 2026-09-04; done 2026-09-04.
 **Priority: p1**
 **Blocked-by: `115-playbook-process-and-checklist-extension`**
 

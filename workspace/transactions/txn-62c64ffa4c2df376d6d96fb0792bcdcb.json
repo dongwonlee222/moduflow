@@ -1,0 +1,102 @@
+{
+  "action": "reconcile",
+  "actor": "moduflow.lifecycle",
+  "completed_at": "2026-09-04T03:33:02.144483Z",
+  "created_at": "2026-09-04T03:33:02.143993Z",
+  "error_code": "",
+  "failed_stage": "",
+  "idempotency_key": "7c8a1ca905355d38c953a0b50611085993ef41293baad4393e3d9097412cfbca",
+  "issue_id": "111-runtime-provenance-and-validation-mode-separation",
+  "next_command": "product:execute 111-runtime-provenance-and-validation-mode-separation",
+  "post_apply_validation": {
+    "error_codes": [],
+    "rule_ids": [
+      "canonical-targets",
+      "project-artifacts",
+      "issue-schema",
+      "lifecycle-consensus",
+      "production-records"
+    ],
+    "valid": true
+  },
+  "project_id": "explicit-root",
+  "projected_validation": {
+    "error_codes": [],
+    "rule_ids": [
+      "project-artifacts",
+      "issue-schema",
+      "lifecycle-consensus",
+      "production-records"
+    ],
+    "valid": true
+  },
+  "rollback_status": "not-required",
+  "schema": "moduflow.lifecycle-transaction-evidence.v1",
+  "source_event": "sync_lifecycle:f0c7fddf353afaae4c06119a373d0b752c2aceb1d39ff8e71ca2dcfee39f362d",
+  "started_at": "2026-09-04T03:33:02.144472Z",
+  "status": "applied",
+  "target_lifecycle": null,
+  "targets": [
+    {
+      "after_bytes": 5981,
+      "after_sha256": "b19348b925db9e130ecc3f825ab75abb6f80afe6c075e180c3e474cc957a8803",
+      "apply_order": 0,
+      "before_sha256": "b19348b925db9e130ecc3f825ab75abb6f80afe6c075e180c3e474cc957a8803",
+      "changed": false,
+      "existed": true,
+      "relative_path": "issues/111-runtime-provenance-and-validation-mode-separation.md",
+      "role": "issue",
+      "rollback_order": 4,
+      "validation_rules": [
+        "issue-schema",
+        "lifecycle"
+      ]
+    },
+    {
+      "after_bytes": 406,
+      "after_sha256": "bee3b99ca4ed63d10496d267b7c39d4543b808e33eb6d21074a03a51516acd1a",
+      "apply_order": 1,
+      "before_sha256": "59fb4affe533bb0ed6e7e9f670ae7e32e94705012dab9b3a2e7640c53ddc161b",
+      "changed": true,
+      "existed": true,
+      "relative_path": ".moduflow/state.json",
+      "role": "state",
+      "rollback_order": 3,
+      "validation_rules": [
+        "state-schema",
+        "lifecycle"
+      ]
+    },
+    {
+      "after_bytes": 2802,
+      "after_sha256": "e9b5d2bafb817423687ce1097bb931b31807caeed6d41ae0d055b63e109ef826",
+      "apply_order": 2,
+      "before_sha256": "a51a162e24a3bd00e850baf048a6deebbd33ce9012a6855d7cc33c41cb708198",
+      "changed": true,
+      "existed": true,
+      "relative_path": "workspace/loop-state.json",
+      "role": "loop",
+      "rollback_order": 2,
+      "validation_rules": [
+        "loop-state-schema",
+        "lifecycle"
+      ]
+    },
+    {
+      "after_bytes": 24960,
+      "after_sha256": "cdd0480fcdfe11024a044c46f8cdddab7843a7b8fc6a080cd695429874caa891",
+      "apply_order": 3,
+      "before_sha256": "cdd0480fcdfe11024a044c46f8cdddab7843a7b8fc6a080cd695429874caa891",
+      "changed": false,
+      "existed": true,
+      "relative_path": "workspace/dashboard.md",
+      "role": "dashboard",
+      "rollback_order": 1,
+      "validation_rules": [
+        "dashboard-projection"
+      ]
+    }
+  ],
+  "transaction_id": "txn-62c64ffa4c2df376d6d96fb0792bcdcb",
+  "verified_target_count": 5
+}

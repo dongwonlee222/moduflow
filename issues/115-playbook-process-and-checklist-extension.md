@@ -1,6 +1,6 @@
 # Issue 115: Playbook Process Reference and Verification Checklist Extension
 
-**Status: backlog** — created 2026-09-03.
+**Status: done** — created 2026-09-03; started 2026-09-04; done 2026-09-04.
 **Priority: p1**
 **Blocked-by:**
 

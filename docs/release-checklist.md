@@ -20,7 +20,10 @@ python3 scripts/release_check.py .
 4. Run `python3 scripts/register_codex_personal_marketplace.py .`.
 5. Confirm the output includes a Codex cache path for the new version.
 6. Validate the returned exact cache path with `scripts/validate_moduflow.py <cache-path> --mode installed --json`; retain `.moduflow-package.json` and its payload digest as evidence.
-7. Start a new Codex task and test `@ModuFlow product:status`. Record package path/version and CLI/MCP startup separately from host skill-loading evidence; an unavailable host field stays unknown.
+7. **Restart the Codex process**, then test `@ModuFlow product:status`. A new task inside a
+   running process keeps the package it loaded at start, so it reports the previous version;
+   observed on 2026-09-04, where a new task still reported 0.3.57 after 0.3.62 was installed
+   and every path on disk already resolved to 0.3.62. Record package path/version and CLI/MCP startup separately from host skill-loading evidence; an unavailable host field stays unknown.
 
 ## Evidence Boundaries (111)
 
