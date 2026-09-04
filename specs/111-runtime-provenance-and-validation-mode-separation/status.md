@@ -77,3 +77,49 @@ Created and validated from `tests.runtime_provenance_fixture.make_distribution` 
 - Final full suite on `b5c3ce3`: `python3 -m unittest discover -s tests -v` with the process-local bundled Git environment described above — exit 0, **1,610 tests passed in 337.291s**. Includes the repaired downstream security/lint fixture and both nested release-check regressions; no tests skipped or removed.
 - Lifecycle/state/dashboard are refreshed through Issue 103's atomic API, not direct JSON edits. The legacy structural router still recommends execute for an active issue with complete spec/plan/tasks; that is not authorization to repeat implementation or publish. The human next action is implementation review; review-lifecycle refinement remains Issue 113.
 - Final evidence transaction: `txn-4d457511ed8638cc47c65f1f4b3dc54e` applied with projected/post-apply validation true (earlier checkpoint: `txn-ab4884a1f626a10d714923c0eb7ffe7b`). After evidence edits, artifact validation passed with 0 errors / 21 existing warnings, lifecycle drift [], spec consistency 8 checks / 0 findings, and `git diff --check` exit 0.
+
+## Real-Host Observations R01/R02 — recorded 2026-09-04
+
+Performed during the 0.3.62 release. Package path, version, process startup and host skill loading are recorded separately; an unobserved field stays unobserved rather than passing.
+
+### R01 — Codex
+
+| Field | Observation |
+| --- | --- |
+| Installed package | `~/.codex/plugins/cache/personal/moduflow/0.3.62+codex.20260904022744` |
+| Version reported by the host | `0.3.62+codex.20260904022744`, after restarting the Codex process |
+| Version reported before restart | **`0.3.57`**, in a newly opened task inside the already-running process, while every path on disk already resolved to 0.3.62 |
+| Source evidence | Receipt `payload_sha256` `f628b458c169f3bd…96ffbe`, `source_commit` `faa5ff3`, `source_dirty` true (untracked Issue 103 plan documents present in the build worktree) |
+| CLI startup | Observed working: `product:status` returned a full report |
+| MCP process | **Not observed.** The status report evidences plugin load, not MCP startup |
+| Host prompt-skill loading | Observed indirectly: the report rendered ModuFlow's own status format. No direct host-exposed skill evidence was available |
+
+The negative observation is the substantive one. A new task is not a new process, and the process keeps the package it loaded at start. This is the failure mode this issue exists to make visible, reproduced under controlled conditions. `docs/release-checklist.md` step 7 was corrected from "start a new Codex task" to "restart the Codex process" as a direct result.
+
+### R02 — Claude
+
+Observed in the Claude session that performed the release, which began before the local plugin link was moved from 0.3.57 to 0.3.62. The three layers separate cleanly and disagree with each other, which is the distinction this issue requires.
+
+| Layer | Observation |
+| --- | --- |
+| Host registration | Present. ModuFlow skills appeared in the session's skill listing at start |
+| MCP process | **Failed.** `moduflow (CONNECTION_CLOSED)` at session start; no ModuFlow MCP tool was available for the whole session |
+| Prompt skills | Loaded, but from the pre-switch package. The session started while `~/.claude/plugins/local/moduflow` still pointed at 0.3.57, and a running session does not re-read the link |
+
+### Package-level check, separate from either host
+
+Both packages were started directly and probed over stdio, outside any host:
+
+| Package | Handshake | Reported version | Tools |
+| --- | --- | --- | --- |
+| `0.3.62+codex.20260904022744` | `initialize` returned, exit 0, empty stderr | `0.3.62+codex.20260904022744` | 5 |
+| `0.3.57+codex.20260810222010` | `initialize` returned, exit 0, empty stderr | `0.3.57+codex.20260810222010` | 5 |
+
+Tools in both: `moduflow_status`, `moduflow_issues`, `moduflow_issue_get`, `moduflow_doctor`, `moduflow_ready`.
+
+R02's MCP failure is therefore **not** a package defect. The server starts and answers correctly when launched directly; the failure occurred in the host's own startup path and its cause is not observable from inside the failed session. One unverified lead is recorded without being claimed: `.mcp.json` interpolates `${CLAUDE_PLUGIN_ROOT}`, and both manifests point at that same file, so a host that does not set that variable would resolve an empty path. Whether Codex sets it was not tested.
+
+### What remains unobserved
+
+- Codex MCP process startup. `product:doctor` in a fresh Codex process would supply it.
+- Direct host-exposed prompt-skill package evidence on either host. Neither host offered a field stating which package its loaded skills came from; this stays unknown rather than inferred from a matching version string.

@@ -3,7 +3,7 @@
 Issue: `111-runtime-provenance-and-validation-mode-separation`
 Owner: Dongwon Lee
 Source: `spec.md`, `plan.md`, user's 2026-09-02 request for simulation testing.
-Phase: S01–S12 executed and passed on 2026-09-02; real-host observations R01/R02 not performed.
+Phase: S01–S12 executed and passed on 2026-09-02. R01 and R02 were performed on 2026-09-04 during the 0.3.62 release and are recorded in [status.md](status.md); Codex MCP process startup and direct host-exposed prompt-skill package evidence remain unobserved.
 Next command: `product:review 111-runtime-provenance-and-validation-mode-separation`.
 
 ## Offline Scenarios
