@@ -105,7 +105,7 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 
 ## Playbook Extension Note — 2026-09-03
 
-[Issue 115](115-playbook-process-and-checklist-extension.md) adds two optional elements to `moduflow.playbook.v1`: an external `process_ref` and a numbered, human-owned `Required Checks` checklist. This issue was written before they existed. The playbook tab must render the two new elements read-only, and must not mark, complete or evaluate a checklist item. Reconcile this when writing this issue's spec; do not assume the pre-115 playbook shape.
+[Issue 115](115-playbook-process-and-checklist-extension.md) adds two optional elements to `moduflow.playbook.v1`: an external `process_ref` and a numbered, human-owned `Required Checks` checklist. This issue was written before they existed. The playbook tab must render the two new elements read-only, and must not mark, complete or evaluate a checklist item. Reconciled 2026-09-04. `spec.md` gained AC 10a-10c and `design.md` gained the playbook column set, the three-state production record treatment, and the analysis-run scope boundary. The July prototype shows the target visual language but predates Issue 115, so treat this design as the current reference.
 
 ## Sessions
 

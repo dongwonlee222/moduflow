@@ -218,8 +218,11 @@ It does not display record bodies, internal copy, full decisions, or merged sear
 8. Production Records supports search and filtering by type, channel, audience, lifecycle, and playbook state.
 9. Record detail renders all required Issue 085 sections, with External Copy and Internal Reporting Copy visibly separated.
 10. Playbooks show approval/scope/version/review/source metadata and never label candidates as approved guidance.
+10a. The Playbooks table shows `retrieval_trigger`, `process_ref` and required-check counts split by kind. A `process_ref` of kind `none` renders as `없음` rather than an empty cell. Check items are read-only; no screen action marks, completes or clears one.
+10b. The Production Records table separates three playbook states rather than two: the named playbook, `기준 없음` when no approved playbook lists the record's `deliverable_type`, and `기준 미적용` when one does and the record names none. Matching is exact `deliverable_type` membership against approved playbooks only; channel and audience are not consulted, and an ambiguous match shows nothing. The flag is presented as something to check, not as a violation.
+10c. Analysis runs from Issue 091 are not rendered in this dashboard. They belong to the Issue 092 project home.
 11. Registered artifact links work regardless of the project's existing asset-folder layout because links come from Production Records.
-12. A missing/unreadable project, empty production library, stale URL project, and missing artifact each produce a useful non-crashing state.
+12. A missing/unreadable project, empty production library, stale URL project, and missing artifact each produce a useful non-crashing state. The empty wording states that nothing has been registered yet rather than that nothing exists.
 13. Existing Issue DB, issue graph, knowledge graph, and project-local drill-down behavior remain regression-covered.
 14. Desktop and mobile visual checks confirm no overlapping selector, tabs, filters, table text, or detail content.
 15. Static output contains no browser mutation path and requires no external database/runtime server.

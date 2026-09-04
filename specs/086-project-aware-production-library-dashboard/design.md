@@ -69,8 +69,20 @@ Use the existing `.db` and `.dbbar` patterns.
 - Search spans title, decision, failure, and reusable pattern text.
 - Status uses existing rounded chips: 전체, 승인, 검토, 완료.
 - Type uses the existing select style.
-- The table remains full width with columns for Production Record, Type, Channel, Status, and Playbook.
+- The table remains full width with columns for Production Record, Type, Audience, Retrieval trigger, Status, and Playbook.
 - Row selection uses the existing blue-tinted hover/selected treatment.
+
+The Playbook column distinguishes three states rather than collapsing two of them into one label. A record with no `playbook_refs` currently reads as unpromoted whether a standard exists or not, and those are opposite situations.
+
+| Condition | Treatment |
+| --- | --- |
+| The record names a playbook | Show the playbook id |
+| No approved playbook lists this record's `deliverable_type` in `applies_to_types` | Neutral badge `기준 없음`. This is the normal state while material accumulates |
+| An approved playbook does list it, and the record names none | Attention flag `기준 미적용` |
+
+The match is deliberately narrow: exact `deliverable_type` membership against approved playbooks only. Channel and audience are not consulted. Widening it turns a projection into a matching engine, which is where the mistakes would be. When the match is ambiguous, show nothing.
+
+`기준 미적용` is not an accusation. A deliberate one-off variant is legitimate, and the bottom panel must say the flag means a standard exists and no reference was recorded, which may be intentional. No screen action promotes, applies, or clears it.
 
 The initial implementation may add channel, audience, lifecycle, and playbook-state filters as selects when real fixture volume justifies them. Controls must wrap instead of shrinking below readable widths.
 
@@ -103,11 +115,21 @@ External copy and internal reporting copy use separate bordered blocks so neithe
 
 ## Playbooks
 
-The Playbooks tab reuses the same `.db` table pattern. It shows scope, version, approval status, approver/date, review state, and source-record count.
+The Playbooks tab reuses the same `.db` table pattern. Columns are name, applies-to type, `retrieval_trigger`, `process_ref`, required-check counts, and version with approval badge. Approver, date, review state and source-record count move to the modal; the table stays readable at the existing 13px size.
+
+`retrieval_trigger`, `process_ref` and `Required Checks` were added to `moduflow.playbook.v1` by Issue 115 after this design was written. Without the `retrieval_trigger` column the tab is a list of titles, which is the failure this view exists to avoid. Required checks show counts split by kind, for example `자동 3 · 사람 2`.
+
+A `process_ref` whose kind is `none` renders as `없음`, not as an empty cell, so "not recorded" and "none" stay distinguishable.
+
+Required checks are rendered read-only. Nothing on this screen marks, completes or clears a check item; a `[review]` item is a reviewer assertion held outside this dashboard.
 
 Only `approved` Playbooks receive the green reusable-guidance treatment. Candidates and deferred items remain visibly review-only and cannot look like current policy.
 
 Opening a Playbook uses the same modal shell, with source Production Record links and supersession history.
+
+## Out of Scope: Analysis Runs
+
+Issue 091 added `workspace/analysis-runs.md` and a read contract for it. Those runs are not shown here. This tab set is the production library — what was made and the standards it was made under. An analysis run is a recent result, which belongs to the project home in Issue 092. Decided 2026-09-04; revisit only if 092 declines it.
 
 ## Project Switching
 
@@ -126,7 +148,7 @@ No tab owns an independent project selection.
 
 - Missing portfolio registration: current project mode remains usable; portfolio guidance appears only when requested.
 - Unreadable project: show a non-blocking warning for that project and retain other registered projects.
-- Empty Production Records or Playbooks: render the existing empty-panel pattern with the relevant ModuFlow registration command.
+- Empty Production Records or Playbooks: render the existing `.empty` panel. The wording states that nothing has been registered yet rather than that nothing exists, so an unused project reads as a state and not a fault. The ModuFlow repository itself holds zero production records, so this is the view seen most often during implementation.
 - Removed URL project: fall back to the default project and show a visible warning.
 - Missing artifact: keep the record visible and show an attention flag.
 - Truncated project payload: display generated-at, retained count, omitted count, and regeneration guidance.
@@ -155,7 +177,7 @@ No tab owns an independent project selection.
 - Mobile screenshots: stacked title/project control, wrapped tabs/filters, table scroll, bottom-anchored modal.
 - Interaction checks: project switch, URL restoration, invalid project fallback, filter reset, modal open/close/focus, empty state, missing artifact warning.
 - Regression checks: existing Issue DB, issue graph, knowledge graph, and issue drill-down remain functional.
-- Current observed baseline: 87 issue nodes / 198 issue edges and 14 knowledge nodes / 4 knowledge edges. Tests compare generated before/after equivalence rather than permanently pinning those changing counts.
+- Baseline observed 2026-07-10: 87 issue nodes / 198 issue edges and 14 knowledge nodes / 4 knowledge edges. The repository held 117 issues on 2026-09-04, so these counts are historical. Tests compare generated before/after equivalence and never pin a count.
 - Issue DB must render the full `issues/*.md` collector result, not representative sample rows.
 - Displayed project names must match `.moduflow/config.json` and `portfolio/projects.json`.
 - Required commands: focused dashboard tests, project validation, and `python3 scripts/release_check.py .`.
