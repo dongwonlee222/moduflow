@@ -18,6 +18,10 @@ def load_module(name, relative_path):
 runs = load_module("project_analysis_run", "scripts/project_analysis_run.py")
 
 
+def codes(findings):
+    return sorted({item["code"] for item in findings})
+
+
 class AnalysisRunTransactionTest(unittest.TestCase):
     def _project(self, tmp, *entries):
         project = transaction_project(tmp)
@@ -302,3 +306,78 @@ class PlaybookOriginationTest(unittest.TestCase):
                 runs.plan_playbook_promotion(
                     project.root, RUN_ID, project_context=project.context
                 )
+
+
+class RunOutputRegistrationTest(unittest.TestCase):
+    """D2: outputs are registered through 090 before the run is written."""
+
+    ENTRY = {"id": "art-11111111-1111-4111-8111-111111111111"}
+
+    def _patched(self, **kwargs):
+        from unittest import mock
+
+        registry = runs._module("project_artifact_registry")
+        return mock.patch.multiple(registry, **kwargs)
+
+    def test_successful_registration_returns_the_artifact_id(self):
+        import tempfile
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = transaction_project(tmp)
+            with self._patched(
+                plan_artifact_registration=mock.DEFAULT,
+                apply_artifact_registration=mock.DEFAULT,
+            ) as patched:
+                patched["apply_artifact_registration"].return_value = {"status": "applied"}
+                result = runs.register_run_output(
+                    project.root,
+                    self.ENTRY,
+                    issue_id="001-synthetic-a",
+                    project_context=project.context,
+                )
+            self.assertEqual(result["status"], "registered")
+            self.assertEqual(result["artifact_id"], self.ENTRY["id"])
+
+    def test_a_failed_registration_never_claims_success(self):
+        import tempfile
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = transaction_project(tmp)
+            with self._patched(
+                plan_artifact_registration=mock.DEFAULT,
+                apply_artifact_registration=mock.DEFAULT,
+            ) as patched:
+                patched["apply_artifact_registration"].return_value = {"status": "conflict"}
+                result = runs.register_run_output(
+                    project.root,
+                    self.ENTRY,
+                    issue_id="001-synthetic-a",
+                    project_context=project.context,
+                )
+            self.assertEqual(result["status"], "unregistered")
+            self.assertIsNone(result["artifact_id"])
+
+    def test_a_raising_registration_is_reported_not_swallowed(self):
+        import tempfile
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            project = transaction_project(tmp)
+            with self._patched(plan_artifact_registration=mock.DEFAULT) as patched:
+                patched["plan_artifact_registration"].side_effect = ValueError("nope")
+                result = runs.register_run_output(
+                    project.root,
+                    self.ENTRY,
+                    issue_id="001-synthetic-a",
+                    project_context=project.context,
+                )
+            self.assertEqual(result["status"], "unregistered")
+            self.assertEqual(result["reason"], "ValueError")
+
+    def test_outputs_cannot_be_added_by_amending_a_written_run(self):
+        before = valid_run()
+        after = valid_run(outputs=[self.ENTRY["id"]])
+        found = runs.check_amendment(before, after)
+        self.assertIn("RUN_AMENDMENT_FORBIDDEN", codes(found))

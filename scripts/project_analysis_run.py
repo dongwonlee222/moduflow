@@ -1021,3 +1021,42 @@ def apply_playbook_plan(root, plan, *, project_context=None):
         raise ValueError("PLAYBOOK_CONTENT_INVALID")
     staged.replace(target)
     return {"status": "created", "target_path": plan["target_path"], "origin": plan["origin"]}
+
+
+def register_run_output(root, artifact_entry, *, issue_id, project_context=None, new_knowledge=None):
+    """Register one run output through 090's boundary, before the run is appended.
+
+    `outputs` is not an amendable field (R5), so a run must already carry its
+    artifact ids when it is written. Registration therefore precedes the append.
+    A failure is reported as `unregistered`; it never claims the run is complete
+    or shared, and it never opens a second registration path.
+    """
+    registry_module = _module("project_artifact_registry")
+    registry = _module("project_registry")
+    operation = _module("project_operation")
+    context = registry.context_for_operation(root, project_context=project_context)
+    operation.require_project_capability(context, "write")
+    try:
+        plan = registry_module.plan_artifact_registration(
+            root,
+            artifact_entry,
+            issue_id=issue_id,
+            project_context=context,
+            new_knowledge=new_knowledge,
+        )
+        result = registry_module.apply_artifact_registration(
+            root, plan, project_context=context
+        )
+    except Exception as exc:  # surfaced, never swallowed into a success claim
+        return {"status": "unregistered", "artifact_id": None, "reason": type(exc).__name__}
+    if result.get("status") not in ("applied", "noop"):
+        return {
+            "status": "unregistered",
+            "artifact_id": None,
+            "reason": result.get("status", "unknown"),
+        }
+    return {
+        "status": "registered",
+        "artifact_id": artifact_entry["id"],
+        "reason": "",
+    }
