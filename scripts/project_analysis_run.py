@@ -544,6 +544,14 @@ def resolve_playbook(root, name, *, project_context=None):
     raise PlaybookUnresolved(name)
 
 
+
+def _section_lines(section):
+    """Bullets when a section uses them, otherwise its nonempty lines."""
+    lines = [line.strip() for line in str(section).splitlines() if line.strip()]
+    bullets = [line.lstrip("-").strip() for line in lines if line.startswith("-")]
+    return bullets or lines
+
+
 def prefill_run(playbook):
     """R7 prefill. Returns a starting point, never a complete run."""
     sections = playbook.get("sections", {})
@@ -560,11 +568,7 @@ def prefill_run(playbook):
         "required_code_checks": list(CODE_CHECKS.get(claim, ())),
         "playbook_check_ids": [item["id"] for item in active],
         "auto_check_ids": [item["id"] for item in active if item["kind"] == "auto"],
-        "caveats": [
-            line.lstrip("- ").strip()
-            for line in sections.get("Do Not Repeat", "").splitlines()
-            if line.strip().startswith("-")
-        ],
+        "caveats": _section_lines(sections.get("Do Not Repeat", "")),
         "structure_ref": sections.get("Approved Structures", ""),
         "process_ref": playbook.get("process_ref"),
     }
