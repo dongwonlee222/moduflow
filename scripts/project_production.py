@@ -42,6 +42,12 @@ ARTIFACT_RE = re.compile(
     r"^-\s*\[(?P<label>[^]]+)]\((?P<target>[^)]+)\)\s*[—-]\s*"
     r"(?P<variant>[^·]+?)\s*·\s*(?P<audience>.+?)\s*$"
 )
+OPTIONAL_PLAYBOOK_SECTIONS = ("Required Checks",)
+PLAYBOOK_CHECK_RE = re.compile(
+    r"^-\s*(?P<id>CHK\d{3})\s*\[(?P<kind>auto|review)\]\s*"
+    r"(?P<text>.+?)\s*(?P<retired>\(retired\))?$"
+)
+AUTO_RULE_RE = re.compile(r"^(?P<form>section|forbidden|approved-copy):(?P<value>.+)$")
 PLAYBOOK_UPDATE_RE = re.compile(
     r"^-\s*(?P<playbook_id>.+?)\s+(?:—|-)\s+(?P<state>\w[\w-]*)(?:\s+.*)?$"
 )
@@ -97,6 +103,146 @@ def _sections(body, required):
         end = positions[index + 1] if index + 1 < len(positions) else len(lines)
         result[name] = "\n".join(lines[start:end]).strip()
     return result
+
+
+def _optional_section(body, name):
+    lines = body.splitlines()
+    marker = f"## {name}"
+    matches = [index for index, line in enumerate(lines) if line.strip() == marker]
+    if not matches:
+        return None
+    if len(matches) > 1:
+        raise ValueError(f"duplicate section: {name}")
+    start = matches[0] + 1
+    end = len(lines)
+    for index in range(start, len(lines)):
+        if lines[index].startswith("## "):
+            end = index
+            break
+    return "\n".join(lines[start:end]).strip()
+
+
+def parse_process_ref(metadata):
+    kind = str(metadata.get("process_ref_kind", "")).strip()
+    ref = str(metadata.get("process_ref", "")).strip()
+    version = str(metadata.get("process_ref_version", "")).strip()
+    raw_missing = str(metadata.get("process_ref_missing", "")).strip()
+    missing = project_memory.parse_list_value(raw_missing) if raw_missing else []
+    if not (kind or ref or version or missing):
+        return None
+    if kind not in ("skill", "document", "none"):
+        raise ValueError(
+            "PLAYBOOK_PROCESS_REF_INCOMPLETE: process_ref_kind must be skill, document, or none"
+        )
+    named = set()
+    for entry in missing:
+        field, separator, reason = entry.partition(":")
+        if not separator or not field.strip() or not reason.strip():
+            raise ValueError(
+                "PLAYBOOK_PROCESS_REF_INCOMPLETE: process_ref_missing needs '<field>: <reason>'"
+            )
+        named.add(field.strip())
+    if kind == "none":
+        if ref or version:
+            raise ValueError(
+                "PLAYBOOK_PROCESS_REF_INCOMPLETE: process_ref_kind none requires empty ref and version"
+            )
+        if not missing:
+            raise ValueError(
+                "PLAYBOOK_PROCESS_REF_INCOMPLETE: process_ref_kind none requires an explaining "
+                "process_ref_missing entry"
+            )
+        return {"kind": kind, "ref": "", "version": "", "missing": missing}
+    for field, value in (("process_ref", ref), ("process_ref_version", version)):
+        if not value and field not in named:
+            raise ValueError(
+                f"PLAYBOOK_PROCESS_REF_INCOMPLETE: empty {field} must be named in process_ref_missing"
+            )
+    return {"kind": kind, "ref": ref, "version": version, "missing": missing}
+
+
+def parse_required_checks(section):
+    if section is None:
+        return []
+    checks = []
+    seen = set()
+    previous = 0
+    for raw_line in section.splitlines():
+        line = raw_line.strip()
+        if not line.startswith("-"):
+            continue
+        match = PLAYBOOK_CHECK_RE.match(line)
+        if not match:
+            raise ValueError(f"PLAYBOOK_CHECK_ID_INVALID: cannot parse check line: {line}")
+        check_id = match.group("id")
+        if check_id in seen:
+            raise ValueError(f"PLAYBOOK_CHECK_ID_INVALID: duplicate {check_id}")
+        number = int(check_id[3:])
+        if number <= previous:
+            raise ValueError(f"PLAYBOOK_CHECK_ID_INVALID: {check_id} is not ascending")
+        text = match.group("text").strip()
+        if not text:
+            raise ValueError(f"PLAYBOOK_CHECK_ID_INVALID: {check_id} has empty text")
+        kind = match.group("kind")
+        rule = None
+        if kind == "auto":
+            rule_match = AUTO_RULE_RE.match(text)
+            if not rule_match or not rule_match.group("value").strip():
+                raise ValueError(
+                    f"PLAYBOOK_CHECK_RULE_UNSUPPORTED: {check_id} must use "
+                    "section:<name>, forbidden:<text>, or approved-copy:<text>"
+                )
+            rule = {
+                "form": rule_match.group("form"),
+                "value": rule_match.group("value").strip(),
+            }
+        seen.add(check_id)
+        previous = number
+        checks.append(
+            {
+                "id": check_id,
+                "kind": kind,
+                "text": text,
+                "rule": rule,
+                "retired": bool(match.group("retired")),
+            }
+        )
+    return checks
+
+
+def evaluate_auto_checks(playbook, *, sections=None, text=""):
+    sections = sections or {}
+    approved_copy = playbook.get("sections", {}).get("Approved Copy Blocks", "")
+    results = []
+    for check in playbook.get("required_checks", []):
+        if check["kind"] != "auto" or check["retired"]:
+            continue
+        form = check["rule"]["form"]
+        value = check["rule"]["value"]
+        if form == "section":
+            passed = bool(str(sections.get(value, "")).strip())
+            reason = "" if passed else f"section '{value}' is missing or empty"
+        elif form == "forbidden":
+            passed = value not in text
+            reason = "" if passed else f"forbidden text '{value}' is present"
+        else:
+            in_playbook = value in approved_copy
+            passed = in_playbook and value in text
+            if not in_playbook:
+                reason = f"'{value}' is not an approved copy block"
+            elif not passed:
+                reason = f"approved copy '{value}' is absent"
+            else:
+                reason = ""
+        results.append(
+            {
+                "id": check["id"],
+                "rule": f"{form}:{value}",
+                "result": "pass" if passed else "fail",
+                "reason": reason,
+            }
+        )
+    return results
 
 
 def _require_metadata(metadata, schema, required):
@@ -214,6 +360,9 @@ def parse_playbook(project_root, path):
     if not channels:
         raise ValueError("missing metadata: applies_to_channels")
     sections = _sections(body, PLAYBOOK_SECTIONS)
+    process_ref = parse_process_ref(metadata)
+    retrieval_trigger = str(metadata.get("retrieval_trigger", "")).strip()
+    required_checks = parse_required_checks(_optional_section(body, "Required Checks"))
     return {
         "id": metadata["id"],
         "kind": metadata["kind"],
@@ -233,6 +382,9 @@ def parse_playbook(project_root, path):
         "created": metadata["created"],
         "updated": metadata["updated"],
         "sections": sections,
+        "retrieval_trigger": retrieval_trigger,
+        "process_ref": process_ref,
+        "required_checks": required_checks,
         "authoritative": metadata["status"] == "approved",
     }
 

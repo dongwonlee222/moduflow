@@ -1307,5 +1307,202 @@ class ProjectProductionCanonicalPathTests(unittest.TestCase):
             )
 
 
+
+class PlaybookProcessRefAndChecksTest(unittest.TestCase):
+    """Issue 115: additive process_ref and Required Checks."""
+
+    def _write(self, directory, text):
+        path = Path(directory) / "playbook.md"
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def _with_frontmatter(self, extra_lines):
+        return VALID_PLAYBOOK.replace(
+            "version: 1.0\n", "version: 1.0\n" + extra_lines
+        )
+
+    def _with_checks(self, block):
+        return VALID_PLAYBOOK.replace(
+            "## Approved Copy Blocks",
+            "## Required Checks\n\n" + block + "\n\n## Approved Copy Blocks",
+        )
+
+    def test_existing_playbook_without_additions_is_unchanged(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, VALID_PLAYBOOK)
+            playbook = production.parse_playbook(directory, path)
+            self.assertIsNone(playbook["process_ref"])
+            self.assertEqual(playbook["required_checks"], [])
+            self.assertEqual(
+                list(playbook["sections"]), list(production.PLAYBOOK_SECTIONS)
+            )
+
+    def test_process_ref_round_trips(self):
+        extra = (
+            "process_ref_kind: skill\n"
+            "process_ref: company-data-analysis\n"
+            "process_ref_version: 2.1\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._with_frontmatter(extra))
+            playbook = production.parse_playbook(directory, path)
+            self.assertEqual(
+                playbook["process_ref"],
+                {
+                    "kind": "skill",
+                    "ref": "company-data-analysis",
+                    "version": "2.1",
+                    "missing": [],
+                },
+            )
+
+    def test_empty_process_ref_field_must_be_named_as_missing(self):
+        extra = "process_ref_kind: skill\nprocess_ref: some-skill\nprocess_ref_version:\n"
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._with_frontmatter(extra))
+            with self.assertRaises(ValueError) as caught:
+                production.parse_playbook(directory, path)
+            self.assertIn("PLAYBOOK_PROCESS_REF_INCOMPLETE", str(caught.exception))
+
+    def test_named_missing_evidence_is_accepted(self):
+        extra = (
+            "process_ref_kind: skill\n"
+            "process_ref: some-skill\n"
+            "process_ref_version:\n"
+            "process_ref_missing:\n"
+            "  - process_ref_version: the external skill does not publish a version\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._with_frontmatter(extra))
+            playbook = production.parse_playbook(directory, path)
+            self.assertEqual(playbook["process_ref"]["version"], "")
+            self.assertEqual(len(playbook["process_ref"]["missing"]), 1)
+
+    def test_kind_none_requires_an_explanation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._with_frontmatter("process_ref_kind: none\n"))
+            with self.assertRaises(ValueError) as caught:
+                production.parse_playbook(directory, path)
+            self.assertIn("PLAYBOOK_PROCESS_REF_INCOMPLETE", str(caught.exception))
+
+    def test_unknown_process_ref_kind_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._with_frontmatter("process_ref_kind: runner\n"))
+            with self.assertRaises(ValueError) as caught:
+                production.parse_playbook(directory, path)
+            self.assertIn("PLAYBOOK_PROCESS_REF_INCOMPLETE", str(caught.exception))
+
+    def test_no_network_or_filesystem_access_for_the_reference(self):
+        extra = (
+            "process_ref_kind: document\n"
+            "process_ref: knowledge/never-created.md\n"
+            "process_ref_version: 1.0\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._with_frontmatter(extra))
+            with mock.patch.object(Path, "exists", side_effect=AssertionError("probed")):
+                playbook = production.parse_playbook(directory, path)
+            self.assertEqual(playbook["process_ref"]["ref"], "knowledge/never-created.md")
+
+    def test_checks_parse_both_kinds_and_keep_retired_items(self):
+        block = (
+            "- CHK001 [auto] section:Approved Structures\n"
+            "- CHK002 [review] Confirm the message fits the audience.\n"
+            "- CHK003 [review] Old rule. (retired)\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._with_checks(block))
+            checks = production.parse_playbook(directory, path)["required_checks"]
+            self.assertEqual([c["id"] for c in checks], ["CHK001", "CHK002", "CHK003"])
+            self.assertEqual(checks[0]["rule"]["form"], "section")
+            self.assertIsNone(checks[1]["rule"])
+            self.assertTrue(checks[2]["retired"])
+
+    def test_duplicate_and_non_ascending_and_malformed_ids_are_rejected(self):
+        cases = (
+            "- CHK001 [review] One.\n- CHK001 [review] Two.\n",
+            "- CHK002 [review] One.\n- CHK001 [review] Two.\n",
+            "- CHK1 [review] One.\n",
+            "- CHK001 One.\n",
+        )
+        for block in cases:
+            with self.subTest(block=block):
+                with tempfile.TemporaryDirectory() as directory:
+                    path = self._write(directory, self._with_checks(block))
+                    with self.assertRaises(ValueError) as caught:
+                        production.parse_playbook(directory, path)
+                    self.assertIn("PLAYBOOK_CHECK_ID_INVALID", str(caught.exception))
+
+    def test_unsupported_auto_rule_is_rejected(self):
+        block = "- CHK001 [auto] looks good overall\n"
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._with_checks(block))
+            with self.assertRaises(ValueError) as caught:
+                production.parse_playbook(directory, path)
+            self.assertIn("PLAYBOOK_CHECK_RULE_UNSUPPORTED", str(caught.exception))
+
+    def test_auto_checks_evaluate_only_the_three_supported_forms(self):
+        block = (
+            "- CHK001 [auto] section:Artifacts\n"
+            "- CHK002 [auto] forbidden:무료\n"
+            "- CHK003 [auto] approved-copy:Charge now to receive the event benefit.\n"
+            "- CHK004 [review] Confirm the tone.\n"
+            "- CHK005 [auto] section:Artifacts (retired)\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._with_checks(block))
+            playbook = production.parse_playbook(directory, path)
+
+            passing = production.evaluate_auto_checks(
+                playbook,
+                sections={"Artifacts": "- [banner](a.png) — main · customer"},
+                text="Charge now to receive the event benefit.",
+            )
+            self.assertEqual([r["id"] for r in passing], ["CHK001", "CHK002", "CHK003"])
+            self.assertTrue(all(r["result"] == "pass" for r in passing))
+
+            failing = production.evaluate_auto_checks(
+                playbook,
+                sections={"Artifacts": "  "},
+                text="무료 이벤트",
+            )
+            self.assertEqual(
+                [(r["id"], r["result"]) for r in failing],
+                [("CHK001", "fail"), ("CHK002", "fail"), ("CHK003", "fail")],
+            )
+            self.assertTrue(all(r["reason"] for r in failing))
+
+    def test_review_items_are_never_evaluated_or_completed(self):
+        block = "- CHK001 [review] Confirm the tone.\n"
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._with_checks(block))
+            playbook = production.parse_playbook(directory, path)
+            self.assertEqual(production.evaluate_auto_checks(playbook), [])
+            self.assertNotIn("result", playbook["required_checks"][0])
+            self.assertFalse(
+                [name for name in dir(production) if "complete_check" in name]
+            )
+
+
+
+    def test_retrieval_trigger_is_optional_and_absent_parses_empty(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, VALID_PLAYBOOK)
+            playbook = production.parse_playbook(directory, path)
+            self.assertEqual(playbook["retrieval_trigger"], "")
+
+    def test_retrieval_trigger_parses_and_feeds_existing_search(self):
+        trigger = "retrieval_trigger: 고객사에 안내 메일을 보낼 때\n"
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(directory, self._with_frontmatter(trigger))
+            playbook = production.parse_playbook(directory, path)
+            self.assertEqual(playbook["retrieval_trigger"], "고객사에 안내 메일을 보낼 때")
+            self.assertIn("고객사에 안내 메일을", production._search_text(playbook))
+            without = production.parse_playbook(
+                directory, self._write(directory, VALID_PLAYBOOK)
+            )
+            self.assertNotIn("고객사에 안내 메일을", production._search_text(without))
+
+
 if __name__ == "__main__":
     unittest.main()
