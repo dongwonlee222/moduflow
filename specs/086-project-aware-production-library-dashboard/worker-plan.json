@@ -1,0 +1,344 @@
+{
+  "schema": "moduflow.worker-plan.v1",
+  "issue_id": "086-project-aware-production-library-dashboard",
+  "project_root": "/Users/dongwon.lee/workhub/company/shared/context-tools/moduflow",
+  "workers": {
+    "configured": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "files": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "dead_workers": []
+  },
+  "parallel": {
+    "eligible": false,
+    "mode": "sequential",
+    "risks": [
+      "Task 9 touches shared state: Implementation: 전역 프로젝트 선택기와 URL 복원",
+      "Task 10 touches shared state: Release: 신규 스위트와 자산 등록",
+      "scripts/project_memory.py is expected by T01 and T05",
+      "scripts/project_memory.py is expected by T01 and T06",
+      "scripts/project_memory.py is expected by T01 and T07",
+      "tests/test_dashboard_production_views.py is expected by T02 and T08",
+      "scripts/project_memory.py is expected by T01 and T09"
+    ],
+    "merge_order": [
+      "T01",
+      "T02",
+      "T03",
+      "T04",
+      "T05",
+      "T06",
+      "T07",
+      "T08",
+      "T09",
+      "T10"
+    ],
+    "fallback": "sequential",
+    "criteria": [
+      "separate worker domains",
+      "non-overlapping expected files",
+      "no shared-state risk",
+      "dependency-aware merge order"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "text": "Implementation: 제작 기록·플레이북 수집기와 세 상태 판정",
+      "status": "done",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [
+        "scripts/project_memory.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/086-project-aware-production-library-dashboard-t01",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Implementation: 제작 기록·플레이북 수집기와 세 상태 판정\nExpected files: scripts/project_memory.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T02",
+      "text": "QA: 수집기와 판정 테스트",
+      "status": "done",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [
+        "tests/test_dashboard_production_views.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T01"
+      ],
+      "isolation": {
+        "worktree": "codex/086-project-aware-production-library-dashboard-t02",
+        "merge_after": [
+          "T01"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: QA: 수집기와 판정 테스트\nExpected files: tests/test_dashboard_production_views.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T03",
+      "text": "QA: 기존 세 탭의 생성 결과 동등성 고정",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [
+        "tests/test_project_memory.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/086-project-aware-production-library-dashboard-t03",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: QA: 기존 세 탭의 생성 결과 동등성 고정\nExpected files: tests/test_project_memory.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T04",
+      "text": "Docs: 대시보드 명령에 두 탭과 읽기 전용 경계 기술",
+      "status": "ready",
+      "worker": "release-manager",
+      "worker_file": "workers/release-manager.md",
+      "parallel_group": "group-3",
+      "shared_state_risk": false,
+      "expected_files": [
+        "commands/product-dashboard.md"
+      ],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/086-project-aware-production-library-dashboard-t04",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow release-manager",
+        "CognitiveDemand": "fast",
+        "Workspace": "share",
+        "Prompt": "Implement task: Docs: 대시보드 명령에 두 탭과 읽기 전용 경계 기술\nExpected files: commands/product-dashboard.md\nCognitive demand: fast — use your lightest, fastest model. If using OpenAI GPT-5.6, prefer gpt-5.6-luna with low or no reasoning for latency-sensitive or high-volume work."
+      }
+    },
+    {
+      "id": "T05",
+      "text": "Implementation: 제작 기록 탭 렌더링",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [
+        "scripts/project_memory.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T01"
+      ],
+      "isolation": {
+        "worktree": "codex/086-project-aware-production-library-dashboard-t05",
+        "merge_after": [
+          "T01"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Implementation: 제작 기록 탭 렌더링\nExpected files: scripts/project_memory.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T06",
+      "text": "Implementation: 플레이북 탭 렌더링",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [
+        "scripts/project_memory.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T05"
+      ],
+      "isolation": {
+        "worktree": "codex/086-project-aware-production-library-dashboard-t06",
+        "merge_after": [
+          "T05"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Implementation: 플레이북 탭 렌더링\nExpected files: scripts/project_memory.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T07",
+      "text": "Implementation: 제작 기록·플레이북 상세 모달",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [
+        "scripts/project_memory.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T06"
+      ],
+      "isolation": {
+        "worktree": "codex/086-project-aware-production-library-dashboard-t07",
+        "merge_after": [
+          "T06"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Implementation: 제작 기록·플레이북 상세 모달\nExpected files: scripts/project_memory.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T08",
+      "text": "QA: 두 탭 렌더링과 빈 상태 테스트",
+      "status": "ready",
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [
+        "tests/test_dashboard_production_views.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T07"
+      ],
+      "isolation": {
+        "worktree": "codex/086-project-aware-production-library-dashboard-t08",
+        "merge_after": [
+          "T07"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: QA: 두 탭 렌더링과 빈 상태 테스트\nExpected files: tests/test_dashboard_production_views.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T09",
+      "text": "Implementation: 전역 프로젝트 선택기와 URL 복원",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [
+        "scripts/project_memory.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T03",
+        "T07"
+      ],
+      "isolation": {
+        "worktree": "codex/086-project-aware-production-library-dashboard-t09",
+        "merge_after": [
+          "T03",
+          "T07"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Implementation: 전역 프로젝트 선택기와 URL 복원\nExpected files: scripts/project_memory.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T10",
+      "text": "Release: 신규 스위트와 자산 등록",
+      "status": "ready",
+      "worker": "release-manager",
+      "worker_file": "workers/release-manager.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [
+        "scripts/release_check.py",
+        "scripts/validate_moduflow.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T08"
+      ],
+      "isolation": {
+        "worktree": "codex/086-project-aware-production-library-dashboard-t10",
+        "merge_after": [
+          "T08"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow release-manager",
+        "CognitiveDemand": "fast",
+        "Workspace": "share",
+        "Prompt": "Implement task: Release: 신규 스위트와 자산 등록\nExpected files: scripts/release_check.py, scripts/validate_moduflow.py\nCognitive demand: fast — use your lightest, fastest model. If using OpenAI GPT-5.6, prefer gpt-5.6-luna with low or no reasoning for latency-sensitive or high-volume work."
+      }
+    }
+  ],
+  "next_command": "product:execute 086-project-aware-production-library-dashboard"
+}
