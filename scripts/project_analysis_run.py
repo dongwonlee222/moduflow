@@ -866,3 +866,158 @@ def apply_analysis_run_append(root, plan, *, project_context=None):
     """Apply a previously planned append through the existing transaction owner."""
     transaction = _module("project_lifecycle_transaction")
     return transaction.apply_analysis_run_plan(root, plan, project_context=project_context)
+
+
+def _today(value=None):
+    if value:
+        return value
+    from datetime import date
+
+    return date.today().isoformat()
+
+
+def _playbook_dir(context):
+    registry = _module("project_registry")
+    return registry.canonical_path(context, "playbooks")
+
+
+def _render_promoted_playbook(entry, name, prefill_source, today):
+    """Project a finished run into a candidate playbook. Invents nothing."""
+    checks = [
+        item
+        for item in entry.get("checks", [])
+        if item.get("source") == "playbook"
+    ]
+    lines = [f"- CHK{index + 1:03d} [review] {item['id']}" for index, item in enumerate(checks)]
+    if not lines:
+        lines = ["- CHK001 [review] 이 작업물에서 사람이 확인해야 할 항목을 채워 주세요."]
+    method = entry.get("method") or {}
+    patterns = [f"- 기본 주장 종류: {entry['claim_class']}"]
+    patterns.append(f"- 사용 도구: {method.get('tooling', '미기록')}")
+    for step in method.get("steps", []):
+        patterns.append(f"- 방법: {step}")
+    caveats = [f"- {line}" for line in entry.get("caveats", [])] or [
+        "- 반복하지 않을 해석 오류를 채워 주세요."
+    ]
+    window = entry.get("time_window") or {}
+    trigger = entry.get("decision_question", "").rstrip("?").strip() or name
+    return "\n".join(
+        [
+            "---",
+            "schema: moduflow.playbook.v1",
+            f"id: pb-{name}",
+            "kind: playbook",
+            f"title: {entry.get('title', name)}",
+            "applies_to_types: [analysis]",
+            "applies_to_channels: [report]",
+            "audiences: [internal]",
+            f"retrieval_trigger: {trigger}",
+            "process_ref_kind: none",
+            "process_ref:",
+            "process_ref_version:",
+            "process_ref_missing:",
+            "  - process_ref: 외부 절차가 아직 기록되지 않았습니다",
+            "version: 0.1",
+            "status: candidate",
+            "source_records: []",
+            f"review_after: {today}",
+            "superseded_by: []",
+            f"created: {today}",
+            f"updated: {today}",
+            "---",
+            "",
+            "## Required Checks",
+            "",
+            *lines,
+            "",
+            "## Reusable Patterns",
+            "",
+            *patterns,
+            f"- 기간 단위: {window.get('grain', '미기록')}",
+            "",
+            "## Do Not Repeat",
+            "",
+            *caveats,
+            "",
+            "## Approved Copy Blocks",
+            "",
+            "- 아직 승인된 문구가 없습니다. 승인 후 채워 주세요.",
+            "",
+            "## Approved Structures",
+            "",
+            "- 아직 승인된 구조가 없습니다. 승인 후 채워 주세요.",
+            "",
+            "## Evidence",
+            "",
+            f"- {entry['id']}",
+            "",
+            "## Revision History",
+            "",
+            f"- {today} 실행 기록에서 후보로 승격했습니다.",
+            "",
+        ]
+    )
+
+
+def _playbook_plan(root, context, name, content, origin):
+    target = _playbook_dir(context) / f"{name}.md"
+    relative = str(Path(target).resolve().relative_to(Path(root).resolve()))
+    return {
+        "origin": origin,
+        "name": name,
+        "target_path": relative,
+        "exists": Path(target).is_file(),
+        "status": "candidate",
+        "content": content,
+    }
+
+
+def plan_playbook_scaffold(root, name, *, project_context=None):
+    """Copy a read-only default into the project as a starting point. Writes nothing."""
+    registry = _module("project_registry")
+    operation = _module("project_operation")
+    context = registry.context_for_operation(root, project_context=project_context)
+    operation.require_project_capability(context, "read")
+    source = default_playbook_dir() / f"{name}.md"
+    if not source.is_file():
+        raise PlaybookUnresolved(name)
+    return _playbook_plan(root, context, name, source.read_text(encoding="utf-8"), "default")
+
+
+def plan_playbook_promotion(root, run_id, *, project_context=None, name=None, today=None):
+    """Turn a completed run into a candidate playbook. Never sets approval fields."""
+    registry = _module("project_registry")
+    operation = _module("project_operation")
+    context = registry.context_for_operation(root, project_context=project_context)
+    operation.require_project_capability(context, "read")
+    entry, _ = _run_by_id(root, run_id, project_context=context, runner=None)
+    if entry is None:
+        raise ValueError("RUN_ID_UNKNOWN")
+    if entry.get("run_state") != "completed":
+        raise ValueError("RUN_NOT_COMPLETED")
+    playbook = entry.get("playbook_ref") or {}
+    resolved = name or (playbook.get("playbook_id", "") or "").removeprefix("pb-") or _slug(entry["title"])
+    content = _render_promoted_playbook(entry, resolved, playbook, _today(today))
+    return _playbook_plan(root, context, resolved, content, "run-promotion")
+
+
+def apply_playbook_plan(root, plan, *, project_context=None):
+    """Create the project playbook. Refuses to overwrite an existing one."""
+    registry = _module("project_registry")
+    operation = _module("project_operation")
+    production = _module("project_production")
+    context = registry.context_for_operation(root, project_context=project_context)
+    operation.require_project_capability(context, "write")
+    target = Path(root).resolve() / plan["target_path"]
+    if target.exists():
+        raise ValueError("PLAYBOOK_ALREADY_EXISTS")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staged = target.with_name(target.name + ".staged")
+    staged.write_text(plan["content"], encoding="utf-8")
+    try:
+        production.parse_playbook(root, staged)
+    except ValueError:
+        staged.unlink(missing_ok=True)
+        raise ValueError("PLAYBOOK_CONTENT_INVALID")
+    staged.replace(target)
+    return {"status": "created", "target_path": plan["target_path"], "origin": plan["origin"]}

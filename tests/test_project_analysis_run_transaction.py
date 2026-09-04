@@ -191,3 +191,114 @@ class AnalysisRunTransactionTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PlaybookOriginationTest(unittest.TestCase):
+    """E1: a project playbook must be obtainable without hand-authoring one."""
+
+    def _project(self, tmp, *entries):
+        project = transaction_project(tmp)
+        workspace = project.context["relative_paths"]["workspace"]
+        project.write(workspace + "/analysis-runs.md", runs_file(*entries))
+        return project
+
+    def _parsed(self, project, plan):
+        production = runs._module("project_production")
+        return production.parse_playbook(project.root, Path(project.root) / plan["target_path"])
+
+    def test_scaffold_previews_without_writing(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self._project(tmp)
+            plan = runs.plan_playbook_scaffold(
+                project.root, "monthly-trend", project_context=project.context
+            )
+            self.assertFalse(plan["exists"])
+            self.assertFalse((Path(project.root) / plan["target_path"]).exists())
+            self.assertEqual(plan["origin"], "default")
+
+    def test_scaffold_creates_a_parseable_candidate_and_never_overwrites(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self._project(tmp)
+            plan = runs.plan_playbook_scaffold(
+                project.root, "monthly-trend", project_context=project.context
+            )
+            result = runs.apply_playbook_plan(
+                project.root, plan, project_context=project.context
+            )
+            self.assertEqual(result["status"], "created")
+            playbook = self._parsed(project, plan)
+            self.assertEqual(playbook["status"], "candidate")
+            self.assertEqual(playbook["approved_by"], "")
+            self.assertTrue(playbook["retrieval_trigger"])
+            with self.assertRaises(ValueError):
+                runs.apply_playbook_plan(
+                    project.root, plan, project_context=project.context
+                )
+
+    def test_the_read_only_default_is_never_modified(self):
+        import tempfile
+        source = runs.default_playbook_dir() / "monthly-trend.md"
+        before = source.read_bytes()
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self._project(tmp)
+            plan = runs.plan_playbook_scaffold(
+                project.root, "monthly-trend", project_context=project.context
+            )
+            runs.apply_playbook_plan(project.root, plan, project_context=project.context)
+        self.assertEqual(source.read_bytes(), before)
+
+    def test_unknown_default_name_raises(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self._project(tmp)
+            with self.assertRaises(runs.PlaybookUnresolved):
+                runs.plan_playbook_scaffold(
+                    project.root, "no-such-default", project_context=project.context
+                )
+
+    def test_promoting_a_run_produces_a_candidate_that_invents_nothing(self):
+        import tempfile
+        entry = valid_run()
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self._project(tmp, entry)
+            plan = runs.plan_playbook_promotion(
+                project.root, RUN_ID, project_context=project.context, today="2026-09-08"
+            )
+            self.assertEqual(plan["origin"], "run-promotion")
+            runs.apply_playbook_plan(project.root, plan, project_context=project.context)
+            playbook = self._parsed(project, plan)
+            self.assertEqual(playbook["status"], "candidate")
+            self.assertEqual(playbook["approved_by"], "")
+            self.assertEqual(playbook["approved_at"], "")
+            self.assertEqual(playbook["process_ref"]["kind"], "none")
+            self.assertIn("아직 승인된 문구가 없습니다", playbook["sections"]["Approved Copy Blocks"])
+            self.assertIn(entry["id"], playbook["sections"]["Evidence"])
+
+    def test_a_promoted_playbook_drives_the_next_run(self):
+        import tempfile
+        entry = valid_run()
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self._project(tmp, entry)
+            plan = runs.plan_playbook_promotion(
+                project.root, RUN_ID, project_context=project.context, today="2026-09-08"
+            )
+            runs.apply_playbook_plan(project.root, plan, project_context=project.context)
+            resolved = runs.resolve_playbook(
+                project.root, plan["name"], project_context=project.context
+            )
+            self.assertEqual(resolved["source"], "project")
+            prefill = runs.prefill_run(resolved["playbook"])
+            self.assertEqual(prefill["claim_class"], entry["claim_class"])
+            self.assertEqual(prefill["caveats"], entry["caveats"])
+
+    def test_an_unfinished_run_cannot_be_promoted(self):
+        import tempfile
+        entry = valid_run(run_state="draft")
+        with tempfile.TemporaryDirectory() as tmp:
+            project = self._project(tmp, entry)
+            with self.assertRaises(ValueError):
+                runs.plan_playbook_promotion(
+                    project.root, RUN_ID, project_context=project.context
+                )
