@@ -336,6 +336,35 @@ def run_linkage_gate(root, runner=None):
     }
 
 
+
+def _manifest_version_parity(root):
+    """`.claude-plugin` and `.codex-plugin` must state the same semantic version.
+
+    The Codex manifest additionally carries a `+codex.<build>` suffix. Nothing else
+    compared the two, so a bump that touched only one shipped a package whose
+    declared version disagreed with its content.
+    """
+    errors = []
+    versions = {}
+    for name in (".claude-plugin/plugin.json", ".codex-plugin/plugin.json"):
+        path = Path(root) / name
+        if not path.is_file():
+            errors.append(f"{name} is missing; a release needs both plugin manifests.")
+            continue
+        try:
+            versions[name] = str(json.loads(path.read_text(encoding="utf-8"))["version"])
+        except (ValueError, KeyError) as exc:
+            errors.append(f"{name} has no readable version: {exc}")
+    if len(versions) == 2:
+        claude, codex = (versions[".claude-plugin/plugin.json"],
+                         versions[".codex-plugin/plugin.json"])
+        if codex.split("+", 1)[0] != claude:
+            errors.append(
+                f"plugin manifests disagree: .claude-plugin is {claude} but "
+                f".codex-plugin is {codex} — bump both before publishing."
+            )
+    return {"ok": not errors, "errors": errors}
+
 def run_release_check(path):
     root = Path(path).resolve()
     checks = {}
@@ -403,6 +432,13 @@ def run_release_check(path):
     checks["version_bump_gate"] = {"ok": bump_res["ok"]}
     if not bump_res["ok"]:
         errors.extend(bump_res["errors"])
+
+    # Two manifests ship one package. Their semantic versions must agree, or the
+    # published Codex payload claims a version its content is not.
+    manifest_res = _manifest_version_parity(root)
+    checks["manifest_version_parity"] = {"ok": manifest_res["ok"]}
+    if not manifest_res["ok"]:
+        errors.extend(manifest_res["errors"])
 
     commands = {
         "tests": [
