@@ -638,6 +638,7 @@ def inspect_project(path, include_preflight=True, *, project_context=None, runti
             "missing": missing_knowledge,
         },
         "artifact_registry": schema_gates.get("artifact_registry", {}),
+        "analysis_runs": schema_gates.get("analysis_runs", {}),
         "memory": {
             "initialized": not missing_memory,
             "missing": missing_memory,
@@ -699,6 +700,11 @@ def inspect_project(path, include_preflight=True, *, project_context=None, runti
         result["recommendation"].append("Preview product:knowledge, then --write to create only missing wiki/catalog files; preserve legacy text.")
     elif not result["artifact_registry"].get("metadata_valid", False):
         result["recommendation"].append("Review artifact_registry diagnostics and explicitly curate invalid metadata; do not migrate or overwrite automatically.")
+
+    if not result["analysis_runs"].get("initialized", False):
+        result["recommendation"].append("workspace/analysis-runs.md not initialized; run product:analyze to record an analysis run when a decision needs one.")
+    elif not result["analysis_runs"].get("metadata_valid", False):
+        result["recommendation"].append("Review analysis_runs diagnostics and explicitly correct the invalid run record; do not migrate or overwrite automatically.")
 
     if missing_memory:
         result["recommendation"].append("Run product:memory --write to create portable project memory structure.")

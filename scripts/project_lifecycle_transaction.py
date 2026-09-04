@@ -137,6 +137,7 @@ _ACTIONS = frozenset({
     "reconcile",
     "production-version",
     "artifact-register",
+    "analysis-run-append",
 })
 _LIFECYCLES = frozenset({"backlog", "active", "done"})
 _ACTION_TARGETS = {
@@ -396,6 +397,7 @@ class LifecycleIntent:
     production_change: dict | None = None
     require_issue_index: bool = False
     artifact_change: dict | None = None
+    run_change: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -468,6 +470,7 @@ class LifecycleTransactionPlan:
     _project_context: Mapping = field(repr=False, compare=False)
     _production_version: str = field(default="", repr=False, compare=False)
     _artifact_change: Mapping | None = field(default=None, repr=False, compare=False)
+    _run_change: Mapping | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self):
         if not isinstance(self.targets, tuple) or not all(
@@ -490,6 +493,8 @@ class LifecycleTransactionPlan:
         )
         if self._artifact_change is not None:
             object.__setattr__(self, "_artifact_change", _freeze_json_value(self._artifact_change))
+        if self._run_change is not None:
+            object.__setattr__(self, "_run_change", _freeze_json_value(self._run_change))
 
     def to_public_dict(self):
         return serialize_transaction_plan(
@@ -1100,6 +1105,16 @@ def normalize_lifecycle_intent(intent):
         artifact_change = _normalize_artifact_change(artifact_change, str(intent.issue_id).strip())
     elif artifact_change is not None:
         raise ValueError("artifact_change is only valid for artifact-register")
+
+    run_change = intent.run_change
+    if action == "analysis-run-append":
+        if (supplied_target is not None or intent.loop_change is not None or intent.roadmap_change is not None
+                or intent.production_change is not None or intent.artifact_change is not None
+                or intent.require_issue_index or intent.loop_blocker or intent.next_command):
+            raise ValueError("analysis-run-append cannot change lifecycle projections")
+        run_change = _normalize_run_change(run_change, str(intent.issue_id).strip())
+    elif run_change is not None:
+        raise ValueError("run_change is only valid for analysis-run-append")
 
     return replace(
         intent,
@@ -2991,6 +3006,7 @@ def _post_validate_applied_state(
             project_context=canonical_context,
         )
         _validate_artifact_registration_links(plan, canonical_root, canonical_context)
+        _validate_analysis_run_links(plan, canonical_root, canonical_context)
         _verify_artifact_sources(plan)
     except Exception as exc:
         raise LifecyclePostApplyValidationError(
@@ -3542,6 +3558,7 @@ def validate_projected_transaction(plan: LifecycleTransactionPlan) -> dict:
                 project_context=projected.context,
             )
             _validate_artifact_registration_links(plan, projected.root, projected.context)
+            _validate_analysis_run_links(plan, projected.root, projected.context)
             return _summarize_projected_validation(validation_result)
     except (
         project_operation.ProjectOperationDenied,
@@ -6289,6 +6306,145 @@ def _plan_artifact_registration(root, context, intent, idempotency_key, transact
         _project_context=context, _artifact_change=change)
 
 
+def _analysis_run_module():
+    try:
+        import project_analysis_run
+    except ImportError:
+        from scripts import project_analysis_run
+    return project_analysis_run
+
+
+def _normalize_run_change(change, issue_id):
+    runs = _analysis_run_module()
+    if not isinstance(change, Mapping) or set(change) != {"entry", "amend", "expected"}:
+        raise ValueError("RUN_CHANGE_INVALID")
+    change = _json_value(change)
+    entry = change["entry"]
+    errors = [item for item in runs.validate_run(entry) if item["severity"] == "error"]
+    if errors or entry.get("issue_id") != issue_id:
+        raise ValueError("RUN_ENTRY_INVALID")
+    if not isinstance(change["amend"], bool):
+        raise ValueError("RUN_CHANGE_INVALID")
+    expected = change["expected"]
+    if expected is not None:
+        if not isinstance(expected, dict) or set(expected) != {"runs", "issue"}:
+            raise ValueError("RUN_PRECONDITION_INVALID")
+        for value in expected.values():
+            if not isinstance(value, str) or (value != "absent" and not _SHA256.fullmatch(value)):
+                raise ValueError("RUN_PRECONDITION_INVALID")
+    return change
+
+
+def _plan_analysis_run_append(root, context, intent, idempotency_key, transaction_id):
+    """Bounded append: only the run file, one append-only issue backlink, and evidence."""
+    runs = _analysis_run_module()
+    change = _json_value(intent.run_change)
+    entry = change["entry"]
+    evidence_parent = _safe_planning_child(root, context, "workspace", "transactions")
+    if not evidence_parent.is_dir():
+        raise LifecyclePlanError("PLAN_RUN_PREREQUISITE_MISSING")
+    selected = []
+    for role, path in (
+        ("state", root / ".moduflow/state.json"),
+        ("loop", _safe_planning_child(root, context, "workspace", "loop-state.json")),
+        ("dashboard", _safe_planning_child(root, context, "workspace", "dashboard.md")),
+    ):
+        existed, before = _read_planning_source(path, root, role, required=True)
+        selected.append((role, _project_relative(root, path), existed, before, before, ("unchanged-prerequisite",)))
+
+    runs_path = _safe_planning_child(root, context, "workspace", "analysis-runs.md")
+    _, runs_before = _read_planning_source(runs_path, root, "analysis-runs", required=True)
+    if change["amend"]:
+        try:
+            stored = runs.find_run(runs_before.decode("utf-8"), entry["id"])
+        except UnicodeError as exc:
+            raise LifecyclePlanError("PLAN_RUN_INVALID") from exc
+        if stored is None:
+            raise LifecyclePlanError("PLAN_RUN_UNKNOWN")
+        if [item for item in runs.check_amendment(stored, entry) if item["severity"] == "error"]:
+            raise LifecyclePlanError("PLAN_RUN_AMENDMENT_FORBIDDEN")
+    try:
+        runs_after = runs.render_append(
+            runs_before.decode("utf-8"), entry, amend=change["amend"]
+        ).encode("utf-8")
+    except (UnicodeError, ValueError) as exc:
+        raise LifecyclePlanError("PLAN_RUN_INVALID") from exc
+    runs_relative = _project_relative(root, runs_path)
+
+    issue_before = issue_after = None
+    issue_relative = None
+    if intent.issue_id != "unassigned":
+        issue_path = _safe_planning_child(root, context, "issues", intent.issue_id + ".md")
+        _, issue_before = _read_planning_source(issue_path, root, "analysis-run-owning-issue", required=True)
+        issue_relative = _project_relative(root, issue_path)
+        try:
+            issue_text = issue_before.decode("utf-8")
+        except UnicodeError as exc:
+            raise LifecyclePlanError("PLAN_RUN_INVALID") from exc
+        backlink = os.path.relpath(runs_path, issue_path.parent).replace(os.sep, "/") + "#" + entry["id"]
+        line = f"- [{entry['id']}]({backlink})"
+        if line not in issue_text.splitlines():
+            header = "\n## Analysis Runs\n\n" if "\n## Analysis Runs\n" not in issue_text else "\n"
+            issue_text += ("" if issue_text.endswith("\n") else "\n") + header + line + "\n"
+        issue_after = issue_text.encode("utf-8")
+
+    expected = change["expected"]
+    if expected is not None:
+        pairs = [(runs_before, runs_after, "runs")]
+        if issue_before is not None:
+            pairs.append((issue_before, issue_after, "issue"))
+        for before, after, key in pairs:
+            if target_sha256(before) != expected[key] and before != after:
+                raise LifecyclePlanError("PLAN_RUN_PREIMAGE_CONFLICT")
+    change["expected"] = expected or {
+        "runs": target_sha256(runs_before),
+        "issue": target_sha256(issue_before) if issue_before is not None else "absent",
+    }
+
+    selected.append(("analysis-runs", runs_relative, True, runs_before, runs_after, ("analysis-run-schema",)))
+    if issue_before is not None:
+        selected.append(("analysis-run-owning-issue", issue_relative, True, issue_before, issue_after, ("issue-schema",)))
+
+    total = len(selected) + 1
+    targets = tuple(_planned_target(*target, order=index, total=total) for index, target in enumerate(selected))
+    evidence_path = _safe_planning_child(root, context, "workspace", "transactions", transaction_id + ".json")
+    existed, before = _read_planning_source(evidence_path, root, "evidence", required=False)
+    after = (json.dumps({"schema": EVIDENCE_SCHEMA, "transaction_id": transaction_id,
+                        "targets": [t.to_public_dict() for t in targets]}, indent=2) + "\n").encode("utf-8")
+    evidence = _planned_target("evidence", _project_relative(root, evidence_path), existed, before, after,
+                               ("transaction-evidence-schema",), len(targets), total)
+    return LifecycleTransactionPlan(schema=PLAN_SCHEMA, transaction_id=transaction_id, idempotency_key=idempotency_key,
+        project_id=context.get("project_id") or "explicit-root", canonical_root=str(root), issue_id=intent.issue_id,
+        action="analysis-run-append", target_lifecycle=None, targets=targets + (evidence,),
+        _project_context=context, _run_change=change)
+
+
+def _validate_analysis_run_links(plan, root, context):
+    if plan.action != "analysis-run-append":
+        return
+    runs = _analysis_run_module()
+    result = runs.read_analysis_runs(root, project_context=context,
+                                     run_ids=[plan._run_change["entry"]["id"]])
+    if any(item["severity"] == "error" for item in result["diagnostics"]):
+        raise ValueError("RUN_LINKS_INVALID")
+
+
+def apply_analysis_run_plan(project_root, plan, *, project_context):
+    """Apply only a validated bounded run intent; never consume caller-supplied target bytes."""
+    context = project_registry.context_for_operation(project_root, project_context=project_context)
+    project_operation.require_project_capability(context, "write")
+    if (not isinstance(plan, LifecycleTransactionPlan) or plan.action != "analysis-run-append"
+            or plan.canonical_root != str(Path(project_root).resolve())
+            or plan.project_id != (context.get("project_id") or "explicit-root")):
+        raise ValueError("RUN_PLAN_CONTEXT_INVALID")
+    intent = normalize_lifecycle_intent(LifecycleIntent(issue_id=plan.issue_id, action="analysis-run-append",
+        actor="authorized-user", source_event="analysis-run-append:" + plan._run_change["entry"]["id"],
+        run_change=plan._run_change))
+    if derive_idempotency_key(context, intent) != plan.idempotency_key:
+        raise ValueError("RUN_PLAN_IDENTITY_INVALID")
+    return apply_lifecycle_transaction(project_root, intent, project_context=context)
+
+
 def _validate_artifact_registration_links(plan, root, context):
     if plan.action != "artifact-register":
         return
@@ -6346,6 +6502,8 @@ def plan_lifecycle_transaction(
     changed_on = _planning_date(clock)
     if normalized.action == "artifact-register":
         return _plan_artifact_registration(root, context, normalized, idempotency_key, transaction_id)
+    if normalized.action == "analysis-run-append":
+        return _plan_analysis_run_append(root, context, normalized, idempotency_key, transaction_id)
 
     issue_path = _safe_planning_child(
         root, context, "issues", f"{normalized.issue_id}.md"
