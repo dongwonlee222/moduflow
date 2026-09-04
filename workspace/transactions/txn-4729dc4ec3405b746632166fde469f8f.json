@@ -1,0 +1,102 @@
+{
+  "action": "complete",
+  "actor": "Dongwon Lee",
+  "completed_at": "2026-09-04T03:56:04.739363Z",
+  "created_at": "2026-09-04T03:56:04.736074Z",
+  "error_code": "",
+  "failed_stage": "",
+  "idempotency_key": "f36fd0f310cf8ed52c0a0f0a87509684b86996c0ebc4053d2b57771ff2281393",
+  "issue_id": "111-runtime-provenance-and-validation-mode-separation",
+  "next_command": "product:status",
+  "post_apply_validation": {
+    "error_codes": [],
+    "rule_ids": [
+      "canonical-targets",
+      "project-artifacts",
+      "issue-schema",
+      "lifecycle-consensus",
+      "production-records"
+    ],
+    "valid": true
+  },
+  "project_id": "explicit-root",
+  "projected_validation": {
+    "error_codes": [],
+    "rule_ids": [
+      "project-artifacts",
+      "issue-schema",
+      "lifecycle-consensus",
+      "production-records"
+    ],
+    "valid": true
+  },
+  "rollback_status": "not-required",
+  "schema": "moduflow.lifecycle-transaction-evidence.v1",
+  "source_event": "R01/R02 observed during the 0.3.62 release; review accepted",
+  "started_at": "2026-09-04T03:56:04.739348Z",
+  "status": "applied",
+  "target_lifecycle": "done",
+  "targets": [
+    {
+      "after_bytes": 6018,
+      "after_sha256": "0661edafc0f42e56a6d6cc9e9aeb0afce643e429240400ce450a7b86629ca527",
+      "apply_order": 0,
+      "before_sha256": "a3fcf5d64253146509da150022f194411984ff1c4cd2850b84aceea72fd288f9",
+      "changed": true,
+      "existed": true,
+      "relative_path": "issues/111-runtime-provenance-and-validation-mode-separation.md",
+      "role": "issue",
+      "rollback_order": 4,
+      "validation_rules": [
+        "issue-schema",
+        "lifecycle"
+      ]
+    },
+    {
+      "after_bytes": 297,
+      "after_sha256": "2c479e46f1f3043d5360d5eb974196b3840631d78f715b97fb3328fefe0b23c3",
+      "apply_order": 1,
+      "before_sha256": "bee3b99ca4ed63d10496d267b7c39d4543b808e33eb6d21074a03a51516acd1a",
+      "changed": true,
+      "existed": true,
+      "relative_path": ".moduflow/state.json",
+      "role": "state",
+      "rollback_order": 3,
+      "validation_rules": [
+        "state-schema",
+        "lifecycle"
+      ]
+    },
+    {
+      "after_bytes": 2692,
+      "after_sha256": "1adc4a74363e41b0b58cab5d6ac501fa053ac8f8f5b4e9f9b14eaf3edd19d192",
+      "apply_order": 2,
+      "before_sha256": "44204a4cab072ebc7c6c25297bd5731b3bd0c81145740c695fededbf29fc26b8",
+      "changed": true,
+      "existed": true,
+      "relative_path": "workspace/loop-state.json",
+      "role": "loop",
+      "rollback_order": 2,
+      "validation_rules": [
+        "loop-state-schema",
+        "lifecycle"
+      ]
+    },
+    {
+      "after_bytes": 24866,
+      "after_sha256": "7b94f8d625e495bf7e6daed12353adf9521df418dd91c1b49961d2cc4a65a91a",
+      "apply_order": 3,
+      "before_sha256": "cdd0480fcdfe11024a044c46f8cdddab7843a7b8fc6a080cd695429874caa891",
+      "changed": true,
+      "existed": true,
+      "relative_path": "workspace/dashboard.md",
+      "role": "dashboard",
+      "rollback_order": 1,
+      "validation_rules": [
+        "dashboard-projection"
+      ]
+    }
+  ],
+  "transaction_id": "txn-4729dc4ec3405b746632166fde469f8f",
+  "verified_target_count": 5
+}

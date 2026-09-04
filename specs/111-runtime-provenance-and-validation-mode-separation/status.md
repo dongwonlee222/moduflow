@@ -91,7 +91,10 @@ Performed during the 0.3.62 release. Package path, version, process startup and 
 | Version reported before restart | **`0.3.57`**, in a newly opened task inside the already-running process, while every path on disk already resolved to 0.3.62 |
 | Source evidence | Receipt `payload_sha256` `f628b458c169f3bd…96ffbe`, `source_commit` `faa5ff3`, `source_dirty` true (untracked Issue 103 plan documents present in the build worktree) |
 | CLI startup | Observed working: `product:status` returned a full report |
-| MCP process | **Not observed.** The status report evidences plugin load, not MCP startup |
+| MCP process | **Still not directly observed.** `product:doctor` was run in Codex on 2026-09-04 and returned a full report, but its output does not state whether it was invoked through the `moduflow_doctor` MCP tool or through the skill/CLI path, so MCP startup cannot be claimed from it |
+| New-package code actually executing | **Observed.** The Codex Doctor report includes an `분석 실행 기록 미초기화` line. That gate did not exist in 0.3.57; it was added with Issue 091 and ships first in 0.3.62. Its presence evidences the new package's code running, independently of the reported version string |
+| Installed package self-check | 199 files passed in installed mode; project artifacts valid with zero errors; lifecycle drift none; no incomplete transactions |
+| Provenance honesty | The report surfaced `faa5ff3`의 dirty source without prompting, matching the receipt |
 | Host prompt-skill loading | Observed indirectly: the report rendered ModuFlow's own status format. No direct host-exposed skill evidence was available |
 
 The negative observation is the substantive one. A new task is not a new process, and the process keeps the package it loaded at start. This is the failure mode this issue exists to make visible, reproduced under controlled conditions. `docs/release-checklist.md` step 7 was corrected from "start a new Codex task" to "restart the Codex process" as a direct result.

@@ -32,11 +32,11 @@
     "114-speckit-selective-adapter-1x-compatibility"
   ],
   "active_issue_id": null,
-  "phase": "release",
+  "phase": "select",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "done",
-  "next_command": "product:execute 111-runtime-provenance-and-validation-mode-separation",
+  "next_command": "product:status",
   "attempts": {
     "command": "product:review 111-runtime-provenance-and-validation-mode-separation",
     "count": 0,

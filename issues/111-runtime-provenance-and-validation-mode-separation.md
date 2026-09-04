@@ -1,6 +1,6 @@
 # Issue 111: Runtime Provenance and Validation Mode Separation
 
-**Status: active** — created 2026-08-21; started 2026-09-02.
+**Status: done** — created 2026-08-21; started 2026-09-02; done 2026-09-04.
 **Priority: p1**
 **Blocked-by:**
 
@@ -74,7 +74,7 @@ Do not relax source validation or report guessed provenance. This issue does not
 - [x] spec draft → `specs/111-runtime-provenance-and-validation-mode-separation/spec.md` (Korean sidecar; approved 2026-09-02)
 - [x] plan draft → `specs/111-runtime-provenance-and-validation-mode-separation/plan.md` (four inline streams; approved 2026-09-02)
 - [x] execute → validation modes, provenance metadata/reporting, and tests; final verification in status.md
-- [ ] review → `specs/111-runtime-provenance-and-validation-mode-separation/review.md`
+- [x] review → `specs/111-runtime-provenance-and-validation-mode-separation/review.md` (accepted 2026-09-04)
 
 ## Related Issues
 

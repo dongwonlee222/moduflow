@@ -126,8 +126,8 @@ flowchart LR
 ## Status
 
 - State: `active`
-- Blocker: next plugin publication is held for Issue 111. Its spec/plan and simulation matrix are drafted and await review before implementation. Issue 103 implementation and PR #44 merge are complete.
-- Updated: 2026-09-02
+- Blocker: none. The Issue 111 publication hold is retired: its implementation shipped in 0.3.56 and its remaining real-host observations R01/R02 were recorded on 2026-09-04 during the 0.3.62 release. Issues 091 and 115 are complete, merged in PRs #48 and #49, published as 0.3.62 and observed loaded in Codex. Issue 103 implementation and PR #44 merge remain complete.
+- Updated: 2026-09-04
 
 ## History
 

@@ -1,52 +1,51 @@
-# Review: Issue 111
+# Review: Runtime Provenance and Validation Mode Separation
 
-Issue: `111-runtime-provenance-and-validation-mode-separation`
-Owner: Dongwon Lee
-Source: approved `spec.md` / `plan.md`; current user approval, 2026-09-02.
-Phase: inline self-review and final source verification complete; human integration approval pending.
-Next command: `product:review 111-runtime-provenance-and-validation-mode-separation`.
+Issue: `111-runtime-provenance-and-validation-mode-separation` · Owner / reviewer: Dongwon Lee
+Phase: review complete 2026-09-04. Implementation shipped in 0.3.56; the remaining real-host observations were recorded during the 0.3.62 release.
+Source: [spec](spec.md), [plan](plan.md), [status](status.md), [simulation matrix](simulation-matrix.md), [release](release.md).
 
-## Findings
+## What This Issue Set Out To Fix
 
-- Inline self-review only; no independent reviewer or human merge approval is claimed.
-- Fixed the staged-manifest symlink write path before package validation, and preserved runtime evidence on MCP dispatch errors.
-- Corrected the existing downstream security/lint test fixture to identify its source role; source/release gates were not weakened.
-- No unresolved must-fix finding from the reviewed Issue 111 implementation. Real-host observations and explicit merge/publication approval remain outstanding.
+Nothing could answer "which ModuFlow is actually running". Source, installed package and target project were treated as one thing, so validation applied the wrong standard to each — a correct installation could be checked against source-repository rules and reported as broken — and status could not say which package was live.
 
-## Visual Handoff
+## Was It Fixed
 
-- No frontend/UI behavior changes in Issue 111; desktop/mobile screenshots are not applicable.
-- Existing generated project views: `memory/dashboard.html` and `memory/issue-111-runtime-provenance-and-validation-mode-separation.html`. They are local read models, not installation evidence.
-- Start human review with `human-review.ko.md`, then the canonical spec/status/review and GitHub diff.
+Yes, and it was exercised under real conditions on 2026-09-04 rather than only in fixtures.
 
-## Plan Review and Approval
+| Requirement | Evidence |
+| --- | --- |
+| Three validation roles are distinct | `validate_moduflow.py --mode installed` returned `validation_role: installed` and passed 199 files on the published package, while `--mode source` passed 218 on the repository. Doctor took the project, not the cache |
+| Status identifies the loaded runtime | Codex reported `0.3.62+codex.20260904022744` after restart |
+| Provenance is recorded, not inferred | The receipt carried `payload_sha256` `f628b458…96ffbe`, `source_commit` `faa5ff3` and `source_dirty: true`. The dirty flag was surfaced unprompted in the Codex Doctor report |
+| Source version equality never proves host reload | Demonstrated directly. Every path on disk resolved to 0.3.62 while a newly opened Codex task still reported 0.3.57 |
+| Unobserved fields stay unobserved | Codex MCP process startup and direct host-exposed prompt-skill package evidence are recorded as not observed, not inferred from a matching version string |
 
-The user approved the four-stream plan with “ㅇㅇ 이제 다음 뭐 할까 진행 하자고”. Baseline focused regression: 137 tests passed in 73.664 seconds. This records plan approval only, not approval of unwritten code, actual installation or publication.
+## The Decisive Observation
 
-## Start Preflight
+The negative result carries this issue's whole argument. A new task inside a running Codex process reported the previous version while the filesystem was already fully switched. Without this issue's separation, the obvious reading would have been "the installation failed, reinstall it" — which would have republished over a correct package. Because source, package and host were separable, the diagnosis was immediate and narrow: the disk is right and the process is stale.
 
-The first state-transition attempt used a custom idempotency key instead of the required derived semantic key and was rejected before mutation. The corrected attempt reached projected validation and exposed two preparation requirements: the loop's prior Issue 103 branch binding must move to Issue 111, and the issue's linked review artifact must exist. Preserve these failed attempts as evidence; do not bypass projected validation. Implementation stays in the existing worktree on an Issue 111 branch.
+`docs/release-checklist.md` step 7 was corrected as a direct result, from "start a new Codex task" to "restart the Codex process", with the observation recorded as its reason.
 
-## Implementation Review
+## Independent Package Check
 
-Direct inline self-review of the changes from `40b1219` through `517ec64`, with no subagent or independent-review claim. Reviewed the provenance reader, installer staging/publication, validator role selection, Doctor/MCP consumers, unit/simulation tests and release instructions.
+Both packages were launched outside any host and probed over stdio. `0.3.62` and `0.3.57` each completed `initialize`, returned their own version, listed five tools and exited cleanly with empty stderr. The Claude session's `CONNECTION_CLOSED` is therefore a host startup failure, not a package defect. One lead is recorded without being claimed: `.mcp.json` interpolates `${CLAUDE_PLUGIN_ROOT}` and both manifests reference that same file; whether Codex populates that variable was not tested.
 
-| Acceptance | Inspected evidence | Disposition |
-|---|---|---|
-| AC1 | Explicit modes, source requirements unchanged, installed payload digest; S01–S03 | Implemented; final release gate recorded in status |
-| AC2 | Guard before Git-parent/registry/recovery calls; S04/S05/S12 | Covered, including source dogfooding and empty projects |
-| AC3 | Shared reader, typed receipt values and explicit null reasons; S06/S07 and error-path tests | Covered; dispatch-error finding fixed below |
-| AC4 | Prepared cache, fsync/replace receipt, validation before publication; S08/S09 | Covered; no claim of atomic host-config activation |
-| AC5 | One startup snapshot, packaged persistent MCP and fresh CLI; S10 | Process proof only; host skill reload unknown |
-| AC6 | Existing 065 fields retained; separate inventory and parse diagnostics; S11 | Covered; newest cache never selected as runtime |
-| AC7 | Twelve isolated scenarios with synthetic projects/homes; packaged imports and diagnostic sentinels | 12 scenarios passed; no real installation |
-| AC8 | Release/upgrade guidance and separate release evidence stages | Remote/publication/R01/R02 remain pending |
+## Findings Carried Forward
 
-### Findings Resolved
+| Finding | Disposition |
+| --- | --- |
+| Two plugin manifests could drift; `version_bump.py` updated only one and nothing compared them | Fixed during this release. `release_check.py` gained `manifest_version_parity`, verified to catch the exact 0.3.61/0.3.57 mismatch that was found by eye |
+| Codex MCP process startup remains unobserved | Left open. It needs a host that states its invocation path; no field available today supplies it |
+| A stale 111 branch reference lingers in execution state | Reported by Doctor as an optional warning, not an error. Not addressed here |
 
-- Important: a symlinked staged manifest could be followed before payload validation. A failing test reproduced an external fixture write; reject payload links before staged manifest writes. Covered by installer tests.
-- Important: a project-context exception escaped status/Doctor handlers as JSON-RPC `-32603` without runtime evidence. Added a failing test, then preserved the same snapshot in `error.data.runtime_provenance`. MCP plus simulations passed 45 tests after the fix.
-- Test compatibility: the legacy security/lint integration fixture had no source identity and now stopped at the intentionally earlier role guard. Reproduced its `KeyError: security_check`; identified the fixture as synthetic source in `b5c3ce3`. The focused regression passed, preserving both security and syntax assertions without bypassing the source guard.
+## Scope Discipline
 
-No unresolved must-fix finding from this self-review. This is not a human merge approval or proof of actual host adoption. The release gate initially rejected the prior HEAD because its version bump was still uncommitted; `517ec64` commits the prepared 0.3.55 manifests. Re-run the gate on that commit rather than waiving it.
-Final verification: source release check passed on `517ec64`; the full suite after fixture correction (`b5c3ce3`) passed all 1,610 tests in 337.291s, including nested release-check regressions. Ready for human/PR review. No independent reviewer, remote CI, publication or real-host application is claimed.
+No second validation path, no re-publication, no overwriting of a valid installed receipt to fill missing Git provenance, and no host configuration inferred as passing. The unavailable fields stayed unavailable.
+
+## Decision
+
+Accepted. The contract is implemented, shipped, and confirmed on a real host with its limits recorded. The two unobserved fields are documented as unobserved rather than assumed, which is what this issue required of itself.
+
+## Next Command
+
+`product:status`; the remaining implementation order is 086 then 092.
