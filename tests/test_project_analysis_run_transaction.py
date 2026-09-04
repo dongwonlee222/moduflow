@@ -295,6 +295,7 @@ class PlaybookOriginationTest(unittest.TestCase):
             self.assertEqual(resolved["source"], "project")
             prefill = runs.prefill_run(resolved["playbook"])
             self.assertEqual(prefill["claim_class"], entry["claim_class"])
+            self.assertEqual(prefill["measure_unit"], entry["measure"]["unit"])
             self.assertEqual(prefill["caveats"], entry["caveats"])
 
     def test_an_unfinished_run_cannot_be_promoted(self):

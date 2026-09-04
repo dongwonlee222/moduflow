@@ -501,6 +501,7 @@ def check_amendment(before, after):
 READ_SCHEMA = "moduflow.analysis-run-read.v1"
 DEFAULT_LIMIT = 20
 CLAIM_LINE_RE = re.compile(r"^\s*-?\s*기본 주장 종류:\s*([a-z]+)", re.M)
+UNIT_LINE_RE = re.compile(r"^\s*-?\s*기본 측정 단위:\s*(.+?)\s*$", re.M)
 
 
 class PlaybookUnresolved(ValueError):
@@ -555,8 +556,11 @@ def _section_lines(section):
 def prefill_run(playbook):
     """R7 prefill. Returns a starting point, never a complete run."""
     sections = playbook.get("sections", {})
-    match = CLAIM_LINE_RE.search(sections.get("Reusable Patterns", ""))
+    patterns = sections.get("Reusable Patterns", "")
+    match = CLAIM_LINE_RE.search(patterns)
     claim = match.group(1) if match and match.group(1) in CLAIM_CLASSES else None
+    unit_match = UNIT_LINE_RE.search(patterns)
+    measure_unit = unit_match.group(1) if unit_match else None
     active = [item for item in playbook.get("required_checks", []) if not item["retired"]]
     return {
         "playbook_ref": {
@@ -565,6 +569,7 @@ def prefill_run(playbook):
             "deliverable_type": playbook["deliverable_type"],
         },
         "claim_class": claim,
+        "measure_unit": measure_unit,
         "required_code_checks": list(CODE_CHECKS.get(claim, ())),
         "playbook_check_ids": [item["id"] for item in active],
         "auto_check_ids": [item["id"] for item in active if item["kind"] == "auto"],
@@ -893,6 +898,7 @@ def _render_promoted_playbook(entry, name, prefill_source, today):
         lines = ["- CHK001 [review] 이 작업물에서 사람이 확인해야 할 항목을 채워 주세요."]
     method = entry.get("method") or {}
     patterns = [f"- 기본 주장 종류: {entry['claim_class']}"]
+    patterns.append(f"- 기본 측정 단위: {(entry.get('measure') or {}).get('unit', '미기록')}")
     patterns.append(f"- 사용 도구: {method.get('tooling', '미기록')}")
     for step in method.get("steps", []):
         patterns.append(f"- 방법: {step}")

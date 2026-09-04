@@ -476,20 +476,17 @@ class S03PlaybookResolutionSimulation(unittest.TestCase):
 class S04SecondRunNeedsOnlyWindowSimulation(unittest.TestCase):
     """S04: the decisive scenario for the issue's purpose.
 
-    NOTE on scope: scripts/project_analysis_run.prefill_run is the only implemented
-    R7 prefill mechanism. Its returned fields are playbook_ref, claim_class,
-    required_code_checks, playbook_check_ids, auto_check_ids, caveats, structure_ref
-    and process_ref. It does not derive measure.unit (the spec, spec.md:273/330,
-    describes measure.unit as part of prefill, but the shipped prefill_run has no
-    such field). Per this task's instruction to write tests against the delivered
-    contract rather than change production code, this test asserts every field
-    prefill_run actually derives (claim class, required code checks / checks
-    skeleton, caveats, structure reference, pinned playbook_ref) is identical
-    across two independent prefill_run calls against the same resolved playbook,
-    and that only the caller-supplied time_window differs between the two runs.
-    measure.unit is not separately asserted as playbook-derived, since no code
-    path derives it; it is not skipped either, since the rest of the scenario is
-    fully exercisable without a production change.
+    What `prefill_run` derives from the resolved playbook is the pinned
+    `playbook_ref`, the claim class, the measure unit, the required code checks,
+    the playbook check ids, the caveats, the structure reference and the process
+    reference. This test asserts those are identical across two independent
+    prefill calls against the same playbook, and that only the caller-supplied
+    `time_window` differs between the two runs.
+
+    What the author still writes is the population definition, the numerator and
+    denominator, the method steps, the title and the conclusion. "Only the window"
+    is therefore shorthand for "the standard and the checks are not restated", not
+    a claim that a run writes itself.
     """
 
     def test_second_run_needs_only_the_window(self):

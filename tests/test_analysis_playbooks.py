@@ -76,6 +76,7 @@ class DefaultAnalysisPlaybookTest(unittest.TestCase):
             with self.subTest(playbook=name):
                 prefill = runs.prefill_run(playbook)
                 self.assertEqual(prefill["claim_class"], EXPECTED[name])
+                self.assertTrue(prefill["measure_unit"], f"{name} states no default measure unit")
                 self.assertTrue(prefill["caveats"])
                 self.assertTrue(prefill["playbook_check_ids"])
                 self.assertEqual(

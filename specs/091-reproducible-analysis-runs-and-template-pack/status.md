@@ -27,20 +27,20 @@ Run on two synthetic projects in temporary directories. No repository, checkout 
 | --- | --- |
 | Scaffold a default into the project | `playbooks/monthly-trend.md` created; the next resolution reports source `project` with its reason; the read-only default's bytes are unchanged |
 | First run, every field supplied | Applied |
-| Second run | Applied, linked to the first by `supersedes` with a change reason; claim class, caveats and the check skeleton came from the playbook |
+| Second run | Applied, linked to the first by `supersedes` with a change reason; claim class, measure unit, caveats and the check skeleton came from the playbook |
 | Off-cycle policy-impact run | Applied with claim class `causal`, `maturity=immature`, `decision_state=waiting_on_maturity`, `follow_up.scheduled=false` |
 | Read at a date past the follow-up | `FOLLOW_UP_DUE` and `FOLLOW_UP_INTENT_ONLY` diagnostics only; all four states of all three runs unchanged; nothing executed |
 | Second project | Holds its own differing playbook; none of project A's three runs appear in project B's envelope |
 
 ## What the Demonstration Corrected
 
-The spec's own language, and this session's summaries, said a second run "needs only the time window". The demonstration shows that is an overstatement. What the playbook actually supplies today is the claim class, the required-check skeleton, the caveats, the structure reference and the pinned playbook version. Population definition, numerator and denominator, method steps, title and conclusion remain the author's to write.
+The spec's own language, and this session's summaries, said a second run "needs only the time window". The demonstration shows that is an overstatement. What the playbook supplies is the claim class, the measure unit, the required-check skeleton, the caveats, the structure reference and the pinned playbook version. Population definition, numerator and denominator, method steps, title and conclusion remain the author's to write.
 
 The measured saving is real but smaller than claimed: the standard and the checks stop being restated, not the whole run.
 
-## Open Item
+## Closed Gap
 
-`R7` promises that selecting a playbook fills `measure.unit`, and it does not. No playbook field carries that value. The fix is the same one-line parse already used for the claim class, plus a line in each default playbook. It is deferred only to avoid editing those files while the simulation suite is being written against them.
+`R7` promised that selecting a playbook fills `measure.unit` while the implementation did not. Closed on 2026-09-04: each default playbook now states `기본 측정 단위` beside its claim class, `prefill_run` reads it the same way it reads the claim class, and a promoted playbook carries the finished run's unit forward so the next run inherits it. Spec and implementation now agree.
 
 ## Not Done
 
