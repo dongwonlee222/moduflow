@@ -21,7 +21,12 @@
 2026-09-05 기준 이 저장소(HEAD `a5657dd`, spec 55개)에서 측정한 값입니다.
 
 - 워커 작업 640개가 생성되고 **그중 514개(80%)가 이미 `done`** 입니다.
-- **55개 중 39개(71%)** 는 어떤 작업에도 파일·glob 경계를 선언하지 않습니다.
+- **55개 중 36개(65%)** 는 어떤 작업에도 파일·glob 경계를 선언하지 않고, 3개는
+  **파서가 못 읽는 표기**로 선언합니다. 103·109·110이 `[files: …] [depends: T01]`
+  대신 `| Files: … | Depends: A1` 형태를 씁니다 — `METADATA_RE`(`w_o.py:72`)는
+  대괄호만 매칭합니다. 하필 가장 최근 대형 이슈 셋이라, 실제 작성 관행이
+  `commands/product-plan.md`가 지정한 규약에서 **드리프트 중**입니다. 읽히는
+  표기를 쓰는 건 16개입니다.
 - `Required Gates` 섹션 하나가 체크박스 34개를 차지합니다. 예: *"Issue 102의 수용
   기준 13개 전부에 테스트 또는 상태 근거가 있다."* `WORKER_RULES`(`w_o.py:17`)가
   `acceptance`·`criteria`를 `pm-strategist`로 보내므로, 수용 기준이 **설계상**
@@ -36,7 +41,10 @@
 
 - `build_worker_plan`이 **절대경로** `project_root`(`w_o.py:430`)를 git 추적
   대상인 `worker-plan.json`에 기록합니다. 한 컴퓨터의 파일 구조가 산출물에
-  박힙니다.
+  박힙니다. 커밋된 `worker-plan.json` 10개를 실측: **9개가 존재하지 않는
+  디렉토리를 가리킵니다.** 7개는 회사 맥의 `/Users/dongwon.lee/workhub/…`,
+  3개는 이미 사라진 임시 worktree `/Users/dongwon.lee/.config/superpowers/
+  worktrees/…`입니다. 이 컴퓨터에서 생성한 하나만 유효합니다.
 - `write_worker_plan`은 `capabilities.write`를 검사하지만(`w_o.py:526`)
   **저장소 신원 게이트가 없습니다.** 형제 쓰기 경로인 `project_execution.main`
   (`p_e.py:349-353`)은 `inspect_repository_identity`와 `operation_decision`을
@@ -140,6 +148,10 @@
 거절합니다. `worker-plan.json`도 `worker-plan.md`도 쓰지 않고, 결과에 모든 gap을
 작업 ID와 함께 나열하며, `next_command`는 `product:plan`입니다.
 
+gap은 둘 중 어느 쪽인지 말해야 합니다. "경계를 선언하지 않음"과 "파서가 못 읽는
+표기로 선언함"은 조치가 다르고, 103·109·110이 후자입니다. 후자를 전자로 보고하면
+작성자가 이미 써 둔 것을 찾아 헤매게 됩니다.
+
 두 부정 결과를 구분합니다. 실행할 게 없으면 `not_applicable`(끝난 spec), 실행할
 작업은 있는데 경계가 없으면 `needs_plan`(작성이 필요한 spec). 같은 사건이
 아닙니다.
@@ -219,7 +231,7 @@
    상태·비용·거짓 실행 주장을 만듭니다(벤치마크 정합성 표, "ModuFlow creates
    another dispatcher").
 
-## 12. 수용 기준
+## 수용 기준
 
 이슈의 기준 7개에 대응합니다. 2026-09-05에 발견한 신원 게이트 결함은 의도적으로
 빠져 있습니다 — 이슈 122입니다.
@@ -235,17 +247,19 @@
    그대로 해소된다.
 6. gap이 있으면 `needs_plan`을 내고, `written`이 비어 있고, 실행 후 디스크에
    `worker-plan.*`가 없으며, `next_command`가 `product:plan`이다.
-7. 실행 가능한 작업이 없으면 `needs_plan`이 아니라 `not_applicable`이다.
-8. `inline`/`superpowers-sdd` 중 정확히 하나를 반환하고 `routing_reason`이 비어
+7. gap은 "경계 미선언"과 "파서가 못 읽는 표기로 선언함"을 구분한다. 103·109·110의
+   `| Files: …` 형태를 픽스처로 쓴다.
+8. 실행 가능한 작업이 없으면 `needs_plan`이 아니라 `not_applicable`이다.
+9. `inline`/`superpowers-sdd` 중 정확히 하나를 반환하고 `routing_reason`이 비어
    있지 않다.
-9. 다른 작업의 선언 파일을 덮는 glob이 있으면 `inline`으로 간다.
-10. 모든 결과에서 `dispatched`는 false, `executed_by`는 null이다.
-11. 모든 결과에서 `project_root`는 저장소 상대경로다.
-12. 같은 라우팅 결과가 Claude Code·Codex·Copilot 픽스처에 canonical 산출물 변경
+10. 다른 작업의 선언 파일을 덮는 glob이 있으면 `inline`으로 간다.
+11. 모든 결과에서 `dispatched`는 false, `executed_by`는 null이다.
+12. 모든 결과에서 `project_root`는 저장소 상대경로다.
+13. 같은 라우팅 결과가 Claude Code·Codex·Copilot 픽스처에 canonical 산출물 변경
     없이 매핑된다.
-13. canonical 산출물과 링크된 Superpowers 상세가 동시에 완료를 주장할 수 없고,
+14. canonical 산출물과 링크된 Superpowers 상세가 동시에 완료를 주장할 수 없고,
     불일치는 보고된다.
-14. 이슈 103 트랜잭션, 구현 준비도, capability 게이트가 그대로 권위를 유지한다.
+15. 이슈 103 트랜잭션, 구현 준비도, capability 게이트가 그대로 권위를 유지한다.
 
 ## 13. 검증 전략
 

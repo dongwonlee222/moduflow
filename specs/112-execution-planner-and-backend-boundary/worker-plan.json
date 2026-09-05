@@ -1,0 +1,590 @@
+{
+  "schema": "moduflow.worker-plan.v1",
+  "issue_id": "112-execution-planner-and-backend-boundary",
+  "project_root": "/Users/idong-won/projects/moduflow",
+  "workers": {
+    "configured": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "files": [
+      "data-reviewer",
+      "implementation-worker",
+      "pm-strategist",
+      "qa-reviewer",
+      "release-manager",
+      "roadmap-planner",
+      "spec-architect",
+      "ux-flow-worker"
+    ],
+    "dead_workers": []
+  },
+  "parallel": {
+    "eligible": false,
+    "mode": "sequential",
+    "risks": [
+      "Task 9 touches shared state: Consume the routing result in the worker plan builder, refuse to write on a non-ok status, and emit a relative project root",
+      "scripts/execution_routing.py is expected by T01 and T02",
+      "tests/test_execution_routing.py is expected by T01 and T03",
+      "scripts/execution_routing.py is expected by T01 and T04",
+      "tests/test_execution_routing.py is expected by T01 and T04",
+      "scripts/execution_routing.py is expected by T01 and T08",
+      "tests/test_execution_routing.py is expected by T01 and T08"
+    ],
+    "merge_order": [
+      "T01",
+      "T02",
+      "T03",
+      "T04",
+      "T05",
+      "T06",
+      "T07",
+      "T08",
+      "T09",
+      "T10",
+      "T11",
+      "T12",
+      "T13",
+      "T14",
+      "T15",
+      "T16",
+      "T17"
+    ],
+    "now": {
+      "ready": [
+        "T01",
+        "T13",
+        "T14",
+        "T15",
+        "T16",
+        "T17"
+      ],
+      "dispatchable": [
+        "T01"
+      ],
+      "blocked": [
+        "T02",
+        "T03",
+        "T04",
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T09",
+        "T10",
+        "T11",
+        "T12"
+      ],
+      "deferred": []
+    },
+    "fallback": "sequential",
+    "criteria": [
+      "separate worker domains",
+      "non-overlapping expected files",
+      "no shared-state risk",
+      "dependency-aware merge order"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "text": "Port Gate 1 and Gate 2 from the evidence prototype into a standalone routing module with its RED/GREEN tests",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [
+        "scripts/execution_routing.py",
+        "tests/test_execution_routing.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t01",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Port Gate 1 and Gate 2 from the evidence prototype into a standalone routing module with its RED/GREEN tests\nExpected files: scripts/execution_routing.py, tests/test_execution_routing.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T02",
+      "text": "Add typed gaps carrying a kind of no_boundary, unreadable_notation or dangling_dependency",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [
+        "scripts/execution_routing.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T01"
+      ],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t02",
+        "merge_after": [
+          "T01"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Add typed gaps carrying a kind of no_boundary, unreadable_notation or dangling_dependency\nExpected files: scripts/execution_routing.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T03",
+      "text": "Add notation fixtures covering the pipe form used by specs 103, 109 and 110 and assert it reports unreadable_notation",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "spec-architect",
+      "worker_file": "workers/spec-architect.md",
+      "parallel_group": "group-3",
+      "shared_state_risk": false,
+      "expected_files": [
+        "tests/fixtures/execution-routing/pipe-notation-tasks.md",
+        "tests/test_execution_routing.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T02"
+      ],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t03",
+        "merge_after": [
+          "T02"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow spec-architect",
+        "CognitiveDemand": "deep",
+        "Workspace": "share",
+        "Prompt": "Implement task: Add notation fixtures covering the pipe form used by specs 103, 109 and 110 and assert it reports unreadable_notation\nExpected files: tests/fixtures/execution-routing/pipe-notation-tasks.md, tests/test_execution_routing.py\nCognitive demand: deep — use your most capable reasoning model. If using OpenAI GPT-5.6, prefer gpt-5.6-sol; reserve max reasoning or pro mode for the hardest quality-first gates after comparison against xhigh/high."
+      }
+    },
+    {
+      "id": "T04",
+      "text": "Port Gate 3 with fnmatch path containment and assert inline is a success result",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [
+        "scripts/execution_routing.py",
+        "tests/test_execution_routing.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T01"
+      ],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t04",
+        "merge_after": [
+          "T01"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Port Gate 3 with fnmatch path containment and assert inline is a success result\nExpected files: scripts/execution_routing.py, tests/test_execution_routing.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T05",
+      "text": "Design and document the host adapter interface for review before any mapping code",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "spec-architect",
+      "worker_file": "workers/spec-architect.md",
+      "parallel_group": "group-3",
+      "shared_state_risk": false,
+      "expected_files": [
+        "docs/superpowers/specs/2026-09-05-issue-112-host-adapter-interface.md"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T04"
+      ],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t05",
+        "merge_after": [
+          "T04"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow spec-architect",
+        "CognitiveDemand": "deep",
+        "Workspace": "share",
+        "Prompt": "Implement task: Design and document the host adapter interface for review before any mapping code\nExpected files: docs/superpowers/specs/2026-09-05-issue-112-host-adapter-interface.md\nCognitive demand: deep — use your most capable reasoning model. If using OpenAI GPT-5.6, prefer gpt-5.6-sol; reserve max reasoning or pro mode for the hardest quality-first gates after comparison against xhigh/high."
+      }
+    },
+    {
+      "id": "T06",
+      "text": "Implement the adapter and move the codex worktree prefix and model-name prompt text out of the routing result",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [
+        "scripts/execution_host_adapter.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T05"
+      ],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t06",
+        "merge_after": [
+          "T05"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Implement the adapter and move the codex worktree prefix and model-name prompt text out of the routing result\nExpected files: scripts/execution_host_adapter.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T07",
+      "text": "Prove one routing result maps to Claude Code, Codex and Copilot with no canonical artifact change",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [
+        "tests/test_execution_host_adapter.py",
+        "tests/fixtures/execution-routing/hosts.json"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T06"
+      ],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t07",
+        "merge_after": [
+          "T06"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Prove one routing result maps to Claude Code, Codex and Copilot with no canonical artifact change\nExpected files: tests/test_execution_host_adapter.py, tests/fixtures/execution-routing/hosts.json\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T08",
+      "text": "Detect and report canonical versus Superpowers completion divergence without auto-resolving it",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "data-reviewer",
+      "worker_file": "workers/data-reviewer.md",
+      "parallel_group": "group-4",
+      "shared_state_risk": false,
+      "expected_files": [
+        "scripts/execution_routing.py",
+        "tests/test_execution_routing.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T02"
+      ],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t08",
+        "merge_after": [
+          "T02"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow data-reviewer",
+        "CognitiveDemand": "fast",
+        "Workspace": "share",
+        "Prompt": "Implement task: Detect and report canonical versus Superpowers completion divergence without auto-resolving it\nExpected files: scripts/execution_routing.py, tests/test_execution_routing.py\nCognitive demand: fast — use your lightest, fastest model. If using OpenAI GPT-5.6, prefer gpt-5.6-luna with low or no reasoning for latency-sensitive or high-volume work."
+      }
+    },
+    {
+      "id": "T09",
+      "text": "Consume the routing result in the worker plan builder, refuse to write on a non-ok status, and emit a relative project root",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [
+        "scripts/worker_orchestrator.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T04",
+        "T06"
+      ],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t09",
+        "merge_after": [
+          "T04",
+          "T06"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Consume the routing result in the worker plan builder, refuse to write on a non-ok status, and emit a relative project root\nExpected files: scripts/worker_orchestrator.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T10",
+      "text": "Update the existing worker orchestration tests that assume every checkbox becomes a worker task",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [
+        "tests/test_worker_orchestration.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T09"
+      ],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t10",
+        "merge_after": [
+          "T09"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Update the existing worker orchestration tests that assume every checkbox becomes a worker task\nExpected files: tests/test_worker_orchestration.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T11",
+      "text": "Update the worker, execute and Superpowers bridge documents to describe refusal as a normal outcome",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [
+        "commands/product-workers.md",
+        "commands/product-execute.md",
+        "skills/superpowers-execution-bridge/SKILL.md"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T09"
+      ],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t11",
+        "merge_after": [
+          "T09"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Update the worker, execute and Superpowers bridge documents to describe refusal as a normal outcome\nExpected files: commands/product-workers.md, commands/product-execute.md, skills/superpowers-execution-bridge/SKILL.md\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T12",
+      "text": "Re-run the corpus and this issue's own dogfood check, then record the verdict distribution as evidence",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [
+        "specs/112-execution-planner-and-backend-boundary/status.md"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T03",
+        "T07",
+        "T08",
+        "T10",
+        "T11"
+      ],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t12",
+        "merge_after": [
+          "T03",
+          "T07",
+          "T08",
+          "T10",
+          "T11"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Re-run the corpus and this issue's own dogfood check, then record the verdict distribution as evidence\nExpected files: specs/112-execution-planner-and-backend-boundary/status.md\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T13",
+      "text": "`python3 -m unittest discover -s tests` green with the new suites present.",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "qa-reviewer",
+      "worker_file": "workers/qa-reviewer.md",
+      "parallel_group": "group-1",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t13",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow qa-reviewer",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: `python3 -m unittest discover -s tests` green with the new suites present.\nExpected files: none\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T14",
+      "text": "Corpus behaviour holds: 029 plans, 001 refuses, 023 is not_applicable.",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t14",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Corpus behaviour holds: 029 plans, 001 refuses, 023 is not_applicable.\nExpected files: none\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T15",
+      "text": "Stream C interface reviewed before its mapping code was written.",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "spec-architect",
+      "worker_file": "workers/spec-architect.md",
+      "parallel_group": "group-3",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t15",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow spec-architect",
+        "CognitiveDemand": "deep",
+        "Workspace": "share",
+        "Prompt": "Implement task: Stream C interface reviewed before its mapping code was written.\nExpected files: none\nCognitive demand: deep — use your most capable reasoning model. If using OpenAI GPT-5.6, prefer gpt-5.6-sol; reserve max reasoning or pro mode for the hardest quality-first gates after comparison against xhigh/high."
+      }
+    },
+    {
+      "id": "T16",
+      "text": "`python3 scripts/release_check.py .` reports 14 of 14.",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "data-reviewer",
+      "worker_file": "workers/data-reviewer.md",
+      "parallel_group": "group-4",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t16",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow data-reviewer",
+        "CognitiveDemand": "fast",
+        "Workspace": "share",
+        "Prompt": "Implement task: `python3 scripts/release_check.py .` reports 14 of 14.\nExpected files: none\nCognitive demand: fast — use your lightest, fastest model. If using OpenAI GPT-5.6, prefer gpt-5.6-luna with low or no reasoning for latency-sensitive or high-volume work."
+      }
+    },
+    {
+      "id": "T17",
+      "text": "Running the routing on issue 112 itself returns `ok`.",
+      "status": "ready",
+      "deferred_to": null,
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "group-2",
+      "shared_state_risk": false,
+      "expected_files": [],
+      "expected_globs": [],
+      "dependencies": [],
+      "isolation": {
+        "worktree": "codex/112-execution-planner-and-backend-boundary-t17",
+        "merge_after": []
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Running the routing on issue 112 itself returns `ok`.\nExpected files: none\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    }
+  ],
+  "next_command": "product:execute 112-execution-planner-and-backend-boundary"
+}

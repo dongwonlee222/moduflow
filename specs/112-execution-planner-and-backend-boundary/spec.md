@@ -19,7 +19,12 @@ and always writes `worker-plan.json` and `worker-plan.md`.
 Measured against this repository on 2026-09-05 (HEAD `a5657dd`, 55 specs):
 
 - 640 worker tasks are generated; **514 of them (80%) are already `done`**.
-- **39 of 55 specs (71%) declare no file or glob boundary on any task.**
+- **36 of 55 specs (65%) declare no file or glob boundary on any task**, and a
+  further 3 declare one the parser cannot see: 103, 109 and 110 write
+  `| Files: … | Depends: A1` instead of the `[files: …] [depends: T01]` form
+  that `METADATA_RE` (`w_o.py:72`) matches. Those three are the most recent
+  large issues, so the authored convention is drifting away from the one
+  `commands/product-plan.md` documents. 16 specs use the readable form.
 - `Required Gates` alone contributes 34 checkboxes, e.g. *"All 13 Issue 102
   acceptance criteria have test or status evidence."* `WORKER_RULES`
   (`w_o.py:17`) routes `acceptance` and `criteria` to `pm-strategist`, so
@@ -34,7 +39,11 @@ Two further defects sit in the same write path:
 
 - `build_worker_plan` persists an absolute `project_root` (`w_o.py:430`) into
   the Git-tracked `worker-plan.json`, so the artifact carries one machine's
-  filesystem layout.
+  filesystem layout. Measured across the 10 committed `worker-plan.json` files:
+  **9 name a directory that does not exist here** — seven point at
+  `/Users/dongwon.lee/workhub/…` from the company machine and three at
+  `/Users/dongwon.lee/.config/superpowers/worktrees/…`, a temporary worktree
+  that is long gone. Only the one generated on this machine resolves.
 - `write_worker_plan` enforces `capabilities.write` (`w_o.py:526`) but has **no
   repository-identity gate**, while the sibling write path in
   `project_execution.main` (`p_e.py:349-353`) calls `inspect_repository_identity`
@@ -156,6 +165,11 @@ Gate 2 fails closed **at plan level**: one gap refuses the whole plan. No
 `worker-plan.json` or `worker-plan.md` is written, the result lists every gap
 by task ID, and `next_command` is `product:plan`.
 
+A gap must say which of the two it is. "Declares no boundary" and "declares a
+boundary the parser cannot read" call for different fixes, and specs 103, 109
+and 110 are in the second category. Reporting the second as the first sends the
+author looking for something they already wrote.
+
 Distinguish the two negative results. Nothing executable is `not_applicable`
 (the spec is finished); executable work without a usable boundary is
 `needs_plan` (the spec needs authoring). They are not the same event.
@@ -250,7 +264,7 @@ its own work is next picked up.
    features and produces stale state, cost and false execution claims
    (benchmark alignment table, "ModuFlow creates another dispatcher").
 
-## 12. Acceptance Criteria
+## Acceptance Criteria
 
 Traceable to the issue's seven criteria. The identity gap found on 2026-09-05
 is deliberately absent — it is Issue 122.
@@ -266,17 +280,20 @@ is deliberately absent — it is Issue 122.
    still resolve.
 6. Any gap yields `needs_plan`, `written` is empty, no `worker-plan.*` exists
    on disk afterwards, and `next_command` is `product:plan`.
-7. A spec with no executable work yields `not_applicable`, not `needs_plan`.
-8. Exactly one of `inline` / `superpowers-sdd` is returned, with a non-empty
+7. A gap distinguishes "no boundary declared" from "boundary declared in a
+   notation the parser does not read", using the `| Files: …` form in specs
+   103, 109 and 110 as the fixture.
+8. A spec with no executable work yields `not_applicable`, not `needs_plan`.
+9. Exactly one of `inline` / `superpowers-sdd` is returned, with a non-empty
    `routing_reason`.
-9. A glob that covers another task's declared file routes `inline`.
-10. `dispatched` is `false` and `executed_by` is null in every result.
-11. `project_root` is repository-relative in every result.
-12. The same routing result maps to Claude Code, Codex and Copilot fixtures
+10. A glob that covers another task's declared file routes `inline`.
+11. `dispatched` is `false` and `executed_by` is null in every result.
+12. `project_root` is repository-relative in every result.
+13. The same routing result maps to Claude Code, Codex and Copilot fixtures
     with no change to canonical artifacts.
-13. Canonical artifacts and linked Superpowers detail cannot both claim
+14. Canonical artifacts and linked Superpowers detail cannot both claim
     completion; divergence is reported.
-14. Issue 103 transaction, implementation-readiness and capability gates remain
+15. Issue 103 transaction, implementation-readiness and capability gates remain
     authoritative and unchanged.
 
 ## 13. Verification Strategy
