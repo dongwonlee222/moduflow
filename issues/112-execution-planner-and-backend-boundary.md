@@ -74,7 +74,7 @@ Do not add another execution engine. ModuFlow owns selection, state, evidence, a
 
 - [x] benchmark → `knowledge/benchmarks/2026-09-01-agentic-execution-governance-trend.md`
 - [x] design/scope → `docs/superpowers/specs/2026-09-01-execution-governance-scope-design.md`
-- [ ] spec → `specs/112-execution-planner-and-backend-boundary/spec.md`
+- [x] spec → `specs/112-execution-planner-and-backend-boundary/spec.md` (한글: `spec.ko.md`)
 - [ ] plan → `specs/112-execution-planner-and-backend-boundary/plan.md` + `tasks.md`
 - [ ] execute → planner filtering, backend decision contract, artifact ownership, and tests
 - [ ] review → `specs/112-execution-planner-and-backend-boundary/review.md`
@@ -108,4 +108,6 @@ What this does **not** cover, and what this issue still owns: the execution-rout
 
 ## Next Command
 
-After Issue 103: `product:spec 112-execution-planner-and-backend-boundary`.
+Issue 103 is done and the spec is written. Awaiting the five human review
+decisions in `specs/112-execution-planner-and-backend-boundary/spec.md` §15,
+then `product:plan 112-execution-planner-and-backend-boundary`.
