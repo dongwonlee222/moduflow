@@ -88,6 +88,17 @@ Do not add another execution engine. ModuFlow owns selection, state, evidence, a
 - supersedes:
 - related: `023-worker-routing-and-isolation`, `028-real-subagent-execution-backend`, `084-worker-prompt-context-budget`, `098-speckit-selective-validation-adapter`
 
+
+## Landed Early — 2026-09-04
+
+One piece of this issue shipped before the issue itself was specced, and is recorded here so the spec does not plan it again.
+
+`scripts/worker_orchestrator.py` gained `dispatchable_now(planned_tasks)`, and `worker-plan.md` gained a `Dispatchable Now` section naming the tasks whose dependencies are met and whose declared files do not overlap. Commit `ba1269a`.
+
+The reason it could not wait: the plan's only parallel outputs were a whole-plan verdict and a linear `merge_order`, so eligibility appeared fixed at planning time. It is not — it changes every time a task completes and unblocks its dependents. On 2026-09-04 that window opened three times during Issue 086 and a human had to notice it each time.
+
+What this does **not** cover, and what this issue still owns: the execution-routing decision itself (`inline` versus `superpowers-sdd`), the `not_applicable` / `needs_plan` results, the host-neutral adapter boundary, and recording the routing reason without claiming dispatch occurred. Only the "what can start together right now" question is answered.
+
 ## Links
 
 - Goal: `workspace/goal.md`
