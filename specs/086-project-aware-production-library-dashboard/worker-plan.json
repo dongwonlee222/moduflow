@@ -29,13 +29,15 @@
     "eligible": false,
     "mode": "sequential",
     "risks": [
-      "Task 9 touches shared state: Implementation: 전역 프로젝트 선택기와 URL 복원",
-      "Task 10 touches shared state: Release: 신규 스위트와 자산 등록",
+      "Task 9 touches shared state: Implementation: 선택기 껍데기와 URL 복원, 한 payload 규율",
+      "Task 10 touches shared state: Implementation: 포트폴리오 수집과 전체 프로젝트 요약",
+      "Task 11 touches shared state: Release: 신규 스위트와 자산 등록",
       "scripts/project_memory.py is expected by T01 and T05",
       "scripts/project_memory.py is expected by T01 and T06",
       "scripts/project_memory.py is expected by T01 and T07",
       "tests/test_dashboard_production_views.py is expected by T02 and T08",
-      "scripts/project_memory.py is expected by T01 and T09"
+      "scripts/project_memory.py is expected by T01 and T09",
+      "scripts/project_memory.py is expected by T01 and T10"
     ],
     "merge_order": [
       "T01",
@@ -47,8 +49,22 @@
       "T07",
       "T08",
       "T09",
-      "T10"
+      "T10",
+      "T11"
     ],
+    "now": {
+      "ready": [
+        "T09",
+        "T11"
+      ],
+      "dispatchable": [
+        "T09",
+        "T11"
+      ],
+      "blocked": [
+        "T10"
+      ]
+    },
     "fallback": "sequential",
     "criteria": [
       "separate worker domains",
@@ -280,7 +296,7 @@
     },
     {
       "id": "T09",
-      "text": "Implementation: 전역 프로젝트 선택기와 URL 복원",
+      "text": "Implementation: 선택기 껍데기와 URL 복원, 한 payload 규율",
       "status": "ready",
       "worker": "implementation-worker",
       "worker_file": "workers/implementation-worker.md",
@@ -306,11 +322,41 @@
         "Role": "ModuFlow implementation-worker",
         "CognitiveDemand": "balanced",
         "Workspace": "share",
-        "Prompt": "Implement task: Implementation: 전역 프로젝트 선택기와 URL 복원\nExpected files: scripts/project_memory.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+        "Prompt": "Implement task: Implementation: 선택기 껍데기와 URL 복원, 한 payload 규율\nExpected files: scripts/project_memory.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
       }
     },
     {
       "id": "T10",
+      "text": "Implementation: 포트폴리오 수집과 전체 프로젝트 요약",
+      "status": "ready",
+      "worker": "implementation-worker",
+      "worker_file": "workers/implementation-worker.md",
+      "parallel_group": "sequential",
+      "shared_state_risk": true,
+      "expected_files": [
+        "scripts/project_memory.py",
+        "scripts/project_portfolio.py"
+      ],
+      "expected_globs": [],
+      "dependencies": [
+        "T09"
+      ],
+      "isolation": {
+        "worktree": "codex/086-project-aware-production-library-dashboard-t10",
+        "merge_after": [
+          "T09"
+        ]
+      },
+      "subagent": {
+        "TypeName": "self",
+        "Role": "ModuFlow implementation-worker",
+        "CognitiveDemand": "balanced",
+        "Workspace": "share",
+        "Prompt": "Implement task: Implementation: 포트폴리오 수집과 전체 프로젝트 요약\nExpected files: scripts/project_memory.py, scripts/project_portfolio.py\nCognitive demand: balanced — use your standard production model. If using OpenAI GPT-5.6, prefer gpt-5.6-terra with medium reasoning as the starting point, then compare one level lower on representative tasks."
+      }
+    },
+    {
+      "id": "T11",
       "text": "Release: 신규 스위트와 자산 등록",
       "status": "ready",
       "worker": "release-manager",
@@ -326,7 +372,7 @@
         "T08"
       ],
       "isolation": {
-        "worktree": "codex/086-project-aware-production-library-dashboard-t10",
+        "worktree": "codex/086-project-aware-production-library-dashboard-t11",
         "merge_after": [
           "T08"
         ]

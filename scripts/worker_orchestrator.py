@@ -206,6 +206,43 @@ def merge_order(planned_tasks):
     return ordered
 
 
+def dispatchable_now(planned_tasks):
+    """Which tasks can start together right now, given what is already done.
+
+    `merge_order` answers "in what order", which reads as a queue and invites
+    doing one thing at a time. Eligibility is not fixed at planning time: it
+    changes every time a task completes and unblocks its dependents. This
+    answers "what can run together at this moment" so the window is visible
+    without a human noticing it.
+    """
+    done = {task["id"] for task in planned_tasks if task.get("status") == "done"}
+    ready = [
+        task
+        for task in planned_tasks
+        if task.get("status") != "done"
+        and all(dependency in done for dependency in task.get("dependencies", []))
+    ]
+    selected, claimed = [], set()
+    for task in ready:
+        files = set(task.get("expected_files", [])) | set(task.get("expected_globs", []))
+        if files & claimed:
+            continue
+        if selected and not files:
+            # A task that declares no boundary cannot be proven disjoint.
+            continue
+        selected.append(task["id"])
+        claimed |= files
+    return {
+        "ready": [task["id"] for task in ready],
+        "dispatchable": selected,
+        "blocked": [
+            task["id"]
+            for task in planned_tasks
+            if task.get("status") != "done" and task["id"] not in {t["id"] for t in ready}
+        ],
+    }
+
+
 def find_related_memories(
     project_root,
     expected_files,
@@ -374,6 +411,7 @@ def build_worker_plan(root, issue_id, *, project_context=None):
             "mode": mode,
             "risks": risks,
             "merge_order": merge_order(planned_tasks),
+            "now": dispatchable_now(planned_tasks),
             "fallback": "sequential" if not eligible else None,
             "criteria": [
                 "separate worker domains",
@@ -410,6 +448,22 @@ def render_worker_plan_markdown(plan):
     for task in plan["tasks"]:
         lines.append(f"- {task['id']}: `{task['isolation']['worktree']}`")
 
+    now = plan["parallel"].get("now") or {}
+    dispatchable = now.get("dispatchable") or []
+    by_id = {task["id"]: task for task in plan["tasks"]}
+    lines.extend(["", "## Dispatchable Now", ""])
+    if dispatchable:
+        for task_id in dispatchable:
+            files = ", ".join(by_id[task_id].get("expected_files", [])) or "-"
+            lines.append(f"- `{task_id}` — {files}")
+        if len(dispatchable) > 1:
+            lines.append("")
+            lines.append(
+                "These declare no overlapping files and can start together. "
+                "Eligibility changes as tasks complete; re-read this section after each one."
+            )
+    else:
+        lines.append("- None. Every remaining task is blocked or overlaps a started one.")
     lines.extend(["", "## Merge Order", "", "- " + " → ".join(plan["parallel"]["merge_order"])])
 
     lines.extend(["", "## Worker Inventory", ""])

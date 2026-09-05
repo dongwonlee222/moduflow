@@ -278,5 +278,81 @@ class WorkerOrchestrationTests(unittest.TestCase):
             self.assertNotIn("confidence: medium", prompt)  # Ensure no full-text/frontmatter inlining
 
 
+
+class DispatchableNowTests(unittest.TestCase):
+    """Eligibility is not fixed at planning time; it moves as tasks complete."""
+
+    def setUp(self):
+        self.orchestrator = load_module(
+            "worker_orchestrator", "scripts/worker_orchestrator.py"
+        )
+
+    def _task(self, task_id, files=(), depends=(), status="ready"):
+        return {
+            "id": task_id,
+            "status": status,
+            "expected_files": list(files),
+            "expected_globs": [],
+            "dependencies": list(depends),
+        }
+
+    def test_disjoint_ready_tasks_can_start_together(self):
+        tasks = [
+            self._task("T01", ["a.py"]),
+            self._task("T02", ["b.py"]),
+        ]
+        self.assertEqual(
+            self.orchestrator.dispatchable_now(tasks)["dispatchable"], ["T01", "T02"]
+        )
+
+    def test_tasks_sharing_a_file_do_not_both_dispatch(self):
+        tasks = [
+            self._task("T01", ["a.py"]),
+            self._task("T02", ["a.py", "b.py"]),
+        ]
+        result = self.orchestrator.dispatchable_now(tasks)
+        self.assertEqual(result["dispatchable"], ["T01"])
+        self.assertIn("T02", result["ready"])
+
+    def test_a_task_with_unmet_dependencies_is_blocked_not_ready(self):
+        tasks = [
+            self._task("T01", ["a.py"]),
+            self._task("T02", ["b.py"], depends=["T01"]),
+        ]
+        result = self.orchestrator.dispatchable_now(tasks)
+        self.assertEqual(result["ready"], ["T01"])
+        self.assertEqual(result["blocked"], ["T02"])
+
+    def test_finishing_a_task_opens_the_window(self):
+        """The exact failure this exists to prevent: a window opening unnoticed."""
+        tasks = [
+            self._task("T01", ["a.py"], status="done"),
+            self._task("T02", ["a.py"], depends=["T01"]),
+            self._task("T03", ["b.py"], depends=["T01"]),
+        ]
+        self.assertEqual(
+            self.orchestrator.dispatchable_now(tasks)["dispatchable"], ["T02", "T03"]
+        )
+
+    def test_a_task_without_declared_files_is_never_paired(self):
+        tasks = [
+            self._task("T01", ["a.py"]),
+            self._task("T02", []),
+        ]
+        self.assertEqual(
+            self.orchestrator.dispatchable_now(tasks)["dispatchable"], ["T01"]
+        )
+
+    def test_the_written_plan_names_what_can_start_together(self):
+        tasks = [
+            self._task("T01", ["a.py"], status="done"),
+            self._task("T02", ["b.py"], depends=["T01"]),
+            self._task("T03", ["c.py"], depends=["T01"]),
+        ]
+        now = self.orchestrator.dispatchable_now(tasks)
+        self.assertEqual(now["dispatchable"], ["T02", "T03"])
+        self.assertEqual(now["blocked"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

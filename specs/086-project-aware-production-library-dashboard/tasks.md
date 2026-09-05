@@ -13,5 +13,6 @@ human guessing it. Collectors and the coverage judgment landed on 2026-09-04.
 - [x] Implementation: 플레이북 탭 렌더링 [files: scripts/project_memory.py] [depends: T05]
 - [x] Implementation: 제작 기록·플레이북 상세 모달 [files: scripts/project_memory.py] [depends: T06]
 - [x] QA: 두 탭 렌더링과 빈 상태 테스트 [files: tests/test_dashboard_production_views.py] [depends: T07]
-- [ ] Implementation: 전역 프로젝트 선택기와 URL 복원 [files: scripts/project_memory.py] [depends: T03, T07] [shared_state: true]
+- [ ] Implementation: 선택기 껍데기와 URL 복원, 한 payload 규율 [files: scripts/project_memory.py] [depends: T03, T07] [shared_state: true]
+- [ ] Implementation: 포트폴리오 수집과 전체 프로젝트 요약 [files: scripts/project_memory.py, scripts/project_portfolio.py] [depends: T09] [shared_state: true]
 - [ ] Release: 신규 스위트와 자산 등록 [files: scripts/release_check.py, scripts/validate_moduflow.py] [depends: T08] [shared_state: true]
