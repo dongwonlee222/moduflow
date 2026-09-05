@@ -32,7 +32,14 @@ WORKSPACE_FILES = {
     "inbox.md": "# Inbox\n\n",
     "opportunities.md": "# Opportunities\n\n",
     "roadmap.md": "# Roadmap\n\n",
-    "dashboard.md": "# Dashboard\n\n",
+    # The Active Issue section is required, not decorative: the stop hook's
+    # render_dashboard_projection raises without it, so a dashboard missing it
+    # fails every session end. See tests/test_bootstrap_dashboard_projection.py.
+    "dashboard.md": (
+        "# Dashboard\n\n"
+        "## Active Issue\n\n"
+        "- None active. Run `product:status` to pick the next issue.\n"
+    ),
     "goal.md": "# Goal\n\n## Objective\n\nTBD\n\n## Status\n\nactive\n\n## Next Command\n\n`product:loop`\n",
     "transactions/.gitkeep": "",
 }
