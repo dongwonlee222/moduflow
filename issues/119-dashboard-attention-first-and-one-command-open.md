@@ -1,6 +1,6 @@
 # Issue 119: Dashboard Attention-First Ordering and One-Command Open
 
-**Status: backlog** — created 2026-09-05.
+**Status: done** — created 2026-09-05; started 2026-09-05; done 2026-09-05.
 **Priority: p3**
 
 ## Summary
