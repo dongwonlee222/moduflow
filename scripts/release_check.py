@@ -467,6 +467,7 @@ def run_release_check(path):
             "tests.test_project_knowledge_registry_transaction",
             "tests.test_project_knowledge_registry_simulation",
             "tests.test_project_memory",
+            "tests.test_dashboard_production_views",
             "tests.test_project_portfolio",
             "tests.test_project_workflow",
             "tests.test_project_execution",
