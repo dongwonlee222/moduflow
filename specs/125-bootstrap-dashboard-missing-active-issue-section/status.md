@@ -105,7 +105,7 @@ Recovery diagnostics reported `healthy` with no stuck transactions, so the
 refusal is not a recovery state — the projected state itself fails validation,
 which means the documented fix for drift cannot clear that drift. The drift was
 resolved instead by taking 125 to `done`, so the blocker is currently invisible.
-It should be reproduced and filed before someone hits it with no such option.
+Filed as **Issue 126** with the reproduction steps.
 
 ## Constitution
 
