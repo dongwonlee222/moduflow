@@ -1,6 +1,6 @@
 # Issue 125: Bootstrap Dashboard Missing Active Issue Section
 
-**Status: review** — created 2026-09-05; fix implemented the same day, awaiting review.
+**Status: done** — created, fixed and reviewed 2026-09-05. PR/merge remains human-gated.
 **Priority: p1**
 
 ## 요약
@@ -104,7 +104,7 @@ Fix the templates, not the projection. The ValueError is doing its job.
 ## Workflow Tasks
 
 - [x] execute → both templates plus the guard test
-- [ ] review → `specs/125-bootstrap-dashboard-missing-active-issue-section/review.md`
+- [x] review → `specs/125-bootstrap-dashboard-missing-active-issue-section/status.md`
 
 No spec or plan: a two-template fix with a guard test is below the threshold
 where a spec adds anything, per the S-grade bugfix exception.

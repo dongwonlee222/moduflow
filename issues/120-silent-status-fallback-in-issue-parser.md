@@ -1,7 +1,8 @@
 # Issue 120: Silent Status Fallback in the Issue Parser
 
-**Status: backlog** — created 2026-09-05.
-**Priority: p2**
+**Status: backlog** — created 2026-09-05; confirmed firing in production the same day.
+Spec and plan are written; execute is gated on the section 6 decision.
+**Priority: p1**
 
 ## 요약
 
@@ -35,7 +36,21 @@ This violates constitution **C2 — no silent exceptions**. The failure is worse
 
 The blast radius is wide: `project_lifecycle.py`, the readiness gate, the dashboard status column and grouping, and `moduflow_ready` all consume this one function (C8 — it is correctly the single parser, which is exactly why a silent fallback inside it spreads).
 
-Nobody has hit this yet as far as the repository records show. It is registered now because it was found, not because it fired.
+**It fired on 2026-09-05, the day it was registered.** Issue 125 was created that
+afternoon with `**Status: review**`. `review` is not in `LIFECYCLE_STATES`
+(`active`, `backlog`, `done`), so `markdown_status` returned `backlog` — a
+finished, tested fix reported as not started, with no diagnostic anywhere. It
+was noticed only because someone happened to print the raw token beside the
+parsed one while counting open issues.
+
+That is the whole failure in one line: an invented status is indistinguishable
+from a real backlog entry, and the author gets no signal that the word they
+wrote was discarded.
+
+A full scan of `issues/` on 2026-09-05 found exactly one file relying on the
+fallback (125, now corrected to `active`). The other seven non-`LIFECYCLE_STATES`
+tokens are all `superseded-by-<id>`, which `markdown_status:612` handles
+explicitly and correctly — they are not affected.
 
 ## Scope
 
@@ -51,7 +66,8 @@ Nobody has hit this yet as far as the repository records show. It is registered 
 - Adding, renaming, or translating lifecycle states. `LIFECYCLE_STATES` is unchanged.
 - A second status parser. C8 stands: `markdown_status` remains the only one.
 - Turning this into a release gate on its own. Whether the validator escalates is part of the decision above, not a foregone conclusion.
-- Repairing existing issue files. No file is currently known to be affected; a scan is verification, not scope.
+- Repairing existing issue files. The one affected file (125) was corrected when
+  the firing was found; a scan is verification, not scope.
 
 ## Acceptance Criteria
 
@@ -82,8 +98,8 @@ Do not add a second status parser, do not change the lifecycle vocabulary, and d
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/120-silent-status-fallback-in-issue-parser/spec.md` (+ `spec.ko.md`)
-- [ ] plan → `specs/120-silent-status-fallback-in-issue-parser/plan.md` + `tasks.md`
+- [x] spec → `specs/120-silent-status-fallback-in-issue-parser/spec.md` (+ `spec.ko.md`)
+- [x] plan → `specs/120-silent-status-fallback-in-issue-parser/plan.md` + `tasks.md`
 - [ ] execute → diagnostic path, tests, docs
 - [ ] review → `specs/120-silent-status-fallback-in-issue-parser/review.md`
 
@@ -99,6 +115,11 @@ Do not add a second status parser, do not change the lifecycle vocabulary, and d
 ## Sessions
 
 - 2026-09-05: found while explaining why issue files carry English-only metadata. The ASCII-only status regex is the reason a Korean status token cannot work; the silent `backlog` fallback is the reason nobody would notice.
+- 2026-09-05 (later): fired in production on Issue 125's `**Status: review**`.
+  Raised from p2 to p1 and moved to `active` — a defect that has demoted a real
+  finished fix to `backlog` on the day it was filed is not a p2. Found by
+  printing raw tokens next to parsed ones, which is itself the diagnostic this
+  issue is asking the parser to emit.
 
 ## Links
 

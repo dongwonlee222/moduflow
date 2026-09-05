@@ -1,15 +1,16 @@
-# Issue 122: Worker Plan Write Path Skips Repository Identity
+# Issue 122: Write Paths Disagree On Repository Identity
 
 **Status: backlog** — created 2026-09-05.
 **Priority: p1**
 
 ## 요약
 
-쓰기 경로가 둘인데 저장소 신원 검사는 하나뿐입니다. `project_execution.py`는
-쓰기 전에 저장소 신원을 확인하고 거부되면 exit 3으로 멈추지만,
-`worker_orchestrator.py`는 `capabilities.write`만 보고 그대로 씁니다. 지금 이
-저장소가 바로 그 갈리는 상태입니다 — remote가 SSH alias라 신원이
-`unverifiable`이고 `execute` 권한이 없는데, 한쪽 명령만 막힙니다.
+쓰기 경로가 **셋인데 저장소 신원 검사는 하나**뿐입니다. `project_execution.py`만
+쓰기 전에 신원을 확인하고 거부되면 exit 3으로 멈춥니다. `worker_orchestrator.py`와
+`project_pr.py`는 `capabilities.write`만 보고 그대로 씁니다. 지금 이 저장소가 바로
+그 갈리는 상태입니다 — remote가 SSH alias라 신원이 `unverifiable`이고 `execute`
+권한이 없는데, 같은 `product:review` 한 번에서 어떤 산출물은 막히고 어떤 것은
+그대로 쓰입니다.
 
 ## Summary
 
@@ -18,8 +19,9 @@
 evaluates `operation_decision(identity, "execute")`, and returns exit 3 without
 writing when the decision is denied. `worker_orchestrator.write_worker_plan`
 has no equivalent check — it enforces `capabilities.write`
-(`scripts/worker_orchestrator.py:526`) and nothing else. Two sibling write paths
-in the same package disagree about whether repository identity is authoritative.
+(`scripts/worker_orchestrator.py:526`) and nothing else, and `project_pr` has
+neither. Three sibling write paths in the same package disagree about whether
+repository identity is authoritative.
 
 ## Source
 
@@ -58,6 +60,24 @@ Both commands were then run against that state:
 Same repository, same moment, same class of local artifact write. One path
 refuses and the other does not.
 
+**Update 2026-09-05, later the same day: it is three paths, not two.** Running
+`product:review` on Issue 125 exercised a third writer:
+
+| Write path | Identity gate | Result on this unverifiable repository |
+| --- | --- | --- |
+| `project_execution.py --review-handoff --write` | yes | `allowed: false`, nothing written |
+| `project_pr.py --write` | **no** | wrote `pr.md` and `human-review.ko.md` |
+| `worker_orchestrator.py --write` | **no** | wrote `worker-plan.json` and `worker-plan.md` |
+
+So one review command both refuses and succeeds at writing review artifacts for
+the same issue in the same run, depending on which script owns the file. The
+practical effect is that `product:review` cannot complete step 3 here while
+steps 8's artifacts land normally.
+
+`scripts/project_pr.py` is therefore in scope alongside `worker_orchestrator.py`,
+and the guard test must cover every write path rather than the two originally
+named. If a fourth exists, the guard should be what finds it.
+
 The gate is not decoration. `OPERATION_CAPABILITIES`
 (`scripts/project_repository_identity.py:23`) maps `execute` to the `execute`
 capability precisely so that generating execution artifacts in a repository
@@ -69,13 +89,14 @@ dispatchable.
 
 ### In
 
-- Enforce repository identity in `worker_orchestrator.write_worker_plan`, using
+- Enforce repository identity in every write path that lacks it —
+  `worker_orchestrator.write_worker_plan` and `project_pr` at minimum — using
   the same `inspect_repository_identity` / `operation_decision` pair and the
   same operation name that `project_execution` uses.
 - Deny before any file is created, mirroring the existing exit-3 contract:
   return the decision document, write nothing.
-- Add a guard test that fails if either write path loses its identity check, so
-  the two cannot drift apart again.
+- Add a guard test that fails if any write path loses its identity check, so
+  they cannot drift apart again.
 
 ### Out
 
@@ -97,8 +118,10 @@ dispatchable.
   archived or read-only project short-circuits as it does today.
 - A verifiable repository is unaffected: existing worker-plan generation keeps
   working with no signature change for callers that already pass.
-- A guard test asserts that both write paths call the identity gate; removing
-  it from either one fails the suite.
+- A guard test enumerates the write paths and asserts each one calls the
+  identity gate; removing it from any of them fails the suite. The test
+  discovers the paths rather than hard-coding the three known today, so a
+  fourth added later is caught.
 - `tests/test_worker_orchestration.py`, `tests/test_project_execution.py` and
   `python3 scripts/release_check.py .` stay green.
 
@@ -109,11 +132,12 @@ dispatchable.
 - Fixture with a verifiable remote: assert the plan is still produced.
 - Write-denied (archived/read-only) context: assert the capability denial still
   wins and identity is not consulted.
-- Guard test over both write paths.
+- Guard test over every discovered write path.
 
 ## Entry Points
 
 - `scripts/worker_orchestrator.py:520` — `write_worker_plan`
+- `scripts/project_pr.py` — the third writer, found 2026-09-05
 - `scripts/project_execution.py:349` — the reference implementation
 - `scripts/project_repository_identity.py:679` — `operation_decision`
 - `tests/test_worker_orchestration.py`, `tests/test_project_execution.py`
