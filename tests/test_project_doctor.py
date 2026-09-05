@@ -736,5 +736,268 @@ class ArtifactRegistryDiagnosticsTests(unittest.TestCase):
             self.assertTrue(any("LOCAL_LINK_BROKEN" in e for e in result["errors"]))
 
 
+class KoreanDescriptionCoverageTests(unittest.TestCase):
+    """088: count Korean description coverage; reporting only, never a gate."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp_dir.name)
+        (self.root / ".moduflow").mkdir(parents=True)
+        (self.root / ".moduflow" / "config.json").write_text(
+            json.dumps({"schema": "moduflow.config.v1", "paths": {}}),
+            encoding="utf-8",
+        )
+        (self.root / ".moduflow" / "state.json").write_text("{}", encoding="utf-8")
+        for relative in ("issues", "specs", "workspace"):
+            (self.root / relative).mkdir()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def write_issue(self, issue_id, body):
+        (self.root / "issues" / f"{issue_id}.md").write_text(body, encoding="utf-8")
+
+    def write_overrides(self, mapping):
+        (self.root / "workspace" / "issue-descriptions.ko.json").write_text(
+            json.dumps(mapping, ensure_ascii=False), encoding="utf-8"
+        )
+
+    def test_issue_with_korean_summary_section_counts_as_covered(self):
+        self.write_issue(
+            "001-alpha",
+            "# 001 Alpha\n\n**Status: backlog**\n\n"
+            "## Summary\n\nEnglish summary.\n\n"
+            "## 요약\n\n한국어 요약이 여기에 있다.\n",
+        )
+        summary = project_doctor.korean_description_coverage(self.root)
+        self.assertTrue(summary["checked"])
+        self.assertEqual(summary["total"], 1)
+        self.assertEqual(summary["covered"], 1)
+        self.assertEqual(summary["missing"], 0)
+        self.assertEqual(summary["artifact"], 1)
+        self.assertEqual(summary["legacy_only"], 0)
+        self.assertEqual(summary["missing_examples"], [])
+
+    def test_korean_spec_sidecar_counts_as_artifact_coverage(self):
+        self.write_issue(
+            "001-alpha",
+            "# 001 Alpha\n\n**Status: backlog**\n\n## Summary\n\nEnglish only.\n",
+        )
+        spec_dir = self.root / "specs" / "001-alpha"
+        spec_dir.mkdir(parents=True)
+        (spec_dir / "spec.ko.md").write_text(
+            "# 스펙\n\n## 요약\n\n사이드카에 담긴 한국어 요약이다.\n",
+            encoding="utf-8",
+        )
+        summary = project_doctor.korean_description_coverage(self.root)
+        self.assertEqual(summary["artifact"], 1)
+        self.assertEqual(summary["legacy_only"], 0)
+        self.assertEqual(summary["missing"], 0)
+
+    def test_issue_without_any_korean_source_counts_as_missing(self):
+        self.write_issue(
+            "002-beta",
+            "# 002 Beta\n\n**Status: backlog**\n\n## Summary\n\nEnglish only.\n",
+        )
+        summary = project_doctor.korean_description_coverage(self.root)
+        self.assertEqual(summary["total"], 1)
+        self.assertEqual(summary["covered"], 0)
+        self.assertEqual(summary["missing"], 1)
+        self.assertEqual(summary["artifact"], 0)
+        self.assertEqual(summary["legacy_only"], 0)
+        self.assertEqual(summary["missing_examples"], ["002-beta"])
+
+    def test_issue_covered_only_by_legacy_json_is_reported_as_legacy_only(self):
+        self.write_issue(
+            "002-beta",
+            "# 002 Beta\n\n**Status: backlog**\n\n## Summary\n\nEnglish only.\n",
+        )
+        self.write_overrides({"002-beta": "레거시 JSON이 채워 준 설명."})
+        summary = project_doctor.korean_description_coverage(self.root)
+        self.assertEqual(summary["total"], 1)
+        self.assertEqual(summary["covered"], 1)
+        self.assertEqual(summary["missing"], 0)
+        self.assertEqual(summary["artifact"], 0)
+        self.assertEqual(summary["legacy_only"], 1)
+
+    def test_artifact_source_wins_over_legacy_override_in_the_split(self):
+        self.write_issue(
+            "001-alpha",
+            "# 001 Alpha\n\n**Status: backlog**\n\n## 요약\n\n이슈 파일 안의 요약.\n",
+        )
+        self.write_overrides({"001-alpha": "레거시 설명."})
+        summary = project_doctor.korean_description_coverage(self.root)
+        self.assertEqual(summary["artifact"], 1)
+        self.assertEqual(summary["legacy_only"], 0)
+        self.assertEqual(summary["covered"], 1)
+
+    def test_counts_split_across_all_three_sources(self):
+        self.write_issue(
+            "001-alpha",
+            "# 001 Alpha\n\n**Status: backlog**\n\n## 요약\n\n이슈 파일 요약.\n",
+        )
+        self.write_issue(
+            "002-beta",
+            "# 002 Beta\n\n**Status: backlog**\n\n## Summary\n\nEnglish only.\n",
+        )
+        self.write_issue(
+            "003-gamma",
+            "# 003 Gamma\n\n**Status: backlog**\n\n## Summary\n\nEnglish only.\n",
+        )
+        self.write_overrides({"002-beta": "레거시 설명."})
+        summary = project_doctor.korean_description_coverage(self.root)
+        self.assertEqual(summary["total"], 3)
+        self.assertEqual(summary["artifact"], 1)
+        self.assertEqual(summary["legacy_only"], 1)
+        self.assertEqual(summary["covered"], 2)
+        self.assertEqual(summary["missing"], 1)
+        self.assertEqual(summary["missing_examples"], ["003-gamma"])
+        self.assertEqual(summary["missing_not_listed"], 0)
+
+    def test_example_list_is_capped_and_reports_the_dropped_count(self):
+        for index in range(1, 9):
+            self.write_issue(
+                f"{index:03d}-issue",
+                f"# {index:03d}\n\n**Status: backlog**\n\n## Summary\n\nEnglish.\n",
+            )
+        summary = project_doctor.korean_description_coverage(self.root)
+        self.assertEqual(summary["missing"], 8)
+        self.assertEqual(
+            len(summary["missing_examples"]),
+            project_doctor.KOREAN_DESCRIPTION_EXAMPLE_LIMIT,
+        )
+        # C11: the cap reports itself instead of reading as full coverage.
+        self.assertEqual(
+            summary["missing_not_listed"],
+            summary["missing"] - len(summary["missing_examples"]),
+        )
+
+    def test_unreadable_issue_source_is_counted_and_does_not_stop_the_scan(self):
+        self.write_issue(
+            "001-alpha",
+            "# 001 Alpha\n\n**Status: backlog**\n\n## 요약\n\n이슈 파일 요약.\n",
+        )
+        self.write_issue(
+            "002-beta",
+            "# 002 Beta\n\n**Status: backlog**\n\n## Summary\n\nEnglish only.\n",
+        )
+        memory = project_doctor.load_project_memory()
+        real_summary_ko = memory._issue_summary_ko
+
+        def exploding_summary_ko(root, issue_id, text, **kwargs):
+            if issue_id == "002-beta":
+                raise OSError("unreadable issue source")
+            return real_summary_ko(root, issue_id, text, **kwargs)
+
+        with mock.patch.object(memory, "_issue_summary_ko", exploding_summary_ko):
+            summary = project_doctor.korean_description_coverage(
+                self.root, memory=memory
+            )
+
+        self.assertEqual(summary["total"], 2)
+        self.assertEqual(summary["artifact"], 1)
+        self.assertEqual(summary["unreadable"], 1)
+        self.assertEqual(summary["missing"], 1)
+
+    def test_malformed_override_json_does_not_crash_the_count(self):
+        self.write_issue(
+            "002-beta",
+            "# 002 Beta\n\n**Status: backlog**\n\n## Summary\n\nEnglish only.\n",
+        )
+        (self.root / "workspace" / "issue-descriptions.ko.json").write_text(
+            "{not json at all", encoding="utf-8"
+        )
+        summary = project_doctor.korean_description_coverage(self.root)
+        self.assertTrue(summary["checked"])
+        self.assertEqual(summary["total"], 1)
+        self.assertEqual(summary["missing"], 1)
+        self.assertEqual(summary["legacy_only"], 0)
+
+    def test_resolver_is_reused_rather_than_reimplemented(self):
+        """C8: the doctor must call project_memory's resolver, not its own."""
+        self.write_issue(
+            "001-alpha",
+            "# 001 Alpha\n\n**Status: backlog**\n\n## 요약\n\n이슈 파일 요약.\n",
+        )
+        memory = project_doctor.load_project_memory()
+        with mock.patch.object(
+            memory, "_issue_summary_ko", return_value=""
+        ) as resolver, mock.patch.object(
+            memory, "_issue_description_overrides", return_value={}
+        ) as overrides:
+            summary = project_doctor.korean_description_coverage(
+                self.root, memory=memory
+            )
+        self.assertTrue(resolver.called)
+        self.assertTrue(overrides.called)
+        self.assertEqual(summary["missing"], 1)
+        self.assertEqual(summary["covered"], 0)
+
+    def test_inspect_project_reports_counts_without_changing_success_status(self):
+        self.write_issue(
+            "001-alpha",
+            "# 001 Alpha\n\n**Status: backlog**\n\n## 요약\n\n이슈 파일 요약.\n",
+        )
+        self.write_issue(
+            "002-beta",
+            "# 002 Beta\n\n**Status: backlog**\n\n## Summary\n\nEnglish only.\n",
+        )
+        covered = project_doctor.inspect_project(
+            str(self.root), include_preflight=False
+        )
+        self.assertEqual(covered["korean_descriptions"]["artifact"], 1)
+        self.assertEqual(covered["korean_descriptions"]["missing"], 1)
+
+        # Now remove every Korean source; only the counts may move.
+        self.write_issue(
+            "001-alpha",
+            "# 001 Alpha\n\n**Status: backlog**\n\n## Summary\n\nEnglish only.\n",
+        )
+        uncovered = project_doctor.inspect_project(
+            str(self.root), include_preflight=False
+        )
+        self.assertEqual(uncovered["korean_descriptions"]["covered"], 0)
+        self.assertEqual(uncovered["korean_descriptions"]["missing"], 2)
+
+        for result in (covered, uncovered):
+            self.assertEqual(
+                result["schema_gates"]["valid"], covered["schema_gates"]["valid"]
+            )
+            self.assertEqual(result["error_codes"], [])
+            # Never surfaced as an error or a blocking diagnostic.
+            self.assertNotIn(
+                "korean", json.dumps(result["schema_gates"], ensure_ascii=False).lower()
+            )
+        self.assertEqual(
+            uncovered["schema_gates"]["errors"], covered["schema_gates"]["errors"]
+        )
+
+    def test_missing_korean_descriptions_never_change_the_doctor_exit_code(self):
+        base = {
+            "moduflow": {"initialized": True, "missing": []},
+            "schema_gates": {"valid": True},
+            "recovery": {"status": "healthy"},
+        }
+        cases = [
+            {"checked": True, "total": 120, "covered": 120, "missing": 0},
+            {"checked": True, "total": 120, "covered": 0, "missing": 120},
+            {"checked": False, "total": 0, "covered": 0, "missing": 0},
+        ]
+        for coverage in cases:
+            with self.subTest(missing=coverage["missing"]):
+                result = dict(base, korean_descriptions=coverage)
+                with (
+                    mock.patch.object(
+                        project_doctor, "inspect_project", return_value=result
+                    ),
+                    mock.patch(
+                        "sys.argv",
+                        ["project_doctor.py", "/project", "--no-preflight"],
+                    ),
+                    mock.patch("builtins.print"),
+                ):
+                    self.assertEqual(project_doctor.main(), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

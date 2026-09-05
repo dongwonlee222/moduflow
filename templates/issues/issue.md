@@ -4,6 +4,15 @@
 **Priority: p2**
 **Blocked-by:**
 
+## 요약
+
+{{summary_ko}}
+
+<!-- One or two sentences in Korean. This is the dashboard's issue description
+     and the source of the 한글 개요 panel. Leaving it empty makes the row read
+     `EN` with a `한글 없음` flag. Do not add the issue to
+     workspace/issue-descriptions.ko.json instead — that file is legacy. -->
+
 ## Summary
 
 {{summary}}

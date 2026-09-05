@@ -146,6 +146,11 @@ def render_issue(template_text, issue_id, frontmatter, body, record_ref, created
         "title": title,
         "created_date": created,
         "summary": summary,
+        # Issue 121: the Korean slot gets a producer, not an
+        # unfilled placeholder. A promoted record carries no Korean text,
+        # so it lands as the same blocking TODO the other underivable
+        # sections use — visible in the issue, not silently empty.
+        "summary_ko": f"{TODO_MARKER}: 이 이슈가 무엇인지 한글 한두 문장으로 적는다",
         "source_type": "promoted record",
         "source_link": f"`{record_ref}`",
         "date": source_date,

@@ -1,4 +1,5 @@
 {
+  "__legacy__": "LEGACY — do not add new issues here. Korean issue descriptions now live in the issue file's own `## 요약` section, which scripts/project_memory.py _issue_summary_ko already reads, alongside specs/<id>/*.ko.md sidecars. This hand-maintained map was the only path a new issue could take until 2026-09-05 and stopped being updated after issue 087. As of 2026-09-05: 32 issues have no Korean description at all and 55 more are covered only by this file. Entries still win as an override so existing rows keep rendering; filling a gap by adding a key here rebuilds the manual path that failed. See issue 121.",
   "001-project-migration": "기존 폴더, 문서, 이슈, 리포트가 있는 프로젝트를 ModuFlow 구조로 안전하게 옮기는 마이그레이션 흐름을 정의합니다.",
   "002-project-profile": "제품 맥락, 환경, 연동, 담당자, 운영 메모를 담는 표준 프로젝트 프로필 계층을 만듭니다.",
   "003-knowledge-evidence-layer": "벤치마크, 조사, 리포트, 결정, 데이터 메모, 참고자료를 이슈와 스펙에 연결하는 지식/근거 계층을 추가합니다.",

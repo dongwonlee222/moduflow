@@ -1267,7 +1267,15 @@ def _issue_description_overrides(root, *, project_context=None):
         return {}
     if not isinstance(data, dict):
         return {}
-    return {str(k): str(v).strip() for k, v in data.items() if str(v).strip()}
+    # `__`-prefixed keys carry file-level notes, not issue descriptions. The
+    # map is legacy (issue 121): Korean descriptions belong in the
+    # issue's own `## 요약` section, and this override only keeps pre-2026-09-05
+    # rows rendering.
+    return {
+        str(k): str(v).strip()
+        for k, v in data.items()
+        if str(v).strip() and not str(k).startswith("__")
+    }
 
 
 def _issue_artifact_coverage(

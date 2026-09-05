@@ -15,7 +15,9 @@ Create the durable work item.
 4. Link opportunity, owner, scope, priority, acceptance criteria, related issues, sessions, and related artifacts.
 5. Dependency/priority fields (069): add `**Priority: p0|p1|p2|p3**` near the top, right after the `**Status:**` line (absent ⇒ defaults to `p2`). Add `**Blocked-by: <id>, <id>**` when the issue cannot start until other issues finish (absent ⇒ no blockers). Both are additive inline metadata — same convention as the canonical Status line (048), no frontmatter. `python3 scripts/project_lifecycle.py . --ready` lists unblocked backlog issues sorted by priority; `moduflow_ready` (MCP) returns the same list.
 6. Add a **Workflow Tasks** checklist. Every artifact-producing step (spec, plan, design, execute, review) is a tracked task with its artifact link and status — never produce an artifact off the books. As each step runs, check its box and link the artifact. This keeps the workflow itself visible inside the issue.
-7. If GitHub CLI is available and requested, create or sync the GitHub issue (see GitHub Issue Sync below).
+7. Write a **`## 요약`** section in Korean, one or two sentences, directly above `## Summary`. This is what the dashboard shows as the issue description and what the `한글 개요` panel is built from; without it the row renders `EN` with a `한글 없음` flag. The slot exists so the path is taken at creation time rather than remembered later; issue 121 proposes making that a constitution principle.
+8. Do **not** add the issue to `workspace/issue-descriptions.ko.json`. That map is legacy: it was the only working path until 2026-09-05, it stopped being updated after issue 087, and 32 issues now render in English with a further 55 depending on this map alone. Entries still win as an override so old rows keep rendering, but adding a key there rebuilds the manual path that failed.
+9. If GitHub CLI is available and requested, create or sync the GitHub issue (see GitHub Issue Sync below).
 
 ## GitHub Issue Sync (opt-in)
 

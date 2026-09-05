@@ -492,6 +492,80 @@ def check_hook_log(root):
     return recent_entries[:20]
 
 
+KOREAN_DESCRIPTION_EXAMPLE_LIMIT = 5
+
+
+def korean_description_coverage(root, *, project_context=None, memory=None):
+    """Count issues whose dashboard description resolves in Korean.
+
+    Reporting only — never a gate (constitution C9: missing Korean sidecars
+    "fall back, never gate"). The three sources are kept apart so the number is
+    actionable:
+
+    * ``artifact``    — resolved from the issue file's own Korean section or a
+                        ``specs/<id>/*.ko.md`` sidecar (the sustainable path).
+    * ``legacy_only`` — resolved *only* because ``workspace/issue-descriptions.ko.json``
+                        still covers it; technical debt, not coverage.
+    * ``missing``     — renders English on the dashboard (``한글 없음``).
+
+    The resolution itself is delegated to ``project_memory`` (constitution C8:
+    one parser per artifact format); this function only counts.
+    """
+    summary = {
+        "checked": False,
+        "total": 0,
+        "covered": 0,
+        "missing": 0,
+        "artifact": 0,
+        "legacy_only": 0,
+        "unreadable": 0,
+        "missing_examples": [],
+        "missing_not_listed": 0,
+    }
+    try:
+        memory = memory if memory is not None else load_project_memory()
+        issue_context = memory._evaluated_issue_context(
+            root, project_context=project_context
+        )
+        overrides = memory._issue_description_overrides(
+            root, project_context=project_context
+        )
+    except Exception:
+        return summary
+
+    summary["checked"] = True
+    texts = issue_context.get("texts", {})
+    missing_ids = []
+    for issue_id in sorted(issue_context.get("issues", {})):
+        summary["total"] += 1
+        text = texts.get(issue_id)
+        if text is None:
+            # Unreadable or unsafe source: count it, keep going, report it.
+            summary["unreadable"] += 1
+            text = ""
+        try:
+            summary_ko = memory._issue_summary_ko(
+                root, issue_id, text, project_context=project_context
+            )
+        except Exception:
+            summary["unreadable"] += 1
+            summary_ko = ""
+        if summary_ko:
+            summary["artifact"] += 1
+        elif overrides.get(issue_id):
+            summary["legacy_only"] += 1
+        else:
+            missing_ids.append(issue_id)
+
+    summary["covered"] = summary["artifact"] + summary["legacy_only"]
+    summary["missing"] = len(missing_ids)
+    summary["missing_examples"] = missing_ids[:KOREAN_DESCRIPTION_EXAMPLE_LIMIT]
+    summary["missing_not_listed"] = max(
+        0, summary["missing"] - len(summary["missing_examples"])
+    )
+    return summary
+
+
 def inspect_project(path, include_preflight=True, *, project_context=None, runtime_snapshot=None):
     requested = Path(path).resolve()
     snapshot = runtime_snapshot if runtime_snapshot is not None else runtime_provenance.capture_runtime(
@@ -555,6 +629,9 @@ def inspect_project(path, include_preflight=True, *, project_context=None, runti
         hook_log_warnings = check_hook_log(project_root)
     except Exception:
         hook_log_warnings = []
+    korean_descriptions = korean_description_coverage(
+        project_root, project_context=context
+    )
     missing_workflow = missing_workflow_paths(
         project_root, project_context=context
     )
@@ -648,6 +725,9 @@ def inspect_project(path, include_preflight=True, *, project_context=None, runti
             "drift": lifecycle_drift,  # 048: issue files vs state.json/dashboard
         },
         "installed_plugin": plugin_staleness,  # soft hint only — never affects exit code
+        # C9: Korean descriptions fall back, never gate. Soft hint only —
+        # never affects exit code, never a schema_gates error.
+        "korean_descriptions": korean_descriptions,
         "workflow": {
             "initialized": not missing_workflow,
             "missing": missing_workflow,
@@ -745,6 +825,29 @@ def inspect_project(path, include_preflight=True, *, project_context=None, runti
             f"hook health: {len(hook_log_warnings)} lifecycle hook event(s) logged in last 7 days (warnings/errors) — "
             "review .moduflow/logs/hooks.log for details."
         )
+
+    if korean_descriptions["checked"] and korean_descriptions["total"]:
+        message = (
+            f"hint: korean descriptions {korean_descriptions['covered']}/"
+            f"{korean_descriptions['total']} issues covered, "
+            f"{korean_descriptions['missing']} missing "
+            f"({korean_descriptions['artifact']} from an issue section or .ko.md sidecar, "
+            f"{korean_descriptions['legacy_only']} only from legacy "
+            "workspace/issue-descriptions.ko.json)."
+        )
+        if korean_descriptions["unreadable"]:
+            message += (
+                f" {korean_descriptions['unreadable']} issue source(s) could not be"
+                " read and resolved no Korean text of their own."
+            )
+        if korean_descriptions["missing_examples"]:
+            message += (
+                " e.g. "
+                + ", ".join(korean_descriptions["missing_examples"])
+                + f"; {korean_descriptions['missing_not_listed']} more not listed."
+            )
+        message += " Informational only (C9), not required."
+        result["recommendation"].append(message)
 
     if recovery_diagnostics["status"] == "incomplete":
         for record in recovery_diagnostics["transactions"]:

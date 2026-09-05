@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import re
 import tempfile
 import unittest
@@ -591,3 +592,63 @@ class StatusGroupOrderTest(unittest.TestCase):
             html = self._render(Path(tmp))
         body = html.split("function groupedRows")[1].split("function renderIssueTable")[0]
         self.assertIn("index === -1 ? STATUS_GROUP_ORDER.length", body)
+
+
+class KoreanDescriptionPathTest(unittest.TestCase):
+    """Issue 121: the slot the resolver reads must exist where issues are written.
+
+    `_issue_summary_ko` has always read a `## 요약` section from the issue file,
+    but `templates/issues/issue.md` carried no Korean section, so that path
+    could never fire for a new issue. The manual JSON override became the only
+    working path and stopped at issue 087, leaving 32 issues in English and
+    55 more reachable only through that map.
+    """
+
+    def test_the_issue_template_carries_the_slot_the_resolver_reads(self):
+        template = (ROOT / "templates/issues/issue.md").read_text(encoding="utf-8")
+        self.assertIn("## 요약", template)
+        self.assertIn("{{summary_ko}}", template)
+
+    def test_the_korean_slot_has_a_producer(self):
+        """The same rule applied to itself: a slot with no filler is the defect."""
+        promote = (ROOT / "scripts/project_promote.py").read_text(encoding="utf-8")
+        self.assertIn('"summary_ko"', promote)
+
+    def test_a_korean_section_in_the_issue_file_resolves(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            text = (
+                "# Issue: `001-x`\n\n**Status: backlog** — created 2026-09-05.\n\n"
+                "## 요약\n\n한글 설명이 이슈 파일 안에 있습니다.\n\n"
+                "## Summary\n\nEnglish summary.\n"
+            )
+            (root / "issues" / "001-x.md").write_text(text, encoding="utf-8")
+            self.assertEqual(
+                memory._issue_summary_ko(root, "001-x", text),
+                "한글 설명이 이슈 파일 안에 있습니다.",
+            )
+
+    def test_an_issue_with_no_korean_anywhere_resolves_to_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            text = "# Issue: `001-x`\n\n**Status: backlog** — created 2026-09-05.\n\n## Summary\n\nEnglish only.\n"
+            (root / "issues" / "001-x.md").write_text(text, encoding="utf-8")
+            self.assertEqual(memory._issue_summary_ko(root, "001-x", text), "")
+
+    def test_a_file_level_note_in_the_legacy_map_is_not_an_issue(self):
+        """The legacy marker must not be counted as a covered issue."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "issues").mkdir()
+            (root / "workspace").mkdir()
+            (root / "workspace" / "issue-descriptions.ko.json").write_text(
+                json.dumps(
+                    {"__legacy__": "do not add new issues here", "001-x": "한글 설명"},
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            overrides = memory._issue_description_overrides(root)
+        self.assertEqual(overrides, {"001-x": "한글 설명"})

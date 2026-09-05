@@ -270,7 +270,11 @@ class PromoteOtherKindsTests(unittest.TestCase):
             self.assertIn(f"A {kind} record worth promoting.", issue_text)
             self.assertIn("- Promoted-from: `2026-07-06-" + kind + "-sample`", issue_text)
             # No derivable fields → all three AI sections carry the TODO marker.
-            self.assertEqual(issue_text.count("TODO(blocking-execution)"), 6)
+            # Seventh since 2026-09-05: the `## 요약` Korean slot. A promoted
+            # record has no Korean text, so the slot lands as a visible blocking
+            # TODO rather than an unfilled `{{summary_ko}}` placeholder
+            # (issue 121 — a slot needs a producer).
+            self.assertEqual(issue_text.count("TODO(blocking-execution)"), 7)
 
             updated = record.read_text(encoding="utf-8")
             self.assertIn(f"promoted_to: {plan['issue_id']}\n", updated)
