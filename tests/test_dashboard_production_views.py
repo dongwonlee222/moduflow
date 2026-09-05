@@ -544,3 +544,50 @@ class RenderedScriptIsRunnableTest(unittest.TestCase):
         broken = script.replace(".join('\\n')", ".join('\n')", 1)
         self.assertNotEqual(broken, script, "the guarded construct disappeared")
         self.assertTrue(_unterminated_literals(broken))
+
+
+class StatusGroupOrderTest(unittest.TestCase):
+    """workspace/inbox.md 2026-07-06: the user could not find their own active issue.
+
+    Group order followed whichever status the first row happened to carry, so
+    under the default created_desc sort the active group sat below a screenful
+    of done ones.
+
+    These are marker assertions on generated JS — the same kind that let a
+    dead page ship on 2026-09-05. The ordering itself was verified in a
+    browser against a probe row set (done, done, backlog, active, review,
+    weird, blocked → active, review, blocked, backlog, done, weird); what
+    these pin is that the ordering code stays present and keeps its sequence.
+    """
+
+    def _render(self, root):
+        (root / "issues").mkdir(exist_ok=True)
+        (root / "issues" / "001-x.md").write_text(
+            "# Issue: `001-x`\n\n**Status: done** — created 2026-09-04.\n",
+            encoding="utf-8",
+        )
+        return memory.render_project_view(root)
+
+    def test_attention_states_are_ordered_ahead_of_settled_ones(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        match = re.search(r"const STATUS_GROUP_ORDER = \[(.*?)\];", html)
+        self.assertIsNotNone(match, "status group order was removed")
+        order = [item.strip().strip("'\"") for item in match.group(1).split(",")]
+        self.assertEqual(
+            order,
+            ["active", "review", "blocked", "backlog", "done", "superseded"],
+        )
+
+    def test_grouping_by_goal_is_left_alone(self):
+        """Only the status axis has a meaningful order; goals do not."""
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        body = html.split("function groupedRows")[1].split("\n}")[0]
+        self.assertIn("if(key !== 'status') return groups;", body)
+
+    def test_an_unknown_status_is_kept_not_dropped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        body = html.split("function groupedRows")[1].split("function renderIssueTable")[0]
+        self.assertIn("index === -1 ? STATUS_GROUP_ORDER.length", body)

@@ -26,8 +26,12 @@ This is a ModuFlow-native command, not a Claude-client-only skill: it ships with
 1. Generate the project view from current issues + memory frontmatter:
 
 ```bash
-python3 scripts/project_memory.py <project-path> --dashboard
+python3 scripts/project_memory.py <project-path> --dashboard --open
 ```
+
+Drop `--open` when generating without a desktop (CI, a remote shell). `--open`
+hands the file to the OS viewer after writing it; if that fails it says why and
+still exits 0, because the page was generated either way.
 
 2. Report the output path: `memory/dashboard.html`.
 
@@ -57,6 +61,7 @@ python3 scripts/project_memory.py <project-path> --issue <id>
 - **Read-only.** Nothing on this page promotes a record to a playbook, applies a playbook to a record, marks a required check, or writes any file. A `[review]` check item is a reviewer assertion held outside this view; a `[auto]` item's result is computed at validation time, not by the page.
 - The header carries a **project selector**. Every tab reads one embedded payload for the selected project, and the choice is kept in the URL as `?project=<id>`, so a reload or a shared link reopens the same project. An unregistered id in the URL falls back to the default and says so in the console rather than rendering an empty page.
 - A project's id is its profile ID, falling back to the root folder slug. With one project the selector is present but inert — the control exists so Issue 092 has a stable contract, not because there is somewhere to switch to. Cross-project switching and the `전체 프로젝트` summary belong to Issue `118-portfolio-mode-dashboard`; the page refuses a switch loudly instead of half-rendering one.
+- The issue DB groups by status in a fixed order — **active → review → blocked → backlog → done → superseded** — so what needs attention is at the top regardless of the row sort. A status not in that list keeps its position at the end rather than being hidden.
 - An empty production library is a state, not a fault. The wording says nothing has been registered yet. The ModuFlow repository itself holds zero production records, so this is the view seen most often while developing the dashboard.
 
 ## Next

@@ -1774,6 +1774,12 @@ function filteredRows(){
     return (!q || text.includes(q)) && (STATUS_VIEW[issueDbState.view] || STATUS_VIEW.all)(row);
   }).sort(compareRows);
 }
+// What needs attention comes first. Group order used to follow whichever
+// status happened to appear in the first row, so under the default
+// created_desc sort a single new backlog issue pushed the active group
+// below a screenful of done ones and the user could not find their own
+// active issue (workspace/inbox.md, 2026-07-06).
+const STATUS_GROUP_ORDER = ['active','review','blocked','backlog','done','superseded'];
 function groupedRows(rows){
   if(issueDbState.group === 'none') return [{label:'', rows}];
   const key = issueDbState.group === 'goal' ? 'goal' : 'status';
@@ -1784,7 +1790,17 @@ function groupedRows(rows){
     if(!by[label]){ by[label] = {label, rows: []}; groups.push(by[label]); }
     by[label].rows.push(row);
   });
-  return groups;
+  if(key !== 'status') return groups;
+  // A status this list does not know keeps its encounter order, after the
+  // ones it does. Sorting it to the front or dropping it would both hide it.
+  const rank = label => {
+    const index = STATUS_GROUP_ORDER.indexOf(label);
+    return index === -1 ? STATUS_GROUP_ORDER.length : index;
+  };
+  return groups
+    .map((group, index) => ({group, index}))
+    .sort((a, b) => rank(a.group.label) - rank(b.group.label) || a.index - b.index)
+    .map(entry => entry.group);
 }
 function renderIssueTable(focusSearch=false){
   const rows = filteredRows();
@@ -2310,6 +2326,31 @@ def _dashboard_project_identity(root, context):
     return (str(context.get("project_id") or "").strip() or slug, slug)
 
 
+def _open_in_viewer(path):
+    """Open a generated page in the desktop viewer. Best effort, never fatal.
+
+    Generating the dashboard and then making the user find the file is the
+    step people skip. This is a convenience only: a failure to open must not
+    turn a successful generation into a failed command, so the reason is
+    printed and the exit code stays 0. The path is already printed above.
+    """
+    import shutil
+    import subprocess
+    import sys
+
+    openers = {"darwin": ["open"], "win32": ["cmd", "/c", "start", ""]}
+    argv = openers.get(sys.platform, ["xdg-open"])
+    if not shutil.which(argv[0]):
+        print(f"  (열지 못했습니다: {argv[0]} 없음 — 위 경로를 직접 여세요)")
+        return False
+    try:
+        subprocess.run([*argv, str(path)], check=True, timeout=15)
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"  (열지 못했습니다: {exc} — 위 경로를 직접 여세요)")
+        return False
+    return True
+
+
 def render_project_view(root, *, project_context=None):
     context = project_registry.context_for_operation(
         root,
@@ -2753,6 +2794,7 @@ def main():
     parser.add_argument("--references", default="", help="Comma-separated references memory ids.")
     parser.add_argument("--graph", action="store_true", help="Render a visual Mermaid chart of the memory context.")
     parser.add_argument("--dashboard", action="store_true", help="Generate an interactive Cytoscape dashboard HTML at memory/dashboard.html.")
+    parser.add_argument("--open", dest="open_after", action="store_true", help="Open the generated page in the default viewer after writing it.")
     parser.add_argument("--issue", default="", help="Generate a single-issue artifact drill-down panel at memory/issue-<id>.html.")
     parser.add_argument("--summary", default="")
     parser.add_argument("--rationale", default="")
@@ -2789,6 +2831,8 @@ def main():
                 render_memory_panel(args.project_path, mid), encoding="utf-8")
         print(str(out_path))
         print(f"  + {len(issue_nodes)} issue panel(s), {len(mem_nodes)} memory panel(s)")
+        if args.open_after:
+            _open_in_viewer(out_path)
         return 0
 
     if args.list_ids:
