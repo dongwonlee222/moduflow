@@ -356,3 +356,44 @@ class DispatchableNowTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DeferredTaskTest(unittest.TestCase):
+    """A task moved to another issue keeps its line but is not work to pick up."""
+
+    TASKS = """# Tasks
+
+- [x] Implementation: collector [files: a.py]
+- [ ] [deferred → 118-portfolio-mode-dashboard] Implementation: portfolio [files: b.py] [depends: T01]
+- [ ] Release: register [files: c.py] [depends: T01]
+"""
+
+    def _module(self):
+        return load_module("worker_orchestrator_deferred", "scripts/worker_orchestrator.py")
+
+    def _tasks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "tasks.md"
+            path.write_text(self.TASKS, encoding="utf-8")
+            return self._module().parse_tasks(path)
+
+    def test_the_marker_becomes_a_status_not_prose(self):
+        tasks = self._tasks()
+        self.assertEqual(tasks[1]["status"], "deferred")
+        self.assertEqual(tasks[1]["deferred_to"], "118-portfolio-mode-dashboard")
+        self.assertNotIn("deferred", tasks[1]["text"])
+        self.assertEqual(tasks[2]["status"], "ready")
+        self.assertIsNone(tasks[2]["deferred_to"])
+
+    def test_a_deferred_task_is_never_offered_for_dispatch(self):
+        planned = [
+            dict(task, id=f"T{index + 1:02d}")
+            for index, task in enumerate(self._tasks())
+        ]
+        now = self._module().dispatchable_now(planned)
+        self.assertNotIn("T02", now["dispatchable"])
+        self.assertNotIn("T02", now["ready"])
+        self.assertNotIn("T02", now["blocked"])
+        self.assertEqual(now["deferred"], ["T02"])
+        # The task behind it still runs; deferral is not a blocker.
+        self.assertIn("T03", now["dispatchable"])

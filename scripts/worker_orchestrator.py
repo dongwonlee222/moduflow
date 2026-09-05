@@ -65,6 +65,10 @@ COGNITIVE_DEMAND_GUIDANCE = {
     ),
 }
 CHECKBOX_RE = re.compile(r"^\s*-\s+\[(?P<status>[ xX])\]\s+(?P<text>.+?)\s*$")
+# A task moved to another issue keeps its line so numbering and every
+# `[depends:]` reference stay valid (C5). It is not work anyone can pick up
+# here, so it must not be offered as dispatchable.
+DEFERRED_RE = re.compile(r"^\[deferred\s*(?:\u2192|->)\s*(?P<target>[^\]]+)\]\s*")
 METADATA_RE = re.compile(r"\s*\[(?P<key>files|globs|depends|shared_state):\s*(?P<value>[^\]]*)\]")
 
 
@@ -101,10 +105,22 @@ def parse_tasks(tasks_path):
         if not raw_text:
             continue
         text, metadata = parse_task_metadata(raw_text)
+        deferral = DEFERRED_RE.match(text)
+        deferred_to = None
+        if deferral:
+            deferred_to = deferral.group("target").strip()
+            text = text[deferral.end():].strip()
+        if match.group("status").lower() == "x":
+            status = "done"
+        elif deferred_to:
+            status = "deferred"
+        else:
+            status = "ready"
         tasks.append(
             {
                 "text": text,
-                "status": "done" if match.group("status").lower() == "x" else "ready",
+                "status": status,
+                "deferred_to": deferred_to,
                 "expected_files": metadata["files"],
                 "expected_globs": metadata["globs"],
                 "dependencies": metadata["depends"],
@@ -216,11 +232,18 @@ def dispatchable_now(planned_tasks):
     without a human noticing it.
     """
     done = {task["id"] for task in planned_tasks if task.get("status") == "done"}
-    ready = [
+    deferred = [
+        task["id"] for task in planned_tasks if task.get("status") == "deferred"
+    ]
+    open_tasks = [
         task
         for task in planned_tasks
-        if task.get("status") != "done"
-        and all(dependency in done for dependency in task.get("dependencies", []))
+        if task.get("status") not in ("done", "deferred")
+    ]
+    ready = [
+        task
+        for task in open_tasks
+        if all(dependency in done for dependency in task.get("dependencies", []))
     ]
     selected, claimed = [], set()
     for task in ready:
@@ -237,9 +260,12 @@ def dispatchable_now(planned_tasks):
         "dispatchable": selected,
         "blocked": [
             task["id"]
-            for task in planned_tasks
-            if task.get("status") != "done" and task["id"] not in {t["id"] for t in ready}
+            for task in open_tasks
+            if task["id"] not in {t["id"] for t in ready}
         ],
+        # Reported, never silently dropped: a reader has to be able to tell a
+        # task that moved elsewhere from one that simply is not ready.
+        "deferred": deferred,
     }
 
 
@@ -370,6 +396,7 @@ def build_worker_plan(root, issue_id, *, project_context=None):
                 "id": task_id,
                 "text": task["text"],
                 "status": task["status"],
+                "deferred_to": task.get("deferred_to"),
                 "worker": worker,
                 "worker_file": f"workers/{worker}.md",
                 "parallel_group": parallel_group,
@@ -462,8 +489,16 @@ def render_worker_plan_markdown(plan):
                 "These declare no overlapping files and can start together. "
                 "Eligibility changes as tasks complete; re-read this section after each one."
             )
-    else:
+    elif now.get("blocked"):
         lines.append("- None. Every remaining task is blocked or overlaps a started one.")
+    else:
+        lines.append("- None. No task is waiting to start.")
+    deferred = now.get("deferred") or []
+    if deferred:
+        lines.append("")
+        for task_id in deferred:
+            target = by_id[task_id].get("deferred_to") or "another issue"
+            lines.append(f"- `{task_id}` is deferred to `{target}`, not startable here.")
     lines.extend(["", "## Merge Order", "", "- " + " → ".join(plan["parallel"]["merge_order"])])
 
     lines.extend(["", "## Worker Inventory", ""])

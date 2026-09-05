@@ -53,15 +53,10 @@
       "T11"
     ],
     "now": {
-      "ready": [
-        "T09",
-        "T11"
-      ],
-      "dispatchable": [
-        "T09",
-        "T11"
-      ],
-      "blocked": [
+      "ready": [],
+      "dispatchable": [],
+      "blocked": [],
+      "deferred": [
         "T10"
       ]
     },
@@ -78,6 +73,7 @@
       "id": "T01",
       "text": "Implementation: 제작 기록·플레이북 수집기와 세 상태 판정",
       "status": "done",
+      "deferred_to": null,
       "worker": "implementation-worker",
       "worker_file": "workers/implementation-worker.md",
       "parallel_group": "group-1",
@@ -103,6 +99,7 @@
       "id": "T02",
       "text": "QA: 수집기와 판정 테스트",
       "status": "done",
+      "deferred_to": null,
       "worker": "qa-reviewer",
       "worker_file": "workers/qa-reviewer.md",
       "parallel_group": "group-2",
@@ -132,6 +129,7 @@
       "id": "T03",
       "text": "QA: 기존 세 탭의 생성 결과 동등성 고정",
       "status": "done",
+      "deferred_to": null,
       "worker": "qa-reviewer",
       "worker_file": "workers/qa-reviewer.md",
       "parallel_group": "group-2",
@@ -157,6 +155,7 @@
       "id": "T04",
       "text": "Docs: 대시보드 명령에 두 탭과 읽기 전용 경계 기술",
       "status": "done",
+      "deferred_to": null,
       "worker": "release-manager",
       "worker_file": "workers/release-manager.md",
       "parallel_group": "group-3",
@@ -182,6 +181,7 @@
       "id": "T05",
       "text": "Implementation: 제작 기록 탭 렌더링",
       "status": "done",
+      "deferred_to": null,
       "worker": "implementation-worker",
       "worker_file": "workers/implementation-worker.md",
       "parallel_group": "group-1",
@@ -211,6 +211,7 @@
       "id": "T06",
       "text": "Implementation: 플레이북 탭 렌더링",
       "status": "done",
+      "deferred_to": null,
       "worker": "implementation-worker",
       "worker_file": "workers/implementation-worker.md",
       "parallel_group": "group-1",
@@ -240,6 +241,7 @@
       "id": "T07",
       "text": "Implementation: 제작 기록·플레이북 상세 모달",
       "status": "done",
+      "deferred_to": null,
       "worker": "implementation-worker",
       "worker_file": "workers/implementation-worker.md",
       "parallel_group": "group-1",
@@ -269,6 +271,7 @@
       "id": "T08",
       "text": "QA: 두 탭 렌더링과 빈 상태 테스트",
       "status": "done",
+      "deferred_to": null,
       "worker": "qa-reviewer",
       "worker_file": "workers/qa-reviewer.md",
       "parallel_group": "group-2",
@@ -297,7 +300,8 @@
     {
       "id": "T09",
       "text": "Implementation: 선택기 껍데기와 URL 복원, 한 payload 규율",
-      "status": "ready",
+      "status": "done",
+      "deferred_to": null,
       "worker": "implementation-worker",
       "worker_file": "workers/implementation-worker.md",
       "parallel_group": "sequential",
@@ -328,7 +332,8 @@
     {
       "id": "T10",
       "text": "Implementation: 포트폴리오 수집과 전체 프로젝트 요약",
-      "status": "ready",
+      "status": "deferred",
+      "deferred_to": "118-portfolio-mode-dashboard",
       "worker": "implementation-worker",
       "worker_file": "workers/implementation-worker.md",
       "parallel_group": "sequential",
@@ -358,7 +363,8 @@
     {
       "id": "T11",
       "text": "Release: 신규 스위트와 자산 등록",
-      "status": "ready",
+      "status": "done",
+      "deferred_to": null,
       "worker": "release-manager",
       "worker_file": "workers/release-manager.md",
       "parallel_group": "sequential",

@@ -15,9 +15,9 @@ Parallel eligible: `false`
 | T06 | `implementation-worker` | `group-1` | done | scripts/project_memory.py | T05 | Implementation: 플레이북 탭 렌더링 |
 | T07 | `implementation-worker` | `group-1` | done | scripts/project_memory.py | T06 | Implementation: 제작 기록·플레이북 상세 모달 |
 | T08 | `qa-reviewer` | `group-2` | done | tests/test_dashboard_production_views.py | T07 | QA: 두 탭 렌더링과 빈 상태 테스트 |
-| T09 | `implementation-worker` | `sequential` | ready | scripts/project_memory.py | T03, T07 | Implementation: 선택기 껍데기와 URL 복원, 한 payload 규율 |
-| T10 | `implementation-worker` | `sequential` | ready | scripts/project_memory.py, scripts/project_portfolio.py | T09 | Implementation: 포트폴리오 수집과 전체 프로젝트 요약 |
-| T11 | `release-manager` | `sequential` | ready | scripts/release_check.py, scripts/validate_moduflow.py | T08 | Release: 신규 스위트와 자산 등록 |
+| T09 | `implementation-worker` | `sequential` | done | scripts/project_memory.py | T03, T07 | Implementation: 선택기 껍데기와 URL 복원, 한 payload 규율 |
+| T10 | `implementation-worker` | `sequential` | deferred | scripts/project_memory.py, scripts/project_portfolio.py | T09 | Implementation: 포트폴리오 수집과 전체 프로젝트 요약 |
+| T11 | `release-manager` | `sequential` | done | scripts/release_check.py, scripts/validate_moduflow.py | T08 | Release: 신규 스위트와 자산 등록 |
 
 ## Isolation
 
@@ -35,10 +35,9 @@ Parallel eligible: `false`
 
 ## Dispatchable Now
 
-- `T09` — scripts/project_memory.py
-- `T11` — scripts/release_check.py, scripts/validate_moduflow.py
+- None. No task is waiting to start.
 
-These declare no overlapping files and can start together. Eligibility changes as tasks complete; re-read this section after each one.
+- `T10` is deferred to `118-portfolio-mode-dashboard`, not startable here.
 
 ## Merge Order
 
