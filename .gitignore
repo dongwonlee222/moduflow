@@ -15,3 +15,6 @@ memory/mem-*.html
 # machine-local hook state (issue 072) — never commit
 .moduflow/state/
 .moduflow/logs/
+
+# Playwright MCP working directory (tool cache, not a project artifact)
+.playwright-mcp/
