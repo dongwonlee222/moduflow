@@ -1,6 +1,6 @@
 # Issue 086: Project-Aware Production Library Dashboard
 
-**Status: backlog** — created 2026-07-10; spec, design, and prototype completed 2026-07-10. Execution not started.
+**Status: done** — created 2026-07-10; spec, design, and prototype completed 2026-07-10; started 2026-09-04; done 2026-09-05.
 **Priority: p2**
 **Blocked-by: `102-project-registry-and-resolver`**
 
