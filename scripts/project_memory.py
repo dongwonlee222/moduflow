@@ -1985,13 +1985,13 @@ function openPlaybook(id){
     : `아직 승인되지 않았습니다 (${esc(row.status || '-')})`;
   const checks = (row.required_checks || []).length
     ? '<h3>Required Checks</h3><pre>' + (row.required_checks || []).map(c =>
-        `${esc(c.id)} [${esc(c.kind)}] ${esc(c.text)}${c.retired ? ' (retired)' : ''}`).join('\n')
+        `${esc(c.id)} [${esc(c.kind)}] ${esc(c.text)}${c.retired ? ' (retired)' : ''}`).join('\\n')
       + '</pre><div class="cut">확인 항목은 검토자의 주장입니다. 이 화면에서 완료 처리하지 않습니다.</div>'
     : '';
   const supersede = (row.superseded_by || []).length
     ? `<h3>Superseded By</h3><pre>${esc((row.superseded_by || []).join(', '))}</pre>` : '';
   const sources = (row.source_records || []).length
-    ? `<h3>Source Records</h3><pre>${esc((row.source_records || []).join('\n'))}</pre>` : '';
+    ? `<h3>Source Records</h3><pre>${esc((row.source_records || []).join('\\n'))}</pre>` : '';
   openModal(`<h2 id="modal-title">${esc(row.title)}</h2>
     <div class="meta">${esc((row.deliverable_types || []).join(', '))} · v${esc(row.version || '-')} · ${approval}
       <br>검토 예정 ${esc(row.review_after || '-')} · 절차 ${processCell(row)}

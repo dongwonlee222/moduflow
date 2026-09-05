@@ -299,3 +299,121 @@ class DetailModalTest(unittest.TestCase):
         self.assertEqual(capped["Artifacts"]["omitted_chars"], 500)
         self.assertEqual(len(capped["Artifacts"]["text"]), memory.SECTION_CHAR_BUDGET)
         self.assertFalse(capped["Decisions"]["truncated"])
+
+
+def _unterminated_literals(src):
+    """Return (line, excerpt) for every ' or " literal broken by a newline.
+
+    PROJECT_VIEW_TEMPLATE is a plain (non-raw) Python string, so a JS escape
+    written `\n` instead of `\\n` reaches the browser as a real newline and
+    kills the whole script. String-existence assertions cannot see this; the
+    page still contains every marker they look for.
+
+    Lexes strings, template literals, comments and regex literals. Quotes
+    inside a `${}` substitution are treated as template text, so a literal
+    broken in there would be missed — the scanner is validated against the
+    real template rather than trusted in the abstract.
+    """
+    bad, i, n, line = [], 0, len(src), 1
+    state, prev = None, ""
+    while i < n:
+        ch = src[i]
+        if ch == "\n":
+            line += 1
+        if state in ("'", '"'):
+            if ch == "\\":
+                i += 2
+                continue
+            if ch == "\n":
+                bad.append((line - 1, src[max(0, i - 70):i].rsplit("\n", 1)[-1]))
+                state = None
+            elif ch == state:
+                state = None
+        elif state == "`":
+            if ch == "\\":
+                i += 2
+                continue
+            if ch == "`":
+                state = None
+        elif state == "/re":
+            if ch == "\\":
+                i += 2
+                continue
+            if ch == "[":
+                state = "/re["
+            elif ch in "/\n":
+                state = None
+        elif state == "/re[":
+            if ch == "\\":
+                i += 2
+                continue
+            if ch == "]":
+                state = "/re"
+        elif state == "//":
+            if ch == "\n":
+                state = None
+        elif state == "/*":
+            if src.startswith("*/", i):
+                state = None
+                i += 2
+                continue
+        else:
+            if src.startswith("//", i):
+                state = "//"
+                i += 2
+                continue
+            if src.startswith("/*", i):
+                state = "/*"
+                i += 2
+                continue
+            if ch == "/" and (prev == "" or prev in "(,=:[!&|?{};+-*%~^<>"):
+                state = "/re"
+            elif ch in "'\"`":
+                state = ch
+        if not ch.isspace():
+            prev = ch
+        i += 1
+    return bad
+
+
+class RenderedScriptIsRunnableTest(unittest.TestCase):
+    """The page shipped on 2026-09-05 parsed as HTML but died as JavaScript.
+
+    Two `.join('\\n')` calls lost a backslash when T07/T08 landed, so every
+    tab, the issue table and both graphs were dead in the browser while 25
+    marker-based tests reported success.
+    """
+
+    def _script(self, html):
+        blocks = [
+            body
+            for body in re.findall(r"<script[^>]*>(.*?)</script>", html, re.S)
+            if "function showTab" in body
+        ]
+        self.assertEqual(len(blocks), 1, "expected exactly one inline page script")
+        return blocks[0]
+
+    def _render(self, root):
+        (root / "issues").mkdir(exist_ok=True)
+        (root / "issues" / "001-x.md").write_text(
+            "# Issue: `001-x`\n\n**Status: done** — created 2026-09-04.\n",
+            encoding="utf-8",
+        )
+        return memory.render_project_view(root)
+
+    def test_no_string_literal_is_broken_by_a_newline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            script = self._script(self._render(Path(tmp)))
+        self.assertEqual(
+            _unterminated_literals(script),
+            [],
+            "a lost backslash would kill the entire page script",
+        )
+
+    def test_the_scanner_would_actually_catch_the_regression(self):
+        """A test that cannot fail protects nothing."""
+        with tempfile.TemporaryDirectory() as tmp:
+            script = self._script(self._render(Path(tmp)))
+        broken = script.replace(".join('\\n')", ".join('\n')", 1)
+        self.assertNotEqual(broken, script, "the guarded construct disappeared")
+        self.assertTrue(_unterminated_literals(broken))
