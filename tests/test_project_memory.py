@@ -879,15 +879,21 @@ More detail contents here.
             )
 
             html = project_memory.render_project_view(root)
-            # Anchor on the generic `;\nconst ` terminator, not on the next
-            # payload's name: adding a payload must not break this test, which
-            # it did twice while Issue 086 landed two new tabs.
+            # There is exactly one embedded payload now (Issue 086 T09), so
+            # read the envelope once and index into it. This is what broke
+            # twice while 086 landed two new tabs: anchoring on a neighbouring
+            # constant's name made the test hostage to payload layout.
+            envelope_match = re.search(
+                r"const PROJECTS = (.*?);\nfunction projectPayload", html, re.S
+            )
+            self.assertIsNotNone(envelope_match, "PROJECTS payload not found")
+            envelope = json.loads(envelope_match.group(1))
+            self.assertEqual(envelope["schema"], "moduflow.dashboard-projects.v1")
+            project = envelope["projects"][envelope["default_project_id"]]
+
             def payload(name):
-                match = re.search(
-                    r"const " + name + r" = (.*?);\nconst ", html, re.S
-                )
-                self.assertIsNotNone(match, f"{name} payload not found")
-                return json.loads(match.group(1))
+                self.assertIn(name.lower(), project, f"{name} payload not found")
+                return project[name.lower()]
 
             rows = payload("ISSUE_ROWS")
             issue_elements = payload("ISSUE_ELEMENTS")
@@ -1115,8 +1121,8 @@ More detail contents here.
             self.assertIn("이슈 DB", html)
             self.assertIn("이슈 그래프", html)
             self.assertIn("지식 그래프", html)
-            self.assertIn("const ISSUE_ROWS =", html)
-            self.assertIn("const ISSUE_ELEMENTS =", html)
+            self.assertIn("let ISSUE_ROWS =", html)
+            self.assertIn("let ISSUE_ELEMENTS =", html)
             self.assertIn('id="issue-search"', html)
             self.assertIn('data-view="missing"', html)
             self.assertIn('id="issue-sort"', html)
@@ -1448,9 +1454,12 @@ class ExistingDashboardRegressionFloor(unittest.TestCase):
         'id="badge-toggle"',
         'id="legend-issues"',
         'id="info"',
-        "__ISSUE_ROWS__",
-        "__ISSUE_ELEMENTS__",
-        "__MEMORY_ELEMENTS__",
+        "__PROJECTS_JSON__",
+        # The three original payloads still reach the page; they now travel
+        # inside the single project envelope instead of one constant each.
+        '"issue_rows"',
+        '"issue_elements"',
+        '"memory_elements"',
     )
 
     def _render(self, tmp):

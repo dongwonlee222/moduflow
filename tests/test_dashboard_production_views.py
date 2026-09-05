@@ -189,7 +189,17 @@ class DashboardTabRenderingTest(unittest.TestCase):
 
     def _payload(self, html, name):
         import json
-        return json.loads(re.search(r"const " + name + r" = (.*?);\n(?:const |$)", html, re.S).group(1))
+        # One embedded payload holds every tab's rows (Issue 086 T09), so read
+        # the envelope and index into the default project rather than matching
+        # a per-tab constant that no longer exists.
+        match = re.search(
+            r"const PROJECTS = (.*?);\nfunction projectPayload", html, re.S
+        )
+        self.assertIsNotNone(match, "PROJECTS payload not found")
+        envelope = json.loads(match.group(1))
+        self.assertEqual(envelope["schema"], "moduflow.dashboard-projects.v1")
+        project = envelope["projects"][envelope["default_project_id"]]
+        return project[name.lower()]
 
     def test_both_tabs_exist_after_the_original_three(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -223,7 +233,7 @@ class DashboardTabRenderingTest(unittest.TestCase):
             html = self._render(Path(tmp))
         for affordance in ("checkbox", "complete_check", "markCheck", "promote("):
             self.assertNotIn(
-                affordance, html.split("const PLAYBOOK_ROWS")[-1],
+                affordance, html.split("function projectPayload")[-1],
                 f"{affordance} would let the page act on a check",
             )
 
@@ -299,6 +309,123 @@ class DetailModalTest(unittest.TestCase):
         self.assertEqual(capped["Artifacts"]["omitted_chars"], 500)
         self.assertEqual(len(capped["Artifacts"]["text"]), memory.SECTION_CHAR_BUDGET)
         self.assertFalse(capped["Decisions"]["truncated"])
+
+
+class ProjectSelectorTest(unittest.TestCase):
+    """T09: one payload, one selector, one restorable URL state."""
+
+    def _render(self, root):
+        (root / "issues").mkdir(exist_ok=True)
+        (root / "issues" / "001-x.md").write_text(
+            "# Issue: `001-x`\n\n**Status: done** — created 2026-09-04.\n",
+            encoding="utf-8",
+        )
+        return memory.render_project_view(root)
+
+    def _envelope(self, html):
+        import json
+
+        match = re.search(
+            r"const PROJECTS = (.*?);\nfunction projectPayload", html, re.S
+        )
+        self.assertIsNotNone(match, "PROJECTS payload not found")
+        return json.loads(match.group(1))
+
+    def test_the_page_embeds_one_payload_not_five(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        self.assertEqual(html.count("const PROJECTS = "), 1)
+        # The five per-tab payload constants are gone; nothing may reintroduce
+        # a second embedded source that a project switch would have to keep
+        # in sync by hand.
+        for stale in (
+            "const ISSUE_ROWS = [",
+            "const PRODUCTION_ROWS = [",
+            "const PLAYBOOK_ROWS = [",
+        ):
+            self.assertNotIn(stale, html, stale)
+        self.assertNotIn("__PROJECTS_JSON__", html, "placeholder was not filled")
+
+    def test_every_tab_reads_from_the_same_envelope(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            envelope = self._envelope(self._render(Path(tmp)))
+        self.assertEqual(envelope["schema"], "moduflow.dashboard-projects.v1")
+        project = envelope["projects"][envelope["default_project_id"]]
+        for key in (
+            "issue_rows",
+            "issue_elements",
+            "memory_elements",
+            "production_rows",
+            "playbook_rows",
+        ):
+            self.assertIn(key, project, key)
+
+    def test_a_project_without_a_profile_id_falls_back_to_its_root_slug(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            envelope = self._envelope(self._render(root))
+        self.assertEqual(envelope["default_project_id"], root.name)
+        self.assertEqual(
+            envelope["projects"][root.name]["label"], root.name
+        )
+
+    def test_the_selector_is_present_and_inert_for_a_single_project(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        self.assertIn('id="project-select"', html)
+        # One registered project means nothing to switch to. The control still
+        # ships so Issue 092 has a stable contract to bind against.
+        self.assertIn("select.disabled = ids.length < 2;", html)
+
+    def test_url_state_is_written_and_restored(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        self.assertIn("currentProjectParam", html)
+        self.assertIn("url.searchParams.set('project', id)", html)
+        self.assertIn("history.replaceState", html)
+
+    def test_an_unknown_project_id_warns_and_falls_back(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        restore = html.split("const requestedProject")[-1]
+        self.assertIn("console.warn", restore)
+        self.assertIn("applyProject(requestedProject)", restore)
+
+    def test_switching_projects_refuses_loudly_instead_of_half_rendering(self):
+        """The graphs are built once at load; a silent no-op would lie."""
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        switch = html.split("function selectProject")[-1]
+        self.assertIn("throw new Error", switch.split("closeModal")[0])
+        self.assertIn("Issue 118", switch)
+
+    def test_a_switch_closes_the_modal_before_it_repaints(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        body = html.split("function selectProject")[-1].split("\n}")[0]
+        self.assertLess(
+            body.index("closeModal()"),
+            body.index("renderIssueTable()"),
+            "a stale modal would survive the repaint",
+        )
+
+
+class ProjectIdentityTest(unittest.TestCase):
+    """The id in the payload is resolved, never invented."""
+
+    def test_a_profile_id_wins_over_the_slug(self):
+        context = {"canonical_root": "/tmp/some-root", "project_id": "modu-charge"}
+        self.assertEqual(
+            memory._dashboard_project_identity("/tmp/some-root", context),
+            ("modu-charge", "some-root"),
+        )
+
+    def test_a_blank_profile_id_is_not_used_as_an_id(self):
+        context = {"canonical_root": "/tmp/some-root", "project_id": "   "}
+        self.assertEqual(
+            memory._dashboard_project_identity("/tmp/some-root", context),
+            ("some-root", "some-root"),
+        )
 
 
 def _unterminated_literals(src):

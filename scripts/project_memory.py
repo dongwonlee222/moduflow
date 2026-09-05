@@ -1506,6 +1506,9 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
   .tabs { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
   .tab { padding: 6px 14px; border: 1px solid #ccc; border-radius: 8px; background: #f5f5f3; cursor: pointer; font-size: 14px; }
   .tab.on { background: #2a78d6; color: #fff; border-color: #2a78d6; }
+  .project-select { font-size: 13px; padding: 5px 8px; border: 1px solid #ccc;
+    border-radius: 8px; background: #fff; color: #222; max-width: 260px; }
+  .project-select:disabled { background: #f5f5f3; color: #555; cursor: default; }
   .toggle { margin-left: auto; font-size: 13px; color: #555; display: flex; align-items: center; gap: 6px; cursor: pointer; }
   .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; margin-bottom: 10px; color: #555; align-items: center; }
   .legend span { display: flex; align-items: center; gap: 6px; }
@@ -1552,6 +1555,8 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
   @media (prefers-color-scheme: dark) {
     body { background: #1a1a19; color: #e8e8e3; }
     .tab { background: #2a2a28; border-color: #444; color: #ddd; }
+    .project-select { background: #2a2a28; border-color: #444; color: #ddd; }
+    .project-select:disabled { background: #232321; color: #aaa; }
     .legend, .toggle { color: #aaa; }
     .cy, .db, #info { border-color: #333; }
     .dbbar, th { background: #232321; border-color: #333; }
@@ -1572,6 +1577,7 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
 <body>
 <h1>ModuFlow 프로젝트 뷰</h1>
 <div class="tabs">
+  <select class="project-select" id="project-select" aria-label="프로젝트 선택"></select>
   <div class="tab" id="tab-db">이슈 DB</div>
   <div class="tab" id="tab-issues">이슈 그래프</div>
   <div class="tab" id="tab-memory">지식 그래프</div>
@@ -1603,11 +1609,18 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1"></div>
 <div id="info">이슈 DB에서 작업 상태를 훑거나, 그래프 탭에서 관계를 확인합니다.</div>
 <script>
-const ISSUE_ROWS = __ISSUE_ROWS__;
-const ISSUE_ELEMENTS = __ISSUE_ELEMENTS__;
-const MEMORY_ELEMENTS = __MEMORY_ELEMENTS__;
-const PRODUCTION_ROWS = __PRODUCTION_ROWS__;
-const PLAYBOOK_ROWS = __PLAYBOOK_ROWS__;
+const PROJECTS = __PROJECTS_JSON__;
+function projectPayload(id){
+  const payload = PROJECTS.projects[id];
+  if(!payload) throw new Error('unknown project id: ' + id);
+  return payload;
+}
+let selectedProjectId = PROJECTS.default_project_id;
+let ISSUE_ROWS = projectPayload(selectedProjectId).issue_rows;
+let ISSUE_ELEMENTS = projectPayload(selectedProjectId).issue_elements;
+let MEMORY_ELEMENTS = projectPayload(selectedProjectId).memory_elements;
+let PRODUCTION_ROWS = projectPayload(selectedProjectId).production_rows;
+let PLAYBOOK_ROWS = projectPayload(selectedProjectId).playbook_rows;
 const KIND_ICON = {decision:'\\u{1F4A1}', evidence:'\\u{1F4CE}', deliverable:'\\u{1F4E6}', release:'\\u{1F680}', meeting:'\\u{1F5E3}', note:'\\u{1F4DD}', reference:'\\u{1F517}'};
 const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 const IC = {
@@ -2045,6 +2058,65 @@ function showTab(which){
   }
   if(location.hash !== (issues?'#issues':'#memory')) location.hash = issues?'issues':'memory';
 }
+function currentProjectParam(){
+  try { return new URLSearchParams(location.search).get('project'); }
+  catch(err){ return null; }
+}
+function writeProjectParam(id){
+  try {
+    const url = new URL(location.href);
+    url.searchParams.set('project', id);
+    history.replaceState(null, '', url.toString());
+  } catch(err){
+    // A file:// page without a usable base URL keeps the state in memory.
+  }
+}
+function applyProject(id){
+  const payload = projectPayload(id);
+  selectedProjectId = id;
+  ISSUE_ROWS = payload.issue_rows;
+  ISSUE_ELEMENTS = payload.issue_elements;
+  MEMORY_ELEMENTS = payload.memory_elements;
+  PRODUCTION_ROWS = payload.production_rows;
+  PLAYBOOK_ROWS = payload.playbook_rows;
+}
+function selectProject(id){
+  if(!Object.prototype.hasOwnProperty.call(PROJECTS.projects, id)){
+    console.warn('알 수 없는 프로젝트 id, 기본값으로 되돌립니다: ' + id);
+    id = PROJECTS.default_project_id;
+  }
+  if(id !== selectedProjectId){
+    // cyIssues and cyMemory are constructed once at load and activeNodes is
+    // bound over them, so swapping the payload underneath would leave stale
+    // graphs behind a fresh table. Portfolio mode (Issue 118) owns that
+    // rebuild; refuse loudly rather than render a half-switched page.
+    throw new Error('프로젝트 전환은 포트폴리오 모드(Issue 118)에서 구현됩니다: ' + id);
+  }
+  closeModal();
+  applyProject(id);
+  const select = document.getElementById('project-select');
+  if(select) select.value = id;
+  writeProjectParam(id);
+  renderIssueTable();
+  renderProduction();
+  renderPlaybooks();
+}
+window.selectProject = selectProject;
+function buildProjectSelect(){
+  const select = document.getElementById('project-select');
+  if(!select) return;
+  const ids = Object.keys(PROJECTS.projects);
+  select.innerHTML = '';
+  ids.forEach(id => {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = PROJECTS.projects[id].label || id;
+    select.appendChild(opt);
+  });
+  select.value = selectedProjectId;
+  select.disabled = ids.length < 2;
+  select.addEventListener('change', ev => selectProject(ev.target.value));
+}
 document.getElementById('tab-db').addEventListener('click', ()=>showTab('issue-db'));
 document.getElementById('tab-issues').addEventListener('click', ()=>showTab('issues'));
 document.getElementById('tab-memory').addEventListener('click', ()=>showTab('memory'));
@@ -2053,6 +2125,17 @@ document.getElementById('tab-playbooks').addEventListener('click', ()=>showTab('
 function gotoMemory(id){ showTab('memory'); const n=cyMemory.getElementById(id); if(n){ cyMemory.elements().unselect(); n.select(); cyMemory.center(n);} }
 function gotoIssue(id){ showTab('issues'); const n=cyIssues.getElementById(id); if(n){ cyIssues.elements().unselect(); n.select(); cyIssues.center(n);} }
 window.gotoMemory = gotoMemory; window.gotoIssue = gotoIssue;
+
+const requestedProject = currentProjectParam();
+if(requestedProject && requestedProject !== selectedProjectId){
+  if(Object.prototype.hasOwnProperty.call(PROJECTS.projects, requestedProject)){
+    applyProject(requestedProject);
+  } else {
+    console.warn('알 수 없는 프로젝트 id, 기본값으로 되돌립니다: ' + requestedProject);
+  }
+}
+buildProjectSelect();
+writeProjectParam(selectedProjectId);
 
 showTab(location.hash === '#memory' ? 'memory'
   : (location.hash === '#issues' ? 'issues'
@@ -2216,6 +2299,17 @@ def _collect_playbooks(root, *, project_context=None):
     return {"rows": rows, "warnings": warnings}
 
 
+def _dashboard_project_identity(root, context):
+    """Return one (id, label) pair for the project this page represents.
+
+    Per spec.md the id is the project profile ID, falling back to the root
+    slug when no profile ID is registered. Portfolio-supplied ids belong to
+    Issue 118; this function never invents one for a project it cannot see.
+    """
+    slug = Path(context.get("canonical_root") or root).name
+    return (str(context.get("project_id") or "").strip() or slug, slug)
+
+
 def render_project_view(root, *, project_context=None):
     context = project_registry.context_for_operation(
         root,
@@ -2236,23 +2330,27 @@ def render_project_view(root, *, project_context=None):
         issue_context,
         project_context=context,
     )
-    return (
-        PROJECT_VIEW_TEMPLATE
-        .replace("__ISSUE_ROWS__", _json_for_script(issue_rows, indent=2))
-        .replace("__ISSUE_ELEMENTS__", _json_for_script(issue_elements, indent=2))
-        .replace("__MEMORY_ELEMENTS__", _json_for_script(memory_elements, indent=2))
-        .replace(
-            "__PRODUCTION_ROWS__",
-            _json_for_script(
-                _collect_production_records(root, project_context=context), indent=2
-            ),
-        )
-        .replace(
-            "__PLAYBOOK_ROWS__",
-            _json_for_script(
-                _collect_playbooks(root, project_context=context), indent=2
-            ),
-        )
+    project_id, project_label = _dashboard_project_identity(root, context)
+    # One payload for the whole page: every tab reads the same embedded
+    # object, so a project switch has a single source to swap.
+    projects = {
+        "schema": "moduflow.dashboard-projects.v1",
+        "default_project_id": project_id,
+        "projects": {
+            project_id: {
+                "label": project_label,
+                "issue_rows": issue_rows,
+                "issue_elements": issue_elements,
+                "memory_elements": memory_elements,
+                "production_rows": _collect_production_records(
+                    root, project_context=context
+                ),
+                "playbook_rows": _collect_playbooks(root, project_context=context),
+            }
+        },
+    }
+    return PROJECT_VIEW_TEMPLATE.replace(
+        "__PROJECTS_JSON__", _json_for_script(projects, indent=2)
     )
 
 
