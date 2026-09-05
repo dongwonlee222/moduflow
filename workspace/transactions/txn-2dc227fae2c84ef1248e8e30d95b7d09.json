@@ -1,0 +1,102 @@
+{
+  "action": "reconcile",
+  "actor": "moduflow.lifecycle",
+  "completed_at": "2026-09-05T06:19:52.901502Z",
+  "created_at": "2026-09-05T06:19:52.901248Z",
+  "error_code": "",
+  "failed_stage": "",
+  "idempotency_key": "e208c7eb1fc01605ffddce6b3e3afa590aa02cf942595dd71e9bbd59d2ce936d",
+  "issue_id": "001-project-migration",
+  "next_command": "product:status",
+  "post_apply_validation": {
+    "error_codes": [],
+    "rule_ids": [
+      "canonical-targets",
+      "project-artifacts",
+      "issue-schema",
+      "lifecycle-consensus",
+      "production-records"
+    ],
+    "valid": true
+  },
+  "project_id": "explicit-root",
+  "projected_validation": {
+    "error_codes": [],
+    "rule_ids": [
+      "project-artifacts",
+      "issue-schema",
+      "lifecycle-consensus",
+      "production-records"
+    ],
+    "valid": true
+  },
+  "rollback_status": "not-required",
+  "schema": "moduflow.lifecycle-transaction-evidence.v1",
+  "source_event": "sync_lifecycle:6b5843e3331be21150a45ebc8d64c8a6e51cd77b898d9ae463dc426275a3f1f9",
+  "started_at": "2026-09-05T06:19:52.901491Z",
+  "status": "applied",
+  "target_lifecycle": null,
+  "targets": [
+    {
+      "after_bytes": 1505,
+      "after_sha256": "3e9bf765e038fbffbf7759c52f47d3f687c51162f41173edab3dc7d3058ee23d",
+      "apply_order": 0,
+      "before_sha256": "3e9bf765e038fbffbf7759c52f47d3f687c51162f41173edab3dc7d3058ee23d",
+      "changed": false,
+      "existed": true,
+      "relative_path": "issues/001-project-migration.md",
+      "role": "issue",
+      "rollback_order": 4,
+      "validation_rules": [
+        "issue-schema",
+        "lifecycle"
+      ]
+    },
+    {
+      "after_bytes": 297,
+      "after_sha256": "d4dd3e66b63d933d1173649825eadb43fe30def42778e086b89b70def9665caf",
+      "apply_order": 1,
+      "before_sha256": "d4dd3e66b63d933d1173649825eadb43fe30def42778e086b89b70def9665caf",
+      "changed": false,
+      "existed": true,
+      "relative_path": ".moduflow/state.json",
+      "role": "state",
+      "rollback_order": 3,
+      "validation_rules": [
+        "state-schema",
+        "lifecycle"
+      ]
+    },
+    {
+      "after_bytes": 2693,
+      "after_sha256": "cd19e7baa424d9dbd8018ceea87d528ac555873a3a3e4e06694974e84ac9af8b",
+      "apply_order": 2,
+      "before_sha256": "8ed7200227efc20516b72f0dff9ce62bcd158a7524e44e82eef7f2e579064a26",
+      "changed": true,
+      "existed": true,
+      "relative_path": "workspace/loop-state.json",
+      "role": "loop",
+      "rollback_order": 2,
+      "validation_rules": [
+        "loop-state-schema",
+        "lifecycle"
+      ]
+    },
+    {
+      "after_bytes": 24866,
+      "after_sha256": "7b94f8d625e495bf7e6daed12353adf9521df418dd91c1b49961d2cc4a65a91a",
+      "apply_order": 3,
+      "before_sha256": "7b94f8d625e495bf7e6daed12353adf9521df418dd91c1b49961d2cc4a65a91a",
+      "changed": false,
+      "existed": true,
+      "relative_path": "workspace/dashboard.md",
+      "role": "dashboard",
+      "rollback_order": 1,
+      "validation_rules": [
+        "dashboard-projection"
+      ]
+    }
+  ],
+  "transaction_id": "txn-2dc227fae2c84ef1248e8e30d95b7d09",
+  "verified_target_count": 5
+}
