@@ -1526,6 +1526,21 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
   .badge { display: inline-block; min-width: 18px; text-align: center; padding: 2px 5px; margin: 0 2px 2px 0; border-radius: 5px; border: 1px solid #ccc; font-size: 11px; color: #555; }
   .badge.missing { color: #aaa; border-style: dashed; }
   .flag { display: inline-block; padding: 2px 6px; margin: 0 3px 3px 0; border-radius: 999px; background: #faece7; color: #712b13; font-size: 11px; white-space: nowrap; }
+  .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; z-index: 50; }
+  .modal-back.on { display: block; }
+  .modal { position: fixed; inset: 5% 50% auto auto; transform: translateX(50%); width: min(880px, 92vw);
+           max-height: 88vh; overflow: auto; background: #fff; color: #1a1a1a; border: 1px solid #ddd;
+           border-radius: 12px; padding: 20px; z-index: 51; display: none; }
+  .modal.on { display: block; }
+  .modal h2 { font-size: 17px; font-weight: 500; margin: 0 0 4px; }
+  .modal .meta { font-size: 13px; color: #666; margin-bottom: 14px; }
+  .modal h3 { font-size: 13px; font-weight: 600; color: #666; margin: 16px 0 6px; }
+  .modal pre { white-space: pre-wrap; word-break: break-word; font: inherit; font-size: 13px; margin: 0;
+               padding: 10px; border: 1px solid #eee; border-radius: 6px; background: #fafaf8; }
+  .modal .copy { border-color: #2a78d6; background: #f4f9ff; }
+  .modal .cut { font-size: 12px; color: #993c1d; margin-top: 4px; }
+  .modal-close { float: right; font-size: 13px; padding: 5px 11px; border: 1px solid #ccc;
+                 border-radius: 6px; background: #f5f5f3; cursor: pointer; }
   .badge.ok { background: #e1f5ee; border-color: #0f6e56; color: #0f6e56; }
   .badge.cand { background: #faeeda; border-color: #854f0b; color: #854f0b; }
   .empty { padding: 24px; text-align: center; color: #888; }
@@ -1544,6 +1559,11 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
     td, th { border-bottom-color: #333; }
     tr.issue-row:hover { background: #202a33; }
     .chip.on { background: #16467e; color: #dcebfb; }
+    .modal { background: #1a1a19; color: #e8e8e3; border-color: #333; }
+    .modal pre { background: #232321; border-color: #333; }
+    .modal .copy { border-color: #2a78d6; background: #16233a; }
+    .modal h3, .modal .meta { color: #aaa; }
+    .modal-close { background: #2a2a28; border-color: #444; color: #ddd; }
     .badge.ok { background: #085041; border-color: #5dcaa5; color: #e1f5ee; }
     .badge.cand { background: #633806; border-color: #fac775; color: #faeeda; }
   }
@@ -1579,6 +1599,8 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
 <div id="cy-memory" class="cy hidden"></div>
 <div id="production-db" class="db hidden"></div>
 <div id="playbook-db" class="db hidden"></div>
+<div class="modal-back" id="modal-back"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1"></div>
 <div id="info">이슈 DB에서 작업 상태를 훑거나, 그래프 탭에서 관계를 확인합니다.</div>
 <script>
 const ISSUE_ROWS = __ISSUE_ROWS__;
@@ -1836,7 +1858,7 @@ function renderProduction(){
   const rows = (PRODUCTION_ROWS.rows || []).filter(r => productionMatches(r, q));
   const warned = (PRODUCTION_ROWS.warnings || []).length;
   const body = rows.length ? rows.map(row => `
-    <tr>
+    <tr class="issue-row" onclick="openRecord('${esc(row.id)}')">
       <td>${esc(row.title)}</td>
       <td class="mono">${esc(row.deliverable_type || '-')}</td>
       <td class="mono">${esc((row.audiences || []).join(', ') || '-')}</td>
@@ -1883,7 +1905,7 @@ function renderPlaybooks(){
   const body = rows.length ? rows.map(row => {
     const approved = row.status === 'approved';
     return `
-    <tr>
+    <tr class="issue-row" onclick="openPlaybook('${esc(row.id)}')">
       <td>${esc(row.title)}</td>
       <td class="mono">${esc((row.deliverable_types || []).join(', ') || '-')}</td>
       <td>${esc(row.retrieval_trigger || '-')}</td>
@@ -1910,6 +1932,74 @@ function renderPlaybooks(){
       const el = document.getElementById('playbook-search'); if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); } });
   }
 }
+
+const RECORD_SECTION_ORDER = ['Artifacts','Source Inputs','Decisions','Failed Attempts',
+  'Reusable Patterns','Do Not Repeat','Playbook Updates','External Copy','Internal Reporting Copy'];
+const PLAYBOOK_SECTION_ORDER = ['Reusable Patterns','Do Not Repeat','Approved Copy Blocks',
+  'Approved Structures','Evidence','Revision History'];
+const COPY_SECTIONS = ['External Copy','Internal Reporting Copy','Approved Copy Blocks'];
+let modalOpener = null;
+function sectionBlock(name, body){
+  if(!body) return '';
+  const cls = COPY_SECTIONS.includes(name) ? 'copy' : '';
+  const cut = body.truncated
+    ? `<div class="cut">길어서 ${esc(String(body.omitted_chars))}자를 줄였습니다. 원본은 소스 파일에 있습니다.</div>` : '';
+  return `<h3>${esc(name)}</h3><pre class="${cls}">${esc(body.text || '(비어 있음)')}</pre>${cut}`;
+}
+function openModal(html){
+  const modal = document.getElementById('modal');
+  modalOpener = document.activeElement;
+  modal.innerHTML = `<button class="modal-close" id="modal-close">닫기</button>` + html;
+  modal.classList.add('on');
+  document.getElementById('modal-back').classList.add('on');
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  modal.focus();
+}
+function closeModal(){
+  document.getElementById('modal').classList.remove('on');
+  document.getElementById('modal-back').classList.remove('on');
+  if(modalOpener && modalOpener.focus) modalOpener.focus();
+  modalOpener = null;
+}
+document.getElementById('modal-back').addEventListener('click', closeModal);
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeModal(); });
+function openRecord(id){
+  const row = (PRODUCTION_ROWS.rows || []).find(r => r.id === id);
+  if(!row) return;
+  const meta = [row.deliverable_type, row.channel, (row.audiences || []).join('/'), row.variant,
+                row.lifecycle, row.owner].filter(Boolean).map(esc).join(' · ');
+  const link = row.playbook_refs && row.playbook_refs.length
+    ? `따른 기준: <span class="mono">${esc(row.playbook_refs.join(', '))}</span>`
+    : (row.coverage === 'unapplied'
+        ? '<span class="flag">기준 미적용</span> 같은 유형의 승인된 기준이 있는데 참조가 없습니다. 의도한 예외일 수 있습니다.'
+        : '<span class="badge">기준 없음</span> 이 유형의 승인된 기준이 아직 없습니다.');
+  openModal(`<h2 id="modal-title">${esc(row.title)}</h2>
+    <div class="meta">${meta}<br>${link}<br><span class="mono">${esc(row.path)}</span></div>`
+    + RECORD_SECTION_ORDER.map(n => sectionBlock(n, (row.sections || {})[n])).join(''));
+}
+function openPlaybook(id){
+  const row = (PLAYBOOK_ROWS.rows || []).find(r => r.id === id);
+  if(!row) return;
+  const approval = row.status === 'approved'
+    ? `승인 ${esc(row.approved_by || '-')} · ${esc(row.approved_at || '-')}`
+    : `아직 승인되지 않았습니다 (${esc(row.status || '-')})`;
+  const checks = (row.required_checks || []).length
+    ? '<h3>Required Checks</h3><pre>' + (row.required_checks || []).map(c =>
+        `${esc(c.id)} [${esc(c.kind)}] ${esc(c.text)}${c.retired ? ' (retired)' : ''}`).join('\n')
+      + '</pre><div class="cut">확인 항목은 검토자의 주장입니다. 이 화면에서 완료 처리하지 않습니다.</div>'
+    : '';
+  const supersede = (row.superseded_by || []).length
+    ? `<h3>Superseded By</h3><pre>${esc((row.superseded_by || []).join(', '))}</pre>` : '';
+  const sources = (row.source_records || []).length
+    ? `<h3>Source Records</h3><pre>${esc((row.source_records || []).join('\n'))}</pre>` : '';
+  openModal(`<h2 id="modal-title">${esc(row.title)}</h2>
+    <div class="meta">${esc((row.deliverable_types || []).join(', '))} · v${esc(row.version || '-')} · ${approval}
+      <br>검토 예정 ${esc(row.review_after || '-')} · 절차 ${processCell(row)}
+      <br><span class="mono">${esc(row.path)}</span></div>`
+    + checks + sources + supersede
+    + PLAYBOOK_SECTION_ORDER.map(n => sectionBlock(n, (row.sections || {})[n])).join(''));
+}
+window.openRecord = openRecord; window.openPlaybook = openPlaybook;
 
 function showTab(which){
   const db = which==='issue-db';
@@ -2007,6 +2097,25 @@ def playbook_coverage(record, playbooks):
     return "no-standard"
 
 
+SECTION_CHAR_BUDGET = 4000
+
+
+def _capped_sections(sections):
+    """Carry section text for the detail modal, and say when it was cut."""
+    result = {}
+    for name, body in (sections or {}).items():
+        text = str(body)
+        if len(text) > SECTION_CHAR_BUDGET:
+            result[name] = {
+                "text": text[:SECTION_CHAR_BUDGET],
+                "truncated": True,
+                "omitted_chars": len(text) - SECTION_CHAR_BUDGET,
+            }
+        else:
+            result[name] = {"text": text, "truncated": False, "omitted_chars": 0}
+    return result
+
+
 def _production_warning(path, exc):
     return {"path": str(path), "warning": type(exc).__name__ + ": " + str(exc)[:160]}
 
@@ -2053,6 +2162,12 @@ def _collect_production_records(root, *, project_context=None):
                 "lifecycle": record.get("lifecycle", ""),
                 "playbook_refs": record.get("playbook_refs", []),
                 "coverage": playbook_coverage(record, playbooks),
+                "issue_id": record.get("issue_id", ""),
+                "channel": record.get("channel", ""),
+                "variant": record.get("variant", ""),
+                "owner": record.get("owner", ""),
+                "updated": record.get("updated", ""),
+                "sections": _capped_sections(record.get("sections")),
                 "path": record["path"],
             }
         )
@@ -2087,6 +2202,14 @@ def _collect_playbooks(root, *, project_context=None):
                 "approved_by": playbook.get("approved_by", ""),
                 "approved_at": playbook.get("approved_at", ""),
                 "source_records": playbook.get("source_records", []),
+                "superseded_by": playbook.get("superseded_by", []),
+                "review_after": playbook.get("review_after", ""),
+                "required_checks": [
+                    {"id": item.get("id", ""), "kind": item.get("kind", ""),
+                     "text": item.get("text", ""), "retired": bool(item.get("retired"))}
+                    for item in checks
+                ],
+                "sections": _capped_sections(playbook.get("sections")),
                 "path": playbook["path"],
             }
         )

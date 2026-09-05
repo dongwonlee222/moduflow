@@ -223,7 +223,7 @@
     {
       "id": "T07",
       "text": "Implementation: 제작 기록·플레이북 상세 모달",
-      "status": "ready",
+      "status": "done",
       "worker": "implementation-worker",
       "worker_file": "workers/implementation-worker.md",
       "parallel_group": "group-1",
@@ -252,7 +252,7 @@
     {
       "id": "T08",
       "text": "QA: 두 탭 렌더링과 빈 상태 테스트",
-      "status": "ready",
+      "status": "done",
       "worker": "qa-reviewer",
       "worker_file": "workers/qa-reviewer.md",
       "parallel_group": "group-2",

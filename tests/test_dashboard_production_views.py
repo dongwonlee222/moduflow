@@ -89,14 +89,16 @@ class ProductionCollectorTest(unittest.TestCase):
             write_project(root)
             write_record(root)
             row = memory._collect_production_records(tmp)["rows"][0]
-            self.assertEqual(
-                sorted(row),
-                sorted([
-                    "id", "title", "deliverable_type", "audiences", "retrieval_trigger",
-                    "lifecycle", "playbook_refs", "coverage", "path",
-                ]),
-            )
-            self.assertNotIn("sections", row)
+            for field in ("id", "title", "deliverable_type", "audiences",
+                          "retrieval_trigger", "lifecycle", "playbook_refs",
+                          "coverage", "path"):
+                self.assertIn(field, row)
+            # The detail modal has no backend to fetch from, so section text ships
+            # in the payload. It is capped and the cut is reported, never silent.
+            self.assertIn("sections", row)
+            for body in row["sections"].values():
+                self.assertEqual(sorted(body), ["omitted_chars", "text", "truncated"])
+            self.assertFalse(Path(row["path"]).is_absolute())
 
     def test_one_unparseable_file_does_not_blank_the_tab(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -236,3 +238,64 @@ class DashboardTabRenderingTest(unittest.TestCase):
             payload = self._payload(self._render(root), "PRODUCTION_ROWS")
         self.assertEqual(len(payload["rows"]), 1)
         self.assertEqual(len(payload["warnings"]), 1)
+
+
+class DetailModalTest(unittest.TestCase):
+    """T07/T08: one modal shell for both tabs, read-only."""
+
+    def _render(self, root):
+        (root / "issues").mkdir(exist_ok=True)
+        (root / "issues" / "001-x.md").write_text(
+            "# Issue: `001-x`\n\n**Status: done** — created 2026-09-04.\n", encoding="utf-8"
+        )
+        return memory.render_project_view(root)
+
+    def test_one_modal_shell_serves_both_tabs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        self.assertEqual(html.count('id="modal"'), 1)
+        self.assertEqual(html.count('id="modal-back"'), 1)
+        for opener in ("openRecord", "openPlaybook"):
+            self.assertIn(opener, html)
+
+    def test_all_nine_record_sections_are_rendered_in_order(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        for section in production.RECORD_SECTIONS:
+            self.assertIn(section, html, section)
+
+    def test_external_and_internal_copy_are_visibly_separated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        self.assertIn("COPY_SECTIONS", html)
+        for name in ("External Copy", "Internal Reporting Copy"):
+            self.assertIn(name, html)
+        self.assertIn(".modal .copy", html)
+
+    def test_the_modal_says_a_check_is_an_assertion_and_offers_no_control(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        self.assertIn("검토자의 주장", html)
+        modal_js = html.split("function openPlaybook")[1].split("function showTab")[0]
+        for affordance in ("<input", "checkbox", "onchange"):
+            self.assertNotIn(affordance, modal_js, affordance)
+
+    def test_closing_restores_focus_and_escape_works(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        self.assertIn("modalOpener", html)
+        self.assertIn("e.key === 'Escape'", html)
+
+    def test_opening_a_second_row_replaces_rather_than_stacks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        self.assertIn("modal.innerHTML =", html)
+        self.assertNotIn("insertAdjacentHTML", html)
+
+    def test_a_long_section_is_capped_and_the_cut_is_reported(self):
+        long_body = "x" * (memory.SECTION_CHAR_BUDGET + 500)
+        capped = memory._capped_sections({"Artifacts": long_body, "Decisions": "short"})
+        self.assertTrue(capped["Artifacts"]["truncated"])
+        self.assertEqual(capped["Artifacts"]["omitted_chars"], 500)
+        self.assertEqual(len(capped["Artifacts"]["text"]), memory.SECTION_CHAR_BUDGET)
+        self.assertFalse(capped["Decisions"]["truncated"])

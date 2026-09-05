@@ -13,8 +13,8 @@ Parallel eligible: `false`
 | T04 | `release-manager` | `group-3` | done | commands/product-dashboard.md | - | Docs: 대시보드 명령에 두 탭과 읽기 전용 경계 기술 |
 | T05 | `implementation-worker` | `group-1` | done | scripts/project_memory.py | T01 | Implementation: 제작 기록 탭 렌더링 |
 | T06 | `implementation-worker` | `group-1` | done | scripts/project_memory.py | T05 | Implementation: 플레이북 탭 렌더링 |
-| T07 | `implementation-worker` | `group-1` | ready | scripts/project_memory.py | T06 | Implementation: 제작 기록·플레이북 상세 모달 |
-| T08 | `qa-reviewer` | `group-2` | ready | tests/test_dashboard_production_views.py | T07 | QA: 두 탭 렌더링과 빈 상태 테스트 |
+| T07 | `implementation-worker` | `group-1` | done | scripts/project_memory.py | T06 | Implementation: 제작 기록·플레이북 상세 모달 |
+| T08 | `qa-reviewer` | `group-2` | done | tests/test_dashboard_production_views.py | T07 | QA: 두 탭 렌더링과 빈 상태 테스트 |
 | T09 | `implementation-worker` | `sequential` | ready | scripts/project_memory.py | T03, T07 | Implementation: 전역 프로젝트 선택기와 URL 복원 |
 | T10 | `release-manager` | `sequential` | ready | scripts/release_check.py, scripts/validate_moduflow.py | T08 | Release: 신규 스위트와 자산 등록 |
 
