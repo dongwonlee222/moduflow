@@ -27,13 +27,13 @@ Reuse and extend the existing generated ModuFlow dashboard instead of creating a
 
 ### In
 
-- Add a global project selector to the dashboard header using registered ModuFlow projects as its source.
+- Add a global project selector to the dashboard header using registered ModuFlow projects as its source. [partially deferred → `118-portfolio-mode-dashboard`, 2026-09-05: the selector and `?project=<id>` state stay in 086; sourcing its list from portfolio `projects.json` and the `all` option move to 118]
 - Apply the selected project root consistently to Issue DB, issue graph, production records, playbooks, memory/knowledge graph, decisions, roadmap, goal, status, and next action.
 - Add `Production Records` and `Playbooks` tabs beside the existing issue and knowledge views.
 - Production list supports search and filters for deliverable type, channel, audience, lifecycle state, and playbook promotion state.
 - A record detail view shows final artifacts, source inputs, decisions, failed attempts, reusable patterns, `Do Not Repeat`, playbook updates, external copy, and internal reporting copy.
 - Persist selected project and active tab in the URL so refreshes and shared links reopen the same context.
-- Provide an `All Projects` portfolio summary, but require one project selection before opening detailed records or performing project-specific actions.
+- [deferred → `118-portfolio-mode-dashboard`, 2026-09-05] Provide an `All Projects` portfolio summary, but require one project selection before opening detailed records or performing project-specific actions.
 - Keep the initial dashboard read-oriented and Git-derived; registration/editing remains through ModuFlow natural language or commands.
 - Preserve existing project-local dashboard generation for users with only one configured project.
 
@@ -52,7 +52,7 @@ Reuse and extend the existing generated ModuFlow dashboard instead of creating a
 - Production Records lists only the selected project's registered records and opens a complete detail view.
 - Playbooks lists only human-approved playbooks for the selected project and links back to source records.
 - Projects may keep final assets in different folders or external tools; the dashboard renders their registered metadata and links consistently.
-- `All Projects` shows portfolio-level counts/attention states only; a user must choose a project before opening a record or executing an action.
+- [deferred → `118-portfolio-mode-dashboard`, 2026-09-05] `All Projects` shows portfolio-level counts/attention states only; a user must choose a project before opening a record or executing an action.
 - Existing single-project dashboards work without requiring portfolio setup.
 - Responsive visual review covers desktop and mobile without overlapping controls or clipped text.
 - Existing dashboard/memory tests and `python3 scripts/release_check.py .` pass.
@@ -101,7 +101,7 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 - duplicates:
 - follows_up: `056-dashboard-database-list-view`, `047-issue-artifact-drilldown`
 - supersedes:
-- related: `004-portfolio-workspace`, `036-portfolio-team-dashboard`, `042-decision-graph-dashboard`, `045-issue-graph-visualization`, `115-playbook-process-and-checklist-extension`
+- related: `004-portfolio-workspace`, `036-portfolio-team-dashboard`, `042-decision-graph-dashboard`, `045-issue-graph-visualization`, `115-playbook-process-and-checklist-extension`, `118-portfolio-mode-dashboard`
 
 ## Playbook Extension Note — 2026-09-03
 
@@ -114,6 +114,7 @@ Every artifact-producing step is a tracked task here — never produce a spec, p
 - 2026-07-10: User approved preserving the existing ModuFlow UI and opening Production Record details in a dimmed modal.
 - 2026-07-10: Corrected Issue 086 from backlog to active so the existing issue graph current-work focus remains functional.
 - 2026-07-26: Restored to backlog after the branch artifacts were merged into `main`. Only one issue may be active at a time (`project_lifecycle.py` reports multiple active issues as drift), and `095-commit-issue-resolution-parity` takes priority as p1. Design and prototype artifacts remain in `main`; nothing is lost.
+- 2026-09-05: Dongwon Lee approved deferring the cross-project portfolio HTML to a new issue, `118-portfolio-mode-dashboard`. Issue 086 keeps the **single-project** dashboard in full: the existing DB / 이슈 / 메모리 tabs, the new 제작기록 / 플레이북 tabs, the project selector, and `?project=<id>` URL state. What moves to 118 is portfolio-mode collection from `projects.json`, the `전체 프로젝트` summary view, the `all` selector state, and the trusted cross-project link resolver. Three reasons. First, the approved plan already excluded portfolio mode without noticing: `specs/086-project-aware-production-library-dashboard/plan.md:24` forbids "no page that mixes two projects' records in one payload", its contract table exposes only single-project `render_project_view(root)` entry points, and its file map has no portfolio collector — yet its coverage table maps AC3-AC7 to C1/C2, claiming coverage for a summary view with nothing behind it. Second, `workspace/roadmap.md` ("086/092 — lightweight projections") later ruled that a hidden tab is not a privacy boundary and that private records from every project must not be bundled into one portfolio HTML payload; that is a collection-design decision this spec never made. Third, `spec.md:240` had explicitly left the eager-embed-versus-linked-files question to the plan, and the plan never answered it. The amendment settles it as linked per-project generation. Issue 092 is not the right home — `issues/092-project-home-dashboard.md:47` puts cross-project detail views out of its scope — and Issues 004/036 are done, so a new issue was required. Nothing is lost in the meantime: `scripts/project_portfolio.py:262` `write_dashboard()` already emits a Markdown `portfolio-dashboard.md` portfolio summary. Recorded in `spec.md` / `spec.ko.md` "Amendment — 2026-09-05", `plan.md`'s coverage table, and `tasks.md` T10. Scope In and acceptance-criteria entries above are marked in place, not removed (C5).
 
 ## Links
 

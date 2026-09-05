@@ -239,3 +239,45 @@ It does not display record bodies, internal copy, full decisions, or merged sear
 - **Design decision**: confirm whether project-local mode shows a disabled selector or a compact project label. Either must preserve the same global-state contract.
 - **Plan decision**: define safe payload-size caps and whether portfolio generation embeds project details eagerly or generates linked per-project detail files. The user-facing contract must remain unchanged.
 
+## Amendment — 2026-09-05
+
+**Approved by: Dongwon Lee, 2026-09-05.** This section is append-only under C5. Nothing above is deleted, renumbered or reworded; read the original text together with the deferrals recorded here.
+
+### What Issue 086 still delivers
+
+The single-project dashboard, in full: the existing DB / 이슈 / 메모리 tabs, the new 제작기록 / 플레이북 tabs, one global project selector, and `?project=<id>` URL state resolving to one registered project. Goals 1, 3, 4, 5, 6, 7 and 9 are unchanged, as are AC1, AC3, AC4, AC5, AC6, AC8, AC9, AC10, AC10a, AC10b, AC10c and AC11-AC16.
+
+### What is deferred to Issue 118
+
+Deferred to `118-portfolio-mode-dashboard`, not cancelled:
+
+- **Goal 2**, in its portfolio half only — reusing registered portfolio projects as the selector's source. The other half of Goal 2, zero-setup single-project behavior, stays in Issue 086 and is a requirement of the selector it keeps.
+- **Goal 8** — the `전체 프로젝트` (All Projects) portfolio summary.
+- **Proposed Solution → Two Generation Modes, One View Contract**, the *Portfolio mode* branch: reading `projects.json` and collecting a bounded snapshot per registered project. *Project mode* is unaffected. In the flowchart, the `Registry` → `Resolve` → `Collect` path and the `All` → `Summary` → `Choose` path move to Issue 118; the `Local` → `Collect` → `Payload` → `Store` path stays.
+- **Global Project State**, the final bullet only — `selectedProjectId=all` as a distinct summary state with disabled detail links. The atomic-transition contract itself stays.
+- **All Projects Summary** — the whole section.
+- **AC2** — portfolio mode reading `moduflow.projects.v1` and rendering every valid registered project plus per-entry warnings.
+- **AC7** — `전체 프로젝트` rendering summary counts and attention states only, and requiring a concrete project before any record detail or project action.
+- The trusted cross-project link resolver required by the URL Contract bullet at line 137 and the *Cross-project links* risk at line 235. It does not exist today, and it is only load-bearing once one payload can address more than one project root.
+
+The payload contract at lines 86-115 stays as written. Under this amendment `PROJECT_DATA.projects` holds exactly one project in every Issue 086 output; the shape is not narrowed, so Issue 118 can populate it with more without a schema change.
+
+### Why
+
+1. **The approved plan already excluded it and did not notice.** `plan.md:24` states, as a global constraint, "no page that mixes two projects' records in one payload". Its Contract and Dependencies table exposes only single-project entry points — `_collect_production_records(root, ...)`, `_collect_playbooks(root, ...)`, `render_project_view(root, ...)` — and its File Map contains no portfolio collector at all. Yet the same plan's Coverage and Execution Order table maps AC3-AC7 to tasks C1/C2, claiming coverage for a summary view that has no collector behind it. The plan is self-contradictory as written. This amendment resolves the contradiction in the direction the constraints already pointed.
+2. **A later governance decision made portfolio HTML a privacy question, not a layout question.** `workspace/roadmap.md`, "086/092 — lightweight projections": "A hidden tab is not a privacy boundary: do not bundle private records from every project into a single portfolio HTML payload." That decision postdates this spec. AC7's summary-only rule was written as a UI restraint; the roadmap treats the payload itself as the boundary. Honoring it needs a collection design, not a rendering rule, and that design is not in this spec.
+3. **The spec deferred the question to the plan, and the plan never answered it.** Line 240 asks the plan to "define safe payload-size caps and whether portfolio generation embeds project details eagerly or generates linked per-project detail files". The plan set no caps and chose no generation strategy.
+4. **092 is not the right home.** `issues/092-project-home-dashboard.md:47` lists "Cross-project detail views without explicit project selection" as out of scope. Issues 004 and 036 are done. No existing issue owns this, so a new one is needed.
+5. **Nothing is lost meanwhile.** `scripts/project_portfolio.py:262` `write_dashboard()` already emits a Markdown portfolio summary at `portfolio-dashboard.md`. The portfolio view continues to exist; only its HTML form is postponed.
+
+### Settled: the line 240 plan decision
+
+The open question at line 240 is answered here rather than left to a future plan:
+
+**Portfolio generation links to per-project detail files; it does not embed project details eagerly.** A single-project dashboard is generated per project root and remains the only artifact that carries record bodies, internal reporting copy, decisions or memory content. A portfolio artifact carries counts, attention states and links, and no per-project bodies. Payload-size caps therefore apply per project, as the payload contract already says, and no cross-project cap is needed because no cross-project body payload is produced.
+
+This makes the roadmap constraint structural rather than a rendering discipline: there is no payload that could bundle private records from every project, so no view has to be trusted not to show them.
+
+### New owner
+
+`118-portfolio-mode-dashboard` owns the deferred scope: portfolio-mode collection from `projects.json`, the `전체 프로젝트` summary view, the `all` selector state, and the trusted cross-project link resolver. It is `blocked_by: 086`.

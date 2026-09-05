@@ -179,6 +179,8 @@ Existing functions reused unchanged: `project_production.list_production_records
 | AC10c | Out of scope by design; asserted by absence |
 | AC11, AC13, AC14 | C1, D1, D2 |
 
+**Amendment 2026-09-05 — AC2 and AC7 are deferred to Issue `118-portfolio-mode-dashboard` and are not covered by any task here.** The `AC3, AC4, AC5, AC6, AC7` row above is left in place under C5 but is wrong as written, and this line is the correction: C1/C2 cover AC3-AC6 only. This resolves a contradiction internal to this plan — the Global Constraints already forbade "no page that mixes two projects' records in one payload", the Contract table exposes only single-project `render_project_view(root)` entry points, and the File Map contains no portfolio collector, so AC2 and AC7 never had an implementing task. Task C2's `All Projects` bullet is likewise deferred; C2 keeps the selector, the one-payload discipline, and `?project=<id>` restoration for a single project. Task D2's `All Projects` summary screenshot is deferred with it. See `spec.md` "Amendment — 2026-09-05". Approved by Dongwon Lee, 2026-09-05.
+
 Order: **A1 → A2 → B1 → B2 → B3 → C1 → C2 → D1 → D2.** The two tabs are additive and land first so any regression in the existing views is unambiguously attributable to the selector, which is the only structural change.
 
 ## Next Command
