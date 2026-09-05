@@ -890,13 +890,22 @@ More detail contents here.
                 re.S,
             ).group(1)
             memory_elements_blob = re.search(
-                r"const MEMORY_ELEMENTS = (.*?);\nconst KIND_ICON",
+                r"const MEMORY_ELEMENTS = (.*?);\nconst PRODUCTION_ROWS",
+                html,
+                re.S,
+            ).group(1)
+            production_blob = re.search(
+                r"const PRODUCTION_ROWS = (.*?);\nconst KIND_ICON",
                 html,
                 re.S,
             ).group(1)
             rows = json.loads(rows_blob)
             issue_elements = json.loads(issue_elements_blob)
             memory_elements = json.loads(memory_elements_blob)
+            # Every embedded payload must survive the same escaping, not just the
+            # three that existed when this test was written.
+            production = json.loads(production_blob)
+            self.assertIn("rows", production)
 
             self.assertNotIn(attack, html)
             self.assertEqual(html.count("globalThis.PWN=1</script>"), 0)

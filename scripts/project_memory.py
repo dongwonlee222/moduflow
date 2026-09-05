@@ -1551,6 +1551,7 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
   <div class="tab" id="tab-db">이슈 DB</div>
   <div class="tab" id="tab-issues">이슈 그래프</div>
   <div class="tab" id="tab-memory">지식 그래프</div>
+  <div class="tab" id="tab-production">제작 기록</div>
   <label class="toggle"><input type="checkbox" id="rel-toggle" checked> 관계선 표시</label>
   <label class="toggle" style="margin-left:0"><input type="checkbox" id="badge-toggle" checked> 🧠 지식 배지 표시</label>
 </div>
@@ -1571,11 +1572,13 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
 <div id="issue-db" class="db"></div>
 <div id="cy-issues" class="cy hidden"></div>
 <div id="cy-memory" class="cy hidden"></div>
+<div id="production-db" class="db hidden"></div>
 <div id="info">이슈 DB에서 작업 상태를 훑거나, 그래프 탭에서 관계를 확인합니다.</div>
 <script>
 const ISSUE_ROWS = __ISSUE_ROWS__;
 const ISSUE_ELEMENTS = __ISSUE_ELEMENTS__;
 const MEMORY_ELEMENTS = __MEMORY_ELEMENTS__;
+const PRODUCTION_ROWS = __PRODUCTION_ROWS__;
 const KIND_ICON = {decision:'\\u{1F4A1}', evidence:'\\u{1F4CE}', deliverable:'\\u{1F4E6}', release:'\\u{1F680}', meeting:'\\u{1F5E3}', note:'\\u{1F4DD}', reference:'\\u{1F517}'};
 const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 const IC = {
@@ -1805,11 +1808,62 @@ function renderIssueTable(focusSearch=false){
 }
 renderIssueTable();
 
+const productionState = {q: ''};
+function coverageCell(row){
+  if(row.coverage === 'named'){
+    return '<span class="mono">' + esc((row.playbook_refs || []).join(', ')) + '</span>';
+  }
+  if(row.coverage === 'unapplied'){
+    return '<span class="flag">기준 미적용</span>';
+  }
+  return '<span class="badge">기준 없음</span>';
+}
+function productionMatches(row, q){
+  if(!q) return true;
+  const hay = [row.title, row.id, row.deliverable_type, row.retrieval_trigger,
+               (row.audiences || []).join(' ')].join(' ').toLowerCase();
+  return hay.includes(q);
+}
+function renderProduction(){
+  const q = productionState.q.trim().toLowerCase();
+  const rows = (PRODUCTION_ROWS.rows || []).filter(r => productionMatches(r, q));
+  const warned = (PRODUCTION_ROWS.warnings || []).length;
+  const body = rows.length ? rows.map(row => `
+    <tr>
+      <td>${esc(row.title)}</td>
+      <td class="mono">${esc(row.deliverable_type || '-')}</td>
+      <td class="mono">${esc((row.audiences || []).join(', ') || '-')}</td>
+      <td>${esc(row.retrieval_trigger || '-')}</td>
+      <td><span class="badge">${esc(row.lifecycle || '-')}</span></td>
+      <td>${coverageCell(row)}</td>
+    </tr>`).join('')
+    : `<tr><td class="empty" colspan="6">${(PRODUCTION_ROWS.rows || []).length
+        ? '검색 결과 없음'
+        : '제작 기록이 없습니다. 이 프로젝트는 아직 제작물을 등록하지 않았습니다.'}</td></tr>`;
+  document.getElementById('production-db').innerHTML = `
+    <div class="dbbar">
+      <input id="production-search" placeholder="제목·유형·언제 꺼내나 검색" value="${esc(productionState.q)}">
+      <div class="chips"><span class="chip">${esc(String(rows.length))}건</span>${
+        warned ? '<span class="chip">읽지 못한 파일 ' + esc(String(warned)) + '건</span>' : ''}</div>
+    </div>
+    <table>
+      <thead><tr><th>제작 기록</th><th>유형</th><th>대상</th><th>언제 꺼내나</th><th>상태</th><th>플레이북</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>`;
+  const search = document.getElementById('production-search');
+  if(search){
+    search.addEventListener('input', e => { productionState.q = e.target.value; renderProduction();
+      const el = document.getElementById('production-search'); if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); } });
+  }
+}
+
 function showTab(which){
   const db = which==='issue-db';
   const issues = which==='issues';
   const memory = which==='memory';
+  const production = which==='production';
   document.getElementById('issue-db').classList.toggle('hidden', !db);
+  document.getElementById('production-db').classList.toggle('hidden', !production);
   document.getElementById('cy-issues').classList.toggle('hidden', !issues);
   document.getElementById('cy-memory').classList.toggle('hidden', !memory);
   document.getElementById('legend-issues').classList.toggle('hidden', !issues);
@@ -1817,8 +1871,14 @@ function showTab(which){
   document.getElementById('tab-db').classList.toggle('on', db);
   document.getElementById('tab-issues').classList.toggle('on', issues);
   document.getElementById('tab-memory').classList.toggle('on', memory);
+  document.getElementById('tab-production').classList.toggle('on', production);
   document.getElementById('rel-toggle').closest('label').classList.toggle('hidden', !issues);
   document.getElementById('badge-toggle').closest('label').classList.toggle('hidden', !issues);
+  if(production){
+    renderProduction();
+    if(location.hash !== '#production') location.hash = 'production';
+    return;
+  }
   if(db){
     if(location.hash !== '#issue-db') location.hash = 'issue-db';
     return;
@@ -1836,11 +1896,14 @@ function showTab(which){
 document.getElementById('tab-db').addEventListener('click', ()=>showTab('issue-db'));
 document.getElementById('tab-issues').addEventListener('click', ()=>showTab('issues'));
 document.getElementById('tab-memory').addEventListener('click', ()=>showTab('memory'));
+document.getElementById('tab-production').addEventListener('click', ()=>showTab('production'));
 function gotoMemory(id){ showTab('memory'); const n=cyMemory.getElementById(id); if(n){ cyMemory.elements().unselect(); n.select(); cyMemory.center(n);} }
 function gotoIssue(id){ showTab('issues'); const n=cyIssues.getElementById(id); if(n){ cyIssues.elements().unselect(); n.select(); cyIssues.center(n);} }
 window.gotoMemory = gotoMemory; window.gotoIssue = gotoIssue;
 
-showTab(location.hash === '#memory' ? 'memory' : (location.hash === '#issues' ? 'issues' : 'issue-db'));
+showTab(location.hash === '#memory' ? 'memory'
+  : (location.hash === '#issues' ? 'issues'
+  : (location.hash === '#production' ? 'production' : 'issue-db')));
 </script>
 </body>
 </html>
@@ -1991,6 +2054,12 @@ def render_project_view(root, *, project_context=None):
         .replace("__ISSUE_ROWS__", _json_for_script(issue_rows, indent=2))
         .replace("__ISSUE_ELEMENTS__", _json_for_script(issue_elements, indent=2))
         .replace("__MEMORY_ELEMENTS__", _json_for_script(memory_elements, indent=2))
+        .replace(
+            "__PRODUCTION_ROWS__",
+            _json_for_script(
+                _collect_production_records(root, project_context=context), indent=2
+            ),
+        )
     )
 
 

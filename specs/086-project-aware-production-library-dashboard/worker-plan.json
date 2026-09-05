@@ -165,7 +165,7 @@
     {
       "id": "T05",
       "text": "Implementation: 제작 기록 탭 렌더링",
-      "status": "ready",
+      "status": "done",
       "worker": "implementation-worker",
       "worker_file": "workers/implementation-worker.md",
       "parallel_group": "group-1",
