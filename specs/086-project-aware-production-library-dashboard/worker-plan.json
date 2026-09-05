@@ -194,7 +194,7 @@
     {
       "id": "T06",
       "text": "Implementation: 플레이북 탭 렌더링",
-      "status": "ready",
+      "status": "done",
       "worker": "implementation-worker",
       "worker_file": "workers/implementation-worker.md",
       "parallel_group": "group-1",

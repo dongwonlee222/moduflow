@@ -173,3 +173,66 @@ class ProductionCollectorTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DashboardTabRenderingTest(unittest.TestCase):
+    """T05/T06 rendering. Modal coverage lands with T07."""
+
+    def _render(self, root):
+        (root / "issues").mkdir(exist_ok=True)
+        (root / "issues" / "001-x.md").write_text(
+            "# Issue: `001-x`\n\n**Status: done** — created 2026-09-04.\n", encoding="utf-8"
+        )
+        return memory.render_project_view(root)
+
+    def _payload(self, html, name):
+        import json
+        return json.loads(re.search(r"const " + name + r" = (.*?);\n(?:const |$)", html, re.S).group(1))
+
+    def test_both_tabs_exist_after_the_original_three(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        order = [html.index(f'id="tab-{name}"') for name in
+                 ("db", "issues", "memory", "production", "playbooks")]
+        self.assertEqual(order, sorted(order), "new tabs must follow the existing three")
+
+    def test_empty_states_say_not_registered_yet_not_nothing_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        self.assertIn("아직 제작물을 등록하지 않았습니다", html)
+        self.assertIn("아직 기준을 등록하지 않았습니다", html)
+
+    def test_only_approved_playbooks_get_the_green_treatment(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            write_playbook(root, VALID_PLAYBOOK)
+            approved = self._payload(self._render(root), "PLAYBOOK_ROWS")["rows"][0]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            write_playbook(root, re.sub(r"^status:.*$", "status: candidate", VALID_PLAYBOOK, flags=re.M))
+            candidate = self._payload(self._render(root), "PLAYBOOK_ROWS")["rows"][0]
+        self.assertEqual(approved["status"], "approved")
+        self.assertEqual(candidate["status"], "candidate")
+
+    def test_the_page_offers_no_way_to_complete_a_check(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            html = self._render(Path(tmp))
+        for affordance in ("checkbox", "complete_check", "markCheck", "promote("):
+            self.assertNotIn(
+                affordance, html.split("const PLAYBOOK_ROWS")[-1],
+                f"{affordance} would let the page act on a check",
+            )
+
+    def test_a_broken_record_is_counted_not_hidden(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_project(root)
+            write_record(root)
+            (root / "memory" / "production-records" / "broken.md").write_text(
+                "not a record\n", encoding="utf-8"
+            )
+            payload = self._payload(self._render(root), "PRODUCTION_ROWS")
+        self.assertEqual(len(payload["rows"]), 1)
+        self.assertEqual(len(payload["warnings"]), 1)

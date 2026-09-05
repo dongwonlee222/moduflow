@@ -1526,6 +1526,8 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
   .badge { display: inline-block; min-width: 18px; text-align: center; padding: 2px 5px; margin: 0 2px 2px 0; border-radius: 5px; border: 1px solid #ccc; font-size: 11px; color: #555; }
   .badge.missing { color: #aaa; border-style: dashed; }
   .flag { display: inline-block; padding: 2px 6px; margin: 0 3px 3px 0; border-radius: 999px; background: #faece7; color: #712b13; font-size: 11px; white-space: nowrap; }
+  .badge.ok { background: #e1f5ee; border-color: #0f6e56; color: #0f6e56; }
+  .badge.cand { background: #faeeda; border-color: #854f0b; color: #854f0b; }
   .empty { padding: 24px; text-align: center; color: #888; }
   .hidden { display: none; }
   #info { margin-top: 12px; min-height: 56px; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; line-height: 1.7; }
@@ -1542,6 +1544,8 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
     td, th { border-bottom-color: #333; }
     tr.issue-row:hover { background: #202a33; }
     .chip.on { background: #16467e; color: #dcebfb; }
+    .badge.ok { background: #085041; border-color: #5dcaa5; color: #e1f5ee; }
+    .badge.cand { background: #633806; border-color: #fac775; color: #faeeda; }
   }
 </style>
 </head>
@@ -1552,6 +1556,7 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
   <div class="tab" id="tab-issues">이슈 그래프</div>
   <div class="tab" id="tab-memory">지식 그래프</div>
   <div class="tab" id="tab-production">제작 기록</div>
+  <div class="tab" id="tab-playbooks">플레이북</div>
   <label class="toggle"><input type="checkbox" id="rel-toggle" checked> 관계선 표시</label>
   <label class="toggle" style="margin-left:0"><input type="checkbox" id="badge-toggle" checked> 🧠 지식 배지 표시</label>
 </div>
@@ -1573,12 +1578,14 @@ PROJECT_VIEW_TEMPLATE = """<!DOCTYPE html>
 <div id="cy-issues" class="cy hidden"></div>
 <div id="cy-memory" class="cy hidden"></div>
 <div id="production-db" class="db hidden"></div>
+<div id="playbook-db" class="db hidden"></div>
 <div id="info">이슈 DB에서 작업 상태를 훑거나, 그래프 탭에서 관계를 확인합니다.</div>
 <script>
 const ISSUE_ROWS = __ISSUE_ROWS__;
 const ISSUE_ELEMENTS = __ISSUE_ELEMENTS__;
 const MEMORY_ELEMENTS = __MEMORY_ELEMENTS__;
 const PRODUCTION_ROWS = __PRODUCTION_ROWS__;
+const PLAYBOOK_ROWS = __PLAYBOOK_ROWS__;
 const KIND_ICON = {decision:'\\u{1F4A1}', evidence:'\\u{1F4CE}', deliverable:'\\u{1F4E6}', release:'\\u{1F680}', meeting:'\\u{1F5E3}', note:'\\u{1F4DD}', reference:'\\u{1F517}'};
 const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 const IC = {
@@ -1857,13 +1864,62 @@ function renderProduction(){
   }
 }
 
+const playbookState = {q: ''};
+function processCell(row){
+  if(!row.process_ref_kind) return '<span class="mono">-</span>';
+  if(row.process_ref_kind === 'none') return '<span class="mono">없음</span>';
+  const version = row.process_ref_version ? ' ' + row.process_ref_version : '';
+  return '<span class="mono">' + esc(row.process_ref || row.process_ref_kind) + esc(version) + '</span>';
+}
+function playbookMatches(row, q){
+  if(!q) return true;
+  return [row.title, row.id, row.retrieval_trigger,
+          (row.deliverable_types || []).join(' ')].join(' ').toLowerCase().includes(q);
+}
+function renderPlaybooks(){
+  const q = playbookState.q.trim().toLowerCase();
+  const rows = (PLAYBOOK_ROWS.rows || []).filter(r => playbookMatches(r, q));
+  const warned = (PLAYBOOK_ROWS.warnings || []).length;
+  const body = rows.length ? rows.map(row => {
+    const approved = row.status === 'approved';
+    return `
+    <tr>
+      <td>${esc(row.title)}</td>
+      <td class="mono">${esc((row.deliverable_types || []).join(', ') || '-')}</td>
+      <td>${esc(row.retrieval_trigger || '-')}</td>
+      <td>${processCell(row)}</td>
+      <td class="mono">자동 ${esc(String(row.auto_checks || 0))} · 사람 ${esc(String(row.review_checks || 0))}</td>
+      <td class="mono">${esc(row.version || '-')} <span class="badge ${approved ? 'ok' : 'cand'}">${esc(row.status || '-')}</span></td>
+    </tr>`; }).join('')
+    : `<tr><td class="empty" colspan="6">${(PLAYBOOK_ROWS.rows || []).length
+        ? '검색 결과 없음'
+        : '플레이북이 없습니다. 이 프로젝트는 아직 기준을 등록하지 않았습니다.'}</td></tr>`;
+  document.getElementById('playbook-db').innerHTML = `
+    <div class="dbbar">
+      <input id="playbook-search" placeholder="이름·적용 대상·언제 쓰나 검색" value="${esc(playbookState.q)}">
+      <div class="chips"><span class="chip">${esc(String(rows.length))}건</span>${
+        warned ? '<span class="chip">읽지 못한 파일 ' + esc(String(warned)) + '건</span>' : ''}</div>
+    </div>
+    <table>
+      <thead><tr><th>플레이북</th><th>적용 대상</th><th>언제 쓰나</th><th>절차</th><th>확인 항목</th><th>버전</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>`;
+  const search = document.getElementById('playbook-search');
+  if(search){
+    search.addEventListener('input', e => { playbookState.q = e.target.value; renderPlaybooks();
+      const el = document.getElementById('playbook-search'); if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); } });
+  }
+}
+
 function showTab(which){
   const db = which==='issue-db';
   const issues = which==='issues';
   const memory = which==='memory';
   const production = which==='production';
+  const playbooks = which==='playbooks';
   document.getElementById('issue-db').classList.toggle('hidden', !db);
   document.getElementById('production-db').classList.toggle('hidden', !production);
+  document.getElementById('playbook-db').classList.toggle('hidden', !playbooks);
   document.getElementById('cy-issues').classList.toggle('hidden', !issues);
   document.getElementById('cy-memory').classList.toggle('hidden', !memory);
   document.getElementById('legend-issues').classList.toggle('hidden', !issues);
@@ -1872,8 +1928,14 @@ function showTab(which){
   document.getElementById('tab-issues').classList.toggle('on', issues);
   document.getElementById('tab-memory').classList.toggle('on', memory);
   document.getElementById('tab-production').classList.toggle('on', production);
+  document.getElementById('tab-playbooks').classList.toggle('on', playbooks);
   document.getElementById('rel-toggle').closest('label').classList.toggle('hidden', !issues);
   document.getElementById('badge-toggle').closest('label').classList.toggle('hidden', !issues);
+  if(playbooks){
+    renderPlaybooks();
+    if(location.hash !== '#playbooks') location.hash = 'playbooks';
+    return;
+  }
   if(production){
     renderProduction();
     if(location.hash !== '#production') location.hash = 'production';
@@ -1897,13 +1959,15 @@ document.getElementById('tab-db').addEventListener('click', ()=>showTab('issue-d
 document.getElementById('tab-issues').addEventListener('click', ()=>showTab('issues'));
 document.getElementById('tab-memory').addEventListener('click', ()=>showTab('memory'));
 document.getElementById('tab-production').addEventListener('click', ()=>showTab('production'));
+document.getElementById('tab-playbooks').addEventListener('click', ()=>showTab('playbooks'));
 function gotoMemory(id){ showTab('memory'); const n=cyMemory.getElementById(id); if(n){ cyMemory.elements().unselect(); n.select(); cyMemory.center(n);} }
 function gotoIssue(id){ showTab('issues'); const n=cyIssues.getElementById(id); if(n){ cyIssues.elements().unselect(); n.select(); cyIssues.center(n);} }
 window.gotoMemory = gotoMemory; window.gotoIssue = gotoIssue;
 
 showTab(location.hash === '#memory' ? 'memory'
   : (location.hash === '#issues' ? 'issues'
-  : (location.hash === '#production' ? 'production' : 'issue-db')));
+  : (location.hash === '#production' ? 'production'
+  : (location.hash === '#playbooks' ? 'playbooks' : 'issue-db'))));
 </script>
 </body>
 </html>
@@ -2058,6 +2122,12 @@ def render_project_view(root, *, project_context=None):
             "__PRODUCTION_ROWS__",
             _json_for_script(
                 _collect_production_records(root, project_context=context), indent=2
+            ),
+        )
+        .replace(
+            "__PLAYBOOK_ROWS__",
+            _json_for_script(
+                _collect_playbooks(root, project_context=context), indent=2
             ),
         )
     )

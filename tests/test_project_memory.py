@@ -879,33 +879,23 @@ More detail contents here.
             )
 
             html = project_memory.render_project_view(root)
-            rows_blob = re.search(
-                r"const ISSUE_ROWS = (.*?);\nconst ISSUE_ELEMENTS",
-                html,
-                re.S,
-            ).group(1)
-            issue_elements_blob = re.search(
-                r"const ISSUE_ELEMENTS = (.*?);\nconst MEMORY_ELEMENTS",
-                html,
-                re.S,
-            ).group(1)
-            memory_elements_blob = re.search(
-                r"const MEMORY_ELEMENTS = (.*?);\nconst PRODUCTION_ROWS",
-                html,
-                re.S,
-            ).group(1)
-            production_blob = re.search(
-                r"const PRODUCTION_ROWS = (.*?);\nconst KIND_ICON",
-                html,
-                re.S,
-            ).group(1)
-            rows = json.loads(rows_blob)
-            issue_elements = json.loads(issue_elements_blob)
-            memory_elements = json.loads(memory_elements_blob)
-            # Every embedded payload must survive the same escaping, not just the
-            # three that existed when this test was written.
-            production = json.loads(production_blob)
-            self.assertIn("rows", production)
+            # Anchor on the generic `;\nconst ` terminator, not on the next
+            # payload's name: adding a payload must not break this test, which
+            # it did twice while Issue 086 landed two new tabs.
+            def payload(name):
+                match = re.search(
+                    r"const " + name + r" = (.*?);\nconst ", html, re.S
+                )
+                self.assertIsNotNone(match, f"{name} payload not found")
+                return json.loads(match.group(1))
+
+            rows = payload("ISSUE_ROWS")
+            issue_elements = payload("ISSUE_ELEMENTS")
+            memory_elements = payload("MEMORY_ELEMENTS")
+            # Every embedded payload gets the same escaping, not just the three
+            # that existed when this test was written.
+            for name in ("PRODUCTION_ROWS", "PLAYBOOK_ROWS"):
+                self.assertIn("rows", payload(name), name)
 
             self.assertNotIn(attack, html)
             self.assertEqual(html.count("globalThis.PWN=1</script>"), 0)
