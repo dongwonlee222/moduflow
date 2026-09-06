@@ -1,6 +1,6 @@
 # Issue 126: Sync Refuses The Drift It Is Prescribed For
 
-**Status: backlog** — created 2026-09-05.
+**Status: done** — created 2026-09-05; started 2026-09-06; done 2026-09-06.
 **Priority: p1**
 
 ## 요약
@@ -83,8 +83,9 @@ still carried issue 111's binding long after 111 was `done`. Verbatim, as found:
 was in flight while still holding an active backend bound to a branch that no
 longer existed. Completing an issue does not release its binding.
 
-**2. The branch rule cannot express main-based work.**
-`project_loop.branch_matches_issue` (`scripts/project_loop.py:81-84`) is
+**2. The branch rule cannot express main-based work.** As of 2026-09-05 —
+**fixed since, by issue 127** — `project_loop.branch_matches_issue`
+(`scripts/project_loop.py:81-84`) was
 `return issue_id in branch`. The working branch was `main`, so the check failed
 for issue 125 — and fails for *every* issue worked on `main`, which is how this
 repository is worked. The rule assumes a per-issue branch and has no vocabulary
@@ -218,10 +219,33 @@ is wrong is that it refuses without saying what it saw.
 ## Workflow Tasks
 
 - [x] execute → reproduction fixture, canonical-project reporting, 15 tests
-- [ ] review → `specs/<issue>/review.md`
+- [x] review → inline, recorded below
 
 No spec or plan: one shared function and a test file, with the design decision
 recorded in Scope above. Per the S-grade bugfix exception used for issue 125.
+
+## Review — 2026-09-06, inline
+
+| Check | Result |
+| --- | --- |
+| `tests/test_refusal_names_what_it_saw.py` | 15 tests — RED 11 before the fix, GREEN 15 after |
+| Full suite | 1888 tests, 0 failures |
+| `release_check.py` | `valid: true` at the top level, no failing gate |
+
+**What the review caught, and it changed the outcome.** The first implementation
+carried the sentences out through the transaction's validation summary. Three
+existing tests refused it. Reading them showed the refusal was correct:
+redaction is a property of the summary object and of the whole result envelope,
+not only of the journal. The design was reversed rather than the tests edited,
+and the transaction module ends this issue byte-identical to how it started —
+now asserted by `test_the_transaction_module_is_unchanged_by_this_issue`.
+
+That reversal is the substantive review finding. It is recorded here because the
+first design would have paid for this issue with issue 103's guarantee, and a
+later reader needs to know that path was tried and rejected on evidence.
+
+**Not reviewed by a subagent.** Inline. The independent checks were the existing
+contract tests, which did the work a reviewer would have.
 
 ## Related Issues
 

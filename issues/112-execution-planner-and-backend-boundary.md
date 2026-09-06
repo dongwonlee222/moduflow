@@ -73,6 +73,7 @@ Do not add another execution engine. ModuFlow owns selection, state, evidence, a
 ## Workflow Tasks
 
 - [x] benchmark → `knowledge/benchmarks/2026-09-01-agentic-execution-governance-trend.md`
+- [x] empirical benchmark → `knowledge/benchmarks/2026-09-06-beads-v1-2-2-empirical-issue-engine-benchmark.md`
 - [x] design/scope → `docs/superpowers/specs/2026-09-01-execution-governance-scope-design.md`
 - [x] spec → `specs/112-execution-planner-and-backend-boundary/spec.md` (한글: `spec.ko.md`)
 - [x] plan → `specs/112-execution-planner-and-backend-boundary/plan.md` + `tasks.md`

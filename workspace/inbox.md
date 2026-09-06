@@ -12,6 +12,64 @@
 
 - (blocker for concurrent work): `.moduflow/state.json` holds a single global `active_issue`, and it is tracked in git. Every lifecycle transition writes it and `workspace/loop-state.json` — both were transaction targets when issues 086 and 119 were completed on 2026-09-05. Two people working at once each write their own issue id into the same field and conflict on every transition; a mis-resolved conflict silently discards the other person's state. "What I am working on right now" is per-person and does not belong in a shared file. Note before designing anything new: `workflow/team-state.json` (issues 005/035) already carries `owner`, `assignee`, `reviewer`, `branch`, `pr`, `lock_state` and `locked_by` per issue. Whether that lock is actually enforced against a transition was **not** checked — check that first, because if it is, this problem is smaller than it looks.
 
+  **Update 2026-09-06 — lock 확인 및 Beads v1.2.2 격리 실측.**
+  Source: ModuFlow의 실제 전이 함수를 임시 프로젝트에서 호출한 재현 시험 + 공식
+  Beads macOS ARM64 v1.2.2 바이너리(공식 SHA-256 일치)를 별도 Git 저장소에서
+  실행한 비교 시험. Owner: Dongwon Lee. Confidence: high for the tested local
+  single-checkout behavior; unverified for multi-machine/server operation.
+
+  확인 결과 `team-state.json`의 lock은 전이에 강제되지 않는다. 같은 이슈를 먼저
+  Minsu가 시작하고 이어 Jisu가 시작하자 두 번째 전이가 성공하면서 `assignee`와
+  `locked_by`가 Jisu로 조용히 덮어써졌다. 따라서 기존 메모의 미확인 가정은
+  **미강제**로 확정됐고, 문제 범위는 단순 표시 드리프트가 아니라 이중 실행을 허용하는
+  상태 모델 결함이다.
+
+  같은 시나리오를 Beads에서 실행한 결과는 달랐다.
+
+  1. `bd update <id> --claim`을 Minsu/Jisu가 동시에 호출하자 Minsu 한 명만
+     `in_progress`로 선점했고 Jisu는 `issue already claimed by Minsu`로 실패했다.
+  2. 세 선행 이슈를 blocker로 둔 회귀 테스트는 `bd ready`에서 제외됐고, 세 이슈를
+     닫은 직후 자동으로 ready가 됐다. `bd ready --claim --exclude-type epic`은 다음
+     작업 하나를 Jisu에게 원자적으로 배정했다.
+  3. `bd remember`로 저장한 프로젝트 원칙은 다음 `bd prime --memories-only`에서
+     실제로 주입됐다.
+  4. 다만 기본 embedded 모드는 로컬 Dolt DB이며, JSONL은 교환용일 뿐 원본이나
+     백업이 아니다. 여러 PC/worktree의 진짜 팀 운영은 Dolt remote/server와
+     push/pull을 별도로 검증해야 한다. “설치만 하면 다인 동시성이 해결된다”는 결론은
+     아직 성립하지 않는다.
+  5. 제품 성숙도 경고도 있었다. 쓰기 권한이 없는 `~/.dolt` 초기화 실패가 정상 오류가
+     아니라 panic으로 끝났고, embedded 모드에서 `bd doctor`는 미지원이다. `bd ready`
+     기본 결과에는 epic도 포함돼 실행 에이전트가 `--exclude-type epic` 같은 정책을
+     갖춰야 한다. 최신 v1.2.2는 실수로 배포된 1.2.0/1.2.1을 검증된 1.1 계열로
+     되돌린 recovery release라서, work leases·events journal·HTTP API 등 1.2 전용
+     기능은 현재 릴리스에 없다.
+
+  개선 방향은 **전면 교체가 아니라 경계가 분명한 shadow pilot**이다.
+
+  - Beads 후보 소유권: issue identity, dependency graph, ready query, atomic claim,
+    assignee/status history.
+  - ModuFlow 잔존 소유권: goal, opportunity, spec/AC, decision, evidence, review/release
+    gates, stakeholder reporting.
+  - `.moduflow/state.json.active_issue`는 공유 SSoT에서 제거하고 작업자 로컬 또는
+    Beads의 claim 결과에서 파생한다. `team-state.json`도 직접 쓰는 lock 저장소가
+    아니라 이슈 엔진에서 생성하는 projection으로 낮춘다.
+  - issue 112의 backend boundary에서만 Beads를 호출하고, ModuFlow 안에 별도
+    scheduler/queue/lock 상태기를 또 만들지 않는다.
+  - 실제 ModuFlow 이슈 전체를 옮기기 전에 active/backlog 10건만 양쪽에 병행해
+    ID 매핑, close/reopen, dependency, worktree, 두 컴퓨터 push/pull, 장애 복구를
+    검증한다. 통과 기준에는 무손실 왕복, 중복 선점 0건, silent overwrite 0건,
+    rollback 가능성을 포함한다.
+  - v1.2.2 recovery-release 안정성과 remote 운영비가 기준을 통과하지 못하면,
+    Beads 채택 없이도 동일 원칙(원자적 claim, 복수 active, derived projection)을
+    ModuFlow에 최소 구현한다.
+
+  `retrieval_trigger`: re-read when working on issue 112, multi-user concurrency,
+  active-issue state, team-state locks, issue-engine adapters, or any Beads adoption
+  decision.
+  Suggested routing: `product:opportunity` for the Beads/native boundary decision,
+  then attach the selected implementation to issue 112 or a narrowly scoped successor;
+  do not create a second orchestration runtime.
+
 - **Missing primitive: numeric ledger + retraction propagation.** Source: real-world audit of a grant-application project (33 docs, 187 measurements, deadline-driven) run on 2026-09-05. ModuFlow tracks *"is the task done"*; that project needed *"is the sentence I wrote still true"*. Issue state moves forward (todo→doing→done); evidence moves backward — when a server-cost assumption (600k KRW/mo) was replaced by a measurement (80k KRW/mo, ledger id M173), the already-`done` break-even figure (4,706 users) silently went stale in **four** documents, and a retracted metric survived in one doc after being removed from another. 14 instances of the same class in one audit.
 
   What is missing (verified against this repo on 2026-09-05):

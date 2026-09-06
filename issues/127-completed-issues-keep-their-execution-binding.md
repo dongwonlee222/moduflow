@@ -1,6 +1,6 @@
 # Issue 127: Completed Issues Keep Their Execution Binding
 
-**Status: backlog** — created 2026-09-06.
+**Status: done** — created 2026-09-06; started 2026-09-06; done 2026-09-06.
 **Priority: p1**
 
 ## 요약
@@ -56,13 +56,17 @@ which is how this one was cleared.
 
 ### Fault 2 — the branch rule assumes a branch per issue
 
+As found, **before the fix** — the current signature is
+`branch_matches_issue(branch, issue_id, base_branch=None)` and carries a `# 127:`
+comment:
+
 ```python
-# scripts/project_loop.py:81-84
+# scripts/project_loop.py:81-84, as of 2026-09-05
 def branch_matches_issue(issue_id, branch):
     return issue_id in branch
 ```
 
-`validate_git_binding_for_issue` (`scripts/project_loop.py:153-161`) calls it.
+`validate_git_binding_for_issue` called it.
 There is no case for main-based work: the rule can only answer "the branch name
 contains the issue id", so working on `main` — this repository's own practice —
 is indistinguishable from working on the wrong branch. The blast radius is every
@@ -144,11 +148,34 @@ than widened.
 ## Workflow Tasks
 
 - [x] execute → binding release, base-branch case, 15 regression tests
-- [ ] review → `specs/<issue>/review.md`
+- [x] review → inline, recorded below
 
 No spec or plan: two functions and a test file, with acceptance criteria already
 written above. Below the threshold where a spec adds anything, per the S-grade
 bugfix exception used for issue 125.
+
+## Review — 2026-09-06, inline
+
+| Check | Result |
+| --- | --- |
+| `tests/test_completed_issue_releases_binding.py` | 15 tests — RED 8 before the fix, GREEN 15 after |
+| Full suite | 1873 tests, 0 failures |
+| `release_check.py` | `valid: true` at the top level, no failing gate |
+| Lifecycle drift | 0 |
+
+Every acceptance criterion above is met and covered by a named test. The two
+faults are covered separately, so reintroducing one is caught even if the other
+still holds.
+
+**What the review caught.** Two release gates refused the first commit and both
+were right: no `Issue:` trailer, and no version bump. Fixed in the amend
+(`0.3.65 → 0.3.66`). They also demonstrated issue 126 from the other side — the
+gates reported `ok: false` and nothing else until the top-level `errors` list
+was read.
+
+**Not reviewed by a subagent.** Inline, as the command permits when no subagent
+backend is available. The independent check here was the existing suite, which
+is weaker than a reader — recorded rather than claimed otherwise.
 
 ## Related Issues
 
@@ -161,4 +188,4 @@ bugfix exception used for issue 125.
 
 ## Next Command
 
-`product:spec 127-completed-issues-keep-their-execution-binding`
+Done. No further command.
