@@ -341,7 +341,12 @@ Existing suites must stay green: `tests/test_worker_orchestration.py`,
 
 Reviewers must approve:
 
-- fail-closed at plan level, and the resulting 19 refused specs (section 10);
+- **[approved 2026-09-06 — Dongwon Lee]** fail-closed at plan level, and the
+  resulting 19 refused specs (section 10). Record:
+  `memory/decisions/2026-09-06-112.md`. Alternatives considered and rejected:
+  emitting an `unverified` plan (keeps the untrustworthy plan this issue exists
+  to remove) and treating boundary-less specs as legacy `not_applicable`
+  (a two-tier rule that is hard to explain). Reversal condition recorded.
 - the whole-name section exclusion list and its growth path (section 6.1);
 - treating a dependency on a completed task as satisfied (section 6.2);
 - the `inline` conditions, in particular that shared state forces `inline`.
