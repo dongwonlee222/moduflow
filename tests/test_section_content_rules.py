@@ -247,49 +247,58 @@ class TheLiveTree(unittest.TestCase):
         self.assertTrue(result["valid"], result.get("errors"))
 
 
-class PlainLanguageRuleIsStated(unittest.TestCase):
-    """The rule the five slots did not cover.
+class TechnicalTermRuleIsStated(unittest.TestCase):
+    """Rewritten twice from guesses before it was checked against anything.
 
-    On 2026-09-06 two decision requests had every slot filled and the owner
-    could not act on either. One said the diagnostic must reach "doctor output"
-    without saying that doctor output is a 31-key JSON dump; one said "remove
-    the translator" about a translator that does not exist yet.
+    v1 said explain the term or drop it — dropping it stops an expert
+    searching for the thing. v2 put the plain phrase first and the term in
+    parentheses, which produced `말길 알아듣는 장치(라우터, router)`: an invented
+    name in front of one the reader already knew, and longer for it.
 
-    Filling a slot and being read are different things. Whether prose obeys the
-    rule cannot be tested — only that the rule is written down where someone
-    about to write a decision request will meet it.
+    Four sources agree and all put the term in the body: Google ("If the
+    majority of your audience is likely to recognize and understand the term,
+    then you don't need to spell it out"), Microsoft ("Don't create a new word
+    if one already exists"), plainlanguage.gov ("use them rarely"), and
+    국립국어원's 2025 전문용어 표준화 안내서 (토착화한 외래어 stay; 간결성).
+
+    Three of v2's own four examples fail v3. They are kept in the file as the
+    failure table, because a rule with no counter-example gets read as advice.
     """
 
-    HEADING = "## 처음 쓰는 말은 풀어쓴다"
+    HEADING = "## 전문용어"
 
-    def test_the_spec_command_states_the_parenthetical_form(self):
+    def block(self):
         text = (ROOT / "commands" / "product-spec.md").read_text(encoding="utf-8")
         self.assertIn(self.HEADING, text)
-        block = re.search(
+        return re.search(
             rf"{re.escape(self.HEADING)}(.*?)(?=\n## |\Z)", text, re.S
         ).group(1)
-        # The form itself, not just "write plainly". Dropping the term entirely
-        # was the first version of this rule and it was wrong: an expert then
-        # cannot search for the thing or match it to the code.
-        self.assertIn("쉬운 말 (전문용어)", block)
-        self.assertIn("이렇게 썼어야 했다", block, "the rule needs a before/after")
-        self.assertIn("기계는 이걸 검사할 수 없습니다", block,
-                      "the rule must say it is not machine-checkable")
 
-    def test_the_spec_command_names_both_readers(self):
-        """One audience is why the term stays; the other is why it is explained."""
-        text = (ROOT / "commands" / "product-spec.md").read_text(encoding="utf-8")
-        block = re.search(
-            rf"{re.escape(self.HEADING)}(.*?)(?=\n## |\Z)", text, re.S
-        ).group(1)
-        self.assertIn("잘 모르는 사람", block)
-        self.assertIn("아는 사람", block)
+    def test_the_term_goes_in_the_body_not_the_parenthesis(self):
+        body = self.block()
+        self.assertIn("전문용어를 본문에 그대로 씁니다", body)
+        self.assertIn("괄호에 한 줄", body)
+
+    def test_the_test_is_the_reader_not_the_word(self):
+        self.assertIn("읽는 사람이 그 말을 아는지", self.block())
+
+    def test_inventing_a_name_is_forbidden(self):
+        """The v2 failure, stated so v4 cannot reintroduce it."""
+        self.assertIn("새 이름을 지어내지 않습니다", self.block())
+
+    def test_the_failed_examples_are_kept(self):
+        body = self.block()
+        for wrong in ("말길 알아듣는 장치", "doctor 출력"):
+            with self.subTest(example=wrong):
+                self.assertIn(wrong, body)
+
+    def test_it_says_no_machine_can_check_it(self):
+        self.assertIn("기계는 검사할 수 없습니다", self.block())
 
     def test_the_issue_command_states_it_too(self):
         text = (ROOT / "commands" / "product-issue.md").read_text(encoding="utf-8")
-        self.assertIn("쉬운 말을 본문에, 전문용어는 괄호에", text)
-        self.assertIn("`## 요약`", text)
-        self.assertIn("`## 원인`", text)
+        self.assertIn("전문용어는 본문에, 설명은 그 뒤 괄호에", text)
+        self.assertIn("읽는 사람이 그 말을 아는지", text)
 
 
 if __name__ == "__main__":

@@ -41,7 +41,7 @@ Create the durable work item.
    Assigning rather than asking is the point. kubernetes keeps twelve `kind/` labels and its four issue templates each force exactly one; ModuFlow's 142 free-prose `Type:` values are what happens without that gate. Issues written before this rule keep their prose and are skipped, not failed.
 10. **`## 원인` holds only what was run.** Paste the command and its output, or write `원인 미상`. Hedging — `추측`, `~것 같`, `~로 보임`, `hypothesis`, `likely`, `probably` — fails validation inside that section. An issue with a symptom and no cause is complete and correct; `원인 미상` is the honest answer, not a gap. Issue 126 labelled its guess as unverified and still sent the next reader to the wrong function, which is why labelling is not enough.
 11. If GitHub CLI is available and requested, create or sync the GitHub issue (see GitHub Issue Sync below).
-12. **쉬운 말을 본문에, 전문용어는 괄호에.** `## 요약`과 `## 원인`은 이 이슈를 처음 보는 사람이 읽습니다. `쉬운 말 (전문용어)` 형태로 씁니다 — 예: `되돌릴 수 있게 묶어서 처리하는 것(트랜잭션, transaction)`. 잘 모르는 사람은 본문만 읽어도 이해하고, 아는 사람은 괄호를 보고 넘어갑니다. 용어를 아예 빼면 아는 사람이 검색도 못 합니다. 기계는 검사할 수 없습니다. 예시는 `commands/product-spec.md`의 「처음 쓰는 말은 풀어쓴다」를 보십시오.
+12. **전문용어는 본문에, 설명은 그 뒤 괄호에.** `## 요약`과 `## 원인`의 기준은 말이 어려운지가 아니라 **읽는 사람이 그 말을 아는지**입니다. 알면 그냥 씁니다(`라우터`, `트랜잭션`). 모르면 용어 먼저 쓰고 괄호에 한 줄 답니다(`투영(지금 상태를 베껴 만든 사본)`). **이미 이름이 있는 것에 새 이름을 지어내지 마십시오** — 검색도 안 되고 문장만 길어집니다. 예시는 `commands/product-spec.md`의 「전문용어」를 보십시오.
 
 
 ## GitHub Issue Sync (opt-in)
