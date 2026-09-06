@@ -7,7 +7,7 @@
 이슈: `112-execution-planner-and-backend-boundary`
 이전 산출물: `knowledge/benchmarks/2026-09-01-agentic-execution-governance-trend.md`,
 `docs/superpowers/specs/2026-09-01-execution-governance-scope-design.md` ·
-다음: `product:plan 112-execution-planner-and-backend-boundary`
+다음: `product:workers 112-execution-planner-and-backend-boundary`
 
 > 정본은 같은 폴더의 `spec.md`입니다. 이 문서는 한국어 읽기용 사이드카입니다.
 
@@ -303,9 +303,25 @@ gap은 둘 중 어느 쪽인지 말해야 합니다. "경계를 선언하지 않
 
 ## 15. 사람이 승인해야 할 결정
 
-- 플랜 단위 fail-closed와 그 결과인 19개 spec 거절(10절)
-- 전체 이름 일치 섹션 배제 목록과 그 확장 경로(6.1절)
-- 완료된 작업에 대한 의존성을 충족으로 보는 것(6.2절)
-- `inline` 조건, 특히 공유 상태가 `inline`을 강제하는 것
+**네 건 모두 2026-09-06 이동원 승인 완료.** 기록:
+`memory/decisions/2026-09-06-112.md`, `memory/decisions/2026-09-06-112-2.md`.
 
-승인 후 다음 명령: `product:plan 112-execution-planner-and-backend-boundary`
+- **[승인]** 플랜 단위 fail-closed와 그 결과인 19개 spec 거절(10절) — 유일하게
+  판단이 필요했던 건. 명세 55개 중 34개는 이미 끝났고, 남은 21개 중 19개가
+  파일 경계를 안 적어 거절됩니다(빈 자리 104군데). 거절은 위험을 만드는 게
+  아니라 이미 있던 위험을 드러냅니다.
+- **[승인]** 전체 이름 일치 섹션 배제 목록과 그 확장 경로(6.1절) — 부분 일치로
+  거르면 진짜 테스트 작성 작업 4개가 삭제되는 것이 측정됨.
+- **[승인]** 완료된 작업에 대한 의존성을 충족으로 보는 것(6.2절) — 이미 그렇게
+  동작 중. 거부하면 순차 작업이 영영 안 풀립니다.
+- **[승인]** `inline` 조건, 특히 공유 상태가 `inline`을 강제하는 것(6.3절) —
+  문자열 비교로는 `scripts/*`와 그 아래 파일 4개가 안 겹친다고 판정돼 워커 둘이
+  같은 파일에 붙는 것이 명세 027에서 측정됨.
+
+다음 명령은 `product:workers 112-execution-planner-and-backend-boundary`입니다
+(`plan.md:5`, `tasks.md:49`). `plan.md`·`tasks.md`가 이미 있으므로 이 절이 적고
+있던 `product:plan`은 틀렸습니다.
+
+남은 블로커는 승인이 아니라 **Stream C 호스트 어댑터 인터페이스 리뷰**입니다 —
+`docs/superpowers/specs/2026-09-05-issue-112-host-adapter-interface.md`, 작업 T05
+(T06이 여기에 의존).

@@ -73,7 +73,6 @@ Do not add another execution engine. ModuFlow owns selection, state, evidence, a
 ## Workflow Tasks
 
 - [x] benchmark → `knowledge/benchmarks/2026-09-01-agentic-execution-governance-trend.md`
-- [x] empirical benchmark → `knowledge/benchmarks/2026-09-06-beads-v1-2-2-empirical-issue-engine-benchmark.md`
 - [x] design/scope → `docs/superpowers/specs/2026-09-01-execution-governance-scope-design.md`
 - [x] spec → `specs/112-execution-planner-and-backend-boundary/spec.md` (한글: `spec.ko.md`)
 - [x] plan → `specs/112-execution-planner-and-backend-boundary/plan.md` + `tasks.md`
@@ -114,7 +113,17 @@ Issue 103 is done. Spec, plan and tasks are written and pass
 task and passes this issue's own prototype gates (`ok`, `inline`), so the spec
 satisfies the contract it defines.
 
-Blocked on the four human review decisions in
-`specs/112-execution-planner-and-backend-boundary/spec.md` §15 — chiefly
-fail-closed refusal and its effect on 19 live specs. After that,
-`product:execute`, starting with the Stream C interface review.
+**All four §15 decisions are approved** — 2026-09-06, recorded in
+`memory/decisions/2026-09-06-112.md` and `-112-2.md` and marked in
+`spec.md:344` and `:350`. This section previously said they were pending;
+that was wrong.
+
+The remaining blocker is the **Stream C host-adapter interface review**:
+`docs/superpowers/specs/2026-09-05-issue-112-host-adapter-interface.md`,
+task T05, which T06 depends on. Design and review the interface, then write
+the mapping code.
+
+Note for whoever picks this up: there is no execution runtime to remove.
+No code creates a worktree; `worker_orchestrator.py:408` and `:476` hold two
+strings that name one. Streams C and E move host vocabulary, they do not
+delete a runtime.

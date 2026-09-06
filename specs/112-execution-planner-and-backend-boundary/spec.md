@@ -7,7 +7,7 @@
 Issue: `112-execution-planner-and-backend-boundary`
 Prev: `knowledge/benchmarks/2026-09-01-agentic-execution-governance-trend.md`,
 `docs/superpowers/specs/2026-09-01-execution-governance-scope-design.md` ·
-Next: `product:plan 112-execution-planner-and-backend-boundary`
+Next: `product:workers 112-execution-planner-and-backend-boundary`
 
 ## 1. Problem
 
@@ -362,4 +362,11 @@ have a measured wrong answer and one is already the shipped behaviour:
   `scripts/*` and four named `scripts/` files to two parallel workers on the
   same files.
 
-Next command after approval: `product:plan 112-execution-planner-and-backend-boundary`.
+All four are approved. `plan.md` and `tasks.md` already exist, and both
+name the same next step, so this section named the wrong one: the next
+command is `product:workers 112-execution-planner-and-backend-boundary`
+(`plan.md:5`, `tasks.md:49`).
+
+The remaining blocker is not an approval. It is the Stream C host-adapter
+interface review — `docs/superpowers/specs/2026-09-05-issue-112-host-adapter-interface.md`,
+task T05, which T06 depends on.
