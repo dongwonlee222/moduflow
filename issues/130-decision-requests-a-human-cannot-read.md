@@ -64,6 +64,14 @@ request, and no equivalent slot exists.
 
 ### In
 
+- **Separate the decisions a person must make from the ones only needing
+  ratification.** §15 listed four items at equal weight. Only the first was a
+  real decision — it costs the owner 19 refused specs. The other three each
+  have a measured wrong answer (substring matching deleted 4 real tasks; string
+  comparison put two workers on one file) or are already the shipped behaviour.
+  Presenting all four identically made the owner read three engineering
+  corrections to find the one judgement call. A decision request must say
+  which is which, and the machine-verifiable ones must be stated in one line.
 - A decision request must carry five things: why the decision exists, what
   goes wrong today, a concrete measured example, the alternatives with their
   costs, and what approval changes.
@@ -92,6 +100,8 @@ readable decision.
 
 ## Acceptance Criteria
 
+- Every decision is marked either "owner decides" or "ratification", and a
+  ratification item is one line. A spec with an unmarked decision fails.
 - A spec with an open decision and any empty slot fails validation, and the
   failure names the spec, the decision, and the missing slot in Korean.
 - A spec whose decisions are all approved passes without the slots.
