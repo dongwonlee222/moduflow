@@ -9,8 +9,8 @@
 읽고 고를 수가 없습니다. 기본 진입점은 **`/moduflow` 하나**로 하고, 그 뒤에는
 **한국어든 영어든** 평소 쓰는 말을 씁니다. 메뉴에는 **핵심 명령 10개만** 보이게 하고
 접두사 `product:`는 뗍니다 — **`/moduflow inbox`처럼 이름만 쓰면 실행**됩니다.
-나머지 명령과 스킬은 메뉴에서만 숨기고 **직접 입력하면 그대로 동작**합니다. 저장된
-필드 이름은 하나도 안 바꿉니다.
+옛 `product:xxx` 형태는 **더 이상 보증하지 않습니다**(파일은 남기되 테스트도 안내도
+안 합니다). 지우는 건 별도 정리 작업입니다. 저장된 필드 이름은 하나도 안 바꿉니다.
 
 ## Summary
 
@@ -81,11 +81,15 @@ English. These ten stay visible for anyone who prefers picking from a list:
 - **`/moduflow <name>` runs the command.** `/moduflow inbox` executes what
   `product:inbox` executes. That is the form the owner asked for on 2026-09-06:
   "moduflow inbox 이렇게만 해도 실행 되게". The prefix is not typed and not shown.
-- `product:inbox` still works when typed in full, unchanged. Nothing is renamed on
-  disk and no new top-level command file appears — `/moduflow inbox` is the hub
-  dispatching on its first argument, not a second command named `inbox`.
-- The three forms are equivalent and must stay so: `/moduflow inbox`,
-  `/moduflow 메모해줘: …`, and `product:inbox`.
+- `/moduflow inbox` is the hub dispatching on its first argument, not a second
+  command named `inbox`. No new top-level command file appears.
+- **The old `product:<name>` form is not promised.** Decided by the owner
+  2026-09-06: it does not need to keep working. Nothing is deleted or renamed in
+  this issue — the files stay and will keep functioning — but no compatibility
+  guarantee is made and no test asserts it. Removing them is a separate cleanup,
+  deliberately not bundled here.
+- Everything written from now on uses `/moduflow <name>`: the menu, the labels,
+  every `## Next Command` line, the templates, and the docs.
 - Everything else is hidden from the menu and keeps working when typed:
   `knowledge`, `evidence`, `research`, `report`, `promote`, `profile`, `migrate`,
   `portfolio`, `workers`, bridges, routers, policies, and the duplicate generated
@@ -138,8 +142,10 @@ untouched:
 
 ### Out
 
-- **Renaming or deleting anything.** Command names, skill names, stored field
-  names and artifact vocabulary stay exactly as they are. `rationale` remains
+- **Renaming or deleting anything in this issue.** Command names, skill names,
+  stored field names and artifact vocabulary are untouched here. The old
+  invocation form loses its guarantee, not its files — see the cleanup note in
+  Scope In. Stored field names never change at all. `rationale` remains
   `rationale` in the file and reads as `왜 이렇게 정했나요?` on screen.
 - **Shorthand aliases.** `/product:d`, `/product:m`, `/product:rev` and similar
   were put to the owner and refused: an abbreviation is another language to learn.
@@ -172,8 +178,10 @@ it does not remove the need to know what the product does.
   identical output.
 - The visible menu lists `/moduflow` plus exactly the ten commands above, each
   displayed without the `product:` prefix and carrying all four items.
-- Every one of the 41 commands still executes under its existing full name,
-  asserted by a test covering all 41, so hiding never becomes removing.
+- No test asserts the old `product:<name>` form. It is unsupported, not broken —
+  the distinction is recorded so a later cleanup is free to remove it.
+- Every hidden command is still reachable through `/moduflow <name>`, asserted for
+  all 41. Hiding must never become removing.
 - Each of the nine Korean/English pairs reaches the same handler, asserted
   pairwise.
 - The five single English words are handled as intent after `/moduflow` and do
@@ -194,9 +202,8 @@ it does not remove the need to know what the product does.
 ## Verification
 
 - Fixture: the nine Korean/English pairs, asserting identical routing.
-- Fixture: all 41 commands invoked by their existing full names.
-- Fixture: the ten names invoked as `/moduflow <name>`, asserting identical output
-  to the `product:<name>` form.
+- Fixture: all 41 names invoked as `/moduflow <name>`, asserting each reaches its
+  handler.
 - Fixture: the command filename set and the memory record schema, asserting
   nothing was renamed.
 - Fixture: a one-sentence decision with a recoverable reason, and one without —
