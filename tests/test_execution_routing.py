@@ -438,5 +438,115 @@ class RealCorpus(unittest.TestCase):
             self.assertIn(result["status"], {"ok", "needs_plan", "not_applicable"})
 
 
+class ResultSchemaIsComplete(unittest.TestCase):
+    """Spec §7 lists the required fields. build_routing was missing one.
+
+    `issue_id` is named in §7 and was never emitted — a contract this issue
+    wrote and then did not meet. Caught while scoping T08, fixed here rather
+    than filed, because a missing field in your own current work is not a new
+    issue.
+    """
+
+    REQUIRED = frozenset({
+        "schema", "issue_id", "project_root", "status", "backend",
+        "routing_reason", "gaps", "tasks", "written", "dispatched",
+        "executed_by", "next_command", "divergences",
+    })
+
+    def route(self, spec_name="112-execution-planner-and-backend-boundary"):
+        path = ROOT / "specs" / spec_name / "tasks.md"
+        return routing.build_routing(routing.scan_tasks(path), ROOT, issue_id=spec_name)
+
+    def test_every_required_field_is_present(self):
+        self.assertEqual(set(self.route()) & self.REQUIRED, self.REQUIRED)
+
+    def test_issue_id_is_the_one_passed_in(self):
+        self.assertEqual(
+            self.route()["issue_id"], "112-execution-planner-and-backend-boundary"
+        )
+
+    def test_issue_id_is_none_when_not_supplied(self):
+        """Explicit null rather than an absent key, like dispatched/executed_by."""
+        path = ROOT / "specs/112-execution-planner-and-backend-boundary/tasks.md"
+        self.assertIsNone(routing.build_routing(routing.scan_tasks(path), ROOT)["issue_id"])
+
+
+class CompletionDivergence(unittest.TestCase):
+    """Spec §9: the canonical artifact wins, and the disagreement is reported.
+
+    A Superpowers design or plan document is execution detail and can never
+    mark a ModuFlow task complete. Where the two disagree, resolving it
+    silently would let the linked document quietly close canonical work.
+
+    Measured 2026-09-06: zero divergences exist in the corpus. This detector is
+    written from the contract, not from a failure that happened, and its
+    fixtures are synthetic. Recorded so a passing run is not read as evidence
+    that the case cannot occur.
+    """
+
+    def build(self, tasks_body, plan_body=None):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        if plan_body is not None:
+            doc = root / "docs/superpowers/plans/p.md"
+            doc.parent.mkdir(parents=True)
+            doc.write_text(plan_body, encoding="utf-8")
+        tasks = root / "tasks.md"
+        tasks.write_text(tasks_body, encoding="utf-8")
+        return routing.build_routing(routing.scan_tasks(tasks), root, issue_id="999-x")
+
+    OPEN_CANONICAL = (
+        "## Stream A\n\n"
+        "- [ ] Do the thing [files: scripts/x.py] "
+        "| Plan: docs/superpowers/plans/p.md\n"
+    )
+    DONE_CANONICAL = (
+        "## Stream A\n\n"
+        "- [x] Do the thing [files: scripts/x.py] "
+        "| Plan: docs/superpowers/plans/p.md\n"
+        "- [ ] Another thing [files: scripts/y.py]\n"
+    )
+
+    def test_a_finished_plan_under_an_open_task_is_reported(self):
+        result = self.build(self.OPEN_CANONICAL, "- [x] step one\n- [x] step two\n")
+        self.assertEqual(len(result["divergences"]), 1)
+        found = result["divergences"][0]
+        self.assertEqual(found["task_id"], "T01")
+        self.assertEqual(found["kind"], "detail_claims_complete")
+        self.assertIn("docs/superpowers/plans/p.md", found["document"])
+
+    def test_an_open_plan_under_a_finished_task_is_reported(self):
+        result = self.build(self.DONE_CANONICAL, "- [x] step one\n- [ ] step two\n")
+        kinds = [d["kind"] for d in result["divergences"]]
+        self.assertIn("detail_claims_incomplete", kinds)
+
+    def test_agreement_reports_nothing(self):
+        self.assertEqual(
+            self.build(self.OPEN_CANONICAL, "- [ ] step one\n")["divergences"], []
+        )
+
+    def test_a_missing_document_is_not_a_divergence(self):
+        """A dead link is a different defect and not this one's to invent."""
+        self.assertEqual(self.build(self.OPEN_CANONICAL)["divergences"], [])
+
+    def test_divergence_never_changes_status_or_refuses(self):
+        """§9 says reported, not resolved. A gap refuses; this must not."""
+        result = self.build(self.OPEN_CANONICAL, "- [x] step one\n")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["gaps"], [])
+        self.assertTrue(result["tasks"])
+
+    def test_the_live_corpus_has_none(self):
+        """The measurement this detector was written without."""
+        total = 0
+        for tasks_path in sorted(ROOT.glob("specs/*/tasks.md")):
+            result = routing.build_routing(
+                routing.scan_tasks(tasks_path), ROOT, issue_id=tasks_path.parent.name
+            )
+            total += len(result["divergences"])
+        self.assertEqual(total, 0, "a real divergence appeared; this test is now evidence")
+
+
 if __name__ == "__main__":
     unittest.main()

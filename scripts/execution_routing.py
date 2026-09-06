@@ -19,6 +19,7 @@ Nothing here writes: `written` is always []. Gate 2 fails closed at plan level
 persist and no partial plan can read as a complete one.
 """
 import fnmatch
+import pathlib
 import re
 from pathlib import Path
 
@@ -290,7 +291,63 @@ def _with_intent(task, backend):
     }
 
 
-def build_routing(tasks, project_root="."):
+# 112 §9: `spec.md`, `plan.md` and `tasks.md` are the single completion truth.
+# A linked Superpowers design or plan is execution detail and can never mark a
+# ModuFlow task complete. Where they disagree the canonical artifact wins and
+# the disagreement is *reported* — resolving it silently would let a linked
+# document quietly close canonical work.
+#
+# Measured 2026-09-06: zero divergences in the corpus. This is written from the
+# contract, not from a failure that happened, and its fixtures are synthetic.
+DETAIL_LINK_RE = re.compile(r"(?:Plan|Design):\s*`?(docs/superpowers/\S+?\.md)`?")
+_CHECKBOX_ANY = re.compile(r"^- \[(?P<mark>[ xX])\]", re.M)
+
+
+def detail_divergences(tasks, root):
+    """Canonical checkbox versus the linked document's, per task."""
+    findings = []
+    for task in tasks:
+        match = DETAIL_LINK_RE.search(task.get("text") or "")
+        if not match:
+            continue
+        relative = match.group(1)
+        document = pathlib.Path(root) / relative
+        try:
+            body = document.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            # A dead link is a different defect and not this one's to invent.
+            continue
+        marks = [m.group("mark").lower() for m in _CHECKBOX_ANY.finditer(body)]
+        if not marks:
+            continue
+        detail_complete = all(mark == "x" for mark in marks)
+        canonical_complete = task.get("status") == "done"
+        if detail_complete and not canonical_complete:
+            findings.append({
+                "task_id": task["id"],
+                "kind": "detail_claims_complete",
+                "document": relative,
+                "message": (
+                    f"{task['id']}: the canonical task is open but "
+                    f"{relative} marks every step done. The canonical artifact "
+                    "wins; reconcile the document or reopen its steps."
+                ),
+            })
+        elif canonical_complete and not detail_complete:
+            findings.append({
+                "task_id": task["id"],
+                "kind": "detail_claims_incomplete",
+                "document": relative,
+                "message": (
+                    f"{task['id']}: the canonical task is done but {relative} "
+                    "still has open steps. The canonical artifact wins; the "
+                    "document is stale."
+                ),
+            })
+    return findings
+
+
+def build_routing(tasks, project_root=".", *, issue_id=None):
     """One host-neutral routing result. Never writes, never claims dispatch.
 
     `project_root` is accepted so callers pass the root they scanned, but the
@@ -299,10 +356,16 @@ def build_routing(tasks, project_root="."):
     does not exist on this machine, so the routing result addresses the project
     it was invoked on as `.` rather than carrying one machine's layout.
     """
-    del project_root
+    # §7 requires issue_id. It was named in the contract and never emitted
+    # until 2026-09-06 — caught while scoping T08 and fixed with it, because a
+    # missing field in this issue's own work is not a separate issue.
     base = {
         "schema": ROUTING_SCHEMA,
+        "issue_id": issue_id,
         "project_root": ".",
+        # Reported, never resolved (§9). A divergence does not refuse a plan;
+        # only a gap does.
+        "divergences": detail_divergences(tasks, project_root),
         "written": [],
         # Explicit rather than omitted, so "ModuFlow did not run this" is
         # assertable in a test instead of merely implied (§7).

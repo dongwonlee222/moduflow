@@ -27,7 +27,7 @@ dogfood fixture for the gates this issue builds: running the routing on issue
 
 ## Stream D — Canonical artifact ownership
 
-- [ ] Detect and report canonical versus Superpowers completion divergence without auto-resolving it [files: scripts/execution_routing.py, tests/test_execution_routing.py] [depends: T02]
+- [x] Detect and report canonical versus Superpowers completion divergence without auto-resolving it [files: scripts/execution_routing.py, tests/test_execution_routing.py] [depends: T02]
 
 ## Stream E — Integration and verification
 
