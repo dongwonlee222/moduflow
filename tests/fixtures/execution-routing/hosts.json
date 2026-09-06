@@ -123,8 +123,8 @@
         }
       }
     },
-    "copilot": {
-      "host_id": "copilot",
+    "copilot-cloud-agent": {
+      "host_id": "copilot-cloud-agent",
       "tasks": {
         "T01": {
           "isolation": {

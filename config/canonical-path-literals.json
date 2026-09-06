@@ -150,6 +150,12 @@
       "pattern": "join:.moduflow",
       "classification": "project_control_path",
       "rationale": "Validation reads fixed lifecycle state from the .moduflow control directory."
+    },
+    {
+      "module": "scripts/worker_orchestrator.py",
+      "pattern": "join:.moduflow",
+      "classification": "project_control_path",
+      "rationale": "The execution host is fixed project-control configuration read from .moduflow/config.json; canonical spec and task paths still come from the resolved project context."
     }
   ]
 }

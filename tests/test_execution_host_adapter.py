@@ -41,7 +41,7 @@ HOST_VOCABULARY = (
     "haiku",
     "worktree",
     "TypeName",
-    "copilot",
+    "copilot-cloud-agent",
 )
 
 
@@ -193,10 +193,24 @@ class UnregisteredHostRefuses(unittest.TestCase):
             self.assertIn(host_id, str(caught.exception))
 
     def test_exactly_three_hosts_are_registered_and_none_of_them_is_a_default(self):
-        self.assertEqual(adapters.known_hosts(), ("claude-code", "codex", "copilot"))
+        self.assertEqual(adapters.known_hosts(), ("claude-code", "codex", "copilot-cloud-agent"))
         for host_id in ("", "default", "generic", "*", None):
             with self.assertRaises(adapters.UnregisteredHostError):
                 adapters.adapter_for(host_id)
+
+    def test_every_adapter_is_spelled_the_way_the_execution_backends_set_spells_it(self):
+        """One host registry, not two.
+
+        `project_loop.EXECUTION_BACKENDS` already names the hosts this product
+        knows, and a git binding already records one of those names. An adapter
+        spelled `copilot` while the rest of the product says
+        `copilot-cloud-agent` would make a configured host unroutable for a
+        reason nobody could see. Decision:
+        `memory/decisions/2026-09-06-the-host-is-configured-with-a-per-run-override-never-guessed.md`.
+        """
+        project_loop = load_module("project_loop_host_names", "scripts/project_loop.py")
+        for host_id in adapters.known_hosts():
+            self.assertIn(host_id, project_loop.EXECUTION_BACKENDS)
 
 
 class CognitiveDemandMapping(unittest.TestCase):
@@ -281,6 +295,30 @@ class NoAdapterWritesAModelNameIntoAPrompt(unittest.TestCase):
         self.assertIn("Write the code for the parser", record["Prompt"])
         self.assertIn("scripts/parser.py", record["Prompt"])
 
+    def test_a_caller_may_append_its_own_context_and_every_host_carries_it(self):
+        """ModuFlow's related-decision block is content, not host vocabulary.
+
+        `worker_orchestrator` has injected project decisions into the prompt
+        since issue 028 and drops them on the floor if the adapter cannot carry
+        them. The block names no model and no worktree, so it is passed in as
+        text and each host renders it in its own prompt key.
+        """
+        result = sample_result()
+        for host_id in ("claude-code", "codex"):
+            task = dict(result["tasks"][0], prompt_context="\n### Related Project Decisions\n")
+            record = adapters.adapter_for(host_id).dispatch(task, result)
+            prompt = record.get("Prompt") or record.get("prompt") or ""
+            self.assertIn("Related Project Decisions", prompt, host_id)
+
+    def test_a_task_without_that_context_is_unchanged(self):
+        """The T07 fixture never sets the key, so it must stay byte-identical."""
+        result = sample_result()
+        task = result["tasks"][0]
+        self.assertEqual(
+            adapters.task_prompt(task),
+            adapters.task_prompt(dict(task, prompt_context="")),
+        )
+
 
 class CopilotReturnsLessRatherThanInventing(unittest.TestCase):
     """Researched 2026-09-06: Copilot selects the model automatically and
@@ -290,19 +328,19 @@ class CopilotReturnsLessRatherThanInventing(unittest.TestCase):
     failure this issue exists to prevent."""
 
     def test_copilot_offers_no_model_hint_because_it_picks_the_model_itself(self):
-        copilot = adapters.adapter_for("copilot")
+        copilot = adapters.adapter_for("copilot-cloud-agent")
         for demand in ("deep", "balanced", "fast"):
             self.assertIsNone(copilot.model(demand)["model_hint"], demand)
             self.assertIsNone(copilot.model(demand)["effort"], demand)
 
     def test_copilot_dispatch_is_empty_rather_than_a_borrowed_subagent_shape(self):
         result = sample_result()
-        self.assertEqual(adapters.adapter_for("copilot").dispatch(result["tasks"][0], result), {})
+        self.assertEqual(adapters.adapter_for("copilot-cloud-agent").dispatch(result["tasks"][0], result), {})
 
     def test_a_host_with_no_subagent_concept_is_legitimate_not_broken(self):
         """The design allows exactly one method to return `{}`."""
         result = sample_result()
-        copilot = adapters.adapter_for("copilot")
+        copilot = adapters.adapter_for("copilot-cloud-agent")
         self.assertTrue(copilot.isolation(ISSUE_ID, "T01", "shared"))
         self.assertTrue(copilot.model("deep"))
         self.assertEqual(copilot.dispatch(result["tasks"][0], result), {})
@@ -310,7 +348,7 @@ class CopilotReturnsLessRatherThanInventing(unittest.TestCase):
     def test_copilot_says_it_cannot_honour_isolation_instead_of_downgrading(self):
         """Known Limit: the honest answer is a record saying so, never a silent
         downgrade to `shared`."""
-        record = adapters.adapter_for("copilot").isolation(ISSUE_ID, "T01", "isolated")
+        record = adapters.adapter_for("copilot-cloud-agent").isolation(ISSUE_ID, "T01", "isolated")
         self.assertEqual(record["requirement"], "isolated")
         self.assertIs(record["honoured"], False)
         self.assertTrue(record["detail"], "an unhonoured requirement must say why")

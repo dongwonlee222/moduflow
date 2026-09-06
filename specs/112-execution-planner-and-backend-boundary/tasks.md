@@ -31,8 +31,8 @@ dogfood fixture for the gates this issue builds: running the routing on issue
 
 ## Stream E — Integration and verification
 
-- [ ] Consume the routing result in the worker plan builder, refuse to write on a non-ok status, and emit a relative project root [files: scripts/worker_orchestrator.py] [depends: T04, T06] [shared_state: true]
-- [ ] Update the existing worker orchestration tests that assume every checkbox becomes a worker task [files: tests/test_worker_orchestration.py] [depends: T09]
+- [x] Consume the routing result in the worker plan builder, refuse to write on a non-ok status, and emit a relative project root [files: scripts/worker_orchestrator.py] [depends: T04, T06] [shared_state: true]
+- [x] Update the existing worker orchestration tests that assume every checkbox becomes a worker task [files: tests/test_worker_orchestration.py] [depends: T09]
 - [ ] Update the worker, execute and Superpowers bridge documents to describe refusal as a normal outcome [files: commands/product-workers.md, commands/product-execute.md, skills/superpowers-execution-bridge/SKILL.md] [depends: T09]
 - [ ] Re-run the corpus and this issue's own dogfood check, then record the verdict distribution as evidence [files: specs/112-execution-planner-and-backend-boundary/status.md] [depends: T03, T07, T08, T10, T11]
 

@@ -95,9 +95,16 @@ def task_prompt(task):
     because one field was doing two jobs and could not say "hard work" without
     naming something concrete; `model()` now says it on two axes instead, so no
     prompt has to carry a model name.
+
+    `prompt_context` is optional caller-supplied text appended verbatim — the
+    related-decision block `worker_orchestrator` has injected since issue 028.
+    It is content, not vocabulary: it names no model and no worktree, and a
+    task that does not set it produces exactly the two lines above, which is
+    what keeps `tests/fixtures/execution-routing/hosts.json` byte-identical.
     """
     files = ", ".join(task.get("expected_files") or []) or "none"
-    return f"Implement task: {task['text']}\nExpected files: {files}"
+    prompt = f"Implement task: {task['text']}\nExpected files: {files}"
+    return prompt + (task.get("prompt_context") or "")
 
 
 class HostAdapter:
@@ -272,9 +279,14 @@ class CopilotAdapter(HostAdapter):
     with less rather than with invented key names — an adapter that returns less
     is correct; one that returns a made-up field is the defect this issue exists
     to prevent.
+
+    Spelled `copilot-cloud-agent` because that is how `project_loop.py:21`
+    already spells it in `EXECUTION_BACKENDS`, and a git binding already records
+    one of those names. Two spellings for one host would make a configured host
+    unroutable for a reason nobody could see.
     """
 
-    host_id = "copilot"
+    host_id = "copilot-cloud-agent"
 
     def isolation(self, issue_id, task_id, requirement):
         del issue_id, task_id
