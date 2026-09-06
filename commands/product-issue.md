@@ -41,6 +41,8 @@ Create the durable work item.
    Assigning rather than asking is the point. kubernetes keeps twelve `kind/` labels and its four issue templates each force exactly one; ModuFlow's 142 free-prose `Type:` values are what happens without that gate. Issues written before this rule keep their prose and are skipped, not failed.
 10. **`## 원인` holds only what was run.** Paste the command and its output, or write `원인 미상`. Hedging — `추측`, `~것 같`, `~로 보임`, `hypothesis`, `likely`, `probably` — fails validation inside that section. An issue with a symptom and no cause is complete and correct; `원인 미상` is the honest answer, not a gap. Issue 126 labelled its guess as unverified and still sent the next reader to the wrong function, which is why labelling is not enough.
 11. If GitHub CLI is available and requested, create or sync the GitHub issue (see GitHub Issue Sync below).
+12. **처음 쓰는 말은 풀어씁니다.** `## 요약`과 `## 원인`은 이 이슈를 처음 보는 사람이 읽습니다. 그 사람이 처음 보는 말은 그 자리에서 풀어쓰고, 못 풀겠으면 쓰지 않습니다. 판별법 하나 — **이 말을 처음 보는 사람이 뜻을 알까?** 모르겠으면 풀어씁니다. 기계는 검사할 수 없습니다. 예시는 `commands/product-spec.md`의 「처음 쓰는 말은 풀어쓴다」를 보십시오.
+
 
 ## GitHub Issue Sync (opt-in)
 

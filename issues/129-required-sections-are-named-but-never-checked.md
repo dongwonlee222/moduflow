@@ -157,6 +157,20 @@ rule)*, evaluated where validation already runs. Both halves are entries in it.
   is the owner, not the spec's author.
 - `commands/product-spec.md` states the requirement, as step 7 does for issues.
 
+**Plain language (added 2026-09-06, owner-approved).**
+
+- Both commands carry a rule: **a word the reader is meeting for the first time
+  is explained where it is used, or not used at all.** The test is one question —
+  *would someone seeing this word for the first time know what it means?*
+- Not machine-checkable, and stated as such so a passing validation is never
+  mistaken for a readable artifact.
+- It exists because the five slots were not enough. On 2026-09-06 two decision
+  requests had every slot filled and the owner still could not act on either:
+  one said "the diagnostic must reach `doctor` output" without saying that
+  `doctor` output is a 31-key JSON dump, and one said "remove the translator"
+  about a translator that does not exist yet. **Filling a slot and being read
+  are different things**, and the earlier scope only covered the first.
+
 ### Out
 
 - Non-bug issues. Feature and opportunity issues have no cause to prove — issue
@@ -201,6 +215,9 @@ stating it up front so a passing check is not mistaken for a correct artifact.
 - Both halves run through **one** rule table; a test asserts a third rule can be
   added without a new code path.
 - Every failure message names the file and what to write — not a rule id.
+- Both commands state the plain-language rule with at least one worked
+  before/after example. Asserted by a test that the section exists; whether the
+  writing obeys it cannot be tested and is not claimed to be.
 - `python3 scripts/release_check.py .` passes, `valid` checked at the top level.
 
 ## Verification

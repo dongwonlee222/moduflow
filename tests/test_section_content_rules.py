@@ -247,5 +247,37 @@ class TheLiveTree(unittest.TestCase):
         self.assertTrue(result["valid"], result.get("errors"))
 
 
+class PlainLanguageRuleIsStated(unittest.TestCase):
+    """The rule the five slots did not cover.
+
+    On 2026-09-06 two decision requests had every slot filled and the owner
+    could not act on either. One said the diagnostic must reach "doctor output"
+    without saying that doctor output is a 31-key JSON dump; one said "remove
+    the translator" about a translator that does not exist yet.
+
+    Filling a slot and being read are different things. Whether prose obeys the
+    rule cannot be tested — only that the rule is written down where someone
+    about to write a decision request will meet it.
+    """
+
+    HEADING = "## 처음 쓰는 말은 풀어쓴다"
+
+    def test_the_spec_command_states_it_with_a_worked_example(self):
+        text = (ROOT / "commands" / "product-spec.md").read_text(encoding="utf-8")
+        self.assertIn(self.HEADING, text)
+        block = re.search(
+            rf"{re.escape(self.HEADING)}(.*?)(?=\n## |\Z)", text, re.S
+        ).group(1)
+        self.assertIn("이렇게 썼어야 했다", block, "the rule needs a before/after")
+        self.assertIn("기계는 이걸 검사할 수 없습니다", block,
+                      "the rule must say it is not machine-checkable")
+
+    def test_the_issue_command_states_it_too(self):
+        text = (ROOT / "commands" / "product-issue.md").read_text(encoding="utf-8")
+        self.assertIn("처음 쓰는 말은 풀어씁니다", text)
+        self.assertIn("`## 요약`", text)
+        self.assertIn("`## 원인`", text)
+
+
 if __name__ == "__main__":
     unittest.main()
