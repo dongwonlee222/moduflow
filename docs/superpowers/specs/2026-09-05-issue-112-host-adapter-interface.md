@@ -120,7 +120,7 @@ routing decision, and Gate 3 already owns routing.
   role-to-demand table with no host in it.
 - [확인만] The adapter is pure — no file writes, no reads. It is what makes
   T07's proof a diff rather than an integration test.
-- [사장님 결정] An unrecognised host: refuse, or fall back to a generic adapter.
+- [확인만] **Decided 2026-09-06 — refuse.** An unrecognised host stops with a request for an adapter; there is no generic fallback. Record: `memory/decisions/2026-09-06-unregistered-host-refuses-rather-than-falling-back.md`. The reason in one line: something that always works is never replaced, which is exactly how a hardcoded `codex/` prefix survived in every worker plan. The original request is kept below because the alternatives and their costs are what the decision was made against.
   - 왜 이 결정이 필요한가요? 어댑터는 호스트마다 하나씩 붙습니다. 목록에 없는
     호스트에서 돌렸을 때 무엇을 할지는 코드가 정할 수 없는 판단입니다.
   - 지금 무엇이 잘못되고 있나요? 지금은 호스트 구분 자체가 없어서, 클로드
