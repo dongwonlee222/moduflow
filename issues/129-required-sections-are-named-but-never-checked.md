@@ -163,7 +163,8 @@ stating it up front so a passing check is not mistaken for a correct artifact.
 - A bug issue whose cause section contains hedging language fails validation,
   naming the issue file and the offending phrase.
 - The same issue passes once the cause is replaced with `원인 미상`.
-- All 8 existing bug issues pass unchanged except where they genuinely hedge.
+- The three machine-identifiable bug issues pass once given a `## Cause`, and
+  the 107 issues whose `Type:` is free prose are skipped rather than failed.
 - Non-bug issues are unaffected.
 - Every decision is marked either "owner decides" or "ratification", and a
   ratification item is one line. A spec with an unmarked decision fails.
