@@ -31,12 +31,12 @@
     "113-review-lifecycle-and-exception-fix-approval",
     "114-speckit-selective-adapter-1x-compatibility"
   ],
-  "active_issue_id": null,
-  "phase": "select",
+  "active_issue_id": "112-execution-planner-and-backend-boundary",
+  "phase": "execute",
   "mode": "recommend",
   "delegation_level": "review_required",
-  "status": "done",
-  "next_command": "product:status",
+  "status": "active",
+  "next_command": "product:execute 112-execution-planner-and-backend-boundary",
   "attempts": {
     "command": "product:review 111-runtime-provenance-and-validation-mode-separation",
     "count": 0,
@@ -48,23 +48,17 @@
   "last_verification": "1610 full tests, 12 simulations and source release gates passed; human PR/publication review pending",
   "git_binding": {
     "mode": "git-files",
-    "branch": "codex/111-runtime-provenance-and-validation-mode-separation",
+    "branch": null,
     "base_branch": "main",
-    "commits": [
-      "a1e5ae6",
-      "aac78e5",
-      "a7ccdca",
-      "517ec64",
-      "b5c3ce3"
-    ],
+    "commits": [],
     "pull_request": null,
     "release": null,
     "execution_backend": {
       "type": "codex",
-      "status": "active",
-      "reason": "User approved inline Issue 111 implementation",
+      "status": "not_selected",
+      "reason": "",
       "session": null
     }
   },
-  "updated_at": "2026-09-05"
+  "updated_at": "2026-09-06"
 }

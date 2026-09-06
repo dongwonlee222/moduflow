@@ -347,8 +347,19 @@ Reviewers must approve:
   emitting an `unverified` plan (keeps the untrustworthy plan this issue exists
   to remove) and treating boundary-less specs as legacy `not_applicable`
   (a two-tier rule that is hard to explain). Reversal condition recorded.
-- the whole-name section exclusion list and its growth path (section 6.1);
-- treating a dependency on a completed task as satisfied (section 6.2);
-- the `inline` conditions, in particular that shared state forces `inline`.
+**[approved 2026-09-06 — Dongwon Lee]** The remaining three, ratified together.
+Record: `memory/decisions/2026-09-06-112-2.md`. None was a judgement call — two
+have a measured wrong answer and one is already the shipped behaviour:
+
+- the whole-name section exclusion list and its growth path (section 6.1) —
+  substring matching was measured to delete 4 genuine test-writing tasks under
+  `Stream 3 — Tests + verification (gate)`;
+- treating a dependency on a completed task as satisfied (section 6.2) — this is
+  what `dispatchable_now` already does; refusing it would leave a sequential
+  task permanently unblocked;
+- the `inline` conditions, in particular that shared state forces `inline`
+  (section 6.3) — string comparison was measured on spec 027 to route
+  `scripts/*` and four named `scripts/` files to two parallel workers on the
+  same files.
 
 Next command after approval: `product:plan 112-execution-planner-and-backend-boundary`.

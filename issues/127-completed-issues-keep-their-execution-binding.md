@@ -123,12 +123,32 @@ Do not make the branch check permissive to get past it. A binding pointing at
 the wrong branch must still fail; what is missing is the case for having no
 per-issue branch at all.
 
+## Found While Fixing — 2026-09-06
+
+`project_doctor.py:808` already skips the branch check when the branch is
+`main` or `master`:
+
+```python
+if loop_state and branch and branch not in {"main", "master"}:
+```
+
+So the product already knew base-branch work is legitimate — in one place, as a
+hardcoded pair of names, while `validate_git_binding_for_issue` did not know it
+at all. The two now disagree in a narrower way: a project whose base branch is
+`develop` is handled by the new rule and not by the doctor's hardcode.
+
+**Not fixed here.** The doctor's behaviour is correct today; this is a duplicate
+implementation of one concept, not a second instance of the bug. Recorded rather
+than widened.
+
 ## Workflow Tasks
 
-- [ ] spec → `specs/<issue>/spec.md`
-- [ ] plan → `specs/<issue>/plan.md` + `tasks.md`
-- [ ] execute → binding release, branch rule case, two regression tests
+- [x] execute → binding release, base-branch case, 15 regression tests
 - [ ] review → `specs/<issue>/review.md`
+
+No spec or plan: two functions and a test file, with acceptance criteria already
+written above. Below the threshold where a spec adds anything, per the S-grade
+bugfix exception used for issue 125.
 
 ## Related Issues
 

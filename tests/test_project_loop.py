@@ -949,9 +949,17 @@ gate_state: passed
 
             errors = project_loop.validate_loop_state(root)
 
+            # 127: the message now also names the branches that would satisfy
+            # the check, so this asserts the parts rather than the whole literal.
+            self.assertEqual(len(errors), 1)
             self.assertIn(
-                "workspace/loop-state.json: git_binding.branch codex/020-user-facing-simple-loop-ux does not match active_issue_id 021-git-binding-and-execution-backend",
-                errors,
+                "git_binding.branch codex/020-user-facing-simple-loop-ux does not "
+                "match active_issue_id 021-git-binding-and-execution-backend",
+                errors[0],
+            )
+            self.assertIn(
+                "Accepted: codex/021-git-binding-and-execution-backend",
+                errors[0],
             )
 
     def test_recommend_execution_backend_prefers_manual_for_high_risk(self):

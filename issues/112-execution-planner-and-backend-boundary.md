@@ -1,6 +1,6 @@
 # Issue 112: Execution Planner and Backend Boundary
 
-**Status: backlog** — created 2026-09-01.
+**Status: active** — created 2026-09-01; started 2026-09-06.
 **Priority: p0**
 **Blocked-by: `103-atomic-lifecycle-state-transaction`**
 
@@ -64,7 +64,7 @@ The current worker planner converts every checkbox into a worker task, including
 - `commands/product-workers.md`
 - `commands/product-execute.md`
 - `skills/superpowers-execution-bridge/SKILL.md`
-- `specs/*/tasks.md`
+- `specs/<issue>/tasks.md`
 
 ## Scope Fence
 
@@ -77,7 +77,7 @@ Do not add another execution engine. ModuFlow owns selection, state, evidence, a
 - [x] spec → `specs/112-execution-planner-and-backend-boundary/spec.md` (한글: `spec.ko.md`)
 - [x] plan → `specs/112-execution-planner-and-backend-boundary/plan.md` + `tasks.md`
 - [ ] execute → planner filtering, backend decision contract, artifact ownership, and tests
-- [ ] review → `specs/112-execution-planner-and-backend-boundary/review.md`
+- [ ] review → `specs/<issue>/review.md` (path fixed once the artifact exists)
 
 ## Related Issues
 

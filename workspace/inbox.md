@@ -239,3 +239,57 @@
   (static, drifts), or a generated index keyed off the module docstrings that
   already exist (stays true, needs the docstrings to be honest). Prefer the
   second if the docstrings turn out to be present; check before deciding.
+
+- **Non-Latin titles collapse the generated filename.** `project_knowledge.py --kind
+  benchmark --title "해외 4곳은 충전소 선택을 어떻게 푸는가"` wrote
+  `knowledge/benchmarks/2026-09-06-4.md` — the slug kept only the one ASCII character
+  in the title. Every Korean-titled artifact created on the same day therefore
+  collides on `<date>-<digit>` or produces a name that says nothing. `ls
+  knowledge/benchmarks/` is unreadable as an index, which matters because that
+  directory listing is the cheapest way to see what has already been researched.
+  Content search still finds them, so this is a browsability bug, not a data-loss
+  one. Options: transliterate, keep the original characters (paths handle UTF-8
+  fine), or fall back to a short hash plus the title in frontmatter — anything but
+  silently dropping the title. Worth checking `--kind decision` in
+  `project_memory.py` too: that one produced `2026-09-06-m190.md` from
+  "원장을 M190 에서 동결하고…", i.e. the same rule, and it only looked reasonable
+  because the title happened to contain "M190".
+
+- **A project cannot declare its own completion gate.** Every check ModuFlow ships is
+  *generic* — issue schema fields, artifact registry fields, doctor structure. There
+  is no place to say "in this project, an issue may not be closed until its
+  documentation impact is resolved". `product:review` is intake for external reviews
+  (SARIF/CodeQL/human) recorded as evidence, not a per-project exit gate.
+
+  Observed 2026-09-06: this project needs three rules ModuFlow has no slot for —
+  every issue must carry a `## Docs Impact` section; closing as `done` requires that
+  section to show resolution rather than intent; measured constants in code must
+  resolve to a ledger id. All three ended up enforced as **unit tests**, which works
+  but is a workaround: the rules live in `tests/`, invisible to `doctor`, and a
+  newcomer reading the ModuFlow artifacts would not know they exist.
+
+  A modest shape: let `.moduflow/config.json` name project-local gate scripts (or
+  required issue sections) that `doctor` runs alongside its own checks, so the
+  project's rules appear in the same report as the built-in ones. The pieces exist —
+  `project_issue_schema.py` already validates section structure, and `doctor`
+  already aggregates diagnostics from several modules.
+
+  Related to the adoption entry above: a project adopting ModuFlow usually *already
+  has* rules, written in a CONTRIBUTING or CLAUDE.md. Right now those stay outside
+  the tool entirely.
+
+- **A fully Korean project reports `korean descriptions 0/8`.** On a project whose
+  issues are written entirely in Korean — titles, summaries, scope, acceptance
+  criteria — `project_doctor.korean_description_coverage` counts zero, and every row
+  in the dashboard gets a `한글 없음` badge. The resolution path only consults
+  `specs/<id>/*.ko.md` sidecars and the legacy `workspace/issue-descriptions.ko.json`;
+  a project that has not created specs scores 0 no matter how the issues are
+  actually written. The dashboard then renders the Korean summary **and** the
+  "no Korean" badge next to each other, which reads as a bug to the user even
+  though the check is informational-only by design (C9).
+
+  For a Korean-first tool this is the wrong default: the common case is that the
+  issue body already *is* the Korean description. Detecting Korean text in the
+  issue's own summary before falling back to sidecars would make the number mean
+  what its name says. As it stands the metric measures "has spec sidecars", not
+  "has Korean".

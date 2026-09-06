@@ -78,8 +78,15 @@ def recommend_issue_branch(issue_id):
     return f"codex/{issue_id}"
 
 
-def branch_matches_issue(branch, issue_id):
+def branch_matches_issue(branch, issue_id, base_branch=None):
+    # 127: work done directly on the base branch is not a mismatch. Without this
+    # case the rule is `issue_id in branch`, which no branch named `main` can
+    # satisfy, so every issue fails on a repository that does not open a branch
+    # per issue. base_branch is repository configuration and is only consulted
+    # when it is set, so projects that do require a per-issue branch are unchanged.
     if not branch or not issue_id:
+        return True
+    if base_branch and branch == base_branch:
         return True
     return issue_id in branch
 
@@ -119,6 +126,26 @@ def normalize_git_binding(raw_binding=None):
     }
 
 
+def release_git_binding(raw_binding=None):
+    """Return the binding with everything the finished issue owned removed.
+
+    127: nothing released the binding on completion, so `workspace/loop-state.json`
+    carried issue 111's branch, five commits and an `active` backend long after
+    111 was done. `mode` and `base_branch` survive because they are repository
+    configuration; branch, commits, pull request, release and the backend are
+    per-issue state and belong to no one once the issue closes.
+    """
+    binding = normalize_git_binding(raw_binding)
+    binding["branch"] = None
+    binding["commits"] = []
+    binding["pull_request"] = None
+    binding["release"] = None
+    binding["execution_backend"] = normalize_execution_backend(
+        {"type": binding["execution_backend"].get("type")}
+    )
+    return binding
+
+
 def recommend_execution_backend(task_type="code", risk="medium", github_available=False, host_supports_subagents=False):
     if risk == "high":
         return {
@@ -155,9 +182,18 @@ def validate_git_binding_for_issue(git_binding, active_issue_id):
     errors = []
     binding = normalize_git_binding(git_binding)
     branch = binding.get("branch")
-    if branch and not branch_matches_issue(branch, active_issue_id):
+    base_branch = binding.get("base_branch")
+    if branch and not branch_matches_issue(branch, active_issue_id, base_branch):
+        # 127: name the branches that would satisfy this. The previous message
+        # stated only the mismatch, which leaves the reader to guess whether the
+        # fix is to switch branches or to edit the binding.
+        accepted = [recommend_issue_branch(active_issue_id)]
+        if base_branch:
+            accepted.append(base_branch)
         errors.append(
-            f"workspace/loop-state.json: git_binding.branch {branch} does not match active_issue_id {active_issue_id}"
+            f"workspace/loop-state.json: git_binding.branch {branch} does not match "
+            f"active_issue_id {active_issue_id}. Accepted: "
+            f"{' or '.join(accepted)}"
         )
     return errors
 
@@ -238,6 +274,7 @@ def render_loop_projection(
     elif action == "complete":
         state["status"] = "done"
         state["blocker"] = None
+        state["git_binding"] = release_git_binding(state.get("git_binding"))
     elif action in {"start", "resume"}:
         state["status"] = "active"
         state["blocker"] = None

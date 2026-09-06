@@ -10,7 +10,7 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 103 implementation is 
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `112-execution-planner-and-backend-boundary` (phase: execute). Canonical: `issues/112-execution-planner-and-backend-boundary.md`.
 
 ## Priority Queue — 2026-09-01
 
