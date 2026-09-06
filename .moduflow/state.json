@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "execute",
+  "phase": "select",
   "active_goal": "trustworthy-execution-and-project-knowledge",
-  "active_issue": "112-execution-planner-and-backend-boundary",
+  "active_issue": "",
   "last_command": "product:decision beads-issue-backend-not-adopted",
-  "next_command": "product:execute 112-execution-planner-and-backend-boundary",
+  "next_command": "product:status",
   "blockers": [],
-  "updated_at": "2026-09-06"
+  "updated_at": "2026-09-07"
 }

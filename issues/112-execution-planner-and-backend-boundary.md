@@ -1,6 +1,6 @@
 # Issue 112: Execution Planner and Backend Boundary
 
-**Status: active** — created 2026-09-01; started 2026-09-06.
+**Status: done** — created 2026-09-01; started 2026-09-06; done 2026-09-07.
 **Priority: p0**
 **Blocked-by: `103-atomic-lifecycle-state-transaction`**
 
@@ -77,7 +77,7 @@ Do not add another execution engine. ModuFlow owns selection, state, evidence, a
 - [x] spec → `specs/112-execution-planner-and-backend-boundary/spec.md` (한글: `spec.ko.md`)
 - [x] plan → `specs/112-execution-planner-and-backend-boundary/plan.md` + `tasks.md`
 - [x] execute → planner filtering, backend decision contract, artifact ownership, and tests
-- [ ] review → `specs/<issue>/review.md` (path fixed once the artifact exists)
+- [x] review → `specs/112-execution-planner-and-backend-boundary/review.md`
 
 ## Related Issues
 

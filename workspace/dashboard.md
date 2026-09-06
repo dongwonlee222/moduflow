@@ -10,16 +10,24 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 103 implementation is 
 
 ## Active Issue
 
-- `112-execution-planner-and-backend-boundary` (phase: execute). Canonical: `issues/112-execution-planner-and-backend-boundary.md`.
+- None active. Run `product:status` to pick the next issue.
 
-## Priority Queue — 2026-09-01
+## Priority Queue — 2026-09-07
 
-- Merged: `109` canonical project-context consumer convergence — PR #41 merged as `9df5f02` after local and GitHub CI verification.
-- Merged: `110` project operation capability enforcement — [PR #42](https://github.com/dongwonlee222/moduflow/pull/42) passed CI and merged as `5f173f4`; post-merge source release check passed.
-- Now: `103` atomic lifecycle state transaction — P0; transaction core and C1a lifecycle adapter/CLI are complete. Finish C1b/C1c, C2, D1, and D2.
-- Parallel before next release: `111` runtime provenance and validation-mode separation — P1, does not block 103.
-- Next: `112` execution planner/backend boundary — P0 after 103; concrete implementation tasks only, one inline or Superpowers SDD path, no second runtime.
-- Then: `105` migration/Doctor triage and `113` review lifecycle/exception approval; `104` now waits for 112's execution contract.
+- Done: `112` execution planner/backend boundary — twelve tasks and five gates
+  closed. The corpus now reports 34 `not_applicable`, 21 `needs_plan`, 4 `ok`;
+  the twenty-one were always unplannable and were being reported as ready.
+  `worker-plan.json` is `v2` and carries no host value.
+- Done: `131` command surface — the `/` menu went from 52 entries to 16, Korean
+  first, with the other 29 reachable as `/moduflow <name>`.
+- Done: `129` required sections — a bug issue's `## 원인` may hold only what was
+  run, and a spec's open decision must be readable before it can be approved.
+- Now: `104` project-aware natural-language request orchestrator — P0, unblocked
+  by 112 today. Issue 131's stage 2 waits on it.
+- Then: `105` migration/Doctor triage (P0, both blockers done) alongside `141`
+  adoption gaps; `113` review lifecycle and `117` are also unblocked by 112.
+- Merged earlier: `109` (`9df5f02`), `110` (`5f173f4`), `103` atomic lifecycle
+  transaction, `111` runtime provenance.
 - Later: `114` reviews one exact Spec Kit 1.x pin while preserving the four-function read-only boundary.
 - Trend evidence: `knowledge/benchmarks/2026-09-01-agentic-execution-governance-trend.md` confirms the boundary against official Spec Kit, OpenAI, Anthropic, and GitHub guidance.
 - Verified intake: four Issue 102 findings accepted and mapped to exactly three non-duplicate issues in `workspace/reviews/2026-08-21-issue-102-post-release-validation.md`.

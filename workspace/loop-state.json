@@ -31,12 +31,12 @@
     "113-review-lifecycle-and-exception-fix-approval",
     "114-speckit-selective-adapter-1x-compatibility"
   ],
-  "active_issue_id": "112-execution-planner-and-backend-boundary",
-  "phase": "execute",
+  "active_issue_id": null,
+  "phase": "select",
   "mode": "recommend",
   "delegation_level": "review_required",
   "status": "done",
-  "next_command": "product:execute 112-execution-planner-and-backend-boundary",
+  "next_command": "product:status",
   "attempts": {
     "command": "product:review 111-runtime-provenance-and-validation-mode-separation",
     "count": 0,
@@ -60,5 +60,5 @@
       "session": null
     }
   },
-  "updated_at": "2026-09-06"
+  "updated_at": "2026-09-07"
 }
