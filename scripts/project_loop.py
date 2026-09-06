@@ -29,6 +29,14 @@ def load_project_issue_schema():
     return module
 
 
+def load_project_lifecycle():
+    path = Path(__file__).resolve().parent / "project_lifecycle.py"
+    spec = importlib.util.spec_from_file_location("project_lifecycle", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def validate_issue_id(value):
     """Delegate issue ID validation to the shared issue-schema boundary."""
     return load_project_issue_schema().validate_issue_id(value)
@@ -693,9 +701,20 @@ def write_loop_state(
     )
     if result.get("status") not in {"applied", "noop"}:
         error_code = result.get("error_code") or result.get("status") or "unknown"
+        # 126: this said "Run product:doctor", whose own error says to run sync.
+        # The sentences naming the blocking artifact are on the transaction
+        # result; report them instead of closing the loop. Loaded lazily so the
+        # happy path costs nothing and the two modules stay uncoupled at import.
+        lifecycle = load_project_lifecycle()
         raise RuntimeError(
-            f"{error_code}: Loop state transaction did not commit. "
-            "Run product:doctor before retrying."
+            "\n".join(
+                lifecycle.refusal_lines(
+                    error_code,
+                    root,
+                    subject="Loop state transaction",
+                    project_context=context,
+                )
+            )
         )
     path = loop_state_path(root, project_context=context)
     return path

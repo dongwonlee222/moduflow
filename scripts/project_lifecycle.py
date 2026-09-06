@@ -731,13 +731,101 @@ def sync_lifecycle(
         result.update(
             {
                 "status": "blocked",
-                "errors": [
-                    f"{error_code}: Lifecycle reconcile transaction did not commit. "
-                    "Recommendation: Run product:doctor before retrying."
-                ],
+                "errors": refusal_lines(
+                    error_code,
+                    root,
+                    subject="Lifecycle reconcile transaction",
+                    project_context=context,
+                ),
             }
         )
     return result
+
+
+def refusal_lines(error_code, root, *, subject="Lifecycle transaction", project_context=None):
+    """Name what the operator can change, not only the rule that refused.
+
+    126: every caller returned one line naming a rule and recommending
+    product:doctor, whose own error recommends running sync. Neither named a
+    state a person could change, so a real refusal on 2026-09-05 cost forty
+    minutes of guessing.
+
+    The sentences deliberately do **not** come from the transaction result. That
+    envelope, its validation summaries and the journal record are all strictly
+    redacted by issue 103 — they carry logical codes and hashes only, and the
+    projected state they describe is a throwaway staging copy whose paths are
+    gone by the time anyone reads the error. What the reader needs is the
+    canonical project: the files they can actually open and edit. So the refusal
+    re-validates the real root and reports that, clearly labelled.
+
+    Shared by `sync_lifecycle` here and by `project_loop.write_loop_state`, so
+    the two refusals cannot drift into saying different things.
+    """
+    head = f"{error_code}: {subject} did not commit."
+    findings = project_validation_sentences(root, project_context=project_context)
+    if not findings:
+        # Honest, and the case that must not be papered over: the projection was
+        # rejected while the canonical project validates clean. Naming a cause
+        # here would be a guess, which is the failure this issue exists to stop.
+        return [
+            f"{head} The current project validates clean, so the projected state "
+            f"was rejected for something the canonical files do not show. This is "
+            f"a projection-only failure — re-run with the transaction id above "
+            f"and report it; do not edit files at random."
+        ]
+    return (
+        [f"{head} The current project has {len(findings)} problem(s) to fix:"]
+        + [f"  - {finding}" for finding in findings]
+    )
+
+
+def project_validation_sentences(root, *, project_context=None):
+    """Return the canonical project's validation findings as readable sentences.
+
+    Three sources, because a refusal can come from any of them: plain artifact
+    errors, lifecycle drift, and issue-schema diagnostics — the last of which
+    already carry `source_path` and `field`, which is exactly what a refusal is
+    supposed to name. Warning-severity diagnostics are excluded: they do not
+    make a project invalid, so reporting one as the reason sends the reader to
+    the wrong file.
+    """
+    validator = _load_validate_project_artifacts()
+    try:
+        result = validator.validate_project(root, project_context=project_context)
+    except Exception:
+        return []
+    if not isinstance(result, dict):
+        return []
+    sentences = []
+    sentences.extend(result.get("errors") or ())
+    sentences.extend(result.get("lifecycle_drift") or ())
+    issue_schema = result.get("issue_schema")
+    diagnostics = (
+        issue_schema.get("diagnostics") if isinstance(issue_schema, dict) else None
+    )
+    for diagnostic in diagnostics or ():
+        if not isinstance(diagnostic, dict) or diagnostic.get("severity") != "error":
+            continue
+        parts = [
+            str(diagnostic[key])
+            for key in ("source_path", "field", "message")
+            if diagnostic.get(key)
+        ]
+        if parts:
+            sentences.append(": ".join(parts))
+    # Copied out, so a later mutation of the validator's lists cannot change
+    # what the operator was told.
+    return [str(sentence) for sentence in sentences]
+
+
+def _load_validate_project_artifacts():
+    import importlib.util
+
+    path = Path(__file__).resolve().parent / "validate_project_artifacts.py"
+    spec = importlib.util.spec_from_file_location("validate_project_artifacts", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _mutation_exit_code(result):

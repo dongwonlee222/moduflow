@@ -117,16 +117,49 @@ This issue owns fault (3) and the circular advice. Faults (1) and (2) — the
 binding that is never released and the branch rule that cannot express
 main-based work — are owned by `127-completed-issues-keep-their-execution-binding`.
 
+### Corrected 2026-09-06 — the sentences cannot ride on the transaction
+
+The first draft of this scope said to carry the `errors` list through
+`_summarize_validation_result`. That is the wrong place, and the repository says
+so in a test written by issue 103:
+
+```python
+# test_projected_validation_summary_is_stable_redacted_and_detached
+self.assertEqual(summary, {"valid": ..., "rule_ids": [...], "error_codes": [...]})
+rendered = json.dumps(summary, ensure_ascii=False)
+self.assertNotIn("private", rendered)
+```
+
+Redaction is a property of the summary **object**, not only of the journal.
+`serialize_transaction_result` enforces the same on the whole result envelope
+(`_assert_exact_keys`, "logical paths and hashes only"). Widening any of them to
+carry prose would trade issue 103's guarantee for this issue's.
+
+There is also a better reason not to. Validation runs against a private staging
+copy under `.moduflow/.txn-<id>-projected-<id>/`, so its paths name a directory
+that no longer exists when the operator reads the error. What they need is the
+**canonical** project — the files they can open.
+
+So the refusal re-validates the real root and reports that, labelled as the
+current project's problems rather than as the projection's reason.
+
 ### In
 
-- Carry the `errors` list through `_summarize_validation_result` so a refusal
-  reports the sentences that caused it, not only `PROJECTED_PROJECT_INVALID`.
-- Surface those sentences wherever the summary is rendered for a person:
-  `--sync` output, `project_doctor`, and the transaction result.
-- Break the circular advice. When the transaction can name the blocking artifact
-  and field, the recommendation must be that, not "run product:doctor".
+- On refusal, report the canonical project's validation findings — plain
+  artifact errors, lifecycle drift, and error-severity issue-schema diagnostics
+  (which already carry `source_path` and `field`).
+- Say so honestly when the canonical project is clean: the projection was
+  rejected for something the canonical files do not show. Naming a cause there
+  would be the guess this issue exists to stop.
+- Break the circular advice. The refusal names artifacts, not "run
+  product:doctor", whose own remedy is to run sync.
+- One implementation, shared by `sync_lifecycle` and
+  `project_loop.write_loop_state`, so the two refusals cannot drift.
 - A fixture reproducing the refusal, so the failure is regression-testable
   rather than anecdotal.
+- A guard test asserting `scripts/project_lifecycle_transaction.py` is
+  unmodified, so a later author cannot pay for this issue with issue 103's
+  redaction.
 
 ### Out
 
@@ -135,6 +168,11 @@ main-based work — are owned by `127-completed-issues-keep-their-execution-bind
   chose validate-before-replace deliberately; a transaction that commits an
   invalid projection is a worse defect than this one.
 - The stale binding and the branch rule — issue 127.
+- Widening the transaction result, its validation summaries, or the journal
+  record. All three are redacted by issue 103 and stay that way.
+- `project_doctor`. Its recommendation to run sync is now correct — sync either
+  commits or names the artifacts — so the circle is broken from this side and
+  doctor needs no change. Recorded rather than silently skipped.
 - The single-global-`active_issue` design itself, which `workspace/inbox.md`
   already records as a concurrent-work blocker.
 
@@ -179,10 +217,11 @@ is wrong is that it refuses without saying what it saw.
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/126-sync-refuses-the-drift-it-is-prescribed-for/spec.md`
-- [ ] plan → `specs/126-…/plan.md` + `tasks.md`
-- [ ] execute → reproduction fixture, root cause, actionable failure
-- [ ] review → `specs/126-…/review.md`
+- [x] execute → reproduction fixture, canonical-project reporting, 15 tests
+- [ ] review → `specs/<issue>/review.md`
+
+No spec or plan: one shared function and a test file, with the design decision
+recorded in Scope above. Per the S-grade bugfix exception used for issue 125.
 
 ## Related Issues
 
