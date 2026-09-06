@@ -29,13 +29,14 @@
     "111-runtime-provenance-and-validation-mode-separation",
     "112-execution-planner-and-backend-boundary",
     "113-review-lifecycle-and-exception-fix-approval",
-    "114-speckit-selective-adapter-1x-compatibility"
+    "114-speckit-selective-adapter-1x-compatibility",
+    "132-the-canonical-status-line-has-no-protection"
   ],
   "active_issue_id": null,
   "phase": "select",
   "mode": "recommend",
   "delegation_level": "review_required",
-  "status": "done",
+  "status": "blocked",
   "next_command": "product:status",
   "attempts": {
     "command": "product:review 111-runtime-provenance-and-validation-mode-separation",
@@ -43,8 +44,8 @@
     "max": 3,
     "last_changed_at": "2026-09-02"
   },
-  "blocker": null,
-  "last_action": "reconcile",
+  "blocker": "Lifecycle transaction paused",
+  "last_action": "update",
   "last_verification": "1610 full tests, 12 simulations and source release gates passed; human PR/publication review pending",
   "git_binding": {
     "mode": "git-files",

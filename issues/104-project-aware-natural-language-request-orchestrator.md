@@ -1,8 +1,7 @@
 # Issue 104: Project-Aware Natural-Language Request Orchestrator
 
-**Status: backlog** — created 2026-08-19.
+**Status: backlog** — created 2026-08-19; unblocked 2026-09-07.
 **Priority: p0**
-**Blocked-by: `102-project-registry-and-resolver`, `103-atomic-lifecycle-state-transaction`, `112-execution-planner-and-backend-boundary`**
 
 ## Summary
 
@@ -13,7 +12,7 @@ Connect ModuFlow's existing single natural-language entry point to project resol
 - Type: user multi-project orchestration improvement request
 - Link: local Codex attachment `pasted-text.txt`, 2026-08-19
 - Owner / decision maker: Dongwon Lee
-- Current phase: blocked
+- Current phase: spec (2026-09-07). Blocked-by cleared the same day — `102`, `103`, `112` all done.
 
 ## Opportunity
 
@@ -71,7 +70,7 @@ Do not create a second public entry point by default, scan unregistered projects
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/104-project-aware-natural-language-request-orchestrator/spec.md`
+- [x] spec → `specs/104-project-aware-natural-language-request-orchestrator/spec.md`
 - [ ] plan → `specs/104-project-aware-natural-language-request-orchestrator/plan.md`
 - [ ] execute → request contract, project/context pipeline, handoff, transaction integration, and tests
 - [ ] review → `specs/104-project-aware-natural-language-request-orchestrator/review.md`
