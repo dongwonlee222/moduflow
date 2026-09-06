@@ -134,6 +134,32 @@
 
 - (needed once other people join): the GitHub mirror shows 10 of 122 issues, so someone who looks at GitHub before cloning reads this as a ten-issue project. Three issues that were done locally were still open there (#27/086, #23/093, #21/091) and were closed by hand on 2026-09-05 with a comment. They drifted because nothing runs the sync: `commands/product-issue.md` says projection happens only on explicit request, never automatically. And `scripts/project_github_issues.py` only does `gh issue create` / `edit` / `label` — it has **no close path at all**, so completion cannot be mirrored even on request. Deciding when sync runs means changing the "never automatically" rule, which is a human decision.
 
+## 2026-09-06
+
+- **지식 레이어가 구조만 있고 동작하지 않는다.** Source: 2026-09-06 네 가지 목표
+  (이슈 히스토리 / 다인 사용 / 프로젝트 지식·의사결정 / 등록→제작→검증) 대비 전수
+  확인. Owner: Dongwon Lee. Confidence: high — 파일 개수를 직접 셌다.
+
+  실측: 이슈는 131건(done 93 · backlog 30 · active 1 · review 2 · superseded 7)인데
+  `knowledge/` 하위 6개 중 **5개가 0건**이다(`decisions`·`references`·`reports`·
+  `research`·`data-notes` 전부 비어 있고 `benchmarks`만 6건).
+  `memory/index.md`의 **Meetings·Notes·References 섹션이 전부 공란**이며,
+  `memory/decisions` 7 · `evidence` 9 · `deliverables` 1건이다.
+
+  원인은 분류 체계가 아니라 **유입 경로의 부재**다. 41개 `product:*` 커맨드 중 외부
+  정보가 들어오는 입구는 `product:inbox` 하나뿐이고, 그것도 사람이 직접 타이핑해야
+  한다. 회의록·메일·의사결정 원문이 들어올 경로가 설계에 없다. 업계 패턴과 비교하면
+  형식(마크다운)은 어긋나지 않고 빠진 것은 저장 시점과 회수 경로다 —
+  `knowledge/benchmarks/2026-09-06-issue-and-knowledge-tooling-landscape.md` §5.
+
+  먼저 정할 것은 구현이 아니라 **입구**다: 회의록과 메일이 *어디서* 들어오는가
+  (메일함 / Obsidian / 메신저). 그것이 정해지기 전에 커맨드를 더 만들면 빈 폴더가
+  하나 더 늘어난다.
+
+  `retrieval_trigger`: re-read when working on the memory/knowledge layer, adding a
+  capture command, designing meeting/mail ingestion, or asking why `knowledge/` is empty.
+  Suggested routing: `product:opportunity` — 입구가 정해지기 전에는 이슈로 만들지 않는다.
+
 ## Handled
 
 - 2026-09-05: the `active` group ordering fix landed in `groupedRows`

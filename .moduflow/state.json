@@ -3,7 +3,7 @@
   "phase": "execute",
   "active_goal": "trustworthy-execution-and-project-knowledge",
   "active_issue": "112-execution-planner-and-backend-boundary",
-  "last_command": "product:issue 112-114 execution governance scope",
+  "last_command": "product:decision beads-issue-backend-not-adopted",
   "next_command": "product:execute 112-execution-planner-and-backend-boundary",
   "blockers": [],
   "updated_at": "2026-09-06"
