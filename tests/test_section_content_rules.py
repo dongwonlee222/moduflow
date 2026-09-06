@@ -262,19 +262,32 @@ class PlainLanguageRuleIsStated(unittest.TestCase):
 
     HEADING = "## 처음 쓰는 말은 풀어쓴다"
 
-    def test_the_spec_command_states_it_with_a_worked_example(self):
+    def test_the_spec_command_states_the_parenthetical_form(self):
         text = (ROOT / "commands" / "product-spec.md").read_text(encoding="utf-8")
         self.assertIn(self.HEADING, text)
         block = re.search(
             rf"{re.escape(self.HEADING)}(.*?)(?=\n## |\Z)", text, re.S
         ).group(1)
+        # The form itself, not just "write plainly". Dropping the term entirely
+        # was the first version of this rule and it was wrong: an expert then
+        # cannot search for the thing or match it to the code.
+        self.assertIn("쉬운 말 (전문용어)", block)
         self.assertIn("이렇게 썼어야 했다", block, "the rule needs a before/after")
         self.assertIn("기계는 이걸 검사할 수 없습니다", block,
                       "the rule must say it is not machine-checkable")
 
+    def test_the_spec_command_names_both_readers(self):
+        """One audience is why the term stays; the other is why it is explained."""
+        text = (ROOT / "commands" / "product-spec.md").read_text(encoding="utf-8")
+        block = re.search(
+            rf"{re.escape(self.HEADING)}(.*?)(?=\n## |\Z)", text, re.S
+        ).group(1)
+        self.assertIn("잘 모르는 사람", block)
+        self.assertIn("아는 사람", block)
+
     def test_the_issue_command_states_it_too(self):
         text = (ROOT / "commands" / "product-issue.md").read_text(encoding="utf-8")
-        self.assertIn("처음 쓰는 말은 풀어씁니다", text)
+        self.assertIn("쉬운 말을 본문에, 전문용어는 괄호에", text)
         self.assertIn("`## 요약`", text)
         self.assertIn("`## 원인`", text)
 
