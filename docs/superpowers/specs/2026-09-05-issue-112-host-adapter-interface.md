@@ -73,7 +73,12 @@ class HostAdapter:
         """`shared` | `isolated` -> this host's isolation record."""
 
     def model(self, cognitive_demand: str) -> dict:
-        """`deep` | `balanced` | `fast` -> this host's model instruction."""
+        """`deep` | `balanced` | `fast` -> {"effort": ..., "model_hint": ...}.
+
+        Two values, not one. See Evidence: every tool that separates task
+        difficulty from model choice does it on two axes, and this product
+        currently has one.
+        """
 
     def dispatch(self, task: dict, plan: dict) -> dict:
         """One routing task -> this host's execution record."""
@@ -110,10 +115,67 @@ adapter's honest answer is a record saying so — not a silent downgrade to
 `shared`. Whether the planner should then refuse is out of scope here; it is a
 routing decision, and Gate 3 already owns routing.
 
+## Evidence — the tier vocabulary was checked
+
+Fifteen projects surveyed 2026-09-06, after the owner asked how others handle
+"상위 모델 / 하위 모델" guidance.
+
+**`deep | balanced | fast` stays.** No established vocabulary displaces it, and
+renaming would migrate 142 issues for nothing. There is no convention on the
+*number* of tiers — two is actually the most common among multi-vendor agent
+tools (aider `main`/`weak`, Cline Plan/Act, Goose lead/worker).
+
+**There is a convention on the shape, and this product is on the wrong side of
+it.** Every tool that separates "how hard is this task" from "which model" does
+it on **two axes**: a model choice and an effort level. ModuFlow has one field
+doing both jobs, which is why `COGNITIVE_DEMAND_GUIDANCE` had to name concrete
+models to say anything useful.
+
+The effort ladder is the live de-facto vocabulary — `low`, `medium`, `high`,
+`xhigh`, `max` — shared by OpenAI, Anthropic, OpenRouter's `cost_tier`, Codex
+CLI's `model_reasoning_effort`, and Claude Code. Verified directly in the
+shipped `claude` binary: the literal array `["low","medium","high","xhigh","max"]`
+is present, alongside `effortLevel` and twelve occurrences of
+`CLAUDE_CODE_EFFORT_LEVEL`.
+
+So `model()` returns both:
+
+| `cognitive_demand` | `effort` | Claude Code | Codex CLI |
+| --- | --- | --- | --- |
+| `deep` | `xhigh` | `effortLevel` + subagent `model: opus` | `model_reasoning_effort` + `model` |
+| `balanced` | `high` | + `model: sonnet` | 〃 |
+| `fast` | `low` | + `model: haiku` | 〃 |
+
+`balanced → high`, not `medium`: the bundled `claude-api` skill states `xhigh` is
+best for most coding and agentic work and that intelligence-sensitive work wants
+a minimum of `high`. The workers `balanced` covers — `implementation-worker`,
+`qa-reviewer`, `ux-flow-worker` — are all coding and review. The existing
+"medium reasoning as the starting point" text is in the file under audit and was
+not used as a source.
+
+**MCP's `modelPreferences` is the closest named abstraction** and its rationale
+is this design's rationale, quoted from the spec: "A server cannot simply request
+a specific model by name since the client may not have access to that exact model
+or may prefer to use a different provider's equivalent model." Its shape is three
+continuous 0–1 axes (`intelligencePriority`, `speedPriority`, `costPriority`)
+plus substring `hints`. **It is not adopted**: MCP sampling is deprecated as of
+revision 2026-07-28 (SEP-2577), and three continuous dials are a heavier contract
+than three named tiers earn here. The two-part output shape is taken from it; the
+protocol is not.
+
+**Left open, not decided:** OpenRouter's `cost_tier` uses the same five-band
+ladder as effort. Adopting five bands instead of three would collapse the mapping
+table above into an identity function — and migrate 142 issues. Recorded as a
+real option rather than dismissed.
+
 ## Human Review Decisions
 
 - [확인만] The three leaks named in spec §8 are real and are the scope. Verified
   at `worker_orchestrator.py:408`, `:50-66`, `:388`, `:412-417` on 2026-09-06.
+- [확인만] `model()` returns `{effort, model_hint}` rather than a prompt line.
+  Two axes, because every surveyed tool that separates difficulty from model
+  choice uses two, and one field doing both jobs is why concrete model names had
+  to be written into the prompt. See Evidence.
 - [확인만] `cognitive_demand` and `isolation` are added to the routing result as
   intent fields. Both are already computed somewhere; the change is where they
   live, not what they mean. `WORKER_COGNITIVE_DEMAND` at `:39-47` is a
