@@ -293,3 +293,31 @@
   issue's own summary before falling back to sidecars would make the number mean
   what its name says. As it stands the metric measures "has spec sidecars", not
   "has Korean".
+
+- **`evaluate_auto_checks()` is implemented and never called.**
+  `scripts/project_production.py:213` parses a playbook's `[auto]` required checks
+  and evaluates the three rule forms (`section:`, `forbidden:`, `approved-copy:`)
+  against a document. A grep across `scripts/` for the function name returns only
+  its own definition — nothing invokes it. So a playbook author writes
+  `CHK001 [auto] section:측정 조건`, reasonably expects that to be enforced, and
+  nothing happens. The `[auto]` / `[review]` distinction currently has no runtime
+  meaning: both are prose.
+
+  This matters more than a normal dead function because the playbook mechanism's
+  whole pitch is "select a playbook and the required checks are filled in
+  automatically". The checks are filled in; they are just never run. Wiring it into
+  whatever validates an analysis run (or into `doctor` for projects that have
+  playbooks) would make `[auto]` mean what it says.
+
+  Reproduced by adopting it on a real project 2026-09-06: wrote a playbook with five
+  `[auto]` checks, then wrote an analysis document that violated two of them — no
+  error from any ModuFlow command. Ended up re-implementing the evaluator as a unit
+  test in the project (`tests/test_docs.py`, ~70 lines) to get the behaviour the
+  playbook already described.
+
+  Two smaller things found in the same pass:
+  - `process_ref_kind` accepts only `skill`, `document`, `none`. A playbook whose
+    process is a **script** has no honest value — `document` is the least wrong.
+  - The seven required sections are reported **one at a time** (`missing section: X`),
+    so authoring a playbook from scratch takes five failed attempts to discover the
+    full list. Report them all at once.
