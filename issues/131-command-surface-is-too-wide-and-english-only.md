@@ -6,9 +6,10 @@
 ## 요약
 
 `/` 팔레트에 명령이 **41개**, 스킬이 **11개** 뜨는데 설명이 전부 영어에 내부 용어라
-읽고 고를 수가 없습니다. 보이는 것을 **10개로 줄이고**, `/moduflow` 하나만 기억하면
-나머지는 **한국어든 영어든 평소 쓰는 문장**으로 되게 합니다. 줄이는 것은 *보이는
-표면*이지 기능이 아닙니다 — 나머지는 허브를 통해 그대로 동작합니다.
+읽고 고를 수가 없습니다. **외워야 하는 것을 2개로 줄입니다** — `/moduflow`와
+`product:inbox`. 나머지는 **한국어든 영어든 평소 쓰는 말**로 닿습니다. 영어는
+`we decided` 같은 문장이 아니라 `note`·`decide` 같은 **단어 한 개**로 됩니다.
+줄이는 것은 *외울 것*이지 기능도 이름도 아닙니다.
 
 ## Summary
 
@@ -64,19 +65,37 @@ since is that the surface grew to 41 while the hub stayed one of many entries.
 
 ### In
 
-- A visible allowlist: `/moduflow` plus `product:inbox`, `product:issue`,
+**Two entries to memorise, narrowed by the owner on 2026-09-06 from an
+earlier proposal of eleven:**
+
+| Entry | For |
+| --- | --- |
+| `/moduflow` | anything, said in ordinary words |
+| `product:inbox` | dump it now, sort it later |
+
+Everything else stays reachable and keeps working. Nobody has to know it exists.
+
+- `/moduflow` accepts Korean or English, routed identically.
+- **English triggers are single words, not sentences.** `we decided` and
+  `record this decision` are phrases to compose; `decide` is a word to recall.
+  The owner asked for the second. Each Korean phrase maps to at least one
+  one-word English trigger:
+
+| Korean | English word | Goes to |
+| --- | --- | --- |
+| `메모해줘` | `note` | inbox |
+| `기억해줘` | `remember` | durable memory |
+| `정했어` | `decide` | decision |
+| `비교해줘` | `compare` | benchmark |
+| `찾아줘` / `전에 뭐였지?` | `find` | cross-record search |
+| `다음에 뭐 하면 돼?` | `next` | status / next action |
+
+- Longer natural phrasings in either language keep working. The one-word form is
+  the floor, not the only accepted input.
+- The nine commands from the earlier allowlist (`product:issue`,
   `product:decision`, `product:benchmark`, `product:memory`, `product:status`,
-  `product:loop`, `product:execute`, `product:review`, `product:release`.
-- Each visible entry gets a short Korean-first bilingual action label, a plain
-  description, and a realistic example in both languages.
-- `/moduflow` accepts ordinary Korean **or** English, routed identically:
-  `결정으로 남겨줘` / `record this decision`, `비교해줘` / `compare`,
-  `기억해줘` / `remember`, `전에 뭐로 정했지?` / `what did we decide?`,
-  `다음에 뭐 하면 돼?` / `what should I do next?`.
-- Memory routing follows the words, not the folders, with each pair equivalent:
-  `메모해줘`/`note this` → inbox, `기억해줘`/`remember this` → durable memory,
-  `정했어`/`we decided` → decision, `비교해줘`/`compare` → benchmark,
-  `찾아줘`/`find` → cross-record search.
+  `product:loop`, `product:execute`, `product:review`, `product:release`) stay
+  usable and documented. They are simply no longer something to remember.
 - `product:decision` accepts one sentence. Issue, reason, alternatives and
   context are inferred from the conversation and project; the only question
   asked, and only when the reason is genuinely absent, is
@@ -90,8 +109,15 @@ since is that the surface grew to 41 while the hub stayed one of many entries.
 
 ### Out
 
-- Removing or renaming any command's behaviour. This narrows what is *shown*.
-  A command that stops working is a regression, not a simplification.
+- **Changing any existing term.** Stated by the owner on 2026-09-06:
+  기존 용어들에서 달라지면 안 됨. Command names, skill names, stored field names
+  and artifact vocabulary all stay exactly as they are. The Korean wording added
+  by this issue is **display only** — `rationale` remains `rationale` in the
+  file, and reads as `왜 이렇게 정했나요?` on screen. Anything that renames a
+  stored key breaks every existing record and is out of scope.
+- Removing or renaming any command's behaviour. This narrows what must be
+  *remembered*. A command that stops working is a regression, not a
+  simplification.
 - Shorthand aliases. Refused by the owner, on the record above.
 - Translating stored artifacts. Issue files, specs and memory records keep the
   bilingual convention they already have (`## 요약` above `## Summary`); this
@@ -110,12 +136,15 @@ an internal command unreachable has failed this issue, not satisfied it.
 
 ## Acceptance Criteria
 
-- The visible palette lists exactly the eleven entries above, each with a Korean
-  label, a plain description, and one Korean and one English example.
-- Every command not on the allowlist still executes when named explicitly, and a
-  test asserts this for all 41, so hiding never becomes removing.
-- The five Korean routing phrases and their five English equivalents each reach
-  the same handler, asserted pairwise.
+- Two entries are enough. The owner completes a decision, a memory write and a
+  status check knowing only `/moduflow` and `product:inbox`.
+- Every command not memorised still executes when named explicitly, and a test
+  asserts this for all 41, so hiding never becomes removing.
+- Each of the six routing rows reaches the same handler from its Korean phrase
+  and from its one-word English trigger, asserted pairwise.
+- **No stored key, command name or skill name changes.** A test compares the set
+  of command filenames and the memory record schema against the current set and
+  fails on any difference.
 - `product:decision` produces a complete record from one sentence plus at most
   one follow-up question, on a fixture where reason, alternatives and issue are
   recoverable from context.
@@ -128,8 +157,10 @@ an internal command unreachable has failed this issue, not satisfied it.
 
 ## Verification
 
-- Fixture: each of the ten Korean/English phrase pairs, asserting identical
-  routing.
+- Fixture: each of the six Korean phrase / one-word English trigger pairs,
+  asserting identical routing.
+- Fixture: the command-name set and the memory record schema, asserting no
+  existing term changed.
 - Fixture: every one of the 41 commands invoked by name, asserting none became
   unreachable.
 - Fixture: a one-sentence decision whose reason is present, and one where it is
@@ -149,9 +180,10 @@ an internal command unreachable has failed this issue, not satisfied it.
 
 ## Scope Fence
 
-Narrow the surface, not the product. If satisfying this issue requires deleting
-a capability, the design is wrong. And do not solve it with abbreviations — that
-option was put to the owner and refused.
+Narrow what must be remembered, not the product and not its vocabulary. If
+satisfying this issue requires deleting a capability or renaming an existing
+term, the design is wrong. And do not solve it with abbreviations — that option
+was put to the owner and refused.
 
 ## Workflow Tasks
 
