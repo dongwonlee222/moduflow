@@ -50,7 +50,15 @@ The planner strips metadata from task text, assigns a worker, calculates shared-
 - Duplicate expected files force sequential mode.
 - Plans include `expected_files`, `expected_globs`, `dependencies`, `isolation.worktree`, and `parallel.merge_order`.
 - Worker inventory reports worker markdown files that are not covered by routing rules.
-- Existing worker plan output remains backward-compatible with schema `moduflow.worker-plan.v1`.
+- ~~Existing worker plan output remains backward-compatible with schema
+  `moduflow.worker-plan.v1`.~~ **Superseded 2026-09-06 by issue 112.** That
+  issue changed the plan's shape on purpose — `isolation` became a host-adapter
+  record, `deferred_to` was dropped because Gate 1 filters those lines, and
+  host/backend/routing_reason/gaps/divergences were added — so the output is
+  now `moduflow.worker-plan.v2`. This criterion was written assuming the shape
+  would hold; it did not. Recorded here rather than left as two specs
+  disagreeing in silence. The eleven committed v1 files are untouched and are
+  distinguishable by their version, which is the point of the bump.
 
 ## Verification
 

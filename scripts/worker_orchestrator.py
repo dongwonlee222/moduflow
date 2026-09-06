@@ -48,7 +48,17 @@ WORKER_COGNITIVE_DEMAND = {
     "data-reviewer":         "fast",
 }
 
-WORKER_PLAN_SCHEMA = "moduflow.worker-plan.v1"
+# v2 since issue 112: the plan changed shape, so the version has to say so.
+# `isolation` went from {worktree, merge_after} to a host-adapter record,
+# `deferred_to` is gone because Gate 1 drops those lines, and host, backend,
+# routing_reason, gaps and divergences are new. Eleven committed v1 files
+# still carry the old shape; a reader must be able to tell them apart.
+#
+# This overrides `specs/023-worker-routing-and-isolation/spec.md:53`, which
+# made v1 compatibility an acceptance criterion. 023 wrote that on the
+# assumption the shape would not change; 112 changed it deliberately, and
+# the note is recorded in 023 rather than left as a silent contradiction.
+WORKER_PLAN_SCHEMA = "moduflow.worker-plan.v2"
 
 # The host is configured, never guessed. Decision:
 # `memory/decisions/2026-09-06-the-host-is-configured-with-a-per-run-override-never-guessed.md`.

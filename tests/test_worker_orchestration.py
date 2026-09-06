@@ -187,7 +187,7 @@ class WorkerOrchestrationTests(unittest.TestCase):
             plan_md = root / "specs" / "007-worker-orchestration" / "worker-plan.md"
             self.assertTrue(plan_json.exists())
             self.assertTrue(plan_md.exists())
-            self.assertEqual(json.loads(plan_json.read_text(encoding="utf-8"))["schema"], "moduflow.worker-plan.v1")
+            self.assertEqual(json.loads(plan_json.read_text(encoding="utf-8"))["schema"], "moduflow.worker-plan.v2")
 
     def test_worker_plan_uses_canonical_specs_and_ignores_decoy(self):
         orchestrator = load_module("worker_orchestrator_nested", "scripts/worker_orchestrator.py")
