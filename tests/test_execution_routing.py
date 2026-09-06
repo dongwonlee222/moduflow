@@ -400,37 +400,36 @@ class RealCorpus(unittest.TestCase):
         survivors = {task["id"] for task in routing.gate1_executable(scanned)}
         self.assertEqual(survivors & set(deferred), set())
 
-    def test_issue_112_routes_ok_against_its_own_tasks_file(self):
-        """The dogfood check `tasks.md:45` requires: gate sections dropped,
-        `Stream E — Integration and verification` kept, and T12's five
-        dependencies still resolving after the drop.
+    def test_issue_112_routes_correctly_against_its_own_tasks_file(self):
+        """The dogfood, asserted across the issue's whole life.
 
-        Asserted as properties, not as the literal twelve. An earlier version
-        pinned the exact list `T01..T12`, which meant checking off finished
-        work broke the test — so the file could not say what had actually been
-        done. That is the state-disagrees-with-itself defect issues 125, 126
-        and 127 all traced back to, reproduced inside its own dogfood.
+        This has now been rewritten twice by the same mistake. v1 pinned the
+        literal list T01..T12, so checking off finished work broke it. v2
+        asserted status `ok` — which held until 2026-09-07, when the last task
+        was checked and the honest answer became `not_applicable`. v2's own
+        failure message said so: "every task checked off would be
+        not_applicable". It was written as a guard and arrived as a fact.
+
+        What is true in both phases: the gates run, the five `## Required Gates`
+        lines never survive Gate 1, and nothing is ever a gap — this spec
+        declares a boundary on every task.
         """
         result = self.route_spec("112-execution-planner-and-backend-boundary")
-        self.assertEqual(result["status"], "ok", result["gaps"])
-        self.assertEqual(result["backend"], "inline", result["routing_reason"])
+        self.assertIn(result["status"], {"ok", "not_applicable"}, result["gaps"])
+        self.assertEqual(result["gaps"], [], "this spec declares every boundary")
 
-        survivors = {task["id"] for task in result["tasks"]}
-        self.assertTrue(survivors, "every task checked off would be not_applicable")
-
-        # The five `## Required Gates` lines carry no `[files:]`, so if Gate 1
-        # let them through Gate 2 would refuse the whole plan. Status ok is
-        # only reachable when they are dropped.
-        gate_ids = {task["id"] for task in routing.scan_tasks(
-            ROOT / "specs/112-execution-planner-and-backend-boundary/tasks.md"
-        ) if task["section"].strip().lower() == "required gates"}
+        tasks_path = ROOT / "specs/112-execution-planner-and-backend-boundary/tasks.md"
+        gate_ids = {task["id"] for task in routing.scan_tasks(tasks_path)
+                    if task["section"].strip().lower() == "required gates"}
         self.assertTrue(gate_ids, "the fixture must still carry a gate section")
+        survivors = {task["id"] for task in result["tasks"]}
         self.assertFalse(survivors & gate_ids, "gate lines must not survive Gate 1")
 
-        # T12 depends on T03, T07, T08, T10 and T11. Zero gaps above already
-        # proves they all resolve — including any that resolve by being done
-        # rather than by surviving, which is the rule spec section 5 settled.
-        self.assertEqual(result["gaps"], [])
+        if result["status"] == "ok":
+            self.assertEqual(result["backend"], "inline", result["routing_reason"])
+            self.assertTrue(survivors)
+        else:
+            self.assertEqual(survivors, set(), "not_applicable means nothing survived")
 
     def test_no_spec_in_the_corpus_crashes_the_gates(self):
         for tasks_path in sorted(ROOT.glob("specs/*/tasks.md")):

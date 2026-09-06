@@ -76,7 +76,7 @@ Do not add another execution engine. ModuFlow owns selection, state, evidence, a
 - [x] design/scope → `docs/superpowers/specs/2026-09-01-execution-governance-scope-design.md`
 - [x] spec → `specs/112-execution-planner-and-backend-boundary/spec.md` (한글: `spec.ko.md`)
 - [x] plan → `specs/112-execution-planner-and-backend-boundary/plan.md` + `tasks.md`
-- [ ] execute → planner filtering, backend decision contract, artifact ownership, and tests
+- [x] execute → planner filtering, backend decision contract, artifact ownership, and tests
 - [ ] review → `specs/<issue>/review.md` (path fixed once the artifact exists)
 
 ## Related Issues

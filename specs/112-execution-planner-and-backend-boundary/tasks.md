@@ -34,15 +34,15 @@ dogfood fixture for the gates this issue builds: running the routing on issue
 - [x] Consume the routing result in the worker plan builder, refuse to write on a non-ok status, and emit a relative project root [files: scripts/worker_orchestrator.py] [depends: T04, T06] [shared_state: true]
 - [x] Update the existing worker orchestration tests that assume every checkbox becomes a worker task [files: tests/test_worker_orchestration.py] [depends: T09]
 - [x] Update the worker, execute and Superpowers bridge documents to describe refusal as a normal outcome [files: commands/product-workers.md, commands/product-execute.md, skills/superpowers-execution-bridge/SKILL.md] [depends: T09]
-- [ ] Re-run the corpus and this issue's own dogfood check, then record the verdict distribution as evidence [files: specs/112-execution-planner-and-backend-boundary/status.md] [depends: T03, T07, T08, T10, T11]
+- [x] Re-run the corpus and this issue's own dogfood check, then record the verdict distribution as evidence [files: specs/112-execution-planner-and-backend-boundary/status.md] [depends: T03, T07, T08, T10, T11]
 
 ## Required Gates
 
-- [ ] `python3 -m unittest discover -s tests` green with the new suites present.
-- [ ] Corpus behaviour holds: 029 plans, 001 refuses, 023 is not_applicable.
-- [ ] Stream C interface reviewed before its mapping code was written.
-- [ ] `python3 scripts/release_check.py .` reports 14 of 14.
-- [ ] Running the routing on issue 112 itself returns `ok`.
+- [x] `python3 -m unittest discover -s tests` green with the new suites present. 2056 OK.
+- [x] Corpus behaviour holds: 029 plans, 001 refuses, 023 is not_applicable. Confirmed 2026-09-07.
+- [x] Stream C interface reviewed before its mapping code was written (T05 landed before T06).
+- [x] `python3 scripts/release_check.py .` reports 14 of 14.
+- [x] Running the routing on issue 112 itself returns `ok`.
 
 ## Next Command
 
