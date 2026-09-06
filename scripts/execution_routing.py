@@ -10,6 +10,10 @@ prototype was run against all 55 specs on 2026-09-05. The shipped regexes and
 metadata parser are imported rather than copied so this module cannot drift
 from what `worker_orchestrator` actually reads.
 
+Each selected task carries `cognitive_demand` and `isolation` — intent the host
+adapter needs, in words that name no model and no worktree. Mapping them to a
+host is `scripts/execution_host_adapter.py`, never this module.
+
 Nothing here writes: `written` is always []. Gate 2 fails closed at plan level
 (spec §6.2) — one gap refuses the whole plan, so the caller has nothing to
 persist and no partial plan can read as a complete one.
@@ -22,6 +26,8 @@ try:
     from scripts.worker_orchestrator import (
         CHECKBOX_RE,
         DEFERRED_RE,
+        WORKER_COGNITIVE_DEMAND,
+        assign_worker,
         parse_task_metadata,
         task_has_shared_state_risk,
     )
@@ -29,6 +35,8 @@ except ImportError:  # pragma: no cover - direct script execution fallback
     from worker_orchestrator import (
         CHECKBOX_RE,
         DEFERRED_RE,
+        WORKER_COGNITIVE_DEMAND,
+        assign_worker,
         parse_task_metadata,
         task_has_shared_state_risk,
     )
@@ -245,6 +253,43 @@ def gate3_backend(executable):
     )
 
 
+def _cognitive_demand(task):
+    """How hard the work is, said without naming a model (host adapter design).
+
+    `WORKER_COGNITIVE_DEMAND` is a role-to-demand table with no host in it, so
+    the mapping is intent and belongs upstream of any host. Imported rather than
+    copied for the same reason the parser is: two tables would drift, and the
+    one in `worker_orchestrator` is the one that has been in use.
+    """
+    return WORKER_COGNITIVE_DEMAND.get(assign_worker(task["text"]), "balanced")
+
+
+def _isolation_requirement(task, backend):
+    """Whether the work needs its own workspace — not how one is made.
+
+    `isolated` does not name a worktree; that is the adapter's job. Today this
+    is implied only by the worktree string existing in `worker_orchestrator`,
+    which is why a `codex/` prefix leaked into every plan (spec §8).
+
+    Written per task even though gate 3 already forces `inline` whenever any
+    task declares shared state, so the two clauses cannot presently disagree.
+    The design puts the field on the task, and a later gate 3 that isolates only
+    the risky tasks must not need this line rewritten.
+    """
+    if backend == "inline" or task_has_shared_state_risk(task):
+        return "shared"
+    return "isolated"
+
+
+def _with_intent(task, backend):
+    """A new dict, so gate 1 stays a filter and its survivors stay untouched."""
+    return {
+        **task,
+        "cognitive_demand": _cognitive_demand(task),
+        "isolation": _isolation_requirement(task, backend),
+    }
+
+
 def build_routing(tasks, project_root="."):
     """One host-neutral routing result. Never writes, never claims dispatch.
 
@@ -296,6 +341,9 @@ def build_routing(tasks, project_root="."):
         "backend": backend,
         "routing_reason": reason,
         "gaps": [],
-        "tasks": executable,
+        # Intent only. `cognitive_demand` and `isolation` are what
+        # `scripts/execution_host_adapter.py` needs; neither names a model or a
+        # worktree, so adding a host still changes no canonical artifact.
+        "tasks": [_with_intent(task, backend) for task in executable],
         "next_command": f"product:execute ({backend})",
     }

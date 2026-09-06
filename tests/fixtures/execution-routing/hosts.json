@@ -1,0 +1,165 @@
+{
+  "schema": "moduflow.host-adapter-fixture.v1",
+  "note": "Hand-authored expectations for issue 112 T07. Read by tests/test_execution_host_adapter.py and never written by it: a fixture regenerated from the adapters would agree with a wrong adapter forever. One entry per host, so a change to any adapter shows up here as a diff.",
+  "issue_id": "112-execution-planner-and-backend-boundary",
+  "input": {
+    "backend": "superpowers-sdd",
+    "tasks": {
+      "T01": {"text": "Write the code for the parser", "cognitive_demand": "balanced", "isolation": "isolated"},
+      "T02": {"text": "Draft the module interface", "cognitive_demand": "deep", "isolation": "isolated"},
+      "T03": {"text": "Publish the release notes", "cognitive_demand": "fast", "isolation": "isolated"}
+    }
+  },
+  "hosts": {
+    "claude-code": {
+      "host_id": "claude-code",
+      "tasks": {
+        "T01": {
+          "isolation": {
+            "requirement": "isolated",
+            "honoured": true,
+            "mechanism": "agent-worktree",
+            "workspace": null,
+            "detail": "the host provisions and names the worktree"
+          },
+          "model": {"effort": "high", "model_hint": "sonnet"},
+          "dispatch": {
+            "subagent_type": "general-purpose",
+            "description": "ModuFlow T01",
+            "prompt": "Implement task: Write the code for the parser\nExpected files: scripts/parser.py",
+            "model": "sonnet",
+            "isolation": "worktree"
+          }
+        },
+        "T02": {
+          "isolation": {
+            "requirement": "isolated",
+            "honoured": true,
+            "mechanism": "agent-worktree",
+            "workspace": null,
+            "detail": "the host provisions and names the worktree"
+          },
+          "model": {"effort": "xhigh", "model_hint": "opus"},
+          "dispatch": {
+            "subagent_type": "general-purpose",
+            "description": "ModuFlow T02",
+            "prompt": "Implement task: Draft the module interface\nExpected files: docs/module-interface.md",
+            "model": "opus",
+            "isolation": "worktree"
+          }
+        },
+        "T03": {
+          "isolation": {
+            "requirement": "isolated",
+            "honoured": true,
+            "mechanism": "agent-worktree",
+            "workspace": null,
+            "detail": "the host provisions and names the worktree"
+          },
+          "model": {"effort": "low", "model_hint": "haiku"},
+          "dispatch": {
+            "subagent_type": "general-purpose",
+            "description": "ModuFlow T03",
+            "prompt": "Implement task: Publish the release notes\nExpected files: notes/release-notes.md",
+            "model": "haiku",
+            "isolation": "worktree"
+          }
+        }
+      }
+    },
+    "codex": {
+      "host_id": "codex",
+      "tasks": {
+        "T01": {
+          "isolation": {
+            "requirement": "isolated",
+            "honoured": true,
+            "mechanism": "git-worktree",
+            "workspace": "codex/112-execution-planner-and-backend-boundary-t01",
+            "detail": null
+          },
+          "model": {"effort": "high", "model_hint": "gpt-5.6-terra"},
+          "dispatch": {
+            "TypeName": "self",
+            "Role": "ModuFlow T01",
+            "CognitiveDemand": "balanced",
+            "Workspace": "share",
+            "Prompt": "Implement task: Write the code for the parser\nExpected files: scripts/parser.py"
+          }
+        },
+        "T02": {
+          "isolation": {
+            "requirement": "isolated",
+            "honoured": true,
+            "mechanism": "git-worktree",
+            "workspace": "codex/112-execution-planner-and-backend-boundary-t02",
+            "detail": null
+          },
+          "model": {"effort": "xhigh", "model_hint": "gpt-5.6-sol"},
+          "dispatch": {
+            "TypeName": "self",
+            "Role": "ModuFlow T02",
+            "CognitiveDemand": "deep",
+            "Workspace": "share",
+            "Prompt": "Implement task: Draft the module interface\nExpected files: docs/module-interface.md"
+          }
+        },
+        "T03": {
+          "isolation": {
+            "requirement": "isolated",
+            "honoured": true,
+            "mechanism": "git-worktree",
+            "workspace": "codex/112-execution-planner-and-backend-boundary-t03",
+            "detail": null
+          },
+          "model": {"effort": "low", "model_hint": "gpt-5.6-luna"},
+          "dispatch": {
+            "TypeName": "self",
+            "Role": "ModuFlow T03",
+            "CognitiveDemand": "fast",
+            "Workspace": "share",
+            "Prompt": "Implement task: Publish the release notes\nExpected files: notes/release-notes.md"
+          }
+        }
+      }
+    },
+    "copilot": {
+      "host_id": "copilot",
+      "tasks": {
+        "T01": {
+          "isolation": {
+            "requirement": "isolated",
+            "honoured": false,
+            "mechanism": null,
+            "workspace": null,
+            "detail": "no verified workspace-isolation control on this host"
+          },
+          "model": {"effort": null, "model_hint": null},
+          "dispatch": {}
+        },
+        "T02": {
+          "isolation": {
+            "requirement": "isolated",
+            "honoured": false,
+            "mechanism": null,
+            "workspace": null,
+            "detail": "no verified workspace-isolation control on this host"
+          },
+          "model": {"effort": null, "model_hint": null},
+          "dispatch": {}
+        },
+        "T03": {
+          "isolation": {
+            "requirement": "isolated",
+            "honoured": false,
+            "mechanism": null,
+            "workspace": null,
+            "detail": "no verified workspace-isolation control on this host"
+          },
+          "model": {"effort": null, "model_hint": null},
+          "dispatch": {}
+        }
+      }
+    }
+  }
+}
