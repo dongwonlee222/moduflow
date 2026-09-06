@@ -64,7 +64,7 @@ larger than "add a check".
   on `done` specs. New and open artifacts adopt the anchors; history does not.
 - Judging quality. Whether pasted output supports the stated cause, or whether a
   filled slot reads clearly, is beyond a machine. See Risks.
-- Non-bug issues. Feature and opportunity issues have no cause to prove.
+- Non-bug issues. `feature`, `chore` and `spike` have no cause to prove.
 - Moving validation into the stop hook. It runs where validation runs today.
 - The five field-name display labels — issue 131 shipped them on 2026-09-06.
 
@@ -73,11 +73,47 @@ larger than "add a check".
 ### R1 — The anchors
 
 **Issue type.** `- Type:` must begin with one token from a closed set —
-`bug`, `feature`, `opportunity`, `chore`, `audit` — optionally followed by ` — `
-and any prose. `- Type: bug — reported by the owner, 2026-09-06` is valid and is
-already the shape three issues use. An issue with no `Type:` line, or with prose
-in the token position, is **skipped, not failed**: 107 issues predate this and
-failing them would make the check unrunnable on day one.
+**`bug`, `feature`, `chore`, `spike`** — optionally followed by ` — ` and any
+prose. `- Type: bug — reported by the owner, 2026-09-06` is valid and is already
+the shape three issues use.
+
+The em-dash tail is not decoration. Today's `Type:` field holds **provenance**,
+not kind: `user product direction`, `daily work log`, `internal review
+(워크플로우 일관성 분석 2026-06-16)`. Replacing the field outright would delete
+the only information it currently carries. The token-then-prose form keeps both —
+the token is for the machine, the tail is for the reader.
+
+An issue with no `Type:` line, or with prose in the token position, is **skipped,
+not failed**: 107 issues predate this and failing them would make the check
+unrunnable on day one.
+
+**Why these four, and not the five the issue proposed.** Checked against twelve
+sources on 2026-09-06 (see Evidence). Two changes:
+
+- **`opportunity` is removed.** It appears as an issue type in none of the twelve.
+  More decisively, this product already handles the concept by location:
+  `commands/product-opportunity.md:9` — "Shape the problem before creating
+  execution work" — writes to `workspace/opportunities.md`, not `issues/`, and
+  `commands/product-promote.md:28` refuses to promote unshaped work: "do NOT
+  create a hollow issue." **A file existing in `issues/` already means the
+  opportunity stage is past.** Zero of 142 issues declare `Type: opportunity`.
+  Keeping the token would give an unsure author a place to hide, and there is no
+  rule that could key off it — it sits on the same side of "must prove a cause"
+  as `feature`.
+- **`audit` becomes `spike`.** `spike` is the conventional name (XP origin), and
+  `audit` already means security or compliance review elsewhere. Beads normalises
+  `investigation` and `timebox` to `spike`; `audit` is in no ecosystem's alias
+  list, so writing it invents a word.
+
+`chore` over GitHub's `task`: both are the leftover bucket, but `task` reads as
+"any work item" and absorbs features, while `chore` reads as "neither a bug nor a
+feature", which is what the bucket is for.
+
+Not added: `epic` and `story`. Both express hierarchy, not kind, and the roadmap
+plus issue links already carry that.
+
+**The `chore` / `spike` boundary, stated once so it is never argued:** a spike
+produces **findings**; a chore produces a **changed repository**.
 
 **Cause section.** An issue whose type token is `bug` requires `## Cause`. Zero
 exist today; the three real bug issues get one, moved out of `## Opportunity`.
@@ -92,6 +128,27 @@ One table, entries of the form *(artifact kind, section, content rule)*,
 evaluated in `scripts/validate_project_artifacts.py` where validation already
 runs. The two rules below are its first two entries. A test asserts a third can
 be added as data.
+
+**This shape is not invented.** Beads ships a per-type required-section
+contract — reported from `internal/types/types.go`, `func (t IssueType)
+RequiredSections()`, which the research pass read directly (not verified by this
+session):
+
+| Type | Required sections |
+| --- | --- |
+| `bug` | `## Steps to Reproduce`, `## Acceptance Criteria` |
+| `task` / `feature` / `story` | `## Acceptance Criteria` |
+| `spike` | `## Goal`, `## Findings` |
+| `chore` and the rest | none — returns `nil` |
+
+Three things carry over. The bug/feature asymmetry is exactly the split this
+issue needs. `spike` requiring `## Goal` + `## Findings` is why the token earns
+its place — it has a rule, unlike `opportunity`. And the leftover bucket
+explicitly having **no** contract is a design choice worth copying: a bucket that
+demands sections stops being a bucket.
+
+What ModuFlow needs and Beads does not have is the *content* half — Beads checks
+that a section exists; R3 checks what is inside it.
 
 ### R3 — Cause content
 
@@ -187,8 +244,46 @@ following the `## 요약` precedent at `product-issue.md` step 7.
   before `done`. Creation time matches the `## 요약` precedent; before-`done`
   matches issue 142's gate. **Recommendation: creation time**, because the whole
   point is that the cause is written when it is known, not reconstructed later.
-- Whether the closed type set is the right five. Nothing measured decides this;
-  the owner reviews it in the plan.
+- Whether `spike` also needs its `## Goal` / `## Findings` contract in this
+  issue, or later. Beads pairs the token with those sections; shipping the token
+  with no rule repeats the defect this issue exists to fix.
+  **Recommendation: include it** — it is one more row in the same table.
+
+## Evidence — the taxonomy was checked, not chosen
+
+Twelve sources, 2026-09-06. Only the closed schema fields are binding evidence;
+label conventions are evidence about what people can pick without thinking.
+
+| Source | Tokens | Kind |
+| --- | --- | --- |
+| GitHub issue types | `task` `bug` `feature` | closed schema field |
+| Conventional Commits v1.0.0 | `feat` `fix` — only these two are normative | commit convention |
+| Jira software | `Epic` `Story` `Task` `Bug` `Subtask` | closed schema field |
+| Jira Product Discovery | `Idea`, linked to Jira work items when ready | separate product |
+| Linear | no built-in type field; labels only | — |
+| Shortcut | `Feature` `Bug` `Chore` (secondary source) | schema field |
+| Beads | 12-token Go enum with per-type required sections | closed schema field |
+| kubernetes | 12 `kind/` labels, but templates issue only 4 | label, gated at entry |
+| rust-lang | 13 `C-` labels | label |
+| cpython | 5 `type-` labels | label |
+| vscode | 4, no prefix convention | label |
+| GitHub Spec Kit | none — confirmed absent, not unverified | — |
+
+Two operating lessons taken from this, beyond the token list:
+
+- **Count the tokens the entry issues, not the ones the list holds.** kubernetes
+  keeps twelve `kind/` labels and its four issue templates each force exactly one.
+  The taxonomy survives because the entry point assigns it. ModuFlow's 142
+  free-prose values are what happens without that gate — so `commands/product-issue.md`
+  and `scripts/project_promote.py` must assign the token, not ask for it.
+- **Separate the axes.** kubernetes runs `kind/` (what), `area/` (where) and
+  `sig/` (who) as three. `user multi-project orchestration improvement request`
+  mixes all three into one string, which is why nobody could pick from it.
+
+Not verified in this session: the Beads source (read by the research pass at
+`internal/types/types.go`, no local checkout here); GitHub's default three, which
+rest on one docs sentence — `list_issue_types` returned 404 for every org tried;
+Shortcut's three, from a help-centre summary rather than its REST schema.
 
 ## Next Command
 
