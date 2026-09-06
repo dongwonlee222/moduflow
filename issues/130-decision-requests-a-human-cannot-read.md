@@ -1,6 +1,6 @@
 # Issue 130: Decision Requests A Human Cannot Read
 
-**Status: backlog** — created 2026-09-06.
+**Status: superseded-by-129** — absorbed into `129-required-sections-are-named-but-never-checked` on 2026-09-06. Merged because both halves need one section-content checker and no checker exists today; running them apart builds it twice. Nothing here was dropped — the five slots, the owner-decides/ratification split, and the §15 evidence all moved across. Kept for the record; do not implement from this file.
 **Priority: p1**
 
 ## 요약
@@ -145,7 +145,7 @@ was already there. The slot is for the reader, and the reader is the owner.
 - **The five field-name display labels (`rationale` → `왜 이렇게 정했나요?` and the
   rest) are owned by issue 131**, decided 2026-09-06. This issue cites them and
   does not define or implement them.
-- related: `129-issues-may-not-record-an-unproven-cause` (the same shape one
+- related: `129-required-sections-are-named-but-never-checked` (the same shape one
   layer up — an issue that records a cause nobody can trust, versus a decision
   nobody can read), `112-execution-planner-and-backend-boundary` (the spec that
   exposed this), `121-constitution-amendment-invalidates-pilot-evidence`

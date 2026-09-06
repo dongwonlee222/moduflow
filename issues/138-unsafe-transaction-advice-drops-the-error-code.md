@@ -112,7 +112,7 @@ where a spec adds anything, per the S-grade bugfix exception.
 
 - related: `126-sync-refuses-the-drift-it-is-prescribed-for` — same class one
   layer up: a refusal that does not help the reader act
-- related: `129-issues-may-not-record-an-unproven-cause` — this issue's own
+- related: `129-required-sections-are-named-but-never-checked` — this issue's own
   reported cause was a guess, corrected in `## Source`
 
 ## Next Command

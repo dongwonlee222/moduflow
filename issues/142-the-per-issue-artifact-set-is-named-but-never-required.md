@@ -103,7 +103,7 @@ those twenty-seven the review step was skipped and nothing noticed.
 ### Out
 
 - Judging whether a spec or review is any *good*. A machine can check a file
-  exists and has a required heading. Issue 130 owns readability.
+  exists and has a required heading. Issue 129 owns readability.
 - Back-filling artifacts for closed issues. See above; if the decision changes,
   it is a separate issue.
 - Deriving phase from file existence — that is issue 132's third defect and its
@@ -179,9 +179,9 @@ invisible one, and every count in this issue would then read as healthy.
 - blocked_by: `132-the-canonical-status-line-has-no-protection` — its third
   defect is that phase comes from a file existing rather than its content. A
   completion gate built on that value inherits the hole, so 132 lands first.
-- related: `130-decision-requests-a-human-cannot-read` (owns whether the
-  artifacts can be read; this owns whether they exist),
-  `129-issues-may-not-record-an-unproven-cause`,
+- related: `129-required-sections-are-named-but-never-checked` (owns whether
+  the artifacts can be read; this owns whether they exist),
+  `129-required-sections-are-named-but-never-checked`,
   `120-silent-status-fallback-in-issue-parser`,
   `141-adoption-reports-success-on-an-incomplete-setup` (the same shape one
   level out — a step reports success against a standard narrower than the one

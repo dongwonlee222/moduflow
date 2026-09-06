@@ -101,7 +101,7 @@ Do not add a second evaluator. The function is correct; only its caller is missi
 ## Related Issues
 
 - related: `132-the-canonical-status-line-has-no-protection` (a rule written down
-  but not enforced), `129-issues-may-not-record-an-unproven-cause`
+  but not enforced), `129-required-sections-are-named-but-never-checked`
 
 ## Next Command
 

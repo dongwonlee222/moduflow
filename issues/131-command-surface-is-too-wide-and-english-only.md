@@ -260,9 +260,9 @@ owner approves the change list.**
 - follows_up: `009-moduflow-hub-command` (done — built the hub this issue makes
   primary), `055-command-surface-onboarding` (done),
   `020-user-facing-simple-loop-ux` (done), `044-product-dashboard-command` (done)
-- related: `130-decision-requests-a-human-cannot-read` — deliberate boundary. 130
-  owns whether a written decision or approval can be read; 131 owns invocation and
-  the menu. The five display labels appear in both; whichever lands first owns
+- related: `129-required-sections-are-named-but-never-checked` (absorbed 130 on
+  2026-09-06) — deliberate boundary. 129 owns whether a written decision or
+  approval can be read; 131 owns invocation and the menu. The five display labels appear in both; whichever lands first owns
   them and the other cites it.
 - blocked_by (stage 2 only): `104-project-aware-natural-language-request-orchestrator`
   — owns project-aware Korean/English routing and follows 112. Stage 1 is not
