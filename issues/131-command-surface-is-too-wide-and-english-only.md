@@ -8,8 +8,9 @@
 `/` 메뉴에 명령이 **41개**, 스킬이 **11개** 뜨는데 설명이 전부 영어에 내부 용어라
 읽고 고를 수가 없습니다. 기본 진입점은 **`/moduflow` 하나**로 하고, 그 뒤에는
 **한국어든 영어든** 평소 쓰는 말을 씁니다. 메뉴에는 **핵심 명령 10개만** 보이게 하고
-접두사 `product:`는 **보이는 이름에서만** 뗍니다. 나머지 명령과 스킬은 메뉴에서만
-숨기고 **직접 입력하면 그대로 동작**합니다. 저장된 필드 이름은 하나도 안 바꿉니다.
+접두사 `product:`는 뗍니다 — **`/moduflow inbox`처럼 이름만 쓰면 실행**됩니다.
+나머지 명령과 스킬은 메뉴에서만 숨기고 **직접 입력하면 그대로 동작**합니다. 저장된
+필드 이름은 하나도 안 바꿉니다.
 
 ## Summary
 
@@ -77,9 +78,14 @@ English. These ten stay visible for anyone who prefers picking from a list:
 `inbox` · `issue` · `decision` · `benchmark` · `memory` · `status` · `loop` ·
 `execute` · `review` · `release`
 
-- **The `product:` prefix is dropped from the displayed name only.** `product:inbox`
-  is still the command; the menu shows `inbox`. Typing the existing full name keeps
-  working, unchanged. Nothing is renamed on disk and no new command file appears.
+- **`/moduflow <name>` runs the command.** `/moduflow inbox` executes what
+  `product:inbox` executes. That is the form the owner asked for on 2026-09-06:
+  "moduflow inbox 이렇게만 해도 실행 되게". The prefix is not typed and not shown.
+- `product:inbox` still works when typed in full, unchanged. Nothing is renamed on
+  disk and no new top-level command file appears — `/moduflow inbox` is the hub
+  dispatching on its first argument, not a second command named `inbox`.
+- The three forms are equivalent and must stay so: `/moduflow inbox`,
+  `/moduflow 메모해줘: …`, and `product:inbox`.
 - Everything else is hidden from the menu and keeps working when typed:
   `knowledge`, `evidence`, `research`, `report`, `promote`, `profile`, `migrate`,
   `portfolio`, `workers`, bridges, routers, policies, and the duplicate generated
@@ -161,6 +167,9 @@ it does not remove the need to know what the product does.
 
 ## Acceptance Criteria
 
+- `/moduflow <name>` executes the command for all ten names, asserted one by one.
+  `/moduflow inbox` and `product:inbox` reach the same handler and produce
+  identical output.
 - The visible menu lists `/moduflow` plus exactly the ten commands above, each
   displayed without the `product:` prefix and carrying all four items.
 - Every one of the 41 commands still executes under its existing full name,
@@ -186,6 +195,8 @@ it does not remove the need to know what the product does.
 
 - Fixture: the nine Korean/English pairs, asserting identical routing.
 - Fixture: all 41 commands invoked by their existing full names.
+- Fixture: the ten names invoked as `/moduflow <name>`, asserting identical output
+  to the `product:<name>` form.
 - Fixture: the command filename set and the memory record schema, asserting
   nothing was renamed.
 - Fixture: a one-sentence decision with a recoverable reason, and one without —
