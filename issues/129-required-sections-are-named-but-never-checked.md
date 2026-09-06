@@ -241,10 +241,10 @@ owner.
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/<issue>/spec.md`
-- [ ] plan → `specs/<issue>/plan.md` + `tasks.md`
-- [ ] execute → rule table, cause rule, five-slot rule, both command texts
-- [ ] review → `specs/<issue>/review.md`
+- [x] spec → `specs/<issue>/spec.md`
+- [x] plan → `specs/<issue>/plan.md` + `tasks.md`
+- [x] execute → rule table, cause rule, five-slot rule, both command texts
+- [x] review → `specs/<issue>/review.md`
 
 ## Related Issues
 
