@@ -403,12 +403,34 @@ class RealCorpus(unittest.TestCase):
     def test_issue_112_routes_ok_against_its_own_tasks_file(self):
         """The dogfood check `tasks.md:45` requires: gate sections dropped,
         `Stream E — Integration and verification` kept, and T12's five
-        dependencies still resolving after the drop."""
+        dependencies still resolving after the drop.
+
+        Asserted as properties, not as the literal twelve. An earlier version
+        pinned the exact list `T01..T12`, which meant checking off finished
+        work broke the test — so the file could not say what had actually been
+        done. That is the state-disagrees-with-itself defect issues 125, 126
+        and 127 all traced back to, reproduced inside its own dogfood.
+        """
         result = self.route_spec("112-execution-planner-and-backend-boundary")
         self.assertEqual(result["status"], "ok", result["gaps"])
-        self.assertEqual([task["id"] for task in result["tasks"]],
-                         [f"T{index:02d}" for index in range(1, 13)])
         self.assertEqual(result["backend"], "inline", result["routing_reason"])
+
+        survivors = {task["id"] for task in result["tasks"]}
+        self.assertTrue(survivors, "every task checked off would be not_applicable")
+
+        # The five `## Required Gates` lines carry no `[files:]`, so if Gate 1
+        # let them through Gate 2 would refuse the whole plan. Status ok is
+        # only reachable when they are dropped.
+        gate_ids = {task["id"] for task in routing.scan_tasks(
+            ROOT / "specs/112-execution-planner-and-backend-boundary/tasks.md"
+        ) if task["section"].strip().lower() == "required gates"}
+        self.assertTrue(gate_ids, "the fixture must still carry a gate section")
+        self.assertFalse(survivors & gate_ids, "gate lines must not survive Gate 1")
+
+        # T12 depends on T03, T07, T08, T10 and T11. Zero gaps above already
+        # proves they all resolve — including any that resolve by being done
+        # rather than by surviving, which is the rule spec section 5 settled.
+        self.assertEqual(result["gaps"], [])
 
     def test_no_spec_in_the_corpus_crashes_the_gates(self):
         for tasks_path in sorted(ROOT.glob("specs/*/tasks.md")):

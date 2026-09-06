@@ -11,13 +11,13 @@ dogfood fixture for the gates this issue builds: running the routing on issue
 
 ## Stream A — Selection and refusal
 
-- [ ] Port Gate 1 and Gate 2 from the evidence prototype into a standalone routing module with its RED/GREEN tests [files: scripts/execution_routing.py, tests/test_execution_routing.py]
-- [ ] Add typed gaps carrying a kind of no_boundary, unreadable_notation or dangling_dependency [files: scripts/execution_routing.py] [depends: T01]
-- [ ] Add notation fixtures covering the pipe form used by specs 103, 109 and 110 and assert it reports unreadable_notation [files: tests/fixtures/execution-routing/pipe-notation-tasks.md, tests/test_execution_routing.py] [depends: T02]
+- [x] Port Gate 1 and Gate 2 from the evidence prototype into a standalone routing module with its RED/GREEN tests [files: scripts/execution_routing.py, tests/test_execution_routing.py]
+- [x] Add typed gaps carrying a kind of no_boundary, unreadable_notation or dangling_dependency [files: scripts/execution_routing.py] [depends: T01]
+- [x] Add notation fixtures covering the pipe form used by specs 103, 109 and 110 and assert it reports unreadable_notation [files: tests/fixtures/execution-routing/pipe-notation-tasks.md, tests/test_execution_routing.py] [depends: T02]
 
 ## Stream B — Routing decision
 
-- [ ] Port Gate 3 with fnmatch path containment and assert inline is a success result [files: scripts/execution_routing.py, tests/test_execution_routing.py] [depends: T01]
+- [x] Port Gate 3 with fnmatch path containment and assert inline is a success result [files: scripts/execution_routing.py, tests/test_execution_routing.py] [depends: T01]
 
 ## Stream C — Host adapter boundary
 

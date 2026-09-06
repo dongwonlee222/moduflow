@@ -1,6 +1,6 @@
 {
   "name": "moduflow",
-  "version": "0.3.69+codex.20260906185228",
+  "version": "0.3.70+codex.20260906201130",
   "description": "Git-native PM execution orchestrator for issues, specs, roadmaps, subagents, analysis, design, PRs, and releases.",
   "author": {
     "name": "Dongwon Lee",
