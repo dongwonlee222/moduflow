@@ -190,18 +190,30 @@ the input, not accepting it.
 - [확인만] `review` is not added to the vocabulary. Section 7 alternative 4
   records why: it would make issue 125 parse and fix nothing, because the next
   invented word fails the same silent way. The vocabulary is not the defect.
-- [사장님 결정] Whether the diagnostic must reach `product:doctor` before this
-  issue can close, or whether that is a follow-up.
-  - 왜 이 결정이 필요한가요? 진단을 만들어 놓고 사람이 보는 화면에 안 띄우면,
-    침묵을 없앤 게 아니라 옮긴 것뿐입니다. 이 이슈를 어디서 끊을지는 판단입니다.
-  - 지금 무엇이 잘못되고 있나요? 이슈 파서가 알 수 없는 상태값을 조용히
-    `backlog`로 바꿉니다. 이슈 125의 `**Status: review**`가 그렇게 삼켜졌습니다.
-  - 실제로 측정된 예시 — `**Status: review**`가 `backlog`로 보고되었고, 토큰은
-    읽힌 뒤 버려졌습니다 (`spec.md:32`, `:40`). 사람도 도구도 모른 채 넘어갔습니다.
-  - 다른 선택지와 그 비용 — (가) doctor까지 포함해서 닫는다: 이 이슈가 커지고
-    doctor 출력 설계가 딸려 옵니다. (나) 진단만 만들고 doctor는 후속으로 뺀다:
-    이 이슈는 작게 끝나지만, 후속을 안 하면 JSON 안에서만 사는 진단이 됩니다.
-  - 승인하면 무엇이 달라지나요? 어디까지가 이 이슈인지 정해져서, 계획을 쓸 때
-    doctor 출력을 설계에 넣을지 말지가 결정됩니다.
+- [확인만] **The diagnostic reaches `product:doctor`. Settled 2026-09-06 by
+  evidence, not by judgement** — a survey of thirteen tools found no
+  counter-example, and issue 146 now owns the landing place.
+
+  What settled it: `brew doctor` prints 73 flat warnings with a header saying
+  "just ignore this" and exits 1, and it is the tool ModuFlow most resembles
+  today. `expo-doctor` leads with "Running 17 checks… 16/17 passed", collapses
+  the passing ones, and gives each failure an `Advice:` line. The difference is
+  not severity levels — it is that one of them tells you the denominator and
+  what to do next.
+
+  So this spec's own sentence was right: "A diagnostic nobody reads is the same
+  as silence." Landing it only in a JSON blob would move the silence.
+
+  **What this issue owns, narrowed:** produce the diagnostic and get it to
+  doctor. It does **not** own the rendering — the severity levels, the
+  denominator line, the `Advice:` blocks and `--fail-level` are issue 146,
+  which blocks nothing here because a finding can land before the renderer
+  improves.
+
+  The three reasons map onto 146's levels as: `unrecognised` and `missing` are
+  `warning`; `unreadable` is `note`, because it has no live example in the
+  corpus and SARIF §3.27.10 defines `note` as "the rule applies to this
+  location, but the problem it describes is not a defect". If it ever fires,
+  the count moves and it can be promoted then.
 
 Next command after approval: `product:plan 120-silent-status-fallback-in-issue-parser`.

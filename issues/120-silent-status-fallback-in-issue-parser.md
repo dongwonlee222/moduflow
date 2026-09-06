@@ -126,6 +126,16 @@ Do not add a second status parser, do not change the lifecycle vocabulary, and d
 - Constitution: `workspace/constitution.md` C2, C8
 - Goal: `workspace/goal.md`
 
+## Related Issues (2026-09-06 추가)
+
+- blocked_by: none. The open decision — whether the diagnostic must reach
+  `product:doctor` — was settled 2026-09-06 by a thirteen-tool survey rather
+  than by judgement. It must.
+- related: `146-the-validator-throws-away-severity-at-the-last-step` — owns the
+  landing place: severity levels, the denominator line, `Advice:` blocks and
+  `--fail-level`. This issue produces the finding; 146 renders it. Neither
+  blocks the other.
+
 ## Next Command
 
 `product:spec 120-silent-status-fallback-in-issue-parser`
