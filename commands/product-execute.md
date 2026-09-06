@@ -74,26 +74,58 @@ When using `host-subagent` backend, `product:execute` will generate a subagent c
 ```text
 ╭─ 🚀 ModuFlow Subagent Dispatch ────────────────────────╮
 │ Task: T01 (implementation-worker)                       │
-│ Type: self                                              │
+│ Host: claude-code                                       │
 │ Cognitive Demand: balanced                              │
-│   → Use your standard production model for this task.   │
-│   → OpenAI GPT-5.6 example: gpt-5.6-terra, medium.      │
-│ Workspace: share                                        │
+│   → effort: high, model: sonnet                         │
+│ Isolation: shared                                       │
 │ Command: Please call invoke_subagent for T01            │
 ╰────────────────────────────────────────────────────────╯
 ```
-The host agent should invoke the subagent tool using the parameters listed in the task's `subagent` config block in `worker-plan.json`.
-The `CognitiveDemand` field is a hint — the host agent selects the actual model itself based on what is currently available on its platform.
 
-When the host exposes the OpenAI GPT-5.6 family, use this starting map:
+The host agent invokes its subagent tool with the parameters in the task's
+`subagent` block in `worker-plan.json`. **That block's shape belongs to the
+host** — Codex gets the Superpowers form, Claude Code gets subagent-launcher
+parameters, and a host with no subagent concept gets an empty block and runs the
+work inline.
 
-| Cognitive Demand | GPT-5.6 model | Reasoning starting point |
+### 모델은 어디서 정해지나 (issue 112)
+
+계획 파일에 **모델 이름이 더 이상 안 들어갑니다.** 예전에는 모든 작업 지시문에
+`gpt-5.6-terra` 같은 이름이 박혔고, 클로드 코드에서 돌려도 그렇게 나왔습니다.
+
+지금은 두 값으로 나옵니다:
+
+| 저장되는 것 (도구 무관) | 도구가 받는 것 |
+| --- | --- |
+| `cognitive_demand`: `deep` \| `balanced` \| `fast` | `model`: `{effort, model_hint}` |
+
+`effort`는 `low`·`medium`·`high`·`xhigh`·`max` 사다리를 씁니다 — OpenAI·Anthropic·
+OpenRouter·Codex CLI·클로드 코드가 공유하는 값입니다.
+
+| demand | effort | claude-code | codex | copilot-cloud-agent |
+| --- | --- | --- | --- | --- |
+| `deep` | `xhigh` | `opus` | `gpt-5.6-sol` | 없음 — 도구가 알아서 고름 |
+| `balanced` | `high` | `sonnet` | `gpt-5.6-terra` | 〃 |
+| `fast` | `low` | `haiku` | `gpt-5.6-luna` | 〃 |
+
+`balanced`가 `medium`이 아니라 `high`인 이유: 대부분의 코딩·에이전트 작업에는
+`xhigh`가 낫고, 지능이 중요한 일은 최소 `high`가 권장됩니다. `balanced`가 덮는
+워커는 구현·QA·UX — 전부 코딩입니다.
+
+**저장 파일은 `deep`/`balanced`/`fast`만 씁니다.** 모델 이름은 어댑터가 그때그때
+붙입니다. 새 모델이 나와도 저장된 것은 한 글자도 안 바뀝니다.
+
+## 거절도 정상 결과입니다 (issue 112)
+
+`/moduflow workers`가 계획을 안 만들 수 있습니다. **오류가 아닙니다.** 종료 코드도
+0입니다.
+
+| status | 무슨 뜻 | 무엇을 하나 |
 | --- | --- | --- |
-| `deep` | `gpt-5.6-sol` | high/xhigh; use max or pro mode only for quality-first gates after comparison |
-| `balanced` | `gpt-5.6-terra` | medium, then compare one level lower on representative tasks |
-| `fast` | `gpt-5.6-luna` | low or none for latency-sensitive/high-volume work |
+| `needs_plan` | 할 일은 있는데 **어떤 파일을 건드릴지 안 적혀 있음** | 실행하지 말고 `/moduflow plan` |
+| `not_applicable` | **남은 구현 작업 없음** | 실행할 게 없음. `/moduflow status` |
 
-This is a current OpenAI mapping, not a permanent schema value. Keep worker files and JSON on `deep` / `balanced` / `fast` so future model families can be swapped in without rewriting ModuFlow artifacts.
+계획 파일이 없다고 **다시 돌리거나 손으로 만들지 마십시오.** 안 만들어진 게 답입니다.
 
 ## Model Tier Policy
 

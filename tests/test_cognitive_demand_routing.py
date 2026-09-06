@@ -184,10 +184,28 @@ class TestWorkerMdFiles(unittest.TestCase):
         self.assertIn("gpt-5.6-luna", content)
 
     def test_product_execute_dispatch_card_has_demand(self):
-        cmd_file = ROOT / "commands" / "product-execute.md"
-        content = cmd_file.read_text(encoding="utf-8")
+        """Was: the document must mention "GPT-5.6".
+
+        That assertion passed while the doc told every host to use OpenAI
+        models, which is the defect issue 112 removed. What matters is that the
+        card shows the demand and that the mapping names each host's own
+        answer — so the assertion is now the mapping, not one vendor's string.
+        """
+        content = (ROOT / "commands" / "product-execute.md").read_text(encoding="utf-8")
         self.assertIn("Cognitive Demand", content)
-        self.assertIn("GPT-5.6", content)
+        for host_model in ("opus", "sonnet", "haiku", "gpt-5.6-sol", "gpt-5.6-terra"):
+            with self.subTest(model=host_model):
+                self.assertIn(host_model, content)
+        for effort in ("xhigh", "high", "low"):
+            with self.subTest(effort=effort):
+                self.assertIn(effort, content)
+
+    def test_product_execute_says_refusal_is_a_normal_outcome(self):
+        """T11's actual point: a plan that was not written is an answer."""
+        content = (ROOT / "commands" / "product-execute.md").read_text(encoding="utf-8")
+        self.assertIn("needs_plan", content)
+        self.assertIn("not_applicable", content)
+        self.assertIn("오류가 아닙니다", content)
 
 
 if __name__ == "__main__":

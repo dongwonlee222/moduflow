@@ -94,16 +94,43 @@ names — pick based on the demand level:
 This keeps the system version-agnostic: new model releases are automatically
 used without any changes to worker files or orchestrator config.
 
-### OpenAI GPT-5.6 Mapping
+### The host adapter owns the mapping (issue 112)
 
-If the current host exposes the OpenAI GPT-5.6 family, map the semantic demand
-levels this way:
+Do not write a model name into a prompt. Since issue 112 the routing result
+carries intent only, and `scripts/execution_host_adapter.py` turns it into that
+host's vocabulary. Adding a host adds an adapter and changes no stored artifact.
 
-| CognitiveDemand | GPT-5.6 starting point | Reasoning guidance |
-| --- | --- | --- |
-| `deep` | `gpt-5.6-sol` | Start from the current high-quality baseline; compare `high`/`xhigh`, and reserve `max` or `reasoning.mode: "pro"` for the hardest quality-first review, architecture, and release gates. |
-| `balanced` | `gpt-5.6-terra` | Start with `medium`; compare one level lower on representative tasks before increasing effort. |
-| `fast` | `gpt-5.6-luna` | Use `low` or `none` when latency, cost, or volume matters more than deep reasoning. |
+| Stored (host-neutral) | What the adapter returns |
+| --- | --- |
+| `cognitive_demand`: `deep` \| `balanced` \| `fast` | `model`: `{effort, model_hint}` |
+| `isolation`: `shared` \| `isolated` | `isolation`: the host's own record |
+
+`effort` uses the ladder OpenAI, Anthropic, OpenRouter, Codex CLI and Claude
+Code all share — `low`, `medium`, `high`, `xhigh`, `max`.
+
+| demand | effort | `claude-code` | `codex` | `copilot-cloud-agent` |
+| --- | --- | --- | --- | --- |
+| `deep` | `xhigh` | `opus` | `gpt-5.6-sol` | none — the host selects |
+| `balanced` | `high` | `sonnet` | `gpt-5.6-terra` | 〃 |
+| `fast` | `low` | `haiku` | `gpt-5.6-luna` | 〃 |
+
+An unregistered host **refuses**. There is no generic fallback: something that
+always works is never replaced, and that is how a `codex/` branch prefix
+survived in every worker plan regardless of host.
+
+### Refusal is a normal outcome
+
+`product:workers` may write no plan, and that is an answer rather than a
+failure. Exit code stays 0.
+
+- `needs_plan` — there is work, but a task does not say which files it touches.
+  Do not execute. The result names each gap by task id, and distinguishes
+  "declared no boundary" from "declared one the parser cannot read" — those need
+  different fixes.
+- `not_applicable` — no unfinished implementation task. The spec is done.
+
+Do not re-run or hand-write a plan when one was not produced. The absence is
+the result.
 
 Keep the prompt focused on the outcome, constraints, evidence, and success
 criteria. Do not add model-specific ceremony such as "think harder"; set model,
