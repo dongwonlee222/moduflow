@@ -248,12 +248,12 @@ owner approves the change list.**
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/<issue>/spec.md`
-- [ ] plan → `specs/<issue>/plan.md` + `tasks.md`
-- [ ] execute stage 1 → menu policy, `/moduflow <name>` dispatch, display labels,
+- [x] spec → `specs/<issue>/spec.md`
+- [x] plan → `specs/<issue>/plan.md` + `tasks.md`
+- [x] execute stage 1 → menu policy, `/moduflow <name>` dispatch, display labels,
       one-sentence decision
 - [ ] execute stage 2 → the nine bilingual phrase pairs (after 104)
-- [ ] review → `specs/<issue>/review.md`
+- [x] review → `specs/<issue>/review.md` (stage 1 only)
 
 ## Related Issues
 
