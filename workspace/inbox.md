@@ -380,7 +380,7 @@
     so authoring a playbook from scratch takes five failed attempts to discover the
     full list. Report them all at once.
 
-- **Reduce the visible command/skill surface and make it Korean-first.** Confirmed
+- **Reduce the visible command/skill surface and make it bilingual, Korean-first.** Confirmed
   with the user on 2026-09-06 after benchmarking Anthropic Skills, Claude Code's
   invocation controls, OpenAI's skill-authoring guidance, Superpowers and Basic
   Memory. ModuFlow 0.3.67 currently exposes 41 source commands, 11 top-level skills
@@ -390,15 +390,18 @@
   The user explicitly rejected shorthand such as `/product:d`, `/product:m` and
   `/product:rev`; those abbreviations create another language to memorize. The
   primary interaction should be one remembered entry point followed by ordinary
-  Korean: `/moduflow 결정으로 남겨줘: ...`, `/moduflow 비교해줘: ...`,
-  `/moduflow 기억해줘: ...`, `/moduflow 전에 뭐로 정했지?`, `/moduflow 다음에
-  뭐 하면 돼?`.
+  Korean **or English**, with both forms routed identically: `/moduflow 결정으로
+  남겨줘: ...` / `/moduflow record this decision: ...`, `/moduflow 비교해줘:
+  ...` / `/moduflow compare ...`, `/moduflow 기억해줘: ...` / `/moduflow
+  remember: ...`, `/moduflow 전에 뭐로 정했지?` / `/moduflow what did we
+  decide?`, `/moduflow 다음에 뭐 하면 돼?` / `/moduflow what should I do
+  next?`.
 
   Proposed visible allowlist: `/moduflow` plus `product:inbox`, `product:issue`,
   `product:decision`, `product:benchmark`, `product:memory`, `product:status`,
   `product:loop`, `product:execute`, `product:review` and `product:release`. Give
-  each one a short Korean action label, a plain Korean sentence and a realistic
-  example. Keep knowledge/evidence/research/report/promote, workflow plumbing,
+  each one a short Korean-first bilingual action label, plain descriptions and
+  realistic Korean and English examples. Keep knowledge/evidence/research/report/promote, workflow plumbing,
   advanced administration, bridges, routers, policies and duplicate generated
   source-command skills internal while preserving their behavior through the hub.
 
@@ -409,10 +412,11 @@
   이렇게 정했나요?`, alternatives → `다른 선택은 무엇이었나요?`, caveats →
   `조심할 점이 있나요?`, retrieval_trigger → `언제 다시 살펴보면 될까요?`.
 
-  Memory routing follows the user's words rather than exposing folders: `메모해줘`
-  → inbox, `기억해줘` → durable memory, `정했어` → decision, `비교해줘` →
-  benchmark, `찾아줘`/`전에 뭐였지?` → cross-record search. Meetings,
-  references and knowledge remain storage details.
+  Memory routing follows the user's words rather than exposing folders, and each
+  Korean/English pair is equivalent: `메모해줘`/`note this` → inbox,
+  `기억해줘`/`remember this` → durable memory, `정했어`/`we decided` →
+  decision, `비교해줘`/`compare` → benchmark, `찾아줘`/`find` → cross-record
+  search. Meetings, references and knowledge remain storage details.
 
   Full benchmark and acceptance criteria:
-  `knowledge/benchmarks/2026-09-06-agent-skill-discoverability-and-korean-command-surface.md`.
+  `knowledge/benchmarks/2026-09-06-agent-skill-discoverability-and-bilingual-command-surface.md`.
