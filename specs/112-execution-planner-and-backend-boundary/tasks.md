@@ -21,7 +21,7 @@ dogfood fixture for the gates this issue builds: running the routing on issue
 
 ## Stream C — Host adapter boundary
 
-- [ ] Design and document the host adapter interface for review before any mapping code [files: docs/superpowers/specs/2026-09-05-issue-112-host-adapter-interface.md] [depends: T04]
+- [x] Design and document the host adapter interface for review before any mapping code [files: docs/superpowers/specs/2026-09-05-issue-112-host-adapter-interface.md] [depends: T04]
 - [ ] Implement the adapter and move the codex worktree prefix and model-name prompt text out of the routing result [files: scripts/execution_host_adapter.py] [depends: T05]
 - [ ] Prove one routing result maps to Claude Code, Codex and Copilot with no canonical artifact change [files: tests/test_execution_host_adapter.py, tests/fixtures/execution-routing/hosts.json] [depends: T06]
 
