@@ -18,3 +18,9 @@ memory/mem-*.html
 
 # Playwright MCP working directory (tool cache, not a project artifact)
 .playwright-mcp/
+
+# Transaction evidence journals — write-only. Nothing reads them; the recovery
+# path reads .moduflow/control/transactions instead. The directory itself must
+# stay tracked via .gitkeep: project_lifecycle_transaction.py:6232 refuses to
+# plan with PLAN_ARTIFACT_PREREQUISITE_MISSING when it is absent.
+workspace/transactions/txn-*.json
