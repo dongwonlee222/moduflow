@@ -67,6 +67,35 @@ Specs assume `workspace/constitution.md` — do not restate its principles in a 
 
 The diagram, Non-Goals, and Alternatives belong in essentially every spec. The heavier planning artifacts — user scenario detail, IA tree, customer journey, screen plans — are produced **only when the issue warrants them** (a UX feature needs screens; a refactor does not). Reach for `/product:design` / `/product:analyze` then, not by default. See `046-planning-artifact-templates`.
 
+## 승인 요청 쓰는 법 (issue 129)
+
+승인 요청은 `## Human Review Decisions`에 씁니다. 번호가 붙어도(`## 15. Human
+Review Decisions`) 같은 섹션입니다.
+
+**항목마다 둘 중 하나를 반드시 붙입니다.**
+
+- `[확인만]` — 측정된 정답이 있거나 이미 그렇게 동작 중인 것. **한 줄이면 됩니다.**
+- `[사장님 결정]` — 진짜 판단이 필요한 것. **아래 다섯 칸을 다 채웁니다.**
+
+```markdown
+- [사장님 결정] <결정할 내용>
+  - 왜 이 결정이 필요한가요? …
+  - 지금 무엇이 잘못되고 있나요? …
+  - 실제로 측정된 예시 …
+  - 다른 선택지와 그 비용 …
+  - 승인하면 무엇이 달라지나요? …
+```
+
+칸 이름은 한국어입니다. 읽는 사람이 명세를 쓴 사람이 아니라 사장님이기 때문입니다 —
+이슈의 `## 요약`과 같은 이유입니다.
+
+**왜 강제하나.** 명세 112 §15는 넷을 똑같은 무게의 명사구로 늘어놓았고, 그중 하나만
+진짜 결정이었습니다. 나머지 셋은 측정된 정답이 있는 교정이었습니다. 사장님은 판단할
+하나를 찾으려고 셋을 읽어야 했고, 결정에 필요한 네 가지 사실은 아무도 열어 볼 이유가
+없는 `evidence/SIMULATION-REPORT.md`에 있었습니다. 한 번 왕복했습니다.
+
+이미 승인된 항목(`**[approved …]**`)과 끝난 이슈의 명세는 검사하지 않습니다.
+
 ## Next
 
 - `/moduflow analyze` if metrics or evidence are needed

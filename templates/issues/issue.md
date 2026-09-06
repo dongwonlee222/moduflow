@@ -19,7 +19,8 @@
 
 ## Source
 
-- Type: {{source_type}}
+- Type: {{type_token}} — {{source_type}}
+  <!-- 129: 첫 낱말은 bug|feature|chore|spike 중 하나. 뒤 설명은 자유. -->
 - Link: {{source_link}}
 - Date: {{date}}
 

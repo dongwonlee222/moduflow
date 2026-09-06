@@ -25,7 +25,22 @@ Create the durable work item.
 6. Add a **Workflow Tasks** checklist. Every artifact-producing step (spec, plan, design, execute, review) is a tracked task with its artifact link and status — never produce an artifact off the books. As each step runs, check its box and link the artifact. This keeps the workflow itself visible inside the issue.
 7. Write a **`## 요약`** section in Korean, one or two sentences, directly above `## Summary`. This is what the dashboard shows as the issue description and what the `한글 개요` panel is built from; without it the row renders `EN` with a `한글 없음` flag. The slot exists so the path is taken at creation time rather than remembered later; issue 121 proposes making that a constitution principle.
 8. Do **not** add the issue to `workspace/issue-descriptions.ko.json`. That map is legacy: it was the only working path until 2026-09-05, it stopped being updated after issue 087, and 32 issues now render in English with a further 55 depending on this map alone. Entries still win as an override so old rows keep rendering, but adding a key there rebuilds the manual path that failed.
-9. If GitHub CLI is available and requested, create or sync the GitHub issue (see GitHub Issue Sync below).
+9. **Assign `- Type:` under `## Source`. Do not ask the user for it — infer it and write it.** The first word must be one of four, optionally followed by ` — ` and any prose (the prose is where provenance goes, e.g. `- Type: bug — reported by the owner, 2026-09-06`):
+
+   | Token | When | What the issue must then carry |
+   | --- | --- | --- |
+   | `bug` | something that should work does not | **`## 원인`** — pasted command output, or the literal `원인 미상` |
+   | `feature` | something that did not exist | nothing extra |
+   | `chore` | behaviour unchanged; tidying, moving, version bumps | nothing extra |
+   | `spike` | "go find out" | `## Goal` and `## Findings` |
+
+   `chore` is the leftover bucket and deliberately requires nothing — a bucket that demands sections stops being a bucket. The line between `chore` and `spike`: a spike produces **findings**, a chore produces a **changed repository**.
+
+   There is no `opportunity` token. Work that is not yet shaped belongs in `workspace/opportunities.md` via `/moduflow opportunity`; a file existing in `issues/` already means that stage is past (`commands/product-promote.md`: "do NOT create a hollow issue").
+
+   Assigning rather than asking is the point. kubernetes keeps twelve `kind/` labels and its four issue templates each force exactly one; ModuFlow's 142 free-prose `Type:` values are what happens without that gate. Issues written before this rule keep their prose and are skipped, not failed.
+10. **`## 원인` holds only what was run.** Paste the command and its output, or write `원인 미상`. Hedging — `추측`, `~것 같`, `~로 보임`, `hypothesis`, `likely`, `probably` — fails validation inside that section. An issue with a symptom and no cause is complete and correct; `원인 미상` is the honest answer, not a gap. Issue 126 labelled its guess as unverified and still sent the next reader to the wrong function, which is why labelling is not enough.
+11. If GitHub CLI is available and requested, create or sync the GitHub issue (see GitHub Issue Sync below).
 
 ## GitHub Issue Sync (opt-in)
 

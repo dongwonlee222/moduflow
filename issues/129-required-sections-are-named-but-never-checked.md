@@ -31,6 +31,32 @@ would build the same section-content checker twice.
 - Merge decided 2026-09-06 — no checker exists today, so the two halves are one
   build
 
+## 원인
+
+검사기가 없어서가 아니라, **검사기가 붙을 자리가 없어서**입니다. 아래는 이 이슈를
+쓰기 직전 저장소 상태입니다.
+
+```
+$ grep -c "_ARTIFACT_PHASES\|coverage\[" scripts/validate_project_artifacts.py scripts/release_check.py
+scripts/validate_project_artifacts.py:0
+scripts/release_check.py:0
+
+$ grep -l "^## 원인" issues/*.md | wc -l
+0
+
+$ grep -h "^- Type:" issues/*.md | sed 's/.*Type: //' | sort | uniq -c | sort -rn | head -3
+  13 user product direction
+  12 product direction
+   7 user multi-project orchestration improvement request
+
+$ grep -l "^- Type:.*bug" issues/*.md | wc -l
+4
+```
+
+세 줄이 각각 하나씩 말합니다. 검증기는 아티팩트 집합을 아예 참조하지 않고, 원인을
+담는 섹션은 저장소에 하나도 없으며, 유형 칸은 "무슨 종류인가"가 아니라 "누가 왜
+제기했나"를 담고 있어서 142개 중 4개만 버그로 식별됩니다.
+
 ## Opportunity
 
 ### A — a cause slot that accepts a guess

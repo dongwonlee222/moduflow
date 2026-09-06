@@ -8,9 +8,9 @@ Issue: 129-required-sections-are-named-but-never-checked
 - [ ] T02 — `parse_type_token()`: `- Type:` → `(token, prose)`, closed set of four
 - [ ] T03 — `SECTION_RULES` table and `validate_section_content()`, called from
       `validate_project`
-- [ ] T04 — cause rule: `## Cause` required on `bug`, holds output or `원인 미상`,
+- [ ] T04 — cause rule: `## 원인` required on `bug`, holds output or `원인 미상`,
       no hedging, scoped to the section
-- [ ] T05 — `## Cause` added to the three real bug issues, moved out of
+- [ ] T05 — `## 원인` added to the three real bug issues, moved out of
       `## Opportunity` by hand
 - [ ] T06 — decision rule: five Korean slots, `[사장님 결정]` / `[확인만]` marking,
       unapproved items only

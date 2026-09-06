@@ -151,6 +151,14 @@ def render_issue(template_text, issue_id, frontmatter, body, record_ref, created
         # so it lands as the same blocking TODO the other underivable
         # sections use — visible in the issue, not silently empty.
         "summary_ko": f"{TODO_MARKER}: 이 이슈가 무엇인지 한글 한두 문장으로 적는다",
+        # Issue 129: the type token gets a producer, not a raw placeholder.
+        # A promoted record does not say whether the work is a bug, a feature,
+        # a chore or a spike, and guessing would put an unverified claim in the
+        # field the cause rule keys off. So it lands as the same blocking TODO
+        # the other underivable slots use: the checker skips it (the token is
+        # not one of the four) and the marker says the issue is not executable
+        # until a person picks one.
+        "type_token": f"{TODO_MARKER}: bug|feature|chore|spike 중 하나를 고른다",
         "source_type": "promoted record",
         "source_link": f"`{record_ref}`",
         "date": source_date,

@@ -19,7 +19,7 @@ So: anchors first, table second, rules third, entry gate last.
 2. **The type token.** Parse `- Type:` into `(token, prose)`. Token must be one
    of `bug` `feature` `chore` `spike`. Anything else — prose, or absent — yields
    `None` and the artifact is skipped by every type-keyed rule.
-3. **`## Cause` on bug issues**, and the three real bug issues get one, moved out
+3. **`## 원인` on bug issues**, and the three real bug issues get one, moved out
    of `## Opportunity`. This is a content move by hand, not a script: the cause
    is a judgement about which paragraph is the cause.
 4. **`## Human Review Decisions` slots**, applied only to unapproved items.
@@ -40,7 +40,7 @@ what makes steps 3–4 fire on anything written after today.
   it carries today survives after the em-dash.
 - Implementation: `scripts/validate_project_artifacts.py` (table, parser, one
   validator, one call site in `validate_project`), three issue files gaining
-  `## Cause`, `commands/product-issue.md`, `commands/product-spec.md`,
+  `## 원인`, `commands/product-issue.md`, `commands/product-spec.md`,
   `scripts/project_promote.py`, `templates/issues/`.
 - QA: below, RED first.
 - Release: version bump, `release_check.py`, `Issue:` trailer on behaviour
@@ -53,7 +53,7 @@ what makes steps 3–4 fire on anything written after today.
 - `test_legacy_issues_are_skipped_not_failed` — the 107 free-prose issues produce
   zero errors. Asserted against the live tree, so a rule that starts failing
   history fails the suite instead.
-- `test_bug_issue_requires_a_cause_section` — missing `## Cause` fails.
+- `test_bug_issue_requires_a_cause_section` — missing `## 원인` fails.
 - `test_cause_rejects_hedging` — each banned phrase fails and is quoted back.
 - `test_cause_accepts_output_or_unknown` — a fenced block passes; `원인 미상`
   passes.
@@ -73,7 +73,7 @@ what makes steps 3–4 fire on anything written after today.
 ## Rollback
 
 The validator is additive: one table, one function, one call. Reverting the
-execute commit restores current behaviour exactly. The three `## Cause` sections
+execute commit restores current behaviour exactly. The three `## 원인` sections
 are content moves inside files that stay valid either way.
 
 The irreversible part is social, not technical — once `product:issue` assigns a

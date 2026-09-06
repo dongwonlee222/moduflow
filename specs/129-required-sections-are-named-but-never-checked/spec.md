@@ -29,7 +29,7 @@ its values are sentences: `user product direction` (13), `product direction` (12
 how ModuFlow tracks a bug reported through the inbox`. So three issues are
 machine-identifiable as bugs.
 
-**There is no cause section.** `grep -l "^## Cause" issues/*.md` returns zero. The
+**There is no cause section.** `grep -l "^## 원인" issues/*.md` returns zero. The
 cause lives inside `## Opportunity`, mixed with everything else. The rule "the
 cause slot holds nothing but output" has no slot to apply to.
 
@@ -115,7 +115,7 @@ plus issue links already carry that.
 **The `chore` / `spike` boundary, stated once so it is never argued:** a spike
 produces **findings**; a chore produces a **changed repository**.
 
-**Cause section.** An issue whose type token is `bug` requires `## Cause`. Zero
+**Cause section.** An issue whose type token is `bug` requires `## 원인`. Zero
 exist today; the three real bug issues get one, moved out of `## Opportunity`.
 
 **Decision section.** `## Human Review Decisions`, with an optional `N. ` number
@@ -152,7 +152,7 @@ that a section exists; R3 checks what is inside it.
 
 ### R3 — Cause content
 
-`## Cause` must hold either a fenced block containing command output, or the
+`## 원인` must hold either a fenced block containing command output, or the
 literal `원인 미상` on its own line.
 
 It must not contain: `추측`, `~것 같`, `~로 보임`, `hypothesis`, `suspicion`,
@@ -193,13 +193,13 @@ following the `## 요약` precedent at `product-issue.md` step 7.
 
 ## Acceptance Criteria
 
-- A bug issue whose `## Cause` contains a hedge fails; the message quotes the
+- A bug issue whose `## 원인` contains a hedge fails; the message quotes the
   phrase and names the file.
 - The same issue passes with `원인 미상`.
-- A bug issue with no `## Cause` fails.
+- A bug issue with no `## 원인` fails.
 - An issue whose `Type:` token is not in the closed set is skipped, and a test
   asserts the 107 legacy issues neither fail nor are silently treated as bugs.
-- The three real bug issues pass once given a `## Cause`.
+- The three real bug issues pass once given a `## 원인`.
 - A spec with an unapproved decision missing any slot fails, naming spec,
   decision, and slot in Korean.
 - An unmarked decision item fails; a `[확인만]` one-liner passes.
@@ -214,7 +214,7 @@ following the `## 요약` precedent at `product-issue.md` step 7.
 
 ## Verification Strategy
 
-- Fixtures per rule: hedged cause, `원인 미상`, missing `## Cause`, non-bug type,
+- Fixtures per rule: hedged cause, `원인 미상`, missing `## 원인`, non-bug type,
   absent `Type:` line.
 - Fixtures per decision case: missing slot, unmarked item, `[확인만]` one-liner,
   all-approved, no section.
@@ -235,12 +235,12 @@ following the `## 요약` precedent at `product-issue.md` step 7.
 - **Filled slots can still be unreadable.** The check makes omission impossible,
   not prose true.
 - **Hedge words in Korean are ambiguous.** `~것 같` appears in ordinary prose. The
-  rule applies only inside `## Cause`, which is why the section anchor has to
+  rule applies only inside `## 원인`, which is why the section anchor has to
   exist before the phrase ban can be safe.
 
 ## Open Questions
 
-- Whether `## Cause` should be required on bug issues at creation time or only
+- Whether `## 원인` should be required on bug issues at creation time or only
   before `done`. Creation time matches the `## 요약` precedent; before-`done`
   matches issue 142's gate. **Recommendation: creation time**, because the whole
   point is that the cause is written when it is known, not reconstructed later.

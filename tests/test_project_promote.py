@@ -126,7 +126,10 @@ class PromoteDecisionEndToEndTests(unittest.TestCase):
             self.assertIn("Cache widget lookups to cut latency.", issue_text)
             self.assertIn("**Status: backlog**", issue_text)
             self.assertIn("**Priority: p2**", issue_text)
-            self.assertIn("- Type: promoted record", issue_text)
+            # 129: the token is a blocking TODO because a promoted record
+            # cannot say which of the four it is; provenance survives the dash.
+            self.assertIn("- Type: TODO(blocking-execution)", issue_text)
+            self.assertIn("— promoted record", issue_text)
             self.assertIn("- Link: `memory/decisions/2026-07-06-use-widget-cache.md`", issue_text)
             self.assertIn("- Promoted-from: `2026-07-06-use-widget-cache`", issue_text)
 
@@ -274,7 +277,10 @@ class PromoteOtherKindsTests(unittest.TestCase):
             # record has no Korean text, so the slot lands as a visible blocking
             # TODO rather than an unfilled `{{summary_ko}}` placeholder
             # (issue 121 — a slot needs a producer).
-            self.assertEqual(issue_text.count("TODO(blocking-execution)"), 7)
+            # Eighth since 129: the type token. A promoted record does not say
+            # which of bug/feature/chore/spike it is, and guessing would seed
+            # the very field the cause rule keys off.
+            self.assertEqual(issue_text.count("TODO(blocking-execution)"), 8)
 
             updated = record.read_text(encoding="utf-8")
             self.assertIn(f"promoted_to: {plan['issue_id']}\n", updated)

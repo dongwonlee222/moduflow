@@ -10,7 +10,7 @@ decide with: spec 112 §15 cost the owner a round trip.
 The checker was the small part. Measured on 2026-09-06, it had nothing to attach
 to on either side. `- Type:` is free prose holding *provenance* — `user product
 direction`, `daily work log` — so 107 of 142 issues cannot be classified at all.
-No issue has a `## Cause` section; the cause sits inside `## Opportunity`. And
+No issue has a `## 원인` section; the cause sits inside `## Opportunity`. And
 nine of 78 specs carry a decision section under nine different headings.
 
 So these tests are mostly about the anchors, and two of them carry the design
@@ -99,21 +99,21 @@ class CauseRule(unittest.TestCase):
     def test_a_bug_without_a_cause_section_fails(self):
         errors = self.check(issue("- Type: bug"))
         self.assertTrue(errors)
-        self.assertIn("## Cause", errors[0])
+        self.assertIn("## 원인", errors[0])
         self.assertIn("issues/999-fixture.md", errors[0])
 
     def test_pasted_output_passes(self):
-        text = issue("- Type: bug", "## Cause\n\n```\n$ pytest\nE   AssertionError\n```\n")
+        text = issue("- Type: bug", "## 원인\n\n```\n$ pytest\nE   AssertionError\n```\n")
         self.assertEqual(self.check(text), [])
 
     def test_the_literal_unknown_passes(self):
-        text = issue("- Type: bug", "## Cause\n\n원인 미상\n")
+        text = issue("- Type: bug", "## 원인\n\n원인 미상\n")
         self.assertEqual(self.check(text), [])
 
     def test_each_hedge_fails_and_is_quoted_back(self):
         for hedge in HEDGES:
             with self.subTest(hedge=hedge):
-                text = issue("- Type: bug", f"## Cause\n\n```\n$ run\n```\n\n{hedge} 입니다.\n")
+                text = issue("- Type: bug", f"## 원인\n\n```\n$ run\n```\n\n{hedge} 입니다.\n")
                 errors = self.check(text)
                 self.assertTrue(errors, f"{hedge!r} was not caught")
                 self.assertTrue(
@@ -126,7 +126,7 @@ class CauseRule(unittest.TestCase):
         text = issue(
             "- Type: bug",
             "## Opportunity\n\n원인은 트랜잭션인 것 같습니다.\n\n"
-            "## Cause\n\n```\n$ run\nE  boom\n```\n",
+            "## 원인\n\n```\n$ run\nE  boom\n```\n",
         )
         self.assertEqual(self.check(text), [])
 

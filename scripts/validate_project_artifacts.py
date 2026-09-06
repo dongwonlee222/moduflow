@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import collections
 import importlib.util
 import json
 import re
@@ -23,6 +24,175 @@ REQUIRED_PATHS = [
     ".moduflow/config.json",
     ".moduflow/state.json",
 ]
+
+# ---------------------------------------------------------------------------
+# 129: section content rules.
+#
+# Sections that a reader depends on were named and never checked. A bug issue's
+# cause could be an unverified guess — issue 126 labelled its guess honestly and
+# still sent the next reader to the wrong function — and a spec's decision
+# request could be four noun phrases with nothing to decide with (112 §15).
+#
+# The rules below are data. Adding one is appending a row, not adding a branch;
+# tests/test_section_content_rules.py asserts that by appending one at runtime.
+# ---------------------------------------------------------------------------
+
+TYPE_TOKENS = ("bug", "feature", "chore", "spike")
+
+# Scoped to `## 원인` on purpose. `~것 같` is ordinary Korean everywhere else,
+# so an unscoped ban would be unusable. The section had to exist first.
+HEDGE_PHRASES = (
+    "추측",
+    "~것 같",
+    "~로 보임",
+    "hypothesis",
+    "suspicion",
+    "likely",
+    "probably",
+)
+
+DECISION_SLOTS = (
+    "왜 이 결정이 필요한가요?",
+    "지금 무엇이 잘못되고 있나요?",
+    "실제로 측정된 예시",
+    "다른 선택지와 그 비용",
+    "승인하면 무엇이 달라지나요?",
+)
+
+SectionRule = collections.namedtuple(
+    "SectionRule",
+    "kind type_token section required message content",
+)
+SectionRule.__new__.__defaults__ = (None,)
+
+
+def parse_type_token(text):
+    """`- Type: bug — reported 2026-09-06` -> ("bug", "reported 2026-09-06").
+
+    The tail is kept because today's field holds provenance, not kind, and
+    replacing it outright would delete the only information it carries. A value
+    whose first token is not one of TYPE_TOKENS yields None: 107 legacy issues
+    have prose there and must be skipped rather than failed.
+    """
+    match = re.search(r"^- Type:\s*(.+)$", text, re.M)
+    if not match:
+        return (None, "")
+    value = match.group(1).strip()
+    head, separator, tail = value.partition("—")
+    token = head.strip().lower()
+    if token not in TYPE_TOKENS:
+        return (None, value)
+    return (token, tail.strip() if separator else "")
+
+
+def section_body(text, heading):
+    """Body of one `## Heading` section, or None when it is absent.
+
+    A leading section number is optional: specs 103 and 112 write
+    `## 17. Human Review Decisions` and `## 15. Human Review Decisions`, and
+    both are the same heading.
+    """
+    title = re.escape(heading.lstrip("# ").strip())
+    match = re.search(
+        rf"^##\s+(?:\d+\.\s+)?{title}\s*$(.*?)(?=^## |\Z)",
+        text,
+        re.M | re.S,
+    )
+    return match.group(1) if match else None
+
+
+def cause_content(body, source):
+    findings = []
+    if body.strip() != "원인 미상" and "```" not in body:
+        findings.append(
+            f"{source}: `## 원인`에는 실제 실행 출력(``` 블록)이나 `원인 미상`만 "
+            "씁니다. 재현하지 못했으면 `원인 미상`으로 남기세요."
+        )
+    for hedge in HEDGE_PHRASES:
+        needle = hedge.lstrip("~")
+        if needle in body:
+            findings.append(
+                f'{source}: `## 원인`에 추측 표현 "{needle}"이 있습니다. '
+                "확인한 것만 쓰거나 `원인 미상`으로 남기세요."
+            )
+    return findings
+
+
+def decision_content(body, source):
+    findings = []
+    for match in re.finditer(r"^- (.+?)(?=^- |\Z)", body, re.M | re.S):
+        block = match.group(1)
+        head = block.splitlines()[0].strip()
+        if head.startswith("[확인만]") or "[approved" in head:
+            continue
+        if not head.startswith("[사장님 결정]"):
+            findings.append(
+                f'{source}: 결정 "{head[:40]}"에 표시가 없습니다. '
+                "`[사장님 결정]` 또는 `[확인만]`을 붙이세요."
+            )
+            continue
+        for slot in DECISION_SLOTS:
+            if slot not in block:
+                findings.append(
+                    f'{source}: 결정 "{head[:40]}"에 `{slot}` 칸이 없습니다.'
+                )
+    return findings
+
+
+SECTION_RULES = [
+    SectionRule(
+        kind="issue",
+        type_token="bug",
+        section="## 원인",
+        required=True,
+        message=(
+            "{source}: `- Type: bug` 이슈에는 `## 원인` 섹션이 필요합니다. "
+            "실행 출력을 붙이거나 `원인 미상`이라고 쓰세요."
+        ),
+        content=cause_content,
+    ),
+    SectionRule(
+        kind="issue",
+        type_token="spike",
+        section="## Goal",
+        required=True,
+        message="{source}: `- Type: spike` 이슈에는 `## Goal`이 필요합니다 (무엇을 알아낼 것인가).",
+    ),
+    SectionRule(
+        kind="issue",
+        type_token="spike",
+        section="## Findings",
+        required=True,
+        message="{source}: `- Type: spike` 이슈에는 `## Findings`가 필요합니다 (알아낸 것).",
+    ),
+    SectionRule(
+        kind="spec",
+        type_token=None,
+        section="## Human Review Decisions",
+        required=False,
+        message="",
+        content=decision_content,
+    ),
+]
+
+
+def check_sections(text, source, errors, *, kind="issue"):
+    """Apply every SECTION_RULES row that matches this artifact."""
+    token, _ = parse_type_token(text)
+    for rule in SECTION_RULES:
+        if rule.kind != kind:
+            continue
+        if rule.kind == "issue" and token is None:
+            continue
+        if rule.type_token is not None and rule.type_token != token:
+            continue
+        body = section_body(text, rule.section)
+        if body is None:
+            if rule.required:
+                errors.append(rule.message.format(source=source))
+            continue
+        if rule.content is not None:
+            errors.extend(rule.content(body, source))
 
 OPTIONAL_CAPABILITY_PATHS = {
     "profile": [
@@ -417,6 +587,50 @@ def validate_issue_status_lines(
             )
 
 
+def validate_section_content(root, errors, *, project_context=None):
+    # 129: run SECTION_RULES over every issue and spec. Issues whose `- Type:`
+    # holds prose rather than a token are skipped by check_sections — 107 of
+    # them predate the closed set, and failing history is how a rule gets
+    # switched off.
+    context = project_registry.context_for_operation(
+        root,
+        project_context=project_context,
+    )
+    try:
+        issues_dir = project_registry.canonical_path(context, "issues")
+        specs_dir = project_registry.canonical_path(context, "specs")
+    except ValueError:
+        # The shared issue-schema evaluation owns the containment diagnostic.
+        return
+    # Only open work is checked. A `done` or `superseded` artifact is history:
+    # its decisions were settled by whatever standard applied then, and failing
+    # it now would make the whole rule something to switch off rather than fix.
+    def is_open(issue_id):
+        path = issues_dir / f"{issue_id}.md"
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            return False
+        match = re.search(r"\*\*Status:\s*([a-z-]+)", text)
+        return bool(match) and match.group(1) in {"backlog", "active"}
+
+    targets = []
+    if issues_dir.is_dir():
+        for path in sorted(issues_dir.glob("*.md")):
+            if is_open(path.stem):
+                targets.append((path, "issue"))
+    if specs_dir.is_dir():
+        for path in sorted(specs_dir.glob("*/spec.md")):
+            if is_open(path.parent.name):
+                targets.append((path, "spec"))
+    for path, kind in targets:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            continue
+        check_sections(text, path.relative_to(root).as_posix(), errors, kind=kind)
+
+
 def validate_repository_links(root, errors, warnings, *, project_context=None):
     for finding in audit_repository_links(
         root,
@@ -692,6 +906,7 @@ def validate_project(path, *, project_context=None):
         project_paths,
         project_context=context,
     )
+    validate_section_content(root, errors, project_context=context)
     validate_repository_links(
         root,
         errors,
