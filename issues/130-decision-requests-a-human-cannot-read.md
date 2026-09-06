@@ -142,6 +142,9 @@ was already there. The slot is for the reader, and the reader is the owner.
 
 ## Related Issues
 
+- **The five field-name display labels (`rationale` → `왜 이렇게 정했나요?` and the
+  rest) are owned by issue 131**, decided 2026-09-06. This issue cites them and
+  does not define or implement them.
 - related: `129-issues-may-not-record-an-unproven-cause` (the same shape one
   layer up — an issue that records a cause nobody can trust, versus a decision
   nobody can read), `112-execution-planner-and-backend-boundary` (the spec that

@@ -164,6 +164,23 @@ untouched:
 - Final copy for every label. The menu and the routing pairs are in scope;
   wording review belongs to the owner.
 
+### Sequencing — two stages, because half of this waits on 104
+
+This issue's own Scope Fence forbids building a second router, and issue 104 owns
+project-aware Korean/English routing after 112. So the work splits:
+
+**Stage 1 — independent of the router. Can start now.**
+menu policy and the ten visible entries · the four items each one displays ·
+`/moduflow <name>` dispatch on a bare first argument · the five field-name display
+labels · the one-sentence `product:decision` input.
+
+**Stage 2 — needs 104. Must not start before it.**
+the nine Korean/English phrase pairs, and the single English words as intent.
+Building these in stage 1 means writing the router 104 owns.
+
+Stage 1 alone already answers the reported complaint: 41 English entries become
+ten Korean-labelled ones behind one remembered command.
+
 ## Known Limit
 
 Hiding a command is not deleting it, and someone who knew the old name must still
@@ -233,7 +250,9 @@ owner approves the change list.**
 
 - [ ] spec → `specs/<issue>/spec.md`
 - [ ] plan → `specs/<issue>/plan.md` + `tasks.md`
-- [ ] execute → menu policy, bilingual routing, one-sentence decision, display labels
+- [ ] execute stage 1 → menu policy, `/moduflow <name>` dispatch, display labels,
+      one-sentence decision
+- [ ] execute stage 2 → the nine bilingual phrase pairs (after 104)
 - [ ] review → `specs/<issue>/review.md`
 
 ## Related Issues
@@ -245,8 +264,10 @@ owner approves the change list.**
   owns whether a written decision or approval can be read; 131 owns invocation and
   the menu. The five display labels appear in both; whichever lands first owns
   them and the other cites it.
-- related: `104-project-aware-natural-language-request-orchestrator` — owns
-  project-aware Korean/English routing, follows 112. Do not build a second router.
+- blocked_by (stage 2 only): `104-project-aware-natural-language-request-orchestrator`
+  — owns project-aware Korean/English routing and follows 112. Stage 1 is not
+  blocked; stage 2 must not start before 104 or it becomes the second router this
+  issue's Scope Fence forbids.
 - related: `112-execution-planner-and-backend-boundary` — settles what ModuFlow
   executes versus what the host executes, which decides what `진행해줘` can
   truthfully claim.
