@@ -1,6 +1,7 @@
 ---
 description: Plan or apply a non-destructive ModuFlow migration for an existing project.
 argument-hint: "[project path] [--mode overlay|mapped|canonical] [--write]"
+user-invocable: false
 ---
 
 # /product:migrate
@@ -38,6 +39,6 @@ python3 scripts/project_migrate.py <project-path> --mode mapped --write
 
 ## Next
 
-- `/product:status` after write mode
-- `/product:start` for new projects with no existing structure
-- `/product:profile` when project profile support is available
+- `/moduflow status` after write mode
+- `/moduflow start` for new projects with no existing structure
+- `/moduflow profile` when project profile support is available

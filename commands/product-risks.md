@@ -1,6 +1,7 @@
 ---
 description: Review or update project risk records.
 argument-hint: "[project path or issue id]"
+user-invocable: false
 ---
 
 # /product:risks
@@ -16,5 +17,5 @@ Inspect blockers, risks, and release concerns from workflow artifacts.
 
 ## Next
 
-- `/product:handoff` to create an ownership handoff
-- `/product:review` when risk blocks readiness
+- `/moduflow handoff` to create an ownership handoff
+- `/moduflow review` when risk blocks readiness

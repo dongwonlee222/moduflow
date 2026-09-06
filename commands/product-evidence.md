@@ -1,6 +1,7 @@
 ---
 description: Review evidence artifacts for an issue, spec, decision, or roadmap item.
 argument-hint: "<issue id or spec path>"
+user-invocable: false
 ---
 
 # /product:evidence
@@ -16,5 +17,5 @@ Gather and summarize knowledge artifacts connected to an issue, spec, decision, 
 
 ## Next
 
-- `/product:decision` if evidence supports a decision
-- `/product:spec` if requirements should change
+- `/moduflow decision` if evidence supports a decision
+- `/moduflow spec` if requirements should change

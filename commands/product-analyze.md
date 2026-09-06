@@ -1,6 +1,7 @@
 ---
 description: Run data or metric analysis for an issue/spec.
 argument-hint: "<issue id> [question]"
+user-invocable: false
 ---
 
 # /product:analyze
@@ -48,7 +49,7 @@ Answer product questions with data.
 
 ## Next
 
-- `/product:spec` to update requirements
-- `/product:roadmap` to adjust priority
-- `/product:review` for data validation
+- `/moduflow spec` to update requirements
+- `/moduflow roadmap` to adjust priority
+- `/moduflow review` for data validation
 

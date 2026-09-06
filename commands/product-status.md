@@ -1,7 +1,8 @@
 ---
-description: Show current product execution state and next recommended command.
+description: 지금 어디까지 왔는지 대시보드로 봅니다. 다음에 뭘 할지도 같이 나옵니다. (show status)
 argument-hint: "[issue id]"
 ---
+
 
 # /product:status
 
@@ -10,6 +11,13 @@ Make progress visible.
 Read the executing ModuFlow package's `docs/output-format.md` for user-facing work reports. After the brief current-state line, explain **왜 필요한지 → 해결해야 할 문제 → 기대 효과** before technical progress; use the compact form for short status requests and leave machine-readable output unchanged.
 
 > MCP alternative: if the `moduflow` MCP server is connected, `moduflow_status` and `moduflow_issues` return the same state as steps 1-2 below without a Bash approval prompt — prefer it for a quick read.
+
+## 사용 예시
+
+```
+/moduflow 상태
+/moduflow status
+```
 
 ## Session Banner (issue 072)
 

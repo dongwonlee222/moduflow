@@ -25,5 +25,5 @@ Issue: {{issue_id}}
 
 ## Next Command
 
-`/product:execute {{issue_id}}`
+`/moduflow execute {{issue_id}}`
 

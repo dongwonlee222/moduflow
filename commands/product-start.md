@@ -1,11 +1,19 @@
 ---
-description: Initialize ModuFlow in the current project.
+description: 이 프로젝트에 모두플로를 처음 설치합니다. (set up)
 argument-hint: "[project name or path]"
 ---
+
 
 # /product:start
 
 Initialize ModuFlow project state.
+
+## 사용 예시
+
+```
+/moduflow 시작
+/moduflow start
+```
 
 ## Do
 
@@ -47,7 +55,7 @@ Initialize ModuFlow project state.
 - GitHub remote/auth status
 - Created or reused lightweight project files (must include `workspace/loop-state.json`)
 - Confirmation that ModuFlow tooling remains in the plugin/source package
-- Next command: `product:goal` to set the active goal, then `product:loop` to keep advancing. Never end `product:start` without the loop seeded.
+- Next command: `/moduflow goal` to set the active goal, then `/moduflow loop` to keep advancing. Never end `/moduflow start` without the loop seeded.
 
 ## First-Run Guidance (issue 055)
 

@@ -1,6 +1,7 @@
 ---
 description: Generate a worker plan and parallel execution decision for an issue.
 argument-hint: "<issue id>"
+user-invocable: false
 ---
 
 # /product:workers
@@ -29,5 +30,5 @@ Create an issue-local worker plan.
 
 ## Next
 
-- `/product:execute <issue>` when the worker plan is accepted.
-- `/product:plan <issue>` if the tasks need to be split more clearly.
+- `/moduflow execute <issue>` when the worker plan is accepted.
+- `/moduflow plan <issue>` if the tasks need to be split more clearly.

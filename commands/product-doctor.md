@@ -1,11 +1,19 @@
 ---
-description: Validate ModuFlow installation and project artifacts.
+description: 설치와 파일이 온전한지 점검하고, 뭐가 잘못됐는지 알려줍니다. (check health)
 argument-hint: "[project path]"
 ---
+
 
 # /product:doctor
 
 Validate setup.
+
+## 사용 예시
+
+```
+/moduflow 검사
+/moduflow doctor
+```
 
 ## Do
 
@@ -84,9 +92,9 @@ Doctor never acquires a lifecycle lock, reads preimage or staged payload bodies,
 
 ## Next
 
-- `product:start` if project is not initialized
-- `product:migrate` if existing artifact folders should be mapped first
-- `product:status` if healthy
+- `/moduflow start` if project is not initialized
+- `/moduflow migrate` if existing artifact folders should be mapped first
+- `/moduflow status` if healthy
 - Review and explicitly run the reported `project_lifecycle.py --recover` command if recovery is incomplete
 
 ## Hook Health (issue 072)

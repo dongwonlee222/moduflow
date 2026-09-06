@@ -1,6 +1,7 @@
 ---
 description: Create a report artifact tied to an issue, spec, roadmap, or release.
 argument-hint: "<title> [--issue-id id] [--spec path]"
+user-invocable: false
 ---
 
 # /product:report
@@ -17,5 +18,5 @@ python3 scripts/project_knowledge.py . --kind report --title "June product repor
 
 ## Next
 
-- `/product:update` for stakeholder communication
-- `/product:roadmap` when priority changes
+- `/moduflow update` for stakeholder communication
+- `/moduflow roadmap` when priority changes

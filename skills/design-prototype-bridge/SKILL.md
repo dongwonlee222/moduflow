@@ -1,6 +1,7 @@
 ---
 name: design-prototype-bridge
 description: Use when ModuFlow needs UX brief, product design exploration, prototype creation, screenshot-to-code, Figma review, or flow validation tied to an issue/spec.
+user-invocable: false
 ---
 
 # Design Prototype Bridge

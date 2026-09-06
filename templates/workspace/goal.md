@@ -40,4 +40,4 @@ None.
 
 ## Next Command
 
-`product:loop`
+`/moduflow loop`

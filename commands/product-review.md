@@ -1,6 +1,7 @@
 ---
 description: Review issue/spec/work across PM, UX, data, QA, and release gates.
 argument-hint: "<issue id>"
+user-invocable: false
 ---
 
 # /product:review
@@ -103,5 +104,5 @@ For Korean reviewers, the packet is the first review surface. The dashboard deta
 
 ## Next
 
-- `/product:plan` if gaps require more work
-- `/product:pr` if review passes
+- `/moduflow plan` if gaps require more work
+- `/moduflow pr` if review passes

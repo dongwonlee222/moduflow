@@ -1,6 +1,7 @@
 ---
 description: Initialize or render a portfolio workspace for multiple ModuFlow projects.
 argument-hint: "[portfolio path] [--write|--render|--resolve <request>|--select <project-id>]"
+user-invocable: false
 ---
 
 # /product:portfolio
@@ -42,5 +43,5 @@ Portfolio dashboard rows include:
 
 ## Next
 
-- `/product:projects` to inspect registered projects
-- `/product:weekly` to produce a weekly status view
+- `/moduflow projects` to inspect registered projects
+- `/moduflow weekly` to produce a weekly status view

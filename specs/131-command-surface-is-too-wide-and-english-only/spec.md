@@ -140,7 +140,7 @@ Never show these keys to a reader. Stored keys are untouched.
 | --- | --- |
 | `rationale` | 왜 이렇게 정했나요? |
 | `alternatives` | 다른 선택은 무엇이었나요? |
-| `caveats` | 조심할 점이 있나요? |
+| `reversal_conditions` | 언제 이 결정을 뒤집나요? |
 | `retrieval_trigger` | 언제 다시 살펴보면 될까요? |
 | `evidence` | 참고한 자료가 있나요? |
 
@@ -181,8 +181,8 @@ reached today. None of them is meant to be typed.
   Hiding must never become removing.
 - `/moduflow issue` and `/moduflow issues` reach different handlers.
 - No test asserts the `product:<name>` typed form. Its removal is intended.
-- No user-facing string contains `rationale`, `alternatives`, `caveats`,
-  `retrieval_trigger` or `evidence` as a bare field name.
+- No user-facing string contains `rationale`, `alternatives`, `reversal_conditions`,
+  `retrieval_trigger` or `reversal_conditions` as a bare field name.
 - `product:decision` produces a complete record from one sentence on a fixture
   where the reason is recoverable, and asks exactly one question on a fixture
   where it is not.

@@ -73,6 +73,29 @@ Request: $ARGUMENTS
 3. Always end by showing the **next recommended action and command** so the user can chain without asking "what next?" or memorizing names. This is required after every completed action, including spec, plan, execute, review, release, or issue lifecycle updates. Exact `product:*` input is a power-user escape hatch and should be honored directly.
 4. If a workflow resumes after a long task, context compaction, approval pause, or validation loop, show a short resume banner before continuing so the user can see that ModuFlow is continuing from durable state rather than restarting.
 
+## Argument Resolution
+
+`/moduflow <name>` runs that command. `/moduflow inbox` does what
+`commands/product-inbox.md` says to do. The `product:` prefix is neither typed
+nor shown.
+
+Resolve the **first** argument in this order, and stop at the first hit:
+
+1. **Exact** match on `commands/product-<arg>.md` → read that file and follow it,
+   passing every remaining argument as its input.
+2. **Exact** match on `commands/<arg>.md` → same.
+3. No exact match → fall through to the natural-language routing in `## Do`
+   step 2. Do not guess by prefix, substring, or edit distance.
+
+Exact matching is what keeps `/moduflow issue` (create one) and
+`/moduflow issues` (list them) apart. A prefix rule would collapse them.
+
+**All 41 commands resolve this way, including the 29 that are hidden from the
+menu.** Hiding a command from the `/` list must never make it unreachable —
+`commands/product-<name>.md` is read the same way whether or not the entry is
+listed. If a name resolves to no file, say so and show the nearest listed
+command; never silently run something else.
+
 ## Resume Banner
 
 Use this before continuing resumed work:
@@ -118,16 +141,31 @@ Keep it concise. Include only sections that are useful, but do not replace this 
 Show this only when the user asks `help`, `도움말`, `명령어`, or "what can I do":
 
 ```
-설정/시작    /moduflow 시작        (product:start)   프로젝트 초기화
-점검        /moduflow 검사        (product:doctor)  설치·아티팩트 검증
-목표        /moduflow 목표        (product:goal)    목표 설정/조회
-루프        /moduflow 루프        (product:loop)    다음 단계 자동 추천·실행
-상태        /moduflow 상태        (product:status)  현재 진행 상태
-이슈        /moduflow 이슈        (product:issues)  이슈 목록
-로드맵      /moduflow 로드맵      (product:roadmap) Now/Next/Later
+처음 한 번
+  /moduflow start        이 프로젝트에 모두플로를 설치합니다
+  /moduflow goal         무엇을 이루려는지 한 줄로 정합니다
+  /moduflow roadmap      지금·다음·나중에 할 일을 놓습니다
 
-전체 35개 명령어는 /moduflow:product- 입력 시 자동완성으로 확인.
-자연어도 가능: "모두플로우 시작", "루프 돌려줘", "003 완료 처리".
+매일
+  /moduflow status       어디까지 왔는지 대시보드로 봅니다
+  /moduflow loop         다음 단계를 골라서 실행합니다
+  /moduflow inbox        떠오른 것을 일단 적어 둡니다
+
+이슈마다
+  /moduflow issue        할 일 하나를 이슈로 만듭니다
+  /moduflow release      출시 준비·배포·되돌리기
+
+필요할 때
+  /moduflow decision     정한 것을 이유와 함께 남깁니다
+  /moduflow memory       다음에도 기억할 것을 저장합니다
+  /moduflow doctor       설치와 파일이 온전한지 점검합니다
+
+예시
+  /moduflow inbox 로그인 화면이 느리다는 제보
+  /moduflow decision build email login first
+
+명세·계획·구현·검토는 /moduflow loop 가 알아서 넘깁니다.
+목록에 없는 명령도 이름만 쓰면 실행됩니다 — /moduflow knowledge 처럼.
 ```
 
 ## Notes

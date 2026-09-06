@@ -1,6 +1,7 @@
 ---
 name: superpowers-execution-bridge
 description: Use when ModuFlow executes plans, splits independent work into workers, requests review, verifies completion, or decides whether parallel subagents are appropriate.
+user-invocable: false
 ---
 
 # Superpowers Execution Bridge

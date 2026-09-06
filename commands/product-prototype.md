@@ -1,6 +1,7 @@
 ---
 description: Create, connect, or review a prototype for an issue/spec.
 argument-hint: "<issue id> [url|figma|screenshot]"
+user-invocable: false
 ---
 
 # /product:prototype
@@ -16,5 +17,5 @@ Create or evaluate a prototype.
 
 ## Next
 
-- `/product:review` for UX/QA review
-- `/product:plan` for implementation tasks
+- `/moduflow review` for UX/QA review
+- `/moduflow plan` for implementation tasks

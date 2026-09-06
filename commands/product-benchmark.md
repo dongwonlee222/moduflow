@@ -1,6 +1,7 @@
 ---
 description: Create a benchmark or competitive/reference analysis artifact.
 argument-hint: "<title> [--issue-id id] [--spec path]"
+user-invocable: false
 ---
 
 # /product:benchmark
@@ -15,5 +16,5 @@ python3 scripts/project_knowledge.py . --kind benchmark --title "Checkout onboar
 
 ## Next
 
-- `/product:decision` if the benchmark supports a choice
-- `/product:design` if the benchmark affects UX
+- `/moduflow decision` if the benchmark supports a choice
+- `/moduflow design` if the benchmark affects UX

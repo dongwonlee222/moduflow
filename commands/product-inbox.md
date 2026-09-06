@@ -1,11 +1,19 @@
 ---
-description: Capture raw requests, notes, customer feedback, ideas, or bugs.
+description: 떠오른 것이나 받은 제보를 일단 적어 둡니다. 이슈로 만들지는 나중에 정합니다. (capture)
 argument-hint: "<raw request or source>"
 ---
+
 
 # /product:inbox
 
 Capture unstructured input without over-shaping it.
+
+## 사용 예시
+
+```
+/moduflow inbox 로그인 화면이 느리다는 제보
+/moduflow inbox users report the login screen is slow
+```
 
 ## Do
 
@@ -16,9 +24,9 @@ Capture unstructured input without over-shaping it.
 
 ## Next
 
-- `/product:opportunity` for product shaping
-- `/product:issue` for obvious implementation work
-- `/product:status` to inspect queue
+- `/moduflow opportunity` for product shaping
+- `/moduflow issue` for obvious implementation work
+- `/moduflow status` to inspect queue
 
 ## Record Contract (issue 075)
 

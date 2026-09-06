@@ -1,6 +1,7 @@
 ---
 description: Create execution plan and task list for a spec.
 argument-hint: "<issue id>"
+user-invocable: false
 ---
 
 # /product:plan
@@ -71,7 +72,7 @@ python3 scripts/project_reference_backlog.py . --issue-id <id> --title "<short t
 ## Next
 
 - Recommended: `python3 scripts/spec_consistency.py . --issue-id <id>` once plan.md and tasks.md exist, to catch coverage gaps, vague terms, and stream mismatches before execution.
-- `/product:workers` once `tasks.md` exists, to get the file-overlap, shared-state and
+- `/moduflow workers` once `tasks.md` exists, to get the file-overlap, shared-state and
   parallel-eligibility verdict before building. A `sequential` verdict is a complete answer.
-- `/product:execute` when ready to build
-- `/product:review` if the plan needs challenge
+- `/moduflow execute` when ready to build
+- `/moduflow review` if the plan needs challenge

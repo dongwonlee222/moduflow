@@ -1,6 +1,7 @@
 ---
 description: Create UX/product design brief for an issue/spec.
 argument-hint: "<issue id>"
+user-invocable: false
 ---
 
 # /product:design
@@ -16,6 +17,6 @@ Bridge PM intent to design work.
 
 ## Next
 
-- `/product:prototype` for a reviewable prototype
-- `/product:plan` if design is sufficient
-- `/product:review` for UX validation
+- `/moduflow prototype` for a reviewable prototype
+- `/moduflow plan` if design is sufficient
+- `/moduflow review` for UX validation

@@ -1,6 +1,7 @@
 ---
 description: Inspect or resolve explicitly registered projects in a portfolio workspace.
 argument-hint: "[portfolio path] [--resolve <request>|--select <project-id>]"
+user-invocable: false
 ---
 
 # /product:projects
@@ -32,5 +33,5 @@ When policy denies a CLI mutation, print the stable `moduflow.project-operation-
 
 ## Next
 
-- `/product:portfolio` to refresh dashboard files
-- `/product:status` inside a project for deeper inspection
+- `/moduflow portfolio` to refresh dashboard files
+- `/moduflow status` inside a project for deeper inspection

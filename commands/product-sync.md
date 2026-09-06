@@ -1,6 +1,7 @@
 ---
 description: Update or inspect upstream source references.
 argument-hint: "[source id]"
+user-invocable: false
 ---
 
 # /product:sync
@@ -96,5 +97,5 @@ This command performs a bidirectional status merge of checked (`[x]`), in-progre
 
 ## Next
 
-- `/product:doctor` after sync
-- `/product:status` to resume work
+- `/moduflow doctor` after sync
+- `/moduflow status` to resume work

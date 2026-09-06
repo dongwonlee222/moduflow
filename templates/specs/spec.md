@@ -36,5 +36,5 @@ Issue: {{issue_id}}
 
 ## Next Command
 
-`/product:plan {{issue_id}}`
+`/moduflow plan {{issue_id}}`
 

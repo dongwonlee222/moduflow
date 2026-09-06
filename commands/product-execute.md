@@ -1,6 +1,7 @@
 ---
 description: Execute approved plan using Superpowers-style workers.
 argument-hint: "<issue id>"
+user-invocable: false
 ---
 
 # /product:execute
@@ -105,5 +106,5 @@ The main-loop model (the most capable/expensive tier the user is running) is for
 
 ## Next
 
-- `/product:review` immediately after implementation handoff exists
-- `/product:pr` early for Draft PR / PR-ready state, then refresh after review passes
+- `/moduflow review` immediately after implementation handoff exists
+- `/moduflow pr` early for Draft PR / PR-ready state, then refresh after review passes

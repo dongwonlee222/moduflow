@@ -1,6 +1,7 @@
 ---
 description: Show the current project's issue overview.
 argument-hint: "[status|active|queue|done]"
+user-invocable: false
 ---
 
 # /product:issues

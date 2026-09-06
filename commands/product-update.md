@@ -1,6 +1,7 @@
 ---
 description: Create stakeholder update from issue/spec/release state.
 argument-hint: "<issue id or roadmap>"
+user-invocable: false
 ---
 
 # /product:update
@@ -17,5 +18,5 @@ Read the executing ModuFlow package's `docs/output-format.md`; it also applies t
 
 ## Next
 
-- `/product:status` to continue tracking
-- `/product:roadmap` if priority changed
+- `/moduflow status` to continue tracking
+- `/moduflow roadmap` if priority changed

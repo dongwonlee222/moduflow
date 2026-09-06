@@ -1,11 +1,19 @@
 ---
-description: Read goal and issue state, then recommend or run the next safe ModuFlow step.
+description: 다음에 할 단계를 골라서 실행합니다. 명세·계획·구현·검토를 알아서 넘깁니다. (run the next step)
 argument-hint: "[--step|--until blocked]"
 ---
+
 
 # /product:loop
 
 Advance a goal by routing through existing ModuFlow commands.
+
+## 사용 예시
+
+```
+/moduflow 루프
+/moduflow loop
+```
 
 ## Do
 
@@ -169,5 +177,5 @@ loop recommendation should repair the plan first.
 
 ## Next
 
-- `/product:status` to inspect the current state
-- `/product:review` after implementation steps complete
+- `/moduflow status` to inspect the current state
+- `/moduflow review` after implementation steps complete

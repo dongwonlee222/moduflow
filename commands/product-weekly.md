@@ -1,6 +1,7 @@
 ---
 description: Generate a weekly portfolio status summary.
 argument-hint: "[portfolio path]"
+user-invocable: false
 ---
 
 # /product:weekly
@@ -18,5 +19,5 @@ Read the executing ModuFlow package's `docs/output-format.md`. For each substant
 
 ## Next
 
-- `/product:update` for stakeholder-ready communication
-- `/product:roadmap` if priorities changed
+- `/moduflow update` for stakeholder-ready communication
+- `/moduflow roadmap` if priorities changed

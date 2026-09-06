@@ -4,7 +4,7 @@ Issue:
 Source request:
 Owner:
 Phase: Review
-Next command: `product:issue`
+Next command: `/moduflow issue`
 
 ## Review Mode
 

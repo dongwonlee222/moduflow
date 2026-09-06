@@ -1,6 +1,7 @@
 ---
 description: Promote a capture record (decision/inbox/memory/knowledge) into a Git-native issue.
 argument-hint: "<record-path> [--issue-id id] [--write]"
+user-invocable: false
 ---
 
 # /product:promote
@@ -65,5 +66,5 @@ Do not write these links by hand — manual linking gets skipped.
 
 ## Next
 
-- `/product:spec <issue-id>` to shape the promoted issue
-- `/product:roadmap` when the promotion changes priority
+- `/moduflow spec <issue-id>` to shape the promoted issue
+- `/moduflow roadmap` when the promotion changes priority

@@ -1,6 +1,7 @@
 ---
 description: Post-implementation spec↔code audit; re-runnable anytime.
 argument-hint: "<issue-id>"
+user-invocable: false
 ---
 
 # /product:converge

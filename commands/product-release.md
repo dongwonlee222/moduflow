@@ -1,11 +1,19 @@
 ---
-description: Prepare release, deploy, rollback, and post-release checks.
+description: 출시 준비·배포·되돌리기를 처리합니다. (release)
 argument-hint: "<issue id>"
 ---
+
 
 # /product:release
 
 Prepare release.
+
+## 사용 예시
+
+```
+/moduflow release — 지금 출시해도 되는지 점검하고 준비
+/moduflow release 0.3.68
+```
 
 ## Do
 
@@ -41,5 +49,5 @@ If GitHub PR creation is unavailable, record the local PR-ready marker and keep 
 
 ## Next
 
-- `/product:update` for stakeholder communication
-- `/product:analyze` for post-release metric readout
+- `/moduflow update` for stakeholder communication
+- `/moduflow analyze` for post-release metric readout

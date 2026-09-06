@@ -1,13 +1,21 @@
 ---
-description: Initialize, write, search, or retrieve portable project memory.
+description: 다음에도 기억해야 할 것을 프로젝트에 저장합니다. (remember)
 argument-hint: "[project path] [--write|--kind|--search|--get]"
 ---
+
 
 # /product:memory
 
 Manage repo-local project memory for deliverables, decisions, evidence, meetings, releases, notes, and references.
 
 For recurring production outputs that must preserve artifacts, decisions, failed attempts, reusable patterns, external copy, internal reporting copy, and human-approved playbooks, use `/product:production`. This command remains the generic long-term memory path.
+
+## 사용 예시
+
+```
+/moduflow memory 배포는 화요일에만 한다
+/moduflow memory deploy only on Tuesdays
+```
 
 ## PM-Friendly Flow
 
@@ -73,8 +81,8 @@ python3 scripts/project_memory.py <project-path> --export-guidance google-drive
 
 ## Next
 
-- `/product:evidence` to review related memory and evidence
-- `/product:decision` when a memory entry supports a decision
+- `/moduflow evidence` to review related memory and evidence
+- `/moduflow decision` when a memory entry supports a decision
 
 ## Record Contract (issue 075)
 

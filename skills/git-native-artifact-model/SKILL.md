@@ -1,6 +1,7 @@
 ---
 name: git-native-artifact-model
 description: Use when ModuFlow needs to create, update, validate, or explain issue, spec, task, status, PR, release, or roadmap artifacts stored in Git.
+user-invocable: false
 ---
 
 # Git-Native Artifact Model

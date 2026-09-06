@@ -86,7 +86,7 @@ EXPECTED_COMMAND_FILES = VISIBLE_COMMANDS | HIDDEN_COMMANDS
 DISPLAY_LABELS = {
     "rationale": "왜 이렇게 정했나요?",
     "alternatives": "다른 선택은 무엇이었나요?",
-    "caveats": "조심할 점이 있나요?",
+    "reversal_conditions": "언제 이 결정을 뒤집나요?",
     "retrieval_trigger": "언제 다시 살펴보면 될까요?",
     "evidence": "참고한 자료가 있나요?",
 }

@@ -1,6 +1,7 @@
 ---
 description: Create or update spec/PRD artifacts for an issue.
 argument-hint: "<issue id>"
+user-invocable: false
 ---
 
 # /product:spec
@@ -68,9 +69,9 @@ The diagram, Non-Goals, and Alternatives belong in essentially every spec. The h
 
 ## Next
 
-- `/product:analyze` if metrics or evidence are needed
-- `/product:design` if UX flow, IA, journey, or screens are warranted
-- `/product:plan` when the spec is ready
+- `/moduflow analyze` if metrics or evidence are needed
+- `/moduflow design` if UX flow, IA, journey, or screens are warranted
+- `/moduflow plan` when the spec is ready
 
 ## Reference
 

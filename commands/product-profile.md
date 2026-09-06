@@ -1,6 +1,7 @@
 ---
 description: Create or inspect project profile metadata and canonical repository identity.
 argument-hint: "[project path] [--write] [--canonical-repository <host/owner/repo> | --local-only]"
+user-invocable: false
 ---
 
 # /product:profile
@@ -58,5 +59,5 @@ python3 scripts/project_profile.py <project-path> \
 
 ## Next
 
-- `/product:status` after profile creation
-- `/product:portfolio` when portfolio support is available
+- `/moduflow status` after profile creation
+- `/moduflow portfolio` when portfolio support is available

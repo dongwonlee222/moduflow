@@ -4,7 +4,7 @@ Issue:
 Source request:
 Owner:
 Phase: Draft
-Next command: `product:issue`
+Next command: `/moduflow issue`
 
 ## Validation Strategy
 

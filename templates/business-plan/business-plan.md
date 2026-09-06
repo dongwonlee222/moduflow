@@ -4,7 +4,7 @@ Issue:
 Source request:
 Owner:
 Phase: Draft
-Next command: `product:review`
+Next command: `/moduflow review`
 
 ## Executive Summary
 

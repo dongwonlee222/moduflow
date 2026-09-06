@@ -1,6 +1,7 @@
 ---
 description: Generate the interactive project view (issue DB, issue graph, memory graph, production records, playbooks) and report its path.
 argument-hint: "[project path]"
+user-invocable: false
 ---
 
 # /product:dashboard
@@ -66,5 +67,5 @@ python3 scripts/project_memory.py <project-path> --issue <id>
 
 ## Next
 
-- `/product:memory --search` to inspect a node's underlying record
-- `/product:evidence` to review related memory and evidence
+- `/moduflow memory --search` to inspect a node's underlying record
+- `/moduflow evidence` to review related memory and evidence

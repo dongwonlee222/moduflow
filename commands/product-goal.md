@@ -1,11 +1,19 @@
 ---
-description: Create or update the active goal that supervises one or more Git-native issues.
+description: 지금 무엇을 이루려는지 한 줄로 정합니다. 이슈들이 여기에 매달립니다. (set the goal)
 argument-hint: "<objective or issue id>"
 ---
+
 
 # /product:goal
 
 Create or update a durable goal.
+
+## 사용 예시
+
+```
+/moduflow goal 결제 실패율을 1% 아래로 내린다
+/moduflow goal cut the payment failure rate below 1%
+```
 
 ## Do
 
@@ -37,7 +45,7 @@ Return a concise goal summary:
 Goal: <objective>
 Linked issue: <issue id or none>
 Status: active
-Next command: product:loop
+Next command: `/moduflow loop`
 ```
 
 ## Safety
@@ -48,5 +56,5 @@ Next command: product:loop
 
 ## Next
 
-- `/product:loop` to choose the next workflow step
-- `/product:issue` if the goal needs a new durable work item
+- `/moduflow loop` to choose the next workflow step
+- `/moduflow issue` if the goal needs a new durable work item

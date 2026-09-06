@@ -1,6 +1,7 @@
 ---
 name: pm-execution-router
 description: Use when a user gives product, roadmap, issue, spec, execution, PR, release, or stakeholder-update work and ModuFlow should choose the next product command or workflow step.
+user-invocable: false
 ---
 
 # PM Execution Router

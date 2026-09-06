@@ -91,4 +91,4 @@ Every artifact-producing step is a tracked task here — never produce a spec/pl
 
 ## Next Command
 
-`/product:spec {{issue_id}}`
+`/moduflow spec {{issue_id}}`

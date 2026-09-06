@@ -1,6 +1,7 @@
 ---
 description: Initialize or inspect the project knowledge evidence layer.
 argument-hint: "[project path] [--inspect|--query|--register|--read-sources] [--write]"
+user-invocable: false
 ---
 
 # /product:knowledge
@@ -58,8 +59,8 @@ An existing original is linked, never copied, rewritten or uploaded. If register
 
 ## Next
 
-- `/product:decision` for decision records
-- `/product:evidence` to gather evidence for an issue or spec
+- `/moduflow decision` for decision records
+- `/moduflow evidence` to gather evidence for an issue or spec
 
 ## Record Contract (issue 075)
 

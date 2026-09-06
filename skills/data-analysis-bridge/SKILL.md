@@ -1,6 +1,7 @@
 ---
 name: data-analysis-bridge
 description: Use when ModuFlow needs product metrics, KPI definitions, metric diagnostics, dashboards, reports, market sizing, or data-backed roadmap/spec decisions.
+user-invocable: false
 ---
 
 # Data Analysis Bridge

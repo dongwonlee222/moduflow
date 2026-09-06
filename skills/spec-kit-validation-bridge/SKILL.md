@@ -1,6 +1,7 @@
 ---
 name: spec-kit-validation-bridge
 description: Use when ModuFlow has selected an available spec-kit capability stage for one explicit clarify, analyze, checklist, or converge request.
+user-invocable: false
 ---
 
 # Spec Kit Validation Bridge

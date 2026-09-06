@@ -1,6 +1,7 @@
 ---
 description: Capture, search, retrieve, and approve project-local recurring production knowledge.
 argument-hint: "[project path] [--init|--new-record|--search|--retrieve|--validate|--decide-playbook]"
+user-invocable: false
 ---
 
 # /product:production
@@ -54,4 +55,4 @@ python3 scripts/project_production.py <project-path> --decide-playbook approve -
 
 ## Next
 
-Run `product:production --search "mobile banner" --type banner --channel home-popup` before the next similar production task.
+Run `/moduflow production --search "mobile banner" --type banner --channel home-popup` before the next similar production task.

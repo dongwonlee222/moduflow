@@ -1,6 +1,7 @@
 ---
 name: source-adapter-policy
 description: Use when ModuFlow needs to update, swap, vendor, or map external skills/plugins such as Productivity, Product Management, Spec Kit, Superpowers, Product Design, or Data Analytics.
+user-invocable: false
 ---
 
 # Source Adapter Policy

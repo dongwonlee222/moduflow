@@ -1,6 +1,7 @@
 ---
 description: Initialize team workflow artifacts or create handoff-ready workflow records.
 argument-hint: "[project path] [--write|--record]"
+user-invocable: false
 ---
 
 # /product:handoff
@@ -44,5 +45,5 @@ python3 scripts/project_workflow.py <project-path> --team-status
 
 ## Next
 
-- `/product:review` to verify readiness
-- `/product:risks` to inspect active risk
+- `/moduflow review` to verify readiness
+- `/moduflow risks` to inspect active risk

@@ -1,6 +1,7 @@
 ---
 description: Prepare or refresh Draft PR / PR-ready review state for issue work.
 argument-hint: "<issue id>"
+user-invocable: false
 ---
 
 # /product:pr
@@ -76,5 +77,5 @@ Start Korean review from `human-review.ko.md`, then open the dashboard issue det
 
 ## Next
 
-- `/product:release` after PR is merged or approved
-- `/product:review` if PR checks fail
+- `/moduflow release` after PR is merged or approved
+- `/moduflow review` if PR checks fail

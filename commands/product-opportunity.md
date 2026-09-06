@@ -1,6 +1,7 @@
 ---
 description: Convert inbox material into a product opportunity/problem statement.
 argument-hint: "<inbox item id or summary>"
+user-invocable: false
 ---
 
 # /product:opportunity
@@ -24,6 +25,6 @@ Do not route clear implementation requests here by default.
 
 ## Next
 
-- `/product:issue` when actionable
-- `/product:analyze` when evidence is weak
-- `/product:roadmap` when priority/timing changes
+- `/moduflow issue` when actionable
+- `/moduflow analyze` when evidence is weak
+- `/moduflow roadmap` when priority/timing changes

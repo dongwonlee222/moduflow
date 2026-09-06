@@ -1,11 +1,19 @@
 ---
-description: Create or update a Git-native issue artifact.
+description: 할 일 하나를 이슈 파일로 만듭니다. (create an issue)
 argument-hint: "<opportunity id or issue title>"
 ---
+
 
 # /product:issue
 
 Create the durable work item.
+
+## 사용 예시
+
+```
+/moduflow issue 결제 재시도가 카드를 두 번 청구한다
+/moduflow issue payment retry charges the card twice
+```
 
 ## Do
 
@@ -71,6 +79,6 @@ Use `sessions/<issue-slug>/<date>-<agent-or-purpose>.md` for repeated work logs 
 
 ## Next
 
-- `/product:spec` for new product work
-- `/product:plan` for small obvious work
-- `/product:roadmap` when priority changed
+- `/moduflow spec` for new product work
+- `/moduflow plan` for small obvious work
+- `/moduflow roadmap` when priority changed
