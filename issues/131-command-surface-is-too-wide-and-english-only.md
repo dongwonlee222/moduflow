@@ -7,7 +7,8 @@
 
 `/` 팔레트에 명령이 **41개**, 스킬이 **11개** 뜨는데 설명이 전부 영어에 내부 용어라
 읽고 고를 수가 없습니다. **외워야 하는 것을 2개로 줄입니다** — `/moduflow`와
-`product:inbox`. 나머지는 **한국어든 영어든 평소 쓰는 말**로 닿습니다. 영어는
+`/inbox`. `product:` 접두사는 안 붙입니다. 나머지는 **한국어든 영어든 평소 쓰는
+말**로 닿습니다. 영어는
 `we decided` 같은 문장이 아니라 `note`·`decide` 같은 **단어 한 개**로 됩니다.
 줄이는 것은 *외울 것*이지 기능도 이름도 아닙니다.
 
@@ -71,9 +72,21 @@ earlier proposal of eleven:**
 | Entry | For |
 | --- | --- |
 | `/moduflow` | anything, said in ordinary words |
-| `product:inbox` | dump it now, sort it later |
+| `/inbox` | dump it now, sort it later |
 
 Everything else stays reachable and keeps working. Nobody has to know it exists.
+
+**No `product:` prefix on either.** Measured 2026-09-06: of the 41 command files,
+40 are `product-*` and one is `moduflow.md`. `/moduflow` already lives without the
+prefix, so the prefix is a naming habit, not a platform requirement — the product
+has already proved its own counter-example.
+
+This crosses the owner's own instruction that existing terms must not change, and
+the crossing is deliberate and his: he asked for it in the same session. Resolved
+by addition rather than rename — `commands/inbox.md` is added as a thin entry that
+routes to the same handler, and `commands/product-inbox.md` keeps working
+untouched. Nothing that exists today stops working, and nobody has to type
+`product:` to reach the one thing they use most.
 
 - `/moduflow` accepts Korean or English, routed identically.
 - **English triggers are single words, not sentences.** `we decided` and
@@ -137,7 +150,10 @@ an internal command unreachable has failed this issue, not satisfied it.
 ## Acceptance Criteria
 
 - Two entries are enough. The owner completes a decision, a memory write and a
-  status check knowing only `/moduflow` and `product:inbox`.
+  status check knowing only `/moduflow` and `/inbox`.
+- `/inbox` and `product:inbox` reach the same handler and produce identical
+  output, asserted by test. The old name is not deprecated, warned about, or
+  removed.
 - Every command not memorised still executes when named explicitly, and a test
   asserts this for all 41, so hiding never becomes removing.
 - Each of the six routing rows reaches the same handler from its Korean phrase
