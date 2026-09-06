@@ -56,7 +56,7 @@ frontmatter line per hidden command.
 
 ## Goals
 
-- The `/` menu lists `/moduflow` plus ten commands, each with a Korean-first
+- The `/` menu lists `/moduflow` plus eleven commands, each with a Korean-first
   description.
 - `/moduflow <name>` reaches every one of the 41 commands, hidden ones included.
 - Five internal field names never appear on screen as themselves.
@@ -67,7 +67,7 @@ frontmatter line per hidden command.
 
 - The nine Korean/English phrase pairs and the five single English words. Stage
   2, after issue 104. Building them here writes the router 104 owns.
-- Deleting the 30 hidden command files. They keep working through the hub. A
+- Deleting the 29 hidden command files. They keep working through the hub. A
   later cleanup may remove them; this spec does not.
 - Whether a decision, once written, can be read. Issue 130.
 - Translating stored artifacts, and the Korean-summary coverage gap.
@@ -75,25 +75,47 @@ frontmatter line per hidden command.
 
 ## Requirements
 
-### R1 — Menu policy
+### R1 — Menu policy, chosen by what a person does
 
-Eleven entries stay listed: `moduflow` plus
+The issue's ten were picked by artifact type. The owner corrected that on
+2026-09-06: "골이나 로드맵 등 써야 할 것들도 있는 거 아니야? 사용자가 해야 할
+것들?" `goal` and `roadmap` are things a human *writes*, and they were hidden.
 
-`product-inbox` · `product-issue` · `product-decision` · `product-benchmark` ·
-`product-memory` · `product-status` · `product-loop` · `product-execute` ·
-`product-review` · `product-release`
+The list is therefore ordered by the sequence a person actually moves through:
 
-The other 30 get `user-invocable: false` added to their existing frontmatter,
+| When | Commands |
+| --- | --- |
+| Once, at adoption | `start` `goal` `roadmap` |
+| Every day | `status` `loop` `inbox` |
+| Per issue | `issue` … `release` |
+| As it comes up | `decision` `memory` `doctor` |
+
+Twelve entries stay listed: `moduflow` plus
+
+`product-start` · `product-goal` · `product-roadmap` · `product-status` ·
+`product-loop` · `product-inbox` · `product-issue` · `product-decision` ·
+`product-memory` · `product-doctor` · `product-release`
+
+`spec`, `plan`, `execute` and `review` are **not** listed. They are the four
+stages of one workflow and `product:loop` selects and runs the next one; a
+person picking a stage by hand is working around the loop, not using it. This
+also resolves the incoherence of listing two of the four, which the earlier
+draft carried.
+
+`benchmark` leaves the list: it is a research verb used occasionally, not part
+of any of the four rows above.
+
+The other 29 get `user-invocable: false` added to their existing frontmatter,
 below `argument-hint`. Nothing else in those files changes:
 
-`analyze` `converge` `dashboard` `design` `doctor` `evidence` `goal` `handoff`
-`issues` `knowledge` `migrate` `opportunity` `plan` `portfolio` `pr`
+`analyze` `benchmark` `converge` `dashboard` `design` `evidence` `execute`
+`handoff` `issues` `knowledge` `migrate` `opportunity` `plan` `portfolio` `pr`
 `production` `profile` `projects` `promote` `prototype` `report` `research`
-`risks` `roadmap` `spec` `start` `sync` `update` `weekly` `workers`
+`review` `risks` `spec` `sync` `update` `weekly` `workers`
 
 ### R2 — Four items on every visible entry
 
-Each of the ten carries a short Korean-first `description`, an English action
+Each of the eleven carries a short Korean-first `description`, an English action
 word for recognition, a Korean input example, and an English input example. The
 `description` frontmatter field holds the Korean-first line; the examples go in
 the body and in the hub's quick list.
@@ -144,7 +166,7 @@ reached today. None of them is meant to be typed.
 
 ## Acceptance Criteria
 
-- Exactly 30 command files carry `user-invocable: false` and exactly 11 do not.
+- Exactly 29 command files carry `user-invocable: false` and exactly 12 do not.
   A test asserts both sets by name, so adding a command without deciding its
   visibility fails.
 - Exactly 7 skills carry `user-invocable: false` and exactly 4 do not, asserted
@@ -153,7 +175,7 @@ reached today. None of them is meant to be typed.
   it and fails on any addition, removal, or rename.
 - No stored key changes. A test compares the memory record schema against the
   current one.
-- Each of the ten visible commands has a `description` whose first character is
+- Each of the eleven visible commands has a `description` whose first character is
   Hangul, and carries both a Korean and an English input example.
 - `/moduflow <name>` reaches its handler for all 41 names, asserted one by one.
   Hiding must never become removing.
@@ -202,18 +224,44 @@ controls; the mechanism itself is verified above by reading the host binary.
 
 ## Open Questions
 
-- **The ten include `execute` and `review` but hide `spec` and `plan`.** Those
-  four are one workflow, and showing half of it is incoherent. Three candidates,
-  for the owner: (a) show all four, making twelve visible; (b) swap `benchmark`
-  and `memory` out for `spec` and `plan`, keeping ten; (c) hide all four on the
-  grounds that `/moduflow loop` already drives the workflow and recommends the
-  next stage, freeing two slots for `doctor` and `goal`. **Recommendation: (c).**
-  `loop` is the command the owner actually uses to advance work, and `doctor` and
-  `goal` appear in the hub's own quick list at `commands/moduflow.md:121-127`
-  while `execute` and `review` do not. Not blocking — R1 is written against the
-  issue's ten and the list is one edit to change.
+- **Confirm the twelve in R1.** The list changed from the issue's ten after the
+  owner pointed out that `goal` and `roadmap` are authoring steps a person must
+  perform. R1 states the reasoning; the owner reviews the names. One edit to
+  change.
 - Whether Codex honours `user-invocable`. Answer before the plan commits to a
   single mechanism for both hosts.
+
+## Findings From This Pass — Not In Scope, Recorded So They Are Not Lost
+
+Measured while choosing the list. None of these is fixed here.
+
+- **Three different things are called "dashboard."** `workspace/dashboard.md`
+  (progress), `product:dashboard` (the decision-graph dashboard, backed by
+  `project_memory.py`), and the terminal dashboard `product:status` renders
+  (`commands/product-status.md:114`). A person asking "show me the dashboard"
+  can mean any of the three. This is a naming defect and deserves its own issue.
+- **`product:start` has no script.** Verified twice: no file in `scripts/`
+  matches `start` or `init`, and `commands/product-start.md` contains no script
+  reference of any kind. It is the verb a person reaches for when setting a
+  project up, and it is prose an agent interprets while the deterministic path is
+  filed under `migrate`. Issue 141 owns this.
+- **Thirteen commands reference no script at all**: `goal`, `roadmap`, `spec`,
+  `issues`, `start`, `analyze`, `risks`, `design`, `update`, `weekly`,
+  `evidence`, `prototype`, `opportunity`. For `goal`, `roadmap` and `spec` that
+  is correct — they are authoring commands where the human writes and the tool
+  guides. For the others it is unexamined. **No claim is made here that any of
+  them is redundant.**
+- **Eighteen groups of commands share a script**, the largest being
+  `project_knowledge.py` (benchmark, decision, knowledge, report, research) and
+  `project_memory.py` (dashboard, knowledge, memory, review). A shared storage
+  layer under distinct verbs is the correct shape, not duplication. Establishing
+  real overlap needs a measurement of user *intent*, which has not been done.
+  Consolidation is deliberately not folded into this issue.
+- **GitHub coverage is narrower than it looks.** `.moduflow/config.json` sets
+  `github_sync: "optional"`; `project_github_issues.py` is one-way
+  (git file → GitHub Issue, `--sync`) and never reads back. `product:status`
+  reports remote ahead/behind through `project_sync.py`. Pull-request state and
+  CI results are not checked anywhere in status.
 
 ## Next Command
 
