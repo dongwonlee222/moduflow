@@ -379,3 +379,40 @@
   - The seven required sections are reported **one at a time** (`missing section: X`),
     so authoring a playbook from scratch takes five failed attempts to discover the
     full list. Report them all at once.
+
+- **Reduce the visible command/skill surface and make it Korean-first.** Confirmed
+  with the user on 2026-09-06 after benchmarking Anthropic Skills, Claude Code's
+  invocation controls, OpenAI's skill-authoring guidance, Superpowers and Basic
+  Memory. ModuFlow 0.3.67 currently exposes 41 source commands, 11 top-level skills
+  and 27 generated Codex `source-command-product-*` skills. English descriptions
+  and internal terms make the working `/` palette difficult to scan.
+
+  The user explicitly rejected shorthand such as `/product:d`, `/product:m` and
+  `/product:rev`; those abbreviations create another language to memorize. The
+  primary interaction should be one remembered entry point followed by ordinary
+  Korean: `/moduflow 결정으로 남겨줘: ...`, `/moduflow 비교해줘: ...`,
+  `/moduflow 기억해줘: ...`, `/moduflow 전에 뭐로 정했지?`, `/moduflow 다음에
+  뭐 하면 돼?`.
+
+  Proposed visible allowlist: `/moduflow` plus `product:inbox`, `product:issue`,
+  `product:decision`, `product:benchmark`, `product:memory`, `product:status`,
+  `product:loop`, `product:execute`, `product:review` and `product:release`. Give
+  each one a short Korean action label, a plain Korean sentence and a realistic
+  example. Keep knowledge/evidence/research/report/promote, workflow plumbing,
+  advanced administration, bridges, routers, policies and duplicate generated
+  source-command skills internal while preserving their behavior through the hub.
+
+  `product:decision` must accept one sentence from the human. Infer issue, reason,
+  alternatives and supporting context from the conversation and project; ask only
+  `이 선택을 한 가장 큰 이유가 무엇이었나요?` when the reason is genuinely
+  absent. In user-facing output translate internal schema terms: rationale → `왜
+  이렇게 정했나요?`, alternatives → `다른 선택은 무엇이었나요?`, caveats →
+  `조심할 점이 있나요?`, retrieval_trigger → `언제 다시 살펴보면 될까요?`.
+
+  Memory routing follows the user's words rather than exposing folders: `메모해줘`
+  → inbox, `기억해줘` → durable memory, `정했어` → decision, `비교해줘` →
+  benchmark, `찾아줘`/`전에 뭐였지?` → cross-record search. Meetings,
+  references and knowledge remain storage details.
+
+  Full benchmark and acceptance criteria:
+  `knowledge/benchmarks/2026-09-06-agent-skill-discoverability-and-korean-command-surface.md`.
