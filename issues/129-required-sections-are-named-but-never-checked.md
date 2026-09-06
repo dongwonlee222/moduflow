@@ -53,8 +53,16 @@ code instead of to `_summarize_validation_result`, the function that drops the
 error list. Labelling a guess is not enough; the guess must not be in the cause
 slot at all.
 
-Measured 2026-09-06: 8 of 129 issues are bug-shaped, and 7 already paste real
-command output. The habit exists. The rule does not.
+**Corrected 2026-09-06 during spec.** An earlier draft said "8 of 129 issues are
+bug-shaped, and 7 already paste real command output". That number cannot be
+reproduced. Re-measured against 142 issues: `- Type:` is free prose (107 issues
+carry it, with values like `user product direction`), and only **four** match
+`Type:.*bug` — one of them a false positive. Three issues are machine-identifiable
+as bugs.
+
+And **no issue has a `## Cause` section**; the cause sits inside `## Opportunity`.
+So the rule "the cause slot holds nothing but output" has no slot to attach to.
+Creating that anchor is part of the work, not a precondition of it.
 
 ### B — a decision request that carries nothing to decide with
 
