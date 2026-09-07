@@ -10,7 +10,7 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 103 implementation is 
 
 ## Active Issue
 
-- None active. Run `product:status` to pick the next issue.
+- `104-project-aware-natural-language-request-orchestrator` (phase: spec). Canonical: `issues/104-project-aware-natural-language-request-orchestrator.md`.
 
 ## Priority Queue — 2026-09-07
 

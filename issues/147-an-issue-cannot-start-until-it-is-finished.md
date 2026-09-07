@@ -212,9 +212,9 @@ journal, say so and stop.
 
 ## Workflow Tasks
 
-- [ ] spec
-- [ ] plan
-- [ ] execute
+- [x] spec → `specs/147-an-issue-cannot-start-until-it-is-finished/spec.md`
+- [x] plan → `specs/147-an-issue-cannot-start-until-it-is-finished/plan.md` + `tasks.md`
+- [x] execute → workflow-row scoping, projection rebuild, dead instruction removed
 - [ ] review
 
 ## Related Issues

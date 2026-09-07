@@ -1150,6 +1150,19 @@ issue_id: BIZ-CUSTOM
             issue_id = "024-artifact-schema-and-doctor-gates"
             self.write_loop_project(root, issue_id)
 
+            # 147: an unchecked Workflow Tasks row is a plan, not a manifest —
+            # the fixture's `- [ ] spec` row no longer claims the file exists.
+            # The behaviour under test is that a *claimed* artifact which is
+            # missing gets reported, so the row is marked done to claim it.
+            issue_path = root / "issues" / f"{issue_id}.md"
+            issue_path.write_text(
+                issue_path.read_text(encoding="utf-8").replace(
+                    f"- [ ] spec → `specs/{issue_id}/spec.md`",
+                    f"- [x] spec → `specs/{issue_id}/spec.md`",
+                ),
+                encoding="utf-8",
+            )
+
             result = validator.validate_project(root)
 
             self.assertFalse(result["valid"])

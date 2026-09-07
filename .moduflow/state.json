@@ -1,10 +1,10 @@
 {
   "schema": "moduflow.state.v1",
-  "phase": "select",
+  "phase": "spec",
   "active_goal": "trustworthy-execution-and-project-knowledge",
-  "active_issue": "",
+  "active_issue": "104-project-aware-natural-language-request-orchestrator",
   "last_command": "product:decision beads-issue-backend-not-adopted",
-  "next_command": "product:status",
+  "next_command": "product:plan 104-project-aware-natural-language-request-orchestrator",
   "blockers": [],
   "updated_at": "2026-09-07"
 }

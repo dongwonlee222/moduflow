@@ -1,6 +1,6 @@
 # Issue 104: Project-Aware Natural-Language Request Orchestrator
 
-**Status: backlog** — created 2026-08-19; unblocked 2026-09-07.
+**Status: active** — created 2026-08-19; unblocked 2026-09-07; started 2026-09-07.
 **Priority: p0**
 
 ## Summary

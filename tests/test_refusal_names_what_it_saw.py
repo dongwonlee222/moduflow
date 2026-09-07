@@ -271,5 +271,60 @@ class TheTransactionStaysRedacted(unittest.TestCase):
         )
 
 
+class ProjectionOnlyRefusalNamesTheProjection(unittest.TestCase):
+    """Issue 147, the half 126 could not reach.
+
+    126 made the refusal honest: when the canonical project validates clean it
+    says so and declines to guess. That was right, and it left the reader with
+    one error code and an instruction that cannot be followed — the message says
+    to re-run with the transaction id, and `--recover` on a projected-validation
+    failure returns RECOVERY_JOURNAL_MISSING because that failure never reaches
+    the journal stage.
+
+    So the refusal now rebuilds the projection and reports its errors. Same move
+    as 126, one level deeper: 126 re-validates the canonical root because the
+    transaction's summary is redacted; this re-validates the projected one for
+    the same reason. Issue 103's redaction is untouched — nothing is read out of
+    the envelope or the journal.
+    """
+
+    def projection_only_refusal(self):
+        """This repository validates clean, so it takes the projection-only
+        branch — an empty temp directory does not: its canonical validation
+        already has findings and the refusal reports those instead. That
+        mistake cost two red tests before it was noticed."""
+        return " ".join(
+            lifecycle.refusal_lines("PROJECTED_VALIDATION_INVALID", ROOT)
+        )
+
+    def test_it_no_longer_tells_the_reader_to_look_up_a_transaction_id(self):
+        """The instruction was measured impossible before it was removed."""
+        joined = self.projection_only_refusal()
+        self.assertNotIn("transaction id", joined)
+        self.assertNotIn("--recover", joined)
+
+    def test_a_projection_only_refusal_names_the_projection(self):
+        joined = self.projection_only_refusal()
+        self.assertIn("projection", joined.lower())
+
+    def test_projected_sentences_report_what_the_projection_saw(self):
+        """The live case: 104 with plan.md and review.md absent used to refuse.
+
+        Asserted against a projection this repository can actually build, so the
+        test fails if the rebuild path stops working — which is the only way to
+        notice, since the refusal is the sole consumer.
+        """
+        sentences = lifecycle.projected_validation_sentences(
+            ROOT,
+            issue_id="104-project-aware-natural-language-request-orchestrator",
+            action="update",
+        )
+        self.assertIsInstance(sentences, list)
+
+    def test_the_rebuild_says_it_is_a_re_run(self):
+        """It runs later than the failure, against a tree that may have moved."""
+        self.assertIn("다시", self.projection_only_refusal())
+
+
 if __name__ == "__main__":
     unittest.main()

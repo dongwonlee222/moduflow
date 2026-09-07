@@ -301,5 +301,75 @@ class TechnicalTermRuleIsStated(unittest.TestCase):
         self.assertIn("읽는 사람이 그 말을 아는지", text)
 
 
+class WorkflowChecklistIsAPlanNotAManifest(unittest.TestCase):
+    """Issue 147. An issue could not start until it was finished.
+
+    `validate_active_issue_links` required every specs/ path named anywhere in
+    the active issue to exist, and a Workflow Tasks checklist names all four
+    artifacts. So issue 104 could not become active because plan.md and
+    review.md were missing — files written after starting, review.md last.
+
+    Issue 132 started fine only because it wrote `specs/<issue>/plan.md`, which
+    `linked_artifacts` skips as a placeholder. The issue that named its
+    artifacts precisely was the one punished.
+
+    The rule is what the checkbox already meant: a checked row's artifact must
+    exist, an unchecked row's must not be required.
+    """
+
+    HEAD = "# Issue 999: Fixture\n\n**Status: active** — probe.\n\n"
+
+    def links(self, body):
+        return set(validator.linked_artifacts(self.HEAD + body))
+
+    def test_an_unchecked_row_is_not_required(self):
+        body = (
+            "## Workflow Tasks\n\n"
+            "- [x] spec → `specs/999-x/spec.md`\n"
+            "- [ ] plan → `specs/999-x/plan.md`\n"
+            "- [ ] review → `specs/999-x/review.md`\n"
+        )
+        self.assertEqual(self.links(body), {"specs/999-x/spec.md"})
+
+    def test_a_checked_row_is_still_required(self):
+        """The fix must narrow the check, not switch it off."""
+        body = "## Workflow Tasks\n\n- [x] plan → `specs/999-x/plan.md`\n"
+        self.assertIn("specs/999-x/plan.md", self.links(body))
+
+    def test_tasks_md_beside_plan_follows_the_same_row(self):
+        """`tasks.md` has no row of its own; it rides the plan row's checkbox."""
+        checked = "## Workflow Tasks\n\n- [x] plan → `specs/999-x/plan.md` + `specs/999-x/tasks.md`\n"
+        unchecked = checked.replace("- [x]", "- [ ]")
+        self.assertIn("specs/999-x/tasks.md", self.links(checked))
+        self.assertNotIn("specs/999-x/tasks.md", self.links(unchecked))
+
+    def test_links_outside_the_checklist_are_untouched(self):
+        """`## Links` and `## Entry Points` name things that exist."""
+        body = (
+            "## Workflow Tasks\n\n- [ ] plan → `specs/999-x/plan.md`\n\n"
+            "## Links\n\n- Goal: `workspace/goal.md`\n\n"
+            "## Entry Points\n\n- `specs/999-x/spec.md`\n"
+        )
+        found = self.links(body)
+        self.assertIn("workspace/goal.md", found)
+        self.assertIn("specs/999-x/spec.md", found)
+        self.assertNotIn("specs/999-x/plan.md", found)
+
+    def test_placeholders_are_still_skipped(self):
+        body = "## Workflow Tasks\n\n- [x] plan → `specs/<issue>/plan.md`\n"
+        self.assertEqual(self.links(body), set())
+
+    def test_issue_104_now_has_only_its_written_artifact_linked(self):
+        """The live case. spec.md is written; plan.md and review.md are not."""
+        text = (ROOT / "issues"
+                / "104-project-aware-natural-language-request-orchestrator.md"
+                ).read_text(encoding="utf-8")
+        found = set(validator.linked_artifacts(text))
+        base = "specs/104-project-aware-natural-language-request-orchestrator/"
+        self.assertIn(base + "spec.md", found)
+        self.assertNotIn(base + "plan.md", found)
+        self.assertNotIn(base + "review.md", found)
+
+
 if __name__ == "__main__":
     unittest.main()

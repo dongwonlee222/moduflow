@@ -304,7 +304,31 @@ def active_loop_state(root, project_loop, *, project_context=None):
     return project_loop.load_loop_state(root, project_context=context)
 
 
+# 147: a Workflow Tasks row is a plan, not a manifest. The checklist names all
+# four artifacts an issue *will* produce, and reading it as files that must
+# already exist meant an issue could not start until it was finished — issue 104
+# was refused for a missing review.md, which is written last.
+#
+# The rule is what the checkbox already meant: a checked row's artifact must
+# exist, an unchecked row's must not be required. Links elsewhere in the issue
+# keep today's behaviour, because `## Links` and `## Entry Points` name things
+# that exist.
+_WORKFLOW_SECTION_RE = re.compile(r"^##\s+Workflow Tasks\s*$(.*?)(?=^## |\Z)", re.M | re.S)
+_UNCHECKED_ROW_RE = re.compile(r"^- \[ \].*(?:\n(?![-#]).*)*", re.M)
+
+
+def _without_unfinished_workflow_rows(issue_text):
+    """Blank out unchecked Workflow Tasks rows before links are collected."""
+    match = _WORKFLOW_SECTION_RE.search(issue_text)
+    if not match:
+        return issue_text
+    body = match.group(1)
+    pruned = _UNCHECKED_ROW_RE.sub("", body)
+    return issue_text[: match.start(1)] + pruned + issue_text[match.end(1) :]
+
+
 def linked_artifacts(issue_text, project_paths=None):
+    issue_text = _without_unfinished_workflow_rows(issue_text)
     project_paths = project_paths or {
         "specs": "specs",
         "workspace": "workspace",

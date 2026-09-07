@@ -742,7 +742,15 @@ def sync_lifecycle(
     return result
 
 
-def refusal_lines(error_code, root, *, subject="Lifecycle transaction", project_context=None):
+def refusal_lines(
+    error_code,
+    root,
+    *,
+    subject="Lifecycle transaction",
+    project_context=None,
+    issue_id=None,
+    action="update",
+):
     """Name what the operator can change, not only the rule that refused.
 
     126: every caller returned one line naming a rule and recommending
@@ -767,16 +775,83 @@ def refusal_lines(error_code, root, *, subject="Lifecycle transaction", project_
         # Honest, and the case that must not be papered over: the projection was
         # rejected while the canonical project validates clean. Naming a cause
         # here would be a guess, which is the failure this issue exists to stop.
+        # 147: 126 stopped here with an instruction that cannot be followed —
+        # it told the reader to re-run with the transaction id, and `--recover`
+        # on a projected-validation failure returns RECOVERY_JOURNAL_MISSING
+        # because that failure never reaches the journal stage. So rebuild the
+        # projection and report what it saw. Same move as 126, one level
+        # deeper; issue 103's redaction is untouched because nothing is read
+        # out of the envelope or the journal.
+        projected = projected_validation_sentences(
+            root, issue_id=issue_id, action=action, project_context=project_context
+        )
+        if projected:
+            return (
+                [
+                    f"{head} The current project validates clean; the projection "
+                    f"is what failed. Rebuilt it and found "
+                    f"{len(projected)} problem(s) — 투영을 다시 만들어 검사한 "
+                    f"결과입니다:"
+                ]
+                + [f"  - {line}" for line in projected]
+            )
         return [
             f"{head} The current project validates clean, so the projected state "
-            f"was rejected for something the canonical files do not show. This is "
-            f"a projection-only failure — re-run with the transaction id above "
-            f"and report it; do not edit files at random."
+            f"was rejected for something the canonical files do not show. This "
+            f"is a projection-only failure, and rebuilding the projection did "
+            f"not reproduce it — 투영을 다시 만들어 봤지만 이유가 재현되지 "
+            f"않았습니다. Do not edit files at random."
         ]
     return (
         [f"{head} The current project has {len(findings)} problem(s) to fix:"]
         + [f"  - {finding}" for finding in findings]
     )
+
+
+def projected_validation_sentences(
+    root,
+    *,
+    issue_id=None,
+    action="update",
+    project_context=None,
+):
+    """Rebuild the rejected projection and return its findings as sentences.
+
+    147. A projected-validation failure discards the staging copy along with
+    the reason, leaving one error code. This rebuilds the projection and
+    validates it directly — the only way to see the errors, and exactly what
+    had to be done by hand to diagnose issue 104 on 2026-09-07.
+
+    It is a re-run, not a recording. It happens later than the failure, against
+    a tree that may have changed, and the caller must say so. Only ever called
+    on a refusal path: it copies the project.
+
+    Returns [] on any failure. A refusal that cannot explain itself is bad; a
+    refusal that raises while trying is worse.
+    """
+    if not issue_id:
+        return []
+    try:
+        transaction = _load_lifecycle_transaction_module()
+        validator = _load_validate_project_artifacts()
+        intent = transaction.LifecycleIntent(
+            issue_id=issue_id,
+            action=action,
+            actor="refusal-diagnostic",
+            source_event="147 projection rebuild",
+        )
+        plan = transaction.plan_lifecycle_transaction(Path(root), intent)
+        with transaction._private_projected_state(plan) as projected:
+            result = validator.validate_project(
+                projected.root, project_context=projected.context
+            )
+    except Exception:
+        return []
+    if not isinstance(result, dict):
+        return []
+    sentences = list(result.get("errors") or ())
+    sentences.extend(result.get("lifecycle_drift") or ())
+    return sentences
 
 
 def project_validation_sentences(root, *, project_context=None):
