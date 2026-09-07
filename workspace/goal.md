@@ -1,144 +1,70 @@
-# Goal: Trustworthy Execution and Project Knowledge
+# Goal: 프로젝트의 맥락을 잃지 않게 한다
 
-## Objective
+## 무엇
 
-Make ModuFlow stop unsafe work before it reaches the wrong repository, turn external review into evidence-backed remediation, and give each project a reproducible knowledge, artifact, analysis, and dashboard home.
+모두플로는 프로젝트의 **맥락·기록·결정·다음 액션**을 관리한다.
+**실제 작업은 외부 도구가 한다.**
 
-The current product focus is continuity across projects and AI tasks: people and AI find selected evidence through one short project home. ModuFlow manages context, records, decisions and next actions; external company standards and replaceable specialist tools/runners perform the work.
+> ⚠️ 이 네 가지는 2026-09-07에 이전 목표 문서의 한 문장 —
+> *"ModuFlow manages context, records, decisions and next actions; external
+> company standards and replaceable specialist tools/runners perform the work"* —
+> 을 압축한 것입니다. **원래 문서에 "네 가지"라고 정해져 있던 것이 아닙니다.**
+> 이슈를 거르는 기준이 여기에 걸려 있으므로, 사장님이 이 네 가지가 맞는지
+> 확인해 주셔야 합니다.
 
-## Owner
+## 안 하는 것
 
-Dongwon Lee
+이전 문서(2026-09-04, 144줄)의 Constraints에서 그대로 옮겼습니다. 다른 데서
+복원할 수 없는 결정들입니다.
 
-## Why Now
+- **두 번째 실행 런타임을 만들지 않는다.** 스케줄러도, 큐도, Spec Kit 전체
+  구현도 아니다.
+- **git 파일이 정본이다.** GitHub과 대시보드는 투영이다.
+- **등록된 프로젝트만 본다.** 옆 폴더를 훑지 않고, 프로젝트 간 원본 기록을
+  가로질러 검색하지 않는다.
+- **원격을 자동으로 고쳐 쓰지 않고, 승인 없이 바깥에 공개하지 않는다.**
+- **민감한 원본 데이터와 인증정보는 저장소 밖에 둔다.**
+- **공용 플레이북 자동 승격, 승인자 자동 인가, 검증 없는 최종 상태 전이를
+  하지 않는다.**
+- **대시보드 데이터베이스를 두 번째로 만들지 않고**, 공유 HTML에 프로젝트 간
+  비공개 내용을 담지 않는다.
 
-Repository sync, review handoff, production records, and dashboard foundations already exist. The remaining risk is trust and continuity: remote names can conceal the wrong repository, external review can be accepted without proof, and project conclusions or artifacts can become scattered across files and Sheets.
+## 이뤘다고 하려면
 
-The 2026-09-02 user requests prioritize material discovery, cross-session handoff and reusable company standards over further execution expansion. See `workspace/roadmap.md` for the authoritative Now/Next/Later ordering. Issue 103 is merged; the 111/060 release 0.3.56 is published and installed. Prioritize 090 → 091 → 086 → 092 before richer orchestration. This changes execution order, not hard dependencies.
+**미정 — 사장님이 정하실 것.**
 
-## Issues
+이전 문서에는 완료 조건이 **26개** 있었습니다. 26개는 목표가 아니라 할 일
+목록입니다. **3~5개**로 줄여야 이슈를 거를 수 있습니다.
 
-Current checkpoint (2026-09-03): 090 implementation, full verification, explicitly approved PR #47 integration and 0.3.57 publication/installation are complete. Installed validation and fresh CLI/MCP passed; see `specs/090-project-knowledge-and-artifact-registry/release.md`. Canonical completion transaction set 090 to done without a fictional earlier start or second active issue. 111 remains active for R01/R02 actual Codex/Claude prompt-skill observations. Remaining implementation priority is 091 → 086 → 092; no next implementation is started here. 086 stays limited to separately prepared QA documents/synthetic inputs. Actual company-project adoption is unperformed, and no runtime/scheduler was introduced.
+제가 채우지 않았습니다. 목표의 성공 기준을 제가 지어내면, 그 기준으로 이슈
+41개를 판정하는 일이 통째로 근거를 잃습니다. 이슈의 원인을 짐작해서 적었다가
+세 번 다시 쓴 것과 같은 잘못입니다.
 
-- `088-canonical-repository-remote-identity-gate` — P0; canonical repo/base identity and pre-write blocking.
-- `089-verified-code-review-intake-and-remediation-routing` — P1; evidence-backed review disposition.
-- `093-frontmatter-issue-schema-readiness-gate` — P1; contradictory readiness/dependency blocking.
-- `094-risk-based-security-and-quality-review-gate` — P1; preventive checks learned from approved review history.
-- `086-project-aware-production-library-dashboard` — P2; project-scoped production/playbook views after the safety gate sequence.
-- `090-project-knowledge-and-artifact-registry` — P1; structured project wiki and artifact registry.
-- `091-reproducible-analysis-runs-and-template-pack` — P1; reproducible analysis history and templates.
-- `092-project-home-dashboard` — P2; final project home; blocked by 086, 090, and 091.
-- `087-korean-github-pr-review-surface` — P1; Korean-first GitHub review publication.
-- `097-single-entry-capability-routing-contract` — P2; predictable single-entry specialist routing with offline safety simulation.
-- `098-speckit-selective-validation-adapter` — P2; selectively activate Spec Kit validation after Issue 097 proves the routing boundary.
-- `102-project-registry-and-resolver` — P0; explicit registry v2, deterministic project resolution, and canonical artifact paths.
-- `103-atomic-lifecycle-state-transaction` — P0; all-or-nothing lifecycle/state/dashboard/production updates with rollback.
-- `104-project-aware-natural-language-request-orchestrator` — P0; connect the existing single entry point to project context, production knowledge, capability routing, verification, and atomic handoff.
-- `105-schema-migration-and-doctor-triage` — P0; prioritize blockers, plan/apply reversible migrations, and safely fix deterministic legacy drift.
-- `106-korean-production-search-and-stable-ids` — P1; Korean multi-token retrieval, match reasons, and meaningful collision-resistant production IDs.
-- `107-shared-approved-playbook-layer` — P1; share only explicitly approved and redacted organization rules while raw project knowledge stays isolated.
-- `108-production-approval-and-verification-gates` — P1; approver readiness and evidence-backed deliverable-specific final-state gates.
-- `109-canonical-project-context-consumer-convergence` — P0; eliminate remaining direct project-path assumptions before Issue 103 implementation.
-- `110-project-operation-capability-enforcement` — P0; separate resolved identity from read/write/execute/publish authorization before Issue 103 implementation.
-- `111-runtime-provenance-and-validation-mode-separation` — P1; distinguish source, installed package, and target-project validation and expose active runtime provenance before the next plugin release.
-- `112-execution-planner-and-backend-boundary` — P0; plan only concrete implementation work and select one inline or Superpowers SDD execution path without building another runtime.
-- `113-review-lifecycle-and-exception-fix-approval` — P1; separate implementation, review, fixes, approval, and merge states and record user-approved exception fix rounds.
-- `114-speckit-selective-adapter-1x-compatibility` — P1; review and pin one exact Spec Kit 1.x version for the four read-only advisory functions only.
-- `115-playbook-process-and-checklist-extension` — P1; add an external `process_ref` and a numbered human-owned `Required Checks` checklist to `moduflow.playbook.v1` as an Issue 085 follow-up; blocks 091.
-- `116-merged-issue-completion-parity` — P1; report an issue whose commits are merged on the canonical remote while its own lifecycle state is not `done`, using the Issue 095 attribution index.
-- `117-plan-execution-readiness-surfacing` — P1; report a plan that no execution tool can read: no `tasks.md`, no declared file boundaries, or a stale worker plan. Detection only; generates nothing and blocks nothing.
+물어볼 것은 이겁니다 — **무엇이 되면 "모두플로가 됐다"고 하시겠습니까?**
 
-## Workstream: Safe Multi-Project Request Orchestration
+예시(제 짐작이며, 그대로 쓰지 마십시오):
+- 말로 시켜도 올바른 프로젝트에서 안전하게 돈다
+- 무엇이 끝났고 왜 그렇게 정했는지 파일만 보면 안다
+- 다른 컴퓨터·다른 사람이 받아도 똑같이 동작한다
 
-Route natural-language work to one explicit project, reuse only permitted project/shared knowledge, verify the result, and update every lifecycle view without partial state.
+## 상태
 
-```mermaid
-flowchart LR
-    I085[085 Production records\ndone] --> I106[106 Korean search + stable IDs\nP1]
-    I085 --> I104[104 Request orchestrator\nP0]
-    I048[048 Lifecycle sync\ndone] --> I103[103 Atomic state transaction\ndone]
-    I004[004 Portfolio registry\ndone] --> I102[102 Registry v2 + resolver\ndone]
-    I002[002 Project profile\ndone] --> I102
-    I102 --> I109[109 Canonical consumers\ndone]
-    I102 --> I110[110 Capability enforcement\ndone]
-    I102 --> I111[111 Runtime diagnostics\nP1]
-    I103 --> I112[112 Execution boundary\nP0]
-    I112 --> I104
-    I103 --> I113[113 Review lifecycle\nP1]
-    I112 --> I113
-    I098[098 Selective Spec Kit adapter\ndone] --> I114[114 Spec Kit 1.x compatibility\nP1]
-    I112 --> I114
-    I109 --> I103
-    I110 --> I103
-    I102 --> I104
-    I103 --> I104
-    I102 --> I105[105 Migration + Doctor triage\nP0]
-    I103 --> I105
-    I102 --> I107[107 Shared approved playbooks\nP1]
-    I106 --> I107
-    I104 --> I108[108 Production approval + verification\nP1]
-    I102 --> I086[086 Production dashboard\nP2]
-```
+- 소유자: 이동원
+- 활성 이슈: `104-project-aware-natural-language-request-orchestrator`
+- 열린 이슈: 41건 (p0 2 · p1 22 · p2 13 · p3 4)
+- 갱신: 2026-09-07
 
-**Review decision:** existing Issues 020, 022, 065, 076, 088, 097, 102, 103, and 105 were checked before registration. The verified Issue 102 follow-up findings are not duplicate deliverables: Issues 109 and 110 are P0 prerequisites for Issue 103 implementation, while the two related runtime/validation findings are intentionally grouped into Issue 111.
+## 이 파일이 아닌 곳
 
-## Completion Criteria
+| 무엇 | 어디 |
+|---|---|
+| 이슈 목록·상태·우선순위 | `issues/*.md` — 정본 |
+| 이슈 간 의존 | 각 이슈의 `Related Issues` — 계산 가능 |
+| 지금 진행 상황 | `workspace/dashboard.md` |
+| 우리 규칙 | `workspace/constitution.md` |
 
-- Wrong repository or archived/read-only identity stops execute, PR, release, and push before writes.
-- External review findings have evidence, disposition, remediation timing, and issue candidates.
-- Mixed issue schemas cannot report ready/execute while dependencies or readiness are unmet.
-- Projects maintain structured knowledge, artifact, and reproducible analysis records.
-- The project home shows current work, recent outputs, key Sheets, conclusions, and next actions.
-- People and fresh AI tasks use the same short home and source-linked catalog; validate two-project isolation, committed-worktree handoff, stale/missing links and optional private-source absence separately from actual host/session loading.
-- Company analysis/document standards are external versioned references, not copied business logic; record effective rules and applicable validation evidence without weakening privacy/access constraints.
-- Analysis run completion, validation, human approval, observation-pending decisions and actually scheduled follow-ups remain distinguishable.
-- Each phase proves its user-facing boundaries with synthetic simulation scenarios before actual use; unit tests, simulated execution, packaged smoke and actual project/host observations remain separate evidence.
-- A request resolves exactly one registered project before any project-local read or write.
-- Every project-aware path consumer uses that resolved context, including non-default registered folders.
-- Archived/read-only projects remain readable but cannot write, execute, or publish.
-- Project A raw issues, records, local playbooks, and brand language never appear in Project B work.
-- Related work attaches to an existing issue; only independent deliverables create new issue candidates.
-- Lifecycle mutations either update all configured canonical/derived state together or preserve the complete prior state.
-- Legacy migration is planned, reversible, idempotent, and separated from current-work blockers in Doctor output.
-- Source release validation, installed-plugin self-check, and target-project Doctor are distinct, and status identifies the actually loaded runtime/package provenance.
-- Korean multi-token production search returns explained matches and Korean-titled records receive stable meaningful IDs.
-- Only explicitly approved, redacted shared playbooks cross project boundaries.
-- Production artifacts cannot become final, approved, published, or upload-ready without required verification evidence.
-- Worker plans contain only unfinished executable tasks with concrete file/dependency boundaries; simple or shared-state work remains inline.
-- ModuFlow selects one execution path and records truthful evidence while the active host/Superpowers runtime performs actual execution.
-- Implementation completion, review findings, explicit approval, and verified merge remain distinct states.
-- Spec Kit stays optional and read-only; any 1.x refresh is exact-version/hash pinned after compatibility review.
-
-## Constraints
-
-- Git-tracked project files remain canonical; GitHub and dashboard surfaces are projections.
-- No automatic remote rewrite or unapproved external publication.
-- Sensitive source data and credentials stay outside the repository.
-- Existing staged work for issues 081–084 remains independent from this branch.
-- Existing Issues 085 and 086 are extended through follow-ups, not replaced or rewritten.
-- Registered projects only; no arbitrary sibling-project crawling or cross-project raw-record search.
-- No automatic shared-playbook promotion, approver authorization, or unverified final-state transition.
-- Issue 102 is merged and externally revalidated. Issues 109 and 110 completed before Issue 103 implementation began; Issue 111 may run in parallel but must complete before the next plugin release.
-- No second ModuFlow subagent runtime, scheduler, queue, or full Spec Kit implementation lifecycle.
-- Keep the Issue DB/table/tab UI and Git-native source records; do not introduce a second dashboard database or embed private cross-project payloads in a shared HTML page.
-- Reconcile new requirements within 086/090/091/092 before implementation; preserve existing acceptance criteria, including 091's five templates. Automation expansion remains a later bounded scope, not a newly authorized runner installation or schedule.
-- Issue 104 consumes Issue 112's execution-routing contract; Issue 113 consumes Issues 103 and 112; Issue 114 never blocks projects that keep the approved 0.16.1 adapter disabled or pinned.
-
-## Status
-
-- State: `active`
-- Blocker: none. The Issue 111 publication hold is retired: its implementation shipped in 0.3.56 and its remaining real-host observations R01/R02 were recorded on 2026-09-04 during the 0.3.62 release. Issues 091 and 115 are complete, merged in PRs #48 and #49, published as 0.3.62 and observed loaded in Codex. Issue 103 implementation and PR #44 merge remain complete.
-- Updated: 2026-09-04
-
-## History
-
-- `team-visibility-onboarding` — closed before 2026-07-16.
-- `visual-workbench` — closed 2026-07-05.
-- 2026-09-02: refreshed priorities for project discovery, cross-session continuity and external company standards; retained Issue 111's release gate and deferred expanded execution/automation. No new issues or implementation started by this refresh.
-- 2026-09-02: added the cross-phase simulation contract and Issue 111's four-stream spec/plan with twelve offline scenarios and two actual-host observations. Document preparation does not count as execution approval or passing tests.
+이전 144줄 판은 `workspace/goal.md.bak`에 있고, git 이력에도 남아 있습니다.
 
 ## Next Command
 
-`product:review 111-runtime-provenance-and-validation-mode-separation`
-
-Review the drafted 111 spec/plan, then implement and verify its four inline streams before resuming publication. Next deliver the 090/091/086/092 project-knowledge slice; 112 still precedes 104/113/114, but is not a new prerequisite for that slice.
+`product:status`

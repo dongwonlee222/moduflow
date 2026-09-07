@@ -159,6 +159,11 @@ def render_issue(template_text, issue_id, frontmatter, body, record_ref, created
         # not one of the four) and the marker says the issue is not executable
         # until a person picks one.
         "type_token": f"{TODO_MARKER}: bug|feature|chore|spike 중 하나를 고른다",
+        # 2026-09-07: the `## 안 고치면` slot shipped in the template without a
+        # producer here, so a promoted issue carried the raw `{{...}}` through.
+        # A record says what was decided, never who is blocked without it, so
+        # this lands as the same blocking TODO the other underivable slots use.
+        "blocked_without_this": f"{TODO_MARKER}: 이걸 안 고치면 누가 무엇을 못 하는지 한 문장",
         "source_type": "promoted record",
         "source_link": f"`{record_ref}`",
         "date": source_date,

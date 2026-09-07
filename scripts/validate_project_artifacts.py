@@ -139,12 +139,19 @@ def decision_content(body, source):
     return findings
 
 
-# 2026-09-07: written, then taken back out of SECTION_RULES within the hour.
-# Requiring `## 안 고치면` on every issue fired on 35 test fixtures across the
-# suite — every fixture that builds a minimal issue would have to carry the
-# section. The rule is right and the scoping was wrong; it goes back in once
-# workspace/goal.md is rewritten into something an issue can actually be
-# measured against, with a scope that does not catch fixtures.
+# 2026-09-07: taken out, then measured, then put back.
+#
+# The first attempt reported "35 test fixtures break". That number was wrong and
+# the diagnosis with it: those 35 came from removing the `token is None` skip in
+# the same change, not from this rule. Re-run with the rule alone and the skip
+# intact, the cost was **one** test — `test_project_promote`, and its cause was
+# a missing `blocked_without_this` producer in `scripts/project_promote.py`,
+# which left the raw `{{...}}` in a promoted issue. Fixed there.
+#
+# So the rule stands, and it is scoped by the skip that already existed: an
+# issue whose `- Type:` is prose parses to None and every issue rule passes it
+# by. That leaves the rule firing on the handful written since 2026-09-06.
+# Issue 144 owns widening it, and only that widening makes this bite.
 def blocked_without_this_content(body, source):
     findings = []
     text = body.strip()
@@ -157,6 +164,10 @@ def blocked_without_this_content(body, source):
 
 
 SECTION_RULES = [
+    SectionRule(
+        kind="issue", type_token=None, section="안 고치면", required=True,
+        message="이슈에 `## 안 고치면`이 없습니다.", content=blocked_without_this_content,
+    ),
     SectionRule(
         kind="issue",
         type_token="bug",
