@@ -114,3 +114,41 @@ issue whose own goal file says the product should be getting lighter.
 ## Next Command
 
 `product:status`
+
+---
+
+## 사후 추가 — spec-kit `analyze` 가 찾은 것 (2026-09-07)
+
+이 이슈가 `done` 이 된 뒤, spec-kit 어댑터를 켜고(151) 이 명세에 처음으로
+`analyze` 를 돌렸습니다. **아래는 고쳐 쓴 것이 아니라 덧붙인 것입니다** — 헌법
+C5(Findings are append-only)가 기존 산출물 내용을 다시 쓰는 것을 금합니다.
+`plan.md` 의 틀린 줄은 그대로 두고, 여기에 정정을 적습니다.
+
+| ID | 등급 | 위치 | 발견 | 사실인가 |
+|---|---|---|---|---|
+| D1 | CRITICAL(도구 판정) | `specs/104-*/` | **C9 한국어 사이드카(`spec.ko.md`)가 없다.** 저장소의 25개 명세는 갖고 있다 | 사실. 다만 **C9는 SHOULD** 이고 *"missing sidecars fall back, never gate"* 라 위반은 아니다 |
+| C1 | HIGH | `spec.md` R6 ↔ `tasks.md` T09 | **R6은 "산출물을 검증한 뒤 커밋"인데 T09는 전이만 한다.** 산출물 검증에 매핑된 태스크가 0개 | **사실.** 명세를 좁혔어야 했는데 안 했다 |
+| A1 | MEDIUM | `spec.md` R3 | "high-confidence overlap" 이 측정 불가 표현이다 | **헛방.** R3 개정문이 이미 그 점을 인정하고 답했는데, 원문 표현만 보고 지적했다 |
+| F1 | MEDIUM | `plan.md` Approach | `stage_capability → capability_routing.route` 라 적혀 있으나 실제 함수는 **`route_request`** | **사실** |
+| F2 | LOW | `plan.md` Approach | `route_request(request, root, *, host=None)` 로 적혀 있으나 실제는 `registry_path` 를 받고 `chosen_issue`·`commit` 이 더 있다 | **사실** |
+
+**커버리지: 요구사항 6개 중 5개 완전, R6이 부분 — 83%.**
+
+### 이 도구가 실제로 한 일
+
+**분석은 모델이 했습니다.** 어댑터가 한 것은 **입력 파일 넷을 찾아 주고 검사
+항목표(템플릿)를 건네준 것**입니다. 그게 설계이고(advisory only, 아무것도 안
+씀), 그 이상을 하지 않습니다.
+
+그래도 값이 있었습니다. 혼자였으면 **중복·모호·미명세·헌법 정렬·커버리지·용어
+표류** 여섯 갈래를 빠짐없이 훑지 않았을 것이고, **특히 헌법 대조는 안 했을
+것**입니다. D1이 거기서 나왔습니다. 5건 중 4건이 사실이고 1건이 헛방입니다.
+
+### 안 고친 것과 그 이유
+
+`plan.md` 의 F1·F2를 **고쳐 쓰지 않았습니다.** C5가 금합니다. 다음 사람이
+`plan.md` 를 믿고 잘못 읽지 않도록 이 표가 정정 기록입니다.
+
+`spec.ko.md` 는 만들지 않았습니다 — C9는 SHOULD 이고 fallback 이 명시돼
+있습니다. 다만 25개 명세가 갖고 있으니, 사이드카를 언제 만들고 언제 안 만드는지
+자체가 정해져 있지 않다는 뜻입니다. 별건입니다.
