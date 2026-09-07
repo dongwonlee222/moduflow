@@ -1,6 +1,6 @@
 # Issue 114: Spec Kit Selective Adapter 1.x Compatibility
 
-**Status: backlog** — created 2026-09-01.
+**Status: superseded** — closed 2026-09-07 against `workspace/goal.md`. The Spec Kit adapter is switched off with no plan to switch it on, and the goal's 「안 하는 것」 states in writing that ModuFlow is not a full Spec Kit implementation. Compatibility work for a disabled adapter is work against the stated boundary. Kept for the record; do not implement from this file.
 **Priority: p1**
 **Blocked-by: `112-execution-planner-and-backend-boundary`**
 

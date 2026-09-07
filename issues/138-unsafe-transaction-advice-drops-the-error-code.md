@@ -1,6 +1,6 @@
 # Issue 138: Unsafe Transaction Advice Drops The Error Code
 
-**Status: backlog** — created 2026-09-06.
+**Status: superseded-by-146** — absorbed into `146-the-validator-throws-away-severity-at-the-last-step` on 2026-09-07. Both are a diagnostic that arrives without its code, and 146 builds the findings array that carries one. Nothing is dropped: the ten `unsafe` causes and the single-sentence advice all move across. Kept for the record; do not implement from this file.
 **Priority: p3**
 
 ## 요약

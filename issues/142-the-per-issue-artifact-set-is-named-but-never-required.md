@@ -191,6 +191,19 @@ invisible one, and every count in this issue would then read as healthy.
   level out — a step reports success against a standard narrower than the one
   the user has in mind)
 
+- supersedes: `144-the-type-token-is-instructed-not-enforced` and
+  `145-the-verification-plan-is-a-convention-nobody-requires` — absorbed
+  2026-09-07. All three are one shape: something is named in code or in a
+  command file and nothing checks it. Merged rather than sequenced because each
+  needs the same checking place and running them apart builds it three times.
+  Carried across from 144: what counts as an issue that must carry a token, the
+  107 legacy issues that must keep passing, and the rule that
+  `project_promote.py`'s `TODO(blocking-execution)` must not hard-fail at
+  promote time. Carried across from 145: one canonical heading for the
+  verification section, a content rule narrow enough to be honest (a runnable
+  command or a named test file, not prose), and the verdict owed on whether
+  `commands/product-plan.md`'s TDD matrix is binding.
+
 ## Next Command
 
 `product:spec 142-the-per-issue-artifact-set-is-named-but-never-required`

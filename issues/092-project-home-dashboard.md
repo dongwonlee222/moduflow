@@ -1,6 +1,6 @@
 # Issue 092: Project Home Dashboard
 
-**Status: backlog** — created 2026-07-16.
+**Status: superseded-by-143** — absorbed into `143-four-different-things-are-called-the-dashboard` on 2026-09-07. Four things already carry the name; a fifth is not the fix. Naming the four is. Kept for the record; do not implement from this file.
 **Priority: p2**
 **Blocked-by: `086-project-aware-production-library-dashboard`, `090-project-knowledge-and-artifact-registry`, `091-reproducible-analysis-runs-and-template-pack`**
 

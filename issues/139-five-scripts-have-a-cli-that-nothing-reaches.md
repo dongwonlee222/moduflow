@@ -1,6 +1,6 @@
 # Issue 139: Five Scripts Have A CLI That Nothing Reaches
 
-**Status: backlog** — created 2026-09-06.
+**Status: superseded** — closed 2026-09-07 against `workspace/goal.md`. 915 unreached lines across five scripts change no behaviour and block nobody. This is tidying, and tidying does not need an issue to authorise it — delete or wire them when the surrounding file is next opened. Kept for the record; do not implement from this file.
 **Priority: p3**
 
 ## 요약

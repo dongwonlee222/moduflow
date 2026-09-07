@@ -1,6 +1,6 @@
 # Issue 144: The Type Token Is Instructed, Not Enforced
 
-**Status: backlog** — created 2026-09-06.
+**Status: superseded-by-142** — absorbed into `142-the-per-issue-artifact-set-is-named-but-never-required` on 2026-09-07. Both are the same shape — something is named in code and nothing checks it — and 142 builds the checking place. Running them apart builds it twice. Nothing is dropped: the token scope question, the 107 legacy issues and the `TODO(blocking-execution)` constraint all move across. Kept for the record; do not implement from this file.
 **Priority: p2**
 
 ## 요약

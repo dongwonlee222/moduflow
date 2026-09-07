@@ -1,7 +1,7 @@
 # Issue 133: Only One Person Can Work At A Time
 
 **Status: backlog** — created 2026-09-06.
-**Priority: p1**
+**Priority: p0**
 
 ## 요약
 

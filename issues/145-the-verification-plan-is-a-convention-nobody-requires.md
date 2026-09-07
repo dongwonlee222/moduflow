@@ -1,6 +1,6 @@
 # Issue 145: The Verification Plan Is A Convention Nobody Requires
 
-**Status: backlog** — created 2026-09-06.
+**Status: superseded-by-142** — absorbed into `142-the-per-issue-artifact-set-is-named-but-never-required` on 2026-09-07. Same shape and same checking place. Nothing is dropped: the canonical heading, the runnable-command content rule, and the verdict owed on `product-plan.md`'s TDD matrix all move across. Kept for the record; do not implement from this file.
 **Priority: p1**
 
 ## 요약

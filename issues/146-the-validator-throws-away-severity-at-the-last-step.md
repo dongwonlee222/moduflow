@@ -200,6 +200,13 @@ way to stop a low finding failing the build becomes erasing it from the screen.
   `129-required-sections-are-named-but-never-checked` (the rule table whose
   findings would flow through this)
 
+- supersedes: `138-unsafe-transaction-advice-drops-the-error-code` — absorbed
+  2026-09-07. Both are a diagnostic that reaches the reader without the code
+  that would let them act. 138 is one instance (ten distinct `unsafe` causes
+  collapsing to one sentence about permissions) and this is the mechanism.
+  Merged because 138's fix is an `advice` field on a findings entry, which this
+  issue creates; building it alone means building half a findings array.
+
 ## Next Command
 
 `product:spec 146-the-validator-throws-away-severity-at-the-last-step`

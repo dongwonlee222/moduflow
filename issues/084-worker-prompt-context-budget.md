@@ -1,6 +1,6 @@
 # Issue 084: Worker Prompt Context Budget
 
-**Status: backlog** — created 2026-07-10.
+**Status: superseded** — closed 2026-09-07 against `workspace/goal.md`. A context budget for worker prompts has zero recorded failures behind it: no worker run has been lost to prompt length. Reopen when one is. Kept for the record; do not implement from this file.
 **Priority: p3**
 **Blocked-by: `082-cross-host-model-capability-routing`**
 

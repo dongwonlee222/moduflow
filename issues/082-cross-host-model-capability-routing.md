@@ -1,6 +1,6 @@
 # Issue 082: Cross-Host Model Capability Routing
 
-**Status: backlog** — created 2026-07-10.
+**Status: superseded-by-112** — closed 2026-09-07 against `workspace/goal.md`. Issue 112 shipped the thing this asked for: `scripts/execution_host_adapter.py` registers `claude-code`, `codex` and `copilot-cloud-agent` behind three pure methods, and `model()` returns `{effort, model_hint}` per host. Cross-host capability routing exists; this file describes building it again. Kept for the record; do not implement from this file.
 **Priority: p2**
 
 ## Summary

@@ -1,6 +1,6 @@
 # Issue 136: Auto Playbook Checks Are Never Executed
 
-**Status: backlog** — created 2026-09-06.
+**Status: superseded-by-123** — absorbed into `123-empty-declarations-file-disables-linkage-warning` on 2026-09-07. Both check that a file exists and never read what is in it. Nothing is dropped: `project_production.py:213`'s unreached evaluator and the `[auto]` check contract move across. Note that 136 was raised p2 → p1 on the same day for being a playbook defect, and 123 inherits that weight. Kept for the record; do not implement from this file.
 **Priority: p2**
 
 ## 요약

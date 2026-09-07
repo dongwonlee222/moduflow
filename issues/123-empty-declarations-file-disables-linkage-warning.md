@@ -123,6 +123,15 @@ fingerprint by design (`.moduflow/state/.linkage-warned`), and that stays.
   `099-vendor-and-host-sync-drift-detection`,
   `096-read-shaped-commands-that-write`
 
+- supersedes: `136-auto-playbook-checks-are-never-executed` — absorbed
+  2026-09-07. Both check that a file exists and never read what is inside it:
+  here an empty declarations file switches the linkage warning off, there a
+  playbook's `[auto]` required checks have an evaluator
+  (`project_production.py:213`) that no command, skill or hook ever calls.
+  136 was raised p2 → p1 the same day as a playbook defect — playbooks are one
+  of the goal's seven things, and storing one whose own checks never run is
+  storage with nothing behind it. This issue inherits that weight.
+
 ## Next Command
 
 `product:spec 123-empty-declarations-file-disables-linkage-warning`

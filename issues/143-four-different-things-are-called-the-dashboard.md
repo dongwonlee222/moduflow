@@ -148,6 +148,13 @@ it lives.
   (owns routing; the bare-word rule should land in whichever of the two ships
   the router)
 
+- supersedes: `092-project-home-dashboard` and `118-portfolio-mode-dashboard`
+  — absorbed 2026-09-07. Both proposed a new dashboard. Four already carry the
+  name and the word routes to none of them, so a fifth and a sixth make the
+  defect worse, not better. What they wanted — a project home view and a
+  portfolio view — is reachable once the four have distinct names; if a view is
+  genuinely missing after that, it is a new issue with that as its evidence.
+
 ## Next Command
 
 `product:spec 143-four-different-things-are-called-the-dashboard`

@@ -1,6 +1,6 @@
 # Issue 118: Portfolio-Mode Dashboard
 
-**Status: backlog** — created 2026-09-05.
+**Status: superseded-by-143** — absorbed into `143-four-different-things-are-called-the-dashboard` on 2026-09-07. Same reason as 092 — the defect is that the word routes nowhere, not that a view is missing. Kept for the record; do not implement from this file.
 **Priority: p2**
 **Blocked-by: `086-project-aware-production-library-dashboard`**
 

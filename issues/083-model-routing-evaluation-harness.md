@@ -1,6 +1,6 @@
 # Issue 083: Model Routing Evaluation Harness
 
-**Status: backlog** — created 2026-07-10.
+**Status: superseded** — closed 2026-09-07 against `workspace/goal.md`. A harness that measures whether model routing improves quality blocks nobody today — routing works and no decision is waiting on the number. Reopen if a routing choice ever has to be defended with evidence. Kept for the record; do not implement from this file.
 **Priority: p3**
 **Blocked-by: `082-cross-host-model-capability-routing`**
 
