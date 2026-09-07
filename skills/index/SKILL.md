@@ -165,7 +165,7 @@ If the target issue is ambiguous, ask one concise clarification before mutating 
 - `migrate`, `마이그레이션`: `product:migrate`
 - `profile`, `프로필`: `product:profile`
 - `memory`, `메모리`, `장기기억`: `product:memory`
-- `production`, `제작 기록`, `제작지식`, `플레이북`: `product:production`
+- `production`, `제작 기록`, `제작지식`, `플레이북`, `반복 데이터 업데이트`, `데이터 업데이트 플레이북`: `product:production`
 - `graph`, `그래프`, `의사결정 그래프`: `product:dashboard`
 - `knowledge`, `지식`: `product:knowledge`
 - `decision`, `결정`: `product:decision`

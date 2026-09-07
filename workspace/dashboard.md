@@ -41,6 +41,8 @@ Goal `trustworthy-execution-and-project-knowledge`: Issue 103 implementation is 
 
 ## Recently Completed
 
+- `127-recurring-data-update-playbook-routing`: recurring data updates and weekly report input procedures now route to `product:production` with source, actual/forecast, approval, bounded-write, inactive-channel and verification evidence; Modu Charge supplied the first approved project playbook. Source and Codex package version 0.3.66.
+
 - `110-project-operation-capability-enforcement`: project resolution is separated from authorization; 64 mutation surfaces are centrally classified and guarded, 1,339 tests plus CI passed, and PR #42 merged as `5f173f4`.
 
 - `109-canonical-project-context-consumer-convergence`: all project-aware consumers now use one validated canonical context; the repository guard reports 22 reviewed fixed/default literals and zero runtime, unclassified, prohibited, or stale exceptions. Full discovery passed 1,248 tests and the release check is green.
