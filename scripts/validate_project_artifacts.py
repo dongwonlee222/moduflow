@@ -165,8 +165,15 @@ def blocked_without_this_content(body, source):
 
 SECTION_RULES = [
     SectionRule(
-        kind="issue", type_token=None, section="안 고치면", required=True,
-        message="이슈에 `## 안 고치면`이 없습니다.", content=blocked_without_this_content,
+        kind="issue",
+        type_token=None,
+        section="## 안 고치면",
+        required=True,
+        message=(
+            "{source}: `## 안 고치면` 섹션이 없습니다. "
+            "이걸 안 고치면 누가 무엇을 못 하는지 한 문장으로 쓰세요."
+        ),
+        content=blocked_without_this_content,
     ),
     SectionRule(
         kind="issue",
