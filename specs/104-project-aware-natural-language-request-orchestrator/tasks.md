@@ -11,7 +11,7 @@ Issue: 104-project-aware-natural-language-request-orchestrator
 ## Stream B — Overlap
 
 - [x] T04 Measure three candidate overlap rules over the live issue corpus and record the counts as evidence [files: specs/104-project-aware-natural-language-request-orchestrator/status.md] [depends: T02]
-- [ ] T05 Stage 2 overlap, attaching to an existing issue and never writing an issue file [files: scripts/request_routing.py, tests/test_request_routing.py] [depends: T04]
+- [x] T05 Stage 2 overlap, attaching to an existing issue and never writing an issue file [files: scripts/request_routing.py, tests/test_request_routing.py] [depends: T04]
 
 ## Stream C — Capability and execution
 
@@ -20,7 +20,7 @@ Issue: 104-project-aware-natural-language-request-orchestrator
 
 ## Stream D — Isolation
 
-- [ ] T08 Project A/B isolation fixtures in Korean and English, both directions [files: tests/fixtures/request-routing/projects.json, tests/test_request_routing.py] [depends: T05]
+- [x] T08 Project A/B isolation fixtures in Korean and English, both directions [files: tests/fixtures/request-routing/projects.json, tests/test_request_routing.py] [depends: T05]
 
 ## Stream E — Commit and wiring
 

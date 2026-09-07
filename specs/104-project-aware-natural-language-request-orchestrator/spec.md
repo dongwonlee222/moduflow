@@ -93,6 +93,12 @@ result regardless of status:
 - `action`: what this request resolves to — `attach`, `create_candidate`,
   `record`, `report`, or null
 - `issue`: the linked issue id, or a candidate, or null
+- `overlap_candidates`: the resolved project's open issues, in issue-id order —
+  `{issue, title, priority, blocked_without_this}` each. **Added 2026-09-07**,
+  during step 2. It was not in this list when the spec was written because the
+  plan still expected stage 2 to return a verdict; the corpus measurement
+  removed the verdict and left the candidates, and they need somewhere to land.
+  Empty list, never null, for the same reason `written` is.
 - `capability`: the 097 routing result, or null
 - `execution`: the 112 routing result, or null
 - `question`: exactly one, non-null only when `status` is `ambiguous`
@@ -120,6 +126,23 @@ and production records, then approved shared playbooks. Never another project's.
 A revision, resize, compression or copy edit of existing work attaches to that
 issue. Only a genuinely independent deliverable produces `create_candidate`, and
 a candidate is a proposal — this stage never writes an issue file.
+
+**Amended 2026-09-07 — who decides "same work".** As written this required the
+stage to recognise a revision, which means judging overlap. It cannot: measured
+over 147 issues and 10,731 pairs, no rule separates same-work pairs from
+unrelated ones, and five of seven confirmed pairs score 0.00 on title
+similarity. So the stage returns `overlap_candidates` and the reader — model or
+person — names the overlap, which comes back as `chosen_issue`. Attach and
+`create_candidate` still exist and still mean what they meant; what changed is
+that stage 2 is not the one choosing between them.
+
+**A named id must be a candidate.** `chosen_issue` pointing at anything other
+than one of this project's open issues is `refused`, not attached. This is R5's
+sharpest edge and the one place where the caller, rather than the resolver, is
+the party reaching across. Asserted, and asserted by sabotage: reading a sibling
+project's issue directory fails six tests in this suite.
+
+Evidence: `memory/evidence/2026-09-07-overlap-detection-corpus-measurement.md`.
 
 ### R4 — Capability and execution are consumed, not re-derived
 

@@ -58,6 +58,15 @@ def build_registry():
             f"## 안 고치면\n\n{pid} 전용 이슈입니다. 다른 프로젝트에 보이면 안 됩니다.\n",
             encoding="utf-8",
         )
+        # A finished issue. Overlap is about work someone might still attach to,
+        # so a `done` issue is not a candidate — and this file is how that is
+        # asserted rather than assumed.
+        (root / "issues" / f"002-{pid}-finished.md").write_text(
+            f"# Issue 002: {pid} finished\n\n"
+            f"**Status: done** — completed 2026-09-07.\n**Priority: p2**\n\n"
+            f"## 안 고치면\n\n끝난 일입니다.\n",
+            encoding="utf-8",
+        )
         projects.append(
             {
                 "id": pid,
@@ -96,6 +105,7 @@ REQUIRED_FIELDS = (
     "status",
     "action",
     "issue",
+    "overlap_candidates",
     "capability",
     "execution",
     "question",
@@ -192,6 +202,66 @@ class Stage1Tests(unittest.TestCase):
         self.assertEqual(calls, [])
 
 
+class Stage2OverlapTests(unittest.TestCase):
+    """R3 — surface the resolved project's open issues; judge none of them.
+
+    Measured 2026-09-07 over 147 issues and 10,731 pairs: no mechanical rule
+    separates same-work pairs from unrelated ones, and five of seven confirmed
+    pairs score 0.00 on title similarity. So the stage returns candidates, the
+    reader names the overlap, and `test_no_score_rank_or_verdict` is the test
+    that fails if a threshold is ever put back.
+    """
+
+    def setUp(self):
+        self.registry = build_registry()
+
+    def test_candidates_are_the_resolved_projects_open_issues(self):
+        result = routing.route_request("이벤트 이슈 보여줘", self.registry)
+        ids = [c["issue"] for c in result["overlap_candidates"]]
+        self.assertEqual(ids, ["001-project-a-only"])
+
+    def test_candidate_carries_the_blocked_without_this_line(self):
+        result = routing.route_request("이벤트 이슈 보여줘", self.registry)
+        candidate = result["overlap_candidates"][0]
+        self.assertIn("project-a 전용 이슈입니다", candidate["blocked_without_this"])
+        self.assertEqual(candidate["title"], "project-a only")
+
+    def test_no_score_rank_or_verdict(self):
+        """The measurement ruled these out. This test is why they stay out."""
+        result = routing.route_request("이벤트 이슈 보여줘", self.registry)
+        for candidate in result["overlap_candidates"]:
+            for banned in ("score", "similarity", "rank", "confidence", "match"):
+                self.assertNotIn(banned, candidate, f"{banned} is a threshold by another name")
+        self.assertIsNone(result["action"])
+        self.assertIsNone(result["issue"])
+
+    def test_done_issues_are_not_candidates(self):
+        result = routing.route_request("이벤트 이슈 보여줘", self.registry)
+        done = [c for c in result["overlap_candidates"] if c["issue"].startswith("002")]
+        self.assertEqual(done, [])
+
+    def test_stage_2_writes_nothing(self):
+        result = routing.route_request("이벤트 이슈 보여줘", self.registry)
+        self.assertEqual(result["written"], [])
+
+    def test_attaching_to_a_candidate_sets_action_and_issue(self):
+        result = routing.route_request(
+            "이벤트 이슈 고쳐줘", self.registry, chosen_issue="001-project-a-only"
+        )
+        self.assertEqual(result["action"], "attach")
+        self.assertEqual(result["issue"], "001-project-a-only")
+
+    def test_attaching_to_another_projects_issue_is_refused(self):
+        """R5's sharpest edge — the caller names an id that is not in scope."""
+        result = routing.route_request(
+            "이벤트 이슈 고쳐줘", self.registry, chosen_issue="001-modu-charge-only"
+        )
+        self.assertEqual(result["status"], "refused")
+        self.assertEqual(result["stage"], "overlap")
+        self.assertIsNone(result["issue"])
+        self.assertEqual(result["written"], [])
+
+
 class OrderingTests(unittest.TestCase):
     """The spec names silent reordering as this issue's characteristic failure.
 
@@ -245,15 +315,10 @@ class OrderingTests(unittest.TestCase):
 class IsolationTests(unittest.TestCase):
     """R5 — a leak that only shows in one language is still a leak.
 
-    **These two have no teeth yet and this note is here so nobody reads them as
-    proof.** Stages 2-5 are declared but read nothing, so a result cannot carry
-    another project's content regardless of what the code does. They are written
-    now, at step 1, because R5's fixtures have to exist in both directions
-    before stage 2 opens the first issue file — adding them afterwards means the
-    first version of stage 2 ships unguarded.
-
-    They become real in step 2. `test_result_carries_no_internal_carry_fields`
-    below is the one assertion in this class that tests something today.
+    These had no teeth at step 1: stages 2-5 read nothing, so no result could
+    carry another project's content whatever the code did. **They have teeth
+    now.** Stage 2 opens `issues/` and each fixture project holds an issue whose
+    body names its own project id, so a result that reached across shows it.
     """
 
     def setUp(self):

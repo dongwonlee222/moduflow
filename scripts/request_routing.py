@@ -28,14 +28,21 @@ through is worse than one that stops and says where it stopped.
 """
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
 try:
-    from scripts import capability_routing, execution_routing, project_registry
+    from scripts import (
+        capability_routing,
+        execution_routing,
+        project_issue_schema,
+        project_registry,
+    )
 except ImportError:  # pragma: no cover - direct script execution fallback
     import capability_routing
     import execution_routing
+    import project_issue_schema
     import project_registry
 
 
@@ -75,6 +82,10 @@ def new_result(request):
         "status": "ok",
         "action": None,
         "issue": None,
+        # Stage 2's whole output. A list, never a ranking: the corpus
+        # measurement found no rule that orders these honestly, so the order is
+        # the issue id's and nothing more.
+        "overlap_candidates": [],
         "capability": None,
         "execution": None,
         "question": None,
@@ -151,18 +162,81 @@ def _require(result, field, stage):
         )
 
 
-def stage_overlap(result, **kwargs):
+_BLOCKED_SECTION = re.compile(r"^##\s+안 고치면\s*$(.*?)(?=^## |\Z)", re.M | re.S)
+
+OPEN_STATES = ("backlog", "active")
+
+
+def _blocked_without_this(issues_dir, source_path):
+    """The issue's `## 안 고치면` line, or "" when it has none.
+
+    This is the one line that says who is blocked without the work, so it is
+    what a reader needs to recognise an overlap. A missing section is not an
+    error here — issue 129 owns requiring it, and stage 2 refusing on it would
+    make an unrelated rule block routing.
+    """
+    path = issues_dir / Path(source_path).name
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return ""
+    match = _BLOCKED_SECTION.search(text)
+    if not match:
+        return ""
+    return " ".join(match.group(1).split())
+
+
+def stage_overlap(result, *, chosen_issue=None, **kwargs):
     """R3 — surface the resolved project's open issues, judge none of them.
 
     Measured 2026-09-07 over 147 issues and 10,731 pairs: no mechanical rule
     separates same-work pairs from unrelated ones. Five of seven confirmed pairs
-    score 0.00 on title similarity. So this stage returns candidates and the
-    reader names the overlap. See
+    score 0.00 on title similarity, and three share no Entry Points file at all.
+    So this stage returns candidates in issue-id order and the reader names the
+    overlap. See
     `memory/evidence/2026-09-07-overlap-detection-corpus-measurement.md`.
 
-    Step 2 of the plan fills this in.
+    `chosen_issue` is that reader's answer coming back in. It must name a
+    candidate: an id outside this project's open issues is refused rather than
+    attached, which is R5's sharpest edge — the caller, not the resolver, is
+    the one reaching across.
     """
     _require(result, "project", "overlap")
+    resolution = result["_resolution"]
+    root = Path(resolution["canonical_root"])
+    relative_paths = resolution.get("relative_paths") or {}
+    issues_dir = root / relative_paths.get("issues", "issues")
+
+    records = project_issue_schema.list_normalized_issues(root, relative_paths or None)
+    candidates = [
+        {
+            "issue": record["issue_id"],
+            "title": record["title"],
+            "priority": record["priority"],
+            "blocked_without_this": _blocked_without_this(
+                issues_dir, record["source_path"]
+            ),
+        }
+        for record in records
+        if record.get("lifecycle_state") in OPEN_STATES
+    ]
+    result["overlap_candidates"] = candidates
+
+    if chosen_issue is None:
+        return result
+
+    if chosen_issue not in {candidate["issue"] for candidate in candidates}:
+        return _stop(
+            result,
+            stage="overlap",
+            status="refused",
+            next_command=(
+                f"`{chosen_issue}`는 이 프로젝트의 열린 이슈가 아닙니다. "
+                "후보 목록에서 골라 주세요."
+            ),
+        )
+    result["action"] = "attach"
+    result["issue"] = chosen_issue
     return result
 
 
@@ -199,7 +273,8 @@ def stage_commit(result, **kwargs):
 # ---------------------------------------------------------------------------
 
 def route_request(request, registry_path, *, host=None, explicit_project_id="",
-                  cwd=None, active_project_id="", recent_selection=None):
+                  cwd=None, active_project_id="", recent_selection=None,
+                  chosen_issue=None):
     """One request in, one `moduflow.request-routing.v1` result out."""
     if not isinstance(request, str):
         raise TypeError("request must be a string")
@@ -216,7 +291,7 @@ def route_request(request, registry_path, *, host=None, explicit_project_id="",
     if result["status"] != "ok":
         return _public(result)
 
-    result = stage_overlap(result, host=host)
+    result = stage_overlap(result, host=host, chosen_issue=chosen_issue)
     if result["status"] != "ok":
         return _public(result)
 
