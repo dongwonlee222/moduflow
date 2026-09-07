@@ -186,6 +186,31 @@ class Stage1Tests(unittest.TestCase):
             if result["status"] != "ok":
                 self.assertEqual(result["written"], [], request)
 
+    def test_a_missing_project_root_blocks_rather_than_asking(self):
+        """`unresolved` is not `ambiguous`, and conflating them wastes the reader.
+
+        Found 2026-09-07 by running the finished pipeline against the live
+        registry at `~/projects/.portfolio/projects.json`, where every project's
+        root is stored with a `~` that is never expanded. The resolver said
+        `unresolved` / `project_root_missing`; this module reported `ambiguous`
+        and asked which project — a question whose only answers are the three
+        broken ones. Ambiguity means "pick one of these"; a missing root means
+        "this is broken", and the person needs to be told which it is.
+        """
+        payload = json.loads(Path(self.registry).read_text(encoding="utf-8"))
+        payload["projects"][0]["root"] = str(
+            Path(payload["projects"][0]["root"]).parent / "gone"
+        )
+        Path(self.registry).write_text(
+            json.dumps(payload, ensure_ascii=False), encoding="utf-8"
+        )
+        result = routing.route_request("이벤트 상태 알려줘", self.registry)
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["stage"], "resolve")
+        self.assertIsNone(result["question"])
+        self.assertIn("루트", result["next_command"])
+        self.assertEqual(result["written"], [])
+
     def test_stage_1_stops_at_resolve_when_it_cannot_resolve(self):
         result = routing.route_request("상태 알려줘", self.registry)
         self.assertEqual(result["stage"], "resolve")

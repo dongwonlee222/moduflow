@@ -136,19 +136,31 @@ def stage_resolve(result, registry_path, *, explicit_project_id="", cwd=None,
         result["_resolution"] = resolution
         return result
 
-    question = (resolution.get("question") or "").strip()
-    if not question:
-        # The resolver always supplies one. If it ever does not, ask the only
-        # question that is always answerable rather than inventing a candidate.
-        question = "어느 프로젝트를 말씀하시는 건가요?"
+    # `unresolved` is not `ambiguous`, and the resolver already separates them.
+    #
+    # Found 2026-09-07 by running this against the live registry, where every
+    # project's root carries an unexpanded `~`. The resolver said
+    # `project_root_missing`; reporting that as ambiguity asked the person to
+    # pick among three projects when all three were broken and no answer helped.
+    # Ambiguity means "choose one of these". Unresolved means "nothing here
+    # works", and the difference is the whole value of the message.
+    detail = (resolution.get("question") or "").strip().splitlines()
+    detail = detail[0].strip() if detail else ""
+    if status != "ambiguous":
+        return _stop(
+            result,
+            stage="resolve",
+            status="blocked",
+            next_command=detail or "등록된 프로젝트 루트를 확인해 주세요.",
+        )
+
     # One question. A resolver that joined two with a newline would make this a
     # two-question prompt, which the spec calls a defect.
-    question = question.splitlines()[0].strip()
     return _stop(
         result,
         stage="resolve",
         status="ambiguous",
-        question=question,
+        question=detail or "어느 프로젝트를 말씀하시는 건가요?",
         next_command="프로젝트 이름을 넣어 다시 말씀해 주세요.",
     )
 

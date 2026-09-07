@@ -56,6 +56,30 @@ asserting nothing** — stages 2-5 read no files, so nothing could leak whatever
 the code did. The class docstring said so at the time rather than letting them
 read as proof, and step 2 made them real.
 
+## What running it for real found
+
+The suite was green and all eleven tasks were checked before this was run
+against `~/projects/.portfolio/projects.json` for the first time. It found two
+defects, one in this module and one under it.
+
+**Mine.** `stage_resolve` reported the resolver's `unresolved` as `ambiguous`.
+The live registry's three projects all have unreachable roots, so the resolver
+correctly said `project_root_missing` — and this module asked the person to pick
+among three projects when no answer would have helped. Ambiguity means "choose
+one of these"; unresolved means "nothing here works". `blocked` now, with the
+resolver's own message and `question: None`. Test:
+`test_a_missing_project_root_blocks_rather_than_asking`.
+
+**Not mine.** Every root in that registry is stored with a `~` that is never
+expanded, so `~/.claude/ops` resolves to
+`.../.portfolio/~/.claude/ops`, which does not exist — and the registry still
+loads as `valid: true`. All three registered projects are unusable and nothing
+said so until a command was run. Filed as issue 149, p0.
+
+The 45 tests did not catch either one, because every fixture builds its own
+registry with absolute paths that exist. That is the limit of a fixture, and the
+reason the last task is "run it for real" rather than "run the suite again".
+
 ## Deviations, both recorded in the spec
 
 1. **R1 gained `overlap_candidates`.** The field list was written when stage 2
