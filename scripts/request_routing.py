@@ -26,6 +26,7 @@ with their refusal paths so the ordering is testable from the start; each is
 filled in by its own step. A half-built pipeline that runs stages 1–3 and falls
 through is worse than one that stops and says where it stopped.
 """
+import argparse
 import hashlib
 import json
 import re
@@ -460,13 +461,43 @@ def _public(result):
 
 
 def main(argv=None):
-    argv = list(sys.argv[1:] if argv is None else argv)
-    if not argv:
-        print("usage: request_routing.py <request> [registry-path]", file=sys.stderr)
-        return 2
-    request = argv[0]
-    registry = Path(argv[1]) if len(argv) > 1 else Path(".moduflow/projects.json")
-    result = route_request(request, registry)
+    parser = argparse.ArgumentParser(
+        description="Route one natural-language request through the five stages.",
+    )
+    parser.add_argument("request", help="what the person said, verbatim")
+    parser.add_argument(
+        "registry",
+        nargs="?",
+        default=".moduflow/projects.json",
+        help="project registry path (default: .moduflow/projects.json)",
+    )
+    parser.add_argument(
+        "--project",
+        default="",
+        help="skip resolution and name the project id outright",
+    )
+    parser.add_argument(
+        "--chosen-issue",
+        default=None,
+        help="the overlap the reader picked from `overlap_candidates`",
+    )
+    parser.add_argument(
+        "--commit",
+        action="store_true",
+        help=(
+            "actually transition the chosen issue. Without it nothing is "
+            "written and the result says what it would do."
+        ),
+    )
+    args = parser.parse_args(list(sys.argv[1:] if argv is None else argv))
+
+    result = route_request(
+        args.request,
+        Path(args.registry),
+        explicit_project_id=args.project,
+        chosen_issue=args.chosen_issue,
+        commit=args.commit,
+    )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result["status"] == "ok" else 1
 

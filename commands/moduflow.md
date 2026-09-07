@@ -34,20 +34,39 @@ Request: $ARGUMENTS
    - anything else → pick the closest `product:*` command; if ambiguous, ask one concise clarification before mutating files.
 
    Preserve exact `product:*` commands and the aliases above as ModuFlow-owned lifecycle work.
-   For any other natural-language request that may need a specialist, obtain the executable
-   routing result before loading a specialist:
+   For any other natural-language request — `/moduflow 모두충전 대시보드 이슈 진행해줘` —
+   run the whole pipeline, not one stage of it:
 
    ```bash
-   python3 <bundled-moduflow-root>/scripts/capability_routing.py "$ARGUMENTS" <target-project-path> \
-     --issue-id <active-issue-or-unassigned> \
-     --available <host-confirmed-capability-id> \
-     --completed-artifact <already-produced-stage-artifact>
+   python3 <bundled-moduflow-root>/scripts/request_routing.py "$ARGUMENTS" <registry-path>
    ```
 
-   Resolve the script and registry from the installed/bundled ModuFlow package, not from the
-   target project. Pass `--available` once per capability the current host has actually confirmed;
-   omitted capabilities are fail-closed as unavailable. On a later sequence pass, add one
-   `--completed-artifact` per verified predecessor output. Omit either repeatable flag when empty.
+   **This replaced a direct call to `capability_routing.py` on 2026-09-07, and the
+   replacement is the point of issue 104.** That call was stage 3. Reaching it from here
+   skipped stage 1 (which project?) and stage 2 (is there already an issue for this?), so
+   the hub could route a specialist against an unresolved project. `resolve_project`
+   already existed; nothing forced a caller through it first. Now the order is the
+   module's, not the caller's.
+
+   Read the result and act on `status`:
+
+   - `ambiguous` — print `question`, exactly one, and **stop**. Nothing was written.
+   - `refused` / `blocked` — print `next_command` and stop. `written` is `[]`; say so
+     plainly rather than leaving the person to wonder what changed.
+   - `ok` — `overlap_candidates` holds this project's open issues with the one line each
+     says about who is blocked without it. **Read them and say which one this request
+     belongs to**, or say it is new work. No score is provided and none should be
+     invented: measured over 147 issues, no mechanical rule tells same work from
+     different work, so this judgement is yours. Then re-run with
+     `--chosen-issue <id>`.
+
+   **Nothing is written without `--commit`.** A bare sentence is a question: it reports
+   what it would do and changes nothing. Say what will happen, get a yes, then re-run
+   with `--commit`. Do not add `--commit` on the first pass because the request sounded
+   decisive.
+
+   Resolve the script and registry from the installed/bundled ModuFlow package, not from
+   the target project.
 
    Consume `moduflow.capability-routing.v1` as follows:
 

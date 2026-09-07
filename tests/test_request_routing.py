@@ -511,6 +511,131 @@ class Stage5CommitTests(unittest.TestCase):
         self.assertEqual(result["status"], "ok")
 
 
+class HubWiringTests(unittest.TestCase):
+    """T10 — a bare sentence reaches this module, and no command file appears.
+
+    The spec's reason for fixing the stage order is that
+    `project_registry.resolve_project` already exists and *nothing forces a
+    caller through it first*. The hub was one of those callers: it went straight
+    to `capability_routing.py`, which is stage 3, skipping resolve and overlap.
+    """
+
+    HUB = ROOT / "commands" / "moduflow.md"
+
+    def test_no_new_command_file(self):
+        """41 before this issue. A router is not a command."""
+        names = sorted(p.name for p in (ROOT / "commands").glob("*.md"))
+        self.assertEqual(len(names), 41, names)
+        self.assertNotIn("product-request.md", names)
+        self.assertNotIn("product-route.md", names)
+
+    def test_the_hub_routes_a_sentence_through_request_routing(self):
+        text = self.HUB.read_text(encoding="utf-8")
+        self.assertIn("scripts/request_routing.py", text)
+
+    def test_the_hub_no_longer_calls_stage_3_directly(self):
+        """Calling `capability_routing.py` from the hub is the skip this fixes."""
+        text = self.HUB.read_text(encoding="utf-8")
+        self.assertNotIn("scripts/capability_routing.py", text)
+
+    def test_the_hub_states_that_a_sentence_does_not_write(self):
+        text = self.HUB.read_text(encoding="utf-8")
+        self.assertIn("--commit", text)
+
+
+class FiveSourceScenarioTests(unittest.TestCase):
+    """T11 — the five scenarios the spec's Verification Strategy names.
+
+    Existing-campaign revision, new-project deliverable, ambiguous project,
+    unavailable capability, state-write failure. Each asserts the whole result,
+    not one field, because the point of the contract is that a reader gets the
+    same shape whatever happened.
+    """
+
+    def setUp(self):
+        self.registry = build_registry()
+        add_tasks_file(
+            self.registry,
+            "project-a",
+            "001-project-a-only",
+            "# Tasks\n\n## Implementation\n\n"
+            "- [ ] T01 Edit the parser [files: scripts/parser.py]\n",
+        )
+
+    def test_1_existing_work_revision_attaches(self):
+        """"그 이슈 마저 해줘" — the work exists, so attach rather than file again."""
+        result = routing.route_request(
+            "이벤트 001 이슈 마저 해줘",
+            self.registry,
+            chosen_issue="001-project-a-only",
+        )
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["action"], "attach")
+        self.assertEqual(result["issue"], "001-project-a-only")
+        self.assertEqual(result["written"], [])
+
+    def test_2_new_deliverable_writes_no_issue_file(self):
+        """Nothing is chosen, so the pipeline proposes and files nothing."""
+        before = sorted(
+            p.name
+            for p in (
+                Path(
+                    json.loads(Path(self.registry).read_text())["projects"][0]["root"]
+                )
+                / "issues"
+            ).glob("*.md")
+        )
+        result = routing.route_request("이벤트 새로운 보고서 만들어줘", self.registry)
+        after = sorted(
+            p.name
+            for p in (
+                Path(
+                    json.loads(Path(self.registry).read_text())["projects"][0]["root"]
+                )
+                / "issues"
+            ).glob("*.md")
+        )
+        self.assertEqual(before, after, "stage 2 must never write an issue file")
+        self.assertIsNone(result["issue"])
+        self.assertEqual(result["written"], [])
+
+    def test_3_ambiguous_project_asks_one_question_and_stops(self):
+        result = routing.route_request("상태 알려줘", self.registry)
+        self.assertEqual(result["status"], "ambiguous")
+        self.assertEqual(result["stage"], "resolve")
+        self.assertNotIn("\n", result["question"].strip())
+        self.assertEqual(result["overlap_candidates"], [])
+        self.assertIsNone(result["capability"])
+        self.assertEqual(result["written"], [])
+
+    def test_4_unavailable_capability_reports_and_does_not_pretend(self):
+        result = routing.route_request("이벤트 상태 알려줘", self.registry)
+        self.assertEqual(result["capability"]["outcome"], "none")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["written"], [])
+
+    def test_5_state_write_failure_stops_with_written_empty(self):
+        def fake(*args, **kwargs):
+            raise RuntimeError("POST_APPLY_VALIDATION_FAILED")
+
+        original = routing.project_lifecycle.transition_lifecycle
+        routing.project_lifecycle.transition_lifecycle = fake
+        try:
+            result = routing.route_request(
+                "이벤트 001 이슈 시작해줘",
+                self.registry,
+                chosen_issue="001-project-a-only",
+                commit=True,
+            )
+        finally:
+            routing.project_lifecycle.transition_lifecycle = original
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["stage"], "commit")
+        self.assertEqual(result["written"], [])
+        # Every contract field still present on the worst path.
+        self.assertEqual(sorted(result), sorted(REQUIRED_FIELDS))
+
+
 class OrderingTests(unittest.TestCase):
     """The spec names silent reordering as this issue's characteristic failure.
 

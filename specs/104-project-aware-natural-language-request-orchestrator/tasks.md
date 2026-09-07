@@ -25,12 +25,12 @@ Issue: 104-project-aware-natural-language-request-orchestrator
 ## Stream E — Commit and wiring
 
 - [x] T09 Stage 5 commit through the 103 transaction, rolling back on validation failure [files: scripts/request_routing.py, tests/test_request_routing.py] [depends: T07] [shared_state: true]
-- [ ] T10 Route a bare sentence from the hub, adding no command file [files: commands/moduflow.md, tests/test_request_routing.py] [depends: T09]
-- [ ] T11 Run the five source scenarios end to end and record the outcomes [files: specs/104-project-aware-natural-language-request-orchestrator/status.md] [depends: T08, T10]
+- [x] T10 Route a bare sentence from the hub, adding no command file [files: commands/moduflow.md, tests/test_request_routing.py] [depends: T09]
+- [x] T11 Run the five source scenarios end to end and record the outcomes [files: specs/104-project-aware-natural-language-request-orchestrator/status.md] [depends: T08, T10]
 
 ## Required Gates
 
-- [ ] `python3 -m unittest discover -s tests` green with the new suite present.
-- [ ] Stage order asserted by mock, not by outcome.
-- [ ] `python3 scripts/release_check.py .` valid.
-- [ ] No new top-level command file.
+- [x] `python3 -m unittest discover -s tests` green with the new suite present.
+- [x] Stage order asserted by mock, not by outcome.
+- [x] `python3 scripts/release_check.py .` valid.
+- [x] No new top-level command file.
