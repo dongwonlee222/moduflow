@@ -4,13 +4,13 @@ Issue: 104-project-aware-natural-language-request-orchestrator
 
 ## Stream A — Contract and resolve
 
-- [ ] T01 Define `moduflow.request-routing.v1` and assert every field is present in every status [files: scripts/request_routing.py, tests/test_request_routing.py]
-- [ ] T02 Stage 1 resolve, with the ambiguous path asking exactly one question and writing nothing [files: scripts/request_routing.py, tests/test_request_routing.py] [depends: T01]
-- [ ] T03 Assert stage order by mock, and that a stage refuses without its predecessor's fields [files: tests/test_request_routing.py] [depends: T02]
+- [x] T01 Define `moduflow.request-routing.v1` and assert every field is present in every status [files: scripts/request_routing.py, tests/test_request_routing.py]
+- [x] T02 Stage 1 resolve, with the ambiguous path asking exactly one question and writing nothing [files: scripts/request_routing.py, tests/test_request_routing.py] [depends: T01]
+- [x] T03 Assert stage order by mock, and that a stage refuses without its predecessor's fields [files: tests/test_request_routing.py] [depends: T02]
 
 ## Stream B — Overlap
 
-- [ ] T04 Measure three candidate overlap rules over the live issue corpus and record the counts as evidence [files: specs/104-project-aware-natural-language-request-orchestrator/status.md] [depends: T02]
+- [x] T04 Measure three candidate overlap rules over the live issue corpus and record the counts as evidence [files: specs/104-project-aware-natural-language-request-orchestrator/status.md] [depends: T02]
 - [ ] T05 Stage 2 overlap, attaching to an existing issue and never writing an issue file [files: scripts/request_routing.py, tests/test_request_routing.py] [depends: T04]
 
 ## Stream C — Capability and execution
