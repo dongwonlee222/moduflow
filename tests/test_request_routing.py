@@ -410,6 +410,107 @@ class Stage4ExecutionTests(unittest.TestCase):
         self.assertEqual(result["written"], [])
 
 
+class Stage5CommitTests(unittest.TestCase):
+    """R6 — the only stage that writes, and only when told to.
+
+    **These do not re-test 103's rollback.** Issue 103 owns proving that a
+    transaction leaves no half-written state, and it has its own suite for it.
+    What this module owns is narrower and is what is asserted here: stage 5
+    calls the existing transition rather than building its own, it does not
+    write unless the caller asked, and when the transaction refuses, the
+    pipeline stops with `written: []` instead of reporting success.
+    """
+
+    def setUp(self):
+        self.registry = build_registry()
+        add_tasks_file(
+            self.registry,
+            "project-a",
+            "001-project-a-only",
+            "# Tasks\n\n## Implementation\n\n"
+            "- [ ] T01 Edit the parser [files: scripts/parser.py]\n",
+        )
+
+    def test_a_routing_call_does_not_write_by_default(self):
+        calls = []
+        original = routing.project_lifecycle.transition_lifecycle
+        routing.project_lifecycle.transition_lifecycle = lambda *a, **k: calls.append(a)
+        try:
+            result = routing.route_request(
+                "이벤트 고쳐줘", self.registry, chosen_issue="001-project-a-only"
+            )
+        finally:
+            routing.project_lifecycle.transition_lifecycle = original
+        self.assertEqual(calls, [], "asking what a request routes to must not transact")
+        self.assertEqual(result["written"], [])
+        self.assertEqual(result["status"], "ok")
+
+    def test_commit_true_calls_the_existing_transition_not_a_new_intent(self):
+        """R4's rule one layer down: consume `transition_lifecycle`, do not
+        rebuild `LifecycleIntent` here."""
+        seen = {}
+
+        def fake(root, issue_id, action, **kwargs):
+            seen.update(
+                {"root": root, "issue_id": issue_id, "action": action, **kwargs}
+            )
+            return {"schema": "moduflow.lifecycle-transaction.v1", "status": "complete"}
+
+        original = routing.project_lifecycle.transition_lifecycle
+        routing.project_lifecycle.transition_lifecycle = fake
+        try:
+            result = routing.route_request(
+                "이벤트 고쳐줘",
+                self.registry,
+                chosen_issue="001-project-a-only",
+                commit=True,
+            )
+        finally:
+            routing.project_lifecycle.transition_lifecycle = original
+
+        self.assertEqual(seen["issue_id"], "001-project-a-only")
+        self.assertEqual(seen["action"], "start")
+        self.assertEqual(seen["source_event"], "request-routing")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["stage"], "commit")
+        self.assertTrue(result["written"])
+
+    def test_a_refused_transaction_blocks_with_written_empty(self):
+        def fake(*args, **kwargs):
+            raise RuntimeError("PROJECTED_VALIDATION_FAILED")
+
+        original = routing.project_lifecycle.transition_lifecycle
+        routing.project_lifecycle.transition_lifecycle = fake
+        try:
+            result = routing.route_request(
+                "이벤트 고쳐줘",
+                self.registry,
+                chosen_issue="001-project-a-only",
+                commit=True,
+            )
+        finally:
+            routing.project_lifecycle.transition_lifecycle = original
+
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["stage"], "commit")
+        self.assertEqual(result["written"], [])
+        self.assertIn("PROJECTED_VALIDATION_FAILED", result["next_command"])
+
+    def test_nothing_to_commit_when_no_issue_was_chosen(self):
+        calls = []
+        original = routing.project_lifecycle.transition_lifecycle
+        routing.project_lifecycle.transition_lifecycle = lambda *a, **k: calls.append(a)
+        try:
+            result = routing.route_request(
+                "이벤트 상태 알려줘", self.registry, commit=True
+            )
+        finally:
+            routing.project_lifecycle.transition_lifecycle = original
+        self.assertEqual(calls, [])
+        self.assertEqual(result["written"], [])
+        self.assertEqual(result["status"], "ok")
+
+
 class OrderingTests(unittest.TestCase):
     """The spec names silent reordering as this issue's characteristic failure.
 

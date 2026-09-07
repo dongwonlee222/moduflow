@@ -166,6 +166,26 @@ Stage 5 validates the output against its artifact type when one is configured,
 then commits canonical and derived state through issue 103's transaction. A
 validation failure rolls back and reports; it never leaves half-written state.
 
+**Deviation 2026-09-07 — `commit` defaults to False.** R6 says this stage
+commits and does not say when it is asked to. Implemented literally, asking
+"what would this request do?" changes state in order to answer, which is the
+opposite of what stage 2 was just rebuilt to do and of the goal's own line —
+보관하고 건네주지, 실행하지 않는다. So `route_request(..., commit=True)` is
+required before anything is written, and a plain routing call is a question.
+
+Recorded here rather than left to be discovered. **If the owner wants a bare
+`/moduflow <문장>` to transition the issue it names, this is the one line to
+change** and the tests that pin it are `test_a_routing_call_does_not_write_by_default`
+and `test_commit_true_calls_the_existing_transition_not_a_new_intent`.
+
+**What stage 5 does not re-test.** Issue 103 owns proving that a refused
+transaction leaves no half-written state and has its own suite for it. This
+module's tests assert the narrower thing it is responsible for: that it calls
+`project_lifecycle.transition_lifecycle` rather than rebuilding a
+`LifecycleIntent`, and that when the transaction raises — of several types,
+which is why the catch is deliberately wide — the pipeline stops with
+`written: []` instead of reporting success.
+
 ## Sequencing — 131 stage 2 lands on this
 
 Issue 131 deferred nine Korean/English phrase pairs and five single English words

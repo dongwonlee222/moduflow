@@ -24,7 +24,7 @@ Issue: 104-project-aware-natural-language-request-orchestrator
 
 ## Stream E — Commit and wiring
 
-- [ ] T09 Stage 5 commit through the 103 transaction, rolling back on validation failure [files: scripts/request_routing.py, tests/test_request_routing.py] [depends: T07] [shared_state: true]
+- [x] T09 Stage 5 commit through the 103 transaction, rolling back on validation failure [files: scripts/request_routing.py, tests/test_request_routing.py] [depends: T07] [shared_state: true]
 - [ ] T10 Route a bare sentence from the hub, adding no command file [files: commands/moduflow.md, tests/test_request_routing.py] [depends: T09]
 - [ ] T11 Run the five source scenarios end to end and record the outcomes [files: specs/104-project-aware-natural-language-request-orchestrator/status.md] [depends: T08, T10]
 

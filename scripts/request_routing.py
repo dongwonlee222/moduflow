@@ -37,12 +37,14 @@ try:
         capability_routing,
         execution_routing,
         project_issue_schema,
+        project_lifecycle,
         project_registry,
     )
 except ImportError:  # pragma: no cover - direct script execution fallback
     import capability_routing
     import execution_routing
     import project_issue_schema
+    import project_lifecycle
     import project_registry
 
 
@@ -356,14 +358,55 @@ def stage_execution(result, **kwargs):
     return result
 
 
-def stage_commit(result, **kwargs):
+def stage_commit(result, *, commit=False, actor="moduflow", **kwargs):
     """R6 — the only stage that writes, and it writes through 103's transaction.
 
-    Step 5 fills this in. Last on purpose: a validation failure has to roll back
-    rather than leave half-written state, and that is only true if nothing wrote
-    before it.
+    Last on purpose: a validation failure has to roll back rather than leave
+    half-written state, and that is only true if nothing wrote before it.
+
+    **`commit` defaults to False, and that is a decision, not an oversight.**
+    R6 says this stage commits and does not say when it is asked to. Making a
+    routing call transact by default means "what would this request do?" changes
+    state to answer, which is the opposite of what stage 2 was just rebuilt to
+    do. A caller that wants the transition asks for it. Recorded in the spec
+    under R6 as a deviation so it is visible rather than discovered.
+
+    The transition itself is `project_lifecycle.transition_lifecycle` — the same
+    entry `product:start` uses. Rebuilding a `LifecycleIntent` here would be
+    re-deriving what a working module already derives, which is the mistake R4
+    names one layer up.
     """
     _require(result, "project", "commit")
+    if not commit or result["action"] != "attach" or not result["issue"]:
+        return result
+
+    resolution = result["_resolution"]
+    root = Path(resolution["canonical_root"])
+    try:
+        transaction = project_lifecycle.transition_lifecycle(
+            root,
+            result["issue"],
+            "start",
+            actor=actor,
+            source_event="request-routing",
+        )
+    except Exception as exc:  # noqa: BLE001 - the boundary raises several types
+        # 103 owns rolling back; this owns not reporting success afterwards.
+        # The exception type is deliberately not narrowed: `LifecyclePlanError`,
+        # `LifecycleProjectedValidationError` and `LifecycleJournalError` are
+        # three of several, and a new one must stop the pipeline rather than
+        # escape as a traceback through a routing call.
+        return _stop(
+            result,
+            stage="commit",
+            status="blocked",
+            next_command=f"전이가 거부됐습니다: {exc}",
+        )
+
+    result["stage"] = "commit"
+    result["written"] = list(transaction.get("written") or []) or [
+        f"{result['issue']} 상태 전이"
+    ]
     return result
 
 
@@ -373,7 +416,7 @@ def stage_commit(result, **kwargs):
 
 def route_request(request, registry_path, *, host=None, explicit_project_id="",
                   cwd=None, active_project_id="", recent_selection=None,
-                  chosen_issue=None):
+                  chosen_issue=None, commit=False, actor="moduflow"):
     """One request in, one `moduflow.request-routing.v1` result out."""
     if not isinstance(request, str):
         raise TypeError("request must be a string")
@@ -402,7 +445,7 @@ def route_request(request, registry_path, *, host=None, explicit_project_id="",
     if result["status"] != "ok":
         return _public(result)
 
-    result = stage_commit(result, host=host)
+    result = stage_commit(result, host=host, commit=commit, actor=actor)
     return _public(result)
 
 
