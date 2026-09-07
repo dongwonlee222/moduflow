@@ -59,6 +59,48 @@ Spacing is a signal, not decoration:
 
 Same rule generalizes beyond status lines: pick one shape per situation (see table above) and use it every time that situation recurs, so both humans and parsers can rely on it.
 
+## Module Size — 개념 수가 기준이지 줄 수가 아니다
+
+**경고이지 게이트가 아니다.** 막으면 `_part2.py` 같은 것이 생겨서 지금보다
+나빠진다.
+
+한 모듈이 **1,000줄을 넘고 동시에 최상위 심볼(모듈 바깥의 함수·클래스)이 40개를
+넘으면** 쪼갤 때가 된 것이다. **둘 다** 넘어야 한다.
+
+**줄 수만으로는 판정하지 않는다.** pandas의 `frame.py`는 20,180줄인데 최상위
+심볼이 **4개**다 — 한 가지를 자세히 하는 파일이고 길어도 읽힌다. 이 저장소의
+`project_lifecycle_transaction.py`는 7,524줄에 심볼이 **208개**, 이름 갈래만
+106종이다. 길어서 문제가 아니라 **한 파일이 열 가지 일을 해서** 문제다.
+
+두 숫자의 출처: **1,000**은 `pylint`의 `max-module-lines` 기본값이고, 기본으로
+켜지는 유일한 도구다 (eslint의 `max-lines`는 꺼져 있고, ruff에는 규칙이 없고,
+Google Python 스타일 가이드에는 파일 상한이 없다). **40**은
+`wemake-python-styleguide`가 라인이 아니라 **멤버 수**로 재는 것에서 왔다 —
+그쪽이 원인에 더 가깝다.
+
+**500줄 상한은 채택하지 않았다.** 1차 자료가 `openai/codex`의 `AGENTS.md` 하나뿐이고,
+거기 적힌 이유는 **머지 충돌**이지 읽기 어려움이 아니다. Home Assistant는 pylint의
+`too-many-lines`를 *"가독성을 위해 강제하지 않는다"*는 주석과 함께 끄고 4,258줄
+파일을 유지한다. 조사 근거는 2026-09-07 서브에이전트 보고에 있다.
+
+넘는 파일을 **따로 리팩터링하지 않는다.** 그 파일을 다른 이유로 건드릴 때 같이
+쪼갠다. 현재 넘는 것 7개 (2026-09-07 실측):
+
+| 줄 | 심볼 | 파일 |
+|---:|---:|---|
+| 7,524 | 208 | `project_lifecycle_transaction.py` (클래스 35 — 패키지가 되어야 한다) |
+| 4,167 | 119 | `project_lifecycle_transaction_storage.py` |
+| 2,958 | 74 | `project_memory.py` (클래스 0 — 함수 묶음, 이음매가 뚜렷하다) |
+| 2,555 | 73 | `project_issue_schema.py` (클래스 0 — 같음) |
+| 1,310 | 48 | `spec_kit_adapter.py` |
+| 1,199 | 41 | `project_production.py` |
+| 1,068 | 47 | `project_analysis_run.py` |
+
+**쪼개는 이유는 "에이전트가 못 읽어서"가 아니라 "한 파일이 여러 개념을 담아서"다.**
+7,524줄을 470줄 16개로 나눠도 가로지르는 변경에 필요한 맥락은 안 줄어든다. 얻는
+것은 **한 번의 읽기가 완결되고 grep 결과 하나가 해석 가능해지는 것**이고, 그건
+줄 수가 아니라 개념 분리에서 온다.
+
 ## Non-Goals
 
 - This file does not define artifact-to-artifact sync rules between Antigravity's native files (`task.md`, `implementation_plan.md`) and ModuFlow's Git files — see `issues/029-antigravity-artifact-sync-connector.md`.

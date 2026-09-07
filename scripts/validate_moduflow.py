@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import ast
 import json
 import sys
 from pathlib import Path
@@ -318,11 +319,54 @@ def validate_moduflow(path, *, mode="auto") -> dict:
         "missing": missing,
         "validation_role": role["validation_role"],
         "role_source": role["role_source"],
-        "warnings": evidence["warnings"],
+        "warnings": evidence["warnings"] + oversized_modules(root),
         "error_codes": list(dict.fromkeys(role["error_codes"] + evidence["error_codes"] + [
             error.split(":", 1)[0] for error in errors if error.startswith("PACKAGE_PAYLOAD_")
         ])),
     }
+
+
+def oversized_modules(root, *, line_limit=1000, symbol_limit=40):
+    """Modules that are long AND carry many independent concerns.
+
+    **Both** thresholds must be crossed, and the result is a warning, never an
+    error. A blocking cap produces `_part2.py` files, which is worse than the
+    problem — Home Assistant disables pylint's `too-many-lines` in writing for
+    exactly that reason and keeps a 4,258-line module.
+
+    Lines alone do not discriminate: pandas' `frame.py` is 20,180 lines with
+    four top-level symbols and is navigable, while this repository's
+    `project_lifecycle_transaction.py` is 7,524 lines with 208. The second
+    number is the one that means "this file does too many things".
+
+    1000 is pylint's `max-module-lines` default, the only such limit enabled by
+    default in a mainstream linter. 40 approximates
+    wemake-python-styleguide's member count, which measures concerns rather
+    than length. See AGENTS.md for the evidence and why 500 was rejected.
+    """
+    findings = []
+    scripts_dir = Path(root) / "scripts"
+    if not scripts_dir.is_dir():
+        return findings
+    for path in sorted(scripts_dir.glob("*.py")):
+        try:
+            source = path.read_text(encoding="utf-8")
+            tree = ast.parse(source)
+        except (OSError, UnicodeError, SyntaxError):
+            continue
+        lines = len(source.splitlines())
+        symbols = sum(
+            1
+            for node in tree.body
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+        )
+        if lines > line_limit and symbols > symbol_limit:
+            findings.append(
+                f"scripts/{path.name}: {lines}줄 / 최상위 심볼 {symbols}개 — "
+                f"한 파일이 여러 개념을 담고 있습니다. 이 파일을 다른 이유로 "
+                f"건드릴 때 같이 쪼개세요 (AGENTS.md)."
+            )
+    return findings
 
 
 def main() -> int:
