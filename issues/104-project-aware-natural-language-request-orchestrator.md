@@ -1,6 +1,6 @@
 # Issue 104: Project-Aware Natural-Language Request Orchestrator
 
-**Status: active** — created 2026-08-19; unblocked 2026-09-07; started 2026-09-07.
+**Status: done** — created 2026-08-19; unblocked 2026-09-07; started 2026-09-07; done 2026-09-07.
 **Priority: p0**
 
 ## Summary
@@ -76,8 +76,8 @@ Do not create a second public entry point by default, scan unregistered projects
 
 - [x] spec → `specs/104-project-aware-natural-language-request-orchestrator/spec.md`
 - [x] plan → `specs/104-project-aware-natural-language-request-orchestrator/plan.md` + `tasks.md`
-- [ ] execute → request contract, project/context pipeline, handoff, transaction integration, and tests
-- [ ] review → `specs/104-project-aware-natural-language-request-orchestrator/review.md`
+- [x] execute → request contract, project/context pipeline, handoff, transaction integration, and tests
+- [x] review → `specs/104-project-aware-natural-language-request-orchestrator/review.md`
 
 ## Related Issues
 
