@@ -139,6 +139,18 @@ class ContractTests(unittest.TestCase):
             result = routing.route_request(request, self.registry)
             self.assertIn(result["status"], {"ok", "ambiguous", "refused", "blocked"})
 
+    def test_stage_names_where_the_pipeline_actually_ended(self):
+        """`stage` is "how far it got", so a full pass must not still say resolve.
+
+        Found 2026-09-07 running against the live registry: a request that
+        cleared all five stages reported `stage: resolve`, because only the
+        stages that stopped or wrote were setting it. A reader checking where a
+        request got to would have been told it never left stage 1.
+        """
+        result = routing.route_request("이벤트 상태 알려줘", self.registry)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["stage"], "commit")
+
     def test_stage_is_from_the_closed_set(self):
         result = routing.route_request("이벤트 상태", self.registry)
         self.assertIn(

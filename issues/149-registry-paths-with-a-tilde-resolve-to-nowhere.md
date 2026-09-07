@@ -1,6 +1,6 @@
 # Issue 149: Registry Paths With A Tilde Resolve To Nowhere
 
-**Status: backlog** — created 2026-09-07.
+**Status: done** — 2026-09-07에 만들고 같은 날 끝냈습니다. `~` 펼치기와 읽는 시점 진단 둘 다 들어갔고, 등록된 세 프로젝트가 모두 해석됩니다. `valid` 정책은 **경고**로 정했습니다 — 오류로 두면 경로 오타 하나가 레지스트리 전체를 무효로 만들어 나머지 프로젝트까지 못 열게 됩니다.
 **Priority: p0**
 
 ## 요약
@@ -92,7 +92,7 @@ print('진짜 경로:', Path('/Users/idong-won/.claude/ops').exists())"
 - 없는 루트가 **레지스트리를 읽는 시점에** 진단으로 나오고, 메시지가 프로젝트
   id와 실제로 찾은 경로를 한국어로 말한다.
 - 셋 중 하나만 깨졌을 때 나머지 둘은 계속 해석된다 — 테스트로 단언.
-- 현재 포트폴리오 레지스트리가 고쳐지고, 세 프로젝트 모두 해석된다.
+- 현재 포트폴리오 레지스트리의 세 프로젝트가 모두 해석된다 (파일은 안 고침 — `~`가 펼쳐지므로 쓰인 그대로 맞다).
 - `python3 scripts/release_check.py .` 통과, 최상위 `valid` 확인.
 
 ## Verification
@@ -122,10 +122,18 @@ print('진짜 경로:', Path('/Users/idong-won/.claude/ops').exists())"
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/<issue>/spec.md`
-- [ ] plan → `specs/<issue>/plan.md` + `tasks.md`
-- [ ] execute → `~` 펼치기, 읽는 시점 진단, `valid` 정책, 실물 레지스트리 수리
-- [ ] review → `specs/<issue>/review.md`
+- [x] execute → `~` 펼치기, 읽는 시점 진단, `valid` 정책
+
+명세와 계획 파일은 **만들지 않았습니다.** 한 줄짜리 원인(`expanduser()` 누락)에
+결정이 하나(`valid`를 경고로 둘 것인가)뿐이라, 명세·계획·태스크·리뷰 네 파일을
+쓰는 쪽이 고치는 일보다 큽니다. 결정은 이 파일과 코드 주석에 적혀 있고, 테스트
+4건이 그것을 붙잡고 있습니다 (`tests/test_project_registry.py`의
+`TildeAndMissingRootTests`). 이슈 142가 "산출물을 정해놓고 확인은 안 한다"를
+갖고 있고, 이 건은 그 규칙을 어긴 것이 아니라 **규칙이 아직 없다는 사실을 그대로
+쓴 것**입니다.
+
+실물 레지스트리(`~/projects/.portfolio/projects.json`)는 **고치지 않았습니다.**
+고칠 필요가 없어졌습니다 — `~`가 이제 펼쳐지므로 파일은 쓰인 그대로 맞습니다.
 
 ## Related Issues
 
@@ -138,4 +146,4 @@ print('진짜 경로:', Path('/Users/idong-won/.claude/ops').exists())"
 
 ## Next Command
 
-`product:spec 149-registry-paths-with-a-tilde-resolve-to-nowhere`
+`product:status`

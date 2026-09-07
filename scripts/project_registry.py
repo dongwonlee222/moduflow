@@ -125,7 +125,15 @@ def _canonical_root(registry_path, raw_root, project_id, index):
             message="Project root must be a non-empty path string.",
             recommendation="Set root to an absolute path or a registry-relative path.",
         )
-    candidate = Path(raw_root)
+    # 149: expand `~` before deciding whether the path is absolute.
+    #
+    # Without this, `~/.claude/ops` is not absolute, so it is joined to the
+    # registry's own directory and becomes `.../.portfolio/~/.claude/ops` — a
+    # real directory name containing a literal tilde, which never exists. Every
+    # project in the live registry was written that way and all three were
+    # unreachable. `~` is how home is written everywhere else in this repository;
+    # the registry was the one place that did not accept it.
+    candidate = Path(raw_root).expanduser()
     if not candidate.is_absolute():
         candidate = Path(registry_path).resolve().parent / candidate
     try:
@@ -451,6 +459,31 @@ def load_project_registry(registry_path):
                 )
             )
         seen_ids.add(normalized["id"])
+        # 149: say it here, where the registry can still be fixed.
+        #
+        # `_resolved` checks `root.is_dir()` too, but that runs after somebody
+        # typed a command — the wrong moment to learn a path is wrong. The
+        # severity is `warning`, deliberately: as an error this would set
+        # `valid: False`, and `resolve_loaded_registry` refuses an invalid
+        # registry outright, so one typo would lock the owner out of every other
+        # project in the file.
+        if normalized["root"] and not Path(normalized["root"]).is_dir():
+            result["diagnostics"].append(
+                _diagnostic(
+                    "PROJECT_ROOT_MISSING",
+                    project_id=normalized["id"],
+                    field=f"projects[{index}].root",
+                    current=(project.get("root") or project.get("path")),
+                    message=(
+                        f"등록된 프로젝트 루트가 없습니다: {normalized['root']}"
+                    ),
+                    recommendation=(
+                        "레지스트리의 경로를 실제 폴더로 고치세요. "
+                        "`~`는 홈으로 펼쳐집니다."
+                    ),
+                    severity="warning",
+                )
+            )
         result["projects"].append(normalized)
 
     result["valid"] = not any(

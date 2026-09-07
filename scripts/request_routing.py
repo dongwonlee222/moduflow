@@ -170,11 +170,20 @@ def stage_resolve(result, registry_path, *, explicit_project_id="", cwd=None,
 # ---------------------------------------------------------------------------
 
 def _require(result, field, stage):
+    """Refuse an out-of-order call, and record how far the pipeline got.
+
+    `stage` answers "where did this end up", so every stage that runs claims it
+    on entry. Before 2026-09-07 only the stages that stopped or wrote set it, so
+    a request that cleared all five still reported `resolve` — found by running
+    against the live registry, where a clean pass looked like it never left
+    stage 1.
+    """
     if not isinstance(result, dict) or result.get(field) is None:
         raise StageOrderError(
             f"stage_{stage} called before a project was resolved "
             f"({field!r} is missing)"
         )
+    result["stage"] = stage
 
 
 _BLOCKED_SECTION = re.compile(r"^##\s+안 고치면\s*$(.*?)(?=^## |\Z)", re.M | re.S)

@@ -992,5 +992,106 @@ class ProjectCapabilityProjectionTests(unittest.TestCase):
         self.assertTrue(all(result["capabilities"].values()))
 
 
+class TildeAndMissingRootTests(unittest.TestCase):
+    """Issue 149 — a `~` that nothing expands, and a root nobody checks on load.
+
+    Found 2026-09-07 by running the finished 104 pipeline against the live
+    registry, where all three projects are written with `~` and all three
+    therefore resolve to a path under the registry's own directory that does not
+    exist. The registry still loaded as `valid: true`, so nothing said so until
+    somebody ran a command.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.registry = load_module()
+
+    def write(self, tmp, projects):
+        path = Path(tmp) / "projects.json"
+        path.write_text(
+            json.dumps(
+                {"schema": "moduflow.projects.v1", "projects": projects},
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        return path
+
+    def test_a_tilde_expands_to_the_home_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            (home / "work").mkdir(parents=True)
+            path = self.write(
+                tmp, [{"id": "p", "name": "P", "path": "~/work", "status": "active"}]
+            )
+            with mock.patch.dict("os.environ", {"HOME": str(home)}):
+                result = self.registry.load_project_registry(path)
+            # `.resolve()` on both sides: on macOS the temp dir lives under a
+            # `/var -> /private/var` symlink, and the loader resolves while the
+            # fixture path does not. Comparing the raw strings tests the
+            # symlink, not the expansion.
+            self.assertEqual(
+                Path(result["projects"][0]["root"]).resolve(),
+                (home / "work").resolve(),
+            )
+            self.assertNotIn("~", result["projects"][0]["root"])
+
+    def test_a_missing_root_is_reported_when_the_registry_is_read(self):
+        """Not when a command is run, which is far too late to fix the file."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.write(
+                tmp,
+                [{"id": "gone", "name": "Gone", "path": "no-such-dir", "status": "active"}],
+            )
+            result = self.registry.load_project_registry(path)
+            codes = [d["code"] for d in result["diagnostics"]]
+            self.assertIn("PROJECT_ROOT_MISSING", codes)
+            found = next(
+                d for d in result["diagnostics"] if d["code"] == "PROJECT_ROOT_MISSING"
+            )
+            self.assertEqual(found["project_id"], "gone")
+            self.assertIn("no-such-dir", str(found["current"]))
+
+    def test_one_broken_project_does_not_take_the_others_down(self):
+        """The `valid` decision, stated: a missing root is a warning.
+
+        Three registered projects and one bad path must leave two usable. As an
+        error it would invalidate the whole registry, and `resolve_loaded_registry`
+        refuses an invalid one outright — one typo would lock the owner out of
+        every project.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            for name in ("a", "b"):
+                (Path(tmp) / name).mkdir()
+            path = self.write(
+                tmp,
+                [
+                    {"id": "a", "name": "A", "path": "a", "status": "active"},
+                    {"id": "b", "name": "B", "path": "b", "status": "active"},
+                    {"id": "gone", "name": "Gone", "path": "nope", "status": "active"},
+                ],
+            )
+            result = self.registry.load_project_registry(path)
+            self.assertTrue(result["valid"], "one bad root must not invalidate the rest")
+            severities = {
+                d["code"]: d["severity"] for d in result["diagnostics"]
+            }
+            self.assertEqual(severities.get("PROJECT_ROOT_MISSING"), "warning")
+            resolved = self.registry.resolve_project(path, explicit_project_id="a")
+            self.assertEqual(resolved["status"], "resolved")
+
+    def test_the_late_is_dir_check_still_refuses(self):
+        """The load-time diagnostic does not replace the last line of defence."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self.write(
+                tmp,
+                [{"id": "gone", "name": "Gone", "path": "nope", "status": "active"}],
+            )
+            resolved = self.registry.resolve_project(path, explicit_project_id="gone")
+            self.assertEqual(resolved["status"], "unresolved")
+            self.assertEqual(resolved["reason_code"], "project_root_missing")
+
+
+
 if __name__ == "__main__":
     unittest.main()
