@@ -1,6 +1,6 @@
 # Issue 147: An Issue Cannot Start Until It Is Finished
 
-**Status: backlog** — created 2026-09-07.
+**Status: done** — created 2026-09-07; started 2026-09-07; done 2026-09-07.
 **Priority: p1**
 
 ## 요약
@@ -215,7 +215,7 @@ journal, say so and stop.
 - [x] spec → `specs/147-an-issue-cannot-start-until-it-is-finished/spec.md`
 - [x] plan → `specs/147-an-issue-cannot-start-until-it-is-finished/plan.md` + `tasks.md`
 - [x] execute → workflow-row scoping, projection rebuild, dead instruction removed
-- [ ] review
+- [x] review → `specs/147-an-issue-cannot-start-until-it-is-finished/review.md`
 
 ## Related Issues
 
