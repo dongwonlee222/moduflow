@@ -240,20 +240,119 @@ def stage_overlap(result, *, chosen_issue=None, **kwargs):
     return result
 
 
+def _no_capability(request, issue_id, reason):
+    """097's own shape for "nothing routed", built without loading a registry.
+
+    Emitted verbatim rather than as a bespoke dict so a consumer reads one
+    shape whether or not the project has adapters.
+    """
+    return {
+        "schema": capability_routing.ROUTING_SCHEMA,
+        "request": request,
+        "issue_id": issue_id,
+        "outcome": "none",
+        "stages": [],
+        "current_stage": None,
+        "sequence_state": "not_applicable",
+        "clarification": None,
+        "fallback": None,
+        "reason": reason,
+    }
+
+
 def stage_capability(result, **kwargs):
     """R4 — consume `capability_routing`, never re-derive it.
 
-    Step 3 of the plan fills this in. `outcome: none` is a normal result, not a
-    refusal: reading it as one would refuse every request ModuFlow handles
-    itself, which is most of them.
+    `outcome: none` is a normal result, not a refusal: reading it as one would
+    refuse every request ModuFlow handles itself, which is most of them.
+
+    **A missing registry and a broken one are different facts.** A project with
+    no `adapters/capability-routing.json` has no adapters, which is `none`. A
+    registry that exists and does not parse is a blocked project, and saying
+    `none` there would report "nothing matched" for a file nobody can read.
     """
     _require(result, "project", "capability")
+    resolution = result["_resolution"]
+    root = Path(resolution["canonical_root"])
+    issue_id = result["issue"] or "unassigned"
+
+    if not (root / "adapters" / "capability-routing.json").is_file():
+        result["capability"] = _no_capability(
+            result["request"], issue_id, "no capability registry in this project"
+        )
+        return result
+
+    try:
+        registry = capability_routing.load_registry(root)
+    except capability_routing.RegistryError as exc:
+        return _stop(
+            result,
+            stage="capability",
+            status="blocked",
+            next_command=(
+                "이 프로젝트의 `adapters/capability-routing.json`을 읽을 수 "
+                f"없습니다: {exc}"
+            ),
+        )
+
+    try:
+        result["capability"] = capability_routing.route_request(
+            result["request"],
+            registry,
+            issue_id=issue_id,
+            target_root=str(root),
+        )
+    except capability_routing.RegistryError as exc:
+        # `load_registry` is not the only place a bad registry surfaces.
+        # `_build_stage` validates `output_artifact` against the target root at
+        # routing time, so a registry that loads can still raise here — found by
+        # a fixture whose artifact path escaped `specs/`. Uncaught, that turns a
+        # misconfigured project into a traceback instead of a blocked result.
+        return _stop(
+            result,
+            stage="capability",
+            status="blocked",
+            next_command=(
+                "이 프로젝트의 어댑터 설정이 잘못됐습니다: " f"{exc}"
+            ),
+        )
     return result
 
 
 def stage_execution(result, **kwargs):
-    """R4 — consume 112's `build_routing` unchanged. Step 4 fills this in."""
+    """R4 — consume 112's `build_routing` unchanged.
+
+    Execution needs a task list, and a task list belongs to an issue. With no
+    `chosen_issue` there is nothing to route and `execution` stays null; that is
+    the ordinary case for "상태 알려줘", not a failure.
+
+    `needs_plan` blocks. 112 already reports it with `written: []`, and this
+    stage stops rather than continuing to the one stage that writes.
+    """
     _require(result, "project", "execution")
+    if not result["issue"]:
+        return result
+
+    resolution = result["_resolution"]
+    root = Path(resolution["canonical_root"])
+    relative_paths = resolution.get("relative_paths") or {}
+    tasks_path = root / relative_paths.get("specs", "specs") / result["issue"] / "tasks.md"
+    if not tasks_path.is_file():
+        return result
+
+    tasks = execution_routing.scan_tasks(tasks_path)
+    routing_result = execution_routing.build_routing(
+        tasks, str(root), issue_id=result["issue"]
+    )
+    result["execution"] = routing_result
+
+    if routing_result.get("status") == "needs_plan":
+        return _stop(
+            result,
+            stage="execution",
+            status="blocked",
+            next_command=routing_result.get("next_command"),
+        )
     return result
 
 

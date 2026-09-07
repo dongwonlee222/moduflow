@@ -262,6 +262,154 @@ class Stage2OverlapTests(unittest.TestCase):
         self.assertEqual(result["written"], [])
 
 
+def add_capability_registry(registry_path, project_id, *, valid=True):
+    """Give one fixture project an adapter registry. `valid=False` corrupts it."""
+    payload = json.loads(Path(registry_path).read_text(encoding="utf-8"))
+    root = Path(
+        next(p["root"] for p in payload["projects"] if p["id"] == project_id)
+    )
+    (root / "adapters").mkdir(exist_ok=True)
+    # Every field 097's validator requires, and the three global lists non-empty.
+    # A short fixture that omits one is rejected as a corrupt registry, which
+    # makes the "no adapters" case and the "broken adapters" case look alike —
+    # exactly the distinction these tests are here to hold apart.
+    (root / "adapters" / "documents.yaml").write_text("id: documents\n", encoding="utf-8")
+    body = {
+        "schema": "moduflow.capability-registry.v1",
+        "lifecycle_triggers": ["이슈", "issue"],
+        "sequence_markers": ["다음", "next"],
+        "external_write_triggers": ["게시", "publish"],
+        "capabilities": [
+            {
+                "id": "documents",
+                "adapter_path": "adapters/documents.yaml",
+                "purpose": "document drafting",
+                "triggers": ["문서", "document"],
+                "explicit_triggers": ["문서 작성"],
+                "exclusions": [],
+                "default_available": True,
+                "permission": "write-local",
+                "output_artifact": "specs/{issue_id}/document.md",
+                "setup_recommendation": "문서 어댑터를 설치하세요.",
+            }
+        ],
+    }
+    if not valid:
+        body["schema"] = "moduflow.not-a-registry.v9"
+    (root / "adapters" / "capability-routing.json").write_text(
+        json.dumps(body, ensure_ascii=False), encoding="utf-8"
+    )
+    return root
+
+
+def add_tasks_file(registry_path, project_id, issue_id, body):
+    payload = json.loads(Path(registry_path).read_text(encoding="utf-8"))
+    root = Path(
+        next(p["root"] for p in payload["projects"] if p["id"] == project_id)
+    )
+    spec_dir = root / "specs" / issue_id
+    spec_dir.mkdir(parents=True, exist_ok=True)
+    (spec_dir / "tasks.md").write_text(body, encoding="utf-8")
+    return spec_dir / "tasks.md"
+
+
+class Stage3CapabilityTests(unittest.TestCase):
+    """R4 — consume `capability_routing`, never re-derive it."""
+
+    def setUp(self):
+        self.registry = build_registry()
+
+    def test_no_registry_is_outcome_none_not_a_refusal(self):
+        """A project with no adapters routes nothing. That is normal.
+
+        Reading it as a refusal would refuse every request ModuFlow handles
+        itself, which is most of them.
+        """
+        result = routing.route_request("이벤트 상태 알려줘", self.registry)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["capability"]["outcome"], "none")
+
+    def test_a_corrupt_registry_blocks_rather_than_reading_as_none(self):
+        """A missing registry and a broken one are different facts."""
+        add_capability_registry(self.registry, "project-a", valid=False)
+        result = routing.route_request("이벤트 문서 작성해줘", self.registry)
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["stage"], "capability")
+        self.assertEqual(result["written"], [])
+
+    def test_the_097_result_is_carried_verbatim(self):
+        add_capability_registry(self.registry, "project-a")
+        result = routing.route_request("이벤트 문서 작성해줘", self.registry)
+        self.assertEqual(
+            result["capability"]["schema"], "moduflow.capability-routing.v1"
+        )
+        # Not reinterpreted: the keys 097 emits are the keys that arrive.
+        for field in ("outcome", "stages", "current_stage", "sequence_state"):
+            self.assertIn(field, result["capability"])
+
+
+class Stage4ExecutionTests(unittest.TestCase):
+    """R4 — consume 112's `build_routing` unchanged."""
+
+    def setUp(self):
+        self.registry = build_registry()
+
+    def test_no_chosen_issue_means_nothing_to_execute(self):
+        result = routing.route_request("이벤트 상태 알려줘", self.registry)
+        self.assertEqual(result["status"], "ok")
+        self.assertIsNone(result["execution"])
+
+    def test_ready_tasks_route_and_the_112_result_is_carried_verbatim(self):
+        add_tasks_file(
+            self.registry,
+            "project-a",
+            "001-project-a-only",
+            "# Tasks\n\n## Implementation\n\n"
+            "- [ ] T01 Edit the parser [files: scripts/parser.py]\n",
+        )
+        result = routing.route_request(
+            "이벤트 고쳐줘", self.registry, chosen_issue="001-project-a-only"
+        )
+        self.assertEqual(
+            result["execution"]["schema"], "moduflow.execution-routing.v1"
+        )
+        self.assertEqual(result["execution"]["project_root"], ".")
+        self.assertFalse(result["execution"]["dispatched"])
+
+    def test_needs_plan_blocks_with_written_empty(self):
+        add_tasks_file(
+            self.registry,
+            "project-a",
+            "001-project-a-only",
+            "# Tasks\n\n## Implementation\n\n- [ ] T01 어떻게든 해줘\n",
+        )
+        result = routing.route_request(
+            "이벤트 고쳐줘", self.registry, chosen_issue="001-project-a-only"
+        )
+        # Asserted, not guarded on. Written as `if status == "needs_plan":` this
+        # passes for free the day the fixture stops producing one, and the test
+        # then proves nothing while still going green.
+        self.assertEqual(result["execution"]["status"], "needs_plan")
+        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["stage"], "execution")
+        self.assertEqual(result["written"], [])
+
+    def test_execution_never_claims_it_dispatched(self):
+        add_tasks_file(
+            self.registry,
+            "project-a",
+            "001-project-a-only",
+            "# Tasks\n\n## Implementation\n\n"
+            "- [ ] T01 Edit the parser [files: scripts/parser.py]\n",
+        )
+        result = routing.route_request(
+            "이벤트 고쳐줘", self.registry, chosen_issue="001-project-a-only"
+        )
+        self.assertFalse(result["execution"]["dispatched"])
+        self.assertIsNone(result["execution"]["executed_by"])
+        self.assertEqual(result["written"], [])
+
+
 class OrderingTests(unittest.TestCase):
     """The spec names silent reordering as this issue's characteristic failure.
 

@@ -15,8 +15,8 @@ Issue: 104-project-aware-natural-language-request-orchestrator
 
 ## Stream C — Capability and execution
 
-- [ ] T06 Stage 3 capability, carrying the 097 result verbatim and treating `none` as a normal outcome [files: scripts/request_routing.py, tests/test_request_routing.py] [depends: T02]
-- [ ] T07 Stage 4 execution, consuming 112's result unchanged and stopping on `needs_plan` with `written: []` [files: scripts/request_routing.py, tests/test_request_routing.py] [depends: T06]
+- [x] T06 Stage 3 capability, carrying the 097 result verbatim and treating `none` as a normal outcome [files: scripts/request_routing.py, tests/test_request_routing.py] [depends: T02]
+- [x] T07 Stage 4 execution, consuming 112's result unchanged and stopping on `needs_plan` with `written: []` [files: scripts/request_routing.py, tests/test_request_routing.py] [depends: T06]
 
 ## Stream D — Isolation
 
