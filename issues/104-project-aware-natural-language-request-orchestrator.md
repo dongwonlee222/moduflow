@@ -71,7 +71,7 @@ Do not create a second public entry point by default, scan unregistered projects
 ## Workflow Tasks
 
 - [x] spec → `specs/104-project-aware-natural-language-request-orchestrator/spec.md`
-- [ ] plan → `specs/104-project-aware-natural-language-request-orchestrator/plan.md`
+- [x] plan → `specs/104-project-aware-natural-language-request-orchestrator/plan.md` + `tasks.md`
 - [ ] execute → request contract, project/context pipeline, handoff, transaction integration, and tests
 - [ ] review → `specs/104-project-aware-natural-language-request-orchestrator/review.md`
 

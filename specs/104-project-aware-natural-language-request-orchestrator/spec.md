@@ -189,11 +189,16 @@ stage 1 unparsed, so a table can be applied there without touching stages 2–5.
   called in sequence.** Their result shapes do not match, and the temptation
   will be to normalize them here. R4 forbids reinterpreting; passing through
   verbatim is uglier and keeps the disagreement visible.
-- **`capability_routing` returned `outcome: none` for a decision request** in a
-  smoke test on 2026-09-07. Either that is correct and decisions need no
-  capability, or the router does not recognise the request. Resolve during plan;
-  building stage 3 on an unverified assumption repeats the mistake this session
-  has already paid for twice.
+- ~~`capability_routing` returned `outcome: none` for a decision request.~~
+  **Resolved 2026-09-07 during plan.** `none` means "continue in ModuFlow and
+  load no specialist", which is correct — recording a decision is ModuFlow's own
+  work. Measured across five requests: `결정으로 남겨줘` → `none`,
+  `이 화면 디자인 좀 봐줘` → `delegate` to `product-design` (availability
+  `unavailable`, so `current_stage` is null and a fallback sentence is
+  returned), `지표 분석해줘` → `delegate`, `명세 검토해줘` → `none`,
+  `출시 준비해줘` → `none`. The router recognises requests correctly. **Stage 3
+  must treat `none` as a normal outcome**, not a failure to route — reading it
+  as failure would refuse every request ModuFlow handles itself.
 
 ## Open Questions
 
