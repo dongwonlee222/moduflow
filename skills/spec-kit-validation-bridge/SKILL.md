@@ -6,6 +6,55 @@ user-invocable: false
 
 # Spec Kit Validation Bridge
 
+## 켜기 — 안 켜면 아무것도 안 됩니다
+
+이 어댑터는 **프로젝트가 명시적으로 켜야** 돕니다. 기본은 꺼짐이고, 그것이 098의
+의도입니다 — 애매한 요청이 외부 도구를 부르면 안 됩니다.
+
+```bash
+python3 <moduflow-root>/scripts/spec_kit_adapter.py <project-root> \
+  --configure --functions analyze,clarify,checklist,converge --enable --write
+```
+
+`--enable` 없이 `--configure --write` 하면 **꺼진 설정이 쓰입니다.** 2026-09-07
+이전에는 `--enable`이 없어서 **켤 방법 자체가 없었고**, 그래서 4주간 이 다리가
+한 번도 쓰이지 않았습니다 (이슈 151).
+
+끄려면 `--enable` 없이 다시 `--configure --write` 하면 됩니다.
+
+## 부르는 법 — 문장이 정확해야 합니다
+
+인정되는 문장은 **`spec kit` · `speckit` · `스펙 킷` · `스펙킷` 으로 시작해야**
+하고, 그 뒤에 함수 이름이 와야 합니다. 형태는 이것뿐입니다:
+
+```
+spec kit <analyze|clarify|checklist|converge> [the] <spec|plan|tasks|requirements|...>
+스펙킷 <분석|명확화|체크리스트|수렴> ...
+```
+
+**되는 예 / 안 되는 예:**
+
+| 요청 | 결과 |
+|---|---|
+| `spec kit analyze the spec` | `ready` |
+| `스펙킷 분석` | `ready` |
+| `analyze this spec for inconsistencies` | **`unsupported`** — 접두어가 없다 |
+| `spec kit analyze and clarify` | **`multiple_functions`** — 함수가 둘이다 |
+
+**엄격한 것은 의도입니다.** 느슨하게 만들지 마십시오 — 애매한 요청이 전문 도구를
+부르지 않게 하는 것이 이 문법의 목적입니다. 인정 문장 전체 목록은
+`scripts/spec_kit_adapter.py`의 `CANONICAL_REQUESTS`에 있습니다 (1,064개).
+
+## 안 되면 무엇이 나오나
+
+| `outcome` | 뜻 | 할 일 |
+|---|---|---|
+| `disabled` | 안 켜져 있다 | 위 `--enable` |
+| `unsupported` | 문장이 문법에 안 맞다 | 위 형태로 다시 |
+| `unavailable` | 필요한 입력 파일이 없다 | 그 이슈의 `spec.md`·`plan.md`·`tasks.md` 먼저 |
+| `ready` | 된다 | 템플릿과 입력이 결과에 들어 있다 |
+
+
 Consume one Issue 097 routing stage as a lazy, read-only host protocol. This bridge does not
 execute Spec Kit, install its runtime, or own any ModuFlow lifecycle or artifact mutation.
 

@@ -217,6 +217,84 @@ def write_canonical_inputs(project, issue_id=ISSUE_ID):
     return inputs
 
 
+class SpecKitEnableSwitchTests(unittest.TestCase):
+    """Issue 151 — the opt-in had no way to opt in.
+
+    `_config_payload` hardcoded `"enabled": False`, so `--configure --write`
+    wrote a disabled config and nothing in the codebase set it true. The only
+    way to switch the adapter on was to hand-write
+    `.moduflow/capabilities.json`, which no command or document mentions. Found
+    2026-09-07 after four weeks of the adapter appearing to be "unused".
+
+    Fail-closed stays: the default is still off, and that is 098's design.
+    What changes is that a project can now say yes.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.ska = load_module(cls)
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.project = Path(self.tempdir.name)
+        write_canonical_inputs(self.project)
+
+    def tearDown(self):
+        self.tempdir.cleanup()
+
+    def test_default_is_still_off(self):
+        payload = self.ska.configure_project(self.project, ["analyze"])
+        self.assertFalse(payload["capabilities"]["spec-kit"]["enabled"])
+
+    def test_enable_true_produces_an_enabled_config(self):
+        payload = self.ska.configure_project(self.project, ["analyze"], enabled=True)
+        self.assertTrue(payload["capabilities"]["spec-kit"]["enabled"])
+
+    def test_writing_an_enabled_config_makes_the_adapter_ready(self):
+        """The end the switch exists for: written, then actually usable."""
+        self.ska.configure_project(
+            self.project, ["analyze"], enabled=True, write=True
+        )
+        written = json.loads(
+            (self.project / ".moduflow" / "capabilities.json").read_text(encoding="utf-8")
+        )
+        self.assertTrue(written["capabilities"]["spec-kit"]["enabled"])
+
+        result = self.ska.build_handoff(
+            ROOT,
+            self.project,
+            ISSUE_ID,
+            "spec kit analyze the spec",
+            True,
+        )
+        self.assertEqual(result["outcome"], "ready")
+
+    def test_writing_a_disabled_config_still_refuses(self):
+        self.ska.configure_project(
+            self.project, ["analyze"], enabled=False, write=True
+        )
+        result = self.ska.build_handoff(
+            ROOT,
+            self.project,
+            ISSUE_ID,
+            "spec kit analyze the spec",
+            True,
+        )
+        self.assertEqual(result["outcome"], "disabled")
+
+    def test_a_project_with_no_config_file_is_disabled_not_broken(self):
+        """This repository had no capabilities.json at all. It must not raise."""
+        self.assertFalse((self.project / ".moduflow" / "capabilities.json").exists())
+        result = self.ska.build_handoff(
+            ROOT,
+            self.project,
+            ISSUE_ID,
+            "spec kit analyze the spec",
+            True,
+        )
+        self.assertEqual(result["outcome"], "disabled")
+
+
 class SpecKitConfigTests(unittest.TestCase):
     def test_archived_project_denies_configuration_before_temp_or_directory_creation(self):
         adapter = load_module(self)

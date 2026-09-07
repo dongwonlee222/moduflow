@@ -1,6 +1,6 @@
 # Issue 151: The Spec Kit Adapter Cannot Be Switched On
 
-**Status: backlog** — created 2026-09-07.
+**Status: done** — 2026-09-07에 만들고 같은 날 끝냈습니다. `--enable` 스위치, 부르는 법 문서화, `doctor`의 꺼짐 보고 셋 다 들어갔습니다. 기본값은 그대로 꺼짐입니다 — fail-closed는 098의 의도이고 되돌리지 않았습니다.
 **Priority: p1**
 
 ## 요약
@@ -158,10 +158,16 @@ presented as live performance`라고 적었습니다), 실제 명세에 돌려�
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/<issue>/spec.md`
-- [ ] plan → `specs/<issue>/plan.md` + `tasks.md`
-- [ ] execute → 스위치, 문법 문서화, 허브 연결, doctor 보고
-- [ ] review → `specs/<issue>/review.md`
+- [x] execute → 스위치, 문법 문서화, doctor 보고
+
+명세·계획 파일은 만들지 않았습니다. 149와 같은 이유입니다 — 원인이 한 줄
+(`"enabled": False` 하드코딩)이고 결정이 하나(기본값을 유지할 것인가)뿐이라,
+네 파일을 쓰는 쪽이 고치는 일보다 큽니다. 테스트 5건이 붙잡고 있습니다
+(`tests/test_spec_kit_adapter.py`의 `SpecKitEnableSwitchTests`).
+
+**허브 연결은 하지 않았습니다.** `/moduflow`가 이 다리에 닿는 경로는 이미
+`commands/moduflow.md`에 있고, 막고 있던 것은 스위치였습니다. 그게 풀렸으니
+따로 배선할 것이 없습니다.
 
 ## Related Issues
 

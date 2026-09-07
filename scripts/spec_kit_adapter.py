@@ -1127,12 +1127,22 @@ def build_handoff(
         )
 
 
-def _config_payload(functions):
+def _config_payload(functions, *, enabled=False):
+    """Build a capability config. `enabled` defaults to False on purpose.
+
+    Issue 151: this used to hardcode `False` with no way to pass anything else,
+    so `--configure --write` wrote a disabled config and no code anywhere set it
+    true. The adapter was opt-in with the opt-in missing, and for four weeks it
+    read as "unused" when it was unusable.
+
+    Fail-closed is 098's design and stays. What changed is that a project can now
+    say yes.
+    """
     return {
         "schema": CONFIG_SCHEMA,
         "capabilities": {
             "spec-kit": {
-                "enabled": False,
+                "enabled": bool(enabled),
                 "source_version": APPROVED_VERSION,
                 "source_sha": APPROVED_SHA,
                 "functions": functions,
@@ -1145,11 +1155,12 @@ def configure_project(
     project_root,
     functions,
     *,
+    enabled=False,
     write=False,
     project_context=None,
 ):
     functions = _function_list(functions)
-    payload = _config_payload(functions)
+    payload = _config_payload(functions, enabled=enabled)
     if not write:
         return payload
     context = project_registry.context_for_operation(
@@ -1211,6 +1222,14 @@ def main(argv=None):
     parser.add_argument("--request")
     parser.add_argument("--host-available", action="store_true")
     parser.add_argument("--write", action="store_true")
+    parser.add_argument(
+        "--enable",
+        action="store_true",
+        help=(
+            "switch the adapter on for this project. Without it --configure "
+            "writes a disabled config, which is the fail-closed default."
+        ),
+    )
     args = parser.parse_args(argv)
     try:
         if args.configure:
@@ -1223,11 +1242,12 @@ def main(argv=None):
             ):
                 _error(
                     "invalid_arguments",
-                    "--configure requires only --functions and optional --write",
+                    "--configure requires only --functions and optional --write/--enable",
                 )
             payload = configure_project(
                 args.project_root,
                 args.functions.split(","),
+                enabled=args.enable,
                 write=args.write,
             )
             print(json.dumps(payload, indent=2, ensure_ascii=False))

@@ -868,9 +868,45 @@ def inspect_project(path, include_preflight=True, *, project_context=None, runti
             "then run product:doctor again; do not guess a recovery command."
         )
 
+    # 151: say which optional capabilities are off.
+    #
+    # The spec-kit adapter sat switched off for four weeks and nothing reported
+    # it — not doctor, not the dashboard, not status. It read as "unused" when
+    # it was unusable. A capability that exists and is off is a fact a reader
+    # needs; only spec-kit is covered here because only spec-kit has a switch.
+    result["optional_capabilities"] = _optional_capability_report(requested)
+    for line in result["optional_capabilities"]["recommendations"]:
+        result["recommendation"].append(line)
+
     result["recommendation"].extend(plugin_staleness["recommendations"])
 
     return result
+
+
+def _optional_capability_report(root):
+    """Which optional capabilities are configured, and whether they are on."""
+    path = Path(root) / ".moduflow" / "capabilities.json"
+    report = {"spec-kit": {"configured": False, "enabled": False}, "recommendations": []}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        report["recommendations"].append(
+            "spec-kit 어댑터가 설정되지 않았습니다 (꺼짐). 쓰려면 "
+            "`spec_kit_adapter.py <root> --configure --functions analyze --enable --write`."
+        )
+        return report
+    entry = ((payload or {}).get("capabilities") or {}).get("spec-kit") or {}
+    report["spec-kit"] = {
+        "configured": True,
+        "enabled": bool(entry.get("enabled")),
+        "functions": entry.get("functions") or [],
+    }
+    if not report["spec-kit"]["enabled"]:
+        report["recommendations"].append(
+            "spec-kit 어댑터가 설정돼 있지만 꺼져 있습니다. 켜려면 같은 명령에 "
+            "`--enable` 을 붙이세요."
+        )
+    return report
 
 
 def main():
