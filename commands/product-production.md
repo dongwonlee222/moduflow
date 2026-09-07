@@ -5,7 +5,9 @@ argument-hint: "[project path] [--init|--new-record|--search|--retrieve|--valida
 
 # /product:production
 
-Manage recurring production records and human-approved playbooks for banners, event pages, PR, ads, proposals, Alimtalk, SMS, Push, and similar deliverables. Keep source assets where they already live; register project-relative paths or `https` links.
+Manage recurring production records and human-approved playbooks for banners, event pages, PR, ads, proposals, Alimtalk, SMS, Push, recurring data updates, and similar deliverables. Keep source assets and data where they already live; register project-relative paths or `https` links.
+
+For a recurring data update, record the source and comparison window, actual or forecast classification, human approval, exact write target, excluded or inactive channels, and post-write verification. Keep credentials and private row-level data outside the production record.
 
 ## Flow
 
@@ -19,6 +21,12 @@ python3 scripts/project_production.py <project-path> --init
 
 ```bash
 python3 scripts/project_production.py <project-path> --new-record --title "Summer banner" --issue-id 123-summer-event --type banner --channel home-popup --audience customer --lifecycle draft --retrieval-trigger "when creating mobile banners" --variant mobile
+```
+
+Data-update example:
+
+```bash
+python3 scripts/project_production.py <project-path> --new-record --title "Weekly campaign report update" --issue-id 123-weekly-report --type campaign-report-data-update --channel google-sheet --audience internal --lifecycle draft --retrieval-trigger "when updating the weekly campaign report" --variant forecast
 ```
 
 Open the returned Markdown file and complete `Artifacts`, `Source Inputs`, `Decisions`, `Failed Attempts`, `Reusable Patterns`, `Do Not Repeat`, `Playbook Updates`, `External Copy`, and `Internal Reporting Copy`.

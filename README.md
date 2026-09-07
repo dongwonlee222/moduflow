@@ -133,7 +133,7 @@ Short aliases are also supported, for example `@ModuFlow status`, `@ModuFlow iss
 ### On-demand (reach for these when the work calls for them)
 
 - Intake and shaping: `/product:inbox` (capture raw requests), `/product:opportunity` (shape the problem)
-- Evidence and knowledge: `/product:knowledge`, `/product:memory`, `/product:production` (recurring production records/playbooks), `/product:decision`, `/product:research`, `/product:benchmark`, `/product:report`, `/product:evidence`
+- Evidence and knowledge: `/product:knowledge`, `/product:memory`, `/product:production` (recurring production and data-update records/playbooks), `/product:decision`, `/product:research`, `/product:benchmark`, `/product:report`, `/product:evidence`
 - Analysis and design: `/product:analyze` (metrics/data), `/product:design` (UX brief), `/product:prototype`
 - Views and planning: `/product:roadmap` (Now/Next/Later), `/product:issues` (inspect all issues), `/product:risks` (blockers and release concerns)
 - Portfolio and team: `/product:portfolio`, `/product:projects`, `/product:weekly`, `/product:handoff`, `/product:update` (stakeholder update), `/product:workers` (parallel execution plan)

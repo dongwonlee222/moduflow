@@ -78,7 +78,7 @@ belongs to `077-implementation-readiness-gate`.
 - Existing project adoption or different folder structure: `/product:migrate` (`migrate`, `마이그레이션`)
 - Project owner, environment, link, or integration metadata: `/product:profile` (`profile`, `프로필`)
 - Portable project memory, deliverables, decisions, evidence, meetings, releases, operating notes, or long-term project context: `/product:memory` (`memory`, `메모리`, `장기기억`)
-- Recurring banners, event pages, PR/press releases, ads, proposals, Alimtalk, SMS, Push, production records, reusable production patterns, or playbooks: `/product:production` (`production`, `제작 기록`, `제작지식`, `플레이북`)
+- Recurring banners, event pages, PR/press releases, ads, proposals, Alimtalk, SMS, Push, recurring data updates, production records, reusable production patterns, or playbooks: `/product:production` (`production`, `제작 기록`, `제작지식`, `플레이북`, `반복 데이터 업데이트`)
 - Legacy knowledge folders, benchmarks, reports, decisions, research, data notes, or references: `/product:knowledge` (`knowledge`, `지식`)
 - Evidence review for an issue/spec/roadmap item: `/product:evidence` (`evidence`, `근거`)
 - Multi-project overview, central dashboard, or weekly cross-project status: `/product:portfolio` (`portfolio`, `포트폴리오`)
@@ -122,6 +122,7 @@ Route common Korean phrases directly:
 - "페르소나", "사용자 시나리오", "고객여정지도": `moduflow:business-plan` persona and journey artifacts
 - "사업계획서 PDF", "피치덱", "PPT", "덱 목차": `moduflow:business-plan` export-ready source, then delegate rendering to Documents, Presentations, or PDF plugins
 - "검증 이슈로 쪼개줘", "가설을 이슈로 만들어줘": `moduflow:business-plan` then `/product:issue` candidates
+- "반복 데이터 업데이트 플레이북", "주간 리포트 입력 절차를 플레이북으로": `/product:production`; preserve source, actual/forecast distinction, approval, write range, and verification evidence in the project record and playbook
 - "<issue id> 시작해줘": issue lifecycle start
 - "<issue id> 진행 내용 추가", "<issue id> 업데이트": issue lifecycle update
 - "<issue id> 멈춰줘", "<issue id> pause": issue lifecycle pause
