@@ -18,6 +18,10 @@
 - Date: 2026-09-05
 - Link: `workspace/constitution.md` amendment procedure; `specs/098-speckit-selective-validation-adapter/spec.md:213`
 
+## 안 고치면
+
+확인 필요 — 헌법을 고치면 파일럿 스냅샷 4개가 무효가 되고 릴리스가 막힙니다. **그런데 헌법을 고칠 일이 실제로 생기는지가 먼저입니다.** C12를 넣기로 하면 이 이슈가 즉시 실물이 됩니다. — 결정
+
 ## Opportunity
 
 `spec_kit_adapter.canonical_input_paths()` (`scripts/spec_kit_adapter.py:551`) returns the issue file, the spec directory, **and `workspace/constitution.md`**. `validate_host_result` then rejects a stored snapshot whose `input_hash` no longer matches (`scripts/spec_kit_adapter.py:797`, `input_mismatch`). The four committed snapshots under `tests/fixtures/spec-kit-selective-validation/results/` were produced under constitution v1.0.

@@ -25,6 +25,10 @@ from one written today with prose in the token position.
   on the day 129 shipped
 - Owner / decision maker: Dongwon Lee
 
+## 안 고치면
+
+이슈 유형을 안 써도 아무 일이 안 일어나서 129의 규칙이 한 자리 숫자 이슈에만 걸립니다. — 기록. **142와 합칠 후보.**
+
 ## Opportunity
 
 `scripts/validate_project_artifacts.py`, `parse_type_token`:

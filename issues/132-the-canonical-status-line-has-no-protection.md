@@ -29,6 +29,10 @@ of Markdown with no schema enforcement at write time.
 - Found while auditing the process end to end after a week in which three
   lifecycle defects (125, 126, 127) all traced back to state disagreement
 
+## 안 고치면
+
+상태 줄을 손으로만 고칠 수 있고, pause가 아무것도 안 멈춥니다. 2026-09-07에 직접 걸렸습니다. — 기록
+
 ## Opportunity
 
 Three symptoms, each verified:

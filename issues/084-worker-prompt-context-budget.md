@@ -14,6 +14,10 @@ Reduce redundant worker prompt context while preserving the task contract, relev
 - Link: local Codex session, 2026-07-10
 - Date: 2026-07-10
 
+## 안 고치면
+
+아무도 막히지 않습니다 — 워커 지시문이 길어도 실패한 적이 없습니다. **닫을 후보.**
+
 ## Opportunity
 
 Model routing only saves money if the worker prompt itself does not repeatedly inject long, overlapping instructions. Smaller, better-selected prompts reduce latency and token spend while making the worker's actual task easier to find.

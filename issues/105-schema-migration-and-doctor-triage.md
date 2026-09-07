@@ -15,6 +15,10 @@ Turn migration and Doctor output into a safe, prioritized recovery workflow that
 - Owner / decision maker: Dongwon Lee
 - Current phase: blocked
 
+## 안 고치면
+
+다른 컴퓨터에서 프로젝트를 받으면 진단이 실패하고, 뭘 먼저 고쳐야 할지 31개 항목에서 찾아야 합니다. — 다음 액션
+
 ## Opportunity
 
 Issues 001, 013, 024, 066, and 093 delivered non-destructive project mapping, a real Doctor gate, artifact validation, one legacy status migration, and shared issue-schema diagnostics. They do not yet provide a general migration plan/apply workflow, grouped triage, safe auto-fix classification, recovery points, or idempotent state reconciliation across configured paths.

@@ -15,6 +15,10 @@ Make project production knowledge reliably searchable with Korean multi-token qu
 - Owner / decision maker: Dongwon Lee
 - Current phase: backlog
 
+## 안 고치면
+
+한국어로 적은 기록을 한국어로 못 찾습니다. — 기록
+
 ## Opportunity
 
 Issue 085 shipped project-local record/playbook search, but the current text matcher depends too heavily on contiguous phrases and ASCII slug fragments. Queries such as `스플래시 배너` can miss records containing both terms separately, and Korean titles can collapse to IDs such as `ev`.

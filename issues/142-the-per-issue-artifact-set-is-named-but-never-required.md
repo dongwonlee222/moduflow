@@ -34,6 +34,10 @@ The artifacts are a naming convention that the product reads and never requires.
 - Owner / decision maker: Dongwon Lee
 - Measured against all 138 issue files in this repository the same day
 
+## 안 고치면
+
+끝난 이슈가 무엇을 남겼는지 알 수 없습니다. 95건 중 25건만 네 파일을 다 갖고 있습니다. — 기록. **144·145와 같은 병(정해놓고 확인 안 함)이라 합칠 후보.**
+
 ## Opportunity
 
 Every `done` issue in this repository, grouped by which of `spec.md`, `plan.md`,

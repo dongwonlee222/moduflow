@@ -15,6 +15,10 @@ Initialize production approver readiness and select deliverable-specific verific
 - Owner / decision maker: Dongwon Lee
 - Current phase: blocked
 
+## 안 고치면
+
+아무도 막히지 않습니다 — 승인자가 사장님 한 분이라 승인자 준비 상태를 따로 관리할 대상이 없습니다. **팀이 생기면 다시 엽니다.**
+
 ## Opportunity
 
 Issue 085 validates record structure and playbook promotion, Issue 094 defines an optional risk-based review adapter pattern, and Issue 101 improves schema discoverability. Production workflows still lack early approver setup and artifact-specific verification for dimensions, copy, file integrity, packages, and HTML links.

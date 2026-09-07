@@ -55,6 +55,10 @@ the project is initialized, has no missing artifacts, passes schema gates and
 has healthy recovery — a real gate, with a comment saying it was made one
 deliberately. That half needs no fixing.
 
+## 안 고치면
+
+검사가 뭘 먼저 봐야 하는지 말해주지 않습니다. 31개 항목 덩어리만 나옵니다. — 다음 액션
+
 ## Opportunity
 
 What the survey found, and what each finding implies here:

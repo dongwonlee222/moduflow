@@ -25,6 +25,10 @@ of them.
 - Surfaced by the owner's question during that pass — "상태만 체크 해도 대시보드가
   나와?" — which could not be answered without first asking which one he meant
 
+## 안 고치면
+
+"대시보드 보여줘"가 넷 중 뭘 말하는지 알 수 없습니다. 로드맵까지 치면 다섯입니다. — 다음 액션
+
 ## Opportunity
 
 | Name | What it is | Written by | Tracked |

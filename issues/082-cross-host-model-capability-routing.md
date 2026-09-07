@@ -13,6 +13,10 @@ Extend ModuFlow's semantic `deep` / `balanced` / `fast` worker routing so its gu
 - Link: local Codex session, 2026-07-10
 - Date: 2026-07-10
 
+## 안 고치면
+
+아무도 막히지 않습니다 — 112가 도구별 어댑터로 이미 해결했습니다. **닫을 후보.**
+
 ## Opportunity
 
 Issue 081 adds current GPT-5.6 examples, but ModuFlow is designed to run in more than one host. A user should express the importance, complexity, and repetition of work once; the host should receive an appropriate provider-specific starting point or a safe generic fallback.

@@ -19,6 +19,10 @@ Spec and plan are written; execute is gated on the section 6 decision.
 - Date: 2026-09-05
 - Link: session review of `scripts/project_issue_schema.py` while answering why issue files are English-only
 
+## 안 고치면
+
+완료한 이슈가 오타 하나로 조용히 백로그로 돌아갑니다. 실제로 이슈 125에서 일어났습니다. — 기록
+
 ## Opportunity
 
 `scripts/project_issue_schema.py:614`:

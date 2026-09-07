@@ -29,6 +29,10 @@ The existing dashboard exposes issues, graphs, and production records, but users
 - Project selection from Issue 086 scopes every home element; no cross-project mixing is allowed.
 - The home view summarizes decisions but does not replace `product:decision` records.
 
+## 안 고치면
+
+아무도 막히지 않습니다 — 대시보드가 이미 넷입니다(143). 다섯 번째를 만들 이유가 없습니다. **143으로 합칠 후보.**
+
 ## Scope
 
 ### In

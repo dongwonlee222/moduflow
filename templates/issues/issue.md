@@ -24,6 +24,14 @@
 - Link: {{source_link}}
 - Date: {{date}}
 
+## 안 고치면
+
+<!-- 이걸 안 고치면 누가 무엇을 못 하는지 한 문장. 목표(workspace/goal.md)의
+     네 가지 — 맥락·기록·결정·다음 액션 — 중 어디가 막히는지 말한다.
+     "아무도 막히지 않는다"가 답이면 이슈를 만들지 않는다. -->
+
+{{blocked_without_this}}
+
 ## Opportunity
 
 {{opportunity}}

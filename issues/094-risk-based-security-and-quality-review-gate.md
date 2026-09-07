@@ -39,6 +39,10 @@ Generic lint, tests, and security checks did not detect spreadsheet formula inje
 
 External input/rendering, file upload, destructive/write operations, API adapters, and shared-boundary refactors remain extension candidates. They are not required in the first version without project evidence that justifies them.
 
+## 안 고치면
+
+아무도 막히지 않습니다 — 외부 보안·품질 검토 어댑터를 고를 수 있게 하는 건데, 지금 고를 사람이 사장님 한 분입니다. **닫을 후보.**
+
 ## Scope
 
 ### In

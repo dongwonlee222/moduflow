@@ -16,6 +16,10 @@ Revalidate the four read-only Spec Kit functions against the official 1.x line a
 - Official milestone: Spec Kit `1.0.0` released 2026-08-21
 - Trend evidence: `knowledge/benchmarks/2026-09-01-agentic-execution-governance-trend.md`
 
+## 안 고치면
+
+아무도 막히지 않습니다 — Spec Kit 어댑터는 꺼져 있고, 켤 계획이 없습니다. **닫을 후보.**
+
 ## Opportunity
 
 Issue 098 intentionally pinned exact snapshots of `clarify`, `analyze`, `checklist`, and `converge`. Spec Kit has since reached 1.x and expanded its integration, preset, extension, and workflow model. Updating without reviewing the four templates and ownership boundaries could silently introduce a second plan/task/implementation lifecycle.

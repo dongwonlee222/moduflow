@@ -20,6 +20,10 @@ the warning it guards.
 - Owner / decision maker: Dongwon Lee
 - Date: 2026-09-05
 
+## 안 고치면
+
+세션 종료 훅이 "이슈에 안 연결된 코드 변경"을 놓칩니다. 빈 파일 하나가 검사를 통째로 끕니다. — 기록. **136과 같은 병(파일 존재만 보고 내용을 안 봄)이라 합칠 후보.**
+
 ## Opportunity
 
 ```python

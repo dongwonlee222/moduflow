@@ -14,6 +14,10 @@ Connect ModuFlow's existing single natural-language entry point to project resol
 - Owner / decision maker: Dongwon Lee
 - Current phase: spec (2026-09-07). Blocked-by cleared the same day — `102`, `103`, `112` all done.
 
+## 안 고치면
+
+사장님이 말로 시킬 수 없습니다. 명령 이름을 외워야 합니다. — 다음 액션
+
 ## Opportunity
 
 Issues 020, 022, 076, and 097 already provide simple aliases, intake-to-goal routing, fast-path shaping, and a tested capability contract. The missing follow-up is one project-aware production request pipeline that always runs those capabilities in the safe order and returns one auditable routing result.

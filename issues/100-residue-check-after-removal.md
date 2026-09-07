@@ -28,6 +28,10 @@ LLM agents avoid deletion. They comment out, disable behind a flag, or delete pa
 
 Incident 4 is the important one: removal cascades. Archiving one skill broke references in six others, and each round of grep revealed the next layer. A one-shot check would have missed five of the six.
 
+## 안 고치면
+
+지운 것이 제대로 지워졌는지 아무도 안 봅니다. — 기록
+
 ## Scope
 
 - New worker: `residue-checker` alongside `qa-reviewer` in `workers/`

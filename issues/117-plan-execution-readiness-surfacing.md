@@ -14,6 +14,10 @@ Report, without being asked, when an issue has a plan that no execution tool can
 - Owner / decision maker: Dongwon Lee
 - Observed: 2026-09-04. Plans for Issues 091 and 086 were written as prose streams with no `tasks.md`, so `scripts/worker_orchestrator.py` had no input and parallel eligibility was judged by hand instead. Issues 090, 103 and 111 have a `tasks.md` and have still never produced a worker plan. No worker plan existed anywhere in the repository.
 
+## 안 고치면
+
+실행 도구가 못 읽는 계획을 아무도 안 알려줍니다. 112가 판정은 만들었지만 알려주지는 않습니다. — 다음 액션
+
 ## Opportunity
 
 The machinery is already built and already correct. `worker_orchestrator.py` computes file overlap, shared-state risk, worker grouping, dependency-aware merge order and a `parallel-eligible` verdict from `[files:]`, `[depends:]` and `[shared_state:]` metadata. Issue 112 will consume the same input and return `needs_plan` when the boundaries are unusable. `project_issue_schema.py` already indexes which artifacts each issue has.

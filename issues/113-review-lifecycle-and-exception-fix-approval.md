@@ -15,6 +15,10 @@ Separate implementation completion, review, remediation, approval, and merge sta
 - Approved decomposition: 2026-09-01
 - Trend evidence: `knowledge/benchmarks/2026-09-01-agentic-execution-governance-trend.md`
 
+## 안 고치면
+
+구현·검토·수정·승인이 한 상태에 뭉쳐 있어 어디까지 됐는지 말할 수 없습니다. — 기록
+
 ## Opportunity
 
 Current issue, team, and review artifacts can collapse code completion and final approval into a single advanced state. Review findings then appear after the workflow has already moved ahead, and an extra remediation round has no durable user-approval record.

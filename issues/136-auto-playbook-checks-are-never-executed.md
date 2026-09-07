@@ -27,6 +27,10 @@ invokes it, so the `[auto]` / `[review]` distinction has no runtime meaning.
 - The reporter re-implemented the evaluator as a ~70-line unit test in that
   project to get the behaviour the playbook already described.
 
+## 안 고치면
+
+플레이북의 필수 점검이 한 번도 실행되지 않습니다. 작성자가 적어둔 검사가 무시됩니다. — 기록. **123과 합칠 후보.**
+
 ## Opportunity
 
 Verified 2026-09-06 by grepping the name across `scripts/`, `commands/`,

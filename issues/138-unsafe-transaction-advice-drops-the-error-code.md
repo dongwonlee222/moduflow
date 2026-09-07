@@ -36,6 +36,10 @@ reads. The named directory is correct but empty at rest.
   evidence record written at `project_lifecycle_transaction.py:6297` and `:6410`.
   The diagnostic names the directory it actually reads.
 
+## 안 고치면
+
+복구 진단이 항상 같은 한 문장만 내놓습니다. — 다음 액션
+
 ## Opportunity
 
 Three things make the advice unhelpful even though the path is right:

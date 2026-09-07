@@ -40,6 +40,10 @@ Three separate gaps produce this:
    ```
    The Claude Code host is on 0.3.41 while Codex is on 0.3.17 — the same plugin, two hosts, 24 versions apart. This defeats the cross-host parity the adapters exist to provide.
 
+## 안 고치면
+
+vendor 와 설치본이 낡아도 아무도 안 알려줍니다. 오늘 0.3.65 로 3일 돌았습니다. — 다음 액션
+
 ## Scope
 
 - `scripts/project_sync.py` — include vendor freshness in the preflight result

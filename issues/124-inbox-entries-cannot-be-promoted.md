@@ -21,6 +21,10 @@ does not exist for the capture surface most likely to hold new work.
 - Owner / decision maker: Dongwon Lee
 - Date: 2026-09-05
 
+## 안 고치면
+
+인박스에 적어둔 것을 이슈로 못 올립니다. 사장님이 실제로 쓰는 흐름이 끊깁니다. — 다음 액션
+
 ## Opportunity
 
 Measured on this repository on 2026-09-05:

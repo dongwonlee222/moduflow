@@ -33,6 +33,10 @@ repository identity is authoritative.
   independent defect that should not wait on 112's spec approval, plan and
   execution.
 
+## 안 고치면
+
+쓰기 경로 셋 중 둘이 저장소 신원을 안 봅니다. 엉뚱한 저장소에 워커 계획을 쓸 수 있습니다. — 기록
+
 ## Opportunity
 
 Measured on this repository on 2026-09-05 (HEAD `a5657dd`):

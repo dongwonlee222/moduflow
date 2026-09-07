@@ -28,6 +28,10 @@ artifact that does not exist *yet* from one that is missing, and reads
 - Trigger: advisor review of the Issue 126 diagnosis asked why a known-missing
   link did not fail validation. It did not fail because it was never checked.
 
+## 안 고치면
+
+링크 검사가 활성 이슈 하나에만 걸려서 나머지는 안 봅니다. — 기록
+
 ## Opportunity
 
 ### Fault 1 — scope is one issue

@@ -139,6 +139,23 @@ def decision_content(body, source):
     return findings
 
 
+# 2026-09-07: written, then taken back out of SECTION_RULES within the hour.
+# Requiring `## 안 고치면` on every issue fired on 35 test fixtures across the
+# suite — every fixture that builds a minimal issue would have to carry the
+# section. The rule is right and the scoping was wrong; it goes back in once
+# workspace/goal.md is rewritten into something an issue can actually be
+# measured against, with a scope that does not catch fixtures.
+def blocked_without_this_content(body, source):
+    findings = []
+    text = body.strip()
+    if not text or text.startswith("{{") or "TODO" in text:
+        findings.append(
+            f"{source}: `## 안 고치면` 칸이 비어 있습니다. "
+            "이걸 안 고치면 누가 무엇을 못 하는지 한 문장으로 쓰세요."
+        )
+    return findings
+
+
 SECTION_RULES = [
     SectionRule(
         kind="issue",

@@ -28,6 +28,10 @@ tests. None is documented in `docs/`, `README.md`, `AGENTS.md` or `INSTALL.md`.
   unreachable, ~3,350 lines. Five are reached and were removed; the verified
   figure is **five scripts, 915 lines**.
 
+## 안 고치면
+
+아무도 막히지 않습니다 — 안 불리는 스크립트 915줄이 있어도 동작에 영향이 없습니다. 다만 44,243줄 중 915줄이 죽은 코드라는 건 방향(가볍게)과 어긋납니다. **정리 대상이지 이슈는 아닙니다.**
+
 ## Opportunity
 
 Confirmed unreached, by grepping each name across `scripts`, `hooks`, `commands`,

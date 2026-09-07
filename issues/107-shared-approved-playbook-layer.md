@@ -15,6 +15,10 @@ Add an organization-level playbook layer that exposes only explicitly approved, 
 - Owner / decision maker: Dongwon Lee
 - Current phase: blocked
 
+## 안 고치면
+
+아무도 막히지 않습니다 — 조직 공용 플레이북인데 공유할 조직이 아직 없습니다. **팀이 생기면 다시 엽니다.**
+
 ## Opportunity
 
 Issue 085 correctly keeps production records and playbooks project-local and requires human approval before cross-project reuse. It does not define a separate shared canonical layer, redaction checks, promotion history, or retrieval contract for rules proven in more than one project.

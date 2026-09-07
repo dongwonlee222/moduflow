@@ -44,6 +44,10 @@ historical record a later reviewer would have compared against.
   different issue's investigation.
 - Any write announces itself in the command's own output, in both `--json` and human modes.
 
+## 안 고치면
+
+읽는 것처럼 생긴 명령이 끝난 산출물을 덮어씁니다. — 기록
+
 ## Scope
 
 ### In

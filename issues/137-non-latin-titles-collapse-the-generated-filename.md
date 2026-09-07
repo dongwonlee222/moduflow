@@ -28,6 +28,10 @@ duplicated in `project_knowledge.py:52` and `project_memory.py:70`.
   file is not in this repository — it was produced on the reporter's project. The
   behaviour reproduces exactly, and this repo has its own evidence below.
 
+## 안 고치면
+
+한글 제목이 파일명에서 사라져서 나중에 못 찾습니다. — 기록
+
 ## Opportunity
 
 Both reported line numbers are correct and the regex is identical:

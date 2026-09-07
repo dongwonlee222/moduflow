@@ -30,6 +30,10 @@ of any command or stored field.
 - Benchmark:
   `knowledge/benchmarks/2026-09-06-agent-skill-discoverability-and-bilingual-command-surface.md`
 
+## 안 고치면
+
+명령이 41개 영어로 뜨는데 사장님이 읽고 고를 수 없습니다. 2단계(한국어 문장)는 104를 기다립니다. — 다음 액션
+
 ## Opportunity
 
 Counts measured on this repository, 2026-09-06:

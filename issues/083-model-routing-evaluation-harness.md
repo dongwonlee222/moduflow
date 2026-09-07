@@ -14,6 +14,10 @@ Create a repeatable evaluation harness that tests whether ModuFlow's model-routi
 - Link: local Codex session, 2026-07-10
 - Date: 2026-07-10
 
+## 안 고치면
+
+아무도 막히지 않습니다 — 모델 라우팅이 실제로 품질을 올리는지 재는 장치인데, 지금 그 답이 없어서 막히는 일이 없습니다. **닫을 후보.**
+
 ## Opportunity
 
 Model names and provider tradeoffs change quickly. Without a small, repeatable evaluation set, routing decisions become documentation intuition: users cannot tell whether `balanced` is delivering quality close to `deep`, or whether `fast` is saving enough time and spend to justify its use.

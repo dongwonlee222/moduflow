@@ -78,6 +78,10 @@ sections a reader depends on are named and never checked. This is the third
 instance of the shape, and unlike the other two it now has a mechanism waiting —
 129 shipped `SECTION_RULES`, and a verification rule is a row in it.
 
+## 안 고치면
+
+명세 79개 중 11개에만 검증 계획이 있습니다. 무엇이 됐는지 확인할 방법이 없습니다. — 기록. **142와 합칠 후보.**
+
 ## Scope
 
 ### In

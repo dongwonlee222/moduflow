@@ -40,6 +40,10 @@ is short.
   `src/`, `docs/`, `.github/workflows/`, `CLAUDE.md`, `AGENTS.md`, and a
   `TASKS.md` with three open items.
 
+## 안 고치면
+
+기존 프로젝트를 들여오면 clone 후 깨집니다. 사장님이 신고하셨습니다. — 맥락
+
 ## Opportunity
 
 Three defects, each reproduced. Everything below is command output from that

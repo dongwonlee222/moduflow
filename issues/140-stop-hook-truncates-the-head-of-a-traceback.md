@@ -27,6 +27,10 @@ keeps the stack frames and drops the identity.
   was hit at every session end and stayed unidentified because the log line was
   cut mid-traceback.
 
+## 안 고치면
+
+오류 기록의 앞 300자만 남아서 진짜 원인(맨 끝)이 잘립니다. — 기록
+
 ## Opportunity
 
 ```python

@@ -22,6 +22,10 @@ Issue 057 generates `human-review.ko.md`, but the GitHub upload step can still u
 
 English `pr.md` remains the canonical machine-oriented handoff. For Korean reviewers, GitHub PR bodies, review comments, check summaries, and approval requests must be generated from the Korean review packet or an equivalent Korean-first projection. Agents must not upload `pr.md` directly as the human review body when a Korean packet exists.
 
+## 안 고치면
+
+PR 본문이 영어로 나와서 사장님이 읽고 판단할 수 없습니다. — 결정
+
 ## Scope
 
 ### In

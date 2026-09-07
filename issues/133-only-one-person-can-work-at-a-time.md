@@ -25,6 +25,10 @@ look like the answer, but nothing enforces them.
 - Confirmed by code reading recorded in
   `memory/decisions/2026-09-06-beads-issue-backend-not-adopted.md`
 
+## 안 고치면
+
+두 컴퓨터에서 일하면 활성 이슈 칸을 서로 덮어씁니다. 사장님이 두 대를 쓰십니다. — 기록
+
 ## Opportunity
 
 ### It happened today

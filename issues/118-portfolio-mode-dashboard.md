@@ -15,6 +15,10 @@ Own the cross-project half of the dashboard that Issue 086 deferred on 2026-09-0
 - Date: 2026-09-05
 - Link: `specs/086-project-aware-production-library-dashboard/spec.md` § "Amendment — 2026-09-05" (Korean: `spec.ko.md` § "개정 — 2026-09-05")
 
+## 안 고치면
+
+아무도 막히지 않습니다 — 092와 같은 이유. **143으로 합칠 후보.**
+
 ## Opportunity
 
 Issue 086's approved plan turned out to exclude portfolio mode without saying so. `specs/086-project-aware-production-library-dashboard/plan.md:24` states as a global constraint that there is "no page that mixes two projects' records in one payload"; its contract table exposes only single-project entry points (`_collect_production_records(root, ...)`, `_collect_playbooks(root, ...)`, `render_project_view(root, ...)`); and its file map contains no portfolio collector. Yet the same plan's coverage table maps AC3-AC7 to tasks C1/C2, claiming coverage for a summary view that has nothing behind it. The contradiction was found on 2026-09-05 and resolved by deferring the cross-project scope here rather than by weakening the constraint.

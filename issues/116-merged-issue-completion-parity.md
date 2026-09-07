@@ -14,6 +14,10 @@ Report an issue whose commits are merged into the canonical remote branch while 
 - Owner / decision maker: Dongwon Lee
 - Observed: 2026-09-04. After PRs #48 and #49 merged, Issue 091 had 15 linked commits on `origin/main` and Issue 115 had 1, and both issues still read `Status: backlog`. Nothing reported the contradiction; `product:status` surfaced it only because a human asked what was inconsistent.
 
+## 안 고치면
+
+머지된 이슈가 열린 채로 남습니다. 무엇이 끝났는지 목록이 틀립니다. — 기록
+
 ## Opportunity
 
 Issue 095 already resolved the hard half. One shared attribution index answers "which issue owns this commit" under `trailer > branch > merge-subject` precedence, and cross-consumer parity is enforced. Counting the 15 and 1 above used exactly that index.

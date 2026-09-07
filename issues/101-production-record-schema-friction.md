@@ -30,6 +30,10 @@ Each cycle costs a validate round trip. Errors name *what* failed, never *what s
 
 A fifth issue is structural: `dangling playbook update` requires the playbook file to exist first, but there is no `--new-playbook`. The record references a playbook that must be hand-created from a template the user has to find.
 
+## 안 고치면
+
+기록 하나 쓰는 데 네 번 거절당했습니다. — 기록
+
 ## Scope
 
 - `--new-record` — write one commented example line per structured section instead of bare `None recorded`

@@ -53,8 +53,17 @@ validator = load_module(
 HEDGES = ("추측", "~것 같", "~로 보임", "hypothesis", "suspicion", "likely", "probably")
 
 
-def issue(type_line, body=""):
-    return f"# Issue 999: Fixture\n\n**Status: backlog** — created.\n\n## Source\n\n{type_line}\n\n{body}"
+def issue(type_line, body="", blocked="아무도 안 막히면 이 픽스처가 잘못된 것입니다."):
+    """Every issue needs `## 안 고치면`, so the fixture carries one.
+
+    These tests exercise the cause and spike rules; without the section they
+    would all fail on the 안 고치면 rule instead and stop testing anything.
+    """
+    return (
+        f"# Issue 999: Fixture\n\n**Status: backlog** — created.\n\n"
+        f"## 안 고치면\n\n{blocked}\n\n"
+        f"## Source\n\n{type_line}\n\n{body}"
+    )
 
 
 class TypeToken(unittest.TestCase):
@@ -239,6 +248,9 @@ class TheLiveTree(unittest.TestCase):
             skipped += 1
             errors = []
             validator.check_sections(text, path.name, errors)
+            # The 안 고치면 rule is not type-keyed — it asks whether the issue
+            # should exist, which is prior to what kind it is. Only the
+            # type-keyed rules skip a legacy issue.
             self.assertEqual(errors, [], f"{path.name} is legacy and must be skipped")
         self.assertGreater(skipped, 100, "expected the ~107 free-prose issues here")
 
@@ -366,8 +378,9 @@ class WorkflowChecklistIsAPlanNotAManifest(unittest.TestCase):
                 ).read_text(encoding="utf-8")
         found = set(validator.linked_artifacts(text))
         base = "specs/104-project-aware-natural-language-request-orchestrator/"
+        # spec and plan are checked off and written; review is not.
         self.assertIn(base + "spec.md", found)
-        self.assertNotIn(base + "plan.md", found)
+        self.assertIn(base + "plan.md", found)
         self.assertNotIn(base + "review.md", found)
 
 
