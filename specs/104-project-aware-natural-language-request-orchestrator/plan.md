@@ -37,7 +37,10 @@ stops at stage 2 and says so.
 
 1. **The contract and stage 1.** `moduflow.request-routing.v1`, every field
    present in every result. Ambiguity asks one question and writes nothing.
-2. **Stage 2, overlap.** The open question below has to be answered first.
+2. **Stage 2, overlap.** Unblocked 2026-09-07 — see Open Questions. It gathers
+   the resolved project's open issues (id, title, `## 안 고치면`) and returns
+   them as `overlap_candidates`. It does **not** score, rank or decide, and the
+   measurement that ruled that out is the acceptance evidence for this step.
 3. **Stage 3, capability.** `outcome: none` is a normal result — resolved during
    this plan and recorded in the spec's Risks. Reading it as failure would refuse
    every request ModuFlow handles itself, which is most of them.
@@ -50,7 +53,8 @@ stops at stage 2 and says so.
 
 ## Work Streams
 
-- PM: the overlap threshold (Open Questions) is the owner's call and blocks step 2.
+- PM: the overlap question is closed by measurement, not by a decision — no
+  threshold exists to choose. Nothing blocks step 2.
 - Data: no schema changes to existing artifacts. One new result schema.
 - Implementation: `scripts/request_routing.py` (new), `commands/moduflow.md`.
   `capability_routing.py`, `execution_routing.py`, `project_registry.py` and
@@ -68,6 +72,12 @@ Per stage, and the ordering tests are the ones that matter:
 - `test_ambiguous_writes_nothing_and_calls_no_capability` — by mock, not by
   inspecting the tree afterwards.
 - `test_none_outcome_is_not_a_refusal` — the case resolved during this plan.
+- `test_overlap_returns_candidates_without_a_verdict` — assert the stage 2
+  result carries `overlap_candidates` and **no** score, rank or chosen issue.
+  This is the test that would fail if someone re-adds a threshold; the
+  measurement in Open Questions is why it exists.
+- `test_overlap_candidates_are_open_issues_of_the_resolved_project_only` —
+  a `done` issue and another project's issue both absent.
 - `test_needs_plan_stops_with_written_empty`.
 - `test_project_a_never_reads_project_b` — Korean and English fixtures, both
   directions.
@@ -83,12 +93,38 @@ No artifact changes shape, so nothing needs migrating either way.
 
 ## Open Questions
 
-- **What counts as high-confidence overlap.** Title similarity is the cheap
-  answer and probably wrong — two issues can share a title and be different
-  work, and the same work gets described two ways. This blocks step 2 and needs
-  a stated rule plus a measurement against the 148 live issues before anything
-  is built on it. Recommend measuring first: run three candidate rules over the
-  corpus and count how many pairs each one calls the same.
+**None open.** The one that blocked step 2 is answered below.
+
+### Resolved 2026-09-07 — what counts as high-confidence overlap
+
+The answer is **nothing does**, and step 2 changes shape because of it.
+
+This question said title similarity was "the cheap answer and probably wrong"
+and asked for a measurement first. Measured over 147 issues and 10,731 pairs
+against 220 human-declared same-work pairs, all four candidate rules fail:
+
+| Rule | Precision | Recall |
+|---|---|---|
+| Title Jaccard ≥ 0.3 / 0.4 / 0.5 | 23% / 25% / 67% | 3.2% / 0.9% / 0.9% |
+| Entry Points share ≥ 1 file | 16.8% | 23.6% |
+| Entry Points share ≥ 2 files | 39.7% | 11.4% |
+| Title ≥ 0.3 **and** a shared file | 33.3% | 0.5% |
+
+Re-checked against the seven pairs a person read and merged on 2026-09-06/07,
+which are certainly the same work: **five of the seven score 0.00** on title
+similarity and three share no file at all.
+
+The reason is that what joined them was a shape, not a vocabulary — 144·145·142
+are all "named in code, never checked"; 136·123 are both "checks a file exists
+and never reads it". Meanwhile the issues that *do* share the word `dashboard`
+are, by issue 143's count, four different things. The word is not the signal.
+
+**So stage 2 surfaces candidates and does not judge them.** It puts the
+resolved project's open issue titles and their `## 안 고치면` lines into the
+request context, and the reader — model or person — names the overlap. No
+threshold, no numeric rule, and stage 2 still writes nothing.
+
+Evidence: `memory/evidence/2026-09-07-overlap-detection-corpus-measurement.md`.
 
 ## Next Command
 
