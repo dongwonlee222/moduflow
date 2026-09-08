@@ -1,6 +1,6 @@
 # Issue 139: Five Scripts Have A CLI That Nothing Reaches
 
-**Status: superseded** — closed 2026-09-07 against `workspace/goal.md`. 915 unreached lines across five scripts change no behaviour and block nobody. This is tidying, and tidying does not need an issue to authorise it — delete or wire them when the surrounding file is next opened. Kept for the record; do not implement from this file.
+**Status: superseded** — 2026-09-07에 닫고, 같은 날 다시 재서 **전제가 틀렸음을 확인한 뒤 닫은 채로 둡니다.** 아래 「2026-09-07 재측정」을 보십시오. 실제로 아무 데서도 안 불리는 것은 **334줄(2개)**이고, 그마저 `config/project-operation-entrypoints.json`에 등록돼 있어 확정이 아닙니다. 이 이슈의 전제("915줄이 죽은 코드")는 성립하지 않습니다.
 **Priority: p3**
 
 ## 요약
@@ -31,6 +31,67 @@ tests. None is documented in `docs/`, `README.md`, `AGENTS.md` or `INSTALL.md`.
 ## 안 고치면
 
 아무도 막히지 않습니다 — 안 불리는 스크립트 915줄이 있어도 동작에 영향이 없습니다. 다만 44,243줄 중 915줄이 죽은 코드라는 건 방향(가볍게)과 어긋납니다. **정리 대상이지 이슈는 아닙니다.**
+
+## 2026-09-07 재측정 — 이 이슈의 숫자는 틀렸습니다
+
+이 이슈를 닫은 뒤, 로드맵 3단계로 **14개를 하나씩 손으로 확인**했습니다.
+결과가 세 번 다 달랐고, **마지막 하나만 맞습니다.**
+
+| 언제 | 방법 | 결과 |
+|---|---|---|
+| 이 이슈 원문 | 정규식 | 5개 / **915줄** |
+| 2026-09-07 오전 | 정규식 (범위 넓힘) | 14개 / **6,735줄** |
+| 2026-09-07 오후 | 정규식 (실행 경로만) | 13개 / 5,929줄 — `request_routing` 같은 **오늘 직접 배선한 것까지** 고아로 찍음 |
+| **2026-09-07 오후** | **손으로 하나씩** | **2개 / 334줄** |
+
+### 왜 세 번 다 틀렸나 — 원인 확인
+
+**이 저장소는 대부분 동적 로드로 잇습니다.** `import X` 도 `python3 X.py` 도
+아닙니다:
+
+```
+scripts/release_check.py:382
+  canonical_path_guard = load_script_module("canonical_path_guard", "scripts/canonical_path_guard.py")
+
+scripts/project_doctor.py:87
+  path = Path(__file__).resolve().parent / "project_loop.py"
+  spec = importlib.util.spec_from_file_location("project_loop", path)
+```
+
+정규식은 이런 것을 못 봅니다. **탐지 방법이 틀렸지 코드가 죽은 게 아니었습니다.**
+
+### 손으로 확인한 14개
+
+| 스크립트 | 줄 | 부르는 곳 |
+|---|---:|---|
+| `commit_resolution` | 1,186 | `linkage_check` → `release_check` |
+| `commit_graph` | 958 | `commit_resolution` |
+| `project_operation_audit` | 974 | `release_check` |
+| `project_loop` | 793 | `project_doctor` (동적 로드) |
+| `spec_kit_pilot` | 762 | `release_check` |
+| `mcp_server` | 442 | `.mcp.json` |
+| `register_codex_personal_marketplace` | 340 | `project_doctor` 추천 · `docs/` 절차 |
+| `capability_routing_simulation` | 305 | `validate_moduflow` 필수 파일 |
+| `canonical_path_guard` | 240 | `release_check` — **2026-09-07에 실제로 커밋을 막았다** |
+| `sync_spec_kit_templates` | 211 | `validate_moduflow` 필수 파일 |
+| `version_bump` | 125 | `release_check` |
+| `portfolio_doctor` | 65 | `validate_moduflow` 필수 파일 |
+| **`issue_generator`** | **214** | `config/project-operation-entrypoints.json` 에 등록만. 실행 경로 없음 |
+| **`telegram_agent_bridge`** | **120** | 같음 |
+
+**12개는 쓰이고 있었습니다.**
+
+### 그래서 이 이슈는 닫힌 채로 둡니다
+
+닫은 이유("아무도 막히지 않는다")는 여전히 맞고, **근거로 든 숫자만 틀렸습니다.**
+새 이슈로 만들지 않습니다 — 334줄이 아무것도 막지 않고, 그 둘조차 등록 파일에
+이름이 있어 "죽었다"고 단정할 수 없습니다. 판단하려면 그 등록이 무엇을
+뜻하는지부터 봐야 하고, 그건 아무도 기다리지 않는 일입니다.
+
+**남기는 교훈**: "안 불린다"는 **탐지 결과이지 사실이 아닙니다.** 이 저장소에서는
+동적 로드를 세지 않는 어떤 스캔도 틀립니다. 무엇을 지우기 전에 **손으로
+확인하십시오.**
+
 
 ## Opportunity
 
