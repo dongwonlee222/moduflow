@@ -198,6 +198,37 @@ none; `commands/product-start.md` has `## Do`, `## Modes`, `## Output` and no
 is a page of prose an agent interprets, while the deterministic path is filed
 under a word — "migrate" — that describes moving, not adopting.
 
+## 2026-09-07 — 절반 고쳤습니다. 나머지는 왜 안 했는지
+
+**"clone 후 깨진다"는 없어졌습니다.** 다섯 디렉터리가 각자 `README.md` 를
+갖게 했고, 재현 절차를 그대로 다시 돌려 확인했습니다:
+
+```
+전:  clone 후 폴더 = .moduflow · src · workspace     →  initialized: False, missing: ['issues','specs']
+후:  clone 후 폴더 = 위 + issues·specs·knowledge·memory·workflow  →  initialized: True, missing: []
+```
+
+`.gitkeep` 대신 `README.md` 를 쓴 이유: clone 을 똑같이 살아남으면서 **그 폴더가
+뭐 하는 곳인지도 알려줍니다.** 기존에 만들어진 프로젝트도 덮이도록, README 는
+디렉터리를 방금 만들었는지와 무관하게 씁니다.
+
+테스트는 **실제로 git clone 을 합니다** (`AdoptionSurvivesACloneTests`). 작업
+트리 검사로는 이 결함을 못 잡습니다 — 원본에서는 빈 디렉터리가 멀쩡히 보이고
+모든 단언이 통과합니다. `test_the_working_tree_alone_would_not_have_caught_this`
+가 그것을 이름으로 남깁니다.
+
+### 안 한 것 셋 — 그래서 이 이슈는 열려 있습니다
+
+| 범위 항목 | 왜 안 했나 |
+|---|---|
+| **레지스트리 자동 등록** | 설계 결정이 필요합니다 — `project_portfolio.py --add` 냐, `project_migrate.py` 의 플래그냐, `product:start` 의 한 단계냐. 2026-09-07에 소유자의 레지스트리는 손으로 등록했습니다 |
+| **`detected_existing_work` 보고** | 별개 기능입니다. 위 수정은 "깨진다"를 고치고, 이건 "친절하게"입니다 |
+| **`start` vs `migrate` 안내** | 문서 결정이고, 위 둘과 함께 정하는 편이 낫습니다 |
+
+셋 다 **"clone 후 깨진다"와 무관**합니다. 그것만 먼저 고치고 나머지를 남긴 것은,
+사용자가 실제로 신고한 증상이 그것이기 때문입니다.
+
+
 ## Scope
 
 ### In

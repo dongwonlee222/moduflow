@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -18,6 +19,89 @@ def load_module(name, relative_path):
 
 
 project_doctor = load_module("project_doctor", "scripts/project_doctor.py")
+
+
+class AdoptionSurvivesACloneTests(unittest.TestCase):
+    """Issue 141 — a committed adoption did not survive `git clone`.
+
+    `migrate --write` created `issues`, `specs`, `knowledge`, `memory` and
+    `workflow` as **empty directories**. Git does not track those, so the commit
+    that looked complete carried none of them, and a clone came back missing
+    `issues` and `specs` with `doctor` reporting `initialized: False`.
+
+    **Only a clone can catch this.** Every existing migration test asserts
+    against the working tree, where the empty directories are present and
+    everything looks right. That is why this class shells out to real git rather
+    than checking `path.exists()`.
+
+    `workspace/transactions` already shipped a `.gitkeep` for the same reason —
+    the pattern existed and the five directories did not use it.
+    """
+
+    def git(self, cwd, *args):
+        return subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+            cwd=str(cwd), capture_output=True, text=True, check=True,
+        )
+
+    def adopt_commit_and_clone(self, tmp):
+        """The exact sequence a person follows, ending in a second machine."""
+        origin = Path(tmp) / "origin"
+        (origin / "src").mkdir(parents=True)
+        (origin / "src" / "a.py").write_text("print(1)\n", encoding="utf-8")
+        self.git(origin, "init", "-q")
+        self.git(origin, "add", "-A")
+        self.git(origin, "commit", "-q", "-m", "init")
+
+        migrate = load_module("project_migrate", "scripts/project_migrate.py")
+        plan = migrate.build_migration_plan(origin, mode="mapped", dry_run=False)
+        migrate.apply_migration_plan(plan)
+
+        self.git(origin, "add", "-A")
+        self.git(origin, "commit", "-q", "-m", "adopt moduflow")
+
+        clone = Path(tmp) / "clone"
+        subprocess.run(
+            ["git", "clone", "-q", str(origin), str(clone)],
+            capture_output=True, text=True, check=True,
+        )
+        return origin, clone
+
+    def test_every_created_directory_survives_the_clone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            origin, clone = self.adopt_commit_and_clone(tmp)
+            migrate = load_module("project_migrate", "scripts/project_migrate.py")
+            missing = [
+                name for name in migrate.MINIMAL_PM_DIRECTORIES
+                if not (clone / name).is_dir()
+            ]
+            self.assertEqual(
+                missing, [],
+                "empty directories are not committed; a clone loses them",
+            )
+
+    def test_the_clone_is_still_an_initialized_project(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            origin, clone = self.adopt_commit_and_clone(tmp)
+            doctor = load_module("project_doctor", "scripts/project_doctor.py")
+            result = doctor.inspect_project(clone, include_preflight=False)
+            self.assertTrue(
+                result["moduflow"]["initialized"],
+                f"clone reports missing: {result['moduflow']['missing']}",
+            )
+            self.assertEqual(result["moduflow"]["missing"], [])
+
+    def test_the_working_tree_alone_would_not_have_caught_this(self):
+        """Named so nobody replaces the clone with an `exists()` check.
+
+        The origin passes on every assertion the clone fails, which is exactly
+        why this bug shipped.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            origin, _clone = self.adopt_commit_and_clone(tmp)
+            migrate = load_module("project_migrate", "scripts/project_migrate.py")
+            for name in migrate.MINIMAL_PM_DIRECTORIES:
+                self.assertTrue((origin / name).is_dir())
 
 
 class ProjectMigrationTests(unittest.TestCase):

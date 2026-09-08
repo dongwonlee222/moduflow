@@ -28,6 +28,25 @@ DEFAULT_PATHS = {
 
 MINIMAL_PM_DIRECTORIES = ["issues", "specs", "knowledge", "memory", "workflow"]
 
+# Issue 141: every created directory ships a tracked file, because git does not
+# record an empty one.
+#
+# Before this, `--write` reported "14 created" and the five directories above
+# were empty. The commit that followed looked complete and carried none of them;
+# a clone came back without `issues` and `specs`, and `doctor` said
+# `initialized: False`. `workspace/transactions` already shipped a `.gitkeep`
+# for this reason — the pattern was here and these five did not use it.
+#
+# A README rather than a `.gitkeep`: it survives the clone the same way and also
+# tells whoever opens the directory what belongs in it.
+DIRECTORY_READMES = {
+    "issues": "# Issues\n\n이슈 파일이 여기 있습니다 — `<번호>-<슬러그>.md`.\n`/moduflow issue` 가 만듭니다.\n",
+    "specs": "# Specs\n\n이슈별 명세·계획·태스크·리뷰가 `<이슈-id>/` 아래 있습니다.\n`/moduflow spec` 과 `/moduflow plan` 이 만듭니다.\n",
+    "knowledge": "# Knowledge\n\n결정·벤치마크·리서치·참조. 프로젝트가 알아낸 것을 둡니다.\n`/moduflow knowledge` 가 만듭니다.\n",
+    "memory": "# Memory\n\n다음에도 기억해야 할 것 — 결정 기록, 산출물, 근거.\n`/moduflow memory` 와 `/moduflow decision` 이 만듭니다.\n",
+    "workflow": "# Workflow\n\n팀 인계 기록. `/moduflow handoff` 가 만듭니다.\n",
+}
+
 WORKSPACE_FILES = {
     "inbox.md": "# Inbox\n\n",
     "opportunities.md": "# Opportunities\n\n",
@@ -152,6 +171,8 @@ def planned_writes(project_root, config):
         relative = config["paths"].get(key, key)
         if not (project_root / relative).exists():
             writes.append(relative)
+        if not (project_root / relative / "README.md").exists():
+            writes.append(f"{relative}/README.md")
     for filename in WORKSPACE_FILES:
         target = workspace_path / filename
         if not target.exists():
@@ -229,6 +250,12 @@ def apply_migration_plan(plan, *, project_context=None):
         relative = plan["config"]["paths"].get(key, key)
         if write_dir_if_missing(project_root / relative):
             written.append(relative)
+        # The README is written whether or not the directory was just created:
+        # a project adopted before 2026-09-07 has the empty directory already
+        # and still needs the file for the clone to carry it.
+        readme = project_root / relative / "README.md"
+        if write_text_if_missing(readme, DIRECTORY_READMES.get(key, f"# {key}\n")):
+            written.append(str(readme.relative_to(project_root)))
 
     workspace_path = project_root / plan["config"]["paths"]["workspace"]
     for filename, content in WORKSPACE_FILES.items():
