@@ -10,6 +10,50 @@
 잠금이 있긴 한데 **강제되지 않습니다** — `upsert_team_item`이 기존 `lock_state`를
 읽지 않고 그냥 덮어씁니다. 실제로 오늘 두 세션이 같은 저장소에서 부딪혔습니다.
 
+## 2026-09-08 재현 — 증상이 이 이슈가 적은 것과 다릅니다
+
+맥 한 대에서 bare 원격 하나와 clone 둘(`macA`·`macB`)로 재현했습니다.
+
+```
+macA: 001 시작 → commit → push
+macB: 002 시작 → commit → pull
+
+CONFLICT (content): .moduflow/state.json
+CONFLICT (content): workspace/dashboard.md
+CONFLICT (content): workspace/loop-state.json
+
+  <<<<<<< HEAD
+    "active_issue": "002-second",     ← macB
+  =======
+    "active_issue": "001-first",      ← macA
+  >>>>>>>
+```
+
+**"서로 덮어쓴다"가 아닙니다. git 이 충돌로 막습니다.**
+
+그리고 **이슈 파일은 안 깨집니다** — `issues/` 충돌 0건, `001`과 `002` 둘 다
+`active` 로 멀쩡히 남습니다. **정본은 무사합니다.**
+
+| | |
+|---|---|
+| 잃는 것 | **없음.** 정본인 이슈 파일은 안전하다 |
+| 실제로 겪는 것 | **pull 할 때마다 파일 셋을 손으로 푸는 일** |
+| 왜 문제인가 | 사람이 안 쓴 파일이다. 트랜잭션이 만든 **투영**인데 충돌은 사람이 푼다 |
+
+### 그래서 고칠 것이 좁아집니다
+
+`.moduflow/state/` 는 **이미 gitignore 돼 있습니다.** 머신마다 다른 값을 두는
+자리가 이미 있는데 `active_issue` 가 공유되는 자리에 있습니다. 그것 하나입니다.
+
+**잠금 강제(`upsert_team_item`)는 오늘 효과가 없습니다.** `team-state.json` 이
+이 저장소에 없고, 충돌은 잠금이 아니라 git 이 잡고 있습니다. 그 부분은
+`107`·`108`·`094` 와 같은 **"팀이 생기면"** 조건입니다.
+
+**이 이슈의 원래 원인 분석(`upsert_team_item` 이 `lock_state` 를 덮어쓴다)은
+코드로는 여전히 맞습니다.** 틀린 것은 그것이 오늘 겪는 증상의 원인이라는 연결
+쪽입니다.
+
+
 ## Summary
 
 Two coupled defects. `.moduflow/state.json` holds a single global `active_issue`
