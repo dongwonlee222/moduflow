@@ -2,6 +2,7 @@
 import argparse
 import importlib.util
 import json
+import re
 import shlex
 import shutil
 import subprocess
@@ -875,12 +876,81 @@ def inspect_project(path, include_preflight=True, *, project_context=None, runti
     # it was unusable. A capability that exists and is off is a fact a reader
     # needs; only spec-kit is covered here because only spec-kit has a switch.
     result["optional_capabilities"] = _optional_capability_report(requested)
+    result["loop_staleness"] = _loop_staleness(requested, project_context=context)
+    for line in result["loop_staleness"]["recommendations"]:
+        result["recommendation"].append(line)
     for line in result["optional_capabilities"]["recommendations"]:
         result["recommendation"].append(line)
 
     result["recommendation"].extend(plugin_staleness["recommendations"])
 
     return result
+
+
+def _loop_staleness(root, *, project_context=None):
+    """Report where the loop state has drifted from the files it mirrors.
+
+    Issue 152: `workspace/loop-state.json` sat at a July objective and a 27-issue
+    list containing three issues closed since, while the session banner read it
+    first. Nothing said it was stale, so it read as current.
+
+    **This reports; it does not rewrite.** A person chose those values and the
+    Scope Fence says a machine must not silently replace them.
+    """
+    root = Path(root)
+    report = {"checked": False, "updated_at": None, "drift": [], "recommendations": []}
+    # Resolve through the registry rather than joining literals: a project can
+    # configure where `issues/` and `workspace/` live, and `canonical_path_guard`
+    # exists to catch exactly the shortcut this function first took.
+    try:
+        context = project_context or project_registry.project_context_for_root(root)
+        workspace_dir = project_registry.canonical_path(context, "workspace")
+        issues_dir = project_registry.canonical_path(context, "issues")
+    except (OSError, TypeError, ValueError):
+        return report
+    try:
+        loop = json.loads((workspace_dir / "loop-state.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return report
+    report["checked"] = True
+    report["updated_at"] = loop.get("updated_at")
+
+    # The objective is a copy of the goal. When the goal is rewritten and this is
+    # not, the banner shows the old one.
+    try:
+        goal_text = (workspace_dir / "goal.md").read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        goal_text = ""
+    objective = str(loop.get("objective") or "").strip()
+    if objective and goal_text:
+        head = objective.split(".")[0].strip()
+        if head and head.lower() not in goal_text.lower():
+            report["drift"].append(
+                {"kind": "objective", "value": objective[:80]}
+            )
+            report["recommendations"].append(
+                "루프의 objective 가 workspace/goal.md 와 어긋납니다 "
+                f"(루프: \"{objective[:50]}…\"). 목표를 다시 썼다면 루프도 맞추세요."
+            )
+
+    closed = []
+    for issue_id in loop.get("issue_ids") or []:
+        path = issues_dir / f"{issue_id}.md"
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            continue
+        match = re.search(r"\*\*Status:\s*([a-z-]+)", text)
+        if match and match.group(1).split("-")[0] in ("done", "superseded"):
+            closed.append(issue_id)
+    if closed:
+        report["drift"].append({"kind": "closed_issues", "value": closed})
+        report["recommendations"].append(
+            f"루프의 issue_ids 에 이미 닫힌 이슈가 {len(closed)}건 남아 있습니다: "
+            + ", ".join(closed[:4])
+            + ("…" if len(closed) > 4 else "")
+        )
+    return report
 
 
 def _optional_capability_report(root):

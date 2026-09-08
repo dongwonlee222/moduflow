@@ -94,7 +94,41 @@ def unpromoted_record_count(project, deadline):
         return None
 
 
-def build_banner(state, loop, record_count):
+_ROADMAP_UNCHECKED = None
+
+
+def roadmap_next_item(project):
+    """First unchecked `- [ ]` line in `workspace/roadmap.md`, or None.
+
+    Issue 152: the banner read `loop-state.json` then `state.json` and stopped,
+    so it never saw the file where the owner writes the order. On 2026-09-07 the
+    roadmap said "step 1: 151" while both state files said `product:status`, and
+    the banner showed only the second — correct at the machine's layer, and the
+    human's answer invisible.
+
+    Read-only and failure-tolerant: no roadmap, an unreadable one, or one with
+    nothing unchecked all return None and the banner is exactly what it was.
+    C4 requires this hook to fail open.
+    """
+    global _ROADMAP_UNCHECKED
+    if _ROADMAP_UNCHECKED is None:
+        import re as _re
+        _ROADMAP_UNCHECKED = _re.compile(r"^-\s*\[ \]\s*(.+?)\s*$", _re.M)
+    path = Path(project) / "workspace" / "roadmap.md"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return None
+    match = _ROADMAP_UNCHECKED.search(text)
+    if not match:
+        return None
+    # Markdown bold markers appear mid-line, not only at the ends —
+    # "**1. `151`** · **`152`**" — so strip every `**`, not just the edges.
+    item = match.group(1).replace("**", "").strip()
+    return item or None
+
+
+def build_banner(state, loop, record_count, roadmap_next=None):
     state = state or {}
     loop = loop or {}
 
@@ -121,6 +155,12 @@ def build_banner(state, loop, record_count):
         lines.append("활성 이슈: %s (단계: %s)" % (issue, phase or "?"))
     elif phase:
         lines.append("단계: %s" % phase)
+    # 152: the roadmap first, then the machine's answer — and **both** when they
+    # differ. They are not merged: a transaction writes the state files and a
+    # person writes the roadmap, so letting one replace the other means the
+    # machine can silently overwrite an order somebody chose.
+    if roadmap_next:
+        lines.append("로드맵 다음: %s" % roadmap_next)
     if next_command:
         lines.append("다음 명령: %s" % next_command)
     if blockers:
@@ -172,7 +212,7 @@ def main():
         return
 
     record_count = unpromoted_record_count(project, deadline)
-    banner = build_banner(state, loop, record_count)
+    banner = build_banner(state, loop, record_count, roadmap_next_item(project))
 
     if time.monotonic() >= deadline:
         append_log(project, "warn", "self-budget %.0fs exceeded before emit; skipped"

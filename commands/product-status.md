@@ -29,6 +29,15 @@ Use the `runtime_provenance` object from `moduflow_status`/`moduflow_doctor`. Wi
 
 Distinguish source checkout, installed inventory, current CLI/MCP process and conversational host skill loading. A CLI invocation proves only that CLI's package; a persistent MCP reports its startup snapshot even if files later change. Neither proves that Codex/Claude reloaded prompt skills. Do not select the newest cache as the active runtime and do not install/reload while displaying status.
 
+## 읽는 순서
+
+`workspace/roadmap.md` 의 첫 미완료 항목을 **먼저** 읽고, 그 다음
+`.moduflow/state.json` 의 `next_command` 를 읽습니다. **둘이 다르면 둘 다
+보여줍니다** — 근거와 이유는 `AGENTS.md` 「"다음에 뭐 하지" — 읽는 순서」에
+있습니다.
+
+`product:doctor` 의 `loop_staleness` 에 어긋남이 있으면 그것도 함께 말합니다.
+
 ## Do
 
 1. Run repo sync preflight. `project_sync.py` fetches remote refs itself (5s timeout, non-interactive) before comparing — no manual `git fetch` step needed:

@@ -59,6 +59,33 @@ Spacing is a signal, not decoration:
 
 Same rule generalizes beyond status lines: pick one shape per situation (see table above) and use it every time that situation recurs, so both humans and parsers can rely on it.
 
+## "다음에 뭐 하지" — 읽는 순서
+
+네 곳이 각자 답한다. **층이 다르므로 합치지 않고, 순서를 정한다.**
+
+| 순서 | 어디 | 무엇을 답함 | 누가 씀 |
+|---|---|---|---|
+| **1** | `workspace/roadmap.md` | **무엇을** 할까 — 사람이 정한 순서 | **사람** |
+| 2 | `.moduflow/state.json` | **어느 단계**인가 — 활성 이슈의 라이프사이클 | 트랜잭션 |
+| — | `workspace/loop-state.json` | 이슈 하나 안의 단계. state의 사본에 가깝다 | 트랜잭션 |
+| — | `issues/*.md` 의 `Next Command` | **그 이슈 안**의 다음. 프로젝트의 다음이 아니다 | 사람 |
+
+**로드맵이 먼저인 이유**: 사람이 정한 순서가 기계가 계산한 단계보다 위다. 기계는
+"활성 이슈가 없으니 `product:status`"라고 옳게 답하지만, 그것은 무엇을 할지에
+대한 답이 아니다.
+
+**둘이 다르면 둘 다 보여준다.** 하나가 다른 하나를 조용히 덮으면, 트랜잭션이
+사람이 고른 순서를 지운다. 세션 배너가 `로드맵 다음:` 과 `다음 명령:` 을 나란히
+쓰는 이유다.
+
+**합치지 않는다.** 기계가 쓰는 파일과 사람이 쓰는 파일을 한곳에 넣으면, 다음
+전이가 사람의 순서를 덮어쓴다. 이것은 이슈 132가 "보호가 거꾸로 걸렸다"고
+말하는 것과 같은 방향의 실수다.
+
+**낡음은 감추지 않는다.** `product:doctor` 가 `loop_staleness` 로 보고한다 —
+`updated_at`, 목표와 어긋난 `objective`, `issue_ids` 에 남은 닫힌 이슈. 보고할
+뿐 **고쳐 쓰지 않는다.**
+
 ## Module Size — 개념 수가 기준이지 줄 수가 아니다
 
 **경고이지 게이트가 아니다.** 막으면 `_part2.py` 같은 것이 생겨서 지금보다

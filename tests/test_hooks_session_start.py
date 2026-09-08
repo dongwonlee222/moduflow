@@ -155,5 +155,96 @@ class SessionStartHookTests(unittest.TestCase):
         self.assertEqual(stop["timeout"], 15)
 
 
+
+class RoadmapFirstBannerTests(unittest.TestCase):
+    """Issue 152 — the banner never read the roadmap, which is where the owner
+    writes the order.
+
+    Before this, `build_banner` looked at `loop-state.json` then `state.json` and
+    stopped. On 2026-09-07 the roadmap said "step 1: issue 151" while both state
+    files said `product:status`, and the banner showed `product:status` — the
+    machine's answer, correct at its own layer, hiding the human's.
+
+    The two are not merged: the machine writes two of the files and a person
+    writes the third, and collapsing that lets a transaction overwrite an order
+    somebody chose. When they disagree, **both** are shown.
+    """
+
+    def load_hook(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("session_start_mod", HOOK_SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    ROADMAP = """# ModuFlow Roadmap
+
+## 지금 순서 — 확정
+
+- [x] **1. `151` — 끝난 것**
+- [ ] **2. `150` · `152` — 다음에 할 것**
+- [ ] **3. `139` — 그다음**
+"""
+
+    def test_roadmap_next_item_appears_in_the_banner(self):
+        hook = self.load_hook()
+        banner = hook.build_banner(
+            {"next_command": "product:status", "phase": "select"},
+            {},
+            0,
+            roadmap_next="2. `150` · `152` — 다음에 할 것",
+        )
+        self.assertIn("150", banner)
+
+    def test_both_are_shown_when_they_disagree(self):
+        hook = self.load_hook()
+        banner = hook.build_banner(
+            {"next_command": "product:status", "phase": "select"},
+            {},
+            0,
+            roadmap_next="2. `150` · `152` — 다음에 할 것",
+        )
+        self.assertIn("150", banner)
+        self.assertIn("product:status", banner)
+
+    def test_no_roadmap_means_the_banner_is_unchanged(self):
+        hook = self.load_hook()
+        before = hook.build_banner(
+            {"next_command": "product:status", "phase": "select"}, {}, 0
+        )
+        after = hook.build_banner(
+            {"next_command": "product:status", "phase": "select"}, {}, 0,
+            roadmap_next=None,
+        )
+        self.assertEqual(before, after)
+
+    def test_first_unchecked_item_is_the_one_read(self):
+        hook = self.load_hook()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "workspace").mkdir()
+            (root / "workspace" / "roadmap.md").write_text(self.ROADMAP, encoding="utf-8")
+            found = hook.roadmap_next_item(root)
+            self.assertIsNotNone(found)
+            self.assertIn("150", found)
+            self.assertNotIn("151", found, "a checked item must not be picked")
+
+    def test_a_missing_roadmap_returns_none_and_does_not_raise(self):
+        hook = self.load_hook()
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIsNone(hook.roadmap_next_item(Path(tmp)))
+
+    def test_a_roadmap_with_no_unchecked_item_returns_none(self):
+        hook = self.load_hook()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "workspace").mkdir()
+            (root / "workspace" / "roadmap.md").write_text(
+                "# Roadmap\n\n- [x] **1. done**\n", encoding="utf-8"
+            )
+            self.assertIsNone(hook.roadmap_next_item(root))
+
+
+
 if __name__ == "__main__":
     unittest.main()
