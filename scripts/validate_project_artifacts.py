@@ -690,6 +690,69 @@ def validate_section_content(root, errors, *, project_context=None):
         check_sections(text, path.relative_to(root).as_posix(), errors, kind=kind)
 
 
+_ISSUE_NUMBER = re.compile(r"^(\d{3,})-")
+
+
+def duplicate_issue_numbers(root, *, project_context=None):
+    """Issue numbers used twice, when at least one of them is still open.
+
+    Issue 150: `030` and `127` are each used twice and the validator passed the
+    tree. `127` collided on 2026-09-07 when a remote session and a local one both
+    took the next free number without seeing each other; `030` predates that, so
+    the merge exposed the class rather than creating it.
+
+    **The exemption is a rule, not a list.** All four existing collisions are
+    `done` or `superseded`, and a duplicate only costs anything while somebody
+    could still attach work to the wrong one — issue 104 identifies overlap
+    candidates by number and takes `chosen_issue` by number. So a collision fails
+    only when at least one side is open. That reuses the "only open work is
+    checked" line issue 129 settled, and it needs no date, no cutoff number, and
+    no list that someone has to remember to extend.
+
+    Renumbering a finished issue is out: `specs/<issue-id>/` directories, commit
+    trailers and other issues' `Related Issues` all point at the number.
+    """
+    try:
+        context = project_registry.context_for_operation(
+            root, project_context=project_context
+        )
+        issues_dir = project_registry.canonical_path(context, "issues")
+    except (OSError, TypeError, ValueError):
+        return []
+    if not issues_dir.is_dir():
+        return []
+
+    by_number = collections.defaultdict(list)
+    for path in sorted(issues_dir.glob("*.md")):
+        match = _ISSUE_NUMBER.match(path.name)
+        if match:
+            by_number[match.group(1)].append(path)
+
+    errors = []
+    for number, paths in sorted(by_number.items()):
+        if len(paths) < 2:
+            continue
+        open_ones = []
+        for path in paths:
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                continue
+            match = re.search(r"\*\*Status:\s*([a-z-]+)", text)
+            if match and match.group(1) in {"backlog", "active"}:
+                open_ones.append(path.name)
+        if not open_ones:
+            continue
+        names = ", ".join(path.name for path in paths)
+        errors.append(
+            f"이슈 번호 {number} 가 겹칩니다: {names}. "
+            f"열려 있는 것: {', '.join(open_ones)}. "
+            "겹친 번호는 겹침 후보와 `chosen_issue` 가 어느 쪽을 가리키는지 "
+            "정하지 못하게 합니다. 열린 쪽에 새 번호를 주세요."
+        )
+    return errors
+
+
 def validate_repository_links(root, errors, warnings, *, project_context=None):
     for finding in audit_repository_links(
         root,
@@ -966,6 +1029,7 @@ def validate_project(path, *, project_context=None):
         project_context=context,
     )
     validate_section_content(root, errors, project_context=context)
+    errors.extend(duplicate_issue_numbers(root, project_context=context))
     validate_repository_links(
         root,
         errors,

@@ -1,6 +1,6 @@
 # Issue 152: "다음에 뭐 하지"가 네 군데에 따로 적혀 있다
 
-**Status: backlog** — created 2026-09-07.
+**Status: done** — 2026-09-07에 만들고 같은 날 끝냈습니다. 읽는 순서 · 배너 · 낡음 보고.
 **Priority: p1**
 
 ## 요약
@@ -158,10 +158,8 @@ status      : done
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/<issue>/spec.md`
-- [ ] plan → `specs/<issue>/plan.md` + `tasks.md`
-- [ ] execute → 읽는 순서 명문화, 배너·status 반영, 모순 표시, 로드맵-이슈 연결
-- [ ] review → `specs/<issue>/review.md`
+- [x] execute
+
 
 ## Related Issues
 

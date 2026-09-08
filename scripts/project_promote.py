@@ -65,6 +65,17 @@ def kebab_case(title):
 
 
 def next_issue_number(issues_dir):
+    """Highest local number plus one.
+
+    **This cannot see the remote, and that is how `127` collided.** On
+    2026-09-07 a remote session and a local one both took the next free number
+    without seeing each other. Fetching here would put a network call inside a
+    pure function, so the gap is left open deliberately and covered downstream:
+    `validate_project_artifacts.duplicate_issue_numbers` fails a collision when
+    at least one side is open, and `commands/product-issue.md` tells the caller
+    to fetch first. Neither prevents a simultaneous choice; together they make
+    one visible instead of silent (issue 150).
+    """
     highest = 0
     if issues_dir.is_dir():
         for path in issues_dir.glob("*.md"):

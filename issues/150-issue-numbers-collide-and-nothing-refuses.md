@@ -1,6 +1,6 @@
 # Issue 150: Issue Numbers Collide And Nothing Refuses
 
-**Status: backlog** — created 2026-09-07.
+**Status: done** — 2026-09-07에 만들고 같은 날 끝냈습니다. `~` 아닌 번호 겹침 검사 · 배정 시점 문서화.
 **Priority: p1**
 
 ## 요약
@@ -127,10 +127,8 @@ True
 
 ## Workflow Tasks
 
-- [ ] spec → `specs/<issue>/spec.md`
-- [ ] plan → `specs/<issue>/plan.md` + `tasks.md`
-- [ ] execute → 중복 검사, 번호 배정, 원격 미확인 처리, 기존 넷 예외
-- [ ] review → `specs/<issue>/review.md`
+- [x] execute
+
 
 ## Related Issues
 

@@ -371,17 +371,111 @@ class WorkflowChecklistIsAPlanNotAManifest(unittest.TestCase):
         body = "## Workflow Tasks\n\n- [x] plan → `specs/<issue>/plan.md`\n"
         self.assertEqual(self.links(body), set())
 
-    def test_issue_104_now_has_only_its_written_artifact_linked(self):
-        """The live case. spec.md is written; plan.md and review.md are not."""
+    def test_only_checked_rows_contribute_links(self):
+        """The property, not one issue's state at one moment.
+
+        This used to pin issue 104 — "spec.md is written; plan.md and review.md
+        are not" — and it broke the day 104 finished, because the premise it
+        asserted was a snapshot rather than a rule. That is the same defect the
+        112 dogfood test had. The rule is what is asserted now.
+        """
+        body = (
+            "## Workflow Tasks\n\n"
+            "- [x] spec → `specs/999-x/spec.md`\n"
+            "- [ ] review → `specs/999-x/review.md`\n"
+        )
+        found = self.links(body)
+        self.assertIn("specs/999-x/spec.md", found)
+        self.assertNotIn("specs/999-x/review.md", found)
+
+    def test_a_finished_issue_links_every_artifact_it_claims(self):
+        """104, now that all four rows are checked: each link must exist on disk.
+
+        Reads whatever the file currently says rather than asserting which rows
+        are checked, so finishing more work cannot break it.
+        """
         text = (ROOT / "issues"
                 / "104-project-aware-natural-language-request-orchestrator.md"
                 ).read_text(encoding="utf-8")
         found = set(validator.linked_artifacts(text))
-        base = "specs/104-project-aware-natural-language-request-orchestrator/"
-        # spec and plan are checked off and written; review is not.
-        self.assertIn(base + "spec.md", found)
-        self.assertIn(base + "plan.md", found)
-        self.assertNotIn(base + "review.md", found)
+        self.assertTrue(found, "a finished issue links at least one artifact")
+        for link in found:
+            if link.startswith("specs/104-"):
+                self.assertTrue((ROOT / link).is_file(), f"{link} is linked but absent")
+
+
+
+class DuplicateIssueNumberTests(unittest.TestCase):
+    """Issue 150 — two issues can share a number and nothing refuses.
+
+    Found 2026-09-07 in a merge: a remote session and this one both took `127`
+    without seeing each other. `030` was already doubled before that, so the
+    merge exposed the class rather than creating it.
+
+    **The exemption is a rule, not a list.** All four existing collisions are
+    `done`/`superseded`, and a duplicate only matters while somebody could still
+    attach work to the wrong one — issue 104 identifies overlap candidates by
+    number. So: fail when at least one of the colliding issues is open. That is
+    the same "only open work is checked" line issue 129 settled, and it needs no
+    date, no issue number, and no list to maintain.
+    """
+
+    def build(self, tmp, files):
+        root = Path(tmp)
+        (root / "issues").mkdir(parents=True, exist_ok=True)
+        for name, status in files.items():
+            (root / "issues" / name).write_text(
+                f"# Issue: {name}\n\n**Status: {status}** — created 2026-09-07.\n"
+                f"**Priority: p2**\n",
+                encoding="utf-8",
+            )
+        return root
+
+    def test_two_open_issues_sharing_a_number_fail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.build(tmp, {
+                "042-first-thing.md": "backlog",
+                "042-second-thing.md": "active",
+            })
+            errors = validator.duplicate_issue_numbers(root)
+            self.assertEqual(len(errors), 1, errors)
+            self.assertIn("042-first-thing.md", errors[0])
+            self.assertIn("042-second-thing.md", errors[0], "both files must be named")
+
+    def test_one_open_one_closed_fails(self):
+        """Still ambiguous: a request can still be attached to the open one."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.build(tmp, {
+                "042-first-thing.md": "done",
+                "042-second-thing.md": "backlog",
+            })
+            self.assertEqual(len(validator.duplicate_issue_numbers(root)), 1)
+
+    def test_two_closed_issues_sharing_a_number_pass(self):
+        """The four that exist today. History keeps its numbers."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.build(tmp, {
+                "030-project-memory-layer.md": "superseded-by-042",
+                "030-worker-cognitive-demand.md": "done",
+            })
+            self.assertEqual(validator.duplicate_issue_numbers(root), [])
+
+    def test_distinct_numbers_pass(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.build(tmp, {
+                "042-first.md": "backlog",
+                "043-second.md": "active",
+            })
+            self.assertEqual(validator.duplicate_issue_numbers(root), [])
+
+    def test_the_live_tree_passes(self):
+        """030 and 127 are doubled here and all four are closed."""
+        self.assertEqual(validator.duplicate_issue_numbers(ROOT), [])
+
+    def test_no_issues_directory_does_not_raise(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(validator.duplicate_issue_numbers(Path(tmp)), [])
+
 
 
 if __name__ == "__main__":

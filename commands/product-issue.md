@@ -26,6 +26,13 @@ Create the durable work item.
    **조사 한 건에서 이슈 하나.** 조사하다 결함을 여럿 찾으면 제일 아픈 하나를 이슈로 만들고 나머지는 그 안에 적습니다. 2026-09-06 조사 5건에서 이슈 8개가 나왔고, 그중 넷(142·144·145·146)은 같은 병이었습니다.
 2. Check existing issues for overlap before creating a new issue.
 3. Create or update `issues/<id>-<slug>.md`.
+
+   **번호를 고르기 전에 `git fetch` 하십시오.** 다음 번호는 로컬 최댓값에서
+   나오므로 원격에 이미 그 번호가 있으면 겹칩니다. 2026-09-07에 실제로 그렇게
+   `127`이 둘이 됐습니다. 겹친 채로 커밋되면
+   `validate_project_artifacts.duplicate_issue_numbers` 가 **열린 쪽이 하나라도
+   있을 때** 실패시킵니다 — 넷이 이미 겹쳐 있지만 다 닫혀서 통과합니다
+   (이슈 150).
 4. Include lifecycle metadata as the canonical inline `**Status:**` line near the top (`backlog|active|done|superseded`, plus created/started/completed dates in prose after it) — not a separate `## Lifecycle` block (048/069 convention).
 5. Link opportunity, owner, scope, priority, acceptance criteria, related issues, sessions, and related artifacts.
 6. Dependency/priority fields (069): add `**Priority: p0|p1|p2|p3**` near the top, right after the `**Status:**` line (absent ⇒ defaults to `p2`). Add `**Blocked-by: <id>, <id>**` when the issue cannot start until other issues finish (absent ⇒ no blockers). Both are additive inline metadata — same convention as the canonical Status line (048), no frontmatter. `python3 scripts/project_lifecycle.py . --ready` lists unblocked backlog issues sorted by priority; `moduflow_ready` (MCP) returns the same list.
