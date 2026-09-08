@@ -877,6 +877,9 @@ def inspect_project(path, include_preflight=True, *, project_context=None, runti
     # needs; only spec-kit is covered here because only spec-kit has a switch.
     result["optional_capabilities"] = _optional_capability_report(requested)
     result["loop_staleness"] = _loop_staleness(requested, project_context=context)
+    result["merge_driver"] = _merge_driver_report(project_root)
+    for line in result["merge_driver"]["recommendations"]:
+        result["recommendation"].append(line)
     for line in result["loop_staleness"]["recommendations"]:
         result["recommendation"].append(line)
     for line in result["optional_capabilities"]["recommendations"]:
@@ -885,6 +888,55 @@ def inspect_project(path, include_preflight=True, *, project_context=None, runti
     result["recommendation"].extend(plugin_staleness["recommendations"])
 
     return result
+
+
+# 133: `.gitattributes` asks for `merge=ours` and git ignores it without a driver.
+#
+# Reproduced 2026-09-08 with a bare remote and two clones: two machines each
+# starting a different issue conflict on `.moduflow/state.json`,
+# `workspace/loop-state.json` and `workspace/dashboard.md` at every pull.
+# Nothing is lost — the issue files never conflict — but a person resolves three
+# machine-written projections by hand.
+#
+# Verified both ways: `.gitattributes` alone leaves the conflicts; adding
+# `git config merge.ours.driver true` removes them and each clone keeps its own
+# value. The driver lives in `.git/config`, which a clone does not carry, so
+# this is reported rather than assumed — the same gap 151 had.
+MERGE_DRIVER_COMMAND = "git config merge.ours.driver true"
+
+
+def _merge_driver_report(root, *, runner=None):
+    """Whether this clone can honour the `merge=ours` attributes it carries."""
+    root = Path(root)
+    report = {
+        "attributes_present": False,
+        "driver_configured": False,
+        "recommendations": [],
+    }
+    attributes = root / ".gitattributes"
+    try:
+        text = attributes.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return report
+    if "merge=ours" not in text:
+        return report
+    report["attributes_present"] = True
+
+    execute = runner or run
+    result = execute(["git", "config", "--get", "merge.ours.driver"], str(root))
+    if result is not None and getattr(result, "returncode", 1) == 0:
+        if str(getattr(result, "stdout", "")).strip():
+            report["driver_configured"] = True
+            return report
+
+    report["recommendations"].append(
+        "이 클론은 `.gitattributes` 의 `merge=ours` 를 지킬 수 없습니다 — "
+        f"`{MERGE_DRIVER_COMMAND}` 를 한 번 실행하세요. "
+        "안 하면 두 컴퓨터에서 일할 때 `.moduflow/state.json`·"
+        "`workspace/loop-state.json`·`workspace/dashboard.md` 가 매번 충돌합니다 "
+        "(이슈 133). 이 설정은 `.git/config` 에 있어서 clone 을 따라가지 않습니다."
+    )
+    return report
 
 
 def _loop_staleness(root, *, project_context=None):

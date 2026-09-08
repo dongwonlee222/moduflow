@@ -10,6 +10,70 @@ from unittest import mock
 from scripts import project_doctor, project_operation, project_registry
 
 
+class MergeDriverReportTests(unittest.TestCase):
+    """Issue 133 — `.gitattributes` says `merge=ours` and git ignores it.
+
+    Reproduced 2026-09-08 with a bare remote and two clones. Two machines each
+    starting a different issue produces three conflicts on `pull`:
+    `.moduflow/state.json`, `workspace/loop-state.json`, `workspace/dashboard.md`.
+    Nothing is lost — the issue files never conflict and both stay `active` —
+    but a person resolves three machine-written projections by hand every time.
+
+    `.gitattributes` alone does **not** fix it. Verified both ways: with the
+    file and no driver the conflicts remain; with
+    `git config merge.ours.driver true` they disappear and each clone keeps its
+    own value. The driver lives in `.git/config`, which a clone does not carry.
+
+    So the check exists for the same reason 151's does: a setting is required,
+    nothing asks for it, and without a report nobody learns that until they hit
+    the conflict.
+    """
+
+    def build(self, tmp, *, attributes=True, driver=None):
+        root = Path(tmp)
+        (root / ".moduflow").mkdir()
+        if attributes:
+            (root / ".gitattributes").write_text(
+                ".moduflow/state.json      merge=ours\n", encoding="utf-8"
+            )
+        return root
+
+    def test_missing_driver_is_reported_with_the_exact_command(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.build(tmp)
+            report = project_doctor._merge_driver_report(root, runner=lambda *a, **k: None)
+            self.assertFalse(report["driver_configured"])
+            self.assertTrue(report["recommendations"])
+            self.assertIn(
+                "merge.ours.driver", report["recommendations"][0],
+                "the report must carry the command, not just say it is missing",
+            )
+
+    def test_configured_driver_reports_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.build(tmp)
+            report = project_doctor._merge_driver_report(
+                root, runner=lambda *a, **k: SimpleNamespace(returncode=0, stdout="true\n", stderr="")
+            )
+            self.assertTrue(report["driver_configured"])
+            self.assertEqual(report["recommendations"], [])
+
+    def test_no_gitattributes_means_nothing_to_report(self):
+        """A project that never opted in is not misconfigured."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.build(tmp, attributes=False)
+            report = project_doctor._merge_driver_report(root, runner=lambda *a, **k: None)
+            self.assertFalse(report["attributes_present"])
+            self.assertEqual(report["recommendations"], [])
+
+    def test_git_absent_does_not_raise(self):
+        """C4-adjacent: doctor reports, it does not fail on a missing tool."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.build(tmp)
+            report = project_doctor._merge_driver_report(root, runner=lambda *a, **k: None)
+            self.assertIn("driver_configured", report)
+
+
 class RuntimeTargetGuardTests(unittest.TestCase):
     def test_cache_is_rejected_before_parent_git_or_project_discovery(self):
         from tests.runtime_provenance_fixture import make_package, receipt_for

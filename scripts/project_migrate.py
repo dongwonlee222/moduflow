@@ -47,6 +47,23 @@ DIRECTORY_READMES = {
     "workflow": "# Workflow\n\n팀 인계 기록. `/moduflow handoff` 가 만듭니다.\n",
 }
 
+# 133: a new project gets the attributes at adoption. They do nothing until the
+# clone registers the driver — `product:doctor` reports a clone that has not —
+# but shipping them here means the file is already right when somebody does.
+GITATTRIBUTES = (
+    "# 이슈 133 — 기계가 쓰는 투영은 머신마다 다르므로 병합하지 않는다.\n"
+    "#\n"
+    "# ⚠️ 이 줄만으로는 동작하지 않는다. 각 클론에서 한 번:\n"
+    "#\n"
+    "#     git config merge.ours.driver true\n"
+    "#\n"
+    "# 드라이버는 `.git/config` 에 있어서 clone 을 따라가지 않는다.\n"
+    "# `product:doctor` 가 설정 안 된 클론을 보고한다.\n"
+    ".moduflow/state.json      merge=ours\n"
+    "workspace/loop-state.json merge=ours\n"
+    "workspace/dashboard.md    merge=ours\n"
+)
+
 WORKSPACE_FILES = {
     "inbox.md": "# Inbox\n\n",
     "opportunities.md": "# Opportunities\n\n",
@@ -173,6 +190,8 @@ def planned_writes(project_root, config):
             writes.append(relative)
         if not (project_root / relative / "README.md").exists():
             writes.append(f"{relative}/README.md")
+    if not (project_root / ".gitattributes").exists():
+        writes.append(".gitattributes")
     for filename in WORKSPACE_FILES:
         target = workspace_path / filename
         if not target.exists():
@@ -256,6 +275,9 @@ def apply_migration_plan(plan, *, project_context=None):
         readme = project_root / relative / "README.md"
         if write_text_if_missing(readme, DIRECTORY_READMES.get(key, f"# {key}\n")):
             written.append(str(readme.relative_to(project_root)))
+
+    if write_text_if_missing(project_root / ".gitattributes", GITATTRIBUTES):
+        written.append(".gitattributes")
 
     workspace_path = project_root / plan["config"]["paths"]["workspace"]
     for filename, content in WORKSPACE_FILES.items():

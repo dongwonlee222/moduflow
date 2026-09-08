@@ -54,6 +54,45 @@ CONFLICT (content): workspace/loop-state.json
 쪽입니다.
 
 
+## 2026-09-08 — A″ 로 처리했습니다. 완전하지 않고, 왜 그런지
+
+`.gitattributes` 에 `merge=ours` 셋을 넣고, **각 클론이 드라이버를 등록했는지
+`product:doctor` 가 보고**하게 했습니다. `project_migrate` 도 새 프로젝트에
+같은 파일을 만듭니다.
+
+```
+새 클론에서 doctor:
+  "이 클론은 `.gitattributes` 의 `merge=ours` 를 지킬 수 없습니다 —
+   `git config merge.ours.driver true` 를 한 번 실행하세요."
+
+드라이버 등록 후 두 컴퓨터 시나리오:
+  Merge made by the 'ort' strategy.
+  충돌: 없음
+  macB active_issue: 002-second      ← 자기 값 유지
+  이슈 파일: active / active          ← 둘 다 무사
+```
+
+### 왜 A(칸 옮기기)가 아니라 A″ 인가
+
+A는 `active_issue` 를 이미 gitignore 된 `.moduflow/state/` 로 옮기는 것이고,
+**완료 조건 ②를 완전히 만족하는 유일한 안**입니다. 하지만 실측하니
+`state.json` 을 여는 곳이 **11개 파일 34곳**이고 그중 셋이 트랜잭션(7,524줄)·
+검사기(1,015줄)·훅입니다.
+
+A″ 는 `.gitattributes` 한 파일과 `doctor` 검사 하나입니다. **되돌리기도
+파일 하나 지우면 끝입니다.**
+
+### A″ 의 한계 — 숨기지 않습니다
+
+**드라이버는 `.git/config` 에 있고 clone 을 따라가지 않습니다.** 받은 사람이
+명령 한 줄을 쳐야 합니다. 그러므로 **완료 조건 ②를 완전히 만족하지 않습니다.**
+`doctor` 가 안 친 클론을 보고하는 것이 그 간극을 메우는 방식이고, 이슈 151에서
+"설정이 필요한데 아무도 안 알려줘서 4주간 몰랐다"를 고친 것과 같은 장치입니다.
+
+**A 는 여전히 유효한 안이고, A″ 가 그것을 막지 않습니다.** 두 컴퓨터를 실제로
+쓰기 시작해서 이 한 줄이 부담이 되면 A 로 갑니다. 그때 이 이슈를 다시 엽니다.
+
+
 ## Summary
 
 Two coupled defects. `.moduflow/state.json` holds a single global `active_issue`

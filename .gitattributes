@@ -1,0 +1,15 @@
+# 이슈 133 — 기계가 쓰는 투영은 머신마다 다르므로 병합하지 않는다.
+#
+# 두 컴퓨터에서 각자 다른 이슈를 시작하면 아래 셋이 매번 충돌한다. 잃는 것은
+# 없다 — 정본인 `issues/*.md` 는 충돌하지 않고 양쪽 상태가 그대로 남는다.
+# 드는 비용은 사람이 안 쓴 파일 셋을 pull 때마다 손으로 푸는 일이다.
+#
+# ⚠️ 이 줄만으로는 동작하지 않는다. 각 클론에서 한 번:
+#
+#     git config merge.ours.driver true
+#
+# 드라이버는 `.git/config` 에 있어서 clone 을 따라가지 않는다.
+# `product:doctor` 가 설정 안 된 클론을 보고한다 (`merge_driver`).
+.moduflow/state.json      merge=ours
+workspace/loop-state.json merge=ours
+workspace/dashboard.md    merge=ours
