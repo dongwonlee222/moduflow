@@ -71,6 +71,51 @@ _PrivateRecoveryOutcome · _PrivateCleanupOutcome · _PrivateEvidenceBinding
 유지합니다. **진짜 기준은 개념 수**이며, 유일하게 모듈 크기에 의견을 가진 린터
 (`wemake-python-styleguide`)도 줄이 아니라 **멤버 수(7)**로 잽니다.
 
+## 2026-09-08 — 1단계(예외) 완료. 그리고 제가 또 짐작했습니다
+
+```
+전:  project_lifecycle_transaction.py   7,524줄  심볼 208
+후:  project_lifecycle_transaction.py   7,244줄  심볼 190
+     lifecycle_transaction/errors.py      375줄  심볼  18
+```
+
+테스트 160건 무수정 통과, `release_check` `valid: true`. 밖에서 쓰는 코드는
+한 줄도 안 바뀌었습니다 — `project_lifecycle_transaction.LifecyclePlanError`
+등이 그대로 됩니다.
+
+### 이 이슈가 근거로 삼은 문장이 틀렸습니다
+
+이 이슈는 **"예외는 아무것도 안 부르니 떼는 데 위험이 0"**이라고 적었습니다.
+**그건 측정이 아니라 제 추론이었습니다.** 실제로 떼어 보니:
+
+```
+1차: NameError: _SHA256, _frozen_validation_summary
+2차: NameError: _optional_post_apply_validation
+```
+
+`LifecyclePostApplyValidationError` 가 `_frozen_validation_summary` 를 부르고,
+그것이 `_serialized_validation_summary` → `_VALIDATION_SUMMARY_KEYS` ·
+`_LOGICAL_NAME` 로 이어집니다. 그리고 `_optional_post_apply_validation` 과
+그 상수 둘이 더 필요했습니다.
+
+**하나씩 쫓다가 두 번 실패한 뒤에야 폐포(closure)를 한 번에 쟀습니다.** 그렇게
+하니 필요한 것이 정확히 나왔고 한 번에 닫혔습니다. 최종적으로 함께 옮긴 것:
+
+`_SHA256` · `_LOGICAL_NAME` · `_VALIDATION_SUMMARY_KEYS` ·
+`_serialized_validation_summary` · `_frozen_validation_summary` ·
+`_optional_post_apply_validation` · `_POST_APPLY_VALIDATION_RULE_IDS` ·
+`_PROJECTED_VALIDATION_RULE_IDS`
+
+**남기는 방법**: 무엇을 떼기 전에 **의존 폐포를 먼저 재라.** 하나씩 쫓으면
+그때마다 다시 깨진다.
+
+### 남은 것
+
+본체가 아직 **7,244줄 · 심볼 190개**입니다. 「Module Size」 기준(1,000줄 그리고
+심볼 40개)을 여전히 넘습니다. 다음은 `_Private*State` 13개(states.py)이고,
+같은 방식으로 **폐포를 먼저 재고** 시작합니다.
+
+
 ## Scope
 
 ### In
