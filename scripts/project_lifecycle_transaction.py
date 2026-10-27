@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timezone
 import errno
+import fcntl
 import hashlib
 import json
 from collections.abc import Mapping
@@ -17,6 +18,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import secrets
 import stat
+import time
 from types import MappingProxyType
 
 try:
@@ -314,6 +316,21 @@ _PROJECTED_CONTROL_FILES = (
     "humans.json",
 )
 _PROJECTED_COPY_BUFFER_SIZE = 64 * 1024
+# 154: a projected copy is removed in `finally`, which SIGKILL skips. The owner
+# holds flock on the copy for its lifetime; the next projection removes any copy
+# whose lock is free and that is older than this (covers the mkdir→flock gap and
+# owners from versions that never locked).
+_PROJECTED_NAME = re.compile(r"\.txn-[0-9a-f]+-projected-[0-9a-f]{16}")
+_PROJECTED_ORPHAN_AGE_SECONDS = 600
+_FLOCK_UNSUPPORTED_ERRNOS = frozenset(
+    code
+    for code in (
+        getattr(errno, "ENOLCK", None),
+        getattr(errno, "ENOTSUP", None),
+        getattr(errno, "EOPNOTSUPP", None),
+    )
+    if code is not None
+)
 _PROJECTED_POLICY_FIELDS = (
     "project_status",
     "trust_scope",
@@ -3162,6 +3179,43 @@ def _private_applied_workspace(
         yield completed_state
 
 
+def _remove_orphaned_projected_roots(control_fd, directory_flags, *, now=None):
+    """Remove projected copies left by an owner that died before `finally` (154).
+
+    Best effort: anything uncertain is left in place, and nothing here may fail
+    the transaction that is about to project.
+    """
+    current = time.time() if now is None else now
+    try:
+        names = os.listdir(control_fd)
+    except OSError:
+        return
+    for name in sorted(names):
+        if not _PROJECTED_NAME.fullmatch(name):
+            continue
+        try:
+            orphan_fd = os.open(name, directory_flags, dir_fd=control_fd)
+        except OSError:
+            continue
+        try:
+            metadata = os.fstat(orphan_fd)
+            if (
+                not stat.S_ISDIR(metadata.st_mode)
+                or current - metadata.st_mtime < _PROJECTED_ORPHAN_AGE_SECONDS
+            ):
+                continue
+            try:
+                fcntl.flock(orphan_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                continue
+            _remove_projected_contents(orphan_fd)
+            os.rmdir(name, dir_fd=control_fd)
+        except OSError:
+            continue
+        finally:
+            os.close(orphan_fd)
+
+
 @contextmanager
 def _private_projected_root(plan):
     root, context = _writable_projected_plan_context(plan)
@@ -3183,6 +3237,7 @@ def _private_projected_root(plan):
                 directory_flags,
                 dir_fd=root_fd,
             )
+            _remove_orphaned_projected_roots(control_fd, directory_flags)
             for _attempt in range(16):
                 candidate = (
                     f".{plan.transaction_id}-projected-"
@@ -3204,6 +3259,13 @@ def _private_projected_root(plan):
                 dir_fd=control_fd,
             )
             os.fchmod(projected_fd, 0o700)
+            try:
+                fcntl.flock(projected_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as exc:
+                # A filesystem without flock projects unlocked, as before 154;
+                # the sweep cannot lock there either, so it leaves copies alone.
+                if exc.errno not in _FLOCK_UNSUPPORTED_ERRNOS:
+                    raise
         except LifecycleProjectedValidationError:
             raise
         except OSError as exc:

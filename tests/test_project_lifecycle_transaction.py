@@ -2,9 +2,12 @@ import errno
 import hashlib
 import json
 import os
+import signal
 import stat
+import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from contextlib import contextmanager
 from dataclasses import FrozenInstanceError, replace
@@ -11607,6 +11610,116 @@ Versioned release record.
                     )
                     raise RuntimeError("injected body failure")
 
+            self.assertFalse(projected_root.exists())
+
+    _PROJECTION_HOLDER = (
+        "import sys, time\n"
+        "from pathlib import Path\n"
+        "sys.path.insert(0, sys.argv[1])\n"
+        "import project_lifecycle_transaction as transaction\n"
+        "import project_registry\n"
+        "root = Path(sys.argv[2])\n"
+        "plan = transaction.plan_lifecycle_transaction(\n"
+        "    root,\n"
+        "    transaction.LifecycleIntent(issue_id='BIZ-103', action='start',\n"
+        "        actor='dongwon', source_event='request:A2'),\n"
+        "    project_context=project_registry.project_context_for_root(root),\n"
+        "    clock='2030-01-02',\n"
+        ")\n"
+        "with transaction._private_projected_root(plan) as projected_root:\n"
+        "    print(projected_root, flush=True)\n"
+        "    time.sleep(120)\n"
+    )
+
+    @contextmanager
+    def projection_holder(self, root):
+        """A real process parked inside `_private_projected_root` (154)."""
+        process = subprocess.Popen(
+            [sys.executable, "-c", self._PROJECTION_HOLDER, str(ROOT / "scripts"), str(root)],
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            line = process.stdout.readline().strip()
+            self.assertTrue(line, "holder never reached the projected root")
+            yield process, Path(line)
+        finally:
+            if process.poll() is None:
+                process.kill()
+            process.wait()
+            process.stdout.close()
+
+    @staticmethod
+    def backdate(path, seconds=3600):
+        past = time.time() - seconds
+        os.utime(path, (past, past))
+
+    def projected_names(self, root):
+        return sorted(
+            path.name
+            for path in (root / ".moduflow").iterdir()
+            if "-projected-" in path.name
+        )
+
+    def test_private_projected_root_removes_copy_left_by_sigkilled_owner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            with self.projection_holder(root) as (process, orphan):
+                self.assertTrue((orphan / "issues/BIZ-103.md").is_file())
+                process.send_signal(signal.SIGKILL)
+                process.wait()
+            self.assertTrue(orphan.is_dir(), "SIGKILL must skip the owner's finally")
+
+            # A fresh orphan may still be mid mkdir→flock in a live owner: keep it.
+            with transaction._private_projected_root(plan):
+                self.assertTrue(orphan.is_dir())
+            self.assertEqual(self.projected_names(root), [orphan.name])
+
+            self.backdate(orphan)
+            with transaction._private_projected_root(plan) as projected_root:
+                self.assertFalse(orphan.exists())
+            self.assertFalse(projected_root.exists())
+            self.assertEqual(self.projected_names(root), [])
+
+    def test_private_projected_root_keeps_copy_of_live_owner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            with self.projection_holder(root) as (process, held):
+                self.backdate(held)
+                with transaction._private_projected_root(plan):
+                    pass
+                self.assertIsNone(process.poll())
+                self.assertTrue((held / "issues/BIZ-103.md").is_file())
+                self.assertEqual(self.projected_names(root), [held.name])
+
+    def test_private_projected_root_projects_unlocked_where_flock_is_unsupported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            context = self.scaffold(root)
+            plan = transaction.plan_lifecycle_transaction(
+                root,
+                self.intent(),
+                project_context=context,
+                clock="2030-01-02",
+            )
+            unsupported = OSError(errno.ENOTSUP, "flock not supported")
+            with mock.patch.object(transaction.fcntl, "flock", side_effect=unsupported):
+                with transaction._private_projected_root(plan) as projected_root:
+                    self.assertTrue((projected_root / "issues/BIZ-103.md").is_file())
             self.assertFalse(projected_root.exists())
 
     def test_validate_projected_transaction_calls_bound_validator_once_and_redacts(self):
